@@ -36,8 +36,8 @@ export default function Signup() {
       <div className="ambient-bg" />
       <div className="w-full max-w-sm relative z-10">
         <div className="text-center mb-10">
-          <h1 className="text-4xl font-bold text-white">
-            Will<span className="text-wf-red">Fit</span>
+          <h1 className="text-4xl font-black tracking-wide text-white logo-glow">
+            WILL<span className="text-wf-red">FIT</span>
           </h1>
           <p className="text-wf-gray-400 text-sm mt-2">Create your account</p>
         </div>

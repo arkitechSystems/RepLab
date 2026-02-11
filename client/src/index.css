@@ -25,6 +25,11 @@ html, body {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* Logo glow */
+.logo-glow {
+  text-shadow: 0 0 10px rgba(239, 68, 68, 0.4), 0 0 30px rgba(239, 68, 68, 0.2), 0 0 60px rgba(239, 68, 68, 0.1);
+}
+
 /* Custom scrollbar (hide on mobile) */
 ::-webkit-scrollbar {
   display: none;
@@ -236,6 +241,15 @@ input[type="number"] {
   animation: confettiFall var(--duration) cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
   opacity: 0;
 }
+/* Video modal slide up */
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out forwards;
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(40px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 @keyframes confettiFall {
   0% {
     transform: translate(var(--x-start), var(--y-start)) rotate(0deg) scale(0);

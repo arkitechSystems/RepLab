@@ -1,11 +1,35 @@
+import { useState } from 'react';
+import { getExerciseVideoId, getExerciseSearchUrl } from '../utils/exerciseVideos.js';
+import VideoPlayerModal from './VideoPlayerModal.jsx';
+
 export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnly, completedSets, onToggleComplete }) {
   const pb = pbs?.[exercise.name];
+  const videoId = getExerciseVideoId(exercise.name);
+  const [showVideo, setShowVideo] = useState(false);
+
+  const handleVideoClick = () => {
+    if (videoId) {
+      setShowVideo(true);
+    } else {
+      // Fallback: open YouTube search in new tab for exercises without curated video
+      window.open(getExerciseSearchUrl(exercise.name), '_blank');
+    }
+  };
 
   return (
     <div className="glass-card rounded-xl overflow-hidden mb-3">
       {/* Exercise Header */}
       <div className="px-4 py-3 border-b border-white/10">
-        <h3 className="text-base font-semibold text-white">{exercise.name}</h3>
+        <button
+          type="button"
+          onClick={handleVideoClick}
+          className="inline-flex items-center gap-1.5 text-base font-semibold text-white hover:text-wf-red transition-colors text-left"
+        >
+          {exercise.name}
+          <svg className="w-4 h-4 text-wf-red shrink-0" viewBox="0 0 24 24" fill="currentColor">
+            <path fillRule="evenodd" d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653z" clipRule="evenodd" />
+          </svg>
+        </button>
       </div>
 
       {/* Set Rows */}
@@ -94,6 +118,15 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
           );
         })}
       </div>
+
+      {/* Video Player Modal */}
+      {showVideo && videoId && (
+        <VideoPlayerModal
+          videoId={videoId}
+          exerciseName={exercise.name}
+          onClose={() => setShowVideo(false)}
+        />
+      )}
     </div>
   );
 }

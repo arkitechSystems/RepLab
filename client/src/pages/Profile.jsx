@@ -26,7 +26,7 @@ export default function Profile() {
             </div>
             <div>
               <h2 className="text-lg font-semibold text-white">{user?.email || 'User'}</h2>
-              <p className="text-wf-gray-400 text-sm">WillFit Member</p>
+              <p className="text-wf-gray-400 text-sm">WILLFIT Member</p>
             </div>
           </div>
 
@@ -49,7 +49,7 @@ export default function Profile() {
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-wf-gray-400 text-sm">App</span>
-              <span className="text-white text-sm">WillFit</span>
+              <span className="text-white text-sm">WILLFIT</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-wf-gray-400 text-sm">Version</span>

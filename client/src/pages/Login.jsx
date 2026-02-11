@@ -30,8 +30,8 @@ export default function Login() {
       <div className="w-full max-w-sm relative z-10">
         {/* Logo */}
         <div className="text-center mb-10">
-          <h1 className="text-4xl font-bold text-white">
-            Will<span className="text-wf-red">Fit</span>
+          <h1 className="text-4xl font-black tracking-wide text-white logo-glow">
+            WILL<span className="text-wf-red">FIT</span>
           </h1>
           <p className="text-wf-gray-400 text-sm mt-2">Track your gains</p>
         </div>
