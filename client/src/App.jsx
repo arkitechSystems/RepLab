@@ -8,6 +8,7 @@ import WorkoutSession from './pages/WorkoutSession';
 import Workouts from './pages/Workouts';
 import CreateWorkout from './pages/CreateWorkout';
 import EditWorkout from './pages/EditWorkout';
+import CreateProgram from './pages/CreateProgram';
 import History from './pages/History';
 import SessionDetail from './pages/SessionDetail';
 import Profile from './pages/Profile';
@@ -41,6 +42,7 @@ export default function App() {
         <Route path="/session/:templateId/:date" element={<WorkoutSession />} />
         <Route path="/workouts" element={<Workouts />} />
         <Route path="/workouts/create" element={<CreateWorkout />} />
+        <Route path="/programs/create" element={<CreateProgram />} />
         <Route path="/workouts/edit/:id" element={<EditWorkout />} />
         <Route path="/history" element={<History />} />
         <Route path="/history/:id" element={<SessionDetail />} />

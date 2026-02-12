@@ -25,13 +25,13 @@ router.put('/:id', authMiddleware, (req, res) => {
 });
 
 router.post('/', authMiddleware, (req, res) => {
-  const { name, description, exercises } = req.body;
+  const { name, description, exercises, programId, isRest } = req.body;
 
   if (!name) {
     return res.status(400).json({ error: 'Template name is required' });
   }
 
-  const result = db.createTemplate(req.userId, name, description || '', exercises);
+  const result = db.createTemplate(req.userId, name, description || '', exercises, programId, isRest);
   res.status(201).json(result);
 });
 

@@ -9,14 +9,17 @@ const DB_PATH = join(__dirname, 'willfit.json');
 // In-memory database
 let data = {
   users: [],
+  programs: [],
   templates: [],
   templateExercises: [],
   scheduleDays: [],
   sessions: [],
   sessionEntries: [],
   personalBests: [],
+  userMetrics: [],
   _nextId: {
     users: 1,
+    programs: 1,
     templates: 1,
     templateExercises: 1,
     scheduleDays: 1,
@@ -31,6 +34,7 @@ function load() {
   if (existsSync(DB_PATH)) {
     try {
       data = JSON.parse(readFileSync(DB_PATH, 'utf-8'));
+      migrate();
       return;
     } catch {
       console.warn('Corrupted DB file, starting fresh');
@@ -38,6 +42,52 @@ function load() {
   }
   seedTemplates();
   save();
+}
+
+// Migrate old data to include programs
+function migrate() {
+  let changed = false;
+
+  // Add programs array if missing
+  if (!data.programs) {
+    data.programs = [];
+    data._nextId.programs = 1;
+    changed = true;
+  }
+
+  // Find templates without a programId and group them by userId
+  const orphanTemplates = data.templates.filter((t) => !t.programId);
+  if (orphanTemplates.length > 0) {
+    // Group orphans by userId
+    const byUser = new Map();
+    for (const t of orphanTemplates) {
+      const key = t.userId ?? '__null__';
+      if (!byUser.has(key)) byUser.set(key, []);
+      byUser.get(key).push(t);
+    }
+
+    for (const [key, templates] of byUser) {
+      const userId = key === '__null__' ? null : key;
+      const nonRest = templates.filter((t) => !t.isRest);
+      const programName = nonRest.map((t) => t.name).join(', ') || 'My Program';
+
+      const programId = nextId('programs');
+      data.programs.push({
+        id: programId,
+        userId,
+        name: programName,
+        createdAt: new Date().toISOString(),
+      });
+
+      for (const t of templates) {
+        t.programId = programId;
+      }
+      console.log(`Migrated ${templates.length} templates into program "${programName}"`);
+    }
+    changed = true;
+  }
+
+  if (changed) save();
 }
 
 // Save to disk
@@ -53,6 +103,15 @@ function nextId(table) {
 
 // Seed default templates
 function seedTemplates() {
+  // Create default program
+  const programId = nextId('programs');
+  data.programs.push({
+    id: programId,
+    userId: null,
+    name: 'Push, Pull, Legs',
+    createdAt: new Date().toISOString(),
+  });
+
   const templates = [
     {
       name: 'Push',
@@ -106,6 +165,7 @@ function seedTemplates() {
     data.templates.push({
       id: templateId,
       userId: null,
+      programId,
       name: t.name,
       description: t.description,
       isRest: t.isRest,
@@ -147,6 +207,19 @@ const db = {
     return user;
   },
 
+  // Programs
+  getPrograms(userId) {
+    return data.programs.filter((p) => p.userId === null || p.userId === userId);
+  },
+
+  createProgram(userId, name) {
+    const id = nextId('programs');
+    const program = { id, userId, name, createdAt: new Date().toISOString() };
+    data.programs.push(program);
+    save();
+    return program;
+  },
+
   // Templates
   getTemplates(userId) {
     const templates = data.templates.filter((t) => t.userId === null || t.userId === userId);
@@ -169,7 +242,7 @@ const db = {
         });
       }
 
-      return { id: t.id, name: t.name, description: t.description, isRest: t.isRest, exercises: grouped };
+      return { id: t.id, programId: t.programId || null, name: t.name, description: t.description, isRest: t.isRest, exercises: grouped };
     });
   },
 
@@ -206,9 +279,9 @@ const db = {
     return { id: templateId, name, description };
   },
 
-  createTemplate(userId, name, description, exercises) {
+  createTemplate(userId, name, description, exercises, programId, isRest) {
     const templateId = nextId('templates');
-    data.templates.push({ id: templateId, userId, name, description, isRest: false });
+    data.templates.push({ id: templateId, userId, programId: programId || null, name, description, isRest: isRest || false });
 
     if (exercises) {
       exercises.forEach((ex, sortOrder) => {
@@ -380,6 +453,30 @@ const db = {
       pbs = pbs.filter((pb) => pb.templateId === Number(templateId));
     }
     return pbs;
+  },
+
+  // User Metrics
+  getMetrics(userId) {
+    return data.userMetrics.find((m) => m.userId === userId) || {
+      userId,
+      height: null,
+      weight: null,
+      bodyFat: null,
+      maxBench: null,
+      maxSquat: null,
+      maxDeadlift: null,
+    };
+  },
+
+  updateMetrics(userId, metrics) {
+    const existing = data.userMetrics.find((m) => m.userId === userId);
+    if (existing) {
+      Object.assign(existing, metrics, { updatedAt: new Date().toISOString() });
+    } else {
+      data.userMetrics.push({ userId, ...metrics, updatedAt: new Date().toISOString() });
+    }
+    save();
+    return this.getMetrics(userId);
   },
 };
 

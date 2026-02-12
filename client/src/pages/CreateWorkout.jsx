@@ -1,9 +1,13 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 
 export default function CreateWorkout() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const preselectedProgramId = searchParams.get('programId');
+  const [programs, setPrograms] = useState([]);
+  const [selectedProgramId, setSelectedProgramId] = useState(preselectedProgramId || '');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [exercises, setExercises] = useState([
@@ -11,6 +15,15 @@ export default function CreateWorkout() {
   ]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    api('/programs')
+      .then((progs) => {
+        setPrograms(progs);
+        if (!selectedProgramId && progs.length > 0) setSelectedProgramId(progs[0].id);
+      })
+      .catch(console.error);
+  }, []);
 
   function addExercise() {
     setExercises([...exercises, { name: '', sets: [{ reps: 10, weight: 0 }] }]);
@@ -57,6 +70,10 @@ export default function CreateWorkout() {
 
   async function handleSave() {
     setError('');
+    if (!selectedProgramId) {
+      setError('Select a program');
+      return;
+    }
     if (!name.trim()) {
       setError('Workout name is required');
       return;
@@ -75,6 +92,7 @@ export default function CreateWorkout() {
           name: name.trim(),
           description: description.trim(),
           exercises: validExercises,
+          programId: Number(selectedProgramId),
         }),
       });
       navigate('/workouts');
@@ -101,6 +119,22 @@ export default function CreateWorkout() {
           {error}
         </div>
       )}
+
+      {/* Program Picker */}
+      <div className="mb-4">
+        <label className="text-xs text-wf-gray-400 uppercase tracking-wider mb-1 block">Add to Program</label>
+        <select
+          value={selectedProgramId}
+          onChange={(e) => setSelectedProgramId(e.target.value)}
+          className="w-full glass-input rounded-xl px-4 py-3.5 text-white text-base bg-transparent focus:outline-none appearance-none cursor-pointer transition-all"
+        >
+          {programs.map((p) => (
+            <option key={p.id} value={p.id} className="bg-wf-gray-900">
+              {p.name}
+            </option>
+          ))}
+        </select>
+      </div>
 
       {/* Workout Name */}
       <div className="mb-4">

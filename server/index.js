@@ -3,10 +3,12 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import authRoutes from './routes/auth.js';
+import programRoutes from './routes/programs.js';
 import templateRoutes from './routes/templates.js';
 import scheduleRoutes from './routes/schedule.js';
 import sessionRoutes from './routes/sessions.js';
 import pbRoutes from './routes/pbs.js';
+import metricsRoutes from './routes/metrics.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,10 +21,12 @@ app.use(express.json());
 
 // API Routes
 app.use('/auth', authRoutes);
+app.use('/programs', programRoutes);
 app.use('/templates', templateRoutes);
 app.use('/schedule', scheduleRoutes);
 app.use('/sessions', sessionRoutes);
 app.use('/pbs', pbRoutes);
+app.use('/metrics', metricsRoutes);
 
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'ok' }));

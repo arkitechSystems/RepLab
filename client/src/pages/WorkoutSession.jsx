@@ -39,7 +39,7 @@ export default function WorkoutSession() {
           for (const ex of tmpl.exercises) {
             initial[ex.name] = ex.sets.map((s) => ({
               weight: s.suggestedWeight,
-              reps: s.plannedReps,
+              reps: '',
             }));
           }
           setEntries(initial);

@@ -86,7 +86,7 @@ export default function SessionDetail() {
                     </div>
                     <div className="text-wf-gray-600">x</div>
                     <div className="text-center">
-                      <div className="text-[10px] text-wf-gray-400 uppercase">Reps</div>
+                      <div className="text-[10px] text-wf-gray-400 uppercase">Actual</div>
                       <div className="text-white font-medium">{set.reps}</div>
                     </div>
                   </div>

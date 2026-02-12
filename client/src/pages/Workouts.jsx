@@ -5,54 +5,55 @@ import { getWorkoutColor } from '../utils/workoutColors';
 import StickyHeader from '../components/StickyHeader';
 
 export default function Workouts() {
+  const [programs, setPrograms] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedProgram, setSelectedProgram] = useState(null);
+  const [showCreateMenu, setShowCreateMenu] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    api('/templates')
-      .then(setTemplates)
+    Promise.all([api('/programs'), api('/templates')])
+      .then(([progs, tmpls]) => {
+        setPrograms(progs);
+        setTemplates(tmpls);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
 
-  // Group templates into programs
-  function getPrograms() {
-    if (templates.length === 0) return [];
-    const nonRest = templates.filter((t) => !t.isRest);
-    const programName = nonRest.map((t) => t.name).join(', ');
-    const totalExercises = nonRest.reduce((sum, t) => sum + (t.exercises?.length || 0), 0);
-    return [
-      {
-        id: 'default',
-        name: programName || 'My Program',
-        workoutCount: templates.length,
+  // Build enriched program list by matching templates to their programId
+  function getEnrichedPrograms() {
+    return programs.map((p) => {
+      const programTemplates = templates.filter((t) => t.programId === p.id);
+      const nonRest = programTemplates.filter((t) => !t.isRest);
+      const totalExercises = nonRest.reduce((sum, t) => sum + (t.exercises?.length || 0), 0);
+      return {
+        ...p,
+        templates: programTemplates,
+        workoutCount: programTemplates.length,
         exerciseCount: totalExercises,
-        templates,
         colors: nonRest.map((t) => getWorkoutColor(t.name)),
-      },
-    ];
+      };
+    });
   }
 
-  const programs = getPrograms();
+  const enrichedPrograms = getEnrichedPrograms();
 
   // Program detail view — show individual templates
   if (selectedProgram) {
-    const program = programs.find((p) => p.id === selectedProgram);
+    const program = enrichedPrograms.find((p) => p.id === selectedProgram);
     if (!program) return null;
 
     return (
       <div>
         <StickyHeader title={program.name}>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => navigate('/workouts/create')}
-              className="btn-gradient active:scale-[0.98] text-white font-medium px-4 py-2.5 rounded-xl text-sm transition-all shrink-0"
-            >
-              + Create
-            </button>
-          </div>
+          <button
+            onClick={() => navigate(`/workouts/create?programId=${program.id}`)}
+            className="btn-gradient active:scale-[0.98] text-white font-medium px-4 py-2.5 rounded-xl text-sm transition-all shrink-0"
+          >
+            + Workout
+          </button>
         </StickyHeader>
 
         {/* Back button */}
@@ -132,7 +133,7 @@ export default function Workouts() {
     <div>
       <StickyHeader title="Programs">
         <button
-          onClick={() => navigate('/workouts/create')}
+          onClick={() => setShowCreateMenu(true)}
           className="btn-gradient active:scale-[0.98] text-white font-medium px-4 py-2.5 rounded-xl text-sm transition-all shrink-0"
         >
           + Create
@@ -146,14 +147,14 @@ export default function Workouts() {
               <div key={i} className="glass-skeleton rounded-xl h-40" />
             ))}
           </div>
-        ) : programs.length === 0 ? (
+        ) : enrichedPrograms.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-wf-gray-400 text-sm">No programs yet</p>
             <p className="text-wf-gray-500 text-xs mt-1">Create your first workout to get started</p>
           </div>
         ) : (
           <div className="space-y-4 pb-4">
-            {programs.map((program, idx) => (
+            {enrichedPrograms.map((program, idx) => (
               <button
                 key={program.id}
                 onClick={() => setSelectedProgram(program.id)}
@@ -199,6 +200,63 @@ export default function Workouts() {
           </div>
         )}
       </div>
+
+      {/* Create Choice Dropdown */}
+      {showCreateMenu && (
+        <div className="fixed inset-0 z-50" onClick={() => setShowCreateMenu(false)}>
+          <div className="absolute inset-0 bg-black/50" />
+          <div
+            className="absolute top-16 right-4 left-4 max-w-sm ml-auto animate-drop-down"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-wf-gray-900 border border-white/10 rounded-2xl shadow-2xl shadow-black/60 overflow-hidden">
+              {/* Options */}
+              <div className="p-3 space-y-1.5">
+                {/* New Program */}
+                <button
+                  onClick={() => { setShowCreateMenu(false); navigate('/programs/create'); }}
+                  className="w-full text-left rounded-xl p-3.5 flex items-center gap-3.5 active:scale-[0.98] transition-all hover:bg-white/5 active:bg-white/10"
+                >
+                  <div className="w-10 h-10 rounded-xl btn-gradient flex items-center justify-center shrink-0">
+                    <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-sm font-semibold text-white">New Program</h4>
+                    <p className="text-xs text-wf-gray-400 mt-0.5">Create a group of workouts</p>
+                  </div>
+                  <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </button>
+
+                {/* Divider */}
+                <div className="border-t border-white/5 mx-2" />
+
+                {/* New Workout */}
+                <button
+                  onClick={() => { setShowCreateMenu(false); navigate('/workouts/create'); }}
+                  className="w-full text-left rounded-xl p-3.5 flex items-center gap-3.5 active:scale-[0.98] transition-all hover:bg-white/5 active:bg-white/10"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-wf-blue/20 flex items-center justify-center shrink-0">
+                    <svg className="w-5 h-5 text-wf-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-sm font-semibold text-white">New Workout</h4>
+                    <p className="text-xs text-wf-gray-400 mt-0.5">Add to an existing program</p>
+                  </div>
+                  <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
