@@ -35,6 +35,15 @@ export function AuthProvider({ children }) {
     return data;
   }, []);
 
+  const demo = useCallback(async () => {
+    const data = await api('/auth/demo', { method: 'POST' });
+    localStorage.setItem('willfit_token', data.token);
+    localStorage.setItem('willfit_user', JSON.stringify(data.user));
+    setToken(data.token);
+    setUser(data.user);
+    return data;
+  }, []);
+
   const logout = useCallback(() => {
     localStorage.removeItem('willfit_token');
     localStorage.removeItem('willfit_user');
@@ -45,7 +54,7 @@ export function AuthProvider({ children }) {
   const isAuthenticated = !!token;
 
   return (
-    <AuthContext.Provider value={{ user, token, login, signup, logout, isAuthenticated }}>
+    <AuthContext.Provider value={{ user, token, login, signup, demo, logout, isAuthenticated }}>
       {children}
     </AuthContext.Provider>
   );

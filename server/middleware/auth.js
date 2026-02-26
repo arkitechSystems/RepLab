@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'willfit-demo-secret-key-2024';
+const JWT_SECRET = process.env.JWT_SECRET || 'willfit-dev-secret';
 
 export function generateToken(user) {
   return jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });

@@ -28,7 +28,7 @@ export default function StickyHeader({ title, subtitle, children }) {
         }`}
       >
         <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
+          {title ? <div className="min-w-0">
             <h1
               className={`font-black text-white tracking-tight transition-all duration-300 ${
                 collapsed ? 'text-lg' : 'text-3xl'
@@ -45,7 +45,7 @@ export default function StickyHeader({ title, subtitle, children }) {
                 {subtitle}
               </p>
             )}
-          </div>
+          </div> : null}
           {children}
         </div>
       </div>

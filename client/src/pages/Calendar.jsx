@@ -31,7 +31,9 @@ export default function Calendar() {
 
   function getEnrichedPrograms() {
     return programs.map((p) => {
-      const programTemplates = templates.filter((t) => t.programId === p.id);
+      const programTemplates = templates
+        .filter((t) => t.programId === p.id)
+        .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
       return { ...p, templates: programTemplates };
     });
   }

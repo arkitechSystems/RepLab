@@ -7,7 +7,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, demo } = useAuth();
   const navigate = useNavigate();
 
   async function handleSubmit(e) {
@@ -77,6 +77,33 @@ export default function Login() {
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
+
+        <div className="mt-4">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex-1 h-px bg-wf-gray-700" />
+            <span className="text-wf-gray-500 text-xs uppercase tracking-wider">or</span>
+            <div className="flex-1 h-px bg-wf-gray-700" />
+          </div>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={async () => {
+              setError('');
+              setLoading(true);
+              try {
+                await demo();
+                navigate('/');
+              } catch (err) {
+                setError(err.message);
+              } finally {
+                setLoading(false);
+              }
+            }}
+            className="w-full border border-wf-gray-700 active:scale-[0.98] text-wf-gray-300 font-semibold py-3.5 rounded-xl text-base transition-all disabled:opacity-50 hover:border-wf-gray-500 hover:text-white"
+          >
+            {loading ? 'Loading...' : 'Try Demo'}
+          </button>
+        </div>
 
         <p className="text-center text-wf-gray-400 text-sm mt-6">
           Don't have an account?{' '}

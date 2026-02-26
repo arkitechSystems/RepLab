@@ -1,329 +1,237 @@
-import { readFileSync, writeFileSync, existsSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import pool from './dbPool.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const DB_PATH = join(__dirname, 'willfit.json');
-
-// In-memory database
-let data = {
-  users: [],
-  programs: [],
-  templates: [],
-  templateExercises: [],
-  scheduleDays: [],
-  sessions: [],
-  sessionEntries: [],
-  personalBests: [],
-  userMetrics: [],
-  _nextId: {
-    users: 1,
-    programs: 1,
-    templates: 1,
-    templateExercises: 1,
-    scheduleDays: 1,
-    sessions: 1,
-    sessionEntries: 1,
-    personalBests: 1,
-  },
-};
-
-// Load from disk if exists
-function load() {
-  if (existsSync(DB_PATH)) {
-    try {
-      data = JSON.parse(readFileSync(DB_PATH, 'utf-8'));
-      migrate();
-      return;
-    } catch {
-      console.warn('Corrupted DB file, starting fresh');
-    }
-  }
-  seedTemplates();
-  save();
-}
-
-// Migrate old data to include programs
-function migrate() {
-  let changed = false;
-
-  // Add programs array if missing
-  if (!data.programs) {
-    data.programs = [];
-    data._nextId.programs = 1;
-    changed = true;
-  }
-
-  // Find templates without a programId and group them by userId
-  const orphanTemplates = data.templates.filter((t) => !t.programId);
-  if (orphanTemplates.length > 0) {
-    // Group orphans by userId
-    const byUser = new Map();
-    for (const t of orphanTemplates) {
-      const key = t.userId ?? '__null__';
-      if (!byUser.has(key)) byUser.set(key, []);
-      byUser.get(key).push(t);
-    }
-
-    for (const [key, templates] of byUser) {
-      const userId = key === '__null__' ? null : key;
-      const nonRest = templates.filter((t) => !t.isRest);
-      const programName = nonRest.map((t) => t.name).join(', ') || 'My Program';
-
-      const programId = nextId('programs');
-      data.programs.push({
-        id: programId,
-        userId,
-        name: programName,
-        createdAt: new Date().toISOString(),
-      });
-
-      for (const t of templates) {
-        t.programId = programId;
-      }
-      console.log(`Migrated ${templates.length} templates into program "${programName}"`);
-    }
-    changed = true;
-  }
-
-  if (changed) save();
-}
-
-// Save to disk
-function save() {
-  writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
-}
-
-function nextId(table) {
-  const id = data._nextId[table];
-  data._nextId[table]++;
-  return id;
-}
-
-// Seed default templates
-function seedTemplates() {
-  // Create default program
-  const programId = nextId('programs');
-  data.programs.push({
-    id: programId,
-    userId: null,
-    name: 'Push, Pull, Legs',
-    createdAt: new Date().toISOString(),
-  });
-
-  const templates = [
-    {
-      name: 'Push',
-      description: 'Chest, Shoulders, Triceps',
-      isRest: false,
-      exercises: [
-        { name: 'Barbell Bench Press', sets: [{ reps: 10, weight: 135 }, { reps: 8, weight: 155 }, { reps: 6, weight: 175 }, { reps: 6, weight: 175 }] },
-        { name: 'Incline Dumbbell Press', sets: [{ reps: 10, weight: 50 }, { reps: 10, weight: 50 }, { reps: 8, weight: 55 }] },
-        { name: 'Seated Shoulder Press (DB)', sets: [{ reps: 12, weight: 40 }, { reps: 10, weight: 45 }, { reps: 8, weight: 50 }] },
-        { name: 'Lateral Raises', sets: [{ reps: 15, weight: 20 }, { reps: 15, weight: 20 }, { reps: 12, weight: 25 }] },
-        { name: 'Cable Tricep Pushdown', sets: [{ reps: 12, weight: 60 }, { reps: 12, weight: 70 }, { reps: 10, weight: 80 }] },
-        { name: 'Overhead Tricep Extension (rope)', sets: [{ reps: 12, weight: 50 }, { reps: 10, weight: 60 }, { reps: 10, weight: 60 }] },
-      ],
-    },
-    {
-      name: 'Pull',
-      description: 'Back, Rear Delts, Biceps',
-      isRest: false,
-      exercises: [
-        { name: 'Lat Pulldown', sets: [{ reps: 12, weight: 120 }, { reps: 10, weight: 140 }, { reps: 8, weight: 160 }] },
-        { name: 'Barbell Row', sets: [{ reps: 10, weight: 135 }, { reps: 8, weight: 155 }, { reps: 8, weight: 155 }] },
-        { name: 'Seated Cable Row', sets: [{ reps: 12, weight: 120 }, { reps: 12, weight: 130 }, { reps: 10, weight: 140 }] },
-        { name: 'Face Pulls', sets: [{ reps: 15, weight: 50 }, { reps: 15, weight: 60 }, { reps: 12, weight: 70 }] },
-        { name: 'Barbell Curl', sets: [{ reps: 12, weight: 65 }, { reps: 10, weight: 75 }, { reps: 8, weight: 85 }] },
-        { name: 'Hammer Curl (DB)', sets: [{ reps: 12, weight: 30 }, { reps: 10, weight: 35 }, { reps: 10, weight: 35 }] },
-      ],
-    },
-    {
-      name: 'Legs',
-      description: 'Quads, Hamstrings, Glutes, Calves',
-      isRest: false,
-      exercises: [
-        { name: 'Back Squat', sets: [{ reps: 10, weight: 185 }, { reps: 8, weight: 205 }, { reps: 6, weight: 225 }, { reps: 6, weight: 225 }] },
-        { name: 'Romanian Deadlift', sets: [{ reps: 10, weight: 135 }, { reps: 10, weight: 155 }, { reps: 8, weight: 185 }] },
-        { name: 'Leg Press', sets: [{ reps: 12, weight: 270 }, { reps: 12, weight: 320 }, { reps: 10, weight: 360 }] },
-        { name: 'Leg Curl', sets: [{ reps: 12, weight: 90 }, { reps: 12, weight: 100 }, { reps: 10, weight: 110 }] },
-        { name: 'Leg Extension', sets: [{ reps: 12, weight: 110 }, { reps: 12, weight: 120 }, { reps: 10, weight: 130 }] },
-        { name: 'Standing Calf Raise', sets: [{ reps: 15, weight: 140 }, { reps: 15, weight: 160 }, { reps: 12, weight: 180 }] },
-      ],
-    },
-    {
-      name: 'Rest',
-      description: 'Recovery Day',
-      isRest: true,
-      exercises: [],
-    },
-  ];
-
-  for (const t of templates) {
-    const templateId = nextId('templates');
-    data.templates.push({
-      id: templateId,
-      userId: null,
-      programId,
-      name: t.name,
-      description: t.description,
-      isRest: t.isRest,
-    });
-
-    let sortOrder = 0;
-    for (const ex of t.exercises) {
-      for (let i = 0; i < ex.sets.length; i++) {
-        const exId = nextId('templateExercises');
-        data.templateExercises.push({
-          id: exId,
-          templateId,
-          name: ex.name,
-          setNumber: i + 1,
-          plannedReps: ex.sets[i].reps,
-          suggestedWeight: ex.sets[i].weight,
-          sortOrder,
-        });
-      }
-      sortOrder++;
-    }
-  }
-
-  console.log('Seeded default workout templates');
-}
-
-// Database API
 const db = {
   // Users
-  findUserByEmail(email) {
-    return data.users.find((u) => u.email === email) || null;
+  async findUserByEmail(email) {
+    const { rows } = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    if (!rows[0]) return null;
+    return { id: rows[0].id, email: rows[0].email, passwordHash: rows[0].password_hash, createdAt: rows[0].created_at };
   },
 
-  createUser(email, passwordHash) {
-    const id = nextId('users');
-    const user = { id, email, passwordHash, createdAt: new Date().toISOString() };
-    data.users.push(user);
-    save();
-    return user;
+  async createUser(email, passwordHash) {
+    const { rows } = await pool.query(
+      'INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING *',
+      [email, passwordHash]
+    );
+    const u = rows[0];
+    return { id: u.id, email: u.email, passwordHash: u.password_hash, createdAt: u.created_at };
   },
 
   // Programs
-  getPrograms(userId) {
-    return data.programs.filter((p) => p.userId === null || p.userId === userId);
+  async getPrograms(userId) {
+    const { rows } = await pool.query(
+      'SELECT * FROM programs WHERE user_id IS NULL OR user_id = $1 ORDER BY id',
+      [userId]
+    );
+    return rows.map((p) => ({ id: p.id, userId: p.user_id, name: p.name, createdAt: p.created_at }));
   },
 
-  createProgram(userId, name) {
-    const id = nextId('programs');
-    const program = { id, userId, name, createdAt: new Date().toISOString() };
-    data.programs.push(program);
-    save();
-    return program;
+  async createProgram(userId, name) {
+    const { rows } = await pool.query(
+      'INSERT INTO programs (user_id, name) VALUES ($1, $2) RETURNING *',
+      [userId, name]
+    );
+    const p = rows[0];
+    return { id: p.id, userId: p.user_id, name: p.name, createdAt: p.created_at };
+  },
+
+  async updateProgram(programId, name) {
+    const { rows } = await pool.query(
+      'UPDATE programs SET name = $1 WHERE id = $2 RETURNING *',
+      [name, programId]
+    );
+    if (!rows[0]) return null;
+    const p = rows[0];
+    return { id: p.id, userId: p.user_id, name: p.name, createdAt: p.created_at };
+  },
+
+  async deleteProgram(programId) {
+    const { rowCount } = await pool.query('DELETE FROM programs WHERE id = $1', [programId]);
+    return rowCount > 0;
+  },
+
+  async deleteTemplate(templateId) {
+    const { rowCount } = await pool.query('DELETE FROM templates WHERE id = $1', [templateId]);
+    return rowCount > 0;
+  },
+
+  async reorderTemplates(programId, orderedIds) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      for (let i = 0; i < orderedIds.length; i++) {
+        await client.query(
+          'UPDATE templates SET sort_order = $1 WHERE id = $2 AND program_id = $3',
+          [i, orderedIds[i], programId]
+        );
+      }
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   },
 
   // Templates
-  getTemplates(userId) {
-    const templates = data.templates.filter((t) => t.userId === null || t.userId === userId);
-    return templates.map((t) => {
-      const exercises = data.templateExercises
-        .filter((e) => e.templateId === t.id)
-        .sort((a, b) => a.sortOrder - b.sortOrder || a.setNumber - b.setNumber);
+  async getTemplates(userId) {
+    // Get all templates visible to this user
+    const { rows: templates } = await pool.query(
+      'SELECT * FROM templates WHERE user_id IS NULL OR user_id = $1 ORDER BY sort_order',
+      [userId]
+    );
 
+    if (templates.length === 0) return [];
+
+    // Get all exercises for these templates
+    const templateIds = templates.map((t) => t.id);
+    const { rows: exercises } = await pool.query(
+      `SELECT * FROM template_exercises WHERE template_id = ANY($1) ORDER BY sort_order, set_number`,
+      [templateIds]
+    );
+
+    // Group exercises by template
+    const exercisesByTemplate = new Map();
+    for (const ex of exercises) {
+      if (!exercisesByTemplate.has(ex.template_id)) exercisesByTemplate.set(ex.template_id, []);
+      exercisesByTemplate.get(ex.template_id).push(ex);
+    }
+
+    return templates.map((t) => {
+      const tExercises = exercisesByTemplate.get(t.id) || [];
       const grouped = [];
       const seen = new Map();
-      for (const ex of exercises) {
+      for (const ex of tExercises) {
         if (!seen.has(ex.name)) {
           seen.set(ex.name, grouped.length);
-          grouped.push({ name: ex.name, sortOrder: ex.sortOrder, sets: [] });
+          grouped.push({ name: ex.name, sortOrder: ex.sort_order, sets: [] });
         }
         grouped[seen.get(ex.name)].sets.push({
-          setNumber: ex.setNumber,
-          plannedReps: ex.plannedReps,
-          suggestedWeight: ex.suggestedWeight,
+          setNumber: ex.set_number,
+          plannedReps: ex.planned_reps,
+          suggestedWeight: Number(ex.suggested_weight),
         });
       }
 
-      return { id: t.id, programId: t.programId || null, name: t.name, description: t.description, isRest: t.isRest, exercises: grouped };
+      return {
+        id: t.id,
+        programId: t.program_id,
+        name: t.name,
+        description: t.description,
+        isRest: t.is_rest,
+        sortOrder: t.sort_order,
+        exercises: grouped,
+      };
     });
   },
 
-  updateTemplate(templateId, name, description, exercises) {
-    const template = data.templates.find((t) => t.id === templateId);
-    if (!template) return null;
+  async updateTemplate(templateId, name, description, exercises) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
 
-    template.name = name;
-    template.description = description;
+      const { rows } = await client.query(
+        'UPDATE templates SET name = $1, description = $2 WHERE id = $3 RETURNING *',
+        [name, description, templateId]
+      );
+      if (!rows[0]) {
+        await client.query('ROLLBACK');
+        return null;
+      }
 
-    // Remove old exercises for this template
-    data.templateExercises = data.templateExercises.filter((e) => e.templateId !== templateId);
+      // Remove old exercises
+      await client.query('DELETE FROM template_exercises WHERE template_id = $1', [templateId]);
 
-    // Insert new exercises
-    if (exercises) {
-      exercises.forEach((ex, sortOrder) => {
-        const sets = ex.sets || [{ reps: 10, weight: 0 }];
-        sets.forEach((set, i) => {
-          const exId = nextId('templateExercises');
-          data.templateExercises.push({
-            id: exId,
-            templateId,
-            name: ex.name,
-            setNumber: i + 1,
-            plannedReps: set.reps || 10,
-            suggestedWeight: set.weight || 0,
-            sortOrder,
-          });
-        });
-      });
+      // Insert new exercises
+      if (exercises) {
+        for (let sortOrder = 0; sortOrder < exercises.length; sortOrder++) {
+          const ex = exercises[sortOrder];
+          const sets = ex.sets || [{ reps: 10, weight: 0 }];
+          for (let i = 0; i < sets.length; i++) {
+            await client.query(
+              'INSERT INTO template_exercises (template_id, name, set_number, planned_reps, suggested_weight, sort_order) VALUES ($1, $2, $3, $4, $5, $6)',
+              [templateId, ex.name, i + 1, sets[i].reps || 10, sets[i].weight || 0, sortOrder]
+            );
+          }
+        }
+      }
+
+      await client.query('COMMIT');
+      return { id: templateId, name, description };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
     }
-
-    save();
-    return { id: templateId, name, description };
   },
 
-  createTemplate(userId, name, description, exercises, programId, isRest) {
-    const templateId = nextId('templates');
-    data.templates.push({ id: templateId, userId, programId: programId || null, name, description, isRest: isRest || false });
+  async createTemplate(userId, name, description, exercises, programId, isRest) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
 
-    if (exercises) {
-      exercises.forEach((ex, sortOrder) => {
-        const sets = ex.sets || [{ reps: 10, weight: 0 }];
-        sets.forEach((set, i) => {
-          const exId = nextId('templateExercises');
-          data.templateExercises.push({
-            id: exId,
-            templateId,
-            name: ex.name,
-            setNumber: i + 1,
-            plannedReps: set.reps || 10,
-            suggestedWeight: set.weight || 0,
-            sortOrder,
-          });
-        });
-      });
+      // Get next sortOrder for this program
+      const { rows: orderRows } = await client.query(
+        'SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_order FROM templates WHERE program_id = $1',
+        [programId || null]
+      );
+      const sortOrder = orderRows[0].next_order;
+
+      const { rows } = await client.query(
+        'INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+        [userId, programId || null, name, description || '', isRest || false, sortOrder]
+      );
+      const templateId = rows[0].id;
+
+      if (exercises) {
+        for (let exSortOrder = 0; exSortOrder < exercises.length; exSortOrder++) {
+          const ex = exercises[exSortOrder];
+          const sets = ex.sets || [{ reps: 10, weight: 0 }];
+          for (let i = 0; i < sets.length; i++) {
+            await client.query(
+              'INSERT INTO template_exercises (template_id, name, set_number, planned_reps, suggested_weight, sort_order) VALUES ($1, $2, $3, $4, $5, $6)',
+              [templateId, ex.name, i + 1, sets[i].reps || 10, sets[i].weight || 0, exSortOrder]
+            );
+          }
+        }
+      }
+
+      await client.query('COMMIT');
+      return { id: templateId, name, description };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
     }
-
-    save();
-    return { id: templateId, name, description };
   },
 
   // Schedule
-  getSchedule(userId) {
-    return data.scheduleDays
-      .filter((s) => s.userId === userId)
-      .map((s) => {
-        const t = data.templates.find((t) => t.id === s.templateId);
-        return {
-          dayOfWeek: s.dayOfWeek,
-          templateId: s.templateId,
-          templateName: t?.name || 'Unknown',
-          isRest: t?.isRest || false,
-        };
-      })
-      .sort((a, b) => a.dayOfWeek - b.dayOfWeek);
+  async getSchedule(userId) {
+    const { rows } = await pool.query(
+      `SELECT sd.day_of_week, sd.template_id, t.name AS template_name, t.is_rest
+       FROM schedule_days sd
+       LEFT JOIN templates t ON t.id = sd.template_id
+       WHERE sd.user_id = $1
+       ORDER BY sd.day_of_week`,
+      [userId]
+    );
+    return rows.map((r) => ({
+      dayOfWeek: r.day_of_week,
+      templateId: r.template_id,
+      templateName: r.template_name || 'Unknown',
+      isRest: r.is_rest || false,
+    }));
   },
 
-  setDefaultSchedule(userId) {
+  async setDefaultSchedule(userId) {
+    const { rows: globalTemplates } = await pool.query(
+      'SELECT id, name FROM templates WHERE user_id IS NULL'
+    );
     const templateMap = {};
-    for (const t of data.templates.filter((t) => t.userId === null)) {
+    for (const t of globalTemplates) {
       templateMap[t.name] = t.id;
     }
 
@@ -339,148 +247,194 @@ const db = {
 
     for (const d of defaults) {
       if (templateMap[d.template]) {
-        const id = nextId('scheduleDays');
-        data.scheduleDays.push({ id, userId, dayOfWeek: d.day, templateId: templateMap[d.template] });
+        await pool.query(
+          'INSERT INTO schedule_days (user_id, day_of_week, template_id) VALUES ($1, $2, $3)',
+          [userId, d.day, templateMap[d.template]]
+        );
       }
     }
-    save();
   },
 
-  updateSchedule(userId, schedule) {
+  async updateSchedule(userId, schedule) {
     for (const day of schedule) {
-      const existing = data.scheduleDays.find((s) => s.userId === userId && s.dayOfWeek === day.dayOfWeek);
-      if (existing) {
-        existing.templateId = day.templateId;
-      } else {
-        const id = nextId('scheduleDays');
-        data.scheduleDays.push({ id, userId, dayOfWeek: day.dayOfWeek, templateId: day.templateId });
+      // Try to update existing, insert if not found
+      const { rowCount } = await pool.query(
+        'UPDATE schedule_days SET template_id = $1 WHERE user_id = $2 AND day_of_week = $3',
+        [day.templateId, userId, day.dayOfWeek]
+      );
+      if (rowCount === 0) {
+        await pool.query(
+          'INSERT INTO schedule_days (user_id, day_of_week, template_id) VALUES ($1, $2, $3)',
+          [userId, day.dayOfWeek, day.templateId]
+        );
       }
     }
-    save();
   },
 
   // Sessions
-  createSession(userId, templateId, date, entries) {
-    const sessionId = nextId('sessions');
-    data.sessions.push({ id: sessionId, userId, templateId, date, createdAt: new Date().toISOString() });
+  async createSession(userId, templateId, date, entries) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
 
-    const bestByExercise = new Map();
-
-    for (const entry of entries) {
-      const entryId = nextId('sessionEntries');
-      data.sessionEntries.push({
-        id: entryId,
-        sessionId,
-        exerciseName: entry.exerciseName,
-        setNumber: entry.setNumber,
-        weight: entry.weight || 0,
-        reps: entry.reps || 0,
-      });
-
-      const w = entry.weight || 0;
-      const r = entry.reps || 0;
-      if (w > 0 && r > 0) {
-        const current = bestByExercise.get(entry.exerciseName);
-        if (!current || w > current.weight || (w === current.weight && r > current.reps)) {
-          bestByExercise.set(entry.exerciseName, { weight: w, reps: r });
-        }
-      }
-    }
-
-    // Update PBs
-    for (const [exerciseName, best] of bestByExercise) {
-      const existing = data.personalBests.find(
-        (pb) => pb.userId === userId && pb.templateId === templateId && pb.exerciseName === exerciseName
+      const { rows: sessionRows } = await client.query(
+        'INSERT INTO sessions (user_id, template_id, date) VALUES ($1, $2, $3) RETURNING id',
+        [userId, templateId, date]
       );
+      const sessionId = sessionRows[0].id;
 
-      if (existing) {
-        if (best.weight > existing.bestWeight || (best.weight === existing.bestWeight && best.reps > existing.bestReps)) {
-          existing.bestWeight = best.weight;
-          existing.bestReps = best.reps;
-          existing.achievedAt = new Date().toISOString();
+      const bestByExercise = new Map();
+
+      for (const entry of entries) {
+        await client.query(
+          'INSERT INTO session_entries (session_id, exercise_name, set_number, weight, reps) VALUES ($1, $2, $3, $4, $5)',
+          [sessionId, entry.exerciseName, entry.setNumber, entry.weight || 0, entry.reps || 0]
+        );
+
+        const w = entry.weight || 0;
+        const r = entry.reps || 0;
+        if (w > 0 && r > 0) {
+          const current = bestByExercise.get(entry.exerciseName);
+          if (!current || w > current.weight || (w === current.weight && r > current.reps)) {
+            bestByExercise.set(entry.exerciseName, { weight: w, reps: r });
+          }
         }
-      } else {
-        const pbId = nextId('personalBests');
-        data.personalBests.push({
-          id: pbId,
-          userId,
-          templateId,
-          exerciseName,
-          bestWeight: best.weight,
-          bestReps: best.reps,
-          achievedAt: new Date().toISOString(),
-        });
       }
+
+      // Update PBs
+      for (const [exerciseName, best] of bestByExercise) {
+        const { rows: existingPBs } = await client.query(
+          'SELECT * FROM personal_bests WHERE user_id = $1 AND template_id = $2 AND exercise_name = $3',
+          [userId, templateId, exerciseName]
+        );
+
+        if (existingPBs.length > 0) {
+          const existing = existingPBs[0];
+          const existingWeight = Number(existing.best_weight);
+          const existingReps = existing.best_reps;
+          if (best.weight > existingWeight || (best.weight === existingWeight && best.reps > existingReps)) {
+            await client.query(
+              'UPDATE personal_bests SET best_weight = $1, best_reps = $2, achieved_at = NOW() WHERE id = $3',
+              [best.weight, best.reps, existing.id]
+            );
+          }
+        } else {
+          await client.query(
+            'INSERT INTO personal_bests (user_id, template_id, exercise_name, best_weight, best_reps) VALUES ($1, $2, $3, $4, $5)',
+            [userId, templateId, exerciseName, best.weight, best.reps]
+          );
+        }
+      }
+
+      await client.query('COMMIT');
+      return { id: sessionId };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
     }
-
-    save();
-    return { id: sessionId };
   },
 
-  getSessions(userId) {
-    return data.sessions
-      .filter((s) => s.userId === userId)
-      .map((s) => {
-        const t = data.templates.find((t) => t.id === s.templateId);
-        return { id: s.id, date: s.date, templateId: s.templateId, createdAt: s.createdAt, templateName: t?.name || 'Unknown' };
-      })
-      .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
+  async getSessions(userId) {
+    const { rows } = await pool.query(
+      `SELECT s.id, s.date, s.template_id, s.created_at, COALESCE(t.name, 'Unknown') AS template_name
+       FROM sessions s
+       LEFT JOIN templates t ON t.id = s.template_id
+       WHERE s.user_id = $1
+       ORDER BY s.date DESC, s.created_at DESC`,
+      [userId]
+    );
+    return rows.map((r) => ({
+      id: r.id,
+      date: r.date,
+      templateId: r.template_id,
+      createdAt: r.created_at,
+      templateName: r.template_name,
+    }));
   },
 
-  getSession(userId, sessionId) {
-    const session = data.sessions.find((s) => s.id === sessionId && s.userId === userId);
-    if (!session) return null;
+  async getSession(userId, sessionId) {
+    const { rows: sessionRows } = await pool.query(
+      `SELECT s.id, s.date, s.template_id, s.created_at, COALESCE(t.name, 'Unknown') AS template_name
+       FROM sessions s
+       LEFT JOIN templates t ON t.id = s.template_id
+       WHERE s.id = $1 AND s.user_id = $2`,
+      [sessionId, userId]
+    );
+    if (!sessionRows[0]) return null;
 
-    const t = data.templates.find((t) => t.id === session.templateId);
-    const entries = data.sessionEntries
-      .filter((e) => e.sessionId === sessionId)
-      .sort((a, b) => a.exerciseName.localeCompare(b.exerciseName) || a.setNumber - b.setNumber);
+    const session = sessionRows[0];
+    const { rows: entries } = await pool.query(
+      'SELECT * FROM session_entries WHERE session_id = $1 ORDER BY exercise_name, set_number',
+      [sessionId]
+    );
 
     return {
       id: session.id,
       date: session.date,
-      templateId: session.templateId,
-      createdAt: session.createdAt,
-      templateName: t?.name || 'Unknown',
-      entries,
+      templateId: session.template_id,
+      createdAt: session.created_at,
+      templateName: session.template_name,
+      entries: entries.map((e) => ({
+        id: e.id,
+        sessionId: e.session_id,
+        exerciseName: e.exercise_name,
+        setNumber: e.set_number,
+        weight: Number(e.weight),
+        reps: e.reps,
+      })),
     };
   },
 
   // Personal Bests
-  getPBs(userId, templateId) {
-    let pbs = data.personalBests.filter((pb) => pb.userId === userId);
+  async getPBs(userId, templateId) {
+    let query = 'SELECT * FROM personal_bests WHERE user_id = $1';
+    const params = [userId];
     if (templateId) {
-      pbs = pbs.filter((pb) => pb.templateId === Number(templateId));
+      query += ' AND template_id = $2';
+      params.push(Number(templateId));
     }
-    return pbs;
+    const { rows } = await pool.query(query, params);
+    return rows.map((pb) => ({
+      id: pb.id,
+      userId: pb.user_id,
+      templateId: pb.template_id,
+      exerciseName: pb.exercise_name,
+      bestWeight: Number(pb.best_weight),
+      bestReps: pb.best_reps,
+      achievedAt: pb.achieved_at,
+    }));
   },
 
   // User Metrics
-  getMetrics(userId) {
-    return data.userMetrics.find((m) => m.userId === userId) || {
-      userId,
-      height: null,
-      weight: null,
-      bodyFat: null,
-      maxBench: null,
-      maxSquat: null,
-      maxDeadlift: null,
+  async getMetrics(userId) {
+    const { rows } = await pool.query('SELECT * FROM user_metrics WHERE user_id = $1', [userId]);
+    if (!rows[0]) {
+      return { userId, height: null, weight: null, bodyFat: null, maxBench: null, maxSquat: null, maxDeadlift: null };
+    }
+    const m = rows[0];
+    return {
+      userId: m.user_id,
+      height: m.height != null ? Number(m.height) : null,
+      weight: m.weight != null ? Number(m.weight) : null,
+      bodyFat: m.body_fat != null ? Number(m.body_fat) : null,
+      maxBench: m.max_bench != null ? Number(m.max_bench) : null,
+      maxSquat: m.max_squat != null ? Number(m.max_squat) : null,
+      maxDeadlift: m.max_deadlift != null ? Number(m.max_deadlift) : null,
     };
   },
 
-  updateMetrics(userId, metrics) {
-    const existing = data.userMetrics.find((m) => m.userId === userId);
-    if (existing) {
-      Object.assign(existing, metrics, { updatedAt: new Date().toISOString() });
-    } else {
-      data.userMetrics.push({ userId, ...metrics, updatedAt: new Date().toISOString() });
-    }
-    save();
+  async updateMetrics(userId, metrics) {
+    await pool.query(
+      `INSERT INTO user_metrics (user_id, height, weight, body_fat, max_bench, max_squat, max_deadlift, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+       ON CONFLICT (user_id) DO UPDATE SET
+         height = $2, weight = $3, body_fat = $4, max_bench = $5, max_squat = $6, max_deadlift = $7, updated_at = NOW()`,
+      [userId, metrics.height, metrics.weight, metrics.bodyFat, metrics.maxBench, metrics.maxSquat, metrics.maxDeadlift]
+    );
     return this.getMetrics(userId);
   },
 };
-
-// Initialize
-load();
 
 export default db;
