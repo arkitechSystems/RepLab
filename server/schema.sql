@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS programs (
   id SERIAL PRIMARY KEY,
   user_id INT REFERENCES users(id),
   name TEXT NOT NULL,
+  description TEXT DEFAULT '',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -26,6 +27,7 @@ CREATE TABLE IF NOT EXISTS template_exercises (
   id SERIAL PRIMARY KEY,
   template_id INT REFERENCES templates(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
+  set_type TEXT DEFAULT 'straight',
   set_number INT NOT NULL,
   planned_reps INT DEFAULT 10,
   suggested_weight NUMERIC DEFAULT 0,

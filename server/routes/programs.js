@@ -16,11 +16,11 @@ router.get('/', authMiddleware, async (req, res) => {
 
 router.post('/', authMiddleware, async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, description } = req.body;
     if (!name) {
       return res.status(400).json({ error: 'Program name is required' });
     }
-    const result = await db.createProgram(req.userId, name);
+    const result = await db.createProgram(req.userId, name, description || '');
     res.status(201).json(result);
   } catch (err) {
     console.error(err);

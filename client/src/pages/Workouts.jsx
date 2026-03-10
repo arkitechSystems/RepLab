@@ -4,6 +4,8 @@ import { api } from '../api';
 import { getWorkoutColor } from '../utils/workoutColors';
 import StickyHeader from '../components/StickyHeader';
 
+const DAY_NAMES_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
 export default function Workouts() {
   const [programs, setPrograms] = useState([]);
   const [templates, setTemplates] = useState([]);
@@ -12,6 +14,10 @@ export default function Workouts() {
   const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editName, setEditName] = useState('');
+  // Begin Program modal state
+  const [beginModal, setBeginModal] = useState(null); // program object
+  const [beginDateInput, setBeginDateInput] = useState('');
+  const [conflictInfo, setConflictInfo] = useState(null); // { conflicts: string[], pendingEntries: [] }
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -23,6 +29,58 @@ export default function Workouts() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+
+  async function openBeginProgram(e, program) {
+    e.stopPropagation();
+    setBeginModal(program);
+    setBeginDateInput('');
+    setConflictInfo(null);
+  }
+
+  function closeBeginModal() {
+    setBeginModal(null);
+    setBeginDateInput('');
+    setConflictInfo(null);
+  }
+
+  function buildEntries(program, startDate) {
+    return program.templates.slice(0, 7).map((t, i) => {
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + i);
+      return { dayOfWeek: date.getDay(), templateId: t.id, date };
+    });
+  }
+
+  async function tryApply(program, startDate) {
+    const schedule = await api('/schedule');
+    const entries = buildEntries(program, startDate);
+    const conflicts = entries
+      .filter((e) => schedule.some((s) => s.dayOfWeek === e.dayOfWeek && s.templateId))
+      .map((e) => `${DAY_NAMES_FULL[e.dayOfWeek]}, ${e.date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`);
+    if (conflicts.length > 0) {
+      setConflictInfo({ conflicts, pendingEntries: entries });
+    } else {
+      await applyEntries(entries);
+    }
+  }
+
+  async function applyEntries(entries) {
+    await api('/schedule', {
+      method: 'PUT',
+      body: JSON.stringify({ schedule: entries.map(({ dayOfWeek, templateId }) => ({ dayOfWeek, templateId })) }),
+    });
+    closeBeginModal();
+    navigate('/');
+  }
+
+  async function handleStartToday() {
+    await tryApply(beginModal, new Date());
+  }
+
+  async function handleBeginDate() {
+    if (!beginDateInput) return;
+    await tryApply(beginModal, new Date(beginDateInput + 'T00:00:00'));
+  }
 
   // Build enriched program list by matching templates to their programId
   function getEnrichedPrograms() {
@@ -308,11 +366,11 @@ export default function Workouts() {
         ) : (
           <div className="space-y-4 pb-4">
             {enrichedPrograms.map((program, idx) => (
-              <button
+              <div
                 key={program.id}
                 onClick={() => setSelectedProgram(program.id)}
                 style={{ animationDelay: `${idx * 80}ms` }}
-                className="w-full text-left glass-card rounded-2xl overflow-hidden active:scale-[0.98] transition-transform fade-slide-up"
+                className="w-full text-left glass-card rounded-2xl overflow-hidden active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
               >
                 {/* Color strip */}
                 <div className="flex h-1.5">
@@ -322,10 +380,20 @@ export default function Workouts() {
                 </div>
 
                 <div className="p-5">
-                  <h2 className="text-xl font-black text-white tracking-tight">{program.name}</h2>
-                  <p className="text-wf-gray-400 text-sm mt-1">
-                    {program.workoutCount} workouts &middot; {program.exerciseCount} exercises
-                  </p>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h2 className="text-xl font-black text-white tracking-tight">{program.name}</h2>
+                      <p className="text-wf-gray-400 text-sm mt-1">
+                        {program.workoutCount} workouts &middot; {program.exerciseCount} exercises
+                      </p>
+                    </div>
+                    <button
+                      onClick={(e) => openBeginProgram(e, program)}
+                      className="btn-gradient shrink-0 text-white font-semibold text-xs px-3 py-2 rounded-xl active:scale-[0.97] transition-all"
+                    >
+                      Begin Program
+                    </button>
+                  </div>
 
                   {/* Workout preview dots */}
                   <div className="flex items-center gap-3 mt-4">
@@ -348,11 +416,99 @@ export default function Workouts() {
                     </svg>
                   </div>
                 </div>
-              </button>
+              </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Begin Program Modal */}
+      {beginModal && !conflictInfo && (
+        <div className="fixed inset-0 z-50 flex items-end" onClick={closeBeginModal}>
+          <div className="absolute inset-0 bg-black/60" />
+          <div
+            className="relative w-full bg-wf-gray-900 border-t border-white/10 rounded-t-2xl p-5 animate-drop-down"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-5" />
+            <h3 className="text-lg font-black text-white mb-1">Begin Program</h3>
+            <p className="text-wf-gray-400 text-sm mb-5">
+              Schedule <span className="text-white font-semibold">{beginModal.name}</span> starting from a day of your choice.
+            </p>
+
+            {/* Start Today */}
+            <button
+              onClick={handleStartToday}
+              className="w-full btn-gradient text-white font-semibold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-all mb-3"
+            >
+              Start Today
+            </button>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3 mb-3">
+              <div className="flex-1 border-t border-white/10" />
+              <span className="text-xs text-wf-gray-500">or choose a start date</span>
+              <div className="flex-1 border-t border-white/10" />
+            </div>
+
+            {/* Date picker + confirm */}
+            <div className="flex gap-2">
+              <input
+                type="date"
+                value={beginDateInput}
+                min={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => setBeginDateInput(e.target.value)}
+                className="flex-1 glass-input rounded-xl px-3 py-3 text-white text-sm focus:outline-none"
+              />
+              <button
+                onClick={handleBeginDate}
+                disabled={!beginDateInput}
+                className="btn-gradient text-white font-semibold px-5 py-3 rounded-xl text-sm active:scale-[0.98] transition-all disabled:opacity-40"
+              >
+                Schedule
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Overwrite Confirmation Modal */}
+      {conflictInfo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-5" onClick={() => setConflictInfo(null)}>
+          <div className="absolute inset-0 bg-black/70" />
+          <div
+            className="relative w-full max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-black text-white mb-2">Overwrite existing workouts?</h3>
+            <p className="text-wf-gray-400 text-sm mb-3">
+              This will overwrite your current workout on:
+            </p>
+            <ul className="mb-5 space-y-1">
+              {conflictInfo.conflicts.map((day) => (
+                <li key={day} className="text-sm font-semibold text-wf-red flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-wf-red" />
+                  {day}
+                </li>
+              ))}
+            </ul>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConflictInfo(null)}
+                className="flex-1 glass-card text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => applyEntries(conflictInfo.pendingEntries)}
+                className="flex-1 bg-wf-red/90 hover:bg-wf-red text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+              >
+                Overwrite
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Create Choice Dropdown */}
       {showCreateMenu && (

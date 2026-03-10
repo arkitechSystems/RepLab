@@ -2,6 +2,15 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../api';
 
+const SET_TYPES = [
+  { value: 'straight', label: 'Straight Set' },
+  { value: 'drop', label: 'Drop Set' },
+  { value: 'rest_pause', label: 'Rest Pause' },
+  { value: 'pre_exhaust', label: 'Pre-Exhaust' },
+  { value: 'sandwich', label: 'Sandwich' },
+  { value: 'alternating', label: 'Alternating' },
+];
+
 export default function EditWorkout() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -25,6 +34,7 @@ export default function EditWorkout() {
         setExercises(
           tmpl.exercises.map((ex) => ({
             name: ex.name,
+            setType: ex.setType || 'straight',
             sets: ex.sets.map((s) => ({ reps: s.plannedReps, weight: s.suggestedWeight })),
           }))
         );
@@ -34,7 +44,7 @@ export default function EditWorkout() {
   }, [id]);
 
   function addExercise() {
-    setExercises([...exercises, { name: '', sets: [{ reps: 10, weight: 0 }] }]);
+    setExercises([...exercises, { name: '', setType: 'straight', sets: [{ reps: 10, weight: 0 }] }]);
   }
 
   function removeExercise(idx) {
@@ -163,6 +173,28 @@ export default function EditWorkout() {
 
         {exercises.map((ex, exIdx) => (
           <div key={exIdx} className="glass-card rounded-xl p-4 mb-3">
+            {/* Set Type */}
+            <div className="mb-3">
+              <label className="text-xs text-wf-gray-500 uppercase tracking-wider mb-2 block">Set Type</label>
+              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+                {SET_TYPES.map((st) => (
+                  <button
+                    key={st.value}
+                    type="button"
+                    onClick={() => updateExercise(exIdx, 'setType', st.value)}
+                    className={`shrink-0 text-xs font-medium px-3 py-1.5 rounded-full transition-all ${
+                      ex.setType === st.value
+                        ? 'bg-wf-red text-white'
+                        : 'bg-white/5 text-wf-gray-400 border border-white/10'
+                    }`}
+                  >
+                    {st.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Exercise Name */}
             <div className="flex items-center gap-2 mb-3">
               <input
                 type="text"

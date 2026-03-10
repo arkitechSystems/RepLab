@@ -10,6 +10,7 @@ import scheduleRoutes from './routes/schedule.js';
 import sessionRoutes from './routes/sessions.js';
 import pbRoutes from './routes/pbs.js';
 import metricsRoutes from './routes/metrics.js';
+import adminRoutes from './routes/admin.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -33,6 +34,7 @@ app.use('/schedule', scheduleRoutes);
 app.use('/sessions', sessionRoutes);
 app.use('/pbs', pbRoutes);
 app.use('/metrics', metricsRoutes);
+app.use('/admin', adminRoutes);
 
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'ok' }));

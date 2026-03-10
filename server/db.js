@@ -2,6 +2,15 @@ import pool from './dbPool.js';
 
 const db = {
   // Users
+  async getAllUsers() {
+    const { rows } = await pool.query(
+      `SELECT id, email, created_at FROM users
+       WHERE email NOT LIKE '%@willfit.demo'
+       ORDER BY created_at DESC`
+    );
+    return rows.map((u) => ({ id: u.id, email: u.email, createdAt: u.created_at }));
+  },
+
   async findUserByEmail(email) {
     const { rows } = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
     if (!rows[0]) return null;
@@ -23,16 +32,16 @@ const db = {
       'SELECT * FROM programs WHERE user_id IS NULL OR user_id = $1 ORDER BY id',
       [userId]
     );
-    return rows.map((p) => ({ id: p.id, userId: p.user_id, name: p.name, createdAt: p.created_at }));
+    return rows.map((p) => ({ id: p.id, userId: p.user_id, name: p.name, description: p.description || '', createdAt: p.created_at }));
   },
 
-  async createProgram(userId, name) {
+  async createProgram(userId, name, description = '') {
     const { rows } = await pool.query(
-      'INSERT INTO programs (user_id, name) VALUES ($1, $2) RETURNING *',
-      [userId, name]
+      'INSERT INTO programs (user_id, name, description) VALUES ($1, $2, $3) RETURNING *',
+      [userId, name, description]
     );
     const p = rows[0];
-    return { id: p.id, userId: p.user_id, name: p.name, createdAt: p.created_at };
+    return { id: p.id, userId: p.user_id, name: p.name, description: p.description || '', createdAt: p.created_at };
   },
 
   async updateProgram(programId, name) {
@@ -42,7 +51,7 @@ const db = {
     );
     if (!rows[0]) return null;
     const p = rows[0];
-    return { id: p.id, userId: p.user_id, name: p.name, createdAt: p.created_at };
+    return { id: p.id, userId: p.user_id, name: p.name, description: p.description || '', createdAt: p.created_at };
   },
 
   async deleteProgram(programId) {
@@ -105,7 +114,7 @@ const db = {
       for (const ex of tExercises) {
         if (!seen.has(ex.name)) {
           seen.set(ex.name, grouped.length);
-          grouped.push({ name: ex.name, sortOrder: ex.sort_order, sets: [] });
+          grouped.push({ name: ex.name, setType: ex.set_type || 'straight', sortOrder: ex.sort_order, sets: [] });
         }
         grouped[seen.get(ex.name)].sets.push({
           setNumber: ex.set_number,
@@ -148,10 +157,11 @@ const db = {
         for (let sortOrder = 0; sortOrder < exercises.length; sortOrder++) {
           const ex = exercises[sortOrder];
           const sets = ex.sets || [{ reps: 10, weight: 0 }];
+          const setType = ex.setType || 'straight';
           for (let i = 0; i < sets.length; i++) {
             await client.query(
-              'INSERT INTO template_exercises (template_id, name, set_number, planned_reps, suggested_weight, sort_order) VALUES ($1, $2, $3, $4, $5, $6)',
-              [templateId, ex.name, i + 1, sets[i].reps || 10, sets[i].weight || 0, sortOrder]
+              'INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+              [templateId, ex.name, setType, i + 1, sets[i].reps || 10, sets[i].weight || 0, sortOrder]
             );
           }
         }
@@ -189,10 +199,11 @@ const db = {
         for (let exSortOrder = 0; exSortOrder < exercises.length; exSortOrder++) {
           const ex = exercises[exSortOrder];
           const sets = ex.sets || [{ reps: 10, weight: 0 }];
+          const setType = ex.setType || 'straight';
           for (let i = 0; i < sets.length; i++) {
             await client.query(
-              'INSERT INTO template_exercises (template_id, name, set_number, planned_reps, suggested_weight, sort_order) VALUES ($1, $2, $3, $4, $5, $6)',
-              [templateId, ex.name, i + 1, sets[i].reps || 10, sets[i].weight || 0, exSortOrder]
+              'INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+              [templateId, ex.name, setType, i + 1, sets[i].reps || 10, sets[i].weight || 0, exSortOrder]
             );
           }
         }

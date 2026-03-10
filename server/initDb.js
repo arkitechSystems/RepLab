@@ -10,12 +10,37 @@ export default async function initDb() {
   // Run schema
   const schema = readFileSync(join(__dirname, 'schema.sql'), 'utf-8');
   await pool.query(schema);
+
+  // Migrations
+  await pool.query(`ALTER TABLE programs ADD COLUMN IF NOT EXISTS description TEXT DEFAULT ''`);
+  await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS set_type TEXT DEFAULT 'straight'`);
+  await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS rep_range TEXT DEFAULT ''`);
+  await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS exercise_description TEXT DEFAULT ''`);
+
   console.log('Database schema initialized');
 
   // Seed default program if none exist
   const { rows } = await pool.query('SELECT COUNT(*) FROM programs');
   if (parseInt(rows[0].count) === 0) {
     await seedDefaults();
+  }
+
+  // Seed Upper/Lower program if not already present
+  const { rows: ulRows } = await pool.query("SELECT id FROM programs WHERE name = 'Upper/Lower' AND user_id IS NULL");
+  if (ulRows.length === 0) {
+    await seedUpperLower();
+  }
+
+  // Seed Bro Split program if not already present
+  const { rows: bsRows } = await pool.query("SELECT id FROM programs WHERE name = 'Bro Split Workout' AND user_id IS NULL");
+  if (bsRows.length === 0) {
+    await seedBroSplit();
+  }
+
+  // Seed Booty Revolution Inspired if not already present
+  const { rows: brRows } = await pool.query("SELECT id FROM programs WHERE name = 'Booty Revolution Inspired' AND user_id IS NULL");
+  if (brRows.length === 0) {
+    await seedBootyRevolution();
   }
 }
 
@@ -103,6 +128,316 @@ async function seedDefaults() {
 
     await client.query('COMMIT');
     console.log('Seeded default workout templates');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+async function seedUpperLower() {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const { rows: [program] } = await client.query(
+      "INSERT INTO programs (user_id, name, description) VALUES (NULL, 'Upper/Lower', '4-day upper/lower strength split') RETURNING id"
+    );
+    const programId = program.id;
+
+    const workouts = [
+      {
+        name: 'Upper A',
+        description: 'Bench, Pull-ups, OHP, Row, Curls, Triceps',
+        sortOrder: 0,
+        exercises: [
+          { name: 'Bench Press', sets: 4, repRange: '6-8', description: 'Barbell press performed lying on a bench. Primary chest compound movement focusing on pressing strength. Keep shoulder blades retracted and drive through the chest.' },
+          { name: 'Pull Ups', sets: 4, repRange: '6-10', description: 'Vertical pulling movement targeting the lats and upper back. Pull chest toward the bar and control the descent.' },
+          { name: 'Overhead Press', sets: 3, repRange: '8-10', description: 'Standing barbell or dumbbell press targeting shoulders and triceps. Core should remain tight and avoid arching the lower back.' },
+          { name: 'Dumbbell Row', sets: 3, repRange: '8-12', description: 'Single-arm horizontal pulling movement for the upper back. Pull elbow toward the hip while keeping the torso stable.' },
+          { name: 'Bicep Curls', sets: 3, repRange: '10-12', description: 'Isolation movement targeting the biceps. Keep elbows close to the body and avoid swinging the weight.' },
+          { name: 'Tricep Extensions', sets: 3, repRange: '10-12', description: 'Isolation movement for the triceps. Fully extend arms and control the lowering phase.' },
+        ],
+      },
+      {
+        name: 'Lower A',
+        description: 'Squat, RDL, Split Squats, Hamstring Curl, Core',
+        sortOrder: 1,
+        exercises: [
+          { name: 'Jump Squats', sets: 3, repRange: '5', description: 'Explosive plyometric exercise performed before heavy lifts. Squat down and explode upward to develop lower-body power.' },
+          { name: 'Back Squat', sets: 4, repRange: '6-8', description: 'Primary lower body compound movement targeting quads, glutes, and core. Maintain a neutral spine and push knees outward.' },
+          { name: 'Romanian Deadlift', sets: 3, repRange: '8-10', description: 'Hip hinge movement targeting hamstrings and glutes. Lower the bar by pushing hips back while keeping the back flat.' },
+          { name: 'Bulgarian Split Squats', sets: 3, repRange: '8-10', description: 'Single-leg strength exercise improving balance and glute activation. Rear foot elevated on bench.' },
+          { name: 'Hamstring Curl', sets: 3, repRange: '10-12', description: 'Isolation movement for hamstrings performed on a machine or stability ball.' },
+          { name: 'Planks', sets: 3, repRange: '30-45s', description: 'Core stabilization exercise maintaining a straight line from head to heels.' },
+        ],
+      },
+      {
+        name: 'Upper B',
+        description: 'Incline Press, Lat Pulldown, Shoulder Press, Cable Row',
+        sortOrder: 2,
+        exercises: [
+          { name: 'Incline Bench Press', sets: 4, repRange: '8-10', description: 'Chest press performed on an incline bench emphasizing the upper chest.' },
+          { name: 'Lat Pulldown', sets: 4, repRange: '8-12', description: 'Machine-based vertical pulling movement targeting the lats.' },
+          { name: 'Dumbbell Shoulder Press', sets: 3, repRange: '8-10', description: 'Seated or standing shoulder press targeting deltoids.' },
+          { name: 'Seated Cable Row', sets: 3, repRange: '8-12', description: 'Horizontal pulling movement targeting mid-back and rhomboids.' },
+          { name: 'Hammer Curls', sets: 3, repRange: '10-12', description: 'Neutral grip curl targeting the brachialis and forearms.' },
+          { name: 'Tricep Dips', sets: 3, repRange: '8-12', description: 'Bodyweight pressing movement targeting chest and triceps.' },
+        ],
+      },
+      {
+        name: 'Lower B',
+        description: 'Front Squat, Hip Thrust, Lunges, Leg Curl, Core',
+        sortOrder: 3,
+        exercises: [
+          { name: 'Box Jumps', sets: 3, repRange: '5', description: 'Explosive jumping movement improving lower-body power.' },
+          { name: 'Front Squat', sets: 4, repRange: '6-8', description: 'Squat variation emphasizing quadriceps and core stability.' },
+          { name: 'Hip Thrust', sets: 3, repRange: '8-10', description: 'Glute-focused compound lift performed with shoulders on a bench.' },
+          { name: 'Walking Lunges', sets: 3, repRange: '10', description: 'Dynamic single-leg movement improving balance and leg strength.' },
+          { name: 'Leg Curl', sets: 3, repRange: '10-12', description: 'Hamstring isolation movement.' },
+          { name: 'Hanging Leg Raises', sets: 3, repRange: '10-15', description: 'Core exercise targeting lower abdominals.' },
+        ],
+      },
+    ];
+
+    for (const w of workouts) {
+      const { rows: [tmpl] } = await client.query(
+        'INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES (NULL, $1, $2, $3, FALSE, $4) RETURNING id',
+        [programId, w.name, w.description, w.sortOrder]
+      );
+
+      let sortOrder = 0;
+      for (const ex of w.exercises) {
+        for (let i = 0; i < ex.sets; i++) {
+          await client.query(
+            'INSERT INTO template_exercises (template_id, name, set_number, planned_reps, suggested_weight, sort_order, rep_range, exercise_description) VALUES ($1, $2, $3, $4, 0, $5, $6, $7)',
+            [tmpl.id, ex.name, i + 1, parseInt(ex.repRange) || 10, sortOrder, ex.repRange, ex.description]
+          );
+        }
+        sortOrder++;
+      }
+    }
+
+    await client.query('COMMIT');
+    console.log('Seeded Upper/Lower program');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+async function seedBroSplit() {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const { rows: [program] } = await client.query(
+      "INSERT INTO programs (user_id, name, description) VALUES (NULL, 'Bro Split Workout', '5-day muscle group split') RETURNING id"
+    );
+    const programId = program.id;
+
+    const workouts = [
+      {
+        name: 'Chest',
+        description: 'Bench Press, Incline, Fly, Dips',
+        sortOrder: 0,
+        exercises: [
+          { name: 'Barbell Bench Press', sets: 4, repRange: '5-8', description: 'Heavy compound chest movement that develops overall pressing strength and stimulates the chest, shoulders, and triceps.' },
+          { name: 'Incline Dumbbell Press', sets: 3, repRange: '8-10', description: 'Targets the upper chest and allows a greater stretch than a barbell press.' },
+          { name: 'Chest Fly', sets: 3, repRange: '10-12', description: 'Isolation movement focusing on chest contraction and stretch.' },
+          { name: 'Chest Dips', sets: 3, repRange: '8-12', description: 'Bodyweight pressing movement that emphasizes the lower chest.' },
+        ],
+      },
+      {
+        name: 'Back',
+        description: 'Pull-Ups, Barbell Row, Lat Pulldown, Face Pulls',
+        sortOrder: 1,
+        exercises: [
+          { name: 'Pull-Ups', sets: 4, repRange: '6-10', description: 'Vertical pulling exercise targeting the lats and upper back.' },
+          { name: 'Barbell Row', sets: 3, repRange: '6-8', description: 'Heavy horizontal pull that builds mid-back thickness.' },
+          { name: 'Lat Pulldown', sets: 3, repRange: '8-12', description: 'Machine-based pulling movement emphasizing lat activation.' },
+          { name: 'Face Pulls', sets: 3, repRange: '12-15', description: 'Targets rear delts and upper back for shoulder health and posture.' },
+        ],
+      },
+      {
+        name: 'Shoulders',
+        description: 'Overhead Press, Lateral Raises, Rear Delt Fly',
+        sortOrder: 2,
+        exercises: [
+          { name: 'Overhead Press', sets: 4, repRange: '6-8', description: 'Compound shoulder movement targeting the anterior delts and triceps.' },
+          { name: 'Lateral Raises', sets: 4, repRange: '12-15', description: 'Isolation exercise that builds shoulder width by targeting the side delts.' },
+          { name: 'Rear Delt Fly', sets: 3, repRange: '12-15', description: 'Targets the rear deltoids to balance shoulder development.' },
+        ],
+      },
+      {
+        name: 'Arms',
+        description: 'Barbell Curls, Hammer Curls, Skull Crushers, Pushdowns',
+        sortOrder: 3,
+        exercises: [
+          { name: 'Barbell Curls', sets: 3, repRange: '8-10', description: 'Primary biceps movement for overall arm development.' },
+          { name: 'Hammer Curls', sets: 3, repRange: '10-12', description: 'Targets the brachialis and forearms.' },
+          { name: 'Skull Crushers', sets: 3, repRange: '8-10', description: 'Triceps movement emphasizing elbow extension strength.' },
+          { name: 'Tricep Pushdowns', sets: 3, repRange: '10-12', description: 'Isolation exercise focusing on triceps contraction.' },
+        ],
+      },
+      {
+        name: 'Legs',
+        description: 'Squat, Leg Press, Extensions, Curls, Calves',
+        sortOrder: 4,
+        exercises: [
+          { name: 'Back Squat', sets: 4, repRange: '5-8', description: 'Primary lower-body compound movement targeting quads, glutes, and core.' },
+          { name: 'Leg Press', sets: 3, repRange: '8-12', description: 'Machine movement allowing heavy quad stimulation with less spinal loading.' },
+          { name: 'Leg Extension', sets: 3, repRange: '10-12', description: 'Isolation exercise emphasizing the quadriceps.' },
+          { name: 'Hamstring Curl', sets: 3, repRange: '10-12', description: 'Isolation movement targeting the hamstrings.' },
+          { name: 'Standing Calf Raises', sets: 4, repRange: '12-15', description: 'Isolation exercise strengthening the calves.' },
+        ],
+      },
+      {
+        name: 'Rest',
+        description: 'Recovery Day',
+        sortOrder: 5,
+        isRest: true,
+        exercises: [],
+      },
+    ];
+
+    for (const w of workouts) {
+      const { rows: [tmpl] } = await client.query(
+        'INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES (NULL, $1, $2, $3, $4, $5) RETURNING id',
+        [programId, w.name, w.description, w.isRest || false, w.sortOrder]
+      );
+
+      let sortOrder = 0;
+      for (const ex of w.exercises) {
+        for (let i = 0; i < ex.sets; i++) {
+          await client.query(
+            'INSERT INTO template_exercises (template_id, name, set_number, planned_reps, suggested_weight, sort_order, rep_range, exercise_description) VALUES ($1, $2, $3, $4, 0, $5, $6, $7)',
+            [tmpl.id, ex.name, i + 1, parseInt(ex.repRange) || 10, sortOrder, ex.repRange, ex.description]
+          );
+        }
+        sortOrder++;
+      }
+    }
+
+    await client.query('COMMIT');
+    console.log('Seeded Bro Split Workout program');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+async function seedBootyRevolution() {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const { rows: [program] } = await client.query(
+      "INSERT INTO programs (user_id, name, description) VALUES (NULL, 'Booty Revolution Inspired', '6-week glute-focused program built around hip thrusts, sumo squats, posterior chain work, and conditioning') RETURNING id"
+    );
+    const programId = program.id;
+
+    const workouts = [
+      {
+        name: 'Glute Strength + Upper',
+        description: 'Primary glute strength day with upper-body accessories for balance',
+        sortOrder: 0,
+        exercises: [
+          { name: 'Hip Thrust', sets: 3, repRange: '8', description: 'Primary glute hypertrophy lift focused on powerful hip extension and peak glute contraction.' },
+          { name: 'Back Hyperextension', sets: 3, repRange: '8', description: 'Posterior chain movement targeting glutes, hamstrings, and spinal erectors.' },
+          { name: 'Dumbbell Sumo Squat', sets: 3, repRange: '8', description: 'Wide-stance squat variation emphasizing glutes, inner thighs, and quads.' },
+          { name: 'Prone Glute Leg Raise', sets: 3, repRange: '8', description: 'Glute isolation movement focused on hip extension and glute activation.' },
+          { name: 'Pull-Ups', sets: 3, repRange: '6', description: 'Vertical pulling exercise for upper-back and lat development.' },
+          { name: 'Dumbbell Lateral Raise', sets: 3, repRange: '8', description: 'Shoulder isolation exercise targeting the side delts.' },
+          { name: 'Overhead Triceps Extension', sets: 3, repRange: '8', description: 'Triceps isolation movement emphasizing the long head.' },
+          { name: 'Close-Grip Push-Ups', sets: 3, repRange: '8', description: 'Bodyweight pressing movement targeting triceps, chest, and front delts.' },
+        ],
+      },
+      {
+        name: 'Glute Conditioning',
+        description: 'Low-load activation day to improve recovery and glute blood flow',
+        sortOrder: 1,
+        exercises: [
+          { name: 'Cardio', sets: 1, repRange: '30 min', description: 'Moderate steady-state cardio for conditioning and recovery.' },
+          { name: 'Band Walks', sets: 4, repRange: '25', description: 'Lateral glute activation drill targeting glute medius and hip stability.' },
+          { name: 'Glute Bridge', sets: 3, repRange: '15', description: 'Beginner-friendly glute movement to reinforce glute contraction and hip extension.' },
+          { name: 'Bodyweight Frog Pumps', sets: 3, repRange: '20', description: 'High-rep glute burnout exercise emphasizing constant tension.' },
+          { name: 'Standing Kickbacks', sets: 3, repRange: '15', description: 'Isolation movement targeting the glutes with controlled hip extension.' },
+        ],
+      },
+      {
+        name: 'Posterior Chain',
+        description: 'Heavy posterior-chain day emphasizing glutes and hamstrings',
+        sortOrder: 2,
+        exercises: [
+          { name: 'Good Morning', sets: 4, repRange: '5-12', description: 'Hip hinge movement targeting glutes, hamstrings, and lower back. Use controlled technique.' },
+          { name: 'Romanian Deadlift', sets: 4, repRange: '8-10', description: 'Glute and hamstring builder focused on eccentric control and hip hinge mechanics.' },
+          { name: 'Walking Lunges', sets: 3, repRange: '10', description: 'Unilateral leg exercise that develops glutes, quads, and balance.' },
+          { name: 'Hamstring Curl', sets: 3, repRange: '10-12', description: 'Isolation exercise for hamstrings to support posterior chain growth.' },
+          { name: 'Cable Pull-Through', sets: 3, repRange: '12-15', description: 'Glute-focused hinge movement emphasizing hip extension with lower spinal loading.' },
+          { name: 'Plank', sets: 3, repRange: '30-45s', description: 'Core stabilization movement to support posture and bracing during heavy lower-body lifts.' },
+        ],
+      },
+      {
+        name: 'Glute Strength + Accessories',
+        description: 'Second strength-focused glute day with single-leg work and accessories',
+        sortOrder: 3,
+        exercises: [
+          { name: 'Barbell Hip Thrust', sets: 4, repRange: '8-10', description: 'Main glute builder focused on heavy loading and full hip lockout.' },
+          { name: 'Bulgarian Split Squat', sets: 3, repRange: '8-10', description: 'Unilateral lower-body movement emphasizing glutes and quads.' },
+          { name: 'Leg Press', sets: 3, repRange: '10-12', description: 'Lower-body compound movement allowing controlled volume for glutes and quads.' },
+          { name: 'Dumbbell Step-Ups', sets: 3, repRange: '10', description: 'Functional unilateral movement that trains glutes, quads, and balance.' },
+          { name: 'Cable Glute Kickback', sets: 3, repRange: '12-15', description: 'Isolation exercise for glute max with strong peak contraction.' },
+          { name: 'Seated Abduction Machine', sets: 3, repRange: '15-20', description: 'Glute medius-focused movement for upper glute and hip stability development.' },
+        ],
+      },
+      {
+        name: 'Glute Pump + Conditioning',
+        description: 'Higher-rep glute burnout day with metabolic stress and conditioning',
+        sortOrder: 4,
+        exercises: [
+          { name: 'Dumbbell Glute Bridge', sets: 3, repRange: '15', description: 'High-rep glute bridge variation for additional glute volume and pump.' },
+          { name: 'Goblet Squat', sets: 3, repRange: '12-15', description: 'Squat variation that reinforces full-depth mechanics while training glutes and quads.' },
+          { name: 'Reverse Lunges', sets: 3, repRange: '10', description: 'Lower-body unilateral movement with a strong glute emphasis.' },
+          { name: 'Frog Pumps', sets: 3, repRange: '25', description: 'High-rep glute finisher designed for metabolic stress and glute activation.' },
+          { name: 'Banded Abductions', sets: 3, repRange: '20', description: 'Glute medius finisher for upper glute burn and hip stability.' },
+          { name: 'Incline Walk or Stair Climber', sets: 1, repRange: '15-20 min', description: 'Conditioning finisher that reinforces glute and lower-body endurance.' },
+        ],
+      },
+      {
+        name: 'Rest',
+        description: 'Recovery Day',
+        sortOrder: 5,
+        isRest: true,
+        exercises: [],
+      },
+    ];
+
+    for (const w of workouts) {
+      const { rows: [tmpl] } = await client.query(
+        'INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES (NULL, $1, $2, $3, $4, $5) RETURNING id',
+        [programId, w.name, w.description, w.isRest || false, w.sortOrder]
+      );
+
+      let sortOrder = 0;
+      for (const ex of w.exercises) {
+        for (let i = 0; i < ex.sets; i++) {
+          await client.query(
+            'INSERT INTO template_exercises (template_id, name, set_number, planned_reps, suggested_weight, sort_order, rep_range, exercise_description) VALUES ($1, $2, $3, $4, 0, $5, $6, $7)',
+            [tmpl.id, ex.name, i + 1, parseInt(ex.repRange) || 10, sortOrder, ex.repRange, ex.description]
+          );
+        }
+        sortOrder++;
+      }
+    }
+
+    await client.query('COMMIT');
+    console.log('Seeded Booty Revolution Inspired program');
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
