@@ -56,15 +56,15 @@ export default function SplashScreen({ onDone }) {
       </div>
 
       {/* Logo */}
-      <span
-        className="font-black tracking-wide text-white logo-glow relative z-10"
+      <img
+        src="/LoadPage.png"
+        alt="WillFit"
+        className="relative z-10"
         style={{
-          fontSize: '9rem',
+          width: '24rem',
           animation: 'splashLogoIn 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
         }}
-      >
-        W<span className="text-wf-red">F</span>
-      </span>
+      />
     </div>
   );
 }
