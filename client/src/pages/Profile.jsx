@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../api';
 import StickyHeader from '../components/StickyHeader';
+import SplashScreen from '../components/SplashScreen';
+import { APP_VERSION } from '../version';
 
 function MetricInput({ label, value, unit, onChange }) {
   return (
@@ -36,6 +38,7 @@ export default function Profile() {
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [showSplash, setShowSplash] = useState(false);
 
   useEffect(() => {
     api('/metrics')
@@ -155,8 +158,14 @@ export default function Profile() {
             </div>
             <div className="flex justify-between items-center">
               <span className="text-wf-gray-400 text-sm">Version</span>
-              <span className="text-wf-gray-500 text-sm">1.0.0 (Demo)</span>
+              <span className="text-wf-gray-500 text-sm">{APP_VERSION}</span>
             </div>
+            <button
+              onClick={() => setShowSplash(true)}
+              className="w-full mt-2 glass-card text-wf-gray-400 text-sm font-medium py-2.5 rounded-xl transition-all active:scale-[0.98] hover:text-white"
+            >
+              Load Screen
+            </button>
           </div>
         </div>
 
@@ -169,6 +178,12 @@ export default function Profile() {
           Sign Out
         </button>
       </div>
+
+      {showSplash && (
+        <div onClick={() => setShowSplash(false)} className="cursor-pointer">
+          <SplashScreen onDone={() => {}} persistent />
+        </div>
+      )}
     </div>
   );
 }

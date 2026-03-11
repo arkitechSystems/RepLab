@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { APP_VERSION } from '../version';
 
 // Fixed particles: angle (deg), distance (px), size (px), color
 const PARTICLES = [
@@ -16,14 +17,15 @@ const PARTICLES = [
   { angle: 292, dist: 63,  size: 2, color: '#F97316' },
 ];
 
-export default function SplashScreen({ onDone }) {
+export default function SplashScreen({ onDone, persistent }) {
   const [fading, setFading] = useState(false);
 
   useEffect(() => {
+    if (persistent) return;
     const showTimer = setTimeout(() => setFading(true), 1400);
     const doneTimer = setTimeout(() => onDone(), 1900);
     return () => { clearTimeout(showTimer); clearTimeout(doneTimer); };
-  }, [onDone]);
+  }, [onDone, persistent]);
 
   return (
     <div
@@ -65,6 +67,9 @@ export default function SplashScreen({ onDone }) {
           animation: 'splashLogoIn 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
         }}
       />
+
+      {/* Version */}
+      <span className="absolute bottom-8 text-xs text-wf-gray-500 tracking-widest z-10">VERSION {APP_VERSION}</span>
     </div>
   );
 }

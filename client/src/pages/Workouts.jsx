@@ -458,6 +458,99 @@ export default function Workouts() {
     );
   }
 
+  function renderBeginModals() {
+    return (
+      <>
+        {beginModal && !conflictInfo && (
+          <div className="fixed inset-0 z-50 flex items-end" onClick={closeBeginModal}>
+            <div className="absolute inset-0 bg-black/60" />
+            <div
+              className="relative w-full bg-wf-gray-900 border-t border-white/10 rounded-t-2xl p-5 pb-24 animate-drop-down"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-5" />
+              <h3 className="text-lg font-black text-white mb-1">Begin Program</h3>
+              <p className="text-wf-gray-400 text-sm mb-5">
+                Schedule <span className="text-white font-semibold">{beginModal.name}</span> starting from a day of your choice.
+              </p>
+              {!showDatePicker ? (
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleStartToday}
+                    className="flex-1 btn-gradient text-white font-semibold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-all"
+                  >
+                    Start Today
+                  </button>
+                  <button
+                    onClick={() => setShowDatePicker(true)}
+                    className="flex-1 glass-card text-white font-semibold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-all"
+                  >
+                    Choose Date
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-2 mt-1">
+                  <input
+                    type="date"
+                    value={beginDateInput}
+                    min={new Date().toISOString().slice(0, 10)}
+                    onChange={(e) => setBeginDateInput(e.target.value)}
+                    className="flex-1 glass-input rounded-xl px-3 py-3 text-white text-sm focus:outline-none"
+                    autoFocus
+                  />
+                  <button
+                    onClick={handleBeginDate}
+                    disabled={!beginDateInput}
+                    className="btn-gradient text-white font-semibold px-5 py-3 rounded-xl text-sm active:scale-[0.98] transition-all disabled:opacity-40"
+                  >
+                    Schedule
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {conflictInfo && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-5" onClick={() => setConflictInfo(null)}>
+            <div className="absolute inset-0 bg-black/70" />
+            <div
+              className="relative w-full max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-base font-black text-white mb-2">Overwrite existing workouts?</h3>
+              <p className="text-wf-gray-400 text-sm mb-3">
+                This will overwrite your current workout on:
+              </p>
+              <ul className="mb-5 space-y-1">
+                {conflictInfo.conflicts.map((day) => (
+                  <li key={day} className="text-sm font-semibold text-wf-red flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-wf-red" />
+                    {day}
+                  </li>
+                ))}
+              </ul>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setConflictInfo(null)}
+                  className="flex-1 glass-card text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => applyEntries(conflictInfo.pendingEntries)}
+                  className="flex-1 bg-wf-red/90 hover:bg-wf-red text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+                >
+                  Overwrite
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
+
   // Group list view — programs within Browse or My Workouts
   if (selectedGroup && !selectedProgram) {
     const isBrowse = selectedGroup === 'browse';
@@ -505,7 +598,7 @@ export default function Workouts() {
           )}
         </div>
 
-        {/* Create Choice Dropdown (for My Workouts) */}
+        {renderBeginModals()}
         {showCreateMenu && renderCreateMenu()}
       </div>
     );
@@ -604,97 +697,7 @@ export default function Workouts() {
         )}
       </div>
 
-      {/* Begin Program Modal */}
-      {beginModal && !conflictInfo && (
-        <div className="fixed inset-0 z-50 flex items-end" onClick={closeBeginModal}>
-          <div className="absolute inset-0 bg-black/60" />
-          <div
-            className="relative w-full bg-wf-gray-900 border-t border-white/10 rounded-t-2xl p-5 pb-24 animate-drop-down"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-5" />
-            <h3 className="text-lg font-black text-white mb-1">Begin Program</h3>
-            <p className="text-wf-gray-400 text-sm mb-5">
-              Schedule <span className="text-white font-semibold">{beginModal.name}</span> starting from a day of your choice.
-            </p>
-
-            {/* Start Today + Choose Date */}
-            {!showDatePicker ? (
-              <div className="flex gap-3">
-                <button
-                  onClick={handleStartToday}
-                  className="flex-1 btn-gradient text-white font-semibold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-all"
-                >
-                  Start Today
-                </button>
-                <button
-                  onClick={() => setShowDatePicker(true)}
-                  className="flex-1 glass-card text-white font-semibold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-all"
-                >
-                  Choose Date
-                </button>
-              </div>
-            ) : (
-              <div className="flex gap-2 mt-1">
-                <input
-                  type="date"
-                  value={beginDateInput}
-                  min={new Date().toISOString().slice(0, 10)}
-                  onChange={(e) => setBeginDateInput(e.target.value)}
-                  className="flex-1 glass-input rounded-xl px-3 py-3 text-white text-sm focus:outline-none"
-                  autoFocus
-                />
-                <button
-                  onClick={handleBeginDate}
-                  disabled={!beginDateInput}
-                  className="btn-gradient text-white font-semibold px-5 py-3 rounded-xl text-sm active:scale-[0.98] transition-all disabled:opacity-40"
-                >
-                  Schedule
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Overwrite Confirmation Modal */}
-      {conflictInfo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-5" onClick={() => setConflictInfo(null)}>
-          <div className="absolute inset-0 bg-black/70" />
-          <div
-            className="relative w-full max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-base font-black text-white mb-2">Overwrite existing workouts?</h3>
-            <p className="text-wf-gray-400 text-sm mb-3">
-              This will overwrite your current workout on:
-            </p>
-            <ul className="mb-5 space-y-1">
-              {conflictInfo.conflicts.map((day) => (
-                <li key={day} className="text-sm font-semibold text-wf-red flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-wf-red" />
-                  {day}
-                </li>
-              ))}
-            </ul>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setConflictInfo(null)}
-                className="flex-1 glass-card text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => applyEntries(conflictInfo.pendingEntries)}
-                className="flex-1 bg-wf-red/90 hover:bg-wf-red text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
-              >
-                Overwrite
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
+      {renderBeginModals()}
       {renderCreateMenu()}
     </div>
   );

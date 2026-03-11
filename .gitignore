@@ -5,3 +5,5 @@ dist/
 willfit.json
 .DS_Store
 Thumbs.db
+nul
+.claude/

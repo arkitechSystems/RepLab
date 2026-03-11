@@ -42,6 +42,12 @@ export default async function initDb() {
   if (brRows.length === 0) {
     await seedBootyRevolution();
   }
+
+  // Seed Will's PPL if not already present
+  const { rows: wpplRows } = await pool.query("SELECT id FROM programs WHERE name = $1 AND user_id IS NULL", ["Will's PPL"]);
+  if (wpplRows.length === 0) {
+    await seedWillsPPL();
+  }
 }
 
 async function seedDefaults() {
@@ -438,6 +444,66 @@ async function seedBootyRevolution() {
 
     await client.query('COMMIT');
     console.log('Seeded Glute Hypertrophy program');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+async function seedWillsPPL() {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const { rows: [program] } = await client.query(
+      "INSERT INTO programs (user_id, name, description) VALUES (NULL, $1, $2) RETURNING id",
+      ["Will's PPL", "Will's custom Push, Pull, Legs split"]
+    );
+    const programId = program.id;
+
+    const workouts = [
+      {
+        name: "Will's Pull 1",
+        description: 'Back, Biceps, Rear Delts',
+        sortOrder: 0,
+        exercises: [
+          { name: 'Face Pulls', sets: 3, repRange: '12-15', description: 'Warm-up round 1 of 4. Rope attachment, progressively heavier each round. Superset back-to-back with Straight-Arm Pulldowns, Rows, and Hammer Curls — no rest between exercises.' },
+          { name: 'Straight-Arm Pulldowns', sets: 3, repRange: '12-15', description: 'Warm-up round 2 of 4. Rope attachment, performed immediately after Face Pulls. Focus on lat engagement and controlled movement.' },
+          { name: 'Cable Rows', sets: 3, repRange: '12-15', description: 'Warm-up round 3 of 4. Rope attachment, performed immediately after Straight-Arm Pulldowns. Increase weight each round.' },
+          { name: 'Hammer Curls (warm-up)', sets: 3, repRange: '12-15', description: 'Warm-up round 4 of 4. Performed immediately after Cable Rows to complete the warm-up circuit. Increase weight each round.' },
+          { name: 'Single-Arm Cable Curls', sets: 5, repRange: '10', description: '50 total reps. Break into sets as needed to reach 50 reps per arm.' },
+          { name: 'Supinated Weighted Pull-Ups', sets: 3, repRange: '6', description: 'Underhand grip pull-ups with added weight. Focus on full range of motion and controlled reps.' },
+          { name: 'Barbell Shrugs', sets: 3, repRange: '10-12', description: 'Superset with Hammer Curls. Heavy shrugs targeting upper traps — squeeze and hold at the top.' },
+          { name: 'Hammer Curls', sets: 3, repRange: '10-12', description: 'Superset with Barbell Shrugs. Neutral grip curls targeting brachialis and forearms.' },
+          { name: 'Banded Preacher Curls', sets: 3, repRange: '10-12', description: 'Resistance band preacher curls for constant tension through the full range of motion.' },
+          { name: 'Wide-Grip Cable Pulldowns', sets: 3, repRange: '10-12', description: 'Wide grip lat pulldown emphasizing outer lats and upper back width.' },
+          { name: 'Pyramid Single-Arm Cable Curls', sets: 7, repRange: '10', description: 'Pyramid sets: increase weight for 3 sets up to set 4 (peak), then decrease weight for the last 3 sets back down.' },
+        ],
+      },
+    ];
+
+    for (const w of workouts) {
+      const { rows: [tmpl] } = await client.query(
+        'INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES (NULL, $1, $2, $3, FALSE, $4) RETURNING id',
+        [programId, w.name, w.description, w.sortOrder]
+      );
+
+      let sortOrder = 0;
+      for (const ex of w.exercises) {
+        for (let i = 0; i < ex.sets; i++) {
+          await client.query(
+            'INSERT INTO template_exercises (template_id, name, set_number, planned_reps, suggested_weight, sort_order, rep_range, exercise_description) VALUES ($1, $2, $3, $4, 0, $5, $6, $7)',
+            [tmpl.id, ex.name, i + 1, parseInt(ex.repRange) || 10, sortOrder, ex.repRange, ex.description]
+          );
+        }
+        sortOrder++;
+      }
+    }
+
+    await client.query('COMMIT');
+    console.log("Seeded Will's PPL program");
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
