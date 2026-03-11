@@ -69,6 +69,7 @@ export default function WorkoutSession() {
         next.delete(key);
       } else {
         next.add(key);
+        navigator.vibrate?.(40);
       }
       return next;
     });
@@ -130,6 +131,7 @@ export default function WorkoutSession() {
 
       if (improved.length > 0) {
         setNewPBs(improved);
+        navigator.vibrate?.([40, 30, 80]);
       }
 
       setSaved(true);
@@ -185,6 +187,18 @@ export default function WorkoutSession() {
 
   return (
     <div className="pb-24">
+      {/* Top progress bar */}
+      <div className="fixed top-0 left-0 right-0 h-[3px] z-[9998] bg-white/5">
+        <div
+          className="h-full transition-all duration-500 ease-out"
+          style={{
+            width: `${progressPct}%`,
+            background: 'linear-gradient(90deg, #DC2626, #EF4444, #F97316)',
+            boxShadow: '0 0 8px rgba(239,68,68,0.8), 0 0 20px rgba(239,68,68,0.4)',
+          }}
+        />
+      </div>
+
       {/* PB Celebration */}
       {newPBs && (
         <PBCelebration

@@ -62,7 +62,9 @@ const tabs = [
 
 export default function BottomNav() {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-black/70 backdrop-blur-2xl border-t border-white/10 safe-bottom z-50">
+    <nav className="fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-2xl safe-bottom z-50">
+      {/* Gradient top border */}
+      <div className="h-px w-full" style={{ background: 'linear-gradient(90deg, transparent 0%, rgba(239,68,68,0.25) 30%, rgba(249,115,22,0.2) 50%, rgba(239,68,68,0.25) 70%, transparent 100%)' }} />
       <div className="flex justify-around items-center h-16 max-w-lg mx-auto">
         {tabs.map((tab) => (
           <NavLink
@@ -70,7 +72,7 @@ export default function BottomNav() {
             to={tab.to}
             end={tab.to === '/'}
             className={({ isActive }) =>
-              `flex flex-col items-center justify-center w-16 h-14 rounded-lg transition-all ${
+              `flex flex-col items-center justify-center w-16 h-14 rounded-lg transition-all overflow-visible ${
                 isActive ? 'text-wf-red nav-glow' : 'text-wf-gray-400 active:text-white'
               }`
             }

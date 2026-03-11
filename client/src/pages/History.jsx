@@ -4,11 +4,15 @@ import { format, parseISO } from 'date-fns';
 import { api } from '../api';
 import { getWorkoutColor } from '../utils/workoutColors';
 import StickyHeader from '../components/StickyHeader';
+import useCountUp from '../hooks/useCountUp';
 
 export default function History() {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+
+  const sessionCount = useCountUp(sessions.length);
+  const uniqueWorkouts = useCountUp([...new Set(sessions.map((s) => s.templateName))].length);
 
   useEffect(() => {
     api('/sessions')
@@ -22,6 +26,20 @@ export default function History() {
       <StickyHeader title="History" />
 
       <div className="px-4">
+        {/* Stats bar */}
+        {!loading && sessions.length > 0 && (
+          <div className="flex gap-3 mb-4 fade-slide-up">
+            <div className="flex-1 glass-card rounded-xl p-3 text-center">
+              <p className="text-2xl font-black text-white font-mono-stat">{sessionCount}</p>
+              <p className="text-[10px] uppercase tracking-widest text-wf-gray-500 mt-0.5">Sessions</p>
+            </div>
+            <div className="flex-1 glass-card rounded-xl p-3 text-center">
+              <p className="text-2xl font-black text-white font-mono-stat">{uniqueWorkouts}</p>
+              <p className="text-[10px] uppercase tracking-widest text-wf-gray-500 mt-0.5">Workouts</p>
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div className="space-y-3">
             {[...Array(5)].map((_, i) => (

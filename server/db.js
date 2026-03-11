@@ -114,7 +114,7 @@ const db = {
       for (const ex of tExercises) {
         if (!seen.has(ex.name)) {
           seen.set(ex.name, grouped.length);
-          grouped.push({ name: ex.name, setType: ex.set_type || 'straight', sortOrder: ex.sort_order, sets: [] });
+          grouped.push({ name: ex.name, setType: ex.set_type || 'straight', sortOrder: ex.sort_order, repRange: ex.rep_range || '', sets: [] });
         }
         grouped[seen.get(ex.name)].sets.push({
           setNumber: ex.set_number,
@@ -237,33 +237,8 @@ const db = {
     }));
   },
 
-  async setDefaultSchedule(userId) {
-    const { rows: globalTemplates } = await pool.query(
-      'SELECT id, name FROM templates WHERE user_id IS NULL'
-    );
-    const templateMap = {};
-    for (const t of globalTemplates) {
-      templateMap[t.name] = t.id;
-    }
-
-    const defaults = [
-      { day: 1, template: 'Push' },
-      { day: 2, template: 'Pull' },
-      { day: 3, template: 'Rest' },
-      { day: 4, template: 'Legs' },
-      { day: 5, template: 'Push' },
-      { day: 6, template: 'Pull' },
-      { day: 0, template: 'Rest' },
-    ];
-
-    for (const d of defaults) {
-      if (templateMap[d.template]) {
-        await pool.query(
-          'INSERT INTO schedule_days (user_id, day_of_week, template_id) VALUES ($1, $2, $3)',
-          [userId, d.day, templateMap[d.template]]
-        );
-      }
-    }
+  async setDefaultSchedule(_userId) {
+    // New users start with a blank schedule
   },
 
   async updateSchedule(userId, schedule) {
@@ -288,11 +263,23 @@ const db = {
     try {
       await client.query('BEGIN');
 
-      const { rows: sessionRows } = await client.query(
-        'INSERT INTO sessions (user_id, template_id, date) VALUES ($1, $2, $3) RETURNING id',
+      // Reuse existing session for same workout+date, or create a new one
+      const { rows: existing } = await client.query(
+        'SELECT id FROM sessions WHERE user_id = $1 AND template_id = $2 AND date = $3',
         [userId, templateId, date]
       );
-      const sessionId = sessionRows[0].id;
+
+      let sessionId;
+      if (existing.length > 0) {
+        sessionId = existing[0].id;
+        await client.query('DELETE FROM session_entries WHERE session_id = $1', [sessionId]);
+      } else {
+        const { rows: sessionRows } = await client.query(
+          'INSERT INTO sessions (user_id, template_id, date) VALUES ($1, $2, $3) RETURNING id',
+          [userId, templateId, date]
+        );
+        sessionId = sessionRows[0].id;
+      }
 
       const bestByExercise = new Map();
 

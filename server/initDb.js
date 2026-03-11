@@ -38,7 +38,7 @@ export default async function initDb() {
   }
 
   // Seed Booty Revolution Inspired if not already present
-  const { rows: brRows } = await pool.query("SELECT id FROM programs WHERE name = 'Booty Revolution Inspired' AND user_id IS NULL");
+  const { rows: brRows } = await pool.query("SELECT id FROM programs WHERE name IN ('Booty Revolution Inspired', 'Glute Hypertrophy') AND user_id IS NULL");
   if (brRows.length === 0) {
     await seedBootyRevolution();
   }
@@ -338,7 +338,7 @@ async function seedBootyRevolution() {
     await client.query('BEGIN');
 
     const { rows: [program] } = await client.query(
-      "INSERT INTO programs (user_id, name, description) VALUES (NULL, 'Booty Revolution Inspired', '6-week glute-focused program built around hip thrusts, sumo squats, posterior chain work, and conditioning') RETURNING id"
+      "INSERT INTO programs (user_id, name, description) VALUES (NULL, 'Glute Hypertrophy', '6-week glute-focused program built around hip thrusts, sumo squats, posterior chain work, and conditioning') RETURNING id"
     );
     const programId = program.id;
 
@@ -437,7 +437,7 @@ async function seedBootyRevolution() {
     }
 
     await client.query('COMMIT');
-    console.log('Seeded Booty Revolution Inspired program');
+    console.log('Seeded Glute Hypertrophy program');
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;

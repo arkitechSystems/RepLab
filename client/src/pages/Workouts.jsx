@@ -17,6 +17,7 @@ export default function Workouts() {
   // Begin Program modal state
   const [beginModal, setBeginModal] = useState(null); // program object
   const [beginDateInput, setBeginDateInput] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [conflictInfo, setConflictInfo] = useState(null); // { conflicts: string[], pendingEntries: [] }
   const navigate = useNavigate();
 
@@ -40,6 +41,7 @@ export default function Workouts() {
   function closeBeginModal() {
     setBeginModal(null);
     setBeginDateInput('');
+    setShowDatePicker(false);
     setConflictInfo(null);
   }
 
@@ -305,19 +307,25 @@ export default function Workouts() {
                     ) : null}
                   </div>
 
-                  {/* Exercise list preview (hidden in edit mode) */}
+                  {/* Exercise list with sets × reps (hidden in edit mode) */}
                   {!editMode && !t.isRest && t.exercises.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-white/10">
-                      <div className="flex flex-wrap gap-2">
-                        {t.exercises.map((ex) => (
-                          <span
-                            key={ex.name}
-                            className="text-xs bg-white/10 text-wf-gray-400 px-2.5 py-1 rounded-full"
-                          >
-                            {ex.name}
-                          </span>
-                        ))}
+                    <div className="mt-3 pt-3 border-t border-white/10 space-y-1.5">
+                      {/* Column headers */}
+                      <div className="flex items-center gap-2 px-1 mb-2">
+                        <span className="flex-1 text-[10px] uppercase tracking-widest text-wf-gray-600">Exercise</span>
+                        <span className="w-10 text-[10px] uppercase tracking-widest text-wf-gray-600 text-center">Sets</span>
+                        <span className="w-14 text-[10px] uppercase tracking-widest text-wf-gray-600 text-center">Reps</span>
                       </div>
+                      {t.exercises.map((ex) => {
+                        const reps = ex.repRange || ex.sets[0]?.plannedReps || '—';
+                        return (
+                          <div key={ex.name} className="flex items-center gap-2 px-1">
+                            <span className="flex-1 text-sm text-white/80 truncate">{ex.name}</span>
+                            <span className="w-10 text-sm font-mono-stat text-wf-gray-400 text-center">{ex.sets.length}</span>
+                            <span className="w-14 text-sm font-mono-stat text-wf-gray-400 text-center">{reps}</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -427,7 +435,7 @@ export default function Workouts() {
         <div className="fixed inset-0 z-50 flex items-end" onClick={closeBeginModal}>
           <div className="absolute inset-0 bg-black/60" />
           <div
-            className="relative w-full bg-wf-gray-900 border-t border-white/10 rounded-t-2xl p-5 animate-drop-down"
+            className="relative w-full bg-wf-gray-900 border-t border-white/10 rounded-t-2xl p-5 pb-24 animate-drop-down"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-5" />
@@ -436,38 +444,41 @@ export default function Workouts() {
               Schedule <span className="text-white font-semibold">{beginModal.name}</span> starting from a day of your choice.
             </p>
 
-            {/* Start Today */}
-            <button
-              onClick={handleStartToday}
-              className="w-full btn-gradient text-white font-semibold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-all mb-3"
-            >
-              Start Today
-            </button>
-
-            {/* Divider */}
-            <div className="flex items-center gap-3 mb-3">
-              <div className="flex-1 border-t border-white/10" />
-              <span className="text-xs text-wf-gray-500">or choose a start date</span>
-              <div className="flex-1 border-t border-white/10" />
-            </div>
-
-            {/* Date picker + confirm */}
-            <div className="flex gap-2">
-              <input
-                type="date"
-                value={beginDateInput}
-                min={new Date().toISOString().slice(0, 10)}
-                onChange={(e) => setBeginDateInput(e.target.value)}
-                className="flex-1 glass-input rounded-xl px-3 py-3 text-white text-sm focus:outline-none"
-              />
-              <button
-                onClick={handleBeginDate}
-                disabled={!beginDateInput}
-                className="btn-gradient text-white font-semibold px-5 py-3 rounded-xl text-sm active:scale-[0.98] transition-all disabled:opacity-40"
-              >
-                Schedule
-              </button>
-            </div>
+            {/* Start Today + Choose Date */}
+            {!showDatePicker ? (
+              <div className="flex gap-3">
+                <button
+                  onClick={handleStartToday}
+                  className="flex-1 btn-gradient text-white font-semibold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-all"
+                >
+                  Start Today
+                </button>
+                <button
+                  onClick={() => setShowDatePicker(true)}
+                  className="flex-1 glass-card text-white font-semibold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-all"
+                >
+                  Choose Date
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2 mt-1">
+                <input
+                  type="date"
+                  value={beginDateInput}
+                  min={new Date().toISOString().slice(0, 10)}
+                  onChange={(e) => setBeginDateInput(e.target.value)}
+                  className="flex-1 glass-input rounded-xl px-3 py-3 text-white text-sm focus:outline-none"
+                  autoFocus
+                />
+                <button
+                  onClick={handleBeginDate}
+                  disabled={!beginDateInput}
+                  className="btn-gradient text-white font-semibold px-5 py-3 rounded-xl text-sm active:scale-[0.98] transition-all disabled:opacity-40"
+                >
+                  Schedule
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
