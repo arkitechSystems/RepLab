@@ -23,8 +23,9 @@ export default function WorkoutSession() {
     Promise.all([
       api('/templates'),
       api(`/pbs?templateId=${templateId}`),
+      api(`/sessions/by-template/${templateId}/${date}`),
     ])
-      .then(([templates, pbList]) => {
+      .then(([templates, pbList, existingSession]) => {
         const tmpl = templates.find((t) => t.id === Number(templateId));
         setTemplate(tmpl);
 
@@ -35,19 +36,44 @@ export default function WorkoutSession() {
         setPbs(pbMap);
 
         if (tmpl && !tmpl.isRest) {
-          const initial = {};
-          for (const ex of tmpl.exercises) {
-            initial[ex.name] = ex.sets.map((s) => ({
-              weight: s.suggestedWeight,
-              reps: '',
-            }));
+          if (existingSession && existingSession.entries) {
+            // Restore saved session data
+            const saved = {};
+            const restoredCompleted = new Set();
+            for (const ex of tmpl.exercises) {
+              saved[ex.name] = ex.sets.map((s, setIdx) => {
+                const match = existingSession.entries.find(
+                  (e) => e.exerciseName === ex.name && e.setNumber === s.setNumber
+                );
+                if (match && (match.weight > 0 || match.reps > 0)) {
+                  restoredCompleted.add(`${ex.name}-${setIdx}`);
+                }
+                return {
+                  weight: match ? match.weight : s.suggestedWeight,
+                  reps: match ? match.reps : '',
+                };
+              });
+            }
+            setEntries(saved);
+            setCompletedSets(restoredCompleted);
+            setSaved(true);
+            setTimeout(() => setSaved(false), 1500);
+          } else {
+            // Fresh workout from template
+            const initial = {};
+            for (const ex of tmpl.exercises) {
+              initial[ex.name] = ex.sets.map((s) => ({
+                weight: s.suggestedWeight,
+                reps: '',
+              }));
+            }
+            setEntries(initial);
           }
-          setEntries(initial);
         }
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [templateId]);
+  }, [templateId, date]);
 
   function handleChange(exerciseName, setIdx, field, value) {
     setEntries((prev) => {

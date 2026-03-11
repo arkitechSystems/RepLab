@@ -385,6 +385,30 @@ const db = {
     };
   },
 
+  async getSessionByTemplateAndDate(userId, templateId, date) {
+    const { rows: sessionRows } = await pool.query(
+      'SELECT id FROM sessions WHERE user_id = $1 AND template_id = $2 AND date = $3',
+      [userId, templateId, date]
+    );
+    if (!sessionRows[0]) return null;
+
+    const sessionId = sessionRows[0].id;
+    const { rows: entries } = await pool.query(
+      'SELECT * FROM session_entries WHERE session_id = $1 ORDER BY exercise_name, set_number',
+      [sessionId]
+    );
+
+    return {
+      id: sessionId,
+      entries: entries.map((e) => ({
+        exerciseName: e.exercise_name,
+        setNumber: e.set_number,
+        weight: Number(e.weight),
+        reps: e.reps,
+      })),
+    };
+  },
+
   // Personal Bests
   async getPBs(userId, templateId) {
     let query = 'SELECT * FROM personal_bests WHERE user_id = $1';

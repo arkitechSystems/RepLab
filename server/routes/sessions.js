@@ -28,6 +28,20 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 
+router.get('/by-template/:templateId/:date', authMiddleware, async (req, res) => {
+  try {
+    const session = await db.getSessionByTemplateAndDate(
+      req.userId,
+      Number(req.params.templateId),
+      req.params.date
+    );
+    res.json(session);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.get('/:id', authMiddleware, async (req, res) => {
   try {
     const session = await db.getSession(req.userId, Number(req.params.id));
