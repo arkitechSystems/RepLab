@@ -16,6 +16,8 @@ export default async function initDb() {
   await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS set_type TEXT DEFAULT 'straight'`);
   await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS rep_range TEXT DEFAULT ''`);
   await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS exercise_description TEXT DEFAULT ''`);
+  await pool.query(`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS notes JSONB DEFAULT '{}'`);
+  await pool.query(`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS completed BOOLEAN DEFAULT FALSE`);
 
   console.log('Database schema initialized');
 

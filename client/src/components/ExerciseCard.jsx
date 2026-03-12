@@ -1,11 +1,27 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { getExerciseVideoId, getExerciseSearchUrl } from '../utils/exerciseVideos.js';
 import VideoPlayerModal from './VideoPlayerModal.jsx';
 
-export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnly, completedSets, onToggleComplete }) {
-  const pb = pbs?.[exercise.name];
+export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnly, completedSets, onToggleComplete, onAddSet, onDeleteSet, note, onNoteChange }) {
+  const exercisePbs = pbs?.[exercise.name] || {};
   const videoId = getExerciseVideoId(exercise.name);
   const [showVideo, setShowVideo] = useState(false);
+  const [deleteIdx, setDeleteIdx] = useState(null);
+  const longPressRef = useRef(null);
+
+  const handleTouchStart = useCallback((idx) => {
+    longPressRef.current = setTimeout(() => {
+      navigator.vibrate?.(30);
+      setDeleteIdx(idx);
+    }, 500);
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (longPressRef.current) {
+      clearTimeout(longPressRef.current);
+      longPressRef.current = null;
+    }
+  }, []);
 
   const handleVideoClick = () => {
     if (videoId) {
@@ -18,7 +34,7 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
   return (
     <div className="glass-card rounded-xl overflow-hidden mb-3">
       {/* Exercise Header */}
-      <div className="px-4 py-3 border-b border-white/10">
+      <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
         <button
           type="button"
           onClick={handleVideoClick}
@@ -29,6 +45,17 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
             <path fillRule="evenodd" d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653z" clipRule="evenodd" />
           </svg>
         </button>
+        {!readOnly && onAddSet && (
+          <button
+            type="button"
+            onClick={() => onAddSet(exercise.name)}
+            className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-white hover:bg-white/20 active:scale-90 transition-all"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Column Headers */}
@@ -46,12 +73,18 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
         {exercise.sets.map((set, idx) => {
           const entry = entries?.[idx] || {};
           const isCompleted = completedSets?.has(`${exercise.name}-${idx}`);
+          const rowWeight = entry.weight ?? set.suggestedWeight;
+          const pbReps = rowWeight ? exercisePbs[rowWeight] : undefined;
           return (
             <div
               key={idx}
               className={`px-3 py-2.5 flex items-center gap-1.5 transition-colors duration-200 ${
                 isCompleted ? 'bg-green-500/10' : ''
               }`}
+              onTouchStart={!readOnly && onDeleteSet ? () => handleTouchStart(idx) : undefined}
+              onTouchEnd={!readOnly && onDeleteSet ? handleTouchEnd : undefined}
+              onTouchMove={!readOnly && onDeleteSet ? handleTouchEnd : undefined}
+              onContextMenu={!readOnly && onDeleteSet ? (e) => { e.preventDefault(); setDeleteIdx(idx); } : undefined}
             >
               {/* Checkmark circle */}
               {!readOnly && onToggleComplete && (
@@ -84,6 +117,7 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
                   inputMode="numeric"
                   pattern="[0-9]*"
                   value={entry.weight ?? set.suggestedWeight ?? ''}
+                  placeholder={readOnly ? '—' : '0'}
                   onChange={(e) => onChange?.(exercise.name, idx, 'weight', e.target.value)}
                   readOnly={readOnly}
                   className={`w-full lcd-input rounded-lg px-2 py-2.5 text-white text-center text-base focus:outline-none disabled:opacity-50 ${isCompleted ? 'completed' : ''}`}
@@ -113,15 +147,15 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
                 />
               </div>
 
-              {/* PR display */}
+              {/* PR display — best reps at this weight */}
               <div className="w-16 shrink-0 text-right">
-                {pb ? (
+                {pbReps !== undefined ? (
                   <div className="pb-badge rounded-lg px-1.5 py-1.5 inline-flex items-center gap-0.5">
                     <svg className="w-3 h-3 text-amber-400" viewBox="0 0 24 24" fill="currentColor">
                       <path fillRule="evenodd" d="M5.166 2.621v.858c-1.035.148-2.059.33-3.071.543a.75.75 0 00-.584.859 6.753 6.753 0 006.138 5.6 6.73 6.73 0 002.743 1.346A6.707 6.707 0 019.279 15H8.54c-1.036 0-1.875.84-1.875 1.875V19.5h-.75a.75.75 0 000 1.5h12.75a.75.75 0 000-1.5h-.75v-2.625c0-1.036-.84-1.875-1.875-1.875h-.739a6.707 6.707 0 01-1.112-3.173 6.73 6.73 0 002.743-1.347 6.753 6.753 0 006.139-5.6.75.75 0 00-.585-.858 47.077 47.077 0 00-3.07-.543V2.62a.75.75 0 00-.658-.744 49.22 49.22 0 00-6.093-.377c-2.063 0-4.096.128-6.093.377a.75.75 0 00-.657.744z" clipRule="evenodd" />
                     </svg>
                     <span className="text-[11px] font-bold text-amber-400 font-mono-stat">
-                      {pb.bestWeight}x{pb.bestReps}
+                      {pbReps}
                     </span>
                   </div>
                 ) : (
@@ -132,6 +166,66 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
           );
         })}
       </div>
+
+      {/* Notes */}
+      {!readOnly && onNoteChange && (
+        <div className="px-3 py-2 border-t border-white/5">
+          {note ? (
+            <textarea
+              value={note}
+              onChange={(e) => onNoteChange(exercise.name, e.target.value)}
+              placeholder="Add a note..."
+              rows={2}
+              className="w-full bg-transparent text-wf-gray-300 text-xs resize-none focus:outline-none placeholder:text-wf-gray-600"
+            />
+          ) : (
+            <button
+              onClick={() => onNoteChange(exercise.name, ' ')}
+              className="text-xs text-wf-gray-500 hover:text-wf-gray-300 transition-colors"
+            >
+              + Add Notes
+            </button>
+          )}
+        </div>
+      )}
+      {readOnly && note && (
+        <div className="px-3 py-2 border-t border-white/5">
+          <p className="text-xs text-wf-gray-400 whitespace-pre-wrap">{note}</p>
+        </div>
+      )}
+
+      {/* Delete Set Confirmation */}
+      {deleteIdx !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-5" onClick={() => setDeleteIdx(null)}>
+          <div className="absolute inset-0 bg-black/70" />
+          <div
+            className="relative w-full max-w-xs bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-bold text-white text-center mb-1">Delete set?</h3>
+            <p className="text-wf-gray-400 text-sm text-center mb-5">
+              Set {deleteIdx + 1} of {exercise.name}
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDeleteIdx(null)}
+                className="flex-1 glass-card text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  onDeleteSet(exercise.name, deleteIdx);
+                  setDeleteIdx(null);
+                }}
+                className="flex-1 bg-wf-red/90 hover:bg-wf-red text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Video Player Modal */}
       {showVideo && videoId && (

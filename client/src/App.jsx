@@ -14,6 +14,7 @@ import CreateProgram from './pages/CreateProgram';
 import History from './pages/History';
 import SessionDetail from './pages/SessionDetail';
 import Profile from './pages/Profile';
+import Utilities from './pages/Utilities';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -52,6 +53,7 @@ export default function App() {
         <Route path="/workouts/edit/:id" element={<EditWorkout />} />
         <Route path="/history" element={<History />} />
         <Route path="/history/:id" element={<SessionDetail />} />
+        <Route path="/utilities" element={<Utilities />} />
         <Route path="/profile" element={<Profile />} />
       </Route>
 

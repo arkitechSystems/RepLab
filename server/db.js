@@ -258,7 +258,7 @@ const db = {
   },
 
   // Sessions
-  async createSession(userId, templateId, date, entries) {
+  async createSession(userId, templateId, date, entries, notes) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -273,15 +273,17 @@ const db = {
       if (existing.length > 0) {
         sessionId = existing[0].id;
         await client.query('DELETE FROM session_entries WHERE session_id = $1', [sessionId]);
+        await client.query('UPDATE sessions SET notes = $1 WHERE id = $2', [JSON.stringify(notes || {}), sessionId]);
       } else {
         const { rows: sessionRows } = await client.query(
-          'INSERT INTO sessions (user_id, template_id, date) VALUES ($1, $2, $3) RETURNING id',
-          [userId, templateId, date]
+          'INSERT INTO sessions (user_id, template_id, date, notes) VALUES ($1, $2, $3, $4) RETURNING id',
+          [userId, templateId, date, JSON.stringify(notes || {})]
         );
         sessionId = sessionRows[0].id;
       }
 
-      const bestByExercise = new Map();
+      // Track best reps per exercise per weight
+      const bestRepsAtWeight = new Map();
 
       for (const entry of entries) {
         await client.query(
@@ -292,34 +294,33 @@ const db = {
         const w = entry.weight || 0;
         const r = entry.reps || 0;
         if (w > 0 && r > 0) {
-          const current = bestByExercise.get(entry.exerciseName);
-          if (!current || w > current.weight || (w === current.weight && r > current.reps)) {
-            bestByExercise.set(entry.exerciseName, { weight: w, reps: r });
+          const key = `${entry.exerciseName}::${w}`;
+          const current = bestRepsAtWeight.get(key);
+          if (!current || r > current.reps) {
+            bestRepsAtWeight.set(key, { exerciseName: entry.exerciseName, weight: w, reps: r });
           }
         }
       }
 
-      // Update PBs
-      for (const [exerciseName, best] of bestByExercise) {
+      // Update PBs — one record per exercise per weight
+      for (const [, best] of bestRepsAtWeight) {
         const { rows: existingPBs } = await client.query(
-          'SELECT * FROM personal_bests WHERE user_id = $1 AND template_id = $2 AND exercise_name = $3',
-          [userId, templateId, exerciseName]
+          'SELECT * FROM personal_bests WHERE user_id = $1 AND template_id = $2 AND exercise_name = $3 AND best_weight = $4',
+          [userId, templateId, best.exerciseName, best.weight]
         );
 
         if (existingPBs.length > 0) {
           const existing = existingPBs[0];
-          const existingWeight = Number(existing.best_weight);
-          const existingReps = existing.best_reps;
-          if (best.weight > existingWeight || (best.weight === existingWeight && best.reps > existingReps)) {
+          if (best.reps > existing.best_reps) {
             await client.query(
-              'UPDATE personal_bests SET best_weight = $1, best_reps = $2, achieved_at = NOW() WHERE id = $3',
-              [best.weight, best.reps, existing.id]
+              'UPDATE personal_bests SET best_reps = $1, achieved_at = NOW() WHERE id = $2',
+              [best.reps, existing.id]
             );
           }
         } else {
           await client.query(
             'INSERT INTO personal_bests (user_id, template_id, exercise_name, best_weight, best_reps) VALUES ($1, $2, $3, $4, $5)',
-            [userId, templateId, exerciseName, best.weight, best.reps]
+            [userId, templateId, best.exerciseName, best.weight, best.reps]
           );
         }
       }
@@ -387,12 +388,13 @@ const db = {
 
   async getSessionByTemplateAndDate(userId, templateId, date) {
     const { rows: sessionRows } = await pool.query(
-      'SELECT id FROM sessions WHERE user_id = $1 AND template_id = $2 AND date = $3',
+      'SELECT id, notes, completed FROM sessions WHERE user_id = $1 AND template_id = $2 AND date = $3',
       [userId, templateId, date]
     );
     if (!sessionRows[0]) return null;
 
     const sessionId = sessionRows[0].id;
+    const sessionNotes = sessionRows[0].notes;
     const { rows: entries } = await pool.query(
       'SELECT * FROM session_entries WHERE session_id = $1 ORDER BY exercise_name, set_number',
       [sessionId]
@@ -400,6 +402,8 @@ const db = {
 
     return {
       id: sessionId,
+      completed: sessionRows[0].completed || false,
+      notes: typeof sessionNotes === 'string' ? JSON.parse(sessionNotes) : (sessionNotes || {}),
       entries: entries.map((e) => ({
         exerciseName: e.exercise_name,
         setNumber: e.set_number,
@@ -407,6 +411,22 @@ const db = {
         reps: e.reps,
       })),
     };
+  },
+
+  async toggleSessionComplete(userId, templateId, date, completed) {
+    const { rows } = await pool.query(
+      'UPDATE sessions SET completed = $1 WHERE user_id = $2 AND template_id = $3 AND date = $4 RETURNING id',
+      [completed, userId, templateId, date]
+    );
+    return rows[0] || null;
+  },
+
+  async getCompletedSessions(userId) {
+    const { rows } = await pool.query(
+      "SELECT template_id, date FROM sessions WHERE user_id = $1 AND completed = TRUE",
+      [userId]
+    );
+    return rows.map((r) => ({ templateId: r.template_id, date: r.date }));
   },
 
   // Personal Bests

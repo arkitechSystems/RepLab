@@ -11,6 +11,7 @@ export default function Calendar() {
   const [schedule, setSchedule] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [programs, setPrograms] = useState([]);
+  const [completedSessions, setCompletedSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [weekOffset, setWeekOffset] = useState(0);
   const [editingDay, setEditingDay] = useState(null); // date object of day being edited
@@ -23,8 +24,8 @@ export default function Calendar() {
   const isCurrentWeek = isSameWeek(weekStart, today, { weekStartsOn: 1 });
 
   useEffect(() => {
-    Promise.all([api('/schedule'), api('/templates'), api('/programs')])
-      .then(([s, t, p]) => { setSchedule(s); setTemplates(t); setPrograms(p); })
+    Promise.all([api('/schedule'), api('/templates'), api('/programs'), api('/sessions/completed')])
+      .then(([s, t, p, c]) => { setSchedule(s); setTemplates(t); setPrograms(p); setCompletedSessions(c); })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
@@ -41,6 +42,13 @@ export default function Calendar() {
   function getWorkoutForDay(date) {
     const dow = date.getDay();
     return schedule.find((s) => s.dayOfWeek === dow);
+  }
+
+  function isDayCompleted(date) {
+    const workout = getWorkoutForDay(date);
+    if (!workout) return false;
+    const dateStr = format(date, 'yyyy-MM-dd');
+    return completedSessions.some((c) => c.templateId === workout.templateId && c.date === dateStr);
   }
 
   function handleDayTap(date) {
@@ -125,6 +133,7 @@ export default function Calendar() {
               const workout = getWorkoutForDay(date);
               const dayIsToday = isToday(date);
               const isRest = workout?.isRest;
+              const dayCompleted = isDayCompleted(date);
               const color = getWorkoutColor(workout?.templateName);
 
               return (
@@ -133,21 +142,23 @@ export default function Calendar() {
                   onClick={() => handleDayTap(date)}
                   style={{ animationDelay: `${idx * 60}ms` }}
                   className={`w-full text-left rounded-xl overflow-hidden transition-all active:scale-[0.98] fade-slide-up ${
-                    dayIsToday
-                      ? 'glass-card !border-2 !border-wf-red today-glow'
-                      : 'glass-card'
+                    dayCompleted
+                      ? 'glass-card !border-2 !border-wf-red'
+                      : dayIsToday
+                        ? 'glass-card !border-2 !border-wf-red today-glow'
+                        : 'glass-card'
                   }`}
                 >
                   <div className="flex">
                     {/* Color accent bar */}
-                    <div className={`w-1 shrink-0 ${color.dot}`} />
+                    <div className={`w-1 shrink-0 ${dayCompleted ? 'bg-wf-red' : color.dot}`} />
                     <div className="flex-1 p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                           {/* Day circle */}
                           <div
                             className={`w-12 h-12 rounded-full flex flex-col items-center justify-center shrink-0 ${
-                              dayIsToday ? 'btn-gradient text-white' : `${color.bg} text-wf-gray-400`
+                              dayCompleted ? 'bg-wf-red/20 text-wf-red' : dayIsToday ? 'btn-gradient text-white' : `${color.bg} text-wf-gray-400`
                             }`}
                           >
                             <span className="text-[10px] font-medium uppercase leading-none">
@@ -163,9 +174,11 @@ export default function Calendar() {
                             <h3 className="text-base font-semibold text-white">
                               {workout?.templateName || 'No workout'}
                             </h3>
-                            {dayIsToday && (
+                            {dayCompleted ? (
+                              <span className="text-xs text-wf-red font-medium">Complete</span>
+                            ) : dayIsToday ? (
                               <span className="text-xs text-wf-red font-medium">Today</span>
-                            )}
+                            ) : null}
                           </div>
                         </div>
 

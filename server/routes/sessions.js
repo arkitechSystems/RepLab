@@ -6,11 +6,11 @@ const router = Router();
 
 router.post('/', authMiddleware, async (req, res) => {
   try {
-    const { templateId, date, entries } = req.body;
+    const { templateId, date, entries, notes } = req.body;
     if (!templateId || !date || !entries || !entries.length) {
       return res.status(400).json({ error: 'templateId, date, and entries are required' });
     }
-    const result = await db.createSession(req.userId, templateId, date, entries);
+    const result = await db.createSession(req.userId, templateId, date, entries, notes);
     res.status(201).json(result);
   } catch (err) {
     console.error(err);
@@ -36,6 +36,28 @@ router.get('/by-template/:templateId/:date', authMiddleware, async (req, res) =>
       req.params.date
     );
     res.json(session);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.put('/complete', authMiddleware, async (req, res) => {
+  try {
+    const { templateId, date, completed } = req.body;
+    const result = await db.toggleSessionComplete(req.userId, templateId, date, completed);
+    if (!result) return res.status(404).json({ error: 'Session not found' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/completed', authMiddleware, async (req, res) => {
+  try {
+    const completed = await db.getCompletedSessions(req.userId);
+    res.json(completed);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });

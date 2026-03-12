@@ -22,6 +22,18 @@ html, body {
   font-family: 'DM Mono', 'Courier New', monospace;
 }
 
+/* Hide number input spinners */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  overflow: hidden;
+  font-size: 16px; /* prevent iOS auto-zoom */
+}
+
 /* LCD-style readout inputs (workout session) */
 .lcd-input {
   background: rgba(0, 0, 0, 0.55);

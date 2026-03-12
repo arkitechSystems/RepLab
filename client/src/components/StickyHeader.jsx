@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 
-export default function StickyHeader({ title, subtitle, children }) {
+export default function StickyHeader({ title, subtitle, children, bottomContent }) {
   const [collapsed, setCollapsed] = useState(false);
   const sentinelRef = useRef(null);
 
@@ -48,6 +48,7 @@ export default function StickyHeader({ title, subtitle, children }) {
           </div> : null}
           {children}
         </div>
+        {bottomContent}
       </div>
     </>
   );

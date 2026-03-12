@@ -46,6 +46,8 @@ CREATE TABLE IF NOT EXISTS sessions (
   user_id INT NOT NULL REFERENCES users(id),
   template_id INT REFERENCES templates(id) ON DELETE SET NULL,
   date TEXT NOT NULL,
+  notes JSONB DEFAULT '{}',
+  completed BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
