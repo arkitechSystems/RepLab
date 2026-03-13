@@ -15,6 +15,7 @@ import History from './pages/History';
 import SessionDetail from './pages/SessionDetail';
 import Profile from './pages/Profile';
 import Utilities from './pages/Utilities';
+import Welcome from './pages/Welcome';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -37,6 +38,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
+      <Route path="/welcome" element={<ProtectedRoute><Welcome /></ProtectedRoute>} />
 
       <Route
         element={

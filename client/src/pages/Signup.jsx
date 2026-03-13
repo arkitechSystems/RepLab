@@ -23,7 +23,7 @@ export default function Signup() {
     setLoading(true);
     try {
       await signup(email, password);
-      navigate('/');
+      navigate('/welcome');
     } catch (err) {
       setError(err.message);
     } finally {

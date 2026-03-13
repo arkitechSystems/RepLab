@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { api } from '../api';
@@ -20,6 +20,31 @@ export default function WorkoutSession() {
   const [newPBs, setNewPBs] = useState(null);
   const [notes, setNotes] = useState({});
   const [isCompleted, setIsCompleted] = useState(false);
+  const [timerStarted, setTimerStarted] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const startTimeRef = useRef(null);
+  const timerRef = useRef(null);
+
+  const startTimer = useCallback(() => {
+    if (timerStarted) return;
+    setTimerStarted(true);
+    startTimeRef.current = Date.now();
+    timerRef.current = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000));
+    }, 1000);
+  }, [timerStarted]);
+
+  useEffect(() => {
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, []);
+
+  function formatTime(secs) {
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    return `${m}:${String(s).padStart(2, '0')}`;
+  }
 
   useEffect(() => {
     Promise.all([
@@ -187,6 +212,7 @@ export default function WorkoutSession() {
       } else {
         next.add(key);
         navigator.vibrate?.(40);
+        startTimer();
       }
       return next;
     });
@@ -390,6 +416,23 @@ export default function WorkoutSession() {
           </div>
         }
       />
+
+      {/* Workout Timer */}
+      <div className="px-4 mb-3">
+        <div className="glass-card rounded-xl px-4 py-3 flex items-center justify-between">
+          <span className="text-xs text-wf-gray-400 font-medium uppercase tracking-wider">Total Workout Time</span>
+          {timerStarted ? (
+            <span className="text-lg font-black text-white tabular-nums font-mono-stat">{formatTime(elapsed)}</span>
+          ) : (
+            <button
+              onClick={startTimer}
+              className="bg-wf-red/90 hover:bg-wf-red text-white text-xs font-semibold px-4 py-1.5 rounded-lg active:scale-[0.98] transition-all"
+            >
+              Begin Workout
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* Exercise Cards */}
       <div className="px-4">
