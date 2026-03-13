@@ -1049,10 +1049,10 @@ export default function Workouts() {
               <video
                 ref={(el) => {
                   if (!el) return;
-                  el.currentTime = 5;
+                  el.currentTime = 7;
                   el.ontimeupdate = () => {
                     if (el.duration && el.currentTime >= el.duration - 6) {
-                      el.currentTime = 5;
+                      el.currentTime = 7;
                     }
                   };
                 }}
