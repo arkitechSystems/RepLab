@@ -123,6 +123,9 @@ input[type="number"] {
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
+  background: url('/background.avif') center / cover no-repeat fixed;
+  filter: grayscale(1) contrast(1.8) brightness(0.15);
+  opacity: 0.2;
 }
 .ambient-bg::before {
   content: '';

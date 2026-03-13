@@ -65,8 +65,9 @@ export default function Workouts() {
   const [programs, setPrograms] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedGroup, setSelectedGroup] = useState(null); // 'browse' | 'my' | null
+  const [selectedGroup, setSelectedGroup] = useState(null); // 'browse' | 'my' | 'partners' | null
   const [selectedProgram, setSelectedProgram] = useState(null);
+  const [selectedTrainer, setSelectedTrainer] = useState(null);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editName, setEditName] = useState('');
@@ -342,7 +343,7 @@ export default function Workouts() {
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
             </svg>
-            {selectedGroup === 'browse' ? 'Browse Workouts' : selectedGroup === 'my' ? 'My Workouts' : 'All Workouts'}
+            {selectedGroup === 'browse' ? 'Browse Workout Library' : selectedGroup === 'my' ? 'My Workouts' : 'All Workouts'}
           </button>
         </div>
 
@@ -705,11 +706,256 @@ export default function Workouts() {
     );
   }
 
+  // Trainer profile view
+  if (selectedGroup === 'partners' && selectedTrainer) {
+    const trainerHIIT = {
+      id: '__zj_hiit__',
+      name: 'HIIT Blast',
+      trainerName: 'Zumba Jason',
+      exercises: [],
+      isRest: false,
+    };
+
+    async function handleTrainerAddToday() {
+      // Create template via API if needed, then add to calendar
+      let templateId = trainerHIIT._savedId;
+      if (!templateId) {
+        try {
+          const res = await api('/templates', {
+            method: 'POST',
+            body: JSON.stringify({
+              name: 'HIIT Blast - Zumba Jason',
+              description: 'High-intensity interval training by Zumba Jason',
+              exercises: [],
+            }),
+          });
+          templateId = res.id;
+        } catch (err) {
+          console.error(err);
+          return;
+        }
+      }
+      const dow = new Date().getDay();
+      const schedule = await api('/schedule');
+      const existing = schedule.find((s) => s.dayOfWeek === dow && s.templateId);
+      if (existing) {
+        setAddConflictInfo({
+          dayName: `${DAY_NAMES_FULL[dow]}, ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`,
+          entry: { dayOfWeek: dow, templateId },
+        });
+      } else {
+        await api('/schedule', {
+          method: 'PUT',
+          body: JSON.stringify({ schedule: [{ dayOfWeek: dow, templateId }] }),
+        });
+        navigate('/');
+      }
+    }
+
+    async function handleTrainerAddDate() {
+      if (!addDateInput) return;
+      let templateId;
+      try {
+        const res = await api('/templates', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: 'HIIT Blast - Zumba Jason',
+            description: 'High-intensity interval training by Zumba Jason',
+            exercises: [],
+          }),
+        });
+        templateId = res.id;
+      } catch (err) {
+        console.error(err);
+        return;
+      }
+      const date = new Date(addDateInput + 'T00:00:00');
+      const dow = date.getDay();
+      const schedule = await api('/schedule');
+      const existing = schedule.find((s) => s.dayOfWeek === dow && s.templateId);
+      if (existing) {
+        setAddConflictInfo({
+          dayName: `${DAY_NAMES_FULL[dow]}, ${date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`,
+          entry: { dayOfWeek: dow, templateId },
+        });
+      } else {
+        await api('/schedule', {
+          method: 'PUT',
+          body: JSON.stringify({ schedule: [{ dayOfWeek: dow, templateId }] }),
+        });
+        navigate('/');
+      }
+    }
+
+    return (
+      <div>
+        <StickyHeader title="Zumba Jason" />
+
+        {/* Back button */}
+        <div className="px-4 mb-3">
+          <button
+            onClick={() => setSelectedTrainer(null)}
+            className="inline-flex items-center gap-1 text-sm text-wf-gray-400 active:text-white transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+            </svg>
+            Featured Trainers
+          </button>
+        </div>
+
+        <div className="px-4 pb-4">
+          {/* Trainer photo + bio */}
+          <div className="glass-card rounded-2xl overflow-hidden fade-slide-up mb-5">
+            <div className="w-full h-48 bg-gradient-to-br from-purple-600/40 via-purple-500/20 to-wf-blue/30 flex items-center justify-center">
+              <div className="w-24 h-24 rounded-full bg-purple-500/30 border-2 border-purple-400/50 flex items-center justify-center">
+                <span className="text-3xl font-black text-purple-300">ZJ</span>
+              </div>
+            </div>
+            <div className="p-5">
+              <h2 className="text-2xl font-black text-white">Zumba Jason</h2>
+              <p className="text-xs text-purple-400 font-semibold uppercase tracking-wider mt-1">Certified HIIT & Dance Fitness Instructor</p>
+              <p className="text-sm text-wf-gray-400 mt-3 leading-relaxed">
+                Jason brings the energy. With over 8 years of experience in high-intensity interval training and dance-based fitness, he's helped hundreds of people crush their goals while actually having fun. His workouts are fast, fierce, and designed to torch calories in minimal time.
+              </p>
+            </div>
+          </div>
+
+          {/* Featured Workouts */}
+          <h3 className="text-sm font-semibold text-wf-gray-400 uppercase tracking-wider mb-3">Featured Workouts</h3>
+
+          <div className="glass-card rounded-xl overflow-hidden fade-slide-up" style={{ animationDelay: '80ms' }}>
+            <div className="h-1.5 bg-gradient-to-r from-orange-500 to-red-500" />
+            <div className="p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-2.5 h-2.5 rounded-full bg-orange-500" />
+                <h4 className="text-lg font-semibold text-white">HIIT Blast</h4>
+              </div>
+              <p className="text-xs text-wf-gray-500 ml-4.5 mb-4">High-intensity interval training &middot; 30 min</p>
+
+              {!showAddDatePicker ? (
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleTrainerAddToday}
+                    className="flex-1 btn-gradient text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+                  >
+                    Add to Today
+                  </button>
+                  <button
+                    onClick={() => setShowAddDatePicker(true)}
+                    className="flex-1 glass-card text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+                  >
+                    Choose Date
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    type="date"
+                    value={addDateInput}
+                    min={new Date().toISOString().slice(0, 10)}
+                    onChange={(e) => setAddDateInput(e.target.value)}
+                    className="flex-1 glass-input rounded-xl px-3 py-3 text-white text-sm focus:outline-none"
+                    autoFocus
+                  />
+                  <button
+                    onClick={handleTrainerAddDate}
+                    disabled={!addDateInput}
+                    className="btn-gradient text-white font-semibold px-5 py-3 rounded-xl text-sm active:scale-[0.98] transition-all disabled:opacity-40"
+                  >
+                    Schedule
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Conflict modal */}
+        {addConflictInfo && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-5" onClick={() => setAddConflictInfo(null)}>
+            <div className="absolute inset-0 bg-black/70" />
+            <div
+              className="relative w-full max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-base font-black text-white mb-2">Overwrite existing workout?</h3>
+              <p className="text-wf-gray-400 text-sm mb-3">
+                This will replace the current workout on:
+              </p>
+              <p className="text-sm font-semibold text-wf-red flex items-center gap-2 mb-5">
+                <span className="w-1.5 h-1.5 rounded-full bg-wf-red" />
+                {addConflictInfo.dayName}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setAddConflictInfo(null)}
+                  className="flex-1 glass-card text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => applyAddWorkout(addConflictInfo.entry)}
+                  className="flex-1 bg-wf-red/90 hover:bg-wf-red text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+                >
+                  Overwrite
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Featured Trainers list view
+  if (selectedGroup === 'partners') {
+    return (
+      <div>
+        <StickyHeader title="Featured Trainers" />
+
+        {/* Back button */}
+        <div className="px-4 mb-3">
+          <button
+            onClick={() => setSelectedGroup(null)}
+            className="inline-flex items-center gap-1 text-sm text-wf-gray-400 active:text-white transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+            </svg>
+            All Workouts
+          </button>
+        </div>
+
+        <div className="px-4 space-y-3 pb-4">
+          <div
+            onClick={() => setSelectedTrainer('zumba-jason')}
+            className="glass-card rounded-xl p-4 fade-slide-up cursor-pointer active:scale-[0.98] transition-transform"
+            style={{ animationDelay: '0ms' }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center shrink-0">
+                <span className="text-lg font-bold text-purple-400">ZJ</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-lg font-semibold text-white">Zumba Jason</h3>
+                <p className="text-xs text-wf-gray-500">Featured Trainer</p>
+              </div>
+              <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Group list view — programs within Browse or My Workouts
   if (selectedGroup && !selectedProgram) {
     const isBrowse = selectedGroup === 'browse';
     const groupPrograms = isBrowse ? browsePrograms : myPrograms;
-    const groupTitle = isBrowse ? 'Browse Workouts' : 'My Workouts';
+    const groupTitle = isBrowse ? 'Browse Workout Library' : 'My Workouts';
 
     return (
       <div>
@@ -779,11 +1025,36 @@ export default function Workouts() {
           </div>
         ) : (
           <div className="space-y-4 pb-4">
-            {/* Browse Workouts card */}
+            {/* Featured Trainers card */}
+            <div
+              onClick={() => setSelectedGroup('partners')}
+              className="w-full text-left glass-card rounded-2xl overflow-hidden active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
+              style={{ animationDelay: '0ms' }}
+            >
+              <div className="h-1.5 bg-gradient-to-r from-wf-blue to-purple-500" />
+              <div className="p-5">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-wf-blue/20 flex items-center justify-center shrink-0">
+                    <svg className="w-5 h-5 text-wf-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-xl font-black text-white tracking-tight">Featured Trainers</h2>
+                    <p className="text-wf-gray-400 text-sm mt-1">1 partner</p>
+                  </div>
+                  <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            {/* Browse Workout Library card */}
             <div
               onClick={() => setSelectedGroup('browse')}
               className="w-full text-left glass-card rounded-2xl overflow-hidden active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
-              style={{ animationDelay: '0ms' }}
+              style={{ animationDelay: '80ms' }}
             >
               {/* Color strip from all browse programs */}
               <div className="flex h-1.5">
@@ -792,7 +1063,7 @@ export default function Workouts() {
                 ))}
               </div>
               <div className="p-5">
-                <h2 className="text-xl font-black text-white tracking-tight">Browse Workouts</h2>
+                <h2 className="text-xl font-black text-white tracking-tight">Browse Workout Library</h2>
                 <p className="text-wf-gray-400 text-sm mt-1">
                   {browsePrograms.length} programs &middot; Pre-built workout plans
                 </p>
@@ -814,7 +1085,7 @@ export default function Workouts() {
             <div
               onClick={() => setSelectedGroup('my')}
               className="w-full text-left glass-card rounded-2xl overflow-hidden active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
-              style={{ animationDelay: '80ms' }}
+              style={{ animationDelay: '160ms' }}
             >
               {myPrograms.length > 0 ? (
                 <div className="flex h-1.5">

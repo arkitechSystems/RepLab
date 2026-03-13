@@ -1,13 +1,16 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import { getExerciseVideoId, getExerciseSearchUrl } from '../utils/exerciseVideos.js';
+import { getSubstitutes } from '../utils/exerciseLibrary.js';
 import VideoPlayerModal from './VideoPlayerModal.jsx';
 
-export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnly, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, note, onNoteChange }) {
+export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnly, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onSwapExercise, note, onNoteChange }) {
   const exercisePbs = pbs?.[exercise.name] || {};
   const videoId = getExerciseVideoId(exercise.name);
   const [showVideo, setShowVideo] = useState(false);
   const [deleteIdx, setDeleteIdx] = useState(null);
   const [confirmDeleteLast, setConfirmDeleteLast] = useState(false);
+  const [showSwap, setShowSwap] = useState(false);
+  const [swapSearch, setSwapSearch] = useState('');
   const longPressRef = useRef(null);
 
   const handleTouchStart = useCallback((idx) => {
@@ -73,6 +76,17 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12h-15" />
+                </svg>
+              </button>
+            )}
+            {onSwapExercise && (
+              <button
+                type="button"
+                onClick={() => { setShowSwap(true); setSwapSearch(''); }}
+                className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-blue-400 hover:bg-blue-500/20 active:scale-90 transition-all"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
                 </svg>
               </button>
             )}
@@ -286,6 +300,18 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
         </div>
       )}
 
+      {/* Swap Exercise Modal */}
+      {showSwap && <SwapModal
+        exerciseName={exercise.name}
+        search={swapSearch}
+        onSearchChange={setSwapSearch}
+        onSelect={(newName) => {
+          onSwapExercise(exercise.name, newName);
+          setShowSwap(false);
+        }}
+        onClose={() => setShowSwap(false)}
+      />}
+
       {/* Video Player Modal */}
       {showVideo && videoId && (
         <VideoPlayerModal
@@ -295,5 +321,112 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
         />
       )}
     </div>
+  );
+}
+
+function SwapModal({ exerciseName, search, onSearchChange, onSelect, onClose }) {
+  const substitutes = useMemo(() => getSubstitutes(exerciseName), [exerciseName]);
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return substitutes;
+    const q = search.toLowerCase().trim();
+    return substitutes.filter((e) =>
+      e.name.toLowerCase().includes(q) || e.muscle.toLowerCase().includes(q)
+    );
+  }, [substitutes, search]);
+
+  // Group into suggested (high score, same muscle) and the rest
+  const suggested = filtered.filter((e) => e.score >= 12);
+  const others = filtered.filter((e) => !e.score || e.score < 12);
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/80" />
+      <div
+        className="relative flex-1 flex flex-col mt-12 bg-wf-gray-900 rounded-t-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="px-4 pt-4 pb-2">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-black text-white">Swap Exercise</h3>
+            <button onClick={onClose} className="text-wf-gray-400 active:opacity-70">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <p className="text-wf-gray-500 text-xs mb-3">
+            Replacing <span className="text-white font-semibold">{exerciseName}</span>
+          </p>
+          {/* Search */}
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+            </svg>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder="Search exercises..."
+              autoFocus
+              className="w-full glass-input rounded-xl pl-10 pr-4 py-3 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none"
+            />
+          </div>
+        </div>
+
+        {/* Exercise List */}
+        <div className="flex-1 overflow-y-auto px-4 pb-6">
+          {suggested.length > 0 && !search.trim() && (
+            <>
+              <p className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-medium mt-3 mb-2">Suggested Substitutes</p>
+              {suggested.map((ex) => (
+                <ExerciseOption key={ex.name} exercise={ex} onSelect={onSelect} highlight />
+              ))}
+            </>
+          )}
+
+          {others.length > 0 && (
+            <>
+              {!search.trim() && suggested.length > 0 && (
+                <p className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-medium mt-4 mb-2">All Exercises</p>
+              )}
+              {others.map((ex) => (
+                <ExerciseOption key={ex.name} exercise={ex} onSelect={onSelect} />
+              ))}
+            </>
+          )}
+
+          {filtered.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-wf-gray-500 text-sm">No exercises found</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ExerciseOption({ exercise, onSelect, highlight }) {
+  return (
+    <button
+      onClick={() => onSelect(exercise.name)}
+      className={`w-full text-left px-3 py-3 rounded-xl mb-1 flex items-center justify-between active:scale-[0.98] transition-all ${
+        highlight ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-white/[0.03] active:bg-white/10'
+      }`}
+    >
+      <div>
+        <span className={`text-sm font-medium ${highlight ? 'text-blue-300' : 'text-white'}`}>
+          {exercise.name}
+        </span>
+        <span className="text-xs text-wf-gray-500 ml-2">{exercise.muscle}</span>
+      </div>
+      {highlight && (
+        <svg className="w-4 h-4 text-blue-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+        </svg>
+      )}
+    </button>
   );
 }

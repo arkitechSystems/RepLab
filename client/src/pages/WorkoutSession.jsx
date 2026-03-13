@@ -22,6 +22,11 @@ export default function WorkoutSession() {
   const [autoFilled, setAutoFilled] = useState(new Set()); // tracks predicted entries
   const [isCompleted, setIsCompleted] = useState(false);
   const [timerStarted, setTimerStarted] = useState(false);
+  const [timerHidden, setTimerHidden] = useState(false);
+  const [timerFloating, setTimerFloating] = useState(false);
+  const [floatPos, setFloatPos] = useState({ x: 16, y: 80 });
+  const [showSummary, setShowSummary] = useState(false);
+  const dragRef = useRef(null);
   const [elapsed, setElapsed] = useState(0);
   const startTimeRef = useRef(null);
   const timerRef = useRef(null);
@@ -45,6 +50,28 @@ export default function WorkoutSession() {
     const s = secs % 60;
     if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     return `${m}:${String(s).padStart(2, '0')}`;
+  }
+
+  function handleFloatTouchStart(e) {
+    const touch = e.touches[0];
+    dragRef.current = {
+      startX: touch.clientX - floatPos.x,
+      startY: touch.clientY - floatPos.y,
+      moved: false,
+    };
+  }
+
+  function handleFloatTouchMove(e) {
+    if (!dragRef.current) return;
+    const touch = e.touches[0];
+    dragRef.current.moved = true;
+    const x = Math.max(0, Math.min(window.innerWidth - 140, touch.clientX - dragRef.current.startX));
+    const y = Math.max(0, Math.min(window.innerHeight - 50, touch.clientY - dragRef.current.startY));
+    setFloatPos({ x, y });
+  }
+
+  function handleFloatTouchEnd() {
+    dragRef.current = null;
   }
 
   useEffect(() => {
@@ -204,6 +231,43 @@ export default function WorkoutSession() {
     setNotes((prev) => ({ ...prev, [exerciseName]: value }));
   }
 
+  function handleSwapExercise(oldName, newName) {
+    // Update template exercise name
+    setTemplate((prev) => ({
+      ...prev,
+      exercises: prev.exercises.map((ex) =>
+        ex.name === oldName ? { ...ex, name: newName } : ex
+      ),
+    }));
+    // Move entries to new name
+    setEntries((prev) => {
+      const updated = { ...prev };
+      updated[newName] = updated[oldName] || [];
+      delete updated[oldName];
+      return updated;
+    });
+    // Move notes
+    setNotes((prev) => {
+      const updated = { ...prev };
+      if (updated[oldName]) {
+        updated[newName] = updated[oldName];
+        delete updated[oldName];
+      }
+      return updated;
+    });
+    // Remap completedSets and autoFilled keys
+    const remapSet = (prev) => {
+      const next = new Set();
+      for (const key of prev) {
+        const [name, idxStr] = key.split(/-(?=\d+$)/);
+        next.add(name === oldName ? `${newName}-${idxStr}` : key);
+      }
+      return next;
+    };
+    setCompletedSets(remapSet);
+    setAutoFilled(remapSet);
+  }
+
   async function handleMarkComplete() {
     const newCompleted = !isCompleted;
     try {
@@ -217,8 +281,9 @@ export default function WorkoutSession() {
       });
       setIsCompleted(newCompleted);
       if (newCompleted) {
+        if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
         navigator.vibrate?.([40, 30, 80]);
-        navigate('/');
+        setShowSummary(true);
       }
     } catch (err) {
       alert('Failed to update: ' + err.message);
@@ -466,39 +531,74 @@ export default function WorkoutSession() {
         title={template.name}
         subtitle={`${template.description} \u2022 ${displayDate}`}
         bottomContent={
-          <div className="mt-2">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-wf-gray-400 font-medium">Progress</span>
-              <span className="text-xs text-wf-gray-400 font-medium tabular-nums">
-                {completedCount}/{totalSets} sets
-              </span>
+          <div className="mt-2 space-y-2">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs text-wf-gray-400 font-medium">Progress</span>
+                <span className="text-xs text-wf-gray-400 font-medium tabular-nums">
+                  {completedCount}/{totalSets} sets
+                </span>
+              </div>
+              <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-green-500 transition-all duration-300 ease-out"
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
             </div>
-            <div className="h-2 rounded-full bg-white/10 overflow-hidden">
-              <div
-                className="h-full rounded-full bg-green-500 transition-all duration-300 ease-out"
-                style={{ width: `${progressPct}%` }}
-              />
-            </div>
+            {!timerFloating && (
+              <>
+                <div className="flex items-center justify-between w-full">
+                  <button
+                    onClick={() => setTimerHidden((h) => !h)}
+                    className="flex-1 flex items-center"
+                  >
+                    <span className="text-xs text-wf-gray-400 font-medium uppercase tracking-wider">Workout Time</span>
+                  </button>
+                  {timerHidden ? (
+                    <button onClick={() => setTimerHidden(false)} className="text-xs text-wf-gray-500">Show</button>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      {timerStarted && (
+                        <>
+                          <span className="text-base font-black text-white tabular-nums font-mono-stat">{formatTime(elapsed)}</span>
+                          <button
+                            onClick={() => setTimerFloating(true)}
+                            className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90 transition-all"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                            </svg>
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {!timerHidden && !timerStarted && (
+                  <button
+                    onClick={startTimer}
+                    className="w-full bg-wf-red/90 hover:bg-wf-red text-white text-xs font-semibold px-4 py-2 rounded-lg active:scale-[0.98] transition-all mt-1"
+                  >
+                    Begin Workout
+                  </button>
+                )}
+              </>
+            )}
+            {timerFloating && (
+              <button
+                onClick={() => setTimerFloating(false)}
+                className="flex items-center gap-1.5 text-xs text-wf-gray-500"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
+                </svg>
+                Dock Timer
+              </button>
+            )}
           </div>
         }
       />
-
-      {/* Workout Timer */}
-      <div className="px-4 mb-3">
-        <div className="glass-card rounded-xl px-4 py-3 flex items-center justify-between">
-          <span className="text-xs text-wf-gray-400 font-medium uppercase tracking-wider">Total Workout Time</span>
-          {timerStarted ? (
-            <span className="text-lg font-black text-white tabular-nums font-mono-stat">{formatTime(elapsed)}</span>
-          ) : (
-            <button
-              onClick={startTimer}
-              className="bg-wf-red/90 hover:bg-wf-red text-white text-xs font-semibold px-4 py-1.5 rounded-lg active:scale-[0.98] transition-all"
-            >
-              Begin Workout
-            </button>
-          )}
-        </div>
-      </div>
 
       {/* Exercise Cards */}
       <div className="px-4">
@@ -514,6 +614,7 @@ export default function WorkoutSession() {
               onToggleComplete={handleToggleComplete}
               onAddSet={handleAddSet}
               onDeleteSet={handleDeleteSet}
+              onSwapExercise={handleSwapExercise}
               note={notes[exercise.name] || ''}
               onNoteChange={handleNoteChange}
             />
@@ -570,6 +671,233 @@ export default function WorkoutSession() {
             </svg>
           </button>
         </div>
+      </div>
+
+      {/* Workout Summary */}
+      {showSummary && (
+        <WorkoutSummary
+          template={template}
+          entries={entries}
+          completedSets={completedSets}
+          elapsed={elapsed}
+          formatTime={formatTime}
+          onClose={() => { setShowSummary(false); navigate('/'); }}
+        />
+      )}
+
+      {/* Floating Timer */}
+      {timerFloating && timerStarted && (
+        <div
+          className="fixed z-50 touch-none"
+          style={{ left: floatPos.x, top: floatPos.y }}
+          onTouchStart={handleFloatTouchStart}
+          onTouchMove={handleFloatTouchMove}
+          onTouchEnd={handleFloatTouchEnd}
+        >
+          <div className="bg-wf-gray-900/95 border border-white/15 rounded-2xl px-4 py-2.5 shadow-2xl backdrop-blur-sm flex items-center gap-3">
+            <span className="text-lg font-black text-white tabular-nums font-mono-stat">{formatTime(elapsed)}</span>
+            <button
+              onClick={() => setTimerFloating(false)}
+              className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WorkoutSummary({ template, entries, completedSets, elapsed, formatTime, onClose }) {
+  const canvasRef = useRef(null);
+
+  // Confetti
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const colors = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#ec4899', '#ffffff'];
+    const pieces = Array.from({ length: 120 }, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height * -1,
+      w: Math.random() * 8 + 4,
+      h: Math.random() * 6 + 2,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      vy: Math.random() * 3 + 2,
+      vx: (Math.random() - 0.5) * 2,
+      rot: Math.random() * 360,
+      rotSpeed: (Math.random() - 0.5) * 10,
+      opacity: 1,
+    }));
+
+    let frame;
+    let fadeStart = null;
+    const duration = 3500;
+
+    function animate(ts) {
+      if (!fadeStart) fadeStart = ts;
+      const progress = ts - fadeStart;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const globalFade = progress > duration ? Math.max(0, 1 - (progress - duration) / 1000) : 1;
+
+      for (const p of pieces) {
+        p.y += p.vy;
+        p.x += p.vx;
+        p.rot += p.rotSpeed;
+        p.vy += 0.04;
+        p.opacity = globalFade;
+
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate((p.rot * Math.PI) / 180);
+        ctx.globalAlpha = p.opacity;
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore();
+      }
+
+      if (globalFade > 0) {
+        frame = requestAnimationFrame(animate);
+      }
+    }
+
+    frame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  // Stats
+  const totalSets = template.exercises.reduce((s, ex) => s + ex.sets.length, 0);
+  const totalVolume = template.exercises.reduce((vol, ex) => {
+    const exEntries = entries[ex.name] || [];
+    return vol + exEntries.reduce((sum, e) => {
+      const w = Number(e.weight) || 0;
+      const r = Number(e.reps) || 0;
+      return sum + w * r;
+    }, 0);
+  }, 0);
+
+  // Per-exercise data with per-set breakdown
+  const exerciseStats = template.exercises.map((ex) => {
+    const exEntries = entries[ex.name] || [];
+    const setStats = ex.sets.map((set, idx) => {
+      const goal = set.plannedReps || 0;
+      const actual = Number(exEntries[idx]?.reps) || 0;
+      const weight = Number(exEntries[idx]?.weight) || 0;
+      return { setNumber: set.setNumber, goal, actual, weight };
+    });
+    const totalGoal = setStats.reduce((s, ss) => s + ss.goal, 0);
+    const totalActual = setStats.reduce((s, ss) => s + ss.actual, 0);
+    return { name: ex.name, setStats, totalGoal, totalActual };
+  });
+
+  return (
+    <div className="fixed inset-0 z-[60] flex flex-col">
+      {/* Confetti canvas */}
+      <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none z-10" />
+
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/90" />
+
+      {/* Content */}
+      <div className="relative z-20 flex-1 overflow-y-auto safe-top safe-bottom">
+        <div className="px-5 pt-4 pb-24 max-w-lg mx-auto">
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90 transition-all mb-4"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+
+          {/* Header */}
+          <div className="text-center mb-8">
+            <div className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-10 h-10 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-black text-white mb-1">Workout Complete!</h2>
+            <p className="text-wf-gray-400 text-sm">{template.name}</p>
+          </div>
+
+          {/* Stats Grid */}
+          <div className="grid grid-cols-3 gap-3 mb-6">
+            <div className="glass-card rounded-xl p-3 text-center">
+              <p className="text-xs text-wf-gray-500 uppercase tracking-wider mb-1">Time</p>
+              <p className="text-lg font-black text-white tabular-nums">{formatTime(elapsed)}</p>
+            </div>
+            <div className="glass-card rounded-xl p-3 text-center">
+              <p className="text-xs text-wf-gray-500 uppercase tracking-wider mb-1">Volume</p>
+              <p className="text-lg font-black text-white tabular-nums">{totalVolume.toLocaleString()}<span className="text-xs font-medium text-wf-gray-500"> lbs</span></p>
+            </div>
+            <div className="glass-card rounded-xl p-3 text-center">
+              <p className="text-xs text-wf-gray-500 uppercase tracking-wider mb-1">Sets</p>
+              <p className="text-lg font-black text-white tabular-nums">{completedSets.size}<span className="text-xs font-medium text-wf-gray-500">/{totalSets}</span></p>
+            </div>
+          </div>
+
+          {/* Exercise Breakdown */}
+          <div className="space-y-2">
+            <p className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-medium mb-1">Exercise Breakdown</p>
+            {exerciseStats.map((ex) => (
+              <div key={ex.name} className="glass-card rounded-xl px-4 py-3">
+                <div className="flex items-center justify-between mb-2.5">
+                  <span className="text-sm font-medium text-white truncate mr-2">{ex.name}</span>
+                  <span className="text-xs text-wf-gray-400 tabular-nums shrink-0">
+                    {ex.totalActual}/{ex.totalGoal} reps
+                  </span>
+                </div>
+                <div className="space-y-1.5">
+                  {ex.setStats.map((ss) => {
+                    const maxRatio = 1.25;
+                    const ratio = ss.goal > 0 ? ss.actual / ss.goal : 0;
+                    const barPct = Math.min(100, (ratio / maxRatio) * 100);
+                    const tickPos = (1 / maxRatio) * 100; // 80%
+                    const barColor = ratio > 1 ? 'bg-green-500' : ratio === 1 ? 'bg-yellow-500' : 'bg-red-500';
+
+                    return (
+                      <div key={ss.setNumber} className="flex items-center gap-2">
+                        <span className="text-[10px] text-wf-gray-500 w-5 shrink-0 text-right tabular-nums">{ss.setNumber}</span>
+                        <div className="relative flex-1 h-2 rounded-full bg-white/10 overflow-hidden">
+                          <div
+                            className={`absolute inset-y-0 left-0 rounded-full transition-all duration-700 ease-out ${barColor}`}
+                            style={{ width: `${barPct}%` }}
+                          />
+                          <div
+                            className="absolute top-0 bottom-0 w-0.5 bg-white/50"
+                            style={{ left: `${tickPos}%` }}
+                          />
+                        </div>
+                        <span className="text-[10px] text-wf-gray-400 w-14 shrink-0 text-right tabular-nums">
+                          {ss.actual}/{ss.goal}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Done button */}
+      <div className="relative z-20 p-4 bg-gradient-to-t from-black via-black/95 to-transparent safe-bottom">
+        <button
+          onClick={onClose}
+          className="w-full btn-gradient text-white font-bold py-4 rounded-xl text-base active:scale-[0.98] transition-all"
+        >
+          Done
+        </button>
       </div>
     </div>
   );

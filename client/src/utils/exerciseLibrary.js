@@ -1,0 +1,232 @@
+// Each exercise has: name, muscle (primary muscle group), movement pattern tags
+// Tags help rank substitution quality — more shared tags = closer substitute
+
+const EXERCISES = [
+  // === CHEST ===
+  { name: 'Barbell Bench Press', muscle: 'Chest', tags: ['press', 'horizontal', 'barbell', 'compound'] },
+  { name: 'Incline Bench Press', muscle: 'Chest', tags: ['press', 'incline', 'barbell', 'compound'] },
+  { name: 'Incline Dumbbell Press', muscle: 'Chest', tags: ['press', 'incline', 'dumbbell', 'compound'] },
+  { name: 'Dumbbell Bench Press', muscle: 'Chest', tags: ['press', 'horizontal', 'dumbbell', 'compound'] },
+  { name: 'Decline Bench Press', muscle: 'Chest', tags: ['press', 'decline', 'barbell', 'compound'] },
+  { name: 'Chest Fly', muscle: 'Chest', tags: ['fly', 'isolation', 'dumbbell'] },
+  { name: 'Cable Fly', muscle: 'Chest', tags: ['fly', 'isolation', 'cable'] },
+  { name: 'Incline Cable Fly', muscle: 'Chest', tags: ['fly', 'incline', 'isolation', 'cable'] },
+  { name: 'Chest Dips', muscle: 'Chest', tags: ['press', 'bodyweight', 'compound', 'dip'] },
+  { name: 'Machine Chest Press', muscle: 'Chest', tags: ['press', 'horizontal', 'machine', 'compound'] },
+  { name: 'Pec Deck', muscle: 'Chest', tags: ['fly', 'isolation', 'machine'] },
+  { name: 'Push-Ups', muscle: 'Chest', tags: ['press', 'horizontal', 'bodyweight', 'compound'] },
+  { name: 'Close-Grip Push-Ups', muscle: 'Chest', tags: ['press', 'horizontal', 'bodyweight', 'compound', 'triceps'] },
+  { name: 'Close-Grip Bench Press', muscle: 'Chest', tags: ['press', 'horizontal', 'barbell', 'compound', 'triceps'] },
+
+  // === SHOULDERS ===
+  { name: 'Overhead Press', muscle: 'Shoulders', tags: ['press', 'vertical', 'barbell', 'compound'] },
+  { name: 'Seated Shoulder Press (DB)', muscle: 'Shoulders', tags: ['press', 'vertical', 'dumbbell', 'compound', 'seated'] },
+  { name: 'Dumbbell Shoulder Press', muscle: 'Shoulders', tags: ['press', 'vertical', 'dumbbell', 'compound'] },
+  { name: 'Arnold Press', muscle: 'Shoulders', tags: ['press', 'vertical', 'dumbbell', 'compound', 'rotation'] },
+  { name: 'Military Press', muscle: 'Shoulders', tags: ['press', 'vertical', 'barbell', 'compound'] },
+  { name: 'Lateral Raises', muscle: 'Shoulders', tags: ['raise', 'lateral', 'isolation', 'dumbbell'] },
+  { name: 'Dumbbell Lateral Raise', muscle: 'Shoulders', tags: ['raise', 'lateral', 'isolation', 'dumbbell'] },
+  { name: 'Cable Lateral Raise', muscle: 'Shoulders', tags: ['raise', 'lateral', 'isolation', 'cable'] },
+  { name: 'Front Raise', muscle: 'Shoulders', tags: ['raise', 'front', 'isolation', 'dumbbell'] },
+  { name: 'Rear Delt Fly', muscle: 'Shoulders', tags: ['fly', 'rear', 'isolation', 'dumbbell'] },
+  { name: 'Reverse Pec Deck', muscle: 'Shoulders', tags: ['fly', 'rear', 'isolation', 'machine'] },
+  { name: 'Face Pulls', muscle: 'Shoulders', tags: ['pull', 'rear', 'cable', 'compound'] },
+  { name: 'Upright Row', muscle: 'Shoulders', tags: ['pull', 'vertical', 'barbell', 'compound', 'traps'] },
+  { name: 'Machine Shoulder Press', muscle: 'Shoulders', tags: ['press', 'vertical', 'machine', 'compound'] },
+
+  // === BACK ===
+  { name: 'Lat Pulldown', muscle: 'Back', tags: ['pull', 'vertical', 'cable', 'compound', 'lats'] },
+  { name: 'Wide-Grip Cable Pulldowns', muscle: 'Back', tags: ['pull', 'vertical', 'cable', 'compound', 'lats', 'wide'] },
+  { name: 'Close-Grip Pulldown', muscle: 'Back', tags: ['pull', 'vertical', 'cable', 'compound', 'lats'] },
+  { name: 'Pull Ups', muscle: 'Back', tags: ['pull', 'vertical', 'bodyweight', 'compound', 'lats'] },
+  { name: 'Pull-Ups', muscle: 'Back', tags: ['pull', 'vertical', 'bodyweight', 'compound', 'lats'] },
+  { name: 'Supinated Weighted Pull-Ups', muscle: 'Back', tags: ['pull', 'vertical', 'bodyweight', 'compound', 'lats', 'weighted'] },
+  { name: 'Chin-Ups', muscle: 'Back', tags: ['pull', 'vertical', 'bodyweight', 'compound', 'lats', 'biceps'] },
+  { name: 'Barbell Row', muscle: 'Back', tags: ['row', 'horizontal', 'barbell', 'compound'] },
+  { name: 'Dumbbell Row', muscle: 'Back', tags: ['row', 'horizontal', 'dumbbell', 'compound', 'unilateral'] },
+  { name: 'Seated Cable Row', muscle: 'Back', tags: ['row', 'horizontal', 'cable', 'compound', 'seated'] },
+  { name: 'Cable Rows', muscle: 'Back', tags: ['row', 'horizontal', 'cable', 'compound'] },
+  { name: 'T-Bar Row', muscle: 'Back', tags: ['row', 'horizontal', 'barbell', 'compound'] },
+  { name: 'Pendlay Row', muscle: 'Back', tags: ['row', 'horizontal', 'barbell', 'compound'] },
+  { name: 'Machine Row', muscle: 'Back', tags: ['row', 'horizontal', 'machine', 'compound'] },
+  { name: 'Straight-Arm Pulldowns', muscle: 'Back', tags: ['pull', 'isolation', 'cable', 'lats'] },
+  { name: 'Back Hyperextension', muscle: 'Back', tags: ['hinge', 'bodyweight', 'lower back'] },
+  { name: 'Deadlift', muscle: 'Back', tags: ['hinge', 'barbell', 'compound', 'posterior'] },
+
+  // === TRAPS ===
+  { name: 'Barbell Shrugs', muscle: 'Traps', tags: ['shrug', 'barbell', 'isolation'] },
+  { name: 'Dumbbell Shrugs', muscle: 'Traps', tags: ['shrug', 'dumbbell', 'isolation'] },
+  { name: 'Trap Bar Shrugs', muscle: 'Traps', tags: ['shrug', 'barbell', 'isolation'] },
+  { name: 'Cable Shrugs', muscle: 'Traps', tags: ['shrug', 'cable', 'isolation'] },
+
+  // === BICEPS ===
+  { name: 'Barbell Curl', muscle: 'Biceps', tags: ['curl', 'barbell', 'isolation'] },
+  { name: 'Barbell Curls', muscle: 'Biceps', tags: ['curl', 'barbell', 'isolation'] },
+  { name: 'EZ Bar Curl', muscle: 'Biceps', tags: ['curl', 'barbell', 'isolation'] },
+  { name: 'Dumbbell Curl', muscle: 'Biceps', tags: ['curl', 'dumbbell', 'isolation'] },
+  { name: 'Hammer Curl (DB)', muscle: 'Biceps', tags: ['curl', 'dumbbell', 'isolation', 'hammer', 'brachialis'] },
+  { name: 'Hammer Curls', muscle: 'Biceps', tags: ['curl', 'dumbbell', 'isolation', 'hammer', 'brachialis'] },
+  { name: 'Hammer Curls (warm-up)', muscle: 'Biceps', tags: ['curl', 'dumbbell', 'isolation', 'hammer', 'brachialis'] },
+  { name: 'Incline Dumbbell Curl', muscle: 'Biceps', tags: ['curl', 'dumbbell', 'isolation', 'incline'] },
+  { name: 'Preacher Curl', muscle: 'Biceps', tags: ['curl', 'isolation', 'preacher'] },
+  { name: 'Banded Preacher Curls', muscle: 'Biceps', tags: ['curl', 'isolation', 'preacher', 'band'] },
+  { name: 'Cable Curl', muscle: 'Biceps', tags: ['curl', 'cable', 'isolation'] },
+  { name: 'Single-Arm Cable Curls', muscle: 'Biceps', tags: ['curl', 'cable', 'isolation', 'unilateral'] },
+  { name: 'Pyramid Single-Arm Cable Curls', muscle: 'Biceps', tags: ['curl', 'cable', 'isolation', 'unilateral', 'pyramid'] },
+  { name: 'Concentration Curl', muscle: 'Biceps', tags: ['curl', 'dumbbell', 'isolation', 'seated'] },
+  { name: 'Spider Curl', muscle: 'Biceps', tags: ['curl', 'isolation', 'incline'] },
+  { name: 'Bicep Curls', muscle: 'Biceps', tags: ['curl', 'isolation'] },
+  { name: 'Reverse Curl', muscle: 'Biceps', tags: ['curl', 'barbell', 'isolation', 'forearm'] },
+
+  // === TRICEPS ===
+  { name: 'Cable Tricep Pushdown', muscle: 'Triceps', tags: ['pushdown', 'cable', 'isolation'] },
+  { name: 'Tricep Pushdowns', muscle: 'Triceps', tags: ['pushdown', 'cable', 'isolation'] },
+  { name: 'Overhead Tricep Extension (rope)', muscle: 'Triceps', tags: ['extension', 'overhead', 'cable', 'isolation'] },
+  { name: 'Overhead Triceps Extension', muscle: 'Triceps', tags: ['extension', 'overhead', 'isolation'] },
+  { name: 'Tricep Extensions', muscle: 'Triceps', tags: ['extension', 'isolation'] },
+  { name: 'Skull Crushers', muscle: 'Triceps', tags: ['extension', 'barbell', 'isolation', 'lying'] },
+  { name: 'Tricep Dips', muscle: 'Triceps', tags: ['dip', 'bodyweight', 'compound'] },
+  { name: 'Tricep Kickback', muscle: 'Triceps', tags: ['extension', 'dumbbell', 'isolation'] },
+  { name: 'Diamond Push-Ups', muscle: 'Triceps', tags: ['press', 'bodyweight', 'compound'] },
+
+  // === QUADS ===
+  { name: 'Back Squat', muscle: 'Quads', tags: ['squat', 'barbell', 'compound', 'bilateral'] },
+  { name: 'BB Squats', muscle: 'Quads', tags: ['squat', 'barbell', 'compound', 'bilateral'] },
+  { name: 'Front Squat', muscle: 'Quads', tags: ['squat', 'barbell', 'compound', 'bilateral'] },
+  { name: 'Goblet Squat', muscle: 'Quads', tags: ['squat', 'dumbbell', 'compound', 'bilateral'] },
+  { name: 'Hack Squat', muscle: 'Quads', tags: ['squat', 'machine', 'compound', 'bilateral'] },
+  { name: 'Leg Press', muscle: 'Quads', tags: ['press', 'machine', 'compound', 'bilateral'] },
+  { name: 'Single Leg Leg Press', muscle: 'Quads', tags: ['press', 'machine', 'compound', 'unilateral'] },
+  { name: 'Leg Extension', muscle: 'Quads', tags: ['extension', 'machine', 'isolation'] },
+  { name: 'Leg Extensions', muscle: 'Quads', tags: ['extension', 'machine', 'isolation'] },
+  { name: 'Bulgarian Split Squats', muscle: 'Quads', tags: ['squat', 'dumbbell', 'compound', 'unilateral', 'lunge'] },
+  { name: 'Bulgarian Split Squat', muscle: 'Quads', tags: ['squat', 'dumbbell', 'compound', 'unilateral', 'lunge'] },
+  { name: 'Smith Machine Squat', muscle: 'Quads', tags: ['squat', 'machine', 'compound', 'bilateral'] },
+  { name: 'Sissy Squat', muscle: 'Quads', tags: ['squat', 'bodyweight', 'isolation'] },
+  { name: 'Jump Squats', muscle: 'Quads', tags: ['squat', 'bodyweight', 'plyometric'] },
+  { name: 'Box Jumps', muscle: 'Quads', tags: ['jump', 'bodyweight', 'plyometric'] },
+
+  // === HAMSTRINGS ===
+  { name: 'Romanian Deadlift', muscle: 'Hamstrings', tags: ['hinge', 'barbell', 'compound', 'bilateral'] },
+  { name: 'Stiff Leg Deadlift', muscle: 'Hamstrings', tags: ['hinge', 'barbell', 'compound', 'bilateral'] },
+  { name: 'Dumbbell RDL', muscle: 'Hamstrings', tags: ['hinge', 'dumbbell', 'compound', 'bilateral'] },
+  { name: 'Single-Leg RDL', muscle: 'Hamstrings', tags: ['hinge', 'dumbbell', 'compound', 'unilateral'] },
+  { name: 'Good Morning', muscle: 'Hamstrings', tags: ['hinge', 'barbell', 'compound', 'bilateral'] },
+  { name: 'Leg Curl', muscle: 'Hamstrings', tags: ['curl', 'machine', 'isolation'] },
+  { name: 'Leg Curls', muscle: 'Hamstrings', tags: ['curl', 'machine', 'isolation'] },
+  { name: 'Hamstring Curl', muscle: 'Hamstrings', tags: ['curl', 'machine', 'isolation'] },
+  { name: 'Nordic Hamstring Curl', muscle: 'Hamstrings', tags: ['curl', 'bodyweight', 'isolation'] },
+  { name: 'Seated Leg Curl', muscle: 'Hamstrings', tags: ['curl', 'machine', 'isolation', 'seated'] },
+  { name: 'Cable Pull-Through', muscle: 'Hamstrings', tags: ['hinge', 'cable', 'compound'] },
+
+  // === GLUTES ===
+  { name: 'Hip Thrust', muscle: 'Glutes', tags: ['thrust', 'barbell', 'compound'] },
+  { name: 'Barbell Hip Thrust', muscle: 'Glutes', tags: ['thrust', 'barbell', 'compound'] },
+  { name: 'Dumbbell Sumo Squat', muscle: 'Glutes', tags: ['squat', 'dumbbell', 'compound', 'sumo'] },
+  { name: 'Sumo Deadlift', muscle: 'Glutes', tags: ['hinge', 'barbell', 'compound', 'sumo'] },
+  { name: 'Glute Bridge', muscle: 'Glutes', tags: ['bridge', 'bodyweight', 'isolation'] },
+  { name: 'Dumbbell Glute Bridge', muscle: 'Glutes', tags: ['bridge', 'dumbbell', 'isolation'] },
+  { name: 'Cable Glute Kickback', muscle: 'Glutes', tags: ['kickback', 'cable', 'isolation', 'unilateral'] },
+  { name: 'Standing Kickbacks', muscle: 'Glutes', tags: ['kickback', 'bodyweight', 'isolation', 'unilateral'] },
+  { name: 'Prone Glute Leg Raise', muscle: 'Glutes', tags: ['raise', 'bodyweight', 'isolation'] },
+  { name: 'Band Walks', muscle: 'Glutes', tags: ['abduction', 'band', 'isolation'] },
+  { name: 'Bodyweight Frog Pumps', muscle: 'Glutes', tags: ['bridge', 'bodyweight', 'isolation'] },
+  { name: 'Frog Pumps', muscle: 'Glutes', tags: ['bridge', 'bodyweight', 'isolation'] },
+  { name: 'Banded Abductions', muscle: 'Glutes', tags: ['abduction', 'band', 'isolation'] },
+  { name: 'Seated Abduction Machine', muscle: 'Glutes', tags: ['abduction', 'machine', 'isolation'] },
+  { name: 'Dumbbell Step-Ups', muscle: 'Glutes', tags: ['step', 'dumbbell', 'compound', 'unilateral'] },
+
+  // === LUNGES (multi-muscle) ===
+  { name: 'BB Lunges', muscle: 'Quads', tags: ['lunge', 'barbell', 'compound', 'unilateral'] },
+  { name: 'Walking Lunges', muscle: 'Quads', tags: ['lunge', 'compound', 'unilateral', 'walking'] },
+  { name: 'DB Walking Lunges', muscle: 'Quads', tags: ['lunge', 'dumbbell', 'compound', 'unilateral', 'walking'] },
+  { name: 'DB Walking Lunges (Left)', muscle: 'Quads', tags: ['lunge', 'dumbbell', 'compound', 'unilateral', 'walking', 'single-leg'] },
+  { name: 'DB Walking Lunges (Right)', muscle: 'Quads', tags: ['lunge', 'dumbbell', 'compound', 'unilateral', 'walking', 'single-leg'] },
+  { name: 'Reverse Lunges', muscle: 'Quads', tags: ['lunge', 'compound', 'unilateral'] },
+
+  // === CALVES ===
+  { name: 'Standing Calf Raise', muscle: 'Calves', tags: ['raise', 'machine', 'isolation', 'standing'] },
+  { name: 'Standing Calf Raises', muscle: 'Calves', tags: ['raise', 'machine', 'isolation', 'standing'] },
+  { name: 'Calf Raises', muscle: 'Calves', tags: ['raise', 'isolation'] },
+  { name: 'Seated Calf Raise', muscle: 'Calves', tags: ['raise', 'machine', 'isolation', 'seated'] },
+  { name: 'Donkey Calf Raise', muscle: 'Calves', tags: ['raise', 'machine', 'isolation'] },
+  { name: 'Smith Machine Calf Raise', muscle: 'Calves', tags: ['raise', 'machine', 'isolation', 'standing'] },
+
+  // === HIPS ===
+  { name: 'Hip Abduction', muscle: 'Hips', tags: ['abduction', 'machine', 'isolation'] },
+  { name: 'Hip Adduction', muscle: 'Hips', tags: ['adduction', 'machine', 'isolation'] },
+  { name: 'Cable Hip Abduction', muscle: 'Hips', tags: ['abduction', 'cable', 'isolation'] },
+  { name: 'Cable Hip Adduction', muscle: 'Hips', tags: ['adduction', 'cable', 'isolation'] },
+
+  // === CORE ===
+  { name: 'Planks', muscle: 'Core', tags: ['isometric', 'bodyweight'] },
+  { name: 'Plank', muscle: 'Core', tags: ['isometric', 'bodyweight'] },
+  { name: 'Hanging Leg Raises', muscle: 'Core', tags: ['raise', 'bodyweight', 'lower abs'] },
+  { name: 'Cable Crunch', muscle: 'Core', tags: ['crunch', 'cable'] },
+  { name: 'Ab Rollout', muscle: 'Core', tags: ['rollout', 'bodyweight'] },
+  { name: 'Russian Twist', muscle: 'Core', tags: ['rotation', 'bodyweight'] },
+  { name: 'Leg Raises', muscle: 'Core', tags: ['raise', 'bodyweight', 'lower abs'] },
+  { name: 'Bicycle Crunches', muscle: 'Core', tags: ['crunch', 'bodyweight', 'rotation'] },
+  { name: 'Mountain Climbers', muscle: 'Core', tags: ['bodyweight', 'cardio'] },
+  { name: 'Dead Bug', muscle: 'Core', tags: ['stability', 'bodyweight'] },
+
+  // === CARDIO / CONDITIONING ===
+  { name: 'Cardio', muscle: 'Cardio', tags: ['cardio', 'conditioning'] },
+  { name: 'Incline Walk or Stair Climber', muscle: 'Cardio', tags: ['cardio', 'conditioning', 'lower body'] },
+  { name: 'Treadmill', muscle: 'Cardio', tags: ['cardio', 'conditioning'] },
+  { name: 'Rowing Machine', muscle: 'Cardio', tags: ['cardio', 'conditioning', 'full body'] },
+  { name: 'Battle Ropes', muscle: 'Cardio', tags: ['cardio', 'conditioning', 'upper body'] },
+];
+
+// Build a lookup map for O(1) access
+const exerciseMap = new Map();
+for (const ex of EXERCISES) {
+  exerciseMap.set(ex.name.toLowerCase(), ex);
+}
+
+/**
+ * Find the best substitutes for a given exercise.
+ * Scoring: same muscle = base, + bonus per shared tag.
+ * Returns all exercises sorted by relevance (best substitutes first).
+ */
+export function getSubstitutes(exerciseName) {
+  const lower = exerciseName.toLowerCase();
+  const source = exerciseMap.get(lower);
+
+  if (!source) {
+    // Unknown exercise — return all exercises sorted alphabetically by muscle group
+    return EXERCISES
+      .filter((e) => e.name !== exerciseName)
+      .sort((a, b) => a.muscle.localeCompare(b.muscle) || a.name.localeCompare(b.name));
+  }
+
+  const sourceTags = new Set(source.tags);
+
+  return EXERCISES
+    .filter((e) => e.name !== exerciseName)
+    .map((e) => {
+      let score = 0;
+      // Same muscle group is the strongest signal
+      if (e.muscle === source.muscle) score += 10;
+      // Count shared tags
+      for (const tag of e.tags) {
+        if (sourceTags.has(tag)) score += 2;
+      }
+      return { ...e, score };
+    })
+    .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+}
+
+/**
+ * Get all exercises (for browsing / search).
+ */
+export function getAllExercises() {
+  return EXERCISES;
+}
+
+/**
+ * Get all unique muscle groups.
+ */
+export function getMuscleGroups() {
+  return [...new Set(EXERCISES.map((e) => e.muscle))];
+}
