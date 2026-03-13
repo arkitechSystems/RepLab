@@ -1,5 +1,173 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { api } from '../api';
 import StickyHeader from '../components/StickyHeader';
+
+const MUSCLE_GROUPS = [
+  'Chest', 'Shoulders', 'Traps', 'Biceps', 'Back', 'Triceps', 'Quads', 'Glutes', 'Hamstrings',
+];
+
+const MUSCLE_KEYWORDS = {
+  Chest: ['bench press', 'chest', 'fly', 'flye', 'dip', 'push up', 'pushup', 'pec'],
+  Shoulders: ['shoulder press', 'overhead press', 'lateral raise', 'front raise', 'face pull', 'delt', 'arnold', 'military press'],
+  Traps: ['shrug', 'trap', 'upright row'],
+  Biceps: ['curl', 'bicep', 'hammer curl', 'preacher'],
+  Back: ['row', 'pulldown', 'pull-up', 'pull up', 'pullup', 'lat', 'deadlift', 'back'],
+  Triceps: ['tricep', 'pushdown', 'skull crusher', 'close grip', 'extension', 'kickback'],
+  Quads: ['squat', 'leg press', 'leg extension', 'lunge', 'split squat', 'front squat', 'quad'],
+  Glutes: ['hip thrust', 'glute', 'bridge', 'kickback'],
+  Hamstrings: ['hamstring', 'leg curl', 'romanian deadlift', 'rdl', 'stiff leg', 'nordic'],
+};
+
+// Order matters: more specific matches first
+const MUSCLE_PRIORITY = ['Hamstrings', 'Glutes', 'Quads', 'Traps', 'Biceps', 'Triceps', 'Shoulders', 'Chest', 'Back'];
+
+function classifyExercise(name) {
+  const lower = name.toLowerCase();
+  for (const group of MUSCLE_PRIORITY) {
+    if (MUSCLE_KEYWORDS[group].some((kw) => lower.includes(kw))) return group;
+  }
+  return null;
+}
+
+function PRsSection() {
+  const [pbs, setPbs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedGroup, setExpandedGroup] = useState(null);
+  const [expandedExercise, setExpandedExercise] = useState(null);
+
+  useEffect(() => {
+    api('/pbs')
+      .then(setPbs)
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  // Group PBs: muscleGroup -> exerciseName -> [{ weight, reps }]
+  const grouped = {};
+  for (const pb of pbs) {
+    const group = classifyExercise(pb.exerciseName);
+    if (!group) continue;
+    if (!grouped[group]) grouped[group] = {};
+    if (!grouped[group][pb.exerciseName]) grouped[group][pb.exerciseName] = [];
+    grouped[group][pb.exerciseName].push({ weight: pb.bestWeight, reps: pb.bestReps });
+  }
+  // Sort weights descending within each exercise
+  for (const group of Object.values(grouped)) {
+    for (const ex of Object.keys(group)) {
+      group[ex].sort((a, b) => b.weight - a.weight);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="glass-skeleton rounded-xl h-16" />
+        ))}
+      </div>
+    );
+  }
+
+  const hasAny = Object.keys(grouped).length > 0;
+
+  return (
+    <div className="space-y-2">
+      {!hasAny && (
+        <div className="glass-card rounded-xl p-6 text-center">
+          <p className="text-wf-gray-400 text-sm">No PRs recorded yet</p>
+          <p className="text-wf-gray-500 text-xs mt-1">Complete workouts to start tracking</p>
+        </div>
+      )}
+      {MUSCLE_GROUPS.filter((g) => grouped[g]).map((group) => {
+        const exercises = grouped[group];
+        const exerciseNames = Object.keys(exercises);
+        const isExpanded = expandedGroup === group;
+        const totalPRs = exerciseNames.reduce((s, ex) => s + exercises[ex].length, 0);
+
+        return (
+          <div key={group} className="glass-card rounded-xl overflow-hidden">
+            <button
+              onClick={() => { setExpandedGroup(isExpanded ? null : group); setExpandedExercise(null); }}
+              className="w-full px-4 py-3.5 flex items-center justify-between active:bg-white/5 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-wf-red/15 flex items-center justify-center shrink-0">
+                  <svg className="w-5 h-5 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M18.75 4.236c.982.143 1.954.317 2.916.52A6.003 6.003 0 0016.27 9.728M18.75 4.236V4.5c0 2.108-.966 3.99-2.48 5.228m0 0a6.66 6.66 0 01-2.077 1.07m-2.386 0a6.66 6.66 0 01-2.077-1.07" />
+                  </svg>
+                </div>
+                <div className="text-left">
+                  <h4 className="text-sm font-semibold text-white">{group}</h4>
+                  <p className="text-xs text-wf-gray-500">{exerciseNames.length} exercise{exerciseNames.length !== 1 ? 's' : ''} &middot; {totalPRs} PR{totalPRs !== 1 ? 's' : ''}</p>
+                </div>
+              </div>
+              <svg
+                className={`w-5 h-5 text-wf-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+              </svg>
+            </button>
+
+            {isExpanded && (
+              <div className="border-t border-white/10 px-3 pb-3">
+                {exerciseNames.map((exName) => {
+                  const records = exercises[exName];
+                  const isExExpanded = expandedExercise === exName;
+                  return (
+                    <div key={exName} className="mt-2">
+                      <button
+                        onClick={() => setExpandedExercise(isExExpanded ? null : exName)}
+                        className="w-full px-3 py-2.5 rounded-lg bg-white/5 flex items-center justify-between active:bg-white/10 transition-colors"
+                      >
+                        <span className="text-sm font-medium text-white">{exName}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-wf-gray-500">{records.length} weight{records.length !== 1 ? 's' : ''}</span>
+                          <svg
+                            className={`w-4 h-4 text-wf-gray-500 transition-transform duration-200 ${isExExpanded ? 'rotate-180' : ''}`}
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                          </svg>
+                        </div>
+                      </button>
+
+                      {isExExpanded && (
+                        <div className="mt-1.5 space-y-1 pl-2">
+                          {/* Column headers */}
+                          <div className="flex items-center px-3 py-1">
+                            <span className="flex-1 text-[10px] uppercase tracking-widest text-wf-gray-600">Weight</span>
+                            <span className="w-20 text-[10px] uppercase tracking-widest text-wf-gray-600 text-right">Best Reps</span>
+                          </div>
+                          {records.map((r) => (
+                            <div
+                              key={r.weight}
+                              className="flex items-center px-3 py-2 rounded-lg bg-white/[0.03]"
+                            >
+                              <span className="flex-1 text-sm text-white font-medium tabular-nums">
+                                {r.weight} <span className="text-xs text-wf-gray-500">lbs</span>
+                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <svg className="w-3.5 h-3.5 text-amber-400" viewBox="0 0 24 24" fill="currentColor">
+                                  <path fillRule="evenodd" d="M5.166 2.621v.858c-1.035.148-2.059.33-3.071.543a.75.75 0 00-.584.859 6.753 6.753 0 006.138 5.6 6.73 6.73 0 002.743 1.346A6.707 6.707 0 019.279 15H8.54c-1.036 0-1.875.84-1.875 1.875V19.5h-.75a.75.75 0 000 1.5h12.75a.75.75 0 000-1.5h-.75v-2.625c0-1.036-.84-1.875-1.875-1.875h-.739a6.707 6.707 0 01-1.112-3.173 6.73 6.73 0 002.743-1.347 6.753 6.753 0 006.139-5.6.75.75 0 00-.585-.858 47.077 47.077 0 00-3.07-.543V2.62a.75.75 0 00-.658-.744 49.22 49.22 0 00-6.093-.377c-2.063 0-4.096.128-6.093.377a.75.75 0 00-.657.744z" clipRule="evenodd" />
+                                </svg>
+                                <span className="text-sm font-bold text-amber-400 tabular-nums">{r.reps}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 function HIITTimer({ onClose }) {
   const [setup, setSetup] = useState(true);
@@ -32,6 +200,7 @@ function HIITTimer({ onClose }) {
     setSecondsLeft(workTime);
     setRunning(true);
     setPaused(false);
+    setSkipTransition(true);
   }
 
   function togglePause() {
@@ -103,9 +272,9 @@ function HIITTimer({ onClose }) {
     }
   }, [skipTransition]);
 
-  // Progress ring
+  // Progress ring — aim one step ahead so the 1s CSS transition stays in sync
   const maxTime = phase === 'work' ? workTime : phase === 'rest' ? restTime : 1;
-  const progress = phase === 'done' ? 1 : 1 - secondsLeft / maxTime;
+  const progress = phase === 'done' ? 1 : skipTransition ? 0 : Math.min(1, (maxTime - secondsLeft + 1) / maxTime);
   const circumference = 2 * Math.PI * 90;
   const strokeDashoffset = circumference * (1 - progress);
 
@@ -305,8 +474,17 @@ export default function Utilities() {
     <div>
       <StickyHeader title="Utilities" />
 
-      <div className="px-4">
+      <div className="px-4 space-y-4 pb-4">
+        {/* Personal Records */}
+        <div>
+          <h2 className="text-xs text-wf-gray-400 font-medium uppercase tracking-wider mb-2">Personal Records</h2>
+          <PRsSection />
+        </div>
+
         {/* HIIT Timer */}
+        <div>
+          <h2 className="text-xs text-wf-gray-400 font-medium uppercase tracking-wider mb-2">Tools</h2>
+        </div>
         <button
           onClick={() => setShowHIIT(true)}
           className="w-full glass-card rounded-xl p-5 active:scale-[0.98] transition-transform fade-slide-up text-left"

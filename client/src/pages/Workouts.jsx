@@ -75,6 +75,11 @@ export default function Workouts() {
   const [beginDateInput, setBeginDateInput] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [conflictInfo, setConflictInfo] = useState(null); // { conflicts: string[], pendingEntries: [] }
+  // Add Workout modal state
+  const [addWorkoutModal, setAddWorkoutModal] = useState(null); // template object
+  const [addDateInput, setAddDateInput] = useState('');
+  const [showAddDatePicker, setShowAddDatePicker] = useState(false);
+  const [addConflictInfo, setAddConflictInfo] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -138,6 +143,53 @@ export default function Workouts() {
   async function handleBeginDate() {
     if (!beginDateInput) return;
     await tryApply(beginModal, new Date(beginDateInput + 'T00:00:00'));
+  }
+
+  // Add single workout to calendar
+  function openAddWorkout(template) {
+    setAddWorkoutModal(template);
+    setAddDateInput('');
+    setShowAddDatePicker(false);
+    setAddConflictInfo(null);
+  }
+
+  function closeAddWorkoutModal() {
+    setAddWorkoutModal(null);
+    setAddDateInput('');
+    setShowAddDatePicker(false);
+    setAddConflictInfo(null);
+  }
+
+  async function tryAddWorkout(template, date) {
+    const dow = date.getDay();
+    const schedule = await api('/schedule');
+    const existing = schedule.find((s) => s.dayOfWeek === dow && s.templateId);
+    if (existing) {
+      setAddConflictInfo({
+        dayName: `${DAY_NAMES_FULL[dow]}, ${date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`,
+        entry: { dayOfWeek: dow, templateId: template.id },
+      });
+    } else {
+      await applyAddWorkout({ dayOfWeek: dow, templateId: template.id });
+    }
+  }
+
+  async function applyAddWorkout(entry) {
+    await api('/schedule', {
+      method: 'PUT',
+      body: JSON.stringify({ schedule: [entry] }),
+    });
+    closeAddWorkoutModal();
+    navigate('/');
+  }
+
+  async function handleAddToday() {
+    await tryAddWorkout(addWorkoutModal, new Date());
+  }
+
+  async function handleAddDate() {
+    if (!addDateInput) return;
+    await tryAddWorkout(addWorkoutModal, new Date(addDateInput + 'T00:00:00'));
   }
 
   // Build enriched program list by matching templates to their programId
@@ -343,7 +395,7 @@ export default function Workouts() {
                       </p>
                     </div>
 
-                    {/* Edit mode: delete button | Normal: edit button */}
+                    {/* Edit mode: delete button | Normal: add + edit buttons */}
                     {editMode ? (
                       <button
                         onClick={() => handleDeleteTemplate(t.id)}
@@ -354,14 +406,25 @@ export default function Workouts() {
                         </svg>
                       </button>
                     ) : !t.isRest ? (
-                      <button
-                        onClick={() => navigate(`/workouts/edit/${t.id}`)}
-                        className="w-10 h-10 rounded-full bg-wf-red/20 flex items-center justify-center shrink-0 active:bg-wf-red/40 transition-colors"
-                      >
-                        <svg className="w-5 h-5 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-                        </svg>
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => openAddWorkout(t)}
+                          className="h-9 px-3 rounded-lg bg-green-500/20 flex items-center justify-center shrink-0 active:bg-green-500/40 transition-colors"
+                        >
+                          <svg className="w-4 h-4 text-green-400 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                          </svg>
+                          <span className="text-xs font-semibold text-green-400">Add</span>
+                        </button>
+                        <button
+                          onClick={() => navigate(`/workouts/edit/${t.id}`)}
+                          className="w-9 h-9 rounded-lg bg-wf-red/20 flex items-center justify-center shrink-0 active:bg-wf-red/40 transition-colors"
+                        >
+                          <svg className="w-4 h-4 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                          </svg>
+                        </button>
+                      </div>
                     ) : null}
                   </div>
 
@@ -401,6 +464,8 @@ export default function Workouts() {
             </button>
           )}
         </div>
+
+        {renderAddWorkoutModals()}
       </div>
     );
   }
@@ -539,6 +604,95 @@ export default function Workouts() {
                 </button>
                 <button
                   onClick={() => applyEntries(conflictInfo.pendingEntries)}
+                  className="flex-1 bg-wf-red/90 hover:bg-wf-red text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+                >
+                  Overwrite
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  function renderAddWorkoutModals() {
+    return (
+      <>
+        {addWorkoutModal && !addConflictInfo && (
+          <div className="fixed inset-0 z-50 flex items-end" onClick={closeAddWorkoutModal}>
+            <div className="absolute inset-0 bg-black/60" />
+            <div
+              className="relative w-full bg-wf-gray-900 border-t border-white/10 rounded-t-2xl p-5 pb-24 animate-drop-down"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-5" />
+              <h3 className="text-lg font-black text-white mb-1">Add Workout</h3>
+              <p className="text-wf-gray-400 text-sm mb-5">
+                Add <span className="text-white font-semibold">{addWorkoutModal.name}</span> to your calendar.
+              </p>
+              {!showAddDatePicker ? (
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleAddToday}
+                    className="flex-1 btn-gradient text-white font-semibold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-all"
+                  >
+                    Begin Today
+                  </button>
+                  <button
+                    onClick={() => setShowAddDatePicker(true)}
+                    className="flex-1 glass-card text-white font-semibold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-all"
+                  >
+                    Choose Date
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-2 mt-1">
+                  <input
+                    type="date"
+                    value={addDateInput}
+                    min={new Date().toISOString().slice(0, 10)}
+                    onChange={(e) => setAddDateInput(e.target.value)}
+                    className="flex-1 glass-input rounded-xl px-3 py-3 text-white text-sm focus:outline-none"
+                    autoFocus
+                  />
+                  <button
+                    onClick={handleAddDate}
+                    disabled={!addDateInput}
+                    className="btn-gradient text-white font-semibold px-5 py-3 rounded-xl text-sm active:scale-[0.98] transition-all disabled:opacity-40"
+                  >
+                    Schedule
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {addConflictInfo && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-5" onClick={() => setAddConflictInfo(null)}>
+            <div className="absolute inset-0 bg-black/70" />
+            <div
+              className="relative w-full max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-base font-black text-white mb-2">Overwrite existing workout?</h3>
+              <p className="text-wf-gray-400 text-sm mb-3">
+                This will replace the current workout on:
+              </p>
+              <p className="text-sm font-semibold text-wf-red flex items-center gap-2 mb-5">
+                <span className="w-1.5 h-1.5 rounded-full bg-wf-red" />
+                {addConflictInfo.dayName}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setAddConflictInfo(null)}
+                  className="flex-1 glass-card text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => applyAddWorkout(addConflictInfo.entry)}
                   className="flex-1 bg-wf-red/90 hover:bg-wf-red text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
                 >
                   Overwrite
