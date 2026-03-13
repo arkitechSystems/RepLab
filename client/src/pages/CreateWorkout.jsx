@@ -104,7 +104,7 @@ export default function CreateWorkout() {
           programId: Number(selectedProgramId),
         }),
       });
-      navigate('/workouts');
+      navigate('/');
     } catch (err) {
       setError(err.message);
     } finally {

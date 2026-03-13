@@ -23,7 +23,7 @@ export default function CreateProgram() {
         method: 'POST',
         body: JSON.stringify({ name: programName.trim(), description: description.trim() }),
       });
-      navigate('/workouts');
+      navigate('/');
     } catch (err) {
       setError(err.message);
     } finally {

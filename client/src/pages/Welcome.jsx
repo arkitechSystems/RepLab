@@ -7,7 +7,7 @@ export default function Welcome() {
 
   function handleTour() {
     setShowComingSoon(true);
-    setTimeout(() => navigate('/workouts'), 1500);
+    setTimeout(() => navigate('/'), 1500);
   }
 
   if (showComingSoon) {
@@ -36,7 +36,7 @@ export default function Welcome() {
         </button>
 
         <button
-          onClick={() => navigate('/workouts')}
+          onClick={() => navigate('/')}
           className="text-wf-gray-500 text-sm hover:text-wf-gray-300 transition-colors"
         >
           skip

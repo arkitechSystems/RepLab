@@ -47,9 +47,9 @@ export default function App() {
           </ProtectedRoute>
         }
       >
-        <Route path="/" element={<Calendar />} />
+        <Route path="/" element={<Workouts />} />
+        <Route path="/calendar" element={<Calendar />} />
         <Route path="/session/:templateId/:date" element={<WorkoutSession />} />
-        <Route path="/workouts" element={<Workouts />} />
         <Route path="/workouts/create" element={<CreateWorkout />} />
         <Route path="/programs/create" element={<CreateProgram />} />
         <Route path="/workouts/edit/:id" element={<EditWorkout />} />

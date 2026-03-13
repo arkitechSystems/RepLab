@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 
 const tabs = [
   {
-    to: '/workouts',
+    to: '/',
     label: 'Workouts',
     outline: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -16,7 +16,7 @@ const tabs = [
     ),
   },
   {
-    to: '/',
+    to: '/calendar',
     label: 'Calendar',
     outline: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

@@ -108,7 +108,7 @@ export default function EditWorkout() {
           exercises: validExercises,
         }),
       });
-      navigate('/workouts');
+      navigate('/');
     } catch (err) {
       setError(err.message);
     } finally {

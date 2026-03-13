@@ -681,7 +681,7 @@ export default function WorkoutSession() {
           completedSets={completedSets}
           elapsed={elapsed}
           formatTime={formatTime}
-          onClose={() => { setShowSummary(false); navigate('/'); }}
+          onClose={() => { setShowSummary(false); navigate('/calendar'); }}
         />
       )}
 

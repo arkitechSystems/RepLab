@@ -139,7 +139,7 @@ export default function Workouts() {
       body: JSON.stringify({ schedule: entries.map(({ dayOfWeek, templateId }) => ({ dayOfWeek, templateId })) }),
     });
     closeBeginModal();
-    navigate('/');
+    navigate('/calendar');
   }
 
   async function handleStartToday() {
@@ -186,7 +186,7 @@ export default function Workouts() {
       body: JSON.stringify({ schedule: [entry] }),
     });
     closeAddWorkoutModal();
-    navigate('/');
+    navigate('/calendar');
   }
 
   async function handleAddToday() {
@@ -846,7 +846,7 @@ export default function Workouts() {
           method: 'PUT',
           body: JSON.stringify({ schedule: [{ dayOfWeek: dow, templateId }] }),
         });
-        navigate('/');
+        navigate('/calendar');
       }
     }
 
@@ -881,7 +881,7 @@ export default function Workouts() {
           method: 'PUT',
           body: JSON.stringify({ schedule: [{ dayOfWeek: dow, templateId }] }),
         });
-        navigate('/');
+        navigate('/calendar');
       }
     }
 
@@ -1040,7 +1040,7 @@ export default function Workouts() {
           </div>
         ) : (
           <div className="space-y-4 pb-4">
-            {/* New Workouts video card */}
+            {/* Featured Workouts video card */}
             <div
               className="w-full rounded-2xl overflow-hidden fade-slide-up relative"
               style={{ animationDelay: '0ms', minHeight: '200px' }}
@@ -1069,7 +1069,7 @@ export default function Workouts() {
               {/* Card content */}
               <div className="relative z-10 p-5 flex flex-col justify-end h-full" style={{ minHeight: '200px' }}>
                 <div className="mt-auto">
-                  <h2 className="text-2xl font-black text-white tracking-tight drop-shadow-lg">New Workouts</h2>
+                  <h2 className="text-2xl font-black text-white tracking-tight drop-shadow-lg">Featured Workouts</h2>
                   <p className="text-white/70 text-sm mt-1 drop-shadow">Watch the latest drops</p>
                 </div>
               </div>

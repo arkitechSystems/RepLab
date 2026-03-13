@@ -32,8 +32,6 @@ export default function SplashScreen({ onDone, persistent }) {
       className="fixed inset-0 z-[9999] bg-black flex items-center justify-center transition-opacity duration-500"
       style={{ opacity: fading ? 0 : 1 }}
     >
-      <div className="ambient-bg" />
-
       {/* Particle burst */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         {PARTICLES.map((p, i) => {
