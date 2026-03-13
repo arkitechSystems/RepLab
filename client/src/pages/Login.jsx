@@ -2,20 +2,26 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
+function isPhone(value) {
+  return /^\+?\d[\d\s\-().]{6,}$/.test(value.trim());
+}
+
 export default function Login() {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login, demo } = useAuth();
   const navigate = useNavigate();
 
+  const phone = isPhone(identifier);
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      await login(email, password);
+      await login(identifier, password);
       navigate('/');
     } catch (err) {
       setError(err.message);
@@ -44,14 +50,14 @@ export default function Login() {
           )}
 
           <div>
-            <label className="text-xs text-wf-gray-400 uppercase tracking-wider mb-1 block">Email</label>
+            <label className="text-xs text-wf-gray-400 uppercase tracking-wider mb-1 block">Email or Phone</label>
             <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
+              type={phone ? 'tel' : 'email'}
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              placeholder="Email or phone number"
               required
-              autoComplete="email"
+              autoComplete={phone ? 'tel' : 'email'}
               className="w-full glass-input rounded-xl px-4 py-3.5 text-white text-base placeholder:text-wf-gray-500 focus:outline-none transition-all"
             />
           </div>

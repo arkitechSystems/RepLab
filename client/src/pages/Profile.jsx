@@ -90,21 +90,29 @@ export default function Profile() {
           <div className="flex items-center gap-4 mb-6">
             <div className="w-16 h-16 rounded-full bg-wf-red/20 flex items-center justify-center">
               <span className="text-2xl font-bold text-wf-red">
-                {user?.email?.[0]?.toUpperCase() || 'W'}
+                {(user?.email || user?.phone || 'W')[0].toUpperCase()}
               </span>
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-white">{user?.email || 'User'}</h2>
+              <h2 className="text-lg font-semibold text-white">{user?.email || user?.phone || 'User'}</h2>
               <p className="text-wf-gray-400 text-sm">WILLFIT Member</p>
             </div>
           </div>
 
           {/* Info */}
           <div className="space-y-4 border-t border-white/10 pt-4">
-            <div className="flex justify-between items-center">
-              <span className="text-wf-gray-400 text-sm">Email</span>
-              <span className="text-white text-sm">{user?.email}</span>
-            </div>
+            {user?.email && (
+              <div className="flex justify-between items-center">
+                <span className="text-wf-gray-400 text-sm">Email</span>
+                <span className="text-white text-sm">{user.email}</span>
+              </div>
+            )}
+            {user?.phone && (
+              <div className="flex justify-between items-center">
+                <span className="text-wf-gray-400 text-sm">Phone</span>
+                <span className="text-white text-sm">{user.phone}</span>
+              </div>
+            )}
             <div className="flex justify-between items-center">
               <span className="text-wf-gray-400 text-sm">Account ID</span>
               <span className="text-wf-gray-500 text-sm">#{user?.id}</span>

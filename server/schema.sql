@@ -1,8 +1,10 @@
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
-  email TEXT UNIQUE NOT NULL,
+  email TEXT UNIQUE,
+  phone TEXT UNIQUE,
   password_hash TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT email_or_phone CHECK (email IS NOT NULL OR phone IS NOT NULL)
 );
 
 CREATE TABLE IF NOT EXISTS programs (

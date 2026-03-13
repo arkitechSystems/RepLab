@@ -4,26 +4,29 @@ const db = {
   // Users
   async getAllUsers() {
     const { rows } = await pool.query(
-      `SELECT id, email, created_at FROM users
-       WHERE email NOT LIKE '%@willfit.demo'
+      `SELECT id, email, phone, created_at FROM users
+       WHERE email NOT LIKE '%@willfit.demo' OR email IS NULL
        ORDER BY created_at DESC`
     );
-    return rows.map((u) => ({ id: u.id, email: u.email, createdAt: u.created_at }));
+    return rows.map((u) => ({ id: u.id, email: u.email, phone: u.phone, createdAt: u.created_at }));
   },
 
-  async findUserByEmail(email) {
-    const { rows } = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-    if (!rows[0]) return null;
-    return { id: rows[0].id, email: rows[0].email, passwordHash: rows[0].password_hash, createdAt: rows[0].created_at };
-  },
-
-  async createUser(email, passwordHash) {
+  async findUserByIdentifier(identifier) {
     const { rows } = await pool.query(
-      'INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING *',
-      [email, passwordHash]
+      'SELECT * FROM users WHERE email = $1 OR phone = $1',
+      [identifier]
+    );
+    if (!rows[0]) return null;
+    return { id: rows[0].id, email: rows[0].email, phone: rows[0].phone, passwordHash: rows[0].password_hash, createdAt: rows[0].created_at };
+  },
+
+  async createUser({ email, phone, passwordHash }) {
+    const { rows } = await pool.query(
+      'INSERT INTO users (email, phone, password_hash) VALUES ($1, $2, $3) RETURNING *',
+      [email || null, phone || null, passwordHash]
     );
     const u = rows[0];
-    return { id: u.id, email: u.email, passwordHash: u.password_hash, createdAt: u.created_at };
+    return { id: u.id, email: u.email, phone: u.phone, passwordHash: u.password_hash, createdAt: u.created_at };
   },
 
   // Programs

@@ -359,9 +359,9 @@ function HIITTimer({ onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col">
+    <div className="fixed inset-x-0 top-[40px] bottom-0 z-50 bg-black flex flex-col">
       {/* Header */}
-      <div className="safe-top px-4 pt-4 pb-2 flex items-center justify-between">
+      <div className="px-4 pt-3 pb-2 flex items-center justify-between">
         <button onClick={resetTimer} className="text-wf-red text-sm font-medium flex items-center gap-1 active:opacity-70">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
@@ -469,22 +469,35 @@ function HIITTimer({ onClose }) {
 
 export default function Utilities() {
   const [showHIIT, setShowHIIT] = useState(false);
+  const [showPRs, setShowPRs] = useState(false);
 
   return (
     <div>
       <StickyHeader title="Utilities" />
 
       <div className="px-4 space-y-4 pb-4">
-        {/* Personal Records */}
-        <div>
-          <h2 className="text-xs text-wf-gray-400 font-medium uppercase tracking-wider mb-2">Personal Records</h2>
-          <PRsSection />
-        </div>
+        {/* Personal Records card */}
+        <button
+          onClick={() => setShowPRs(true)}
+          className="w-full glass-card rounded-xl p-5 active:scale-[0.98] transition-transform fade-slide-up text-left"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-amber-500/15 flex items-center justify-center shrink-0">
+              <svg className="w-6 h-6 text-amber-400" viewBox="0 0 24 24" fill="currentColor">
+                <path fillRule="evenodd" d="M5.166 2.621v.858c-1.035.148-2.059.33-3.071.543a.75.75 0 00-.584.859 6.753 6.753 0 006.138 5.6 6.73 6.73 0 002.743 1.346A6.707 6.707 0 019.279 15H8.54c-1.036 0-1.875.84-1.875 1.875V19.5h-.75a.75.75 0 000 1.5h12.75a.75.75 0 000-1.5h-.75v-2.625c0-1.036-.84-1.875-1.875-1.875h-.739a6.707 6.707 0 01-1.112-3.173 6.73 6.73 0 002.743-1.347 6.753 6.753 0 006.139-5.6.75.75 0 00-.585-.858 47.077 47.077 0 00-3.07-.543V2.62a.75.75 0 00-.658-.744 49.22 49.22 0 00-6.093-.377c-2.063 0-4.096.128-6.093.377a.75.75 0 00-.657.744z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-base font-semibold text-white">Personal Records</h3>
+              <p className="text-wf-gray-400 text-sm mt-0.5">View your PRs by muscle group</p>
+            </div>
+            <svg className="w-5 h-5 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            </svg>
+          </div>
+        </button>
 
-        {/* HIIT Timer */}
-        <div>
-          <h2 className="text-xs text-wf-gray-400 font-medium uppercase tracking-wider mb-2">Tools</h2>
-        </div>
+        {/* HIIT Timer card */}
         <button
           onClick={() => setShowHIIT(true)}
           className="w-full glass-card rounded-xl p-5 active:scale-[0.98] transition-transform fade-slide-up text-left"
@@ -506,6 +519,23 @@ export default function Utilities() {
         </button>
       </div>
 
+      {showPRs && (
+        <div className="fixed inset-x-0 top-[40px] bottom-0 z-50 bg-black flex flex-col">
+          <div className="px-4 pt-3 pb-2 flex items-center justify-between">
+            <button onClick={() => setShowPRs(false)} className="text-wf-red text-sm font-medium flex items-center gap-1 active:opacity-70">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+              </svg>
+              Back
+            </button>
+            <h2 className="text-lg font-black text-white">Personal Records</h2>
+            <div className="w-12" />
+          </div>
+          <div className="flex-1 overflow-y-auto px-4 pb-6 pt-2">
+            <PRsSection />
+          </div>
+        </div>
+      )}
       {showHIIT && <HIITTimer onClose={() => setShowHIIT(false)} />}
     </div>
   );

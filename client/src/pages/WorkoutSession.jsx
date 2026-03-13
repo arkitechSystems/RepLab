@@ -19,6 +19,7 @@ export default function WorkoutSession() {
   const [completedSets, setCompletedSets] = useState(new Set());
   const [newPBs, setNewPBs] = useState(null);
   const [notes, setNotes] = useState({});
+  const [autoFilled, setAutoFilled] = useState(new Set()); // tracks predicted entries
   const [isCompleted, setIsCompleted] = useState(false);
   const [timerStarted, setTimerStarted] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -115,6 +116,12 @@ export default function WorkoutSession() {
       };
       return updated;
     });
+    // User manually edited this field, so it's no longer auto-filled
+    setAutoFilled((prev) => {
+      const next = new Set(prev);
+      next.delete(`${exerciseName}-${setIdx}`);
+      return next;
+    });
   }
 
   function handleAddSet(exerciseName) {
@@ -176,6 +183,21 @@ export default function WorkoutSession() {
       }
       return next;
     });
+    setAutoFilled((prev) => {
+      const next = new Set();
+      for (const key of prev) {
+        const [name, idxStr] = key.split(/-(?=\d+$)/);
+        const i = Number(idxStr);
+        if (name !== exerciseName) {
+          next.add(key);
+        } else if (i < setIdx) {
+          next.add(key);
+        } else if (i > setIdx) {
+          next.add(`${name}-${i - 1}`);
+        }
+      }
+      return next;
+    });
   }
 
   function handleNoteChange(exerciseName, value) {
@@ -216,6 +238,48 @@ export default function WorkoutSession() {
       }
       return next;
     });
+
+    // When completing a set, auto-fill subsequent uncompleted sets for this exercise
+    const isCompleting = !completedSets.has(key);
+    if (isCompleting) {
+      const exEntries = entries[exerciseName] || [];
+      const thisEntry = exEntries[setIdx];
+      const w = thisEntry?.weight;
+      const r = thisEntry?.reps;
+      if ((w !== '' && w !== undefined) || (r !== '' && r !== undefined)) {
+        const exercise = template.exercises.find((e) => e.name === exerciseName);
+        if (exercise) {
+          setEntries((prev) => {
+            const updated = { ...prev };
+            updated[exerciseName] = [...(updated[exerciseName] || [])];
+            const newAutoFilled = new Set(autoFilled);
+            for (let i = setIdx + 1; i < exercise.sets.length; i++) {
+              const laterKey = `${exerciseName}-${i}`;
+              // Only auto-fill if the set isn't already completed
+              if (!completedSets.has(laterKey)) {
+                const current = updated[exerciseName][i] || {};
+                // Only fill weight if user hasn't manually entered one
+                const currentWeight = current.weight;
+                const currentReps = current.reps;
+                const isCurrentAutoFilled = autoFilled.has(laterKey);
+                const weightEmpty = currentWeight === '' || currentWeight === undefined;
+                const repsEmpty = currentReps === '' || currentReps === undefined;
+                if (weightEmpty || repsEmpty || isCurrentAutoFilled) {
+                  updated[exerciseName][i] = {
+                    ...current,
+                    weight: w !== '' && w !== undefined ? w : current.weight,
+                    reps: r !== '' && r !== undefined ? r : current.reps,
+                  };
+                  newAutoFilled.add(laterKey);
+                }
+              }
+            }
+            setAutoFilled(newAutoFilled);
+            return updated;
+          });
+        }
+      }
+    }
   }
 
   async function handleShare() {
@@ -269,11 +333,13 @@ export default function WorkoutSession() {
       for (const ex of template.exercises) {
         const exEntries = entries[ex.name] || [];
         ex.sets.forEach((set, idx) => {
+          const key = `${ex.name}-${idx}`;
+          const isAutoOnly = autoFilled.has(key) && !completedSets.has(key);
           allEntries.push({
             exerciseName: ex.name,
             setNumber: set.setNumber,
-            weight: exEntries[idx]?.weight || 0,
-            reps: exEntries[idx]?.reps || 0,
+            weight: isAutoOnly ? 0 : (exEntries[idx]?.weight || 0),
+            reps: isAutoOnly ? 0 : (exEntries[idx]?.reps || 0),
           });
         });
       }
@@ -444,6 +510,7 @@ export default function WorkoutSession() {
               pbs={pbs}
               onChange={handleChange}
               completedSets={completedSets}
+              autoFilled={autoFilled}
               onToggleComplete={handleToggleComplete}
               onAddSet={handleAddSet}
               onDeleteSet={handleDeleteSet}

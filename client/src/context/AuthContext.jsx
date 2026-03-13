@@ -11,10 +11,10 @@ export function AuthProvider({ children }) {
 
   const [token, setToken] = useState(() => localStorage.getItem('willfit_token'));
 
-  const login = useCallback(async (email, password) => {
+  const login = useCallback(async (identifier, password) => {
     const data = await api('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ identifier, password }),
     });
     localStorage.setItem('willfit_token', data.token);
     localStorage.setItem('willfit_user', JSON.stringify(data.user));
@@ -23,10 +23,10 @@ export function AuthProvider({ children }) {
     return data;
   }, []);
 
-  const signup = useCallback(async (email, password) => {
+  const signup = useCallback(async (identifier, password) => {
     const data = await api('/auth/signup', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ identifier, password }),
     });
     localStorage.setItem('willfit_token', data.token);
     localStorage.setItem('willfit_user', JSON.stringify(data.user));

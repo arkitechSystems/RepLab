@@ -18,6 +18,8 @@ export default async function initDb() {
   await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS exercise_description TEXT DEFAULT ''`);
   await pool.query(`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS notes JSONB DEFAULT '{}'`);
   await pool.query(`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS completed BOOLEAN DEFAULT FALSE`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT UNIQUE`);
+  await pool.query(`ALTER TABLE users ALTER COLUMN email DROP NOT NULL`);
 
   console.log('Database schema initialized');
 
@@ -49,6 +51,18 @@ export default async function initDb() {
   const { rows: wpplRows } = await pool.query("SELECT id FROM programs WHERE name = $1 AND user_id IS NULL", ["Will's PPL"]);
   if (wpplRows.length === 0) {
     await seedWillsPPL();
+  }
+
+  // Seed Will's Legs 2 into existing Will's PPL if not already present
+  if (wpplRows.length > 0) {
+    const pplId = wpplRows[0].id;
+    const { rows: legs2Rows } = await pool.query(
+      "SELECT id FROM templates WHERE name = $1 AND program_id = $2",
+      ["Will's Legs 2", pplId]
+    );
+    if (legs2Rows.length === 0) {
+      await seedWillsLegs2(pplId);
+    }
   }
 }
 
@@ -467,6 +481,24 @@ async function seedWillsPPL() {
 
     const workouts = [
       {
+        name: "Will's Legs 2",
+        description: 'Quads, Hamstrings, Glutes, Calves',
+        sortOrder: 1,
+        exercises: [
+          { name: 'Leg Extensions', sets: 3, repRange: '10-12', description: 'Quad isolation movement. Focus on controlled contraction at the top.' },
+          { name: 'Leg Curls', sets: 3, repRange: '10-12', description: 'Hamstring isolation movement. Control the eccentric and squeeze at peak contraction.' },
+          { name: 'Single Leg Leg Press', sets: 3, repRange: '10', description: 'Unilateral leg press for quad and glute development. One leg at a time to address imbalances.' },
+          { name: 'BB Lunges', sets: 3, repRange: '10', description: 'Superset 1 of 3. Barbell lunges immediately into BB Squats and Calf Raises — no rest between exercises.' },
+          { name: 'BB Squats', sets: 3, repRange: '10', description: 'Superset 2 of 3. Performed immediately after BB Lunges. Keep the same barbell loaded.' },
+          { name: 'Calf Raises', sets: 3, repRange: '15', description: 'Superset 3 of 3. Performed immediately after BB Squats to finish the tri-set.' },
+          { name: 'DB Walking Lunges', sets: 1, repRange: '20', description: 'Dumbbell walking lunges for distance/reps. Both legs, continuous movement.' },
+          { name: 'DB Walking Lunges (Left)', sets: 1, repRange: '10', description: 'Single-leg dumbbell walking lunges — left leg only. Step with the left leg each rep.' },
+          { name: 'DB Walking Lunges (Right)', sets: 1, repRange: '10', description: 'Single-leg dumbbell walking lunges — right leg only. Step with the right leg each rep.' },
+          { name: 'Hip Abduction', sets: 2, repRange: '15', description: 'Machine hip abduction targeting the outer glutes and hip stabilizers.' },
+          { name: 'Hip Adduction', sets: 2, repRange: '15', description: 'Machine hip adduction targeting the inner thighs.' },
+        ],
+      },
+      {
         name: "Will's Pull 1",
         description: 'Back, Biceps, Rear Delts',
         sortOrder: 0,
@@ -506,6 +538,58 @@ async function seedWillsPPL() {
 
     await client.query('COMMIT');
     console.log("Seeded Will's PPL program");
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+async function seedWillsLegs2(programId) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Get current max sort_order for this program
+    const { rows: [maxRow] } = await client.query(
+      'SELECT COALESCE(MAX(sort_order), -1) AS max_sort FROM templates WHERE program_id = $1',
+      [programId]
+    );
+    const sortOrder = maxRow.max_sort + 1;
+
+    const exercises = [
+      { name: 'Leg Extensions', sets: 3, repRange: '10-12', description: 'Quad isolation movement. Focus on controlled contraction at the top.' },
+      { name: 'Leg Curls', sets: 3, repRange: '10-12', description: 'Hamstring isolation movement. Control the eccentric and squeeze at peak contraction.' },
+      { name: 'Single Leg Leg Press', sets: 3, repRange: '10', description: 'Unilateral leg press for quad and glute development. One leg at a time to address imbalances.' },
+      { name: 'BB Lunges', sets: 3, repRange: '10', description: 'Superset 1 of 3. Barbell lunges immediately into BB Squats and Calf Raises — no rest between exercises.' },
+      { name: 'BB Squats', sets: 3, repRange: '10', description: 'Superset 2 of 3. Performed immediately after BB Lunges. Keep the same barbell loaded.' },
+      { name: 'Calf Raises', sets: 3, repRange: '15', description: 'Superset 3 of 3. Performed immediately after BB Squats to finish the tri-set.' },
+      { name: 'DB Walking Lunges', sets: 1, repRange: '20', description: 'Dumbbell walking lunges for distance/reps. Both legs, continuous movement.' },
+      { name: 'DB Walking Lunges (Left)', sets: 1, repRange: '10', description: 'Single-leg dumbbell walking lunges — left leg only. Step with the left leg each rep.' },
+      { name: 'DB Walking Lunges (Right)', sets: 1, repRange: '10', description: 'Single-leg dumbbell walking lunges — right leg only. Step with the right leg each rep.' },
+      { name: 'Hip Abduction', sets: 2, repRange: '15', description: 'Machine hip abduction targeting the outer glutes and hip stabilizers.' },
+      { name: 'Hip Adduction', sets: 2, repRange: '15', description: 'Machine hip adduction targeting the inner thighs.' },
+    ];
+
+    const { rows: [tmpl] } = await client.query(
+      'INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES (NULL, $1, $2, $3, FALSE, $4) RETURNING id',
+      [programId, "Will's Legs 2", 'Quads, Hamstrings, Glutes, Calves', sortOrder]
+    );
+
+    let exSort = 0;
+    for (const ex of exercises) {
+      for (let i = 0; i < ex.sets; i++) {
+        await client.query(
+          'INSERT INTO template_exercises (template_id, name, set_number, planned_reps, suggested_weight, sort_order, rep_range, exercise_description) VALUES ($1, $2, $3, $4, 0, $5, $6, $7)',
+          [tmpl.id, ex.name, i + 1, parseInt(ex.repRange) || 10, exSort, ex.repRange, ex.description]
+        );
+      }
+      exSort++;
+    }
+
+    await client.query('COMMIT');
+    console.log("Seeded Will's Legs 2 template");
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;

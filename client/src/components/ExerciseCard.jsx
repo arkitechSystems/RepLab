@@ -2,11 +2,12 @@ import { useState, useRef, useCallback } from 'react';
 import { getExerciseVideoId, getExerciseSearchUrl } from '../utils/exerciseVideos.js';
 import VideoPlayerModal from './VideoPlayerModal.jsx';
 
-export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnly, completedSets, onToggleComplete, onAddSet, onDeleteSet, note, onNoteChange }) {
+export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnly, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, note, onNoteChange }) {
   const exercisePbs = pbs?.[exercise.name] || {};
   const videoId = getExerciseVideoId(exercise.name);
   const [showVideo, setShowVideo] = useState(false);
   const [deleteIdx, setDeleteIdx] = useState(null);
+  const [confirmDeleteLast, setConfirmDeleteLast] = useState(false);
   const longPressRef = useRef(null);
 
   const handleTouchStart = useCallback((idx) => {
@@ -46,15 +47,36 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
           </svg>
         </button>
         {!readOnly && onAddSet && (
-          <button
-            type="button"
-            onClick={() => onAddSet(exercise.name)}
-            className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-white hover:bg-white/20 active:scale-90 transition-all"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => onAddSet(exercise.name)}
+              className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-white hover:bg-white/20 active:scale-90 transition-all"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+            </button>
+            {onDeleteSet && exercise.sets.length > 1 && (
+              <button
+                type="button"
+                onClick={() => {
+                  const lastIdx = exercise.sets.length - 1;
+                  const lastKey = `${exercise.name}-${lastIdx}`;
+                  if (completedSets?.has(lastKey)) {
+                    setConfirmDeleteLast(true);
+                  } else {
+                    onDeleteSet(exercise.name, lastIdx);
+                  }
+                }}
+                className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-red-400 hover:bg-red-500/20 active:scale-90 transition-all"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12h-15" />
+                </svg>
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -72,7 +94,9 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
       <div className="divide-y divide-white/5">
         {exercise.sets.map((set, idx) => {
           const entry = entries?.[idx] || {};
-          const isCompleted = completedSets?.has(`${exercise.name}-${idx}`);
+          const setKey = `${exercise.name}-${idx}`;
+          const isCompleted = completedSets?.has(setKey);
+          const isAutoFill = autoFilled?.has(setKey) && !isCompleted;
           const rowWeight = entry.weight ?? set.suggestedWeight;
           const pbReps = rowWeight ? exercisePbs[rowWeight] : undefined;
           return (
@@ -119,8 +143,9 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
                   value={entry.weight ?? set.suggestedWeight ?? ''}
                   placeholder={readOnly ? '—' : '0'}
                   onChange={(e) => onChange?.(exercise.name, idx, 'weight', e.target.value)}
+                  onFocus={(e) => e.target.select()}
                   readOnly={readOnly}
-                  className={`w-full lcd-input rounded-lg px-2 py-2.5 text-white text-center text-base focus:outline-none disabled:opacity-50 ${isCompleted ? 'completed' : ''}`}
+                  className={`w-full lcd-input rounded-lg px-2 py-2.5 text-center text-base focus:outline-none disabled:opacity-50 ${isCompleted ? 'completed text-white' : isAutoFill ? 'text-wf-gray-500 italic' : 'text-white'}`}
                   disabled={readOnly}
                 />
               </div>
@@ -140,9 +165,10 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
                   pattern="[0-9]*"
                   value={entry.reps ?? ''}
                   onChange={(e) => onChange?.(exercise.name, idx, 'reps', e.target.value)}
+                  onFocus={(e) => e.target.select()}
                   readOnly={readOnly}
                   placeholder={readOnly ? '—' : '0'}
-                  className={`w-full lcd-input rounded-lg px-2 py-2.5 text-white text-center text-base focus:outline-none disabled:opacity-50 placeholder:text-wf-gray-700 ${isCompleted ? 'completed' : ''}`}
+                  className={`w-full lcd-input rounded-lg px-2 py-2.5 text-center text-base focus:outline-none disabled:opacity-50 placeholder:text-wf-gray-700 ${isCompleted ? 'completed text-white' : isAutoFill ? 'text-wf-gray-500 italic' : 'text-white'}`}
                   disabled={readOnly}
                 />
               </div>
@@ -221,6 +247,39 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
                 className="flex-1 bg-wf-red/90 hover:bg-wf-red text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
               >
                 Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Delete Completed Last Set */}
+      {confirmDeleteLast && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-5" onClick={() => setConfirmDeleteLast(false)}>
+          <div className="absolute inset-0 bg-black/70" />
+          <div
+            className="relative w-full max-w-xs bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-bold text-white text-center mb-1">Delete completed set?</h3>
+            <p className="text-wf-gray-400 text-sm text-center mb-5">
+              Are you sure you want to delete a completed set?
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConfirmDeleteLast(false)}
+                className="flex-1 glass-card text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  onDeleteSet(exercise.name, exercise.sets.length - 1);
+                  setConfirmDeleteLast(false);
+                }}
+                className="flex-1 bg-wf-red/90 hover:bg-wf-red text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+              >
+                Delete
               </button>
             </div>
           </div>
