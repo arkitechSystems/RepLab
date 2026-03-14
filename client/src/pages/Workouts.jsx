@@ -347,6 +347,30 @@ export default function Workouts() {
     }
   }
 
+  async function handleDuplicateTemplate(template) {
+    try {
+      const exercises = template.exercises.map((ex) => ({
+        name: ex.name,
+        setType: ex.setType || 'straight',
+        sets: ex.sets.map((s) => ({ reps: s.plannedReps || s.reps || 10, weight: s.suggestedWeight || s.weight || 0 })),
+      }));
+      const result = await api('/templates', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: `${template.name} (Copy)`,
+          description: template.description || '',
+          exercises,
+          programId: template.programId,
+        }),
+      });
+      // Refetch templates to get the full data
+      const updated = await api('/templates');
+      setTemplates(updated);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
   // Workout detail/preview view
   if (previewWorkout) {
     const pw = previewWorkout;
@@ -649,6 +673,15 @@ export default function Workouts() {
                           <span className="text-xs font-semibold text-green-400">Add</span>
                         </button>
                         <button
+                          onClick={() => handleDuplicateTemplate(t)}
+                          className="w-9 h-9 rounded-lg bg-wf-blue/20 flex items-center justify-center shrink-0 active:bg-wf-blue/40 transition-colors"
+                          title="Duplicate workout"
+                        >
+                          <svg className="w-4 h-4 text-wf-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75" />
+                          </svg>
+                        </button>
+                        <button
                           onClick={() => navigate(`/workouts/edit/${t.id}`)}
                           className="w-9 h-9 rounded-lg bg-wf-red/20 flex items-center justify-center shrink-0 active:bg-wf-red/40 transition-colors"
                         >
@@ -714,11 +747,29 @@ export default function Workouts() {
           <div className="bg-wf-gray-900 border border-white/10 rounded-2xl shadow-2xl shadow-black/60 overflow-hidden">
             <div className="p-3 space-y-1.5">
               <button
-                onClick={() => { setShowCreateMenu(false); navigate('/programs/create'); }}
+                onClick={() => { setShowCreateMenu(false); navigate('/workouts/create?quick=1'); }}
                 className="w-full text-left rounded-xl p-3.5 flex items-center gap-3.5 active:scale-[0.98] transition-all hover:bg-white/5 active:bg-white/10"
               >
                 <div className="w-10 h-10 rounded-xl btn-gradient flex items-center justify-center shrink-0">
                   <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L10.5 21.75 12 13.5H3.75z" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-semibold text-white">Quick Create</h4>
+                  <p className="text-xs text-wf-gray-400 mt-0.5">Build a standalone workout fast</p>
+                </div>
+                <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
+              </button>
+              <div className="border-t border-white/5 mx-2" />
+              <button
+                onClick={() => { setShowCreateMenu(false); navigate('/programs/create'); }}
+                className="w-full text-left rounded-xl p-3.5 flex items-center gap-3.5 active:scale-[0.98] transition-all hover:bg-white/5 active:bg-white/10"
+              >
+                <div className="w-10 h-10 rounded-xl bg-wf-blue/20 flex items-center justify-center shrink-0">
+                  <svg className="w-5 h-5 text-wf-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
                   </svg>
                 </div>
@@ -735,14 +786,14 @@ export default function Workouts() {
                 onClick={() => { setShowCreateMenu(false); navigate('/workouts/create'); }}
                 className="w-full text-left rounded-xl p-3.5 flex items-center gap-3.5 active:scale-[0.98] transition-all hover:bg-white/5 active:bg-white/10"
               >
-                <div className="w-10 h-10 rounded-xl bg-wf-blue/20 flex items-center justify-center shrink-0">
-                  <svg className="w-5 h-5 text-wf-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center shrink-0">
+                  <svg className="w-5 h-5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                   </svg>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-semibold text-white">New Workout</h4>
-                  <p className="text-xs text-wf-gray-400 mt-0.5">Add to an existing program</p>
+                  <h4 className="text-sm font-semibold text-white">Add to Program</h4>
+                  <p className="text-xs text-wf-gray-400 mt-0.5">Add a workout to an existing program</p>
                 </div>
                 <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
@@ -1374,6 +1425,28 @@ export default function Workouts() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                   </svg>
                 </div>
+              </div>
+            </div>
+
+            {/* App Tour card */}
+            <div
+              onClick={() => navigate('/welcome')}
+              className="w-full text-left glass-card rounded-2xl overflow-hidden active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
+              style={{ animationDelay: '240ms' }}
+            >
+              <div className="p-5 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <svg className="w-5 h-5 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+                  </svg>
+                  <div>
+                    <h3 className="text-sm font-semibold text-white">New here?</h3>
+                    <p className="text-xs text-wf-gray-500">Take a quick tour of the app</p>
+                  </div>
+                </div>
+                <svg className="w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
               </div>
             </div>
           </div>
