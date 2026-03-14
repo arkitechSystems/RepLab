@@ -64,6 +64,12 @@ export default async function initDb() {
       await seedWillsLegs2(pplId);
     }
   }
+
+  // Seed ZJ's Workout if not already present
+  const { rows: zjRows } = await pool.query("SELECT id FROM programs WHERE name = $1 AND user_id IS NULL", ["ZJ's Workout"]);
+  if (zjRows.length === 0) {
+    await seedZJsWorkout();
+  }
 }
 
 async function seedDefaults() {
@@ -590,6 +596,52 @@ async function seedWillsLegs2(programId) {
 
     await client.query('COMMIT');
     console.log("Seeded Will's Legs 2 template");
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+async function seedZJsWorkout() {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const { rows: [program] } = await client.query(
+      "INSERT INTO programs (user_id, name, description) VALUES (NULL, $1, $2) RETURNING id",
+      ["ZJ's Workout", "ZJ's hypertrophy training program"]
+    );
+    const programId = program.id;
+
+    const exercises = [
+      { name: 'Cable Chest Flyes (Pre-Exhaust)', sets: [{ reps: 20, weight: 50 }, { reps: 8, weight: 45 }, { reps: 12, weight: 40 }, { reps: 16, weight: 35 }, { reps: 20, weight: 30 }], repRange: '8-20', description: 'Middle chest pre-exhaust. Set 1: 20 reps, Set 2: 16 reps, Set 3: 12 reps, Set 4: 8 reps, Set 5: 20 reps. 45 sec rest between sets. Choose a weight and increase each set.' },
+      { name: 'Decline Barbell Bench Press', sets: [{ reps: 6, weight: 205 }, { reps: 6, weight: 205 }, { reps: 6, weight: 205 }, { reps: 6, weight: 205 }], repRange: '6-10', description: 'Primary lift. 3 sec down, controlled press up. Slight pause at the bottom to increase chest tension. 2 min rest.' },
+      { name: 'Incline Dumbbell Press', sets: [{ reps: 12, weight: 100 }, { reps: 12, weight: 100 }, { reps: 12, weight: 100 }, { reps: 12, weight: 100 }], repRange: '8-12', description: 'Targets upper chest to balance the decline work. 90 sec rest.' },
+      { name: 'Chest Dips (Lean Forward)', sets: [{ reps: 12, weight: 45 }, { reps: 10, weight: 45 }, { reps: 8, weight: 45 }], repRange: '8-12', description: 'Lean forward to emphasize chest. If bodyweight is easy, add weight with a belt. 90 sec rest. (1.5 reps) — Repeat the bottom half of the rep to accentuate the stretch.' },
+      { name: 'Machine or Cable Chest Fly', sets: [{ reps: 15, weight: 50 }, { reps: 12, weight: 55 }, { reps: 12, weight: 60 }, { reps: 12, weight: 60 }], repRange: '12-15', description: 'Focus on slow stretch and squeeze. 60-75 sec rest.' },
+      { name: 'Push-ups to Failure (Finisher)', sets: [{ reps: 99, weight: 0 }, { reps: 99, weight: 0 }], repRange: '999', description: 'Optional finisher. Go to failure each set.' },
+    ];
+
+    const { rows: [tmpl] } = await client.query(
+      'INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES (NULL, $1, $2, $3, FALSE, 0) RETURNING id',
+      [programId, "ZJ's Chest Workout", 'Hypertrophy Chest Workout — Pre-exhaust cable flyes, decline bench, incline press, dips, flyes, burnout, finisher']
+    );
+
+    let sortOrder = 0;
+    for (const ex of exercises) {
+      for (let i = 0; i < ex.sets.length; i++) {
+        await client.query(
+          'INSERT INTO template_exercises (template_id, name, set_number, planned_reps, suggested_weight, sort_order, rep_range, exercise_description) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+          [tmpl.id, ex.name, i + 1, ex.sets[i].reps, ex.sets[i].weight, sortOrder, ex.repRange, ex.description]
+        );
+      }
+      sortOrder++;
+    }
+
+    await client.query('COMMIT');
+    console.log("Seeded ZJ's Workout program");
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;

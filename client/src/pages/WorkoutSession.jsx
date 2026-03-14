@@ -271,6 +271,10 @@ export default function WorkoutSession() {
   async function handleMarkComplete() {
     const newCompleted = !isCompleted;
     try {
+      // Save the session first so users don't have to click save separately
+      if (newCompleted) {
+        await handleSave();
+      }
       await api('/sessions/complete', {
         method: 'PUT',
         body: JSON.stringify({

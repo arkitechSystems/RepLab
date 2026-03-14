@@ -86,6 +86,13 @@ export default function Workouts() {
   const [addDateInput, setAddDateInput] = useState('');
   const [showAddDatePicker, setShowAddDatePicker] = useState(false);
   const [addConflictInfo, setAddConflictInfo] = useState(null);
+  // Featured workout session state
+  const [workoutStarted, setWorkoutStarted] = useState(false);
+  const [workoutElapsed, setWorkoutElapsed] = useState(0);
+  const [restElapsed, setRestElapsed] = useState(0);
+  const [completedSets, setCompletedSets] = useState({});
+  const workoutTimerRef = useRef(null);
+  const restTimerRef = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -97,6 +104,52 @@ export default function Workouts() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (workoutTimerRef.current) clearInterval(workoutTimerRef.current);
+      if (restTimerRef.current) clearInterval(restTimerRef.current);
+    };
+  }, []);
+
+  function startFeaturedWorkout() {
+    setWorkoutStarted(true);
+    setWorkoutElapsed(0);
+    setRestElapsed(0);
+    setCompletedSets({});
+    workoutTimerRef.current = setInterval(() => setWorkoutElapsed((s) => s + 1), 1000);
+    restTimerRef.current = setInterval(() => setRestElapsed((s) => s + 1), 1000);
+  }
+
+  function stopFeaturedWorkout() {
+    setWorkoutStarted(false);
+    if (workoutTimerRef.current) { clearInterval(workoutTimerRef.current); workoutTimerRef.current = null; }
+    if (restTimerRef.current) { clearInterval(restTimerRef.current); restTimerRef.current = null; }
+    setWorkoutElapsed(0);
+    setRestElapsed(0);
+    setCompletedSets({});
+  }
+
+  function toggleSetComplete(key) {
+    setCompletedSets((prev) => {
+      const next = { ...prev };
+      if (next[key]) {
+        delete next[key];
+      } else {
+        next[key] = true;
+        // Reset rest timer on completion
+        setRestElapsed(0);
+      }
+      return next;
+    });
+  }
+
+  function formatTimer(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
 
   async function openBeginProgram(e, program) {
     e.stopPropagation();
@@ -298,21 +351,50 @@ export default function Workouts() {
   if (previewWorkout) {
     const pw = previewWorkout;
     const pwColor = getWorkoutColor(pw.name);
+    const isFeatured = String(pw.id || '').startsWith('__featured-');
+    const totalSets = pw.exercises?.reduce((sum, ex) => sum + (ex.sets?.length || 0), 0) || 0;
+    const completedCount = Object.keys(completedSets).length;
     return (
       <div>
         <StickyHeader title={pw.name} />
 
-        {/* Back button — sticky below header */}
+        {/* Back button + timers — sticky below header */}
         <div className="sticky top-[52px] z-20 bg-black/80 backdrop-blur-xl px-4 py-2">
-          <button
-            onClick={() => setPreviewWorkout(null)}
-            className="inline-flex items-center gap-1 text-sm text-wf-gray-400 active:text-white transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-            </svg>
-            Back
-          </button>
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => { setPreviewWorkout(null); if (workoutStarted) stopFeaturedWorkout(); }}
+              className="inline-flex items-center gap-1 text-sm text-wf-gray-400 active:text-white transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+              </svg>
+              Back
+            </button>
+
+            {/* Timers */}
+            {workoutStarted && (
+              <div className="flex items-center gap-3">
+                {/* Rest timer */}
+                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg ${restElapsed >= 60 ? 'bg-green-500/15 border border-green-500/30' : 'bg-red-500/15 border border-red-500/30'}`}>
+                  <svg className={`w-3.5 h-3.5 ${restElapsed >= 60 ? 'text-green-400' : 'text-red-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className={`text-xs font-mono-stat font-bold ${restElapsed >= 60 ? 'text-green-400' : 'text-red-400'}`}>
+                    {formatTimer(restElapsed)}
+                  </span>
+                </div>
+                {/* Workout timer */}
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/10 border border-white/15">
+                  <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-xs font-mono-stat font-bold text-white">
+                    {formatTimer(workoutElapsed)}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="px-4 pb-4">
@@ -326,8 +408,30 @@ export default function Workouts() {
               <p className="text-wf-gray-400 text-sm ml-5">{pw.description}</p>
             )}
             <p className="text-wf-gray-500 text-xs mt-1 ml-5">
-              {pw.exercises?.length || 0} exercises &middot; {pw.exercises?.reduce((sum, ex) => sum + (ex.sets?.length || 0), 0) || 0} total sets
+              {pw.exercises?.length || 0} exercises &middot; {totalSets} total sets
+              {workoutStarted && ` · ${completedCount}/${totalSets} completed`}
             </p>
+
+            {/* Begin / End Workout button for featured workouts */}
+            {isFeatured && (
+              <div className="mt-3 ml-5">
+                {!workoutStarted ? (
+                  <button
+                    onClick={startFeaturedWorkout}
+                    className="btn-gradient text-white font-semibold text-sm px-5 py-2.5 rounded-xl active:scale-[0.97] transition-all"
+                  >
+                    Begin Workout
+                  </button>
+                ) : (
+                  <button
+                    onClick={stopFeaturedWorkout}
+                    className="glass-card text-wf-gray-400 font-semibold text-sm px-5 py-2.5 rounded-xl active:scale-[0.97] transition-all border border-white/10"
+                  >
+                    End Workout
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Exercise cards */}
@@ -352,26 +456,47 @@ export default function Workouts() {
                   <span className="w-12 text-[10px] uppercase tracking-widest text-wf-gray-600">Set</span>
                   <span className="flex-1 text-[10px] uppercase tracking-widest text-wf-gray-600 text-center">Weight</span>
                   <span className="flex-1 text-[10px] uppercase tracking-widest text-wf-gray-600 text-center">Reps</span>
+                  {workoutStarted && <span className="w-10 text-[10px] uppercase tracking-widest text-wf-gray-600 text-center">Done</span>}
                 </div>
 
-                {ex.sets.map((set, setIdx) => (
-                  <div
-                    key={setIdx}
-                    className="flex items-center gap-2 py-2 border-t border-white/5"
-                  >
-                    <span className="w-12 text-sm font-mono-stat text-wf-gray-500">{setIdx + 1}</span>
-                    <div className="flex-1 text-center">
-                      <span className="text-sm font-mono-stat text-wf-gray-400">
-                        {set.plannedWeight ? `${set.plannedWeight} lbs` : '—'}
-                      </span>
+                {ex.sets.map((set, setIdx) => {
+                  const setKey = `${exIdx}-${setIdx}`;
+                  const isDone = completedSets[setKey];
+                  return (
+                    <div
+                      key={setIdx}
+                      className={`flex items-center gap-2 py-2 border-t border-white/5 transition-colors ${isDone ? 'bg-green-500/5' : ''}`}
+                    >
+                      <span className={`w-12 text-sm font-mono-stat ${isDone ? 'text-green-400' : 'text-wf-gray-500'}`}>{setIdx + 1}</span>
+                      <div className="flex-1 text-center">
+                        <span className={`text-sm font-mono-stat ${isDone ? 'text-green-400' : 'text-wf-gray-400'}`}>
+                          {set.plannedWeight ? `${set.plannedWeight} lbs` : '—'}
+                        </span>
+                      </div>
+                      <div className="flex-1 text-center">
+                        <span className={`text-sm font-mono-stat ${isDone ? 'text-green-400' : 'text-wf-gray-400'}`}>
+                          {set.plannedReps || '—'}
+                        </span>
+                      </div>
+                      {workoutStarted && (
+                        <div className="w-10 flex justify-center">
+                          <button
+                            onClick={() => toggleSetComplete(setKey)}
+                            className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all active:scale-[0.9] ${
+                              isDone
+                                ? 'bg-green-500 shadow-[0_0_12px_rgba(34,197,94,0.4)]'
+                                : 'border border-white/20 bg-white/5'
+                            }`}
+                          >
+                            <svg className={`w-4 h-4 ${isDone ? 'text-white' : 'text-wf-gray-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                            </svg>
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex-1 text-center">
-                      <span className="text-sm font-mono-stat text-wf-gray-400">
-                        {set.plannedReps || '—'}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Notes section */}
@@ -927,17 +1052,68 @@ export default function Workouts() {
           </button>
         </div>
 
-        <div className="px-4 pb-4">
-          <div className="glass-card rounded-2xl p-10 text-center fade-slide-up">
-            <div className="w-16 h-16 rounded-full bg-wf-red/15 flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
-              </svg>
+        <div className="px-4 pb-4 space-y-3">
+          {/* 10X10 Workout Card */}
+          <div
+            onClick={() => setPreviewWorkout({
+              id: '__featured-10x10__',
+              name: '10X10',
+              description: 'German Volume Training — 10 sets of 10 reps per exercise. High volume, maximum hypertrophy.',
+              exercises: [
+                { name: 'Barbell Bench Press', sets: Array(10).fill({ plannedReps: 10 }), repRange: '10' },
+                { name: 'Barbell Back Squat', sets: Array(10).fill({ plannedReps: 10 }), repRange: '10' },
+                { name: 'Bent Over Rows', sets: Array(10).fill({ plannedReps: 10 }), repRange: '10' },
+                { name: 'Overhead Press', sets: Array(10).fill({ plannedReps: 10 }), repRange: '10' },
+                { name: 'Romanian Deadlift', sets: Array(10).fill({ plannedReps: 10 }), repRange: '10' },
+              ],
+              isRest: false,
+            })}
+            className="glass-card rounded-xl overflow-hidden fade-slide-up cursor-pointer active:scale-[0.98] transition-transform"
+          >
+            <div className="h-1.5 bg-gradient-to-r from-wf-red to-orange-500" />
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-wf-red" />
+                  <h4 className="text-lg font-semibold text-white">10X10</h4>
+                </div>
+                <span className="px-2 py-0.5 rounded-full bg-red-500/15 border border-red-500/30 text-[10px] font-bold text-red-400 uppercase tracking-wider">
+                  Advanced
+                </span>
+              </div>
+              <p className="text-xs text-wf-gray-400 ml-4.5 mb-2">German Volume Training — maximum hypertrophy</p>
+              <div className="flex items-center gap-3 ml-4.5">
+                <span className="flex items-center gap-1 text-xs text-wf-gray-500">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  60 min
+                </span>
+                <span className="flex items-center gap-1 text-xs text-wf-gray-500">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
+                  </svg>
+                  5 exercises
+                </span>
+                <span className="flex items-center gap-1 text-xs text-wf-gray-500">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 13.5V3.75m0 9.75a1.5 1.5 0 010 3m0-3a1.5 1.5 0 000 3m0 3.75V16.5m12-3V3.75m0 9.75a1.5 1.5 0 010 3m0-3a1.5 1.5 0 000 3m0 3.75V16.5m-6-9V3.75m0 3.75a1.5 1.5 0 010 3m0-3a1.5 1.5 0 000 3m0 9.75V10.5" />
+                  </svg>
+                  50 total sets
+                </span>
+              </div>
+              <div className="flex items-center justify-end mt-2">
+                <span className="text-xs text-wf-gray-500 mr-1">Tap to preview</span>
+                <svg className="w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
+              </div>
             </div>
-            <h3 className="text-xl font-black text-white mb-2">Coming Soon</h3>
-            <p className="text-wf-gray-400 text-sm leading-relaxed max-w-xs mx-auto">
-              Curated workouts from top trainers, dropping soon. Stay Tuned!!
-            </p>
+          </div>
+
+          {/* More coming soon */}
+          <div className="glass-card rounded-xl p-6 text-center fade-slide-up" style={{ animationDelay: '80ms' }}>
+            <p className="text-wf-gray-400 text-sm">More workouts dropping soon. Stay Tuned!!</p>
           </div>
         </div>
       </div>
@@ -1080,7 +1256,7 @@ export default function Workouts() {
             <div
               onClick={() => setSelectedGroup('featured')}
               className="w-full rounded-2xl overflow-hidden fade-slide-up relative cursor-pointer active:scale-[0.98] transition-transform"
-              style={{ animationDelay: '0ms', minHeight: '200px' }}
+              style={{ animationDelay: '0ms', minHeight: '140px' }}
             >
               {/* Background video — starts at 7s, loops back before last 6s */}
               <video
@@ -1104,7 +1280,7 @@ export default function Workouts() {
               {/* Dark overlay for text readability */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
               {/* Card content */}
-              <div className="relative z-10 p-5 flex flex-col justify-end h-full" style={{ minHeight: '200px' }}>
+              <div className="relative z-10 p-5 flex flex-col justify-end h-full" style={{ minHeight: '140px' }}>
                 <div className="mt-auto">
                   <h2 className="text-2xl font-black text-white tracking-tight drop-shadow-lg">Featured Workouts</h2>
                   <p className="text-white/70 text-sm mt-1 drop-shadow">Watch the latest drops</p>

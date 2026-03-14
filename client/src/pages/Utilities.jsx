@@ -467,9 +467,224 @@ function HIITTimer({ onClose }) {
   );
 }
 
+// Exercise library for 1RM estimator
+const ORM_EXERCISES = [
+  { category: 'Barbell', exercises: [
+    'Barbell Bench Press', 'Incline Barbell Bench Press', 'Close-Grip Bench Press',
+    'Barbell Back Squat', 'Front Squat', 'Barbell Deadlift', 'Sumo Deadlift',
+    'Overhead Press', 'Barbell Row', 'Romanian Deadlift', 'Hip Thrust',
+  ]},
+  { category: 'Dumbbell', exercises: [
+    'Dumbbell Bench Press', 'Incline Dumbbell Press', 'Dumbbell Shoulder Press',
+    'Dumbbell Row', 'Dumbbell Curl', 'Dumbbell Lunges',
+  ]},
+  { category: 'Machine / Cable', exercises: [
+    'Leg Press', 'Hack Squat', 'Lat Pulldown', 'Cable Row', 'Leg Extension', 'Leg Curl',
+  ]},
+  { category: 'Bodyweight', exercises: [
+    'Weighted Pull-Up', 'Weighted Dip', 'Weighted Chin-Up',
+  ]},
+];
+
+// 1RM formulas from peer-reviewed research — average for best accuracy
+function calculate1RM(weight, reps) {
+  if (reps === 1) return weight;
+  const w = weight;
+  const r = reps;
+  // Epley (1985)
+  const epley = w * (1 + r / 30);
+  // Brzycki (1993) — most accurate for < 10 reps
+  const brzycki = w * (36 / (37 - r));
+  // Lombardi (1989)
+  const lombardi = w * Math.pow(r, 0.10);
+  // Mayhew et al. (1992)
+  const mayhew = (100 * w) / (52.2 + 41.9 * Math.exp(-0.055 * r));
+  // Wathan (1994)
+  const wathan = (100 * w) / (48.8 + 53.8 * Math.exp(-0.075 * r));
+  // Average of all five for best estimate
+  return Math.round((epley + brzycki + lombardi + mayhew + wathan) / 5);
+}
+
+function OneRepMaxEstimator({ onClose }) {
+  const [selectedExercise, setSelectedExercise] = useState('');
+  const [showExerciseList, setShowExerciseList] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [weight, setWeight] = useState('');
+  const [reps, setReps] = useState('');
+
+  const w = Number(weight);
+  const r = Number(reps);
+  const valid = w > 0 && r > 0 && r <= 30 && selectedExercise;
+
+  const oneRM = valid ? calculate1RM(w, r) : 0;
+
+  const percentages = [100, 95, 90, 85, 80, 75, 70, 65, 60];
+
+  // Filter exercises by search
+  const filteredCategories = ORM_EXERCISES.map((cat) => ({
+    ...cat,
+    exercises: cat.exercises.filter((ex) =>
+      ex.toLowerCase().includes(searchQuery.toLowerCase())
+    ),
+  })).filter((cat) => cat.exercises.length > 0);
+
+  return (
+    <div className="fixed inset-x-0 top-[40px] bottom-0 z-50 bg-black flex flex-col">
+      <div className="px-4 pt-3 pb-2 flex items-center justify-between">
+        <button onClick={onClose} className="text-wf-red text-sm font-medium flex items-center gap-1 active:opacity-70">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+          </svg>
+          Back
+        </button>
+        <h2 className="text-lg font-black text-white">1 Rep Max Estimator</h2>
+        <div className="w-12" />
+      </div>
+      <div className="flex-1 overflow-y-auto px-4 pb-6 pt-2">
+        {/* Exercise selector */}
+        <div className="glass-card rounded-xl p-5 mb-4 fade-slide-up">
+          <label className="text-xs text-wf-gray-400 uppercase tracking-wider mb-2 block">Select Exercise</label>
+          <button
+            onClick={() => setShowExerciseList(!showExerciseList)}
+            className="w-full glass-input rounded-xl px-4 py-3 text-left flex items-center justify-between focus:outline-none"
+          >
+            <span className={selectedExercise ? 'text-white font-semibold' : 'text-wf-gray-600'}>
+              {selectedExercise || 'Choose an exercise...'}
+            </span>
+            <svg className={`w-5 h-5 text-wf-gray-500 transition-transform ${showExerciseList ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
+
+          {/* Exercise dropdown */}
+          {showExerciseList && (
+            <div className="mt-3 rounded-xl border border-white/10 bg-wf-gray-900 overflow-hidden">
+              {/* Search */}
+              <div className="p-3 border-b border-white/10">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search exercises..."
+                  className="w-full bg-white/5 rounded-lg px-3 py-2 text-sm text-white placeholder:text-wf-gray-600 focus:outline-none"
+                  autoFocus
+                />
+              </div>
+              <div className="max-h-60 overflow-y-auto">
+                {filteredCategories.map((cat) => (
+                  <div key={cat.category}>
+                    <div className="px-3 py-2 bg-white/[0.03]">
+                      <span className="text-[10px] uppercase tracking-widest text-wf-gray-500 font-semibold">{cat.category}</span>
+                    </div>
+                    {cat.exercises.map((ex) => (
+                      <button
+                        key={ex}
+                        onClick={() => {
+                          setSelectedExercise(ex);
+                          setShowExerciseList(false);
+                          setSearchQuery('');
+                        }}
+                        className={`w-full text-left px-4 py-2.5 text-sm transition-colors active:bg-white/10 ${
+                          selectedExercise === ex ? 'text-wf-red font-semibold bg-wf-red/5' : 'text-white hover:bg-white/5'
+                        }`}
+                      >
+                        {ex}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+                {filteredCategories.length === 0 && (
+                  <div className="px-4 py-6 text-center text-wf-gray-500 text-sm">No exercises found</div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Weight & Reps inputs — only show after exercise selected */}
+        {selectedExercise && (
+          <div className="glass-card rounded-xl p-5 mb-4 fade-slide-up">
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs text-wf-gray-400 uppercase tracking-wider mb-1.5 block">Weight Lifted (lbs)</label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value)}
+                  placeholder="e.g. 225"
+                  className="w-full glass-input rounded-xl px-4 py-3 text-white text-lg font-semibold focus:outline-none placeholder:text-wf-gray-600"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-wf-gray-400 uppercase tracking-wider mb-1.5 block">Reps Performed</label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={reps}
+                  onChange={(e) => setReps(e.target.value)}
+                  placeholder="e.g. 5"
+                  className="w-full glass-input rounded-xl px-4 py-3 text-white text-lg font-semibold focus:outline-none placeholder:text-wf-gray-600"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Result */}
+        {valid && (
+          <>
+            <div className="glass-card rounded-xl p-5 mb-4 fade-slide-up border border-wf-red/20 bg-wf-red/5 text-center">
+              <p className="text-xs text-wf-gray-400 uppercase tracking-wider mb-1">Estimated 1 Rep Max</p>
+              <p className="text-4xl font-black text-white">{oneRM} <span className="text-lg text-wf-gray-400">lbs</span></p>
+              <p className="text-sm text-white/80 font-semibold mt-1">{selectedExercise}</p>
+              <p className="text-xs text-wf-gray-500 mt-1">Average of Epley, Brzycki, Lombardi, Mayhew & Wathan formulas</p>
+            </div>
+
+            {/* Percentage breakdown */}
+            <div className="glass-card rounded-xl overflow-hidden fade-slide-up" style={{ animationDelay: '60ms' }}>
+              <div className="px-4 py-3 border-b border-white/10">
+                <h4 className="text-sm font-semibold text-white">Percentage Breakdown</h4>
+                <p className="text-xs text-wf-gray-500 mt-0.5">Training zones for {selectedExercise}</p>
+              </div>
+              <div className="px-4 py-2">
+                <div className="flex items-center gap-2 py-1.5 mb-1">
+                  <span className="w-14 text-[10px] uppercase tracking-widest text-wf-gray-600">%</span>
+                  <span className="flex-1 text-[10px] uppercase tracking-widest text-wf-gray-600 text-center">Weight</span>
+                  <span className="w-20 text-[10px] uppercase tracking-widest text-wf-gray-600 text-right">Rep Range</span>
+                </div>
+                {percentages.map((pct) => {
+                  const pctWeight = Math.round(oneRM * pct / 100);
+                  const displayReps = pct === 100 ? '1' : pct >= 95 ? '2–3' : pct >= 90 ? '3–5' : pct >= 85 ? '5–7' : pct >= 80 ? '7–10' : pct >= 75 ? '10–12' : pct >= 70 ? '12–15' : pct >= 65 ? '15–18' : '18–22';
+                  const zone = pct >= 90 ? 'Strength' : pct >= 75 ? 'Hypertrophy' : 'Endurance';
+                  const zoneColor = pct >= 90 ? 'text-red-400' : pct >= 75 ? 'text-blue-400' : 'text-green-400';
+                  return (
+                    <div
+                      key={pct}
+                      className={`flex items-center gap-2 py-2.5 border-t border-white/5 ${pct === 100 ? 'bg-wf-red/5' : ''}`}
+                    >
+                      <div className="w-14">
+                        <span className={`text-sm font-mono-stat ${pct === 100 ? 'text-wf-red font-bold' : 'text-wf-gray-400'}`}>{pct}%</span>
+                        <span className={`block text-[9px] ${zoneColor}`}>{zone}</span>
+                      </div>
+                      <span className={`flex-1 text-center text-sm font-mono-stat ${pct === 100 ? 'text-white font-bold' : 'text-wf-gray-400'}`}>{pctWeight} lbs</span>
+                      <span className="w-20 text-sm font-mono-stat text-wf-gray-500 text-right">{displayReps}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Utilities() {
   const [showHIIT, setShowHIIT] = useState(false);
   const [showPRs, setShowPRs] = useState(false);
+  const [show1RM, setShow1RM] = useState(false);
 
   return (
     <div>
@@ -517,6 +732,125 @@ export default function Utilities() {
             </svg>
           </div>
         </button>
+
+        {/* 1 Rep Max Estimator card */}
+        <button
+          onClick={() => setShow1RM(true)}
+          className="w-full glass-card rounded-xl p-5 active:scale-[0.98] transition-transform fade-slide-up text-left"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-wf-blue/15 flex items-center justify-center shrink-0">
+              <svg className="w-6 h-6 text-wf-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 15.75V18m-7.5-6.75h.008v.008H8.25v-.008zm0 2.25h.008v.008H8.25V13.5zm0 2.25h.008v.008H8.25v-.008zm0 2.25h.008v.008H8.25V18zm2.498-6.75h.007v.008h-.007v-.008zm0 2.25h.007v.008h-.007V13.5zm0 2.25h.007v.008h-.007v-.008zm0 2.25h.007v.008h-.007V18zm2.504-6.75h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V13.5zm0 2.25h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V18zm2.498-6.75h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V13.5zM8.25 6h7.5v2.25h-7.5V6zM12 2.25c-1.892 0-3.758.11-5.593.322C5.307 2.7 4.5 3.65 4.5 4.757V19.5a2.25 2.25 0 002.25 2.25h10.5a2.25 2.25 0 002.25-2.25V4.757c0-1.108-.806-2.057-1.907-2.185A48.507 48.507 0 0012 2.25z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-base font-semibold text-white">1 Rep Max Estimator</h3>
+              <p className="text-wf-gray-400 text-sm mt-0.5">Estimate your max from any rep range</p>
+            </div>
+            <svg className="w-5 h-5 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            </svg>
+          </div>
+        </button>
+
+        {/* BMR / Calorie Calculator card */}
+        <div className="w-full glass-card rounded-xl p-5 fade-slide-up text-left opacity-60">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-orange-500/15 flex items-center justify-center shrink-0">
+              <svg className="w-6 h-6 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 18a3.75 3.75 0 00.495-7.467 5.99 5.99 0 00-1.925 3.546 5.974 5.974 0 01-2.133-1.001A3.75 3.75 0 0012 18z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-base font-semibold text-white">BMR / Calorie Calculator</h3>
+              <p className="text-wf-gray-400 text-sm mt-0.5">Estimate your daily calorie needs based on your stats and activity level</p>
+            </div>
+            <span className="text-[10px] text-wf-gray-500 uppercase tracking-wider shrink-0">Soon</span>
+          </div>
+        </div>
+
+        {/* Macro Calculator card */}
+        <div className="w-full glass-card rounded-xl p-5 fade-slide-up text-left opacity-60">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-purple-500/15 flex items-center justify-center shrink-0">
+              <svg className="w-6 h-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-base font-semibold text-white">Macro Calculator</h3>
+              <p className="text-wf-gray-400 text-sm mt-0.5">Break down your calories into protein, carbs, and fat for any goal</p>
+            </div>
+            <span className="text-[10px] text-wf-gray-500 uppercase tracking-wider shrink-0">Soon</span>
+          </div>
+        </div>
+
+        {/* Body Fat Calculator card */}
+        <div className="w-full glass-card rounded-xl p-5 fade-slide-up text-left opacity-60">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-cyan-500/15 flex items-center justify-center shrink-0">
+              <svg className="w-6 h-6 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-base font-semibold text-white">Body Fat Calculator</h3>
+              <p className="text-wf-gray-400 text-sm mt-0.5">Estimate your body fat percentage using the U.S. Navy method</p>
+            </div>
+            <span className="text-[10px] text-wf-gray-500 uppercase tracking-wider shrink-0">Soon</span>
+          </div>
+        </div>
+
+        {/* Plate Calculator card */}
+        <div className="w-full glass-card rounded-xl p-5 fade-slide-up text-left opacity-60">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-rose-500/15 flex items-center justify-center shrink-0">
+              <svg className="w-6 h-6 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v17.25m0 0c-1.472 0-2.882.265-4.185.75M12 20.25c1.472 0 2.882.265 4.185.75M18.75 4.97A48.416 48.416 0 0012 4.5c-2.291 0-4.545.16-6.75.47m13.5 0c1.01.143 2.01.317 3 .52m-3-.52l2.62 10.726c.122.499-.106 1.028-.589 1.202a5.988 5.988 0 01-2.031.352 5.988 5.988 0 01-2.031-.352c-.483-.174-.711-.703-.59-1.202L18.75 4.971zm-16.5.52c.99-.203 1.99-.377 3-.52m0 0l2.62 10.726c.122.499-.106 1.028-.589 1.202a5.989 5.989 0 01-2.031.352 5.989 5.989 0 01-2.031-.352c-.483-.174-.711-.703-.59-1.202L5.25 4.971z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-base font-semibold text-white">Plate Calculator</h3>
+              <p className="text-wf-gray-400 text-sm mt-0.5">See which plates to load on each side of the bar</p>
+            </div>
+            <span className="text-[10px] text-wf-gray-500 uppercase tracking-wider shrink-0">Soon</span>
+          </div>
+        </div>
+
+        {/* Ideal Body Proportions card */}
+        <div className="w-full glass-card rounded-xl p-5 fade-slide-up text-left opacity-60">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-yellow-500/15 flex items-center justify-center shrink-0">
+              <svg className="w-6 h-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-base font-semibold text-white">Ideal Body Proportions</h3>
+              <p className="text-wf-gray-400 text-sm mt-0.5">Calculate your ideal muscle proportions based on bone structure</p>
+            </div>
+            <span className="text-[10px] text-wf-gray-500 uppercase tracking-wider shrink-0">Soon</span>
+          </div>
+        </div>
+
+        {/* RPE / RIR Calculator card */}
+        <div className="w-full glass-card rounded-xl p-5 fade-slide-up text-left opacity-60">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
+              <svg className="w-6 h-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5m.75-9l3-3 2.148 2.148A12.061 12.061 0 0116.5 7.605" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-base font-semibold text-white">RPE / RIR Calculator</h3>
+              <p className="text-wf-gray-400 text-sm mt-0.5">Convert between Rate of Perceived Exertion and Reps in Reserve</p>
+            </div>
+            <span className="text-[10px] text-wf-gray-500 uppercase tracking-wider shrink-0">Soon</span>
+          </div>
+        </div>
       </div>
 
       {showPRs && (
@@ -537,6 +871,7 @@ export default function Utilities() {
         </div>
       )}
       {showHIIT && <HIITTimer onClose={() => setShowHIIT(false)} />}
+      {show1RM && <OneRepMaxEstimator onClose={() => setShow1RM(false)} />}
     </div>
   );
 }
