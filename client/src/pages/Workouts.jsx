@@ -908,6 +908,42 @@ export default function Workouts() {
     );
   }
 
+  // Featured Workouts view
+  if (selectedGroup === 'featured') {
+    return (
+      <div>
+        <StickyHeader title="Featured Workouts" />
+
+        {/* Back button */}
+        <div className="px-4 mb-3">
+          <button
+            onClick={() => setSelectedGroup(null)}
+            className="inline-flex items-center gap-1 text-sm text-wf-gray-400 active:text-white transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+            </svg>
+            All Workouts
+          </button>
+        </div>
+
+        <div className="px-4 pb-4">
+          <div className="glass-card rounded-2xl p-10 text-center fade-slide-up">
+            <div className="w-16 h-16 rounded-full bg-wf-red/15 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-black text-white mb-2">Coming Soon</h3>
+            <p className="text-wf-gray-400 text-sm leading-relaxed max-w-xs mx-auto">
+              Curated workouts from top trainers, dropping soon. Stay Tuned!!
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Featured Trainers list view
   if (selectedGroup === 'partners') {
     return (
@@ -1042,10 +1078,11 @@ export default function Workouts() {
           <div className="space-y-4 pb-4">
             {/* Featured Workouts video card */}
             <div
-              className="w-full rounded-2xl overflow-hidden fade-slide-up relative"
+              onClick={() => setSelectedGroup('featured')}
+              className="w-full rounded-2xl overflow-hidden fade-slide-up relative cursor-pointer active:scale-[0.98] transition-transform"
               style={{ animationDelay: '0ms', minHeight: '200px' }}
             >
-              {/* Background video — starts at 5s, loops back before last 6s */}
+              {/* Background video — starts at 7s, loops back before last 6s */}
               <video
                 ref={(el) => {
                   if (!el) return;

@@ -44,6 +44,11 @@ export default function Profile() {
   const [sessions, setSessions] = useState([]);
   const [sessionsLoading, setSessionsLoading] = useState(true);
   const [theme, setTheme] = useState(() => localStorage.getItem('wf-theme') || 'dark');
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackType, setFeedbackType] = useState('bug');
+  const [feedbackMsg, setFeedbackMsg] = useState('');
+  const [feedbackSending, setFeedbackSending] = useState(false);
+  const [feedbackSent, setFeedbackSent] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('wf-theme', theme);
@@ -81,6 +86,35 @@ export default function Profile() {
     }
   }
 
+  async function handleFeedbackSubmit(e) {
+    e.preventDefault();
+    if (!feedbackMsg.trim()) return;
+    setFeedbackSending(true);
+    try {
+      await fetch('https://formsubmit.co/ajax/arkitechcloud@gmail.com', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          _subject: `WillFit Feedback: ${feedbackType === 'bug' ? 'Bug Report' : 'Improvement Idea'}`,
+          type: feedbackType === 'bug' ? 'Bug Report' : 'Improvement Idea',
+          message: feedbackMsg.trim(),
+          user: user?.name || user?.email || 'Unknown',
+          version: APP_VERSION,
+        }),
+      });
+      setFeedbackSent(true);
+      setFeedbackMsg('');
+      setTimeout(() => {
+        setFeedbackSent(false);
+        setShowFeedback(false);
+      }, 2500);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setFeedbackSending(false);
+    }
+  }
+
   function handleLogout() {
     logout();
     navigate('/login');
@@ -91,6 +125,100 @@ export default function Profile() {
       <StickyHeader title="Profile" />
 
       <div className="px-4">
+        {/* Beta banner + feedback */}
+        <div className="glass-card rounded-xl p-4 mb-4 fade-slide-up border border-wf-red/20 bg-wf-red/5">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-wf-red/15 flex items-center justify-center shrink-0 mt-0.5">
+              <svg className="w-4 h-4 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-white">Beta Version</p>
+              <p className="text-xs text-wf-gray-400 mt-0.5 leading-relaxed">This is the beta version of the app. Send us any bugs or improvement ideas you have!</p>
+            </div>
+            {!showFeedback && (
+              <button
+                onClick={() => setShowFeedback(true)}
+                className="btn-gradient text-white font-semibold text-xs px-3 py-2 rounded-xl active:scale-[0.97] transition-all shrink-0 self-center"
+              >
+                Send Feedback
+              </button>
+            )}
+          </div>
+
+          {showFeedback && (
+            <form onSubmit={handleFeedbackSubmit} className="mt-4 border-t border-white/10 pt-4">
+              {feedbackSent ? (
+                <div className="text-center py-4">
+                  <div className="w-12 h-12 rounded-full bg-green-500/15 flex items-center justify-center mx-auto mb-3">
+                    <svg className="w-6 h-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
+                  </div>
+                  <p className="text-sm font-semibold text-white">Thanks for your feedback!</p>
+                  <p className="text-xs text-wf-gray-400 mt-1">We'll review it shortly.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Type selector */}
+                  <div className="flex gap-2 mb-3">
+                    <button
+                      type="button"
+                      onClick={() => setFeedbackType('bug')}
+                      className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${
+                        feedbackType === 'bug'
+                          ? 'bg-wf-red/20 border border-wf-red/40 text-wf-red'
+                          : 'glass-card text-wf-gray-400'
+                      }`}
+                    >
+                      Bug Report
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFeedbackType('idea')}
+                      className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${
+                        feedbackType === 'idea'
+                          ? 'bg-wf-blue/20 border border-wf-blue/40 text-wf-blue'
+                          : 'glass-card text-wf-gray-400'
+                      }`}
+                    >
+                      Improvement Idea
+                    </button>
+                  </div>
+
+                  {/* Message */}
+                  <textarea
+                    value={feedbackMsg}
+                    onChange={(e) => setFeedbackMsg(e.target.value)}
+                    placeholder={feedbackType === 'bug' ? 'Describe the bug...' : 'Share your idea...'}
+                    rows={3}
+                    className="w-full glass-input rounded-xl px-3 py-3 text-white text-sm focus:outline-none resize-none placeholder:text-wf-gray-600"
+                  />
+
+                  {/* Actions */}
+                  <div className="flex gap-2 mt-3">
+                    <button
+                      type="button"
+                      onClick={() => { setShowFeedback(false); setFeedbackMsg(''); }}
+                      className="flex-1 glass-card text-wf-gray-400 font-semibold py-2.5 rounded-xl text-xs active:scale-[0.98] transition-all"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={!feedbackMsg.trim() || feedbackSending}
+                      className="flex-1 btn-gradient text-white font-semibold py-2.5 rounded-xl text-xs active:scale-[0.98] transition-all disabled:opacity-40"
+                    >
+                      {feedbackSending ? 'Sending...' : 'Submit'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </form>
+          )}
+        </div>
+
         {/* App Settings */}
         <div className="glass-card rounded-xl p-6 mb-4 fade-slide-up">
           <div className="flex items-center gap-2 mb-4">
