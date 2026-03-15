@@ -129,7 +129,11 @@ export default function Workouts() {
     const entries = buildEntries(program, startDate);
     const conflicts = entries
       .filter((e) => schedule.some((s) => s.dayOfWeek === e.dayOfWeek && s.templateId))
-      .map((e) => `${DAY_NAMES_FULL[e.dayOfWeek]}, ${e.date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`);
+      .map((e) => {
+        const existing = schedule.find((s) => s.dayOfWeek === e.dayOfWeek && s.templateId);
+        const dayLabel = `${DAY_NAMES_FULL[e.dayOfWeek]}, ${e.date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`;
+        return { dayLabel, workoutName: existing?.templateName || 'Unknown workout' };
+      });
     if (conflicts.length > 0) {
       setConflictInfo({ conflicts, pendingEntries: entries });
     } else {
@@ -177,6 +181,7 @@ export default function Workouts() {
     if (existing) {
       setAddConflictInfo({
         dayName: `${DAY_NAMES_FULL[dow]}, ${date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`,
+        workoutName: existing.templateName || 'Unknown workout',
         entry: { dayOfWeek: dow, templateId: template.id },
       });
     } else {
@@ -765,11 +770,14 @@ export default function Workouts() {
               <p className="text-wf-gray-400 text-sm mb-3">
                 This will overwrite your current workout on:
               </p>
-              <ul className="mb-5 space-y-1">
-                {conflictInfo.conflicts.map((day) => (
-                  <li key={day} className="text-sm font-semibold text-wf-red flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-wf-red" />
-                    {day}
+              <ul className="mb-5 space-y-2">
+                {conflictInfo.conflicts.map((c) => (
+                  <li key={c.dayLabel} className="flex items-start gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-wf-red mt-1.5 shrink-0" />
+                    <div>
+                      <span className="text-sm font-semibold text-wf-red">{c.dayLabel}</span>
+                      <span className="text-xs text-wf-gray-400 ml-1">({c.workoutName})</span>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -858,10 +866,13 @@ export default function Workouts() {
               <p className="text-wf-gray-400 text-sm mb-3">
                 This will replace the current workout on:
               </p>
-              <p className="text-sm font-semibold text-wf-red flex items-center gap-2 mb-5">
-                <span className="w-1.5 h-1.5 rounded-full bg-wf-red" />
-                {addConflictInfo.dayName}
-              </p>
+              <div className="flex items-start gap-2 mb-5">
+                <div className="w-1.5 h-1.5 rounded-full bg-wf-red mt-1.5 shrink-0" />
+                <div>
+                  <span className="text-sm font-semibold text-wf-red">{addConflictInfo.dayName}</span>
+                  <span className="text-xs text-wf-gray-400 ml-1">({addConflictInfo.workoutName})</span>
+                </div>
+              </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => setAddConflictInfo(null)}
@@ -910,6 +921,7 @@ export default function Workouts() {
       if (existing) {
         setAddConflictInfo({
           dayName: `${DAY_NAMES_FULL[dow]}, ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`,
+          workoutName: existing.templateName || 'Unknown workout',
           entry: { dayOfWeek: dow, templateId },
         });
       } else {
@@ -945,6 +957,7 @@ export default function Workouts() {
       if (existing) {
         setAddConflictInfo({
           dayName: `${DAY_NAMES_FULL[dow]}, ${date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`,
+          workoutName: existing.templateName || 'Unknown workout',
           entry: { dayOfWeek: dow, templateId },
         });
       } else {
