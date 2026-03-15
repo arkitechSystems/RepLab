@@ -38,7 +38,7 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
   return (
     <div className="glass-card rounded-xl overflow-hidden mb-3">
       {/* Exercise Header */}
-      <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
+      <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
         <button
           type="button"
           onClick={handleVideoClick}
@@ -49,16 +49,50 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
             <path fillRule="evenodd" d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653z" clipRule="evenodd" />
           </svg>
         </button>
-        {!readOnly && onAddSet && (
+        {!readOnly && (
+          <div className="flex items-center gap-1.5">
+            {onSwapExercise && (
+              <button
+                type="button"
+                onClick={() => { setShowSwap(true); setSwapSearch(''); }}
+                className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-blue-400 hover:bg-blue-500/20 active:scale-90 transition-all"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+                </svg>
+              </button>
+            )}
+            {onAddSet && (
+              <button
+                type="button"
+                onClick={() => onAddSet(exercise.name)}
+                className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-green-400 hover:bg-green-500/20 active:scale-90 transition-all"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Set Controls Subheader */}
+      {!readOnly && onAddSet && (
+        <div className="px-4 py-2 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
+          <span className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-medium">
+            {exercise.sets.length} set{exercise.sets.length !== 1 ? 's' : ''}
+          </span>
           <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => onAddSet(exercise.name)}
-              className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-white hover:bg-white/20 active:scale-90 transition-all"
+              className="h-7 px-2.5 rounded-full bg-white/10 flex items-center justify-center gap-1 text-wf-gray-400 hover:text-white hover:bg-white/20 active:scale-90 transition-all"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
               </svg>
+              <span className="text-[10px] font-semibold uppercase tracking-wider">Add Set</span>
             </button>
             {onDeleteSet && exercise.sets.length > 1 && (
               <button
@@ -72,27 +106,17 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
                     onDeleteSet(exercise.name, lastIdx);
                   }
                 }}
-                className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-red-400 hover:bg-red-500/20 active:scale-90 transition-all"
+                className="h-7 px-2.5 rounded-full bg-white/10 flex items-center justify-center gap-1 text-wf-gray-400 hover:text-red-400 hover:bg-red-500/20 active:scale-90 transition-all"
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12h-15" />
                 </svg>
-              </button>
-            )}
-            {onSwapExercise && (
-              <button
-                type="button"
-                onClick={() => { setShowSwap(true); setSwapSearch(''); }}
-                className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-blue-400 hover:bg-blue-500/20 active:scale-90 transition-all"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
-                </svg>
+                <span className="text-[10px] font-semibold uppercase tracking-wider">Remove</span>
               </button>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Column Headers */}
       <div className="px-3 pt-2 pb-1 flex items-center gap-1.5 text-[9px] text-wf-gray-500 uppercase tracking-wider">
@@ -102,6 +126,7 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
         <div className="w-14 shrink-0 text-center">Goal</div>
         <div className="flex-1 text-center">Actual</div>
         <div className="w-16 shrink-0 text-right">PR</div>
+        {!readOnly && onAddSet && <div className="w-14 shrink-0" />}
       </div>
 
       {/* Set Rows */}
@@ -202,6 +227,32 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
                   <div className="text-xs font-medium text-wf-gray-500 py-2">—</div>
                 )}
               </div>
+
+              {/* Row set controls */}
+              {!readOnly && onAddSet && (
+                <div className="flex items-center gap-0.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => onAddSet(exercise.name, idx)}
+                    className="w-6 h-6 rounded-full flex items-center justify-center text-wf-gray-600 hover:text-green-400 hover:bg-green-500/20 active:scale-90 transition-all"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                  </button>
+                  {onDeleteSet && exercise.sets.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setDeleteIdx(idx)}
+                      className="w-6 h-6 rounded-full flex items-center justify-center text-wf-gray-600 hover:text-red-400 hover:bg-red-500/20 active:scale-90 transition-all"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12h-15" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
@@ -242,7 +293,7 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
             className="relative w-full max-w-xs bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-base font-bold text-white text-center mb-1">Delete set?</h3>
+            <h3 className="text-base font-bold text-white text-center mb-1">Delete selected set?</h3>
             <p className="text-wf-gray-400 text-sm text-center mb-5">
               Set {deleteIdx + 1} of {exercise.name}
             </p>

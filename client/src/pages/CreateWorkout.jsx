@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { getAllExercises } from '../utils/exerciseLibrary';
+import { useUnsavedGuard } from '../components/UnsavedGuard';
 
 const SET_TYPES = [
   { value: 'straight', label: 'Straight Set' },
@@ -69,6 +70,9 @@ export default function CreateWorkout() {
       })
       .slice(0, 8);
   }
+
+  const isDirty = name.trim() !== '' || description.trim() !== '' || exercises.some((e) => e.name.trim() !== '');
+  const { guardedNavigate, UnsavedModal } = useUnsavedGuard({ isDirty });
 
   useEffect(() => {
     api('/pbs').then(setUserPBs).catch(console.error);
@@ -177,7 +181,8 @@ export default function CreateWorkout() {
 
   return (
     <div className="px-4 pt-6 pb-24">
-      <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-wf-red text-sm font-medium mb-4 active:opacity-70">
+      {UnsavedModal}
+      <button onClick={() => guardedNavigate(() => navigate(-1))} className="flex items-center gap-1 text-wf-red text-sm font-medium mb-4 active:opacity-70">
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
         </svg>

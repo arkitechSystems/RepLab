@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../api';
+import { useUnsavedGuard } from '../components/UnsavedGuard';
 
 const SET_TYPES = [
   { value: 'straight', label: 'Straight Set' },
@@ -20,6 +21,10 @@ export default function EditWorkout() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [originalData, setOriginalData] = useState(null);
+
+  const isDirty = originalData !== null && JSON.stringify({ name, description, exercises }) !== originalData;
+  const { guardedNavigate, UnsavedModal } = useUnsavedGuard({ isDirty });
 
   useEffect(() => {
     api('/templates')
@@ -31,13 +36,13 @@ export default function EditWorkout() {
         }
         setName(tmpl.name);
         setDescription(tmpl.description || '');
-        setExercises(
-          tmpl.exercises.map((ex) => ({
-            name: ex.name,
-            setType: ex.setType || 'straight',
-            sets: ex.sets.map((s) => ({ reps: s.plannedReps, weight: s.suggestedWeight })),
-          }))
-        );
+        const mappedExercises = tmpl.exercises.map((ex) => ({
+          name: ex.name,
+          setType: ex.setType || 'straight',
+          sets: ex.sets.map((s) => ({ reps: s.plannedReps, weight: s.suggestedWeight })),
+        }));
+        setExercises(mappedExercises);
+        setOriginalData(JSON.stringify({ name: tmpl.name, description: tmpl.description || '', exercises: mappedExercises }));
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -129,7 +134,8 @@ export default function EditWorkout() {
 
   return (
     <div className="px-4 pt-6 pb-24">
-      <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-wf-red text-sm font-medium mb-4 active:opacity-70">
+      {UnsavedModal}
+      <button onClick={() => guardedNavigate(() => navigate(-1))} className="flex items-center gap-1 text-wf-red text-sm font-medium mb-4 active:opacity-70">
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
         </svg>

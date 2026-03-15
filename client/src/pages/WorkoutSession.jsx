@@ -6,6 +6,7 @@ import ExerciseCard from '../components/ExerciseCard';
 import { getAllExercises } from '../utils/exerciseLibrary';
 import RestDayCard from '../components/RestDayCard';
 import StickyHeader from '../components/StickyHeader';
+import { useUnsavedGuard } from '../components/UnsavedGuard';
 import PBCelebration from '../components/PBCelebration';
 
 export default function WorkoutSession() {
@@ -154,31 +155,53 @@ export default function WorkoutSession() {
     });
   }
 
-  function handleAddSet(exerciseName) {
+  function handleAddSet(exerciseName, afterIdx) {
     setTemplate((prev) => {
       const updated = { ...prev, exercises: prev.exercises.map((ex) => {
         if (ex.name !== exerciseName) return ex;
-        const lastSet = ex.sets[ex.sets.length - 1];
-        const newSetNumber = (lastSet?.setNumber || 0) + 1;
-        return {
-          ...ex,
-          sets: [...ex.sets, {
-            setNumber: newSetNumber,
-            plannedReps: lastSet?.plannedReps ?? 10,
-            suggestedWeight: lastSet?.suggestedWeight ?? 0,
-          }],
+        const refSet = ex.sets[afterIdx ?? ex.sets.length - 1];
+        const newSet = {
+          setNumber: 0, // will be renumbered below
+          plannedReps: refSet?.plannedReps ?? 10,
+          suggestedWeight: refSet?.suggestedWeight ?? 0,
         };
+        const insertAt = afterIdx !== undefined ? afterIdx + 1 : ex.sets.length;
+        const newSets = [...ex.sets.slice(0, insertAt), newSet, ...ex.sets.slice(insertAt)]
+          .map((s, i) => ({ ...s, setNumber: i + 1 }));
+        return { ...ex, sets: newSets };
       })};
       return updated;
     });
     setEntries((prev) => {
       const exEntries = prev[exerciseName] || [];
-      const lastEntry = exEntries[exEntries.length - 1];
+      const refEntry = exEntries[afterIdx ?? exEntries.length - 1];
+      const newEntry = { weight: refEntry?.weight ?? '', reps: '' };
+      const insertAt = afterIdx !== undefined ? afterIdx + 1 : exEntries.length;
       return {
         ...prev,
-        [exerciseName]: [...exEntries, { weight: lastEntry?.weight ?? '', reps: '' }],
+        [exerciseName]: [...exEntries.slice(0, insertAt), newEntry, ...exEntries.slice(insertAt)],
       };
     });
+    // Shift completed sets and auto-filled after insertion point
+    if (afterIdx !== undefined) {
+      const shiftKeys = (prevSet) => {
+        const next = new Set();
+        for (const key of prevSet) {
+          const [name, idxStr] = key.split(/-(?=\d+$)/);
+          const i = Number(idxStr);
+          if (name !== exerciseName) {
+            next.add(key);
+          } else if (i <= afterIdx) {
+            next.add(key);
+          } else {
+            next.add(`${name}-${i + 1}`);
+          }
+        }
+        return next;
+      };
+      setCompletedSets(shiftKeys);
+      setAutoFilled(shiftKeys);
+    }
   }
 
   function handleDeleteSet(exerciseName, setIdx) {
@@ -481,6 +504,17 @@ export default function WorkoutSession() {
     }
   }
 
+  // Dirty if any entry has user-typed weight or reps
+  const hasEntryData = Object.values(entries).some((exEntries) =>
+    exEntries.some((e) => (e.weight !== '' && e.weight !== undefined) || (e.reps !== '' && e.reps !== undefined))
+  );
+  const sessionDirty = hasEntryData && !saved;
+  const { guardedNavigate, UnsavedModal } = useUnsavedGuard({
+    isDirty: sessionDirty,
+    onSave: handleSave,
+    saveLabel: 'Save Workout',
+  });
+
   if (loading) {
     return (
       <div className="px-4 pt-6">
@@ -542,9 +576,10 @@ export default function WorkoutSession() {
         />
       )}
 
+      {UnsavedModal}
       {/* Back button */}
       <div className="px-4 pt-6">
-        <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-wf-red text-sm font-medium mb-2 active:opacity-70">
+        <button onClick={() => guardedNavigate(() => navigate(-1))} className="flex items-center gap-1 text-wf-red text-sm font-medium mb-2 active:opacity-70">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>
