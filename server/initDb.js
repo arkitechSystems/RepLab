@@ -20,6 +20,12 @@ export default async function initDb() {
   await pool.query(`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS completed BOOLEAN DEFAULT FALSE`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT UNIQUE`);
   await pool.query(`ALTER TABLE users ALTER COLUMN email DROP NOT NULL`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name TEXT`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name TEXT`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS gender TEXT`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT UNIQUE`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_source TEXT`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code TEXT`);
 
   console.log('Database schema initialized');
 

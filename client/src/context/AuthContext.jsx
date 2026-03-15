@@ -40,10 +40,10 @@ export function AuthProvider({ children }) {
     return data;
   }, []);
 
-  const signup = useCallback(async (identifier, password) => {
+  const signup = useCallback(async (identifier, password, extra = {}) => {
     const data = await api('/auth/signup', {
       method: 'POST',
-      body: JSON.stringify({ identifier, password }),
+      body: JSON.stringify({ identifier, password, ...extra }),
     });
     setApiToken(data.token);
     try { localStorage.setItem('willfit_user', JSON.stringify(data.user)); } catch {}

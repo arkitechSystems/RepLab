@@ -3,6 +3,12 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT UNIQUE,
   phone TEXT UNIQUE,
   password_hash TEXT NOT NULL,
+  first_name TEXT,
+  last_name TEXT,
+  gender TEXT,
+  username TEXT UNIQUE,
+  referral_source TEXT,
+  referral_code TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   CONSTRAINT email_or_phone CHECK (email IS NOT NULL OR phone IS NOT NULL)
 );

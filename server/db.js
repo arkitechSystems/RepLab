@@ -4,11 +4,16 @@ const db = {
   // Users
   async getAllUsers() {
     const { rows } = await pool.query(
-      `SELECT id, email, phone, created_at FROM users
+      `SELECT id, email, phone, first_name, last_name, gender, username, referral_source, referral_code, created_at FROM users
        WHERE email NOT LIKE '%@willfit.demo' OR email IS NULL
        ORDER BY created_at DESC`
     );
-    return rows.map((u) => ({ id: u.id, email: u.email, phone: u.phone, createdAt: u.created_at }));
+    return rows.map((u) => ({ id: u.id, email: u.email, phone: u.phone, firstName: u.first_name, lastName: u.last_name, gender: u.gender, username: u.username, referralSource: u.referral_source, referralCode: u.referral_code, createdAt: u.created_at }));
+  },
+
+  async findUserByUsername(username) {
+    const { rows } = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
+    return rows[0] || null;
   },
 
   async findUserByIdentifier(identifier) {
@@ -20,13 +25,14 @@ const db = {
     return { id: rows[0].id, email: rows[0].email, phone: rows[0].phone, passwordHash: rows[0].password_hash, createdAt: rows[0].created_at };
   },
 
-  async createUser({ email, phone, passwordHash }) {
+  async createUser({ email, phone, passwordHash, firstName, lastName, gender, username, referralSource, referralCode }) {
     const { rows } = await pool.query(
-      'INSERT INTO users (email, phone, password_hash) VALUES ($1, $2, $3) RETURNING *',
-      [email || null, phone || null, passwordHash]
+      `INSERT INTO users (email, phone, password_hash, first_name, last_name, gender, username, referral_source, referral_code)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      [email || null, phone || null, passwordHash, firstName || null, lastName || null, gender || null, username || null, referralSource || null, referralCode || null]
     );
     const u = rows[0];
-    return { id: u.id, email: u.email, phone: u.phone, passwordHash: u.password_hash, createdAt: u.created_at };
+    return { id: u.id, email: u.email, phone: u.phone, passwordHash: u.password_hash, firstName: u.first_name, lastName: u.last_name, gender: u.gender, username: u.username, referralSource: u.referral_source, referralCode: u.referral_code, createdAt: u.created_at };
   },
 
   // Programs
