@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS users (
   username TEXT UNIQUE,
   referral_source TEXT,
   referral_code TEXT,
+  signup_city TEXT,
+  signup_state TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   CONSTRAINT email_or_phone CHECK (email IS NOT NULL OR phone IS NOT NULL)
 );

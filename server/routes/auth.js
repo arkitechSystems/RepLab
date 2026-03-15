@@ -55,6 +55,23 @@ router.post('/signup', async (req, res) => {
       }
     }
 
+    // Look up city/state from IP (non-blocking, best-effort)
+    let signupCity = null;
+    let signupState = null;
+    try {
+      const ip = req.ip === '::1' || req.ip === '127.0.0.1' ? '' : req.ip;
+      if (ip) {
+        const geoRes = await fetch(`http://ip-api.com/json/${ip}?fields=city,regionName,status`);
+        const geo = await geoRes.json();
+        if (geo.status === 'success') {
+          signupCity = geo.city || null;
+          signupState = geo.regionName || null;
+        }
+      }
+    } catch {
+      // Geo lookup failed — continue without it
+    }
+
     const passwordHash = bcrypt.hashSync(password, 10);
     const user = await db.createUser({
       email: phone ? null : normalizedId,
@@ -66,6 +83,8 @@ router.post('/signup', async (req, res) => {
       username: finalUsername,
       referralSource: referralSource || null,
       referralCode: referralCode || null,
+      signupCity,
+      signupState,
     });
 
     await db.setDefaultSchedule(user.id);
