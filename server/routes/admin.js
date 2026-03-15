@@ -82,18 +82,26 @@ router.get('/users', adminAuth, async (req, res) => {
 
     // If ?format=html, return a styled HTML page
     if (req.query.format === 'html') {
-      const rows = users.map((u, i) => `
-        <tr>
-          <td>${i + 1}</td>
-          <td>${u.firstName || ''} ${u.lastName || ''}</td>
-          <td>${u.username || '—'}</td>
-          <td>${u.email || '—'}</td>
-          <td>${u.phone || '—'}</td>
-          <td>${u.gender || '—'}</td>
-          <td>${u.referralSource || '—'}</td>
-          <td>${u.referralCode || '—'}</td>
-          <td>${new Date(u.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
-        </tr>`).join('');
+      // Dynamic columns from user object keys (skip id and passwordHash)
+      const skipKeys = new Set(['id', 'passwordHash']);
+      const allKeys = users.length > 0
+        ? Object.keys(users[0]).filter((k) => !skipKeys.has(k))
+        : [];
+
+      // Pretty labels: camelCase → Title Case
+      const label = (k) => k.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase());
+
+      const headerCells = `<th>#</th>` + allKeys.map((k) => `<th>${label(k)}</th>`).join('');
+
+      const rows = users.map((u, i) => {
+        const cells = allKeys.map((k) => {
+          const val = u[k];
+          if (val == null) return '<td>—</td>';
+          if (k === 'createdAt' || k.endsWith('At')) return `<td>${new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>`;
+          return `<td>${val}</td>`;
+        }).join('');
+        return `<tr><td>${i + 1}</td>${cells}</tr>`;
+      }).join('');
 
       return res.send(adminPage('User Sign Ups', `
   <div class="breadcrumb"><a href="/admin?key=${key}">Dashboard</a> / User Sign Ups</div>
@@ -139,7 +147,7 @@ router.get('/users', adminAuth, async (req, res) => {
   </div>
   <table>
     <thead>
-      <tr><th>#</th><th>Name</th><th>Username</th><th>Email</th><th>Phone</th><th>Gender</th><th>Referral</th><th>Code</th><th>Signed Up</th></tr>
+      <tr>${headerCells}</tr>
     </thead>
     <tbody>${rows}</tbody>
   </table>`));
