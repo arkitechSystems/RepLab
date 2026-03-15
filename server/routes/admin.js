@@ -58,6 +58,26 @@ router.get('/users', adminAuth, async (req, res) => {
     <p>Generated ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
   </div>
   <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+  <button class="print-btn" onclick="exportExcel()">Export to Excel</button>
+  <script>
+    function exportExcel() {
+      const table = document.querySelector('table');
+      let csv = '';
+      for (const row of table.rows) {
+        const cells = [];
+        for (const cell of row.cells) {
+          let val = cell.textContent.replace(/"/g, '""');
+          cells.push('"' + val + '"');
+        }
+        csv += cells.join(',') + '\\n';
+      }
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'willfit_users_' + new Date().toISOString().slice(0,10) + '.csv';
+      link.click();
+    }
+  </script>
   <div class="stats">
     <div class="stat">
       <div class="value">${users.length}</div>
