@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback } from 'react';
-import { api } from '../api';
+import { api, setApiToken, getApiToken } from '../api';
 
 const AuthContext = createContext(null);
 
@@ -9,15 +9,15 @@ export function AuthProvider({ children }) {
     return saved ? JSON.parse(saved) : null;
   });
 
-  const [token, setToken] = useState(() => localStorage.getItem('willfit_token'));
+  const [token, setToken] = useState(() => getApiToken());
 
   const login = useCallback(async (identifier, password) => {
     const data = await api('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ identifier, password }),
     });
-    localStorage.setItem('willfit_token', data.token);
-    localStorage.setItem('willfit_user', JSON.stringify(data.user));
+    setApiToken(data.token);
+    try { localStorage.setItem('willfit_user', JSON.stringify(data.user)); } catch {}
     setToken(data.token);
     setUser(data.user);
     return data;
@@ -28,8 +28,8 @@ export function AuthProvider({ children }) {
       method: 'POST',
       body: JSON.stringify({ identifier, password }),
     });
-    localStorage.setItem('willfit_token', data.token);
-    localStorage.setItem('willfit_user', JSON.stringify(data.user));
+    setApiToken(data.token);
+    try { localStorage.setItem('willfit_user', JSON.stringify(data.user)); } catch {}
     setToken(data.token);
     setUser(data.user);
     return data;
@@ -37,16 +37,16 @@ export function AuthProvider({ children }) {
 
   const demo = useCallback(async () => {
     const data = await api('/auth/demo', { method: 'POST' });
-    localStorage.setItem('willfit_token', data.token);
-    localStorage.setItem('willfit_user', JSON.stringify(data.user));
+    setApiToken(data.token);
+    try { localStorage.setItem('willfit_user', JSON.stringify(data.user)); } catch {}
     setToken(data.token);
     setUser(data.user);
     return data;
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem('willfit_token');
-    localStorage.removeItem('willfit_user');
+    setApiToken(null);
+    try { localStorage.removeItem('willfit_user'); } catch {}
     setToken(null);
     setUser(null);
   }, []);
