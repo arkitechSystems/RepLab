@@ -17,6 +17,7 @@ export default function CreateWorkout() {
   const [searchParams] = useSearchParams();
   const preselectedProgramId = searchParams.get('programId');
   const isQuickCreate = searchParams.get('quick') === '1';
+  const assignDay = searchParams.get('day'); // day of week (0-6) to auto-assign after save
   const [programs, setPrograms] = useState([]);
   const [selectedProgramId, setSelectedProgramId] = useState(preselectedProgramId || '');
   const [name, setName] = useState('');
@@ -158,7 +159,7 @@ export default function CreateWorkout() {
 
     setSaving(true);
     try {
-      await api('/templates', {
+      const result = await api('/templates', {
         method: 'POST',
         body: JSON.stringify({
           name: name.trim(),
@@ -167,7 +168,17 @@ export default function CreateWorkout() {
           programId: Number(selectedProgramId),
         }),
       });
-      navigate('/');
+
+      // Auto-assign to a day if specified
+      if (assignDay !== null && result.id) {
+        await api('/schedule', {
+          method: 'PUT',
+          body: JSON.stringify({ schedule: [{ dayOfWeek: Number(assignDay), templateId: result.id }] }),
+        });
+        navigate('/calendar');
+      } else {
+        navigate('/');
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -190,6 +201,9 @@ export default function CreateWorkout() {
       {isQuickCreate && (
         <p className="text-sm text-wf-gray-400 mb-6">
           Just name it, add exercises, and go. Saved to <span className="text-white font-medium">My Workouts</span>.
+          {assignDay !== null && (
+            <span> Auto-assigned to <span className="text-green-400 font-medium">{['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][Number(assignDay)]}</span>.</span>
+          )}
         </p>
       )}
       {!isQuickCreate && <div className="mb-6" />}
