@@ -686,6 +686,8 @@ export default function Utilities() {
   const [showPRs, setShowPRs] = useState(false);
   const [show1RM, setShow1RM] = useState(false);
 
+  useEffect(() => { window.scrollTo(0, 0); }, []);
+
   return (
     <div>
       <StickyHeader title="Utilities" />

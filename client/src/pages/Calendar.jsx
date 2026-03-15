@@ -23,6 +23,8 @@ export default function Calendar() {
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const isCurrentWeek = isSameWeek(weekStart, today, { weekStartsOn: 1 });
 
+  useEffect(() => { window.scrollTo(0, 0); }, []);
+
   useEffect(() => {
     Promise.all([api('/schedule'), api('/templates'), api('/programs'), api('/sessions/completed')])
       .then(([s, t, p, c]) => { setSchedule(s); setTemplates(t); setPrograms(p); setCompletedSessions(c); })

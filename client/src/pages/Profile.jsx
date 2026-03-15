@@ -50,6 +50,8 @@ export default function Profile() {
   const [feedbackSending, setFeedbackSending] = useState(false);
   const [feedbackSent, setFeedbackSent] = useState(false);
 
+  useEffect(() => { window.scrollTo(0, 0); }, []);
+
   useEffect(() => {
     localStorage.setItem('wf-theme', theme);
     document.documentElement.setAttribute('data-theme', theme);

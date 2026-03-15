@@ -30,12 +30,14 @@ function ProgramCard({ program, idx, onSelect, onBegin }) {
               {program.workoutCount} workouts &middot; {program.exerciseCount} exercises
             </p>
           </div>
-          <button
-            onClick={(e) => onBegin(e, program)}
-            className="btn-gradient shrink-0 text-white font-semibold text-xs px-3 py-2 rounded-xl active:scale-[0.97] transition-all"
-          >
-            Begin Program
-          </button>
+          {program.workoutCount > 0 && (
+            <button
+              onClick={(e) => onBegin(e, program)}
+              className="btn-gradient shrink-0 text-white font-semibold text-xs px-3 py-2 rounded-xl active:scale-[0.97] transition-all"
+            >
+              Begin Program
+            </button>
+          )}
         </div>
 
         {/* Workout preview dots */}
@@ -87,6 +89,8 @@ export default function Workouts() {
   const [showAddDatePicker, setShowAddDatePicker] = useState(false);
   const [addConflictInfo, setAddConflictInfo] = useState(null);
   const navigate = useNavigate();
+
+  useEffect(() => { window.scrollTo(0, 0); }, []);
 
   useEffect(() => {
     Promise.all([api('/programs'), api('/templates')])
@@ -1286,7 +1290,7 @@ export default function Workouts() {
                 <p className="text-wf-gray-400 text-sm mt-1">
                   {myPrograms.length === 0
                     ? 'No custom workouts yet'
-                    : `${myPrograms.length} program${myPrograms.length !== 1 ? 's' : ''} &middot; Your custom workouts`}
+                    : `${myPrograms.length} program${myPrograms.length !== 1 ? 's' : ''} · Your custom workouts`}
                 </p>
                 {myPrograms.length > 0 && (
                   <div className="flex items-center gap-3 mt-4 flex-wrap">
