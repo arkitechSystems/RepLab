@@ -615,13 +615,10 @@ export default function Workouts() {
     );
   }
 
-  const [createForDay, setCreateForDay] = useState(false); // show day picker in create menu
-
   function renderCreateMenu() {
     if (!showCreateMenu) return null;
-    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     return (
-      <div className="fixed inset-0 z-50" onClick={() => { setShowCreateMenu(false); setCreateForDay(false); }}>
+      <div className="fixed inset-0 z-50" onClick={() => setShowCreateMenu(false)}>
         <div className="absolute inset-0 bg-black/50" />
         <div
           className="absolute top-16 right-4 left-4 max-w-sm ml-auto animate-drop-down"
@@ -630,7 +627,7 @@ export default function Workouts() {
           <div className="bg-wf-gray-900 border border-white/10 rounded-2xl shadow-2xl shadow-black/60 overflow-hidden">
             <div className="p-3 space-y-1.5">
               <button
-                onClick={() => { setShowCreateMenu(false); setCreateForDay(false); navigate('/workouts/create?quick=1'); }}
+                onClick={() => { setShowCreateMenu(false); navigate('/workouts/create?quick=1'); }}
                 className="w-full text-left rounded-xl p-3.5 flex items-center gap-3.5 active:scale-[0.98] transition-all hover:bg-white/5 active:bg-white/10"
               >
                 <div className="w-10 h-10 rounded-xl btn-gradient flex items-center justify-center shrink-0">
@@ -647,40 +644,8 @@ export default function Workouts() {
                 </svg>
               </button>
               <div className="border-t border-white/5 mx-2" />
-              {/* Create for a Day */}
               <button
-                onClick={() => setCreateForDay(!createForDay)}
-                className="w-full text-left rounded-xl p-3.5 flex items-center gap-3.5 active:scale-[0.98] transition-all hover:bg-white/5 active:bg-white/10"
-              >
-                <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center shrink-0">
-                  <svg className="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                  </svg>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-semibold text-white">Create for a Day</h4>
-                  <p className="text-xs text-wf-gray-400 mt-0.5">Build a workout and assign it to a day</p>
-                </div>
-                <svg className={`w-4 h-4 text-wf-gray-500 shrink-0 transition-transform ${createForDay ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                </svg>
-              </button>
-              {createForDay && (
-                <div className="grid grid-cols-4 gap-1.5 px-1 pb-1">
-                  {dayNames.map((day, idx) => (
-                    <button
-                      key={day}
-                      onClick={() => { setShowCreateMenu(false); setCreateForDay(false); navigate(`/workouts/create?quick=1&day=${idx}`); }}
-                      className="text-center py-2.5 rounded-lg bg-white/5 text-xs font-medium text-wf-gray-300 active:bg-green-500/20 active:text-green-400 transition-colors"
-                    >
-                      {day.slice(0, 3)}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <div className="border-t border-white/5 mx-2" />
-              <button
-                onClick={() => { setShowCreateMenu(false); setCreateForDay(false); navigate('/programs/create'); }}
+                onClick={() => { setShowCreateMenu(false); navigate('/programs/create'); }}
                 className="w-full text-left rounded-xl p-3.5 flex items-center gap-3.5 active:scale-[0.98] transition-all hover:bg-white/5 active:bg-white/10"
               >
                 <div className="w-10 h-10 rounded-xl bg-wf-blue/20 flex items-center justify-center shrink-0">
@@ -698,7 +663,7 @@ export default function Workouts() {
               </button>
               <div className="border-t border-white/5 mx-2" />
               <button
-                onClick={() => { setShowCreateMenu(false); setCreateForDay(false); navigate('/workouts/create'); }}
+                onClick={() => { setShowCreateMenu(false); navigate('/workouts/create'); }}
                 className="w-full text-left rounded-xl p-3.5 flex items-center gap-3.5 active:scale-[0.98] transition-all hover:bg-white/5 active:bg-white/10"
               >
                 <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center shrink-0">
