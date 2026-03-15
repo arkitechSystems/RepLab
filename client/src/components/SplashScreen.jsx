@@ -67,7 +67,10 @@ export default function SplashScreen({ onDone, persistent }) {
       />
 
       {/* Version */}
-      <span className="absolute bottom-8 text-xs text-wf-gray-500 tracking-widest z-10">VERSION {APP_VERSION}</span>
+      <div className="absolute bottom-8 z-10 flex flex-col items-center">
+        <span className="text-xs text-wf-gray-500 tracking-widest">VERSION {APP_VERSION}</span>
+        <span className="text-[10px] text-wf-gray-600 tracking-wider mt-1">Alpha Version</span>
+      </div>
     </div>
   );
 }

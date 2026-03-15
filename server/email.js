@@ -20,6 +20,17 @@ export async function sendWelcomeEmail(email) {
             Your account has been created. You're all set to start tracking your workouts,
             logging personal bests, and building programs.
           </p>
+          <p style="color: #444; font-size: 16px; line-height: 1.6; margin-top: 16px;">
+            Congrats — you're part of a select group getting early access to the alpha version of WillFit.
+            Your feedback will directly shape how this app evolves, so thank you for being here from the start.
+          </p>
+          <div style="margin-top: 24px; padding: 16px 20px; background: #f8f4e8; border-left: 4px solid #e6a817; border-radius: 8px;">
+            <p style="color: #333; font-size: 14px; line-height: 1.6; margin: 0;">
+              <strong>You're using the alpha version of WillFit!</strong> Things are still being built and improved.
+              If you run into any bugs or have features you'd like to see added, head to the
+              <strong>Profile</strong> tab and tap <strong>Send Feedback</strong> — we'd love to hear from you.
+            </p>
+          </div>
           <a href="https://will-fit.shop"
              style="display: inline-block; margin-top: 24px; padding: 12px 24px;
                     background: #111; color: #fff; text-decoration: none;

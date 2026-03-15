@@ -134,8 +134,8 @@ export default function Profile() {
               </svg>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white">Beta Version</p>
-              <p className="text-xs text-wf-gray-400 mt-0.5 leading-relaxed">This is the beta version of the app. Send us any bugs or improvement ideas you have!</p>
+              <p className="text-sm font-semibold text-white">Alpha Version</p>
+              <p className="text-xs text-wf-gray-400 mt-0.5 leading-relaxed">This is the alpha version of the app. Send us any bugs or improvement ideas you have!</p>
             </div>
             {!showFeedback && (
               <button
