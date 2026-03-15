@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { getWorkoutColor } from '../utils/workoutColors';
@@ -86,13 +86,6 @@ export default function Workouts() {
   const [addDateInput, setAddDateInput] = useState('');
   const [showAddDatePicker, setShowAddDatePicker] = useState(false);
   const [addConflictInfo, setAddConflictInfo] = useState(null);
-  // Featured workout session state
-  const [workoutStarted, setWorkoutStarted] = useState(false);
-  const [workoutElapsed, setWorkoutElapsed] = useState(0);
-  const [restElapsed, setRestElapsed] = useState(0);
-  const [completedSets, setCompletedSets] = useState({});
-  const workoutTimerRef = useRef(null);
-  const restTimerRef = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -104,52 +97,6 @@ export default function Workouts() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
-
-  // Cleanup timers on unmount
-  useEffect(() => {
-    return () => {
-      if (workoutTimerRef.current) clearInterval(workoutTimerRef.current);
-      if (restTimerRef.current) clearInterval(restTimerRef.current);
-    };
-  }, []);
-
-  function startFeaturedWorkout() {
-    setWorkoutStarted(true);
-    setWorkoutElapsed(0);
-    setRestElapsed(0);
-    setCompletedSets({});
-    workoutTimerRef.current = setInterval(() => setWorkoutElapsed((s) => s + 1), 1000);
-    restTimerRef.current = setInterval(() => setRestElapsed((s) => s + 1), 1000);
-  }
-
-  function stopFeaturedWorkout() {
-    setWorkoutStarted(false);
-    if (workoutTimerRef.current) { clearInterval(workoutTimerRef.current); workoutTimerRef.current = null; }
-    if (restTimerRef.current) { clearInterval(restTimerRef.current); restTimerRef.current = null; }
-    setWorkoutElapsed(0);
-    setRestElapsed(0);
-    setCompletedSets({});
-  }
-
-  function toggleSetComplete(key) {
-    setCompletedSets((prev) => {
-      const next = { ...prev };
-      if (next[key]) {
-        delete next[key];
-      } else {
-        next[key] = true;
-        // Reset rest timer on completion
-        setRestElapsed(0);
-      }
-      return next;
-    });
-  }
-
-  function formatTimer(seconds) {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-  }
 
   async function openBeginProgram(e, program) {
     e.stopPropagation();
@@ -375,50 +322,22 @@ export default function Workouts() {
   if (previewWorkout) {
     const pw = previewWorkout;
     const pwColor = getWorkoutColor(pw.name);
-    const isFeatured = String(pw.id || '').startsWith('__featured-');
     const totalSets = pw.exercises?.reduce((sum, ex) => sum + (ex.sets?.length || 0), 0) || 0;
-    const completedCount = Object.keys(completedSets).length;
     return (
       <div>
         <StickyHeader title={pw.name} />
 
-        {/* Back button + timers — sticky below header */}
+        {/* Back button — sticky below header */}
         <div className="sticky top-[52px] z-20 bg-black/80 backdrop-blur-xl px-4 py-2">
-          <div className="flex items-center justify-between">
-            <button
-              onClick={() => { setPreviewWorkout(null); if (workoutStarted) stopFeaturedWorkout(); }}
-              className="inline-flex items-center gap-1 text-sm text-wf-gray-400 active:text-white transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-              </svg>
-              Back
-            </button>
-
-            {/* Timers */}
-            {workoutStarted && (
-              <div className="flex items-center gap-3">
-                {/* Rest timer */}
-                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg ${restElapsed >= 60 ? 'bg-green-500/15 border border-green-500/30' : 'bg-red-500/15 border border-red-500/30'}`}>
-                  <svg className={`w-3.5 h-3.5 ${restElapsed >= 60 ? 'text-green-400' : 'text-red-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span className={`text-xs font-mono-stat font-bold ${restElapsed >= 60 ? 'text-green-400' : 'text-red-400'}`}>
-                    {formatTimer(restElapsed)}
-                  </span>
-                </div>
-                {/* Workout timer */}
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/10 border border-white/15">
-                  <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span className="text-xs font-mono-stat font-bold text-white">
-                    {formatTimer(workoutElapsed)}
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
+          <button
+            onClick={() => setPreviewWorkout(null)}
+            className="inline-flex items-center gap-1 text-sm text-wf-gray-400 active:text-white transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+            </svg>
+            Back
+          </button>
         </div>
 
         <div className="px-4 pb-4">
@@ -433,29 +352,7 @@ export default function Workouts() {
             )}
             <p className="text-wf-gray-500 text-xs mt-1 ml-5">
               {pw.exercises?.length || 0} exercises &middot; {totalSets} total sets
-              {workoutStarted && ` · ${completedCount}/${totalSets} completed`}
             </p>
-
-            {/* Begin / End Workout button for featured workouts */}
-            {isFeatured && (
-              <div className="mt-3 ml-5">
-                {!workoutStarted ? (
-                  <button
-                    onClick={startFeaturedWorkout}
-                    className="btn-gradient text-white font-semibold text-sm px-5 py-2.5 rounded-xl active:scale-[0.97] transition-all"
-                  >
-                    Begin Workout
-                  </button>
-                ) : (
-                  <button
-                    onClick={stopFeaturedWorkout}
-                    className="glass-card text-wf-gray-400 font-semibold text-sm px-5 py-2.5 rounded-xl active:scale-[0.97] transition-all border border-white/10"
-                  >
-                    End Workout
-                  </button>
-                )}
-              </div>
-            )}
           </div>
 
           {/* Exercise cards */}
@@ -480,47 +377,26 @@ export default function Workouts() {
                   <span className="w-12 text-[10px] uppercase tracking-widest text-wf-gray-600">Set</span>
                   <span className="flex-1 text-[10px] uppercase tracking-widest text-wf-gray-600 text-center">Weight</span>
                   <span className="flex-1 text-[10px] uppercase tracking-widest text-wf-gray-600 text-center">Reps</span>
-                  {workoutStarted && <span className="w-10 text-[10px] uppercase tracking-widest text-wf-gray-600 text-center">Done</span>}
                 </div>
 
-                {ex.sets.map((set, setIdx) => {
-                  const setKey = `${exIdx}-${setIdx}`;
-                  const isDone = completedSets[setKey];
-                  return (
+                {ex.sets.map((set, setIdx) => (
                     <div
                       key={setIdx}
-                      className={`flex items-center gap-2 py-2 border-t border-white/5 transition-colors ${isDone ? 'bg-green-500/5' : ''}`}
+                      className="flex items-center gap-2 py-2 border-t border-white/5"
                     >
-                      <span className={`w-12 text-sm font-mono-stat ${isDone ? 'text-green-400' : 'text-wf-gray-500'}`}>{setIdx + 1}</span>
+                      <span className="w-12 text-sm font-mono-stat text-wf-gray-500">{setIdx + 1}</span>
                       <div className="flex-1 text-center">
-                        <span className={`text-sm font-mono-stat ${isDone ? 'text-green-400' : 'text-wf-gray-400'}`}>
+                        <span className="text-sm font-mono-stat text-wf-gray-400">
                           {set.plannedWeight ? `${set.plannedWeight} lbs` : '—'}
                         </span>
                       </div>
                       <div className="flex-1 text-center">
-                        <span className={`text-sm font-mono-stat ${isDone ? 'text-green-400' : 'text-wf-gray-400'}`}>
+                        <span className="text-sm font-mono-stat text-wf-gray-400">
                           {set.plannedReps || '—'}
                         </span>
                       </div>
-                      {workoutStarted && (
-                        <div className="w-10 flex justify-center">
-                          <button
-                            onClick={() => toggleSetComplete(setKey)}
-                            className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all active:scale-[0.9] ${
-                              isDone
-                                ? 'bg-green-500 shadow-[0_0_12px_rgba(34,197,94,0.4)]'
-                                : 'border border-white/20 bg-white/5'
-                            }`}
-                          >
-                            <svg className={`w-4 h-4 ${isDone ? 'text-white' : 'text-wf-gray-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                            </svg>
-                          </button>
-                        </div>
-                      )}
                     </div>
-                  );
-                })}
+                ))}
               </div>
 
               {/* Notes section */}

@@ -1,15 +1,32 @@
-import { createContext, useContext, useState, useCallback } from 'react';
-import { api, setApiToken, getApiToken } from '../api';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { api, setApiToken, getApiToken, setOnUnauthorized } from '../api';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('willfit_user');
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = localStorage.getItem('willfit_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
   });
 
   const [token, setToken] = useState(() => getApiToken());
+
+  const logout = useCallback(() => {
+    setApiToken(null);
+    try { localStorage.removeItem('willfit_user'); } catch {}
+    setToken(null);
+    setUser(null);
+  }, []);
+
+  // Register 401 handler — clears auth state without page reload
+  useEffect(() => {
+    setOnUnauthorized(logout);
+    return () => setOnUnauthorized(null);
+  }, [logout]);
 
   const login = useCallback(async (identifier, password) => {
     const data = await api('/auth/login', {
@@ -42,13 +59,6 @@ export function AuthProvider({ children }) {
     setToken(data.token);
     setUser(data.user);
     return data;
-  }, []);
-
-  const logout = useCallback(() => {
-    setApiToken(null);
-    try { localStorage.removeItem('willfit_user'); } catch {}
-    setToken(null);
-    setUser(null);
   }, []);
 
   const isAuthenticated = !!token;

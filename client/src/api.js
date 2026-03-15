@@ -2,6 +2,7 @@ const API_BASE = '';
 
 // In-memory token fallback for Safari/iOS where localStorage can be unreliable
 let memoryToken = null;
+let onUnauthorized = null; // callback set by AuthContext
 
 export function setApiToken(token) {
   memoryToken = token;
@@ -24,6 +25,10 @@ export function getApiToken() {
   }
 }
 
+export function setOnUnauthorized(callback) {
+  onUnauthorized = callback;
+}
+
 export async function api(path, options = {}) {
   const token = getApiToken();
 
@@ -42,10 +47,15 @@ export async function api(path, options = {}) {
   });
 
   if (res.status === 401) {
-    setApiToken(null);
-    try { localStorage.removeItem('willfit_user'); } catch {}
-    window.location.href = '/login';
-    throw new Error('Unauthorized');
+    // Skip 401 handling for auth endpoints (login/signup/demo)
+    if (!path.startsWith('/auth/')) {
+      setApiToken(null);
+      try { localStorage.removeItem('willfit_user'); } catch {}
+      if (onUnauthorized) {
+        onUnauthorized();
+      }
+      throw new Error('Unauthorized');
+    }
   }
 
   const data = await res.json();
