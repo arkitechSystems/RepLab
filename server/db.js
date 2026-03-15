@@ -11,6 +11,33 @@ const db = {
     return rows.map((u) => ({ id: u.id, email: u.email, phone: u.phone, firstName: u.first_name, lastName: u.last_name, gender: u.gender, username: u.username, referralSource: u.referral_source, referralCode: u.referral_code, signupCity: u.signup_city, signupState: u.signup_state, createdAt: u.created_at }));
   },
 
+  async getSessionAnalytics() {
+    // All completed sessions with user info
+    const { rows: sessions } = await pool.query(`
+      SELECT s.id, s.user_id, s.template_id, s.date, s.completed, s.created_at,
+             t.name AS template_name,
+             u.email, u.first_name, u.last_name, u.username
+      FROM sessions s
+      LEFT JOIN templates t ON s.template_id = t.id
+      JOIN users u ON s.user_id = u.id
+      WHERE u.email NOT LIKE '%@willfit.demo' OR u.email IS NULL
+      ORDER BY s.created_at DESC
+    `);
+    return sessions.map((s) => ({
+      id: s.id,
+      userId: s.user_id,
+      templateId: s.template_id,
+      templateName: s.template_name,
+      date: s.date,
+      completed: s.completed,
+      createdAt: s.created_at,
+      email: s.email,
+      firstName: s.first_name,
+      lastName: s.last_name,
+      username: s.username,
+    }));
+  },
+
   async findUserByUsername(username) {
     const { rows } = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
     return rows[0] || null;

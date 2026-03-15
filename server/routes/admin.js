@@ -69,6 +69,11 @@ router.get('/', adminAuth, (req, res) => {
       <div class="card-title">User Sign Ups</div>
       <div class="card-desc">View all registered users, contact info, referral sources, and export data.</div>
     </a>
+    <a class="card" href="/admin/analytics?key=${key}">
+      <div class="card-icon">📊</div>
+      <div class="card-title">Session Analytics</div>
+      <div class="card-desc">Workout completions, most active users, and recent activity across all users.</div>
+    </a>
   </div>
   `));
 });
@@ -154,6 +159,120 @@ router.get('/users', adminAuth, async (req, res) => {
     }
 
     res.json({ count: users.length, users });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /admin/analytics?key=YOUR_ADMIN_KEY — Session Analytics
+router.get('/analytics', adminAuth, async (req, res) => {
+  try {
+    const sessions = await db.getSessionAnalytics();
+    const key = req.adminKey;
+
+    const now = new Date();
+    const weekAgo = new Date(now); weekAgo.setDate(weekAgo.getDate() - 7);
+    const monthAgo = new Date(now); monthAgo.setMonth(monthAgo.getMonth() - 1);
+
+    const completed = sessions.filter((s) => s.completed);
+    const completedThisWeek = completed.filter((s) => new Date(s.createdAt) >= weekAgo);
+    const completedThisMonth = completed.filter((s) => new Date(s.createdAt) >= monthAgo);
+    const uniqueUsers = new Set(completed.map((s) => s.userId));
+
+    // Most active users — count completed sessions per user
+    const userCounts = {};
+    for (const s of completed) {
+      const name = [s.firstName, s.lastName].filter(Boolean).join(' ') || s.email || s.username || `User #${s.userId}`;
+      if (!userCounts[s.userId]) userCounts[s.userId] = { name, email: s.email, count: 0, lastWorkout: s.createdAt };
+      userCounts[s.userId].count++;
+      if (new Date(s.createdAt) > new Date(userCounts[s.userId].lastWorkout)) {
+        userCounts[s.userId].lastWorkout = s.createdAt;
+      }
+    }
+    const topUsers = Object.values(userCounts).sort((a, b) => b.count - a.count).slice(0, 20);
+
+    const topUserRows = topUsers.map((u, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${u.name}</td>
+        <td>${u.email || '—'}</td>
+        <td>${u.count}</td>
+        <td>${new Date(u.lastWorkout).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+      </tr>`).join('');
+
+    // Most popular workouts
+    const workoutCounts = {};
+    for (const s of completed) {
+      const name = s.templateName || 'Unknown';
+      workoutCounts[name] = (workoutCounts[name] || 0) + 1;
+    }
+    const topWorkouts = Object.entries(workoutCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
+    const topWorkoutRows = topWorkouts.map(([name, count], i) => `
+      <tr><td>${i + 1}</td><td>${name}</td><td>${count}</td></tr>`).join('');
+
+    // Recent activity (last 20 sessions)
+    const recentRows = sessions.slice(0, 20).map((s) => {
+      const name = [s.firstName, s.lastName].filter(Boolean).join(' ') || s.email || s.username || `User #${s.userId}`;
+      return `
+      <tr>
+        <td>${name}</td>
+        <td>${s.templateName || '—'}</td>
+        <td>${s.completed ? '<span style="color: #22c55e; font-weight: 600;">Completed</span>' : '<span style="color: #888;">In Progress</span>'}</td>
+        <td>${new Date(s.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+      </tr>`;
+    }).join('');
+
+    res.send(adminPage('Session Analytics', `
+  <div class="breadcrumb"><a href="/admin?key=${key}">Dashboard</a> / Session Analytics</div>
+  <div class="header">
+    <h1>Admin Dashboard</h1>
+    <h2>Session Analytics</h2>
+    <p>Generated ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+  </div>
+  <div class="stats">
+    <div class="stat">
+      <div class="value">${completed.length}</div>
+      <div class="label">Total Workouts</div>
+    </div>
+    <div class="stat">
+      <div class="value">${uniqueUsers.size}</div>
+      <div class="label">Active Users</div>
+    </div>
+    <div class="stat">
+      <div class="value">${completedThisWeek.length}</div>
+      <div class="label">This Week</div>
+    </div>
+    <div class="stat">
+      <div class="value">${completedThisMonth.length}</div>
+      <div class="label">This Month</div>
+    </div>
+  </div>
+
+  <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 12px;">Most Active Users</h3>
+  <table style="margin-bottom: 32px;">
+    <thead>
+      <tr><th>#</th><th>Name</th><th>Email</th><th>Workouts</th><th>Last Workout</th></tr>
+    </thead>
+    <tbody>${topUserRows || '<tr><td colspan="5" style="text-align:center; color:#888;">No completed workouts yet</td></tr>'}</tbody>
+  </table>
+
+  <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 12px;">Most Popular Workouts</h3>
+  <table style="margin-bottom: 32px;">
+    <thead>
+      <tr><th>#</th><th>Workout</th><th>Times Completed</th></tr>
+    </thead>
+    <tbody>${topWorkoutRows || '<tr><td colspan="3" style="text-align:center; color:#888;">No completed workouts yet</td></tr>'}</tbody>
+  </table>
+
+  <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 12px;">Recent Activity</h3>
+  <table>
+    <thead>
+      <tr><th>User</th><th>Workout</th><th>Status</th><th>Date</th></tr>
+    </thead>
+    <tbody>${recentRows || '<tr><td colspan="4" style="text-align:center; color:#888;">No sessions yet</td></tr>'}</tbody>
+  </table>
+    `));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
