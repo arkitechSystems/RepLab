@@ -75,6 +75,18 @@ export default async function initDb() {
     }
   }
 
+  // Seed Will's Push 1 into existing Will's PPL if not already present
+  if (wpplRows.length > 0) {
+    const pplId = wpplRows[0].id;
+    const { rows: push1Rows } = await pool.query(
+      "SELECT id FROM templates WHERE name = $1 AND program_id = $2",
+      ["Will's Push 1", pplId]
+    );
+    if (push1Rows.length === 0) {
+      await seedWillsPush1(pplId);
+    }
+  }
+
   // Seed ZJ's Workout if not already present
   const { rows: zjRows } = await pool.query("SELECT id FROM programs WHERE name = $1 AND user_id IS NULL", ["ZJ's Workout"]);
   if (zjRows.length === 0) {
@@ -652,6 +664,54 @@ async function seedZJsWorkout() {
 
     await client.query('COMMIT');
     console.log("Seeded ZJ's Workout program");
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+async function seedWillsPush1(programId) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const { rows: [maxRow] } = await client.query(
+      'SELECT COALESCE(MAX(sort_order), -1) AS max_sort FROM templates WHERE program_id = $1',
+      [programId]
+    );
+    const sortOrder = maxRow.max_sort + 1;
+
+    const exercises = [
+      { name: 'Mid Upper Chest Flyes', sets: [{ reps: 20, weight: 30 }, { reps: 20, weight: 30 }, { reps: 20, weight: 30 }], repRange: '20', description: 'Cable or dumbbell flyes targeting the mid-upper chest. Focus on a deep stretch and controlled squeeze at the top.' },
+      { name: 'Banded Close-Grip DB Bench', sets: [{ reps: 10, weight: 85 }, { reps: 10, weight: 85 }, { reps: 10, weight: 85 }], repRange: '10', description: 'Close-grip dumbbell bench press with a resistance band for added tension at lockout. Targets inner chest and triceps.' },
+      { name: 'Incline DB Press', sets: [{ reps: 12, weight: 75 }, { reps: 12, weight: 75 }, { reps: 12, weight: 75 }], repRange: '12', description: 'Incline dumbbell press for upper chest development. Control the eccentric and drive through the chest.' },
+      { name: 'Weighted Dips (Drop Set)', sets: [{ reps: 4, weight: 90 }, { reps: 4, weight: 45 }, { reps: 10, weight: 0 }], repRange: '4-10', description: 'Drop set dips: start heavy at 90 lbs, strip to 45 lbs, then bodyweight for 10 bottom-half reps. No rest between drops.' },
+      { name: 'Cable Tricep Pushdowns (Pyramid)', sets: [{ reps: 12, weight: 40 }, { reps: 10, weight: 50 }, { reps: 8, weight: 60 }, { reps: 10, weight: 50 }, { reps: 12, weight: 40 }], repRange: '8-12', description: 'Pyramid sets: increase weight for 3 sets up to peak, then decrease back down. Focus on full extension and squeeze.' },
+      { name: 'Cable Tricep Kickbacks (Burnout)', sets: [{ reps: 15, weight: 20 }, { reps: 15, weight: 20 }, { reps: 15, weight: 20 }], repRange: '15', description: 'High-rep cable kickbacks for a tricep burnout. Keep upper arm locked and squeeze at full extension.' },
+      { name: 'Hammer Strength Shoulder Press', sets: [{ reps: 10, weight: 90 }, { reps: 10, weight: 90 }, { reps: 10, weight: 90 }], repRange: '10', description: 'Machine shoulder press for controlled overhead pressing. Focus on full range of motion and even pressing.' },
+      { name: 'Max Push-Ups', sets: [{ reps: 99, weight: 0 }, { reps: 99, weight: 0 }], repRange: 'Max', description: 'Finisher: go to failure on each set. Full range of motion, chest to floor.' },
+    ];
+
+    const { rows: [tmpl] } = await client.query(
+      'INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES (NULL, $1, $2, $3, FALSE, $4) RETURNING id',
+      [programId, "Will's Push 1", 'Chest, Triceps, Shoulders — flyes, bench, dips, pushdowns, shoulder press, burnout', sortOrder]
+    );
+
+    let exSort = 0;
+    for (const ex of exercises) {
+      for (let i = 0; i < ex.sets.length; i++) {
+        await client.query(
+          'INSERT INTO template_exercises (template_id, name, set_number, planned_reps, suggested_weight, sort_order, rep_range, exercise_description) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+          [tmpl.id, ex.name, i + 1, ex.sets[i].reps, ex.sets[i].weight, exSort, ex.repRange, ex.description]
+        );
+      }
+      exSort++;
+    }
+
+    await client.query('COMMIT');
+    console.log("Seeded Will's Push 1 template");
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;

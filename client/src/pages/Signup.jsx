@@ -78,6 +78,15 @@ export default function Signup() {
     <div className="min-h-screen bg-black flex flex-col items-center justify-center px-6 safe-top safe-bottom relative">
       <div className="ambient-bg" />
       <div className="w-full max-w-sm relative z-10 py-10">
+        <button
+          onClick={() => navigate('/login')}
+          className="inline-flex items-center gap-1 text-sm text-wf-gray-400 active:text-white transition-colors mb-6"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+          </svg>
+          Back
+        </button>
         <div className="text-center mb-10">
           <h1 className="text-4xl font-black tracking-wide text-white logo-glow">
             WILL<span className="text-wf-red">FIT</span>
