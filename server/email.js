@@ -48,3 +48,41 @@ export async function sendWelcomeEmail(email) {
     console.error('Failed to send welcome email:', err.message);
   }
 }
+
+export async function sendPasswordResetEmail(email, token) {
+  if (!process.env.RESEND_API_KEY) {
+    console.log('RESEND_API_KEY not set, skipping reset email');
+    return;
+  }
+
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const resetUrl = `https://will-fit.shop/reset-password/${token}`;
+
+  try {
+    await resend.emails.send({
+      from: 'WillFit <noreply@will-fit.shop>',
+      to: email,
+      subject: 'Reset your WillFit password',
+      html: `
+        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 32px;">
+          <h1 style="color: #111; font-size: 28px; margin-bottom: 8px;">Reset Your Password</h1>
+          <p style="color: #444; font-size: 16px; line-height: 1.6;">
+            We received a request to reset your WillFit password. Click the button below to set a new one.
+            This link expires in 1 hour.
+          </p>
+          <a href="${resetUrl}"
+             style="display: inline-block; margin-top: 24px; padding: 14px 28px;
+                    background: #111; color: #fff; text-decoration: none;
+                    border-radius: 8px; font-size: 16px; font-weight: 600;">
+            Reset Password
+          </a>
+          <p style="color: #999; font-size: 13px; margin-top: 32px;">
+            If you didn't request this, you can safely ignore this email. Your password won't change.
+          </p>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error('Failed to send reset email:', err.message);
+  }
+}

@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import db from '../db.js';
-import { generateToken } from '../middleware/auth.js';
-import { sendWelcomeEmail } from '../email.js';
+import crypto from 'crypto';
+import { generateToken, authMiddleware } from '../middleware/auth.js';
+import { sendWelcomeEmail, sendPasswordResetEmail } from '../email.js';
 
 const router = Router();
 
@@ -135,6 +136,71 @@ router.post('/demo', async (req, res) => {
     await db.setDefaultSchedule(user.id);
     const token = generateToken(user);
     res.status(201).json({ token, user: userResponse(user) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Request password reset email
+router.post('/request-reset', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email is required' });
+
+    const user = await db.findUserByIdentifier(email.toLowerCase().trim());
+    // Always return success to prevent email enumeration
+    if (!user || !user.email) return res.json({ message: 'If an account exists with that email, a reset link has been sent.' });
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    await db.setResetToken(user.id, token, expires);
+    await sendPasswordResetEmail(user.email, token);
+
+    res.json({ message: 'If an account exists with that email, a reset link has been sent.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Reset password with token
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    if (!token || !password) return res.status(400).json({ error: 'Token and password are required' });
+    if (password.length < 4) return res.status(400).json({ error: 'Password must be at least 4 characters' });
+
+    const user = await db.findUserByResetToken(token);
+    if (!user) return res.status(400).json({ error: 'Invalid or expired reset link. Please request a new one.' });
+
+    const passwordHash = bcrypt.hashSync(password, 10);
+    await db.updatePassword(user.id, passwordHash);
+
+    res.json({ message: 'Password updated successfully. You can now sign in.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Change password (logged in)
+router.post('/change-password', authMiddleware, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Current and new passwords are required' });
+    if (newPassword.length < 4) return res.status(400).json({ error: 'New password must be at least 4 characters' });
+
+    const user = await db.findUserById(req.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const valid = bcrypt.compareSync(currentPassword, user.passwordHash);
+    if (!valid) return res.status(401).json({ error: 'Current password is incorrect' });
+
+    const passwordHash = bcrypt.hashSync(newPassword, 10);
+    await db.updatePassword(user.id, passwordHash);
+
+    res.json({ message: 'Password changed successfully' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });

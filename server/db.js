@@ -38,6 +38,26 @@ const db = {
     }));
   },
 
+  async setResetToken(userId, token, expires) {
+    await pool.query('UPDATE users SET reset_token = $1, reset_token_expires = $2 WHERE id = $3', [token, expires, userId]);
+  },
+
+  async findUserByResetToken(token) {
+    const { rows } = await pool.query('SELECT * FROM users WHERE reset_token = $1 AND reset_token_expires > NOW()', [token]);
+    if (!rows[0]) return null;
+    return { id: rows[0].id, email: rows[0].email, phone: rows[0].phone, passwordHash: rows[0].password_hash };
+  },
+
+  async updatePassword(userId, passwordHash) {
+    await pool.query('UPDATE users SET password_hash = $1, reset_token = NULL, reset_token_expires = NULL WHERE id = $2', [passwordHash, userId]);
+  },
+
+  async findUserById(id) {
+    const { rows } = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
+    if (!rows[0]) return null;
+    return { id: rows[0].id, email: rows[0].email, phone: rows[0].phone, passwordHash: rows[0].password_hash };
+  },
+
   async findUserByUsername(username) {
     const { rows } = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
     return rows[0] || null;

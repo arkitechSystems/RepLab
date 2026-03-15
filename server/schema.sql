@@ -11,6 +11,8 @@ CREATE TABLE IF NOT EXISTS users (
   referral_code TEXT,
   signup_city TEXT,
   signup_state TEXT,
+  reset_token TEXT,
+  reset_token_expires TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   CONSTRAINT email_or_phone CHECK (email IS NOT NULL OR phone IS NOT NULL)
 );

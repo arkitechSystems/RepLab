@@ -49,6 +49,13 @@ export default function Profile() {
   const [feedbackMsg, setFeedbackMsg] = useState('');
   const [feedbackSending, setFeedbackSending] = useState(false);
   const [feedbackSent, setFeedbackSent] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordChanged, setPasswordChanged] = useState(false);
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
@@ -285,6 +292,98 @@ export default function Profile() {
               <span className="text-wf-gray-500 text-sm">#{user?.id}</span>
             </div>
           </div>
+        </div>
+
+        {/* Change Password */}
+        <div className="glass-card rounded-xl p-6 mb-4 fade-slide-up" style={{ animationDelay: '60ms' }}>
+          <button
+            onClick={() => { setShowChangePassword(!showChangePassword); setPasswordError(''); setPasswordChanged(false); }}
+            className="flex items-center justify-between w-full"
+          >
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+              </svg>
+              <h3 className="text-base font-semibold text-white">Change Password</h3>
+            </div>
+            <svg className={`w-5 h-5 text-wf-gray-400 transition-transform ${showChangePassword ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
+
+          {showChangePassword && (
+            <div className="mt-4 pt-4 border-t border-white/10 space-y-3">
+              {passwordError && (
+                <div className="bg-red-900/30 border border-red-800 rounded-lg px-4 py-3 text-red-300 text-sm">
+                  {passwordError}
+                </div>
+              )}
+              {passwordChanged && (
+                <div className="bg-green-900/30 border border-green-800 rounded-lg px-4 py-3 text-green-300 text-sm">
+                  Password changed successfully!
+                </div>
+              )}
+              <div>
+                <label className="text-xs text-wf-gray-400 uppercase tracking-wider mb-1 block">Current Password</label>
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Enter current password"
+                  className="w-full glass-input rounded-xl px-4 py-3 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none transition-all"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-wf-gray-400 uppercase tracking-wider mb-1 block">New Password</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter new password"
+                  className="w-full glass-input rounded-xl px-4 py-3 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none transition-all"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-wf-gray-400 uppercase tracking-wider mb-1 block">Confirm New Password</label>
+                <input
+                  type="password"
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  placeholder="Confirm new password"
+                  className="w-full glass-input rounded-xl px-4 py-3 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none transition-all"
+                />
+              </div>
+              <button
+                onClick={async () => {
+                  setPasswordError('');
+                  setPasswordChanged(false);
+                  if (newPassword !== confirmNewPassword) {
+                    setPasswordError('New passwords do not match');
+                    return;
+                  }
+                  setPasswordSaving(true);
+                  try {
+                    await api('/auth/change-password', {
+                      method: 'POST',
+                      body: JSON.stringify({ currentPassword, newPassword }),
+                    });
+                    setPasswordChanged(true);
+                    setCurrentPassword('');
+                    setNewPassword('');
+                    setConfirmNewPassword('');
+                  } catch (err) {
+                    setPasswordError(err.message);
+                  } finally {
+                    setPasswordSaving(false);
+                  }
+                }}
+                disabled={passwordSaving || !currentPassword || !newPassword || !confirmNewPassword}
+                className="w-full btn-gradient text-white font-semibold py-3 rounded-xl text-sm transition-all active:scale-[0.98] disabled:opacity-50"
+              >
+                {passwordSaving ? 'Changing...' : 'Change Password'}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Body Metrics */}
