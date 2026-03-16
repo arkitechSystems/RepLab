@@ -396,9 +396,37 @@ function adminPage(title, body) {
 </head>
 <body>
 <div class="container">
-<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-  <div class="logo">WILL<span>FIT</span></div>
-  <a href="/admin/logout" class="btn-ghost" style="margin:0;font-size:12px;padding:8px 16px;">Logout</a>
+<nav class="glass" style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-radius:14px;margin-bottom:24px;">
+  <a href="/admin" style="text-decoration:none;"><div class="logo" style="margin:0;">WILL<span>FIT</span></div></a>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <a href="/admin" style="color:rgba(255,255,255,0.5);font-size:12px;font-weight:600;text-decoration:none;padding:8px 14px;border-radius:8px;transition:all 0.2s;" onmouseover="this.style.color='#fff';this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.color='rgba(255,255,255,0.5)';this.style.background='none'">Home</a>
+    <button onclick="document.getElementById('pw-modal').style.display=document.getElementById('pw-modal').style.display==='flex'?'none':'flex'" style="color:rgba(255,255,255,0.5);font-size:12px;font-weight:600;background:none;border:none;cursor:pointer;padding:8px 14px;border-radius:8px;font-family:inherit;transition:all 0.2s;" onmouseover="this.style.color='#fff';this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.color='rgba(255,255,255,0.5)';this.style.background='none'">Change Password</button>
+    <a href="/admin/logout" style="color:#ef4444;font-size:12px;font-weight:600;text-decoration:none;padding:8px 14px;border-radius:8px;transition:all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.1)'" onmouseout="this.style.background='none'">Logout</a>
+  </div>
+</nav>
+<!-- Change Password Modal -->
+<div id="pw-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);" onclick="if(event.target===this)this.style.display='none'">
+  <div class="glass" style="padding:28px;max-width:400px;width:90%;border-radius:16px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <h3 style="font-size:16px;font-weight:700;color:#fff;">Change Password</h3>
+      <button onclick="document.getElementById('pw-modal').style.display='none'" style="background:none;border:none;color:rgba(255,255,255,0.4);cursor:pointer;padding:4px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <form method="POST" action="/admin/change-password">
+      <div style="margin-bottom:12px;">
+        <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);margin-bottom:4px;font-weight:600;">New Password</label>
+        <input type="password" name="newPassword" placeholder="Min 6 characters" required minlength="6"
+          style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;" />
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);margin-bottom:4px;font-weight:600;">Confirm Password</label>
+        <input type="password" name="confirmPassword" placeholder="Confirm password" required
+          style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;" />
+      </div>
+      <button type="submit" class="btn" style="margin:0;width:100%;padding:12px;font-size:14px;">Update Password</button>
+    </form>
+  </div>
 </div>
 ${body}
 </div>
@@ -488,23 +516,6 @@ router.get('/', adminAuth, (req, res) => {
   </div>
 
   ${req.query.msg ? `<div class="glass" style="margin-top:24px;padding:14px 20px;border-left:3px solid #22c55e;"><p style="color:#4ade80;font-size:13px;">${req.query.msg}</p></div>` : ''}
-
-  <div class="glass" style="margin-top:24px;padding:24px;">
-    <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:rgba(255,255,255,0.7);">Change Admin Password</h3>
-    <form method="POST" action="/admin/change-password" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
-      <div style="flex:1;min-width:160px;">
-        <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);margin-bottom:4px;font-weight:600;">New Password</label>
-        <input type="password" name="newPassword" placeholder="Min 6 characters" required minlength="6"
-          style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;" />
-      </div>
-      <div style="flex:1;min-width:160px;">
-        <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);margin-bottom:4px;font-weight:600;">Confirm Password</label>
-        <input type="password" name="confirmPassword" placeholder="Confirm password" required
-          style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;" />
-      </div>
-      <button type="submit" class="btn" style="margin:0;padding:10px 20px;font-size:13px;">Update</button>
-    </form>
-  </div>
   `));
 });
 
