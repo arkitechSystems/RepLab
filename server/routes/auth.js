@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import db from '../db.js';
 import crypto from 'crypto';
 import { generateToken, authMiddleware } from '../middleware/auth.js';
-import { sendWelcomeEmail, sendPasswordResetEmail } from '../email.js';
+import { sendWelcomeEmail, sendPasswordResetEmail, sendNewSignupNotification } from '../email.js';
 
 const router = Router();
 
@@ -24,7 +24,7 @@ function userResponse(user) {
 
 router.post('/signup', async (req, res) => {
   try {
-    const { identifier, password, firstName, lastName, phone: extraPhone, gender, username, referralSource, referralCode } = req.body;
+    const { identifier, password, firstName, lastName, phone: extraPhone, gender, username, referralSource, referralCode, zipCode } = req.body;
 
     if (!identifier || !password) {
       return res.status(400).json({ error: 'Email or phone and password are required' });
@@ -84,12 +84,17 @@ router.post('/signup', async (req, res) => {
       username: finalUsername,
       referralSource: referralSource || null,
       referralCode: referralCode || null,
+      zipCode: zipCode || null,
       signupCity,
       signupState,
     });
 
     await db.setDefaultSchedule(user.id);
     if (user.email) sendWelcomeEmail(user.email);
+
+    // Notify admin of new signup
+    const allUsers = await db.getAllUsers();
+    sendNewSignupNotification(user, allUsers.length);
 
     const token = generateToken(user);
     res.status(201).json({ token, user: userResponse(user) });

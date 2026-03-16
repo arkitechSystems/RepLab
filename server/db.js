@@ -4,11 +4,60 @@ const db = {
   // Users
   async getAllUsers() {
     const { rows } = await pool.query(
-      `SELECT id, email, phone, first_name, last_name, gender, username, referral_source, referral_code, signup_city, signup_state, created_at FROM users
+      `SELECT id, email, phone, first_name, last_name, gender, username, referral_source, referral_code, zip_code, signup_city, signup_state, created_at FROM users
        WHERE email NOT LIKE '%@willfit.demo' OR email IS NULL
        ORDER BY created_at DESC`
     );
-    return rows.map((u) => ({ id: u.id, email: u.email, phone: u.phone, firstName: u.first_name, lastName: u.last_name, gender: u.gender, username: u.username, referralSource: u.referral_source, referralCode: u.referral_code, signupCity: u.signup_city, signupState: u.signup_state, createdAt: u.created_at }));
+    return rows.map((u) => ({ id: u.id, email: u.email, phone: u.phone, firstName: u.first_name, lastName: u.last_name, gender: u.gender, username: u.username, referralSource: u.referral_source, referralCode: u.referral_code, zipCode: u.zip_code, signupCity: u.signup_city, signupState: u.signup_state, createdAt: u.created_at }));
+  },
+
+  async getDailyStats() {
+    const today = new Date().toISOString().slice(0, 10);
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+
+    // Total users (excluding demo)
+    const { rows: [totalRow] } = await pool.query(
+      `SELECT COUNT(*) FROM users WHERE email NOT LIKE '%@willfit.demo' OR email IS NULL`
+    );
+    // New users today
+    const { rows: [todayUsersRow] } = await pool.query(
+      `SELECT COUNT(*) FROM users WHERE (email NOT LIKE '%@willfit.demo' OR email IS NULL) AND created_at::date = $1`, [today]
+    );
+    // New users yesterday
+    const { rows: [yesterdayUsersRow] } = await pool.query(
+      `SELECT COUNT(*) FROM users WHERE (email NOT LIKE '%@willfit.demo' OR email IS NULL) AND created_at::date = $1`, [yesterday]
+    );
+    // Workouts completed today
+    const { rows: [todaySessionsRow] } = await pool.query(
+      `SELECT COUNT(*) FROM sessions s JOIN users u ON s.user_id = u.id WHERE (u.email NOT LIKE '%@willfit.demo' OR u.email IS NULL) AND s.created_at::date = $1`, [today]
+    );
+    // Workouts completed yesterday
+    const { rows: [yesterdaySessionsRow] } = await pool.query(
+      `SELECT COUNT(*) FROM sessions s JOIN users u ON s.user_id = u.id WHERE (u.email NOT LIKE '%@willfit.demo' OR u.email IS NULL) AND s.created_at::date = $1`, [yesterday]
+    );
+    // Active users today (distinct users who logged a session)
+    const { rows: [activeRow] } = await pool.query(
+      `SELECT COUNT(DISTINCT s.user_id) FROM sessions s JOIN users u ON s.user_id = u.id WHERE (u.email NOT LIKE '%@willfit.demo' OR u.email IS NULL) AND s.created_at::date = $1`, [today]
+    );
+    // Active users yesterday
+    const { rows: [activeYesterdayRow] } = await pool.query(
+      `SELECT COUNT(DISTINCT s.user_id) FROM sessions s JOIN users u ON s.user_id = u.id WHERE (u.email NOT LIKE '%@willfit.demo' OR u.email IS NULL) AND s.created_at::date = $1`, [yesterday]
+    );
+    // Recent signups (last 24h with details)
+    const { rows: recentSignups } = await pool.query(
+      `SELECT first_name, last_name, email, phone, signup_city, signup_state, created_at FROM users WHERE (email NOT LIKE '%@willfit.demo' OR email IS NULL) AND created_at >= NOW() - INTERVAL '24 hours' ORDER BY created_at DESC`
+    );
+
+    return {
+      totalUsers: parseInt(totalRow.count),
+      newUsersToday: parseInt(todayUsersRow.count),
+      newUsersYesterday: parseInt(yesterdayUsersRow.count),
+      workoutsToday: parseInt(todaySessionsRow.count),
+      workoutsYesterday: parseInt(yesterdaySessionsRow.count),
+      activeUsersToday: parseInt(activeRow.count),
+      activeUsersYesterday: parseInt(activeYesterdayRow.count),
+      recentSignups,
+    };
   },
 
   async getSessionAnalytics() {
@@ -73,14 +122,14 @@ const db = {
     return { id: u.id, email: u.email, phone: u.phone, passwordHash: u.password_hash, firstName: u.first_name, lastName: u.last_name, username: u.username, createdAt: u.created_at };
   },
 
-  async createUser({ email, phone, passwordHash, firstName, lastName, gender, username, referralSource, referralCode, signupCity, signupState }) {
+  async createUser({ email, phone, passwordHash, firstName, lastName, gender, username, referralSource, referralCode, zipCode, signupCity, signupState }) {
     const { rows } = await pool.query(
-      `INSERT INTO users (email, phone, password_hash, first_name, last_name, gender, username, referral_source, referral_code, signup_city, signup_state)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
-      [email || null, phone || null, passwordHash, firstName || null, lastName || null, gender || null, username || null, referralSource || null, referralCode || null, signupCity || null, signupState || null]
+      `INSERT INTO users (email, phone, password_hash, first_name, last_name, gender, username, referral_source, referral_code, zip_code, signup_city, signup_state)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+      [email || null, phone || null, passwordHash, firstName || null, lastName || null, gender || null, username || null, referralSource || null, referralCode || null, zipCode || null, signupCity || null, signupState || null]
     );
     const u = rows[0];
-    return { id: u.id, email: u.email, phone: u.phone, passwordHash: u.password_hash, firstName: u.first_name, lastName: u.last_name, gender: u.gender, username: u.username, referralSource: u.referral_source, referralCode: u.referral_code, signupCity: u.signup_city, signupState: u.signup_state, createdAt: u.created_at };
+    return { id: u.id, email: u.email, phone: u.phone, passwordHash: u.password_hash, firstName: u.first_name, lastName: u.last_name, gender: u.gender, username: u.username, referralSource: u.referral_source, referralCode: u.referral_code, zipCode: u.zip_code, signupCity: u.signup_city, signupState: u.signup_state, createdAt: u.created_at };
   },
 
   // Programs

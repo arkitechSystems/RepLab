@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
   username TEXT UNIQUE,
   referral_source TEXT,
   referral_code TEXT,
+  zip_code TEXT,
   signup_city TEXT,
   signup_state TEXT,
   reset_token TEXT,

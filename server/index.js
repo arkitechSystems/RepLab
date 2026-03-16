@@ -11,6 +11,8 @@ import sessionRoutes from './routes/sessions.js';
 import pbRoutes from './routes/pbs.js';
 import metricsRoutes from './routes/metrics.js';
 import adminRoutes from './routes/admin.js';
+import db from './db.js';
+import { sendDailySummaryEmail } from './email.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -52,6 +54,28 @@ initDb()
   .then(() => {
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`WillFit server running on http://localhost:${PORT}`);
+
+      // Daily summary email scheduler — runs at 8am ET every day
+      function scheduleDailySummary() {
+        const now = new Date();
+        // Target 8:00 AM ET (UTC-5 / UTC-4 depending on DST)
+        const target = new Date(now);
+        target.setUTCHours(13, 0, 0, 0); // 13:00 UTC = 8:00 AM ET
+        if (target <= now) target.setDate(target.getDate() + 1);
+        const ms = target - now;
+        console.log(`Daily summary scheduled in ${Math.round(ms / 60000)} minutes`);
+        setTimeout(async () => {
+          try {
+            const stats = await db.getDailyStats();
+            await sendDailySummaryEmail(stats);
+          } catch (err) {
+            console.error('Daily summary error:', err.message);
+          }
+          // Schedule next one
+          scheduleDailySummary();
+        }, ms);
+      }
+      scheduleDailySummary();
     });
   })
   .catch((err) => {

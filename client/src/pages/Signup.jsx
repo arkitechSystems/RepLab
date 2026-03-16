@@ -27,6 +27,7 @@ export default function Signup() {
   const [referralSource, setReferralSource] = useState('');
   const [referralOther, setReferralOther] = useState('');
   const [referralCode, setReferralCode] = useState('');
+  const [zipCode, setZipCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { signup } = useAuth();
@@ -62,6 +63,7 @@ export default function Signup() {
         username: username.trim() || undefined,
         referralSource: finalReferral || undefined,
         referralCode: referralCode.trim() || undefined,
+        zipCode: zipCode.trim() || undefined,
       });
       navigate('/welcome');
     } catch (err) {
@@ -192,6 +194,21 @@ export default function Signup() {
               />
             </div>
           )}
+
+          {/* Zip Code (optional) */}
+          <div>
+            <label className={labelClass}>Zip Code <span className="text-wf-gray-600">(optional)</span></label>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={zipCode}
+              onChange={(e) => setZipCode(e.target.value)}
+              placeholder="e.g. 02101"
+              maxLength={10}
+              autoComplete="postal-code"
+              className={inputClass}
+            />
+          </div>
 
           {/* Gender (optional) */}
           <div>
