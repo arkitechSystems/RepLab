@@ -1,6 +1,8 @@
 import express, { Router } from 'express';
 import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 import db from '../db.js';
+import { Resend } from 'resend';
 
 const router = Router();
 
@@ -34,24 +36,157 @@ router.get('/login', (req, res) => {
 });
 
 // POST /admin/login — Handle login
-router.post('/login', express.urlencoded({ extended: false }), (req, res) => {
+router.post('/login', express.urlencoded({ extended: false }), async (req, res) => {
   const { username, password } = req.body;
-
   const validUser = process.env.ADMIN_USER || 'admin';
-  const validPass = process.env.ADMIN_PASS || process.env.ADMIN_KEY;
 
-  if (username === validUser && password === validPass) {
+  // Check DB password first, fall back to env var
+  const dbHash = await db.getAdminSetting('admin_password_hash');
+  let valid = false;
+  if (dbHash) {
+    valid = username === validUser && bcrypt.compareSync(password, dbHash);
+  } else {
+    const validPass = process.env.ADMIN_PASS || process.env.ADMIN_KEY;
+    valid = username === validUser && password === validPass;
+  }
+
+  if (valid) {
     const token = crypto.randomBytes(32).toString('hex');
     activeSessions.add(token);
     res.cookie('admin_session', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      maxAge: 24 * 60 * 60 * 1000,
     });
     return res.redirect('/admin');
   }
   return res.redirect('/admin/login?error=Invalid+credentials');
+});
+
+// POST /admin/change-password — Change admin password (requires login)
+router.post('/change-password', express.urlencoded({ extended: false }), adminAuth, async (req, res) => {
+  const { newPassword, confirmPassword } = req.body;
+  if (!newPassword || newPassword.length < 6) {
+    return res.redirect('/admin?msg=Password+must+be+at+least+6+characters');
+  }
+  if (newPassword !== confirmPassword) {
+    return res.redirect('/admin?msg=Passwords+do+not+match');
+  }
+  const hash = bcrypt.hashSync(newPassword, 10);
+  await db.setAdminSetting('admin_password_hash', hash);
+  return res.redirect('/admin?msg=Password+updated+successfully');
+});
+
+// GET /admin/forgot-password — Forgot password page
+router.get('/forgot-password', (req, res) => {
+  const msg = req.query.msg || '';
+  res.send(adminLoginPage('', `
+    <div style="text-align:center;margin-bottom:16px;">
+      <p style="color:rgba(255,255,255,0.5);font-size:13px;">Enter your admin email to receive a password reset link.</p>
+    </div>
+    ${msg ? '<div class="error" style="background:rgba(34,197,94,0.15);border-color:rgba(34,197,94,0.3);color:#4ade80;">' + msg + '</div>' : ''}
+    <form method="POST" action="/admin/forgot-password">
+      <div class="field">
+        <label>Admin Email</label>
+        <input type="email" name="email" placeholder="Enter admin email" required />
+      </div>
+      <button type="submit" class="btn-login">Send Reset Link</button>
+    </form>
+    <div style="text-align:center;margin-top:16px;">
+      <a href="/admin/login" style="color:rgba(255,255,255,0.4);font-size:13px;text-decoration:none;">Back to Login</a>
+    </div>
+  `));
+});
+
+// POST /admin/forgot-password — Send reset email
+router.post('/forgot-password', express.urlencoded({ extended: false }), async (req, res) => {
+  const { email } = req.body;
+  const adminEmail = process.env.ADMIN_EMAIL;
+
+  // Always show success to prevent email enumeration
+  if (email === adminEmail && process.env.RESEND_API_KEY) {
+    const token = crypto.randomBytes(32).toString('hex');
+    await db.setAdminSetting('admin_reset_token', token);
+    await db.setAdminSetting('admin_reset_expires', new Date(Date.now() + 3600000).toISOString());
+
+    const resetUrl = `https://will-fit.shop/admin/reset-password?token=${token}`;
+    try {
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      await resend.emails.send({
+        from: 'WillFit <noreply@will-fit.shop>',
+        to: adminEmail,
+        subject: 'Admin Dashboard Password Reset',
+        html: \`
+          <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;">
+            <h1 style="color:#111;font-size:24px;">Reset Admin Password</h1>
+            <p style="color:#444;font-size:16px;line-height:1.6;">Click the button below to reset your admin dashboard password. This link expires in 1 hour.</p>
+            <a href="\${resetUrl}" style="display:inline-block;margin-top:20px;padding:14px 28px;background:#111;color:#fff;text-decoration:none;border-radius:8px;font-size:16px;font-weight:600;">Reset Password</a>
+            <p style="color:#999;font-size:13px;margin-top:32px;">If you didn't request this, ignore this email.</p>
+          </div>
+        \`,
+      });
+    } catch (err) {
+      console.error('Failed to send admin reset email:', err.message);
+    }
+  }
+  return res.redirect('/admin/forgot-password?msg=If+that+email+is+registered,+a+reset+link+has+been+sent.');
+});
+
+// GET /admin/reset-password — Reset password page
+router.get('/reset-password', async (req, res) => {
+  const { token } = req.query;
+  const storedToken = await db.getAdminSetting('admin_reset_token');
+  const expires = await db.getAdminSetting('admin_reset_expires');
+
+  if (!token || token !== storedToken || !expires || new Date(expires) < new Date()) {
+    return res.redirect('/admin/login?error=Invalid+or+expired+reset+link');
+  }
+
+  res.send(adminLoginPage('', \`
+    <form method="POST" action="/admin/reset-password">
+      <input type="hidden" name="token" value="\${token}" />
+      <div class="field">
+        <label>New Password</label>
+        <input type="password" name="newPassword" placeholder="Enter new password" required minlength="6" />
+      </div>
+      <div class="field">
+        <label>Confirm Password</label>
+        <input type="password" name="confirmPassword" placeholder="Confirm new password" required />
+      </div>
+      <button type="submit" class="btn-login">Reset Password</button>
+    </form>
+    <div style="text-align:center;margin-top:16px;">
+      <a href="/admin/login" style="color:rgba(255,255,255,0.4);font-size:13px;text-decoration:none;">Back to Login</a>
+    </div>
+  \`));
+});
+
+// POST /admin/reset-password — Process password reset
+router.post('/reset-password', express.urlencoded({ extended: false }), async (req, res) => {
+  const { token, newPassword, confirmPassword } = req.body;
+  const storedToken = await db.getAdminSetting('admin_reset_token');
+  const expires = await db.getAdminSetting('admin_reset_expires');
+
+  if (!token || token !== storedToken || !expires || new Date(expires) < new Date()) {
+    return res.redirect('/admin/login?error=Invalid+or+expired+reset+link');
+  }
+  if (!newPassword || newPassword.length < 6) {
+    return res.redirect(\`/admin/reset-password?token=\${token}&error=Password+must+be+at+least+6+characters\`);
+  }
+  if (newPassword !== confirmPassword) {
+    return res.redirect(\`/admin/reset-password?token=\${token}&error=Passwords+do+not+match\`);
+  }
+
+  const hash = bcrypt.hashSync(newPassword, 10);
+  await db.setAdminSetting('admin_password_hash', hash);
+  // Clear reset token
+  await db.setAdminSetting('admin_reset_token', '');
+  await db.setAdminSetting('admin_reset_expires', '');
+  // Clear all sessions so old login is invalidated
+  activeSessions.clear();
+
+  return res.redirect('/admin/login?error=Password+reset+successfully.+Please+log+in.');
 });
 
 // GET /admin/logout
@@ -62,7 +197,7 @@ router.get('/logout', (req, res) => {
   res.redirect('/admin/login');
 });
 
-function adminLoginPage(error) {
+function adminLoginPage(error, customContent) {
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -94,7 +229,7 @@ function adminLoginPage(error) {
       border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 28px;
     }
     label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.4); margin-bottom: 6px; font-weight: 600; }
-    input[type="text"], input[type="password"] {
+    input[type="text"], input[type="password"], input[type="email"] {
       width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);
       background: rgba(255,255,255,0.06); color: #fff; font-size: 15px; font-family: inherit;
       outline: none; transition: border-color 0.2s;
@@ -119,6 +254,7 @@ function adminLoginPage(error) {
     <p class="subtitle">Admin Dashboard</p>
     <div class="glass">
       ${error ? `<div class="error">${error}</div>` : ''}
+      ${customContent || `
       <form method="POST" action="/admin/login">
         <div class="field">
           <label>Username</label>
@@ -130,6 +266,10 @@ function adminLoginPage(error) {
         </div>
         <button type="submit" class="btn-login">Sign In</button>
       </form>
+      <div style="text-align:center;margin-top:16px;">
+        <a href="/admin/forgot-password" style="color:rgba(255,255,255,0.4);font-size:13px;text-decoration:none;">Forgot password?</a>
+      </div>
+      `}
     </div>
   </div>
 </body>
@@ -282,6 +422,25 @@ router.get('/', adminAuth, (req, res) => {
       <div class="card-title">Session Analytics</div>
       <div class="card-desc">Workout completions, most active users, and recent activity across all users.</div>
     </a>
+  </div>
+
+  ${req.query.msg ? `<div class="glass" style="margin-top:24px;padding:14px 20px;border-left:3px solid #22c55e;"><p style="color:#4ade80;font-size:13px;">${req.query.msg}</p></div>` : ''}
+
+  <div class="glass" style="margin-top:24px;padding:24px;">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:rgba(255,255,255,0.7);">Change Admin Password</h3>
+    <form method="POST" action="/admin/change-password" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+      <div style="flex:1;min-width:160px;">
+        <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);margin-bottom:4px;font-weight:600;">New Password</label>
+        <input type="password" name="newPassword" placeholder="Min 6 characters" required minlength="6"
+          style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;" />
+      </div>
+      <div style="flex:1;min-width:160px;">
+        <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);margin-bottom:4px;font-weight:600;">Confirm Password</label>
+        <input type="password" name="confirmPassword" placeholder="Confirm password" required
+          style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;" />
+      </div>
+      <button type="submit" class="btn" style="margin:0;padding:10px 20px;font-size:13px;">Update</button>
+    </form>
   </div>
   `));
 });

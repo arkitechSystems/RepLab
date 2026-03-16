@@ -99,3 +99,8 @@ CREATE TABLE IF NOT EXISTS user_metrics (
   max_deadlift NUMERIC,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS admin_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);

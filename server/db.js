@@ -1,6 +1,20 @@
 import pool from './dbPool.js';
 
 const db = {
+  // Admin settings
+  async getAdminSetting(key) {
+    const { rows } = await pool.query('SELECT value FROM admin_settings WHERE key = $1', [key]);
+    return rows[0]?.value || null;
+  },
+
+  async setAdminSetting(key, value) {
+    await pool.query(
+      `INSERT INTO admin_settings (key, value) VALUES ($1, $2)
+       ON CONFLICT (key) DO UPDATE SET value = $2`,
+      [key, value]
+    );
+  },
+
   // Users
   async getAllUsers() {
     const { rows } = await pool.query(
