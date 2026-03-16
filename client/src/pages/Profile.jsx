@@ -293,6 +293,10 @@ export default function Profile() {
               </div>
             )}
             <div className="flex justify-between items-center">
+              <span className="text-wf-gray-400 text-sm">Plan</span>
+              <span className="text-sm font-medium text-green-400">Free</span>
+            </div>
+            <div className="flex justify-between items-center">
               <span className="text-wf-gray-400 text-sm">Account ID</span>
               <span className="text-wf-gray-500 text-sm">#{user?.id}</span>
             </div>

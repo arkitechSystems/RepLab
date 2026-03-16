@@ -26,6 +26,12 @@ export default async function initDb() {
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT UNIQUE`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_source TEXT`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code TEXT`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS signup_device TEXT`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS utm_source TEXT`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS utm_medium TEXT`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS utm_campaign TEXT`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS utm_content TEXT`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS utm_term TEXT`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS zip_code TEXT`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS signup_city TEXT`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS signup_state TEXT`);

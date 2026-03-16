@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import SplashScreen from './components/SplashScreen';
@@ -38,6 +38,21 @@ function CatchAllRedirect() {
 
 export default function App() {
   const [splashDone, setSplashDone] = useState(false);
+
+  // Capture UTM params on first landing and persist until signup
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const utmKeys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
+    const hasUtm = utmKeys.some((k) => params.get(k));
+    if (hasUtm) {
+      const utm = {};
+      for (const k of utmKeys) {
+        const val = params.get(k);
+        if (val) utm[k] = val;
+      }
+      try { localStorage.setItem('willfit_utm', JSON.stringify(utm)); } catch {}
+    }
+  }, []);
 
   return (
     <>

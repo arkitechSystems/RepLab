@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getDeviceInfo } from '../utils/deviceInfo';
 
 function isPhone(value) {
   return /^\+?\d[\d\s\-().]{6,}$/.test(value.trim());
@@ -11,6 +12,7 @@ const REFERRAL_OPTIONS = [
   { value: 'facebook', label: 'Facebook / Instagram Ad' },
   { value: 'youtube', label: 'YouTube Ad' },
   { value: 'tiktok', label: 'TikTok' },
+  { value: 'google', label: 'Google Search' },
   { value: 'friend', label: 'Friend / Word of Mouth' },
   { value: 'other', label: 'Other' },
 ];
@@ -51,10 +53,23 @@ export default function Signup() {
       setError('Last name is required');
       return;
     }
+    if (!zipCode.trim()) {
+      setError('Zip code is required');
+      return;
+    }
 
     setLoading(true);
     try {
-      const finalReferral = referralSource === 'other' ? `Other: ${referralOther}` : referralSource;
+      const finalReferral = referralSource === 'other' ? `Other: ${referralOther}`
+        : referralSource === 'friend' && referralOther.trim() ? `Friend: ${referralOther.trim()}`
+        : referralSource;
+      // Read stored UTM params
+      let utm = {};
+      try { utm = JSON.parse(localStorage.getItem('willfit_utm') || '{}'); } catch {}
+
+      // Get native device info if running in Capacitor
+      const deviceInfo = await getDeviceInfo();
+
       await signup(identifier, password, {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
@@ -64,7 +79,16 @@ export default function Signup() {
         referralSource: finalReferral || undefined,
         referralCode: referralCode.trim() || undefined,
         zipCode: zipCode.trim() || undefined,
+        utmSource: utm.utm_source || undefined,
+        utmMedium: utm.utm_medium || undefined,
+        utmCampaign: utm.utm_campaign || undefined,
+        utmContent: utm.utm_content || undefined,
+        utmTerm: utm.utm_term || undefined,
+        deviceInfo: deviceInfo || undefined,
       });
+
+      // Clear UTM after successful signup
+      try { localStorage.removeItem('willfit_utm'); } catch {};
       navigate('/welcome');
     } catch (err) {
       setError(err.message);
@@ -197,13 +221,14 @@ export default function Signup() {
 
           {/* Zip Code (optional) */}
           <div>
-            <label className={labelClass}>Zip Code <span className="text-wf-gray-600">(optional)</span></label>
+            <label className={labelClass}>Zip Code *</label>
             <input
               type="text"
               inputMode="numeric"
               value={zipCode}
               onChange={(e) => setZipCode(e.target.value)}
               placeholder="e.g. 02101"
+              required
               maxLength={10}
               autoComplete="postal-code"
               className={inputClass}
@@ -269,6 +294,20 @@ export default function Signup() {
                 value={referralOther}
                 onChange={(e) => setReferralOther(e.target.value)}
                 placeholder="How did you find us?"
+                className={inputClass}
+              />
+            </div>
+          )}
+
+          {/* Friend referral name */}
+          {referralSource === 'friend' && (
+            <div>
+              <label className={labelClass}>Referral Name <span className="text-wf-gray-600">(optional)</span></label>
+              <input
+                type="text"
+                value={referralOther}
+                onChange={(e) => setReferralOther(e.target.value)}
+                placeholder="Who referred you?"
                 className={inputClass}
               />
             </div>

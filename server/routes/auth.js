@@ -7,6 +7,29 @@ import { sendWelcomeEmail, sendPasswordResetEmail, sendNewSignupNotification } f
 
 const router = Router();
 
+function parseDevice(ua) {
+  if (!ua) return 'Unknown';
+  const lower = ua.toLowerCase();
+  let device = 'Desktop';
+  if (/iphone/.test(lower)) device = 'iPhone';
+  else if (/ipad/.test(lower)) device = 'iPad';
+  else if (/android.*mobile/.test(lower)) device = 'Android Phone';
+  else if (/android/.test(lower)) device = 'Android Tablet';
+  else if (/macintosh/.test(lower)) device = 'Mac';
+  else if (/windows/.test(lower)) device = 'Windows';
+  else if (/linux/.test(lower)) device = 'Linux';
+
+  let browser = '';
+  if (/crios/.test(lower)) browser = 'Chrome';
+  else if (/fxios/.test(lower)) browser = 'Firefox';
+  else if (/safari/.test(lower) && !/chrome/.test(lower)) browser = 'Safari';
+  else if (/chrome/.test(lower) && !/edg/.test(lower)) browser = 'Chrome';
+  else if (/edg/.test(lower)) browser = 'Edge';
+  else if (/firefox/.test(lower)) browser = 'Firefox';
+
+  return browser ? `${device} (${browser})` : device;
+}
+
 function isPhone(value) {
   return /^\+?\d[\d\s\-().]{6,}$/.test(value.trim());
 }
@@ -24,7 +47,8 @@ function userResponse(user) {
 
 router.post('/signup', async (req, res) => {
   try {
-    const { identifier, password, firstName, lastName, phone: extraPhone, gender, username, referralSource, referralCode, zipCode } = req.body;
+    const { identifier, password, firstName, lastName, phone: extraPhone, gender, username, referralSource, referralCode, zipCode, utmSource, utmMedium, utmCampaign, utmContent, utmTerm, deviceInfo } = req.body;
+
 
     if (!identifier || !password) {
       return res.status(400).json({ error: 'Email or phone and password are required' });
@@ -37,6 +61,9 @@ router.post('/signup', async (req, res) => {
     }
     if (!lastName || !lastName.trim()) {
       return res.status(400).json({ error: 'Last name is required' });
+    }
+    if (!zipCode || !zipCode.trim()) {
+      return res.status(400).json({ error: 'Zip code is required' });
     }
 
     const phone = isPhone(identifier);
@@ -85,6 +112,12 @@ router.post('/signup', async (req, res) => {
       referralSource: referralSource || null,
       referralCode: referralCode || null,
       zipCode: zipCode || null,
+      utmSource: utmSource || null,
+      utmMedium: utmMedium || null,
+      utmCampaign: utmCampaign || null,
+      utmContent: utmContent || null,
+      utmTerm: utmTerm || null,
+      signupDevice: deviceInfo || parseDevice(req.headers['user-agent']),
       signupCity,
       signupState,
     });

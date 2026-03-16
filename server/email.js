@@ -111,10 +111,14 @@ export async function sendNewSignupNotification(user, totalUsers) {
               <tr><td style="padding: 6px 0; color: #888;">Phone</td><td style="padding: 6px 0;">${user.phone || '—'}</td></tr>
               <tr><td style="padding: 6px 0; color: #888;">Username</td><td style="padding: 6px 0;">${user.username || '—'}</td></tr>
               <tr><td style="padding: 6px 0; color: #888;">Gender</td><td style="padding: 6px 0;">${user.gender || '—'}</td></tr>
+              <tr><td style="padding: 6px 0; color: #888;">Device</td><td style="padding: 6px 0;">${user.signupDevice || '—'}</td></tr>
               <tr><td style="padding: 6px 0; color: #888;">Zip Code</td><td style="padding: 6px 0;">${user.zipCode || '—'}</td></tr>
               <tr><td style="padding: 6px 0; color: #888;">Location</td><td style="padding: 6px 0;">${[user.signupCity, user.signupState].filter(Boolean).join(', ') || '—'}</td></tr>
               <tr><td style="padding: 6px 0; color: #888;">Referral</td><td style="padding: 6px 0;">${user.referralSource || '—'}</td></tr>
               <tr><td style="padding: 6px 0; color: #888;">Referral Code</td><td style="padding: 6px 0;">${user.referralCode || '—'}</td></tr>
+              ${user.utmSource ? `<tr><td style="padding: 6px 0; color: #888;">UTM Source</td><td style="padding: 6px 0;">${user.utmSource}</td></tr>` : ''}
+              ${user.utmMedium ? `<tr><td style="padding: 6px 0; color: #888;">UTM Medium</td><td style="padding: 6px 0;">${user.utmMedium}</td></tr>` : ''}
+              ${user.utmCampaign ? `<tr><td style="padding: 6px 0; color: #888;">UTM Campaign</td><td style="padding: 6px 0;">${user.utmCampaign}</td></tr>` : ''}
             </table>
           </div>
 

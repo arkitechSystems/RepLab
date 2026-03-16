@@ -102,7 +102,7 @@ router.get('/users', adminAuth, async (req, res) => {
         const cells = allKeys.map((k) => {
           const val = u[k];
           if (val == null) return '<td>—</td>';
-          if (k === 'createdAt' || k.endsWith('At')) return `<td>${new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>`;
+          if (k === 'createdAt' || k.endsWith('At')) return `<td>${new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} <span style="color:#888;">${new Date(val).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</span></td>`;
           return `<td>${val}</td>`;
         }).join('');
         return `<tr><td>${i + 1}</td>${cells}</tr>`;
