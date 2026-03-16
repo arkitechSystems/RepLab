@@ -118,14 +118,14 @@ router.post('/forgot-password', express.urlencoded({ extended: false }), async (
         from: 'WillFit <noreply@will-fit.shop>',
         to: adminEmail,
         subject: 'Admin Dashboard Password Reset',
-        html: \`
+        html: `
           <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;">
             <h1 style="color:#111;font-size:24px;">Reset Admin Password</h1>
             <p style="color:#444;font-size:16px;line-height:1.6;">Click the button below to reset your admin dashboard password. This link expires in 1 hour.</p>
-            <a href="\${resetUrl}" style="display:inline-block;margin-top:20px;padding:14px 28px;background:#111;color:#fff;text-decoration:none;border-radius:8px;font-size:16px;font-weight:600;">Reset Password</a>
+            <a href="${resetUrl}" style="display:inline-block;margin-top:20px;padding:14px 28px;background:#111;color:#fff;text-decoration:none;border-radius:8px;font-size:16px;font-weight:600;">Reset Password</a>
             <p style="color:#999;font-size:13px;margin-top:32px;">If you didn't request this, ignore this email.</p>
           </div>
-        \`,
+        `,
       });
     } catch (err) {
       console.error('Failed to send admin reset email:', err.message);
@@ -144,9 +144,9 @@ router.get('/reset-password', async (req, res) => {
     return res.redirect('/admin/login?error=Invalid+or+expired+reset+link');
   }
 
-  res.send(adminLoginPage('', \`
+  res.send(adminLoginPage('', `
     <form method="POST" action="/admin/reset-password">
-      <input type="hidden" name="token" value="\${token}" />
+      <input type="hidden" name="token" value="${token}" />
       <div class="field">
         <label>New Password</label>
         <input type="password" name="newPassword" placeholder="Enter new password" required minlength="6" />
@@ -160,7 +160,7 @@ router.get('/reset-password', async (req, res) => {
     <div style="text-align:center;margin-top:16px;">
       <a href="/admin/login" style="color:rgba(255,255,255,0.4);font-size:13px;text-decoration:none;">Back to Login</a>
     </div>
-  \`));
+  `));
 });
 
 // POST /admin/reset-password — Process password reset
@@ -173,10 +173,10 @@ router.post('/reset-password', express.urlencoded({ extended: false }), async (r
     return res.redirect('/admin/login?error=Invalid+or+expired+reset+link');
   }
   if (!newPassword || newPassword.length < 6) {
-    return res.redirect(\`/admin/reset-password?token=\${token}&error=Password+must+be+at+least+6+characters\`);
+    return res.redirect(`/admin/reset-password?token=${token}&error=Password+must+be+at+least+6+characters`);
   }
   if (newPassword !== confirmPassword) {
-    return res.redirect(\`/admin/reset-password?token=\${token}&error=Passwords+do+not+match\`);
+    return res.redirect(`/admin/reset-password?token=${token}&error=Passwords+do+not+match`);
   }
 
   const hash = bcrypt.hashSync(newPassword, 10);
@@ -576,18 +576,14 @@ router.get('/users', adminAuth, async (req, res) => {
       overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
       const modal = document.createElement('div');
       modal.style.cssText = 'background:#fff;border-radius:16px;padding:28px;max-width:400px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.2);';
-      modal.innerHTML = \`
-        <h3 style="font-size:18px;font-weight:800;margin-bottom:6px;">Delete User</h3>
-        <p style="font-size:14px;color:#555;margin-bottom:16px;">
-          This will permanently delete <strong>\${name}</strong> and all their data (programs, workouts, sessions, PRs). This cannot be undone.
-        </p>
-        <p style="font-size:13px;color:#888;margin-bottom:8px;">Type <strong style="color:#ef4444;">delete</strong> to confirm:</p>
-        <input id="delete-confirm-input" type="text" placeholder="Type delete" style="width:100%;padding:10px 14px;border:2px solid #ddd;border-radius:8px;font-size:15px;outline:none;margin-bottom:16px;box-sizing:border-box;" />
-        <div style="display:flex;gap:10px;">
-          <button id="delete-cancel-btn" style="flex:1;padding:10px;border-radius:8px;border:1px solid #ddd;background:#fff;font-size:14px;font-weight:600;cursor:pointer;">Cancel</button>
-          <button id="delete-confirm-btn" style="flex:1;padding:10px;border-radius:8px;border:none;background:#ddd;color:#888;font-size:14px;font-weight:600;cursor:not-allowed;" disabled>Delete</button>
-        </div>
-      \`;
+      modal.innerHTML = '<h3 style="font-size:18px;font-weight:800;margin-bottom:6px;">Delete User</h3>'
+        + '<p style="font-size:14px;color:#555;margin-bottom:16px;">This will permanently delete <strong>' + name + '</strong> and all their data. This cannot be undone.</p>'
+        + '<p style="font-size:13px;color:#888;margin-bottom:8px;">Type <strong style="color:#ef4444;">delete</strong> to confirm:</p>'
+        + '<input id="delete-confirm-input" type="text" placeholder="Type delete" style="width:100%;padding:10px 14px;border:2px solid #ddd;border-radius:8px;font-size:15px;outline:none;margin-bottom:16px;box-sizing:border-box;" />'
+        + '<div style="display:flex;gap:10px;">'
+        + '<button id="delete-cancel-btn" style="flex:1;padding:10px;border-radius:8px;border:1px solid #ddd;background:#fff;font-size:14px;font-weight:600;cursor:pointer;">Cancel</button>'
+        + '<button id="delete-confirm-btn" style="flex:1;padding:10px;border-radius:8px;border:none;background:#ddd;color:#888;font-size:14px;font-weight:600;cursor:not-allowed;" disabled>Delete</button>'
+        + '</div>';
       overlay.appendChild(modal);
       document.body.appendChild(overlay);
 
