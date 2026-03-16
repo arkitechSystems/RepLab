@@ -12,8 +12,12 @@ import sessionRoutes from './routes/sessions.js';
 import pbRoutes from './routes/pbs.js';
 import metricsRoutes from './routes/metrics.js';
 import adminRoutes from './routes/admin.js';
+import feedbackRoutes from './routes/feedback.js';
 import db from './db.js';
 import { sendDailySummaryEmail } from './email.js';
+
+// In-memory error log for admin dashboard
+export const errorLog = [];
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -40,6 +44,7 @@ app.use('/sessions', sessionRoutes);
 app.use('/pbs', pbRoutes);
 app.use('/metrics', metricsRoutes);
 app.use('/admin', adminRoutes);
+app.use('/feedback', feedbackRoutes);
 
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
@@ -49,6 +54,20 @@ const clientDist = path.join(__dirname, '..', 'client', 'dist');
 app.use(express.static(clientDist));
 app.get('*', (req, res) => {
   res.sendFile(path.join(clientDist, 'index.html'));
+});
+
+// Error capture middleware — stores last 50 errors in memory for admin dashboard
+app.use((err, req, res, next) => {
+  errorLog.unshift({
+    message: err.message,
+    stack: err.stack,
+    method: req.method,
+    url: req.originalUrl,
+    timestamp: new Date().toISOString(),
+  });
+  if (errorLog.length > 50) errorLog.length = 50;
+  console.error(err);
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 // Initialize database then start server

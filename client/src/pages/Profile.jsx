@@ -100,15 +100,11 @@ export default function Profile() {
     if (!feedbackMsg.trim()) return;
     setFeedbackSending(true);
     try {
-      await fetch('https://formsubmit.co/ajax/arkitechcloud@gmail.com', {
+      await api('/feedback', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({
-          _subject: `WillFit Feedback: ${feedbackType === 'bug' ? 'Bug Report' : 'Improvement Idea'}`,
           type: feedbackType === 'bug' ? 'Bug Report' : 'Improvement Idea',
           message: feedbackMsg.trim(),
-          user: user?.name || user?.email || 'Unknown',
-          version: APP_VERSION,
         }),
       });
       setFeedbackSent(true);

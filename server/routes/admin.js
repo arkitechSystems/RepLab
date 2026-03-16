@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import db from '../db.js';
 import { Resend } from 'resend';
+import pool from '../dbPool.js';
 
 const router = Router();
 
@@ -357,8 +358,8 @@ function adminPage(title, body) {
 
     /* Card grid */
     .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
-    .card { padding: 28px; text-decoration: none; color: #fff; transition: all 0.2s; display: block; border-left: 3px solid transparent; }
-    .card:hover { border-left-color: #ef4444; transform: translateX(4px); background: rgba(255,255,255,0.08); }
+    .card { padding: 28px; text-decoration: none; color: #fff; transition: all 0.2s; display: block; border-left: 3px solid transparent; border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 2px 12px rgba(0,0,0,0.3), 0 0 1px rgba(255,255,255,0.1); }
+    .card:hover { border-left-color: #ef4444; border-left-width: 3px; transform: translateX(4px); background: rgba(255,255,255,0.08); box-shadow: 0 4px 20px rgba(0,0,0,0.4), 0 0 1px rgba(255,255,255,0.15); }
     .card .card-icon { font-size: 32px; margin-bottom: 14px; }
     .card .card-title { font-size: 18px; font-weight: 700; }
     .card .card-desc { font-size: 13px; color: rgba(255,255,255,0.4); margin-top: 8px; line-height: 1.6; }
@@ -403,7 +404,7 @@ ${body}
 </html>`;
 }
 
-// GET /admin?key=YOUR_ADMIN_KEY — Admin Dashboard Home
+// GET /admin — Admin Dashboard Home
 router.get('/', adminAuth, (req, res) => {
   const key = req.adminKey;
   res.send(adminPage('Dashboard', `
@@ -412,15 +413,75 @@ router.get('/', adminAuth, (req, res) => {
     <p>WillFit administration panel</p>
   </div>
   <div class="card-grid">
-    <a class="card" href="/admin/users?key=${key}&format=html">
+    <a class="card glass" href="/admin/users?format=html">
       <div class="card-icon">👥</div>
       <div class="card-title">User Sign Ups</div>
       <div class="card-desc">View all registered users, contact info, referral sources, and export data.</div>
     </a>
-    <a class="card" href="/admin/analytics?key=${key}">
+    <a class="card glass" href="/admin/analytics">
       <div class="card-icon">📊</div>
       <div class="card-title">Session Analytics</div>
       <div class="card-desc">Workout completions, most active users, and recent activity across all users.</div>
+    </a>
+    <a class="card glass" href="/admin/feedback">
+      <div class="card-icon">💬</div>
+      <div class="card-title">Feedback</div>
+      <div class="card-desc">View bug reports and improvement ideas submitted by users.</div>
+    </a>
+    <a class="card glass" href="/admin/retention">
+      <div class="card-icon">📈</div>
+      <div class="card-title">Retention Dashboard</div>
+      <div class="card-desc">Day 1, 7, and 30 retention rates across your user base.</div>
+    </a>
+    <a class="card glass" href="/admin/active">
+      <div class="card-icon">🟢</div>
+      <div class="card-title">Active Users</div>
+      <div class="card-desc">Users who logged a session in the last 24 hours, 7 days, and 30 days.</div>
+    </a>
+    <a class="card glass" href="/admin/referrals">
+      <div class="card-icon">🔗</div>
+      <div class="card-title">Referral Breakdown</div>
+      <div class="card-desc">See where your users are coming from by referral source.</div>
+    </a>
+    <a class="card glass" href="/admin/devices">
+      <div class="card-icon">📱</div>
+      <div class="card-title">Device Breakdown</div>
+      <div class="card-desc">Signup device distribution across your user base.</div>
+    </a>
+    <a class="card glass" href="/admin/workouts">
+      <div class="card-icon">🏋️</div>
+      <div class="card-title">Workout Library</div>
+      <div class="card-desc">Browse all programs and templates in the workout library.</div>
+    </a>
+    <a class="card glass" href="/admin/announcements">
+      <div class="card-icon">📢</div>
+      <div class="card-title">Announcements</div>
+      <div class="card-desc">Create and manage announcements shown to users in the app.</div>
+    </a>
+    <a class="card glass" href="/admin/flags">
+      <div class="card-icon">🚩</div>
+      <div class="card-title">Feature Flags</div>
+      <div class="card-desc">Toggle features on and off without deploying code.</div>
+    </a>
+    <a class="card glass" href="/admin/health">
+      <div class="card-icon">💚</div>
+      <div class="card-title">Health Check</div>
+      <div class="card-desc">Server status, database connection, memory usage, and uptime.</div>
+    </a>
+    <a class="card glass" href="/admin/errors">
+      <div class="card-icon">🚨</div>
+      <div class="card-title">Error Log</div>
+      <div class="card-desc">View the last 50 server errors captured in memory.</div>
+    </a>
+    <a class="card glass" href="/admin/revenue">
+      <div class="card-icon">💰</div>
+      <div class="card-title">Revenue Dashboard</div>
+      <div class="card-desc">Track revenue when paid plans are launched.</div>
+    </a>
+    <a class="card glass" href="/admin/subscriptions">
+      <div class="card-icon">💳</div>
+      <div class="card-title">Subscription Manager</div>
+      <div class="card-desc">Manage user subscriptions when paid plans are launched.</div>
     </a>
   </div>
 
@@ -481,7 +542,7 @@ router.get('/users', adminAuth, async (req, res) => {
       }).join('');
 
       return res.send(adminPage('User Sign Ups', `
-  <div class="breadcrumb"><a href="/admin?key=${key}">Dashboard</a> / User Sign Ups</div>
+  <div class="breadcrumb"><a href="/admin">Dashboard</a> / User Sign Ups</div>
   <div class="header">
     <h1>Admin Dashboard</h1>
     <h2>User Sign Ups</h2>
@@ -678,7 +739,7 @@ router.get('/analytics', adminAuth, async (req, res) => {
     }).join('');
 
     res.send(adminPage('Session Analytics', `
-  <div class="breadcrumb"><a href="/admin?key=${key}">Dashboard</a> / Session Analytics</div>
+  <div class="breadcrumb"><a href="/admin">Dashboard</a> / Session Analytics</div>
   <div class="header">
     <h1>Admin Dashboard</h1>
     <h2>Session Analytics</h2>
@@ -737,6 +798,670 @@ router.get('/analytics', adminAuth, async (req, res) => {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+// ============================================================
+// 1. Feedback Viewer
+// ============================================================
+router.get('/feedback', adminAuth, async (req, res) => {
+  try {
+    const feedback = await db.getAllFeedback();
+    const rows = feedback.map((f, i) => {
+      const name = [f.first_name, f.last_name].filter(Boolean).join(' ') || f.email || 'Unknown';
+      const date = new Date(f.created_at).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', year: 'numeric' });
+      const time = new Date(f.created_at).toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' });
+      const typeBadge = f.type === 'Bug Report'
+        ? '<span style="background:rgba(239,68,68,0.15);color:#f87171;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">Bug</span>'
+        : '<span style="background:rgba(59,130,246,0.15);color:#60a5fa;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">Idea</span>';
+      return `<tr>
+        <td>${i + 1}</td>
+        <td>${name}</td>
+        <td>${typeBadge}</td>
+        <td style="max-width:400px;word-wrap:break-word;">${f.message}</td>
+        <td>${date} <span style="color:#888;">${time} CT</span></td>
+      </tr>`;
+    }).join('');
+
+    res.send(adminPage('Feedback', `
+  <div class="breadcrumb"><a href="/admin">Dashboard</a> / Feedback</div>
+  <div class="header">
+    <h1>Admin Dashboard</h1>
+    <h2>Feedback</h2>
+    <p>Generated ${new Date().toLocaleDateString('en-US', { timeZone: 'America/Chicago', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+  </div>
+  <div class="stats">
+    <div class="stat glass">
+      <div class="value">${feedback.length}</div>
+      <div class="label">Total Submissions</div>
+    </div>
+    <div class="stat glass">
+      <div class="value">${feedback.filter(f => f.type === 'Bug Report').length}</div>
+      <div class="label">Bug Reports</div>
+    </div>
+    <div class="stat glass">
+      <div class="value">${feedback.filter(f => f.type !== 'Bug Report').length}</div>
+      <div class="label">Ideas</div>
+    </div>
+  </div>
+  <div class="glass table-wrap" style="border-radius:16px;overflow:hidden;">
+  <table>
+    <thead><tr><th>#</th><th>User</th><th>Type</th><th>Message</th><th>Date</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="5" style="text-align:center;color:rgba(255,255,255,0.3);">No feedback yet</td></tr>'}</tbody>
+  </table>
+  </div>`));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// 2. Retention Dashboard
+// ============================================================
+router.get('/retention', adminAuth, async (req, res) => {
+  try {
+    const stats = await db.getRetentionStats();
+    const pct = (val) => stats.totalUsers > 0 ? ((val / stats.totalUsers) * 100).toFixed(1) : '0.0';
+
+    res.send(adminPage('Retention', `
+  <div class="breadcrumb"><a href="/admin">Dashboard</a> / Retention Dashboard</div>
+  <div class="header">
+    <h1>Admin Dashboard</h1>
+    <h2>Retention Dashboard</h2>
+    <p>Generated ${new Date().toLocaleDateString('en-US', { timeZone: 'America/Chicago', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+  </div>
+  <div class="stats">
+    <div class="stat glass">
+      <div class="value">${stats.totalUsers}</div>
+      <div class="label">Total Users</div>
+    </div>
+    <div class="stat glass">
+      <div class="value">${stats.day1}</div>
+      <div class="label">Day 1 Retained (${pct(stats.day1)}%)</div>
+    </div>
+    <div class="stat glass">
+      <div class="value">${stats.day7}</div>
+      <div class="label">Day 7 Retained (${pct(stats.day7)}%)</div>
+    </div>
+    <div class="stat glass">
+      <div class="value">${stats.day30}</div>
+      <div class="label">Day 30 Retained (${pct(stats.day30)}%)</div>
+    </div>
+  </div>
+  <div class="glass" style="padding:24px;">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:12px;color:rgba(255,255,255,0.7);">How Retention is Measured</h3>
+    <div style="color:rgba(255,255,255,0.5);font-size:13px;line-height:1.8;">
+      <p><strong style="color:#fff;">Day 1:</strong> Users who logged a workout exactly 1 day after signing up.</p>
+      <p><strong style="color:#fff;">Day 7:</strong> Users who logged a workout between 6-8 days after signing up.</p>
+      <p><strong style="color:#fff;">Day 30:</strong> Users who logged a workout between 29-31 days after signing up.</p>
+      <p style="margin-top:12px;">Demo accounts are excluded from all calculations.</p>
+    </div>
+  </div>`));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// 3. Referral Breakdown
+// ============================================================
+router.get('/referrals', adminAuth, async (req, res) => {
+  try {
+    const data = await db.getReferralBreakdown();
+    const total = data.reduce((sum, d) => sum + parseInt(d.count), 0);
+    const maxCount = data.length > 0 ? parseInt(data[0].count) : 1;
+    const bars = data.map(d => {
+      const count = parseInt(d.count);
+      const pct = total > 0 ? ((count / total) * 100).toFixed(1) : '0.0';
+      const width = ((count / maxCount) * 100).toFixed(0);
+      return `<div style="margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:13px;color:#fff;font-weight:600;">${d.source}</span>
+          <span style="font-size:13px;color:rgba(255,255,255,0.5);">${count} (${pct}%)</span>
+        </div>
+        <div style="background:rgba(255,255,255,0.08);border-radius:6px;height:24px;overflow:hidden;">
+          <div style="background:linear-gradient(135deg,#ef4444,#f97316);height:100%;width:${width}%;border-radius:6px;transition:width 0.3s;"></div>
+        </div>
+      </div>`;
+    }).join('');
+
+    res.send(adminPage('Referral Breakdown', `
+  <div class="breadcrumb"><a href="/admin">Dashboard</a> / Referral Breakdown</div>
+  <div class="header">
+    <h1>Admin Dashboard</h1>
+    <h2>Referral Breakdown</h2>
+    <p>Generated ${new Date().toLocaleDateString('en-US', { timeZone: 'America/Chicago', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+  </div>
+  <div class="stats">
+    <div class="stat glass">
+      <div class="value">${total}</div>
+      <div class="label">Total Users</div>
+    </div>
+    <div class="stat glass">
+      <div class="value">${data.length}</div>
+      <div class="label">Referral Sources</div>
+    </div>
+  </div>
+  <div class="glass" style="padding:24px;">
+    ${bars || '<p style="color:rgba(255,255,255,0.3);text-align:center;">No referral data yet</p>'}
+  </div>`));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// 4. Device Breakdown
+// ============================================================
+router.get('/devices', adminAuth, async (req, res) => {
+  try {
+    const data = await db.getDeviceBreakdown();
+    const total = data.reduce((sum, d) => sum + parseInt(d.count), 0);
+    const maxCount = data.length > 0 ? parseInt(data[0].count) : 1;
+    const bars = data.map(d => {
+      const count = parseInt(d.count);
+      const pct = total > 0 ? ((count / total) * 100).toFixed(1) : '0.0';
+      const width = ((count / maxCount) * 100).toFixed(0);
+      return `<div style="margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:13px;color:#fff;font-weight:600;">${d.device}</span>
+          <span style="font-size:13px;color:rgba(255,255,255,0.5);">${count} (${pct}%)</span>
+        </div>
+        <div style="background:rgba(255,255,255,0.08);border-radius:6px;height:24px;overflow:hidden;">
+          <div style="background:linear-gradient(135deg,#3b82f6,#8b5cf6);height:100%;width:${width}%;border-radius:6px;transition:width 0.3s;"></div>
+        </div>
+      </div>`;
+    }).join('');
+
+    res.send(adminPage('Device Breakdown', `
+  <div class="breadcrumb"><a href="/admin">Dashboard</a> / Device Breakdown</div>
+  <div class="header">
+    <h1>Admin Dashboard</h1>
+    <h2>Device Breakdown</h2>
+    <p>Generated ${new Date().toLocaleDateString('en-US', { timeZone: 'America/Chicago', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+  </div>
+  <div class="stats">
+    <div class="stat glass">
+      <div class="value">${total}</div>
+      <div class="label">Total Users</div>
+    </div>
+    <div class="stat glass">
+      <div class="value">${data.length}</div>
+      <div class="label">Device Types</div>
+    </div>
+  </div>
+  <div class="glass" style="padding:24px;">
+    ${bars || '<p style="color:rgba(255,255,255,0.3);text-align:center;">No device data yet</p>'}
+  </div>`));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// 5. Workout Library Manager
+// ============================================================
+router.get('/workouts', adminAuth, async (req, res) => {
+  try {
+    const programs = await db.getWorkoutLibrary();
+    const rows = programs.map((p, i) => {
+      const isGlobal = p.user_id === null;
+      const badge = isGlobal
+        ? '<span style="background:rgba(34,197,94,0.15);color:#4ade80;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">Global</span>'
+        : '<span style="background:rgba(59,130,246,0.15);color:#60a5fa;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">User</span>';
+      return `<tr>
+        <td>${i + 1}</td>
+        <td>${p.name}</td>
+        <td>${p.description || '—'}</td>
+        <td>${badge}</td>
+        <td>${p.template_count}</td>
+        <td>${new Date(p.created_at).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', year: 'numeric' })}</td>
+      </tr>`;
+    }).join('');
+
+    res.send(adminPage('Workout Library', `
+  <div class="breadcrumb"><a href="/admin">Dashboard</a> / Workout Library</div>
+  <div class="header">
+    <h1>Admin Dashboard</h1>
+    <h2>Workout Library</h2>
+    <p>Generated ${new Date().toLocaleDateString('en-US', { timeZone: 'America/Chicago', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+  </div>
+  <div class="stats">
+    <div class="stat glass">
+      <div class="value">${programs.length}</div>
+      <div class="label">Total Programs</div>
+    </div>
+    <div class="stat glass">
+      <div class="value">${programs.filter(p => p.user_id === null).length}</div>
+      <div class="label">Global Programs</div>
+    </div>
+    <div class="stat glass">
+      <div class="value">${programs.reduce((sum, p) => sum + parseInt(p.template_count), 0)}</div>
+      <div class="label">Total Templates</div>
+    </div>
+  </div>
+  <div class="glass" style="padding:14px 20px;margin-bottom:24px;border-left:3px solid #f59e0b;">
+    <p style="color:#fbbf24;font-size:13px;">Read-only view. Editing coming soon.</p>
+  </div>
+  <div class="glass table-wrap" style="border-radius:16px;overflow:hidden;">
+  <table>
+    <thead><tr><th>#</th><th>Name</th><th>Description</th><th>Type</th><th>Templates</th><th>Created</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="6" style="text-align:center;color:rgba(255,255,255,0.3);">No programs yet</td></tr>'}</tbody>
+  </table>
+  </div>`));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// 6. Announcement Manager
+// ============================================================
+router.get('/announcements', adminAuth, async (req, res) => {
+  try {
+    const announcements = await db.getAnnouncements();
+    const rows = announcements.map((a) => {
+      const statusBadge = a.active
+        ? '<span style="background:rgba(34,197,94,0.15);color:#4ade80;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">Active</span>'
+        : '<span style="background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">Inactive</span>';
+      const date = new Date(a.created_at).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', year: 'numeric' });
+      return `<tr>
+        <td>${a.id}</td>
+        <td style="max-width:400px;word-wrap:break-word;">${a.message}</td>
+        <td>${statusBadge}</td>
+        <td>${date}</td>
+        <td>
+          <form method="POST" action="/admin/announcements/toggle" style="display:inline;">
+            <input type="hidden" name="id" value="${a.id}" />
+            <input type="hidden" name="active" value="${a.active ? 'false' : 'true'}" />
+            <button type="submit" class="btn-ghost" style="margin:0;padding:6px 12px;font-size:11px;">${a.active ? 'Deactivate' : 'Activate'}</button>
+          </form>
+          <form method="POST" action="/admin/announcements/delete" style="display:inline;margin-left:4px;">
+            <input type="hidden" name="id" value="${a.id}" />
+            <button type="submit" class="delete-btn" title="Delete">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </form>
+        </td>
+      </tr>`;
+    }).join('');
+
+    res.send(adminPage('Announcements', `
+  <div class="breadcrumb"><a href="/admin">Dashboard</a> / Announcements</div>
+  <div class="header">
+    <h1>Admin Dashboard</h1>
+    <h2>Announcement Manager</h2>
+    <p>Generated ${new Date().toLocaleDateString('en-US', { timeZone: 'America/Chicago', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+  </div>
+  <div class="glass" style="padding:24px;margin-bottom:24px;">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:rgba(255,255,255,0.7);">Create New Announcement</h3>
+    <form method="POST" action="/admin/announcements/create" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+      <div style="flex:1;min-width:300px;">
+        <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);margin-bottom:4px;font-weight:600;">Message</label>
+        <input type="text" name="message" placeholder="Enter announcement message..." required
+          style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;" />
+      </div>
+      <button type="submit" class="btn" style="margin:0;padding:10px 20px;font-size:13px;">Publish</button>
+    </form>
+    <p style="color:rgba(255,255,255,0.3);font-size:12px;margin-top:8px;">Publishing a new announcement will deactivate all previous ones.</p>
+  </div>
+  <div class="glass table-wrap" style="border-radius:16px;overflow:hidden;">
+  <table>
+    <thead><tr><th>ID</th><th>Message</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="5" style="text-align:center;color:rgba(255,255,255,0.3);">No announcements yet</td></tr>'}</tbody>
+  </table>
+  </div>`));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/announcements/create', express.urlencoded({ extended: false }), adminAuth, async (req, res) => {
+  try {
+    await db.createAnnouncement(req.body.message);
+    res.redirect('/admin/announcements');
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/announcements/toggle', express.urlencoded({ extended: false }), adminAuth, async (req, res) => {
+  try {
+    await db.toggleAnnouncement(Number(req.body.id), req.body.active === 'true');
+    res.redirect('/admin/announcements');
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/announcements/delete', express.urlencoded({ extended: false }), adminAuth, async (req, res) => {
+  try {
+    await db.deleteAnnouncement(Number(req.body.id));
+    res.redirect('/admin/announcements');
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// 7. Feature Flags
+// ============================================================
+router.get('/flags', adminAuth, async (req, res) => {
+  try {
+    const flags = await db.getFeatureFlags();
+    const rows = flags.map((f) => {
+      const statusBadge = f.enabled
+        ? '<span style="background:rgba(34,197,94,0.15);color:#4ade80;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">ON</span>'
+        : '<span style="background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">OFF</span>';
+      return `<tr>
+        <td style="font-family:monospace;font-size:13px;color:#f97316;">${f.key}</td>
+        <td>${f.description || '—'}</td>
+        <td>${statusBadge}</td>
+        <td>
+          <form method="POST" action="/admin/flags/toggle" style="display:inline;">
+            <input type="hidden" name="key" value="${f.key}" />
+            <input type="hidden" name="enabled" value="${f.enabled ? 'false' : 'true'}" />
+            <button type="submit" class="btn-ghost" style="margin:0;padding:6px 12px;font-size:11px;">${f.enabled ? 'Disable' : 'Enable'}</button>
+          </form>
+          <form method="POST" action="/admin/flags/delete" style="display:inline;margin-left:4px;">
+            <input type="hidden" name="key" value="${f.key}" />
+            <button type="submit" class="delete-btn" title="Delete">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </form>
+        </td>
+      </tr>`;
+    }).join('');
+
+    res.send(adminPage('Feature Flags', `
+  <div class="breadcrumb"><a href="/admin">Dashboard</a> / Feature Flags</div>
+  <div class="header">
+    <h1>Admin Dashboard</h1>
+    <h2>Feature Flags</h2>
+    <p>Generated ${new Date().toLocaleDateString('en-US', { timeZone: 'America/Chicago', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+  </div>
+  <div class="glass" style="padding:24px;margin-bottom:24px;">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:rgba(255,255,255,0.7);">Add New Flag</h3>
+    <form method="POST" action="/admin/flags/create" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+      <div style="flex:1;min-width:160px;">
+        <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);margin-bottom:4px;font-weight:600;">Key</label>
+        <input type="text" name="key" placeholder="e.g. dark_mode_v2" required
+          style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;" />
+      </div>
+      <div style="flex:1;min-width:200px;">
+        <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);margin-bottom:4px;font-weight:600;">Description</label>
+        <input type="text" name="description" placeholder="What does this flag do?"
+          style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;" />
+      </div>
+      <button type="submit" class="btn" style="margin:0;padding:10px 20px;font-size:13px;">Add Flag</button>
+    </form>
+  </div>
+  <div class="glass table-wrap" style="border-radius:16px;overflow:hidden;">
+  <table>
+    <thead><tr><th>Key</th><th>Description</th><th>Status</th><th>Actions</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="4" style="text-align:center;color:rgba(255,255,255,0.3);">No feature flags yet</td></tr>'}</tbody>
+  </table>
+  </div>`));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/flags/create', express.urlencoded({ extended: false }), adminAuth, async (req, res) => {
+  try {
+    await db.setFeatureFlag(req.body.key, false, req.body.description || '');
+    res.redirect('/admin/flags');
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/flags/toggle', express.urlencoded({ extended: false }), adminAuth, async (req, res) => {
+  try {
+    const flags = await db.getFeatureFlags();
+    const existing = flags.find(f => f.key === req.body.key);
+    await db.setFeatureFlag(req.body.key, req.body.enabled === 'true', existing?.description || '');
+    res.redirect('/admin/flags');
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.post('/flags/delete', express.urlencoded({ extended: false }), adminAuth, async (req, res) => {
+  try {
+    await db.deleteFeatureFlag(req.body.key);
+    res.redirect('/admin/flags');
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// 8. Error Log
+// ============================================================
+router.get('/errors', adminAuth, async (req, res) => {
+  try {
+    // Import errorLog from index.js
+    let errors = [];
+    try {
+      const { errorLog } = await import('../index.js');
+      errors = errorLog || [];
+    } catch (_) {
+      // errorLog may not be available if imported differently
+    }
+
+    const rows = errors.map((e, i) => {
+      const date = new Date(e.timestamp).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', year: 'numeric' });
+      const time = new Date(e.timestamp).toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit', second: '2-digit' });
+      return `<tr>
+        <td>${i + 1}</td>
+        <td><span style="font-family:monospace;font-size:12px;color:#f97316;">${e.method}</span> ${e.url}</td>
+        <td style="max-width:400px;word-wrap:break-word;color:#f87171;">${e.message}</td>
+        <td>${date} <span style="color:#888;">${time} CT</span></td>
+      </tr>`;
+    }).join('');
+
+    res.send(adminPage('Error Log', `
+  <div class="breadcrumb"><a href="/admin">Dashboard</a> / Error Log</div>
+  <div class="header">
+    <h1>Admin Dashboard</h1>
+    <h2>Error Log</h2>
+    <p>Showing last ${errors.length} errors (in-memory, resets on server restart)</p>
+  </div>
+  <div class="stats">
+    <div class="stat glass">
+      <div class="value">${errors.length}</div>
+      <div class="label">Errors Captured</div>
+    </div>
+  </div>
+  <div class="glass table-wrap" style="border-radius:16px;overflow:hidden;">
+  <table>
+    <thead><tr><th>#</th><th>Endpoint</th><th>Error</th><th>Time</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="4" style="text-align:center;color:rgba(255,255,255,0.3);">No errors captured. That\'s a good thing!</td></tr>'}</tbody>
+  </table>
+  </div>`));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// 9. Health Check
+// ============================================================
+router.get('/health', adminAuth, async (req, res) => {
+  try {
+    let dbStatus = 'Connected';
+    let dbLatency = '—';
+    try {
+      const start = Date.now();
+      await pool.query('SELECT 1');
+      dbLatency = `${Date.now() - start}ms`;
+    } catch (_) {
+      dbStatus = 'Disconnected';
+    }
+
+    const uptime = process.uptime();
+    const hours = Math.floor(uptime / 3600);
+    const mins = Math.floor((uptime % 3600) / 60);
+    const secs = Math.floor(uptime % 60);
+    const uptimeStr = `${hours}h ${mins}m ${secs}s`;
+
+    const mem = process.memoryUsage();
+    const formatMB = (bytes) => (bytes / 1024 / 1024).toFixed(1) + ' MB';
+
+    res.send(adminPage('Health Check', `
+  <div class="breadcrumb"><a href="/admin">Dashboard</a> / Health Check</div>
+  <div class="header">
+    <h1>Admin Dashboard</h1>
+    <h2>Health Check</h2>
+    <p>Generated ${new Date().toLocaleDateString('en-US', { timeZone: 'America/Chicago', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+  </div>
+  <div class="stats">
+    <div class="stat glass">
+      <div class="value" style="font-size:24px;">${dbStatus === 'Connected' ? '<span style="-webkit-text-fill-color:#4ade80;">Connected</span>' : '<span style="-webkit-text-fill-color:#f87171;">Down</span>'}</div>
+      <div class="label">Database</div>
+    </div>
+    <div class="stat glass">
+      <div class="value" style="font-size:24px;">${dbLatency}</div>
+      <div class="label">DB Latency</div>
+    </div>
+    <div class="stat glass">
+      <div class="value" style="font-size:24px;">${uptimeStr}</div>
+      <div class="label">Server Uptime</div>
+    </div>
+  </div>
+  <div class="glass" style="padding:24px;">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:rgba(255,255,255,0.7);">System Info</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;">
+      <div>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);margin-bottom:4px;">Node Version</div>
+        <div style="font-size:14px;color:#fff;font-weight:600;">${process.version}</div>
+      </div>
+      <div>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);margin-bottom:4px;">Heap Used</div>
+        <div style="font-size:14px;color:#fff;font-weight:600;">${formatMB(mem.heapUsed)}</div>
+      </div>
+      <div>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);margin-bottom:4px;">Heap Total</div>
+        <div style="font-size:14px;color:#fff;font-weight:600;">${formatMB(mem.heapTotal)}</div>
+      </div>
+      <div>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);margin-bottom:4px;">RSS</div>
+        <div style="font-size:14px;color:#fff;font-weight:600;">${formatMB(mem.rss)}</div>
+      </div>
+      <div>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);margin-bottom:4px;">External</div>
+        <div style="font-size:14px;color:#fff;font-weight:600;">${formatMB(mem.external)}</div>
+      </div>
+      <div>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);margin-bottom:4px;">Platform</div>
+        <div style="font-size:14px;color:#fff;font-weight:600;">${process.platform} ${process.arch}</div>
+      </div>
+    </div>
+  </div>`));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// 10. Active Users
+// ============================================================
+router.get('/active', adminAuth, async (req, res) => {
+  try {
+    const data = await db.getActiveUsers();
+    const rows = data.recentUsers.map((u, i) => {
+      const name = [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email || `User #${u.user_id}`;
+      const date = new Date(u.last_session).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', year: 'numeric' });
+      const time = new Date(u.last_session).toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' });
+      return `<tr>
+        <td>${i + 1}</td>
+        <td>${name}</td>
+        <td>${u.email || '—'}</td>
+        <td>${date} <span style="color:#888;">${time} CT</span></td>
+      </tr>`;
+    }).join('');
+
+    res.send(adminPage('Active Users', `
+  <div class="breadcrumb"><a href="/admin">Dashboard</a> / Active Users</div>
+  <div class="header">
+    <h1>Admin Dashboard</h1>
+    <h2>Active Users</h2>
+    <p>Generated ${new Date().toLocaleDateString('en-US', { timeZone: 'America/Chicago', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+  </div>
+  <div class="stats">
+    <div class="stat glass">
+      <div class="value">${data.last24h}</div>
+      <div class="label">Last 24 Hours</div>
+    </div>
+    <div class="stat glass">
+      <div class="value">${data.last7d}</div>
+      <div class="label">Last 7 Days</div>
+    </div>
+    <div class="stat glass">
+      <div class="value">${data.last30d}</div>
+      <div class="label">Last 30 Days</div>
+    </div>
+  </div>
+  <h3 style="font-size:16px;font-weight:700;margin-bottom:12px;color:rgba(255,255,255,0.7);">Users Active in Last 7 Days</h3>
+  <div class="glass table-wrap" style="border-radius:16px;overflow:hidden;">
+  <table>
+    <thead><tr><th>#</th><th>Name</th><th>Email</th><th>Last Session</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="4" style="text-align:center;color:rgba(255,255,255,0.3);">No active users in this period</td></tr>'}</tbody>
+  </table>
+  </div>`));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// 11. Revenue Dashboard (Placeholder)
+// ============================================================
+router.get('/revenue', adminAuth, (req, res) => {
+  res.send(adminPage('Revenue Dashboard', `
+  <div class="breadcrumb"><a href="/admin">Dashboard</a> / Revenue Dashboard</div>
+  <div class="header">
+    <h1>Admin Dashboard</h1>
+    <h2>Revenue Dashboard</h2>
+  </div>
+  <div class="glass" style="padding:48px;text-align:center;">
+    <div style="font-size:48px;margin-bottom:20px;">💰</div>
+    <h3 style="font-size:20px;font-weight:700;margin-bottom:12px;">Coming Soon</h3>
+    <p style="color:rgba(255,255,255,0.4);font-size:14px;max-width:400px;margin:0 auto;line-height:1.8;">Revenue tracking will appear here when paid plans are launched. This will include MRR, total revenue, plan distribution, and growth charts.</p>
+  </div>`));
+});
+
+// ============================================================
+// 12. Subscription Manager (Placeholder)
+// ============================================================
+router.get('/subscriptions', adminAuth, (req, res) => {
+  res.send(adminPage('Subscription Manager', `
+  <div class="breadcrumb"><a href="/admin">Dashboard</a> / Subscription Manager</div>
+  <div class="header">
+    <h1>Admin Dashboard</h1>
+    <h2>Subscription Manager</h2>
+  </div>
+  <div class="glass" style="padding:48px;text-align:center;">
+    <div style="font-size:48px;margin-bottom:20px;">💳</div>
+    <h3 style="font-size:20px;font-weight:700;margin-bottom:12px;">Coming Soon</h3>
+    <p style="color:rgba(255,255,255,0.4);font-size:14px;max-width:400px;margin:0 auto;line-height:1.8;">Subscription management will appear here when paid plans are launched. This will include user plan management, cancellations, and billing history.</p>
+  </div>`));
 });
 
 export default router;

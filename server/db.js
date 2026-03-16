@@ -600,6 +600,155 @@ const db = {
     };
   },
 
+  // Feedback
+  async saveFeedback(userId, type, message) {
+    await pool.query('INSERT INTO feedback (user_id, type, message) VALUES ($1, $2, $3)', [userId, type, message]);
+  },
+  async getAllFeedback() {
+    const { rows } = await pool.query(`
+      SELECT f.*, u.email, u.first_name, u.last_name
+      FROM feedback f LEFT JOIN users u ON f.user_id = u.id
+      ORDER BY f.created_at DESC
+    `);
+    return rows;
+  },
+
+  // Announcements
+  async getAnnouncements() {
+    const { rows } = await pool.query('SELECT * FROM announcements ORDER BY created_at DESC');
+    return rows;
+  },
+  async getActiveAnnouncement() {
+    const { rows } = await pool.query('SELECT * FROM announcements WHERE active = TRUE ORDER BY created_at DESC LIMIT 1');
+    return rows[0] || null;
+  },
+  async createAnnouncement(message) {
+    await pool.query('UPDATE announcements SET active = FALSE');
+    await pool.query('INSERT INTO announcements (message, active) VALUES ($1, TRUE)', [message]);
+  },
+  async deleteAnnouncement(id) {
+    await pool.query('DELETE FROM announcements WHERE id = $1', [id]);
+  },
+  async toggleAnnouncement(id, active) {
+    await pool.query('UPDATE announcements SET active = $1 WHERE id = $2', [active, id]);
+  },
+
+  // Feature flags
+  async getFeatureFlags() {
+    const { rows } = await pool.query('SELECT * FROM feature_flags ORDER BY key');
+    return rows;
+  },
+  async setFeatureFlag(key, enabled, description) {
+    await pool.query(
+      `INSERT INTO feature_flags (key, enabled, description) VALUES ($1, $2, $3)
+       ON CONFLICT (key) DO UPDATE SET enabled = $2, description = $3`,
+      [key, enabled, description || '']
+    );
+  },
+  async deleteFeatureFlag(key) {
+    await pool.query('DELETE FROM feature_flags WHERE key = $1', [key]);
+  },
+
+  // Retention stats
+  async getRetentionStats() {
+    const { rows: day1 } = await pool.query(`
+      SELECT COUNT(DISTINCT s.user_id) as retained FROM sessions s
+      JOIN users u ON s.user_id = u.id
+      WHERE (u.email NOT LIKE '%@willfit.demo' OR u.email IS NULL)
+      AND s.created_at::date = u.created_at::date + INTERVAL '1 day'
+    `);
+    const { rows: day7 } = await pool.query(`
+      SELECT COUNT(DISTINCT s.user_id) as retained FROM sessions s
+      JOIN users u ON s.user_id = u.id
+      WHERE (u.email NOT LIKE '%@willfit.demo' OR u.email IS NULL)
+      AND s.created_at::date BETWEEN u.created_at::date + INTERVAL '6 days' AND u.created_at::date + INTERVAL '8 days'
+    `);
+    const { rows: day30 } = await pool.query(`
+      SELECT COUNT(DISTINCT s.user_id) as retained FROM sessions s
+      JOIN users u ON s.user_id = u.id
+      WHERE (u.email NOT LIKE '%@willfit.demo' OR u.email IS NULL)
+      AND s.created_at::date BETWEEN u.created_at::date + INTERVAL '29 days' AND u.created_at::date + INTERVAL '31 days'
+    `);
+    const { rows: [total] } = await pool.query(`SELECT COUNT(*) FROM users WHERE email NOT LIKE '%@willfit.demo' OR email IS NULL`);
+    return {
+      totalUsers: parseInt(total.count),
+      day1: parseInt(day1[0].retained),
+      day7: parseInt(day7[0].retained),
+      day30: parseInt(day30[0].retained),
+    };
+  },
+
+  // Active users
+  async getActiveUsers() {
+    const { rows: [day1] } = await pool.query(`
+      SELECT COUNT(DISTINCT s.user_id) as count FROM sessions s
+      JOIN users u ON s.user_id = u.id
+      WHERE (u.email NOT LIKE '%@willfit.demo' OR u.email IS NULL)
+      AND s.created_at >= NOW() - INTERVAL '1 day'
+    `);
+    const { rows: [day7] } = await pool.query(`
+      SELECT COUNT(DISTINCT s.user_id) as count FROM sessions s
+      JOIN users u ON s.user_id = u.id
+      WHERE (u.email NOT LIKE '%@willfit.demo' OR u.email IS NULL)
+      AND s.created_at >= NOW() - INTERVAL '7 days'
+    `);
+    const { rows: [day30] } = await pool.query(`
+      SELECT COUNT(DISTINCT s.user_id) as count FROM sessions s
+      JOIN users u ON s.user_id = u.id
+      WHERE (u.email NOT LIKE '%@willfit.demo' OR u.email IS NULL)
+      AND s.created_at >= NOW() - INTERVAL '30 days'
+    `);
+    const { rows: recentUsers } = await pool.query(`
+      SELECT DISTINCT ON (s.user_id) s.user_id, u.email, u.first_name, u.last_name, s.created_at as last_session
+      FROM sessions s JOIN users u ON s.user_id = u.id
+      WHERE (u.email NOT LIKE '%@willfit.demo' OR u.email IS NULL)
+      AND s.created_at >= NOW() - INTERVAL '7 days'
+      ORDER BY s.user_id, s.created_at DESC
+    `);
+    return {
+      last24h: parseInt(day1.count),
+      last7d: parseInt(day7.count),
+      last30d: parseInt(day30.count),
+      recentUsers,
+    };
+  },
+
+  // Referral breakdown
+  async getReferralBreakdown() {
+    const { rows } = await pool.query(`
+      SELECT COALESCE(referral_source, 'Unknown') as source, COUNT(*) as count
+      FROM users WHERE email NOT LIKE '%@willfit.demo' OR email IS NULL
+      GROUP BY COALESCE(referral_source, 'Unknown')
+      ORDER BY count DESC
+    `);
+    return rows;
+  },
+
+  // Device breakdown
+  async getDeviceBreakdown() {
+    const { rows } = await pool.query(`
+      SELECT COALESCE(signup_device, 'Unknown') as device, COUNT(*) as count
+      FROM users WHERE email NOT LIKE '%@willfit.demo' OR email IS NULL
+      GROUP BY COALESCE(signup_device, 'Unknown')
+      ORDER BY count DESC
+    `);
+    return rows;
+  },
+
+  // Workout library (all programs with template counts)
+  async getWorkoutLibrary() {
+    const { rows } = await pool.query(`
+      SELECT p.id, p.name, p.description, p.user_id,
+        COUNT(t.id) as template_count,
+        p.created_at
+      FROM programs p
+      LEFT JOIN templates t ON t.program_id = p.id
+      GROUP BY p.id
+      ORDER BY p.created_at
+    `);
+    return rows;
+  },
+
   async updateMetrics(userId, metrics) {
     await pool.query(
       `INSERT INTO user_metrics (user_id, height, weight, body_fat, max_bench, max_squat, max_deadlift, updated_at)
