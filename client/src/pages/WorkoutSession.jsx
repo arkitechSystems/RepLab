@@ -8,6 +8,7 @@ import RestDayCard from '../components/RestDayCard';
 import StickyHeader from '../components/StickyHeader';
 import { useUnsavedGuard } from '../components/UnsavedGuard';
 import PBCelebration from '../components/PBCelebration';
+import { iosFocusRef } from '../utils/iosFocus';
 
 export default function WorkoutSession() {
   const { templateId, date } = useParams();
@@ -36,9 +37,13 @@ export default function WorkoutSession() {
   const timerRef = useRef(null);
   // Rest timer
   const [restDuration, setRestDuration] = useState(90); // seconds
+  const restDurationRef = useRef(restDuration); // ref so interval always reads current value
   const [restRemaining, setRestRemaining] = useState(null); // null = not running
   const restTimerRef = useRef(null);
   const REST_OPTIONS = [30, 45, 60, 90, 120, 180];
+
+  // Keep ref in sync with state
+  useEffect(() => { restDurationRef.current = restDuration; }, [restDuration]);
 
   const startTimer = useCallback(() => {
     if (timerStarted) return;
@@ -51,13 +56,13 @@ export default function WorkoutSession() {
 
   function startRestTimer() {
     if (restTimerRef.current) clearInterval(restTimerRef.current);
-    setRestRemaining(restDuration);
+    const duration = restDurationRef.current;
+    setRestRemaining(duration);
     restTimerRef.current = setInterval(() => {
       setRestRemaining((prev) => {
         if (prev <= 1) {
           clearInterval(restTimerRef.current);
           restTimerRef.current = null;
-          // Vibrate and/or play sound when done
           if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
           return 0;
         }
@@ -468,7 +473,7 @@ export default function WorkoutSession() {
   }
 
   async function handleSave() {
-    if (!template || template.isRest) return;
+    if (!template || template.isRest || saving) return;
 
     setSaving(true);
     try {
@@ -541,7 +546,7 @@ export default function WorkoutSession() {
     exEntries.some((e) => (e.weight !== '' && e.weight !== undefined) || (e.reps !== '' && e.reps !== undefined))
   );
   const sessionDirty = hasEntryData && !saved;
-  const { UnsavedModal } = useUnsavedGuard({
+  const { guardedNavigate, UnsavedModal } = useUnsavedGuard({
     isDirty: sessionDirty,
     onSave: handleSave,
     saveLabel: 'Save Workout',
@@ -611,7 +616,7 @@ export default function WorkoutSession() {
       {UnsavedModal}
       {/* Back button */}
       <div className="px-4 pt-6">
-        <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-wf-red text-sm font-medium mb-2 active:opacity-70">
+        <button onClick={() => guardedNavigate(() => navigate(-1))} className="flex items-center gap-1 text-wf-red text-sm font-medium mb-2 active:opacity-70">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>
@@ -835,7 +840,7 @@ export default function WorkoutSession() {
                   value={addExerciseSearch}
                   onChange={(e) => setAddExerciseSearch(e.target.value)}
                   placeholder="Search exercises or type a custom name..."
-                  autoFocus
+                  ref={iosFocusRef}
                   className="w-full glass-input rounded-xl px-4 py-3 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none transition-all"
                 />
               </div>

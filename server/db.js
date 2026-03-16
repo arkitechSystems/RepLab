@@ -69,7 +69,8 @@ const db = {
       [identifier]
     );
     if (!rows[0]) return null;
-    return { id: rows[0].id, email: rows[0].email, phone: rows[0].phone, passwordHash: rows[0].password_hash, createdAt: rows[0].created_at };
+    const u = rows[0];
+    return { id: u.id, email: u.email, phone: u.phone, passwordHash: u.password_hash, firstName: u.first_name, lastName: u.last_name, username: u.username, createdAt: u.created_at };
   },
 
   async createUser({ email, phone, passwordHash, firstName, lastName, gender, username, referralSource, referralCode, signupCity, signupState }) {

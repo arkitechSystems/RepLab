@@ -95,6 +95,13 @@ router.post('/signup', async (req, res) => {
     res.status(201).json({ token, user: userResponse(user) });
   } catch (err) {
     console.error(err);
+    // Handle unique constraint violations from concurrent signups
+    if (err.code === '23505') {
+      if (err.constraint?.includes('email')) return res.status(409).json({ error: 'Email already registered' });
+      if (err.constraint?.includes('phone')) return res.status(409).json({ error: 'Phone number already registered' });
+      if (err.constraint?.includes('username')) return res.status(409).json({ error: 'Username already taken' });
+      return res.status(409).json({ error: 'Account already exists' });
+    }
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -130,7 +137,7 @@ router.post('/login', async (req, res) => {
 
 router.post('/demo', async (req, res) => {
   try {
-    const email = `demo_${Date.now()}@willfit.demo`;
+    const email = `demo_${Date.now()}_${crypto.randomBytes(4).toString('hex')}@willfit.demo`;
     const passwordHash = bcrypt.hashSync(Math.random().toString(36), 10);
     const user = await db.createUser({ email, phone: null, passwordHash });
     await db.setDefaultSchedule(user.id);

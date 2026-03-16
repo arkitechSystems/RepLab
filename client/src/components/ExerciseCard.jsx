@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useMemo } from 'react';
 import { getExerciseVideoId, getExerciseSearchUrl } from '../utils/exerciseVideos.js';
 import { getSubstitutes } from '../utils/exerciseLibrary.js';
 import VideoPlayerModal from './VideoPlayerModal.jsx';
+import { iosFocusRef } from '../utils/iosFocus.js';
 
 export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnly, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onSwapExercise, note, onNoteChange }) {
   const exercisePbs = pbs?.[exercise.name] || {};
@@ -13,11 +14,29 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
   const [swapSearch, setSwapSearch] = useState('');
   const longPressRef = useRef(null);
 
-  const handleTouchStart = useCallback((idx) => {
+  const touchStartPos = useRef(null);
+
+  const handleTouchStart = useCallback((idx, e) => {
+    const touch = e.touches[0];
+    touchStartPos.current = { x: touch.clientX, y: touch.clientY };
     longPressRef.current = setTimeout(() => {
       navigator.vibrate?.(30);
       setDeleteIdx(idx);
+      longPressRef.current = null;
     }, 500);
+  }, []);
+
+  const handleTouchMove = useCallback((e) => {
+    // Only cancel if finger moved more than 10px (prevents natural jitter from canceling)
+    if (longPressRef.current && touchStartPos.current) {
+      const touch = e.touches[0];
+      const dx = Math.abs(touch.clientX - touchStartPos.current.x);
+      const dy = Math.abs(touch.clientY - touchStartPos.current.y);
+      if (dx > 10 || dy > 10) {
+        clearTimeout(longPressRef.current);
+        longPressRef.current = null;
+      }
+    }
   }, []);
 
   const handleTouchEnd = useCallback(() => {
@@ -25,6 +44,7 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
       clearTimeout(longPressRef.current);
       longPressRef.current = null;
     }
+    touchStartPos.current = null;
   }, []);
 
   const handleVideoClick = () => {
@@ -137,16 +157,16 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
           const isCompleted = completedSets?.has(setKey);
           const isAutoFill = autoFilled?.has(setKey) && !isCompleted;
           const rowWeight = entry.weight ?? set.suggestedWeight;
-          const pbReps = rowWeight ? exercisePbs[rowWeight] : undefined;
+          const pbReps = (rowWeight !== undefined && rowWeight !== '' && rowWeight !== null) ? exercisePbs[rowWeight] : undefined;
           return (
             <div
               key={idx}
               className={`px-3 py-2.5 flex items-center gap-1.5 transition-colors duration-200 ${
                 isCompleted ? 'bg-green-500/10' : ''
               }`}
-              onTouchStart={!readOnly && onDeleteSet ? () => handleTouchStart(idx) : undefined}
+              onTouchStart={!readOnly && onDeleteSet ? (e) => handleTouchStart(idx, e) : undefined}
               onTouchEnd={!readOnly && onDeleteSet ? handleTouchEnd : undefined}
-              onTouchMove={!readOnly && onDeleteSet ? handleTouchEnd : undefined}
+              onTouchMove={!readOnly && onDeleteSet ? handleTouchMove : undefined}
               onContextMenu={!readOnly && onDeleteSet ? (e) => { e.preventDefault(); setDeleteIdx(idx); } : undefined}
             >
               {/* Checkmark circle */}
@@ -177,8 +197,7 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
               <div className="flex-1">
                 <input
                   type="number"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
+                  inputMode="decimal"
                   value={entry.weight ?? set.suggestedWeight ?? ''}
                   placeholder={readOnly ? '—' : '0'}
                   onChange={(e) => onChange?.(exercise.name, idx, 'weight', e.target.value)}
@@ -420,7 +439,7 @@ function SwapModal({ exerciseName, search, onSearchChange, onSelect, onClose }) 
               value={search}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Search exercises..."
-              autoFocus
+              ref={iosFocusRef}
               className="w-full glass-input rounded-xl pl-10 pr-4 py-3 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none"
             />
           </div>

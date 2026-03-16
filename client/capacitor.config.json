@@ -1,0 +1,14 @@
+{
+  "appId": "com.willfit.app",
+  "appName": "WillFit",
+  "webDir": "dist",
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": false,
+      "backgroundColor": "#000000"
+    },
+    "StatusBar": {
+      "style": "DARK"
+    }
+  }
+}

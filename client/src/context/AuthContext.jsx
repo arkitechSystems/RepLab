@@ -28,15 +28,29 @@ export function AuthProvider({ children }) {
     return () => setOnUnauthorized(null);
   }, [logout]);
 
+  // Helper to set all auth state atomically, cleaning up on failure
+  function applyAuth(data) {
+    try {
+      setApiToken(data.token);
+      try { localStorage.setItem('willfit_user', JSON.stringify(data.user)); } catch {}
+      setToken(data.token);
+      setUser(data.user);
+    } catch {
+      // If anything fails, clear everything to avoid partial state
+      setApiToken(null);
+      try { localStorage.removeItem('willfit_user'); } catch {}
+      setToken(null);
+      setUser(null);
+      throw new Error('Failed to save login state');
+    }
+  }
+
   const login = useCallback(async (identifier, password) => {
     const data = await api('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ identifier, password }),
     });
-    setApiToken(data.token);
-    try { localStorage.setItem('willfit_user', JSON.stringify(data.user)); } catch {}
-    setToken(data.token);
-    setUser(data.user);
+    applyAuth(data);
     return data;
   }, []);
 
@@ -45,19 +59,13 @@ export function AuthProvider({ children }) {
       method: 'POST',
       body: JSON.stringify({ identifier, password, ...extra }),
     });
-    setApiToken(data.token);
-    try { localStorage.setItem('willfit_user', JSON.stringify(data.user)); } catch {}
-    setToken(data.token);
-    setUser(data.user);
+    applyAuth(data);
     return data;
   }, []);
 
   const demo = useCallback(async () => {
     const data = await api('/auth/demo', { method: 'POST' });
-    setApiToken(data.token);
-    try { localStorage.setItem('willfit_user', JSON.stringify(data.user)); } catch {}
-    setToken(data.token);
-    setUser(data.user);
+    applyAuth(data);
     return data;
   }, []);
 

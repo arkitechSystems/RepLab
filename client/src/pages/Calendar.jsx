@@ -16,6 +16,8 @@ export default function Calendar() {
   const [weekOffset, setWeekOffset] = useState(0);
   const [editingDay, setEditingDay] = useState(null); // date object of day being edited
   const [expandedProgram, setExpandedProgram] = useState(null);
+  const [pickerSearch, setPickerSearch] = useState('');
+  const [showRestDayModal, setShowRestDayModal] = useState(false);
   const navigate = useNavigate();
 
   const today = new Date();
@@ -67,6 +69,7 @@ export default function Calendar() {
   function openEditor(e, date) {
     if (e) e.stopPropagation();
     setExpandedProgram(null);
+    setPickerSearch('');
     setEditingDay(date);
   }
 
@@ -98,6 +101,52 @@ export default function Calendar() {
     } catch (err) {
       console.error(err);
     }
+    setEditingDay(null);
+  }
+
+  async function handleRestDaySkip() {
+    // Just clear the current day's workout (skip it)
+    const dow = editingDay.getDay();
+    try {
+      await api('/schedule', {
+        method: 'PUT',
+        body: JSON.stringify({ schedule: [{ dayOfWeek: dow, templateId: null }] }),
+      });
+      const updated = await api('/schedule');
+      setSchedule(updated);
+    } catch (err) {
+      console.error(err);
+    }
+    setShowRestDayModal(false);
+    setEditingDay(null);
+  }
+
+  async function handleRestDayShift() {
+    // Push all workouts from this day onward forward by 1 day, clear this day as rest
+    const dow = editingDay.getDay();
+    try {
+      const updates = [];
+
+      // Clear the rest day (current day)
+      updates.push({ dayOfWeek: dow, templateId: null });
+
+      // Shift: each day from Saturday back to dow+1 gets the workout from the day before it
+      // Go backward to avoid overwriting data we still need to read
+      for (let d = 6; d > dow; d--) {
+        const prevDayWorkout = schedule.find((s) => s.dayOfWeek === (d - 1));
+        updates.push({ dayOfWeek: d, templateId: prevDayWorkout?.templateId || null });
+      }
+
+      await api('/schedule', {
+        method: 'PUT',
+        body: JSON.stringify({ schedule: updates }),
+      });
+      const updated = await api('/schedule');
+      setSchedule(updated);
+    } catch (err) {
+      console.error(err);
+    }
+    setShowRestDayModal(false);
     setEditingDay(null);
   }
 
@@ -328,34 +377,92 @@ export default function Calendar() {
                 </div>
               </div>
 
+              {/* Search bar */}
+              <div className="px-5 pb-3 shrink-0">
+                <div className="relative">
+                  <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                  </svg>
+                  <input
+                    type="text"
+                    value={pickerSearch}
+                    onChange={(e) => setPickerSearch(e.target.value)}
+                    placeholder="Search workouts..."
+                    className="w-full glass-input rounded-xl pl-10 pr-10 py-2.5 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none transition-all"
+                  />
+                  {pickerSearch && (
+                    <button
+                      onClick={() => setPickerSearch('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-wf-gray-500 active:text-white"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              </div>
+
               {/* Workout list — flat, grouped by program */}
               <div className="overflow-y-auto flex-1 px-5 py-3">
                 {/* Quick actions */}
-                {hasWorkout && (
-                  <div className="mb-4">
+                {!pickerSearch && (
+                  <div className="mb-4 space-y-1.5">
+                    {hasWorkout && (
+                      <button
+                        onClick={handleClearDay}
+                        className="w-full text-left rounded-xl px-4 py-3 flex items-center gap-3 bg-white/5 active:bg-white/10 active:scale-[0.98] transition-all"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+                          <svg className="w-4 h-4 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </div>
+                        <span className="text-sm font-medium text-wf-gray-300">Clear — No Workout</span>
+                      </button>
+                    )}
                     <button
-                      onClick={handleClearDay}
+                      onClick={() => setShowRestDayModal(true)}
                       className="w-full text-left rounded-xl px-4 py-3 flex items-center gap-3 bg-white/5 active:bg-white/10 active:scale-[0.98] transition-all"
                     >
-                      <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
-                        <svg className="w-4 h-4 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      <div className="w-8 h-8 rounded-full bg-blue-500/15 flex items-center justify-center shrink-0">
+                        <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
                         </svg>
                       </div>
-                      <span className="text-sm font-medium text-wf-gray-300">Clear — No Workout</span>
+                      <div>
+                        <span className="text-sm font-medium text-wf-gray-300">Rest Day</span>
+                        <p className="text-xs text-wf-gray-500 mt-0.5">Take a recovery day</p>
+                      </div>
                     </button>
                   </div>
                 )}
 
-                {/* All workouts, grouped by program */}
-                {enrichedPrograms.map((program) => {
-                  const nonRest = program.templates.filter((t) => !t.isRest);
-                  if (nonRest.length === 0) return null;
+                {/* All workouts, grouped by program (filtered by search) */}
+                {(() => {
+                  const q = pickerSearch.toLowerCase().trim();
+                  const filteredPrograms = enrichedPrograms.map((program) => {
+                    const nonRest = program.templates.filter((t) => !t.isRest);
+                    if (!q) return { ...program, filtered: nonRest };
+                    const matched = nonRest.filter((t) =>
+                      t.name.toLowerCase().includes(q) ||
+                      (t.exercises && t.exercises.some((ex) => ex.name.toLowerCase().includes(q)))
+                    );
+                    return { ...program, filtered: matched };
+                  }).filter((p) => p.filtered.length > 0);
+
+                  if (q && filteredPrograms.length === 0) {
+                    return (
+                      <p className="text-wf-gray-500 text-sm text-center py-8">No workouts matching "{pickerSearch}"</p>
+                    );
+                  }
+
+                  return filteredPrograms.map((program) => {
                   return (
                     <div key={program.id} className="mb-4">
                       <p className="text-[10px] uppercase tracking-widest text-wf-gray-500 font-semibold mb-2 px-1">{program.name}</p>
                       <div className="space-y-1.5">
-                        {nonRest.map((t) => {
+                        {program.filtered.map((t) => {
                           const color = getWorkoutColor(t.name);
                           const isCurrentChoice = currentWorkout?.templateId === t.id;
                           return (
@@ -392,7 +499,8 @@ export default function Calendar() {
                       </div>
                     </div>
                   );
-                })}
+                });
+                })()}
 
                 {/* Create new workout */}
                 <button
@@ -405,6 +513,71 @@ export default function Calendar() {
                     </svg>
                   </div>
                   <span className="text-sm font-medium text-white">Create New Workout</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Rest Day Confirmation Modal */}
+      {showRestDayModal && editingDay && (() => {
+        const currentWorkout = getWorkoutForDay(editingDay);
+        const hasWorkoutToday = currentWorkout && !currentWorkout.isRest;
+        const dayName = DAY_NAMES[editingDay.getDay()];
+        return (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center px-5" onClick={() => setShowRestDayModal(false)}>
+            <div className="absolute inset-0 bg-black/70" />
+            <div
+              className="relative w-full max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-full bg-blue-500/15 flex items-center justify-center shrink-0">
+                  <svg className="w-6 h-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Take a Rest Day</h3>
+                  <p className="text-sm text-wf-gray-400">{dayName}, {format(editingDay, 'MMM d')}</p>
+                </div>
+              </div>
+
+              {hasWorkoutToday && (
+                <p className="text-sm text-wf-gray-400 mb-1">
+                  You have <span className="text-white font-medium">{currentWorkout.templateName}</span> scheduled. How would you like to handle it?
+                </p>
+              )}
+
+              <div className="flex flex-col gap-2 mt-4">
+                <button
+                  onClick={handleRestDaySkip}
+                  className="w-full text-left glass-card rounded-xl px-4 py-3.5 active:scale-[0.98] transition-all"
+                >
+                  <h4 className="text-sm font-semibold text-white">Skip Today</h4>
+                  <p className="text-xs text-wf-gray-400 mt-0.5">
+                    {hasWorkoutToday
+                      ? `Remove ${currentWorkout.templateName} and rest. Other days stay the same.`
+                      : 'Mark this day as a rest day. Other days stay the same.'}
+                  </p>
+                </button>
+
+                <button
+                  onClick={handleRestDayShift}
+                  className="w-full text-left glass-card rounded-xl px-4 py-3.5 active:scale-[0.98] transition-all border border-blue-500/20"
+                >
+                  <h4 className="text-sm font-semibold text-blue-400">Shift Workouts Back</h4>
+                  <p className="text-xs text-wf-gray-400 mt-0.5">
+                    Rest today and push all workouts from {dayName} onward back by 1 day.
+                  </p>
+                </button>
+
+                <button
+                  onClick={() => setShowRestDayModal(false)}
+                  className="w-full text-center text-wf-gray-400 font-medium py-2 text-sm active:opacity-70 transition-all mt-1"
+                >
+                  Cancel
                 </button>
               </div>
             </div>

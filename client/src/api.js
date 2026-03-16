@@ -41,10 +41,16 @@ export async function api(path, options = {}) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers,
-  });
+  let res;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers,
+    });
+  } catch (err) {
+    // Network error (offline, timeout, connection refused)
+    throw new Error('Network error — check your connection and try again');
+  }
 
   if (res.status === 401) {
     // Skip 401 handling for auth endpoints (login/signup/demo)
@@ -58,10 +64,19 @@ export async function api(path, options = {}) {
     }
   }
 
-  const data = await res.json();
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    // Response wasn't valid JSON
+    if (!res.ok) {
+      throw new Error(`Server error (${res.status})`);
+    }
+    return null;
+  }
 
   if (!res.ok) {
-    throw new Error(data.error || 'Request failed');
+    throw new Error(data?.error || `Request failed (${res.status})`);
   }
 
   return data;

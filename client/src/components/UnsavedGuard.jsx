@@ -1,48 +1,106 @@
-import { useState, useEffect } from 'react';
-import { useBlocker } from 'react-router-dom';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 /**
- * useUnsavedGuard — blocks ALL navigation (back button, nav tabs, links) when dirty.
- *
- * Uses React Router's useBlocker to intercept route changes, plus beforeunload for browser refresh/close.
+ * useUnsavedGuard — intercepts navigation when there are unsaved changes.
+ * Catches: back button (popstate), browser refresh (beforeunload), and in-app navigation (guardedNavigate).
  */
 export function useUnsavedGuard({ isDirty, onSave, saveLabel = 'Save' }) {
+  const [showModal, setShowModal] = useState(false);
+  const [pendingPath, setPendingPath] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isDirtyRef = useRef(isDirty);
+  const pushedStateRef = useRef(false);
 
-  const blocker = useBlocker(isDirty);
+  // Keep ref in sync
+  useEffect(() => { isDirtyRef.current = isDirty; }, [isDirty]);
 
-  // Block browser refresh / close
+  // Intercept browser back/forward and refresh
   useEffect(() => {
-    if (!isDirty) return;
-    const handler = (e) => {
+    if (!isDirty) {
+      pushedStateRef.current = false;
+      return;
+    }
+
+    const handleBeforeUnload = (e) => {
       e.preventDefault();
       e.returnValue = '';
     };
-    window.addEventListener('beforeunload', handler);
-    return () => window.removeEventListener('beforeunload', handler);
-  }, [isDirty]);
+
+    const handlePopState = () => {
+      if (isDirtyRef.current) {
+        // Re-push so we stay on the page
+        window.history.pushState(null, '', location.pathname);
+        setPendingPath('__back__');
+        setShowModal(true);
+      }
+    };
+
+    // Push one extra history entry so back button triggers popstate instead of leaving
+    if (!pushedStateRef.current) {
+      window.history.pushState(null, '', location.pathname);
+      pushedStateRef.current = true;
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [isDirty, location.pathname]);
+
+  const guardedNavigate = useCallback((pathOrFn) => {
+    if (isDirtyRef.current) {
+      setPendingPath(() => pathOrFn);
+      setSaveError('');
+      setShowModal(true);
+    } else if (typeof pathOrFn === 'function') {
+      pathOrFn();
+    } else {
+      navigate(pathOrFn);
+    }
+  }, [navigate]);
 
   async function handleSave() {
-    if (!onSave) return;
+    if (!onSave || saving) return;
     setSaving(true);
+    setSaveError('');
     try {
       await onSave();
-      // If save navigates away itself, blocker resets. Otherwise proceed:
-      if (blocker.state === 'blocked') blocker.proceed();
-    } catch {
+      // onSave succeeded — if it navigated away, we're done. If not, close modal.
+      setShowModal(false);
+    } catch (err) {
+      setSaveError(err?.message || 'Save failed. Please try again.');
       setSaving(false);
     }
   }
 
   function handleLeave() {
-    if (blocker.state === 'blocked') blocker.proceed();
+    setShowModal(false);
+    setSaveError('');
+    if (pendingPath === '__back__') {
+      // Go back: we pushed 1 extra entry, so go(-1) undoes that, then navigate(-1) actually goes back
+      navigate(-1);
+    } else if (typeof pendingPath === 'function') {
+      pendingPath();
+    } else if (pendingPath) {
+      navigate(pendingPath);
+    }
+    setPendingPath(null);
   }
 
   function handleStay() {
-    if (blocker.state === 'blocked') blocker.reset();
+    setShowModal(false);
+    setPendingPath(null);
+    setSaveError('');
   }
 
-  const UnsavedModal = blocker.state === 'blocked' ? (
+  const UnsavedModal = showModal ? (
     <div className="fixed inset-0 z-[100] flex items-center justify-center px-5" onClick={handleStay}>
       <div className="absolute inset-0 bg-black/70" />
       <div
@@ -53,6 +111,11 @@ export function useUnsavedGuard({ isDirty, onSave, saveLabel = 'Save' }) {
         <p className="text-wf-gray-400 text-sm text-center mb-5">
           Would you like to save your data before leaving?
         </p>
+        {saveError && (
+          <div className="bg-red-900/30 border border-red-800 rounded-lg px-4 py-3 text-red-300 text-sm mb-4">
+            {saveError}
+          </div>
+        )}
         <div className="flex flex-col gap-2">
           {onSave && (
             <button
@@ -65,12 +128,14 @@ export function useUnsavedGuard({ isDirty, onSave, saveLabel = 'Save' }) {
           )}
           <button
             onClick={handleLeave}
-            className="w-full glass-card text-wf-red font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+            disabled={saving}
+            className="w-full glass-card text-wf-red font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all disabled:opacity-50"
           >
             Leave Without Saving
           </button>
           <button
             onClick={handleStay}
+            disabled={saving}
             className="w-full text-wf-gray-400 font-medium py-2 text-sm active:opacity-70 transition-all"
           >
             Stay on Page
@@ -80,5 +145,5 @@ export function useUnsavedGuard({ isDirty, onSave, saveLabel = 'Save' }) {
     </div>
   ) : null;
 
-  return { UnsavedModal };
+  return { guardedNavigate, UnsavedModal };
 }

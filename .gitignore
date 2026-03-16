@@ -8,3 +8,8 @@ Thumbs.db
 nul
 .claude/
 monetization-plan.html
+# iOS build artifacts
+client/ios/App/Pods/
+client/ios/DerivedData/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/

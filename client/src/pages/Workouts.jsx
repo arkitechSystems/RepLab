@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { getWorkoutColor } from '../utils/workoutColors';
 import StickyHeader from '../components/StickyHeader';
+import { iosFocusRef } from '../utils/iosFocus';
 import TrainerProfile from '../components/TrainerProfile';
 import { getTrainers, getTrainerById } from '../data/trainers';
 
@@ -106,13 +107,16 @@ export default function Workouts() {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         let count = 0;
-        for (let d = new Date(today); ; d.setDate(d.getDate() - 1)) {
+        // Start from today; if today has no session, start from yesterday
+        let startDay = new Date(today);
+        const todayStr = startDay.toISOString().slice(0, 10);
+        if (!sessionDates.has(todayStr)) {
+          startDay.setDate(startDay.getDate() - 1);
+        }
+        for (let d = startDay; ; d.setDate(d.getDate() - 1)) {
           const dateStr = d.toISOString().slice(0, 10);
           if (sessionDates.has(dateStr)) {
             count++;
-          } else if (count === 0 && d.getTime() === today.getTime()) {
-            // Today has no session yet — check yesterday onwards
-            continue;
           } else {
             break;
           }
@@ -462,7 +466,7 @@ export default function Workouts() {
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
                 className="flex-1 min-w-0 glass-input rounded-lg px-3 py-2 text-white text-sm font-semibold focus:outline-none"
-                autoFocus
+                ref={iosFocusRef}
               />
               <button
                 onClick={() => exitEditMode(program)}
@@ -765,7 +769,7 @@ export default function Workouts() {
                     min={new Date().toISOString().slice(0, 10)}
                     onChange={(e) => setBeginDateInput(e.target.value)}
                     className="flex-1 glass-input rounded-xl px-3 py-3 text-white text-sm focus:outline-none"
-                    autoFocus
+                    ref={iosFocusRef}
                   />
                   <button
                     onClick={handleBeginDate}
@@ -861,7 +865,7 @@ export default function Workouts() {
                     min={new Date().toISOString().slice(0, 10)}
                     onChange={(e) => setAddDateInput(e.target.value)}
                     className="flex-1 glass-input rounded-xl px-3 py-3 text-white text-sm focus:outline-none"
-                    autoFocus
+                    ref={iosFocusRef}
                   />
                   <button
                     onClick={handleAddDate}
@@ -1245,7 +1249,7 @@ export default function Workouts() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search programs and workouts..."
-              autoFocus
+              ref={iosFocusRef}
               className="w-full glass-input rounded-xl pl-10 pr-10 py-3 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none transition-all"
             />
             {searchQuery && (
@@ -1367,12 +1371,15 @@ export default function Workouts() {
                       el.currentTime = 7;
                     }
                   };
+                  // iOS fallback: try to play programmatically
+                  el.play().catch(() => {});
                 }}
                 className="absolute inset-0 w-full h-full object-cover"
                 autoPlay
                 loop
                 muted
                 playsInline
+                webkit-playsinline=""
                 preload="auto"
                 src="/Gym cinematic promotion video.mp4"
               />

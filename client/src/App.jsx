@@ -31,6 +31,11 @@ function PublicRoute({ children }) {
   return children;
 }
 
+function CatchAllRedirect() {
+  const { isAuthenticated } = useAuth();
+  return <Navigate to={isAuthenticated ? '/' : '/login'} replace />;
+}
+
 export default function App() {
   const [splashDone, setSplashDone] = useState(false);
 
@@ -63,7 +68,7 @@ export default function App() {
         <Route path="/profile" element={<Profile />} />
       </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<CatchAllRedirect />} />
     </Routes>
     </>
   );

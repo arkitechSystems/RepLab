@@ -302,7 +302,7 @@ export default function Profile() {
         {/* Change Password */}
         <div className="glass-card rounded-xl p-6 mb-4 fade-slide-up" style={{ animationDelay: '60ms' }}>
           <button
-            onClick={() => { setShowChangePassword(!showChangePassword); setPasswordError(''); setPasswordChanged(false); }}
+            onClick={() => { setShowChangePassword(!showChangePassword); setPasswordError(''); setPasswordChanged(false); setCurrentPassword(''); setNewPassword(''); setConfirmNewPassword(''); }}
             className="flex items-center justify-between w-full"
           >
             <div className="flex items-center gap-2">
