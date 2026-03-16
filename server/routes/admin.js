@@ -327,7 +327,9 @@ function adminPage(title, body) {
     .stat .label { font-size: 11px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 1.5px; margin-top: 4px; }
 
     /* Tables */
-    .table-wrap { overflow-x: auto; }
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; max-height: 80vh; overflow-y: auto; }
+    .table-wrap table { min-width: 600px; }
+    .table-wrap th { position: sticky; top: 0; z-index: 1; }
     table { width: 100%; border-collapse: collapse; }
     th { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.5); text-align: left; padding: 12px 16px; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
     td { padding: 12px 16px; border-top: 1px solid rgba(255,255,255,0.05); font-size: 13px; color: rgba(255,255,255,0.8); }
@@ -358,8 +360,8 @@ function adminPage(title, body) {
 
     /* Card grid */
     .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
-    .card { padding: 28px; text-decoration: none; color: #fff; transition: all 0.2s; display: block; border-left: 3px solid transparent; border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 2px 12px rgba(0,0,0,0.3), 0 0 1px rgba(255,255,255,0.1); }
-    .card:hover { border-left-color: #ef4444; border-left-width: 3px; transform: translateX(4px); background: rgba(255,255,255,0.08); box-shadow: 0 4px 20px rgba(0,0,0,0.4), 0 0 1px rgba(255,255,255,0.15); }
+    .card { padding: 28px; text-decoration: none; color: #fff; transition: all 0.3s; display: block; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 2px 12px rgba(0,0,0,0.3), 0 0 8px rgba(255,255,255,0.04), inset 0 0 0 1px rgba(255,255,255,0.05); }
+    .card:hover { border-color: rgba(255,255,255,0.25); transform: translateY(-2px); background: rgba(255,255,255,0.08); box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 20px rgba(255,255,255,0.06), 0 0 1px rgba(255,255,255,0.2); }
     .card .card-icon { font-size: 32px; margin-bottom: 14px; }
     .card .card-title { font-size: 18px; font-weight: 700; }
     .card .card-desc { font-size: 13px; color: rgba(255,255,255,0.4); margin-top: 8px; line-height: 1.6; }
@@ -646,7 +648,7 @@ router.get('/users', adminAuth, async (req, res) => {
       <div class="label">Phone Signups</div>
     </div>
   </div>
-  <div class="glass table-wrap" style="border-radius:16px;overflow:hidden;">
+  <div class="glass table-wrap" style="border-radius:16px;">
   <table>
     <thead>
       <tr>${headerCells}</tr>
@@ -785,7 +787,7 @@ router.get('/analytics', adminAuth, async (req, res) => {
   </div>
 
   <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 12px; color: rgba(255,255,255,0.7);">Recent Activity</h3>
-  <div class="glass table-wrap" style="border-radius:16px;overflow:hidden;">
+  <div class="glass table-wrap" style="border-radius:16px;">
   <table>
     <thead>
       <tr><th>User</th><th>Workout</th><th>Status</th><th>Date</th></tr>
@@ -843,7 +845,7 @@ router.get('/feedback', adminAuth, async (req, res) => {
       <div class="label">Ideas</div>
     </div>
   </div>
-  <div class="glass table-wrap" style="border-radius:16px;overflow:hidden;">
+  <div class="glass table-wrap" style="border-radius:16px;">
   <table>
     <thead><tr><th>#</th><th>User</th><th>Type</th><th>Message</th><th>Date</th></tr></thead>
     <tbody>${rows || '<tr><td colspan="5" style="text-align:center;color:rgba(255,255,255,0.3);">No feedback yet</td></tr>'}</tbody>
@@ -1046,7 +1048,7 @@ router.get('/workouts', adminAuth, async (req, res) => {
   <div class="glass" style="padding:14px 20px;margin-bottom:24px;border-left:3px solid #f59e0b;">
     <p style="color:#fbbf24;font-size:13px;">Read-only view. Editing coming soon.</p>
   </div>
-  <div class="glass table-wrap" style="border-radius:16px;overflow:hidden;">
+  <div class="glass table-wrap" style="border-radius:16px;">
   <table>
     <thead><tr><th>#</th><th>Name</th><th>Description</th><th>Type</th><th>Templates</th><th>Created</th></tr></thead>
     <tbody>${rows || '<tr><td colspan="6" style="text-align:center;color:rgba(255,255,255,0.3);">No programs yet</td></tr>'}</tbody>
@@ -1109,7 +1111,7 @@ router.get('/announcements', adminAuth, async (req, res) => {
     </form>
     <p style="color:rgba(255,255,255,0.3);font-size:12px;margin-top:8px;">Publishing a new announcement will deactivate all previous ones.</p>
   </div>
-  <div class="glass table-wrap" style="border-radius:16px;overflow:hidden;">
+  <div class="glass table-wrap" style="border-radius:16px;">
   <table>
     <thead><tr><th>ID</th><th>Message</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
     <tbody>${rows || '<tr><td colspan="5" style="text-align:center;color:rgba(255,255,255,0.3);">No announcements yet</td></tr>'}</tbody>
@@ -1204,7 +1206,7 @@ router.get('/flags', adminAuth, async (req, res) => {
       <button type="submit" class="btn" style="margin:0;padding:10px 20px;font-size:13px;">Add Flag</button>
     </form>
   </div>
-  <div class="glass table-wrap" style="border-radius:16px;overflow:hidden;">
+  <div class="glass table-wrap" style="border-radius:16px;">
   <table>
     <thead><tr><th>Key</th><th>Description</th><th>Status</th><th>Actions</th></tr></thead>
     <tbody>${rows || '<tr><td colspan="4" style="text-align:center;color:rgba(255,255,255,0.3);">No feature flags yet</td></tr>'}</tbody>
@@ -1286,7 +1288,7 @@ router.get('/errors', adminAuth, async (req, res) => {
       <div class="label">Errors Captured</div>
     </div>
   </div>
-  <div class="glass table-wrap" style="border-radius:16px;overflow:hidden;">
+  <div class="glass table-wrap" style="border-radius:16px;">
   <table>
     <thead><tr><th>#</th><th>Endpoint</th><th>Error</th><th>Time</th></tr></thead>
     <tbody>${rows || '<tr><td colspan="4" style="text-align:center;color:rgba(255,255,255,0.3);">No errors captured. That\'s a good thing!</td></tr>'}</tbody>
@@ -1418,7 +1420,7 @@ router.get('/active', adminAuth, async (req, res) => {
     </div>
   </div>
   <h3 style="font-size:16px;font-weight:700;margin-bottom:12px;color:rgba(255,255,255,0.7);">Users Active in Last 7 Days</h3>
-  <div class="glass table-wrap" style="border-radius:16px;overflow:hidden;">
+  <div class="glass table-wrap" style="border-radius:16px;">
   <table>
     <thead><tr><th>#</th><th>Name</th><th>Email</th><th>Last Session</th></tr></thead>
     <tbody>${rows || '<tr><td colspan="4" style="text-align:center;color:rgba(255,255,255,0.3);">No active users in this period</td></tr>'}</tbody>
