@@ -395,15 +395,16 @@ function adminPage(title, body) {
   </style>
 </head>
 <body>
-<div class="container">
-<nav class="glass" style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-radius:14px;margin-bottom:24px;">
-  <a href="/admin" style="text-decoration:none;"><div class="logo" style="margin:0;">WILL<span>FIT</span></div></a>
+<nav style="position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:12px 32px;background:rgba(0,0,0,0.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,0.08);">
+  <a href="/admin" style="text-decoration:none;"><div class="logo" style="margin:0;color:#fff;">WILL<span style="color:#ef4444;">FIT</span></div></a>
   <div style="display:flex;align-items:center;gap:8px;">
     <a href="/admin" style="color:rgba(255,255,255,0.5);font-size:12px;font-weight:600;text-decoration:none;padding:8px 14px;border-radius:8px;transition:all 0.2s;" onmouseover="this.style.color='#fff';this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.color='rgba(255,255,255,0.5)';this.style.background='none'">Home</a>
     <button onclick="document.getElementById('pw-modal').style.display=document.getElementById('pw-modal').style.display==='flex'?'none':'flex'" style="color:rgba(255,255,255,0.5);font-size:12px;font-weight:600;background:none;border:none;cursor:pointer;padding:8px 14px;border-radius:8px;font-family:inherit;transition:all 0.2s;" onmouseover="this.style.color='#fff';this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.color='rgba(255,255,255,0.5)';this.style.background='none'">Change Password</button>
     <a href="/admin/logout" style="color:#ef4444;font-size:12px;font-weight:600;text-decoration:none;padding:8px 14px;border-radius:8px;transition:all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.1)'" onmouseout="this.style.background='none'">Logout</a>
   </div>
 </nav>
+<div style="height:56px;"></div>
+<div class="container">
 <!-- Change Password Modal -->
 <div id="pw-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);" onclick="if(event.target===this)this.style.display='none'">
   <div class="glass" style="padding:28px;max-width:400px;width:90%;border-radius:16px;">
@@ -432,6 +433,12 @@ ${body}
 </div>
 </body>
 </html>`;
+}
+
+function helpBlock(text) {
+  return `<div style="margin-top:32px;padding:20px 24px;border-top:1px solid rgba(255,255,255,0.06);">
+    <p style="font-size:11px;color:rgba(255,255,255,0.25);line-height:1.8;">${text}</p>
+  </div>`;
 }
 
 // GET /admin — Admin Dashboard Home
@@ -513,6 +520,11 @@ router.get('/', adminAuth, (req, res) => {
       <div class="card-title">Subscription Manager</div>
       <div class="card-desc">Manage user subscriptions when paid plans are launched.</div>
     </a>
+    <a class="card glass" href="/admin/builds">
+      <div class="card-icon">🔨</div>
+      <div class="card-title">Pending Builds</div>
+      <div class="card-desc">Track progress on features, integrations, and requirements needed for launch.</div>
+    </a>
   </div>
 
   ${req.query.msg ? `<div class="glass" style="margin-top:24px;padding:14px 20px;border-left:3px solid #22c55e;"><p style="color:#4ade80;font-size:13px;">${req.query.msg}</p></div>` : ''}
@@ -563,6 +575,7 @@ router.get('/users', adminAuth, async (req, res) => {
   </div>
   <a class="btn" onclick="window.print()" href="javascript:void(0)">Print / Save as PDF</a>
   <a class="btn-ghost" onclick="exportExcel()" href="javascript:void(0)">Export to Excel</a>
+  <a class="btn-ghost" onclick="toggleFullscreen()" href="javascript:void(0)" id="fs-btn">Fullscreen Table</a>
   <script>
     function exportExcel() {
       const table = document.querySelector('table');
@@ -639,8 +652,47 @@ router.get('/users', adminAuth, async (req, res) => {
   <style>
     .delete-btn { background: none; border: none; cursor: pointer; color: #999; padding: 4px 8px; border-radius: 6px; transition: all 0.15s; }
     .delete-btn:hover { color: #ef4444; background: rgba(239,68,68,0.1); }
-    @media print { .delete-btn { display: none; } }
+    .table-fullscreen {
+      position: fixed !important; inset: 0 !important; z-index: 9998 !important;
+      border-radius: 0 !important; max-height: 100vh !important;
+      background: #000 !important; margin: 0 !important;
+    }
+    .table-fullscreen table { min-width: auto !important; }
+    .table-fullscreen th { position: sticky; top: 0; z-index: 1; background: rgba(30,30,30,0.98) !important; }
+    .fs-close {
+      position: fixed; top: 12px; right: 12px; z-index: 9999;
+      background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+      color: #fff; border-radius: 10px; padding: 8px 16px; font-size: 13px;
+      font-weight: 600; cursor: pointer; font-family: inherit; display: none;
+    }
+    .fs-close:hover { background: rgba(255,255,255,0.2); }
+    @media print { .delete-btn, #fs-btn, .fs-close { display: none !important; } }
   </style>
+  <button class="fs-close" id="fs-close-btn" onclick="toggleFullscreen()">Exit Fullscreen</button>
+  <script>
+    function toggleFullscreen() {
+      const wrap = document.querySelector('.table-wrap');
+      const closeBtn = document.getElementById('fs-close-btn');
+      const fsBtn = document.getElementById('fs-btn');
+      if (wrap.classList.contains('table-fullscreen')) {
+        wrap.classList.remove('table-fullscreen');
+        closeBtn.style.display = 'none';
+        fsBtn.textContent = 'Fullscreen Table';
+        document.body.style.overflow = '';
+      } else {
+        wrap.classList.add('table-fullscreen');
+        closeBtn.style.display = 'block';
+        fsBtn.textContent = 'Exit Fullscreen';
+        document.body.style.overflow = 'hidden';
+      }
+    }
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const wrap = document.querySelector('.table-wrap');
+        if (wrap && wrap.classList.contains('table-fullscreen')) toggleFullscreen();
+      }
+    });
+  </script>
   <div class="stats" style="margin-top:8px;">
     <div class="stat glass">
       <div class="value">${users.length}</div>
@@ -662,7 +714,8 @@ router.get('/users', adminAuth, async (req, res) => {
     </thead>
     <tbody>${rows}</tbody>
   </table>
-  </div>`));
+  </div>
+  ${helpBlock('This page shows every registered user on WillFit, excluding demo accounts. Each row displays the information the user provided during signup, including their name, email or phone, username, zip code, gender, referral source, referral code, UTM marketing parameters (captured from ad links), their signup device and browser, the city and state detected from their IP address, and the exact date and time they created their account. You can delete a user by clicking the X icon in the Actions column — this permanently removes their account and all associated data including programs, workouts, sessions, and personal records. Use the Print button to save a PDF snapshot, Export to Excel to download a CSV file, or Fullscreen Table to expand the table for easier viewing on smaller screens. The table scrolls horizontally on mobile devices. All timestamps are shown in Central Time (CT).')}`));
     }
 
     res.json({ count: users.length, users });
@@ -802,6 +855,7 @@ router.get('/analytics', adminAuth, async (req, res) => {
     <tbody>${recentRows || '<tr><td colspan="4" style="text-align:center; color:rgba(255,255,255,0.3);">No sessions yet</td></tr>'}</tbody>
   </table>
   </div>
+  ${helpBlock('Session Analytics gives you a high-level view of how your users are engaging with WillFit. Total Workouts counts every completed workout session across all users. Active Users shows unique users who have completed at least one workout. This Week and This Month filter those counts to recent time periods so you can spot trends. The Most Active Users table ranks users by how many workouts they have completed, helping you identify your power users. Most Popular Workouts shows which workout templates are being used most frequently, which can inform which types of programs to create more of. Recent Activity is a live feed of the last 20 workout sessions logged, showing who worked out, what they did, whether they completed it, and when. Demo accounts are excluded from all calculations.')}
     `));
   } catch (err) {
     console.error(err);
@@ -857,7 +911,8 @@ router.get('/feedback', adminAuth, async (req, res) => {
     <thead><tr><th>#</th><th>User</th><th>Type</th><th>Message</th><th>Date</th></tr></thead>
     <tbody>${rows || '<tr><td colspan="5" style="text-align:center;color:rgba(255,255,255,0.3);">No feedback yet</td></tr>'}</tbody>
   </table>
-  </div>`));
+  </div>
+  ${helpBlock('The Feedback page displays every bug report and improvement idea submitted by users through the Send Feedback form in their Profile tab. Each submission is saved to your database with the user\'s name, the type of feedback (Bug Report or Improvement Idea), their full message, and the date and time it was submitted. Feedback is not visible to other users — only you can see it here. Use this page to prioritize which bugs to fix and which features to build next based on real user input. The stats at the top give you a quick breakdown of total submissions, bug reports, and ideas. This replaced the old FormSubmit integration, so all feedback is now stored internally and never leaves your server.')}`));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
@@ -905,7 +960,8 @@ router.get('/retention', adminAuth, async (req, res) => {
       <p><strong style="color:#fff;">Day 30:</strong> Users who logged a workout between 29-31 days after signing up.</p>
       <p style="margin-top:12px;">Demo accounts are excluded from all calculations.</p>
     </div>
-  </div>`));
+  </div>
+  ${helpBlock('Retention measures how many users come back to the app after signing up. Day 1 Retention counts users who logged at least one workout exactly one day after creating their account — this tells you whether users find value on their first real day. Day 7 Retention counts users who returned between 6-8 days after signup, indicating whether the app has enough stickiness to keep them through the first week. Day 30 Retention measures users who came back around a month later, which is the strongest signal of long-term product-market fit. Industry benchmarks for fitness apps: Day 1 is typically 20-30%, Day 7 is 10-15%, and Day 30 is 5-10%. If your numbers are below these, focus on improving the onboarding experience and adding engagement features like push notifications and streak tracking. Percentages are calculated against total registered users (excluding demo accounts).')}`));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
@@ -954,7 +1010,8 @@ router.get('/referrals', adminAuth, async (req, res) => {
   </div>
   <div class="glass" style="padding:24px;">
     ${bars || '<p style="color:rgba(255,255,255,0.3);text-align:center;">No referral data yet</p>'}
-  </div>`));
+  </div>
+  ${helpBlock('Referral Breakdown shows where your users discovered WillFit. This data comes from the "How did you hear about us?" dropdown on the signup form. Each bar represents a referral source with its user count and percentage of total signups. Sources include Facebook/Instagram Ad, YouTube Ad, TikTok, Google Search, Friend/Word of Mouth (which also captures who referred them), and Other (with a custom text field). Users who selected "Friend" will show as "Friend: [name]" if they provided a referral name. Use this data to understand which marketing channels are driving the most signups and allocate your ad spend accordingly. If "Unknown" has a high count, those are users who signed up before the referral field was added or skipped it. UTM parameters from ad links are tracked separately in the User Sign Ups table for more granular campaign-level attribution.')}`));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
@@ -1003,7 +1060,8 @@ router.get('/devices', adminAuth, async (req, res) => {
   </div>
   <div class="glass" style="padding:24px;">
     ${bars || '<p style="color:rgba(255,255,255,0.3);text-align:center;">No device data yet</p>'}
-  </div>`));
+  </div>
+  ${helpBlock('Device Breakdown shows what devices and browsers your users are signing up from. On the web, this is detected automatically from the browser\'s User-Agent header and shows results like "iPhone (Safari)", "Windows (Chrome)", or "Mac (Safari)". When the app is converted to a native iOS app via Capacitor, it will capture richer device information including the exact model (e.g. "iPhone 15 Pro") and OS version (e.g. "iOS 18.2"). This data helps you prioritize which platforms to test on and optimize for. If most of your users are on iPhone Safari, that\'s your primary testing target. If you see a lot of Android users, you may want to consider building an Android version as well. "Unknown" entries are from users who signed up before device tracking was added.')}`));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
@@ -1060,7 +1118,8 @@ router.get('/workouts', adminAuth, async (req, res) => {
     <thead><tr><th>#</th><th>Name</th><th>Description</th><th>Type</th><th>Templates</th><th>Created</th></tr></thead>
     <tbody>${rows || '<tr><td colspan="6" style="text-align:center;color:rgba(255,255,255,0.3);">No programs yet</td></tr>'}</tbody>
   </table>
-  </div>`));
+  </div>
+  ${helpBlock('The Workout Library shows every program in the WillFit database. Programs labeled "Global" are the pre-built workout programs that ship with the app (like Push Pull Legs, Upper/Lower, Bro Split, etc.) and are visible to all users. Programs labeled "User" are custom programs created by individual users — each user can only see their own custom programs. The Templates column shows how many individual workouts exist within each program. This page is currently read-only, meaning you can browse but not edit programs from the dashboard. In the future, this will be expanded to allow creating, editing, and deleting programs directly from here without needing to modify the code. To add new global programs today, they need to be added as seed data in the server\'s initDb.js file.')}`));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
@@ -1123,7 +1182,8 @@ router.get('/announcements', adminAuth, async (req, res) => {
     <thead><tr><th>ID</th><th>Message</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
     <tbody>${rows || '<tr><td colspan="5" style="text-align:center;color:rgba(255,255,255,0.3);">No announcements yet</td></tr>'}</tbody>
   </table>
-  </div>`));
+  </div>
+  ${helpBlock('Announcements let you broadcast a message to all WillFit users. When you publish an announcement, it becomes the active announcement and any previously active announcement is automatically deactivated — only one announcement can be active at a time. Active announcements can be displayed as a banner in the app (via the /feedback/announcement API endpoint). Announcements are not permanent — you can deactivate them at any time by clicking the Deactivate button, which hides them from users without deleting them. You can also reactivate old announcements or delete them entirely. Common uses: maintenance notices ("The app will be down for maintenance tonight at 10pm"), new feature announcements ("We just launched the 1RM Estimator!"), or community messages ("Join our March fitness challenge!"). Deleted announcements cannot be recovered.')}`));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
@@ -1218,7 +1278,8 @@ router.get('/flags', adminAuth, async (req, res) => {
     <thead><tr><th>Key</th><th>Description</th><th>Status</th><th>Actions</th></tr></thead>
     <tbody>${rows || '<tr><td colspan="4" style="text-align:center;color:rgba(255,255,255,0.3);">No feature flags yet</td></tr>'}</tbody>
   </table>
-  </div>`));
+  </div>
+  ${helpBlock('Feature Flags allow you to turn features on or off in the app without deploying new code. Each flag has a unique key (like "ai_workout_generator" or "premium_analytics"), a description of what it controls, and an on/off toggle. When you add a flag, it starts as OFF. The app can check these flags via the API to decide whether to show or hide certain features. This is useful for: gradually rolling out new features to test them before a full launch, quickly disabling a broken feature without a code deploy, enabling premium features for specific conditions, or running A/B tests. Flags persist in the database, so they survive server restarts. To use a flag in the app code, query the /feedback/flags endpoint (or add a dedicated endpoint) and conditionally render UI based on the flag\'s enabled state. Deleting a flag removes it permanently — if the app code references it, the feature will fall back to its default behavior.')}`));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
@@ -1300,7 +1361,8 @@ router.get('/errors', adminAuth, async (req, res) => {
     <thead><tr><th>#</th><th>Endpoint</th><th>Error</th><th>Time</th></tr></thead>
     <tbody>${rows || '<tr><td colspan="4" style="text-align:center;color:rgba(255,255,255,0.3);">No errors captured. That\'s a good thing!</td></tr>'}</tbody>
   </table>
-  </div>`));
+  </div>
+  ${helpBlock('The Error Log captures the last 50 server errors that occurred while the app is running. Each entry shows the HTTP method and URL that triggered the error, the error message, and the timestamp. This log is stored in memory (RAM), not in the database, which means it resets every time the server restarts or Render redeploys. This is intentional — it keeps the database clean and only captures recent, relevant errors. If the table is empty, that means no unhandled errors have occurred since the last server restart, which is a good sign. Common errors you might see: database connection timeouts, failed API calls to external services (like Resend for emails or ip-api for geolocation), or malformed request data from the client. For persistent error logging, consider integrating a service like Sentry or LogRocket in the future.')}`));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
@@ -1380,7 +1442,9 @@ router.get('/health', adminAuth, async (req, res) => {
         <div style="font-size:14px;color:#fff;font-weight:600;">${process.platform} ${process.arch}</div>
       </div>
     </div>
-  </div>`));
+  </div>
+  ${helpBlock('Health Check gives you a real-time snapshot of the server and database status. The Database indicator shows whether PostgreSQL is reachable — "Connected" in green means everything is working, "Down" in red means the database is unreachable. DB Latency shows how long it takes to ping the database in milliseconds — under 50ms is excellent, 50-200ms is normal for a cloud database, over 500ms may indicate issues. Server Uptime shows how long the current server process has been running since the last deploy or restart. Under System Info: Node Version shows the JavaScript runtime version, Heap Used and Heap Total show how much memory the application is consuming (if Heap Used approaches Heap Total, the app may need more memory), RSS (Resident Set Size) is the total memory allocated by the OS, External is memory used by C++ objects bound to JavaScript, and Platform shows the operating system. On Render, this will typically show "linux x64".')}
+  `));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
@@ -1432,7 +1496,8 @@ router.get('/active', adminAuth, async (req, res) => {
     <thead><tr><th>#</th><th>Name</th><th>Email</th><th>Last Session</th></tr></thead>
     <tbody>${rows || '<tr><td colspan="4" style="text-align:center;color:rgba(255,255,255,0.3);">No active users in this period</td></tr>'}</tbody>
   </table>
-  </div>`));
+  </div>
+  ${helpBlock('Active Users shows how many unique users have logged at least one workout session within different time windows. Last 24 Hours is your daily active user (DAU) count — this is the most important engagement metric. Last 7 Days gives you a weekly active user (WAU) count, smoothing out day-to-day fluctuations. Last 30 Days is your monthly active user (MAU) count, the standard metric investors and app stores look at. The table below lists every user who was active in the last 7 days, sorted by their most recent session. A healthy ratio is DAU/MAU above 20% — this means at least 1 in 5 monthly users comes back every day. If this ratio is low, consider adding engagement features like push notification reminders, streak tracking, or social features. Demo accounts are excluded from all counts.')}`));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
@@ -1453,7 +1518,8 @@ router.get('/revenue', adminAuth, (req, res) => {
     <div style="font-size:48px;margin-bottom:20px;">💰</div>
     <h3 style="font-size:20px;font-weight:700;margin-bottom:12px;">Coming Soon</h3>
     <p style="color:rgba(255,255,255,0.4);font-size:14px;max-width:400px;margin:0 auto;line-height:1.8;">Revenue tracking will appear here when paid plans are launched. This will include MRR, total revenue, plan distribution, and growth charts.</p>
-  </div>`));
+  </div>
+  ${helpBlock('The Revenue Dashboard will become active once paid subscription plans are integrated into WillFit using Stripe. When launched, this page will display: Monthly Recurring Revenue (MRR) — the total amount of subscription income per month; Total Revenue — cumulative lifetime revenue; Plan Distribution — a breakdown of how many users are on each plan tier (Free, Pro, Lifetime); Growth Charts — visual trends of revenue over time showing month-over-month growth; Churn Rate — the percentage of paying users who cancel each month; and Average Revenue Per User (ARPU). To set up revenue tracking, you will need to create a Stripe account, configure subscription products, add Stripe webhooks to the server, and store subscription status on each user record. See the monetization plan for detailed implementation steps.')}`));
 });
 
 // ============================================================
@@ -1470,7 +1536,181 @@ router.get('/subscriptions', adminAuth, (req, res) => {
     <div style="font-size:48px;margin-bottom:20px;">💳</div>
     <h3 style="font-size:20px;font-weight:700;margin-bottom:12px;">Coming Soon</h3>
     <p style="color:rgba(255,255,255,0.4);font-size:14px;max-width:400px;margin:0 auto;line-height:1.8;">Subscription management will appear here when paid plans are launched. This will include user plan management, cancellations, and billing history.</p>
-  </div>`));
+  </div>
+  ${helpBlock('The Subscription Manager will allow you to view and manage individual user subscriptions once paid plans are live. Features will include: viewing each user\'s current plan (Free, Pro, or Lifetime); manually upgrading or downgrading a user\'s plan for customer support situations; issuing refunds or credits through Stripe; viewing payment history and invoice details for each user; canceling subscriptions on behalf of users who request it; and identifying users whose payments have failed so you can send them a reminder. This page integrates with Stripe\'s customer and subscription APIs. Until paid plans are configured, this page serves as a placeholder. To begin accepting payments, set up Stripe Connect, create subscription products, and add the billing routes to the server.')}`));
+});
+
+// ============================================================
+// Pending Builds
+// ============================================================
+const PENDING_BUILDS = [
+  // Payments & Monetization
+  { category: 'Payments & Monetization', name: 'Stripe Integration', desc: 'Subscription billing, one-time purchases, webhooks for payment events', status: 'not_started' },
+  { category: 'Payments & Monetization', name: 'Subscription Tiers (Free/Pro/Lifetime)', desc: 'Feature gating based on user plan with upgrade prompts', status: 'not_started' },
+  { category: 'Payments & Monetization', name: 'Apple In-App Purchases', desc: 'Required for selling through iOS app — Apple takes 15-30%', status: 'not_started' },
+  { category: 'Payments & Monetization', name: 'Receipt Validation', desc: 'Verify App Store receipts server-side to prevent fraud', status: 'not_started' },
+
+  // AI Features
+  { category: 'AI Features (Claude API)', name: 'AI Workout Generator', desc: 'Generate personalized workouts based on user goals, experience, equipment, and PR history using Claude API', status: 'not_started' },
+  { category: 'AI Features (Claude API)', name: 'AI Help Chatbot', desc: 'In-app chatbot that answers questions about how to use the app, exercise form, and workout advice', status: 'not_started' },
+
+  // Legal & Compliance
+  { category: 'Legal & Compliance', name: 'Terms of Service', desc: 'Required by app stores and payment processors', status: 'not_started' },
+  { category: 'Legal & Compliance', name: 'Privacy Policy', desc: 'Required by law (GDPR, CCPA) — must explain all data collection', status: 'not_started' },
+  { category: 'Legal & Compliance', name: 'Cookie Consent Banner', desc: 'Required in EU for any tracking/analytics', status: 'not_started' },
+  { category: 'Legal & Compliance', name: 'Account Deletion', desc: 'Required by Apple App Store — let users delete their own account', status: 'not_started' },
+  { category: 'Legal & Compliance', name: 'Data Export', desc: 'Let users download their data (GDPR right to portability)', status: 'not_started' },
+
+  // Security
+  { category: 'Security', name: 'Rate Limiting', desc: 'Prevent brute force login attempts and API abuse', status: 'not_started' },
+  { category: 'Security', name: 'Input Sanitization', desc: 'Protect against XSS in admin dashboard and user-submitted content', status: 'not_started' },
+  { category: 'Security', name: 'Password Strength Requirements', desc: 'Enforce minimum length, complexity on signup', status: 'not_started' },
+
+  // App Store
+  { category: 'App Store Submission', name: 'App Store Screenshots', desc: 'Required screenshots for App Store listing', status: 'not_started' },
+  { category: 'App Store Submission', name: 'App Icon (1024x1024)', desc: 'High-res icon for App Store', status: 'not_started' },
+  { category: 'App Store Submission', name: 'App Store Description & Keywords', desc: 'ASO (App Store Optimization) for discoverability', status: 'not_started' },
+  { category: 'App Store Submission', name: 'Age Rating Declaration', desc: 'Self-declare content rating for App Store', status: 'not_started' },
+  { category: 'App Store Submission', name: 'App Review Guidelines Compliance', desc: 'Ensure app meets all Apple review requirements', status: 'not_started' },
+
+  // Infrastructure
+  { category: 'Infrastructure & Scale', name: 'Database Backups', desc: 'Render free tier has no auto-backup — need paid or manual backups', status: 'not_started' },
+  { category: 'Infrastructure & Scale', name: 'Paid Render Tier', desc: 'Free tier sleeps after inactivity — paid stays up 24/7', status: 'not_started' },
+  { category: 'Infrastructure & Scale', name: 'CDN for Static Assets', desc: 'Faster load times globally via CloudFront or similar', status: 'not_started' },
+  { category: 'Infrastructure & Scale', name: 'Error Monitoring (Sentry)', desc: 'Production error tracking with alerts and stack traces', status: 'not_started' },
+
+  // User Experience
+  { category: 'User Experience', name: 'Push Notifications', desc: 'Workout reminders, streak warnings, rest day suggestions', status: 'not_started' },
+  { category: 'User Experience', name: 'Email Flows', desc: 'Workout summaries, weekly reports, re-engagement emails for inactive users', status: 'not_started' },
+  { category: 'User Experience', name: 'Onboarding Tutorial', desc: 'Guide new users through creating their first workout', status: 'not_started' },
+  { category: 'User Experience', name: 'App Rating Prompt', desc: 'Ask happy users to rate on App Store after completing workouts', status: 'not_started' },
+
+  // Analytics & Growth
+  { category: 'Analytics & Growth', name: 'Google Analytics / Mixpanel', desc: 'Detailed user behavior tracking beyond the admin dashboard', status: 'not_started' },
+  { category: 'Analytics & Growth', name: 'A/B Testing Framework', desc: 'Test different onboarding flows, pricing pages, and UI variants', status: 'not_started' },
+  { category: 'Analytics & Growth', name: 'Referral Program', desc: 'Reward users for inviting friends with credits or free months', status: 'not_started' },
+];
+
+router.get('/builds', adminAuth, async (req, res) => {
+  // Load statuses from DB (override defaults)
+  let savedStatuses = {};
+  try {
+    const saved = await db.getAdminSetting('build_statuses');
+    if (saved) savedStatuses = JSON.parse(saved);
+  } catch {}
+
+  const builds = PENDING_BUILDS.map(b => ({
+    ...b,
+    status: savedStatuses[b.name] || b.status,
+  }));
+
+  const total = builds.length;
+  const completed = builds.filter(b => b.status === 'completed').length;
+  const inProgress = builds.filter(b => b.status === 'in_progress').length;
+  const notStarted = builds.filter(b => b.status === 'not_started').length;
+  const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+  // Group by category
+  const categories = [];
+  const seen = new Set();
+  for (const b of builds) {
+    if (!seen.has(b.category)) {
+      seen.add(b.category);
+      categories.push(b.category);
+    }
+  }
+
+  function statusBadge(status) {
+    if (status === 'completed') return '<span style="background:rgba(34,197,94,0.15);color:#4ade80;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;">Done</span>';
+    if (status === 'in_progress') return '<span style="background:rgba(59,130,246,0.15);color:#60a5fa;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;">In Progress</span>';
+    return '<span style="background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.35);padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;">Not Started</span>';
+  }
+
+  function statusSelect(name, current) {
+    const opts = ['not_started', 'in_progress', 'completed'];
+    const labels = { not_started: 'Not Started', in_progress: 'In Progress', completed: 'Completed' };
+    return '<form method="POST" action="/admin/builds/update" style="display:inline;">'
+      + '<input type="hidden" name="name" value="' + name.replace(/"/g, '&quot;') + '" />'
+      + '<select name="status" onchange="this.form.submit()" style="font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-family:inherit;cursor:pointer;outline:none;">'
+      + opts.map(o => '<option value="' + o + '"' + (o === current ? ' selected' : '') + ' style="background:#111;">' + labels[o] + '</option>').join('')
+      + '</select></form>';
+  }
+
+  const sections = categories.map(cat => {
+    const items = builds.filter(b => b.category === cat);
+    const rows = items.map(b => `<tr>
+      <td style="font-weight:600;">${b.name}</td>
+      <td style="color:rgba(255,255,255,0.5);font-size:12px;max-width:350px;">${b.desc}</td>
+      <td>${statusBadge(b.status)}</td>
+      <td>${statusSelect(b.name, b.status)}</td>
+    </tr>`).join('');
+    return `
+      <h3 style="font-size:14px;font-weight:700;margin:24px 0 10px;color:rgba(255,255,255,0.6);">${cat}</h3>
+      <div class="glass table-wrap" style="border-radius:16px;margin-bottom:8px;">
+      <table>
+        <thead><tr><th>Feature</th><th>Description</th><th>Status</th><th>Update</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      </div>`;
+  }).join('');
+
+  // Progress bar
+  const progressBar = `
+    <div class="glass" style="padding:20px 24px;margin-bottom:24px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-size:13px;font-weight:600;color:#fff;">Launch Progress</span>
+        <span style="font-size:13px;font-weight:700;color:#4ade80;">${pct}%</span>
+      </div>
+      <div style="background:rgba(255,255,255,0.08);border-radius:6px;height:10px;overflow:hidden;">
+        <div style="background:linear-gradient(135deg,#22c55e,#4ade80);height:100%;width:${pct}%;border-radius:6px;transition:width 0.3s;"></div>
+      </div>
+    </div>`;
+
+  res.send(adminPage('Pending Builds', `
+  <div class="breadcrumb"><a href="/admin">Dashboard</a> / Pending Builds</div>
+  <div class="header">
+    <h1>Admin Dashboard</h1>
+    <h2>Pending Builds</h2>
+    <p>Track features and requirements needed for launch</p>
+  </div>
+  <div class="stats" style="margin-top:8px;">
+    <div class="stat glass">
+      <div class="value">${total}</div>
+      <div class="label">Total Items</div>
+    </div>
+    <div class="stat glass">
+      <div class="value" style="-webkit-text-fill-color:#4ade80;">${completed}</div>
+      <div class="label">Completed</div>
+    </div>
+    <div class="stat glass">
+      <div class="value" style="-webkit-text-fill-color:#60a5fa;">${inProgress}</div>
+      <div class="label">In Progress</div>
+    </div>
+    <div class="stat glass">
+      <div class="value" style="-webkit-text-fill-color:rgba(255,255,255,0.35);">${notStarted}</div>
+      <div class="label">Not Started</div>
+    </div>
+  </div>
+  ${progressBar}
+  ${sections}
+  ${helpBlock('Pending Builds is your launch checklist. It tracks every feature, integration, and requirement that needs to be completed before WillFit is ready for a full production launch on the App Store. Each item has a status that you can update using the dropdown: Not Started (gray), In Progress (blue), or Completed (green). Status changes are saved to the database and persist across sessions. The progress bar at the top shows your overall completion percentage. Categories are organized by priority: Payments & Monetization for revenue generation, AI Features for the Claude API-powered workout generator and help chatbot, Legal & Compliance for app store and legal requirements, Security for protecting user data, App Store Submission for Apple requirements, Infrastructure for scaling and reliability, User Experience for engagement features, and Analytics & Growth for marketing tools. Update statuses as you complete each item to track your progress toward launch.')}
+  `));
+});
+
+router.post('/builds/update', express.urlencoded({ extended: false }), adminAuth, async (req, res) => {
+  try {
+    let saved = {};
+    try {
+      const existing = await db.getAdminSetting('build_statuses');
+      if (existing) saved = JSON.parse(existing);
+    } catch {}
+    saved[req.body.name] = req.body.status;
+    await db.setAdminSetting('build_statuses', JSON.stringify(saved));
+    res.redirect('/admin/builds');
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 export default router;
