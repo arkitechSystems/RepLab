@@ -101,6 +101,10 @@ const db = {
     await pool.query('UPDATE users SET password_hash = $1, reset_token = NULL, reset_token_expires = NULL WHERE id = $2', [passwordHash, userId]);
   },
 
+  async deleteUser(id) {
+    await pool.query('DELETE FROM users WHERE id = $1', [id]);
+  },
+
   async findUserById(id) {
     const { rows } = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
     if (!rows[0]) return null;

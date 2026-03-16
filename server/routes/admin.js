@@ -96,7 +96,7 @@ router.get('/users', adminAuth, async (req, res) => {
       // Pretty labels: camelCase → Title Case
       const label = (k) => k.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase());
 
-      const headerCells = `<th>#</th>` + allKeys.map((k) => `<th>${label(k)}</th>`).join('');
+      const headerCells = `<th>#</th>` + allKeys.map((k) => `<th>${label(k)}</th>`).join('') + `<th style="text-align:center;">Actions</th>`;
 
       const rows = users.map((u, i) => {
         const cells = allKeys.map((k) => {
@@ -105,7 +105,12 @@ router.get('/users', adminAuth, async (req, res) => {
           if (k === 'createdAt' || k.endsWith('At')) return `<td>${new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} <span style="color:#888;">${new Date(val).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</span></td>`;
           return `<td>${val}</td>`;
         }).join('');
-        return `<tr><td>${i + 1}</td>${cells}</tr>`;
+        const deleteBtn = `<td style="text-align:center;">
+          <button onclick="deleteUser(${u.id}, '${(u.email || u.phone || 'User #' + u.id).replace(/'/g, "\\'")}')" class="delete-btn" title="Delete user">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </td>`;
+        return `<tr><td>${i + 1}</td>${cells}${deleteBtn}</tr>`;
       }).join('');
 
       return res.send(adminPage('User Sign Ups', `
@@ -135,7 +140,27 @@ router.get('/users', adminAuth, async (req, res) => {
       link.download = 'willfit_users_' + new Date().toISOString().slice(0,10) + '.csv';
       link.click();
     }
+    async function deleteUser(id, name) {
+      if (!confirm('Delete user "' + name + '"? This will permanently remove their account and all their data (programs, workouts, sessions, PRs). This cannot be undone.')) return;
+      try {
+        const res = await fetch('/admin/users/' + id + '?key=${key}', { method: 'DELETE' });
+        const data = await res.json();
+        if (res.ok) {
+          alert('User deleted.');
+          location.reload();
+        } else {
+          alert('Failed: ' + (data.error || 'Unknown error'));
+        }
+      } catch (err) {
+        alert('Failed: ' + err.message);
+      }
+    }
   </script>
+  <style>
+    .delete-btn { background: none; border: none; cursor: pointer; color: #999; padding: 4px 8px; border-radius: 6px; transition: all 0.15s; }
+    .delete-btn:hover { color: #ef4444; background: rgba(239,68,68,0.1); }
+    @media print { .delete-btn { display: none; } }
+  </style>
   <div class="stats">
     <div class="stat">
       <div class="value">${users.length}</div>
@@ -159,6 +184,23 @@ router.get('/users', adminAuth, async (req, res) => {
     }
 
     res.json({ count: users.length, users });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// DELETE /admin/users/:id?key=YOUR_ADMIN_KEY — Delete a user
+router.delete('/users/:id', adminAuth, async (req, res) => {
+  try {
+    const userId = Number(req.params.id);
+    if (!userId) return res.status(400).json({ error: 'Invalid user ID' });
+
+    const user = await db.findUserById(userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    await db.deleteUser(userId);
+    res.json({ message: 'User deleted' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
