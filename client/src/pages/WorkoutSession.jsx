@@ -191,6 +191,50 @@ export default function WorkoutSession() {
     });
   }
 
+  function handleBlur(exerciseName, setIdx, field) {
+    const exEntries = entries[exerciseName] || [];
+    const value = exEntries[setIdx]?.[field];
+    // Only auto-fill if the user actually entered a value
+    if (value === '' || value === undefined || value === null) return;
+
+    const exercise = template.exercises.find((e) => e.name === exerciseName);
+    if (!exercise) return;
+
+    setEntries((prev) => {
+      const updated = { ...prev };
+      updated[exerciseName] = [...(updated[exerciseName] || [])];
+      for (let i = setIdx + 1; i < exercise.sets.length; i++) {
+        const key = `${exerciseName}-${i}`;
+        // Only fill if the set is not completed and the field is empty or auto-filled
+        if (!completedSets.has(key)) {
+          const current = updated[exerciseName][i]?.[field];
+          if (current === '' || current === undefined || current === null || autoFilled.has(key)) {
+            updated[exerciseName][i] = {
+              ...updated[exerciseName][i],
+              [field]: value,
+            };
+          }
+        }
+      }
+      return updated;
+    });
+
+    // Mark the auto-filled sets
+    setAutoFilled((prev) => {
+      const next = new Set(prev);
+      for (let i = setIdx + 1; i < exercise.sets.length; i++) {
+        const key = `${exerciseName}-${i}`;
+        if (!completedSets.has(key)) {
+          const current = exEntries[i]?.[field];
+          if (current === '' || current === undefined || current === null || prev.has(key)) {
+            next.add(key);
+          }
+        }
+      }
+      return next;
+    });
+  }
+
   function handleAddSet(exerciseName, afterIdx) {
     setTemplate((prev) => {
       const updated = { ...prev, exercises: prev.exercises.map((ex) => {
@@ -289,23 +333,46 @@ export default function WorkoutSession() {
     });
   }
 
-  function handleAddExercise(name) {
+  function handleAddExercise(name, afterIndex) {
     if (!name?.trim()) return;
     const exerciseName = name.trim();
     // Don't add if exercise already exists
     if (template.exercises.some((ex) => ex.name === exerciseName)) return;
-    setTemplate((prev) => ({
-      ...prev,
-      exercises: [...prev.exercises, {
-        name: exerciseName,
-        sets: [{ setNumber: 1, plannedReps: 10, suggestedWeight: 0 }],
-      }],
-    }));
+    const newExercise = {
+      name: exerciseName,
+      sets: [{ setNumber: 1, plannedReps: 10, suggestedWeight: 0 }],
+    };
+    setTemplate((prev) => {
+      const exercises = [...prev.exercises];
+      if (afterIndex !== undefined) {
+        exercises.splice(afterIndex + 1, 0, newExercise);
+      } else {
+        exercises.push(newExercise);
+      }
+      return { ...prev, exercises };
+    });
     setEntries((prev) => ({
       ...prev,
       [exerciseName]: [{ weight: '', reps: '' }],
     }));
     setShowAddExercise(false);
+  }
+
+  const exerciseRefs = useRef({});
+
+  function handleMoveExercise(fromIdx, toIdx) {
+    const movingName = template.exercises[fromIdx]?.name;
+    setTemplate((prev) => {
+      const exercises = [...prev.exercises];
+      const [moved] = exercises.splice(fromIdx, 1);
+      exercises.splice(toIdx, 0, moved);
+      return { ...prev, exercises };
+    });
+    // Scroll to the moved card after React re-renders
+    setTimeout(() => {
+      const el = exerciseRefs.current[movingName];
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 50);
   }
 
   function handleNoteChange(exerciseName, value) {
@@ -770,19 +837,22 @@ export default function WorkoutSession() {
       {/* Exercise Cards */}
       <div className="px-4">
         {template.exercises.map((exercise, idx) => (
-          <div key={exercise.name} className="fade-slide-up" style={{ animationDelay: `${idx * 60}ms` }}>
+          <div key={exercise.name} ref={(el) => { exerciseRefs.current[exercise.name] = el; }} className="fade-slide-up" style={{ animationDelay: `${idx * 60}ms` }}>
             <ExerciseCard
               exercise={exercise}
               entries={entries[exercise.name]}
               pbs={pbs}
               onChange={handleChange}
+              onBlur={handleBlur}
               completedSets={completedSets}
               autoFilled={autoFilled}
               onToggleComplete={handleToggleComplete}
               onAddSet={handleAddSet}
               onDeleteSet={handleDeleteSet}
               onSwapExercise={handleSwapExercise}
-              onAddExercise={handleAddExercise}
+              onAddExercise={(name) => handleAddExercise(name, idx)}
+              onMoveUp={idx > 0 ? () => handleMoveExercise(idx, idx - 1) : undefined}
+              onMoveDown={idx < template.exercises.length - 1 ? () => handleMoveExercise(idx, idx + 1) : undefined}
               note={notes[exercise.name] || ''}
               onNoteChange={handleNoteChange}
             />

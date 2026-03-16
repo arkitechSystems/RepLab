@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '../api';
 import StickyHeader from '../components/StickyHeader';
+import { beepCountdown, beepPhaseChange, beepComplete, initAudio } from '../utils/sounds';
 
 const MUSCLE_GROUPS = [
   'Chest', 'Shoulders', 'Traps', 'Biceps', 'Back', 'Triceps', 'Quads', 'Glutes', 'Hamstrings',
@@ -193,7 +194,10 @@ function HIITTimer({ onClose }) {
     }
   }, []);
 
+  const [soundEnabled, setSoundEnabled] = useState(true);
+
   function startTimer() {
+    initAudio(); // iOS requires user gesture to unlock audio
     setSetup(false);
     setCurrentSet(1);
     setPhase('work');
@@ -225,6 +229,11 @@ function HIITTimer({ onClose }) {
 
     intervalRef.current = setInterval(() => {
       setSecondsLeft((prev) => {
+        // Countdown beeps at 3, 2, 1
+        if (soundEnabled && prev >= 2 && prev <= 4) {
+          beepCountdown();
+        }
+
         if (prev <= 1) {
           // Time's up for this interval
           if (phase === 'work') {
@@ -232,11 +241,13 @@ function HIITTimer({ onClose }) {
               setPhase('done');
               setRunning(false);
               navigator.vibrate?.([100, 50, 100, 50, 200]);
+              if (soundEnabled) beepComplete();
               return 0;
             }
             setSkipTransition(true);
             setPhase('rest');
             navigator.vibrate?.([40, 30, 40]);
+            if (soundEnabled) beepPhaseChange();
             return restTime;
           } else {
             // rest -> next work
@@ -244,6 +255,7 @@ function HIITTimer({ onClose }) {
             setCurrentSet((s) => s + 1);
             setPhase('work');
             navigator.vibrate?.([40, 30, 40]);
+            if (soundEnabled) beepPhaseChange();
             return workTime;
           }
         }
@@ -252,7 +264,7 @@ function HIITTimer({ onClose }) {
     }, 1000);
 
     return clearTimer;
-  }, [running, paused, phase, currentSet, totalSets, workTime, restTime, clearTimer]);
+  }, [running, paused, phase, currentSet, totalSets, workTime, restTime, clearTimer, soundEnabled]);
 
   const formatTime = (s) => {
     const m = Math.floor(s / 60);
@@ -294,7 +306,21 @@ function HIITTimer({ onClose }) {
             Back
           </button>
           <h2 className="text-lg font-black text-white">HIIT Timer</h2>
-          <div className="w-12" />
+          <button
+            onClick={() => setSoundEnabled(!soundEnabled)}
+            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90 ${soundEnabled ? 'bg-white/10 text-white' : 'bg-white/5 text-wf-gray-600'}`}
+            title={soundEnabled ? 'Sound on' : 'Sound off'}
+          >
+            {soundEnabled ? (
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 9.75L19.5 12m0 0l2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25m-10.5-6l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+              </svg>
+            )}
+          </button>
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center px-6">
@@ -359,7 +385,7 @@ function HIITTimer({ onClose }) {
   }
 
   return (
-    <div className="fixed inset-x-0 top-[40px] bottom-0 z-50 bg-black flex flex-col">
+    <div className="fixed inset-0 z-50 bg-black flex flex-col safe-top safe-bottom">
       {/* Header */}
       <div className="px-4 pt-3 pb-2 flex items-center justify-between">
         <button onClick={resetTimer} className="text-wf-red text-sm font-medium flex items-center gap-1 active:opacity-70">
@@ -371,7 +397,20 @@ function HIITTimer({ onClose }) {
         <span className="text-xs text-wf-gray-400 font-medium uppercase tracking-widest">
           Set {Math.min(currentSet, totalSets)} / {totalSets}
         </span>
-        <div className="w-12" />
+        <button
+          onClick={() => setSoundEnabled(!soundEnabled)}
+          className={`w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90 ${soundEnabled ? 'bg-white/10 text-white' : 'bg-white/5 text-wf-gray-600'}`}
+        >
+          {soundEnabled ? (
+            <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+            </svg>
+          ) : (
+            <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 9.75L19.5 12m0 0l2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25m-10.5-6l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+            </svg>
+          )}
+        </button>
       </div>
 
       {/* Overall progress bar */}
@@ -385,31 +424,34 @@ function HIITTimer({ onClose }) {
       </div>
 
       {/* Timer display */}
-      <div className="flex-1 flex flex-col items-center justify-center">
+      <div className="flex-1 flex flex-col items-center justify-center px-6">
         {/* Phase label */}
-        <p className={`text-sm font-bold uppercase tracking-[0.3em] mb-6 ${phaseColor}`}>
+        <p className={`text-lg font-bold uppercase tracking-[0.3em] mb-4 ${phaseColor}`}>
           {phase === 'work' ? 'Work' : phase === 'rest' ? 'Rest' : 'Complete'}
         </p>
 
-        {/* Ring timer */}
-        <div className="relative w-56 h-56 mb-8">
+        {/* Ring timer — scales to fill available space */}
+        <div className="relative mb-4" style={{ width: 'min(75vw, 75vh, 360px)', height: 'min(75vw, 75vh, 360px)' }}>
           <svg className="w-full h-full -rotate-90" viewBox="0 0 200 200">
-            <circle cx="100" cy="100" r="90" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" />
+            <circle cx="100" cy="100" r="90" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="5" />
             <circle
               cx="100" cy="100" r="90"
               fill="none"
               stroke={phaseRingColor}
-              strokeWidth="6"
+              strokeWidth="5"
               strokeLinecap="round"
               strokeDasharray={circumference}
               strokeDashoffset={strokeDashoffset}
               className={skipTransition ? '' : 'transition-all duration-1000 ease-linear'}
-              style={{ filter: `drop-shadow(0 0 8px ${phaseRingColor})` }}
+              style={{ filter: `drop-shadow(0 0 12px ${phaseRingColor})` }}
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className={`text-6xl font-black tabular-nums ${phaseColor}`}>
+            <span className={`font-black tabular-nums ${phaseColor}`} style={{ fontSize: 'min(18vw, 80px)' }}>
               {phase === 'done' ? '0:00' : formatTime(secondsLeft)}
+            </span>
+            <span className="text-wf-gray-500 text-xs uppercase tracking-widest mt-1">
+              {phase === 'done' ? 'Done' : phase === 'work' ? `${secondsLeft}s remaining` : `${secondsLeft}s rest`}
             </span>
           </div>
         </div>
@@ -444,7 +486,7 @@ function HIITTimer({ onClose }) {
             </button>
           ) : (
             <button
-              onClick={onClose}
+              onClick={resetTimer}
               className="w-20 h-20 rounded-full bg-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)] flex items-center justify-center active:scale-90 transition-transform"
             >
               <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -454,7 +496,7 @@ function HIITTimer({ onClose }) {
           )}
 
           <button
-            onClick={onClose}
+            onClick={resetTimer}
             className="w-14 h-14 rounded-full glass-card flex items-center justify-center text-wf-gray-400 active:scale-90 transition-transform"
           >
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

@@ -4,7 +4,7 @@ import { getSubstitutes, getAllExercises } from '../utils/exerciseLibrary.js';
 import VideoPlayerModal from './VideoPlayerModal.jsx';
 import { iosFocusRef } from '../utils/iosFocus.js';
 
-export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnly, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onSwapExercise, onAddExercise, note, onNoteChange }) {
+export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onSwapExercise, onAddExercise, onMoveUp, onMoveDown, note, onNoteChange }) {
   const exercisePbs = pbs?.[exercise.name] || {};
   const videoId = getExerciseVideoId(exercise.name);
   const [showVideo, setShowVideo] = useState(false);
@@ -74,6 +74,28 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
         </button>
         {!readOnly && (
           <div className="flex items-center gap-1.5">
+            {onMoveUp && (
+              <button
+                type="button"
+                onClick={onMoveUp}
+                className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-white hover:bg-white/20 active:scale-90 transition-all"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+                </svg>
+              </button>
+            )}
+            {onMoveDown && (
+              <button
+                type="button"
+                onClick={onMoveDown}
+                className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-white hover:bg-white/20 active:scale-90 transition-all"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                </svg>
+              </button>
+            )}
             {onSwapExercise && (
               <button
                 type="button"
@@ -204,6 +226,7 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
                   placeholder={readOnly ? '—' : '0'}
                   onChange={(e) => onChange?.(exercise.name, idx, 'weight', e.target.value)}
                   onFocus={(e) => e.target.select()}
+                  onBlur={() => onBlur?.(exercise.name, idx, 'weight')}
                   readOnly={readOnly}
                   className={`w-full lcd-input rounded-lg px-2 py-2.5 text-center text-base focus:outline-none disabled:opacity-50 ${isCompleted ? 'completed text-white' : isAutoFill ? 'text-wf-gray-500 italic' : 'text-white'}`}
                   disabled={readOnly}
@@ -226,6 +249,7 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
                   value={entry.reps ?? ''}
                   onChange={(e) => onChange?.(exercise.name, idx, 'reps', e.target.value)}
                   onFocus={(e) => e.target.select()}
+                  onBlur={() => onBlur?.(exercise.name, idx, 'reps')}
                   readOnly={readOnly}
                   placeholder={readOnly ? '—' : '0'}
                   className={`w-full lcd-input rounded-lg px-2 py-2.5 text-center text-base focus:outline-none disabled:opacity-50 placeholder:text-wf-gray-700 ${isCompleted ? 'completed text-white' : isAutoFill ? 'text-wf-gray-500 italic' : 'text-white'}`}
