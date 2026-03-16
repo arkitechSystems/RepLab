@@ -327,7 +327,7 @@ function adminPage(title, body) {
     .stat .label { font-size: 11px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 1.5px; margin-top: 4px; }
 
     /* Tables */
-    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; max-height: 80vh; overflow-y: auto; }
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .table-wrap table { min-width: 600px; }
     .table-wrap th { position: sticky; top: 0; z-index: 1; }
     table { width: 100%; border-collapse: collapse; }
@@ -395,7 +395,7 @@ function adminPage(title, body) {
   </style>
 </head>
 <body>
-<nav style="position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:12px 32px;background:rgba(0,0,0,0.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,0.08);">
+<nav style="position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:12px 32px;background:linear-gradient(135deg,rgba(20,0,0,0.92),rgba(30,5,5,0.92),rgba(20,0,0,0.92));backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(239,68,68,0.2);box-shadow:0 2px 20px rgba(239,68,68,0.08),inset 0 -1px 0 rgba(239,68,68,0.1);">
   <a href="/admin" style="text-decoration:none;"><div class="logo" style="margin:0;color:#fff;">WILL<span style="color:#ef4444;">FIT</span></div></a>
   <div style="display:flex;align-items:center;gap:8px;">
     <a href="/admin" style="color:rgba(255,255,255,0.5);font-size:12px;font-weight:600;text-decoration:none;padding:8px 14px;border-radius:8px;transition:all 0.2s;" onmouseover="this.style.color='#fff';this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.color='rgba(255,255,255,0.5)';this.style.background='none'">Home</a>
@@ -436,18 +436,59 @@ ${body}
 }
 
 function helpBlock(text) {
-  return `<div style="margin-top:32px;padding:20px 24px;border-top:1px solid rgba(255,255,255,0.06);">
+  const id = 'help-' + Math.random().toString(36).slice(2, 8);
+  return `<div style="margin-top:32px;padding:20px 24px;border-top:1px solid rgba(255,255,255,0.06);cursor:pointer;" onclick="document.getElementById('${id}').style.display='flex'">
     <p style="font-size:11px;color:rgba(255,255,255,0.25);line-height:1.8;">${text}</p>
+    <p style="font-size:10px;color:rgba(255,255,255,0.15);margin-top:8px;text-align:center;">Click to expand</p>
+  </div>
+  <div id="${id}" style="display:none;position:fixed;inset:0;z-index:9998;background:#fff;overflow-y:auto;padding:0;" onclick="if(event.target===this||event.target.id==='${id}-close')this.style.display='none'">
+    <div style="max-width:700px;margin:0 auto;padding:48px 32px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:32px;">
+        <div>
+          <h1 style="font-size:24px;font-weight:800;color:#111;margin:0;">Page Guide</h1>
+          <p style="font-size:13px;color:#888;margin-top:4px;">How this page works</p>
+        </div>
+        <button id="${id}-close" onclick="document.getElementById('${id}').style.display='none'" style="background:#f5f5f5;border:none;width:36px;height:36px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <p style="font-size:15px;color:#333;line-height:2;">${text}</p>
+    </div>
   </div>`;
 }
 
 // GET /admin — Admin Dashboard Home
-router.get('/', adminAuth, (req, res) => {
+router.get('/', adminAuth, async (req, res) => {
   const key = req.adminKey;
+
+  let totalUsers = 0, activeUsers7d = 0, newUsers7d = 0;
+  try {
+    const users = await db.getAllUsers();
+    totalUsers = users.length;
+    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+    newUsers7d = users.filter(u => u.createdAt && new Date(u.createdAt) >= new Date(weekAgo)).length;
+    const active = await db.getActiveUsers();
+    activeUsers7d = active.last7d;
+  } catch {}
+
   res.send(adminPage('Dashboard', `
   <div class="header">
     <h1>Admin Dashboard</h1>
     <p>WillFit administration panel</p>
+  </div>
+  <div class="stats" style="margin-top:8px;">
+    <div class="stat glass">
+      <div class="value">${totalUsers}</div>
+      <div class="label">Total Users</div>
+    </div>
+    <div class="stat glass">
+      <div class="value">${activeUsers7d}</div>
+      <div class="label">Active (7 Days)</div>
+    </div>
+    <div class="stat glass">
+      <div class="value">${newUsers7d}</div>
+      <div class="label">New (7 Days)</div>
+    </div>
   </div>
   <div class="card-grid">
     <a class="card glass" href="/admin/users?format=html">
@@ -459,6 +500,11 @@ router.get('/', adminAuth, (req, res) => {
       <div class="card-icon">📊</div>
       <div class="card-title">Session Analytics</div>
       <div class="card-desc">Workout completions, most active users, and recent activity across all users.</div>
+    </a>
+    <a class="card glass" href="/admin/builds" style="border-color:rgba(239,68,68,0.25);">
+      <div class="card-icon">🔨</div>
+      <div class="card-title">Pending Builds</div>
+      <div class="card-desc">Track progress on features, integrations, and requirements needed for launch.</div>
     </a>
     <a class="card glass" href="/admin/feedback">
       <div class="card-icon">💬</div>
@@ -519,11 +565,6 @@ router.get('/', adminAuth, (req, res) => {
       <div class="card-icon">💳</div>
       <div class="card-title">Subscription Manager</div>
       <div class="card-desc">Manage user subscriptions when paid plans are launched.</div>
-    </a>
-    <a class="card glass" href="/admin/builds">
-      <div class="card-icon">🔨</div>
-      <div class="card-title">Pending Builds</div>
-      <div class="card-desc">Track progress on features, integrations, and requirements needed for launch.</div>
     </a>
   </div>
 
