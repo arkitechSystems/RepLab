@@ -1,10 +1,10 @@
 import { useState, useRef, useCallback, useMemo } from 'react';
 import { getExerciseVideoId, getExerciseSearchUrl } from '../utils/exerciseVideos.js';
-import { getSubstitutes } from '../utils/exerciseLibrary.js';
+import { getSubstitutes, getAllExercises } from '../utils/exerciseLibrary.js';
 import VideoPlayerModal from './VideoPlayerModal.jsx';
 import { iosFocusRef } from '../utils/iosFocus.js';
 
-export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnly, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onSwapExercise, note, onNoteChange }) {
+export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnly, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onSwapExercise, onAddExercise, note, onNoteChange }) {
   const exercisePbs = pbs?.[exercise.name] || {};
   const videoId = getExerciseVideoId(exercise.name);
   const [showVideo, setShowVideo] = useState(false);
@@ -12,6 +12,8 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
   const [confirmDeleteLast, setConfirmDeleteLast] = useState(false);
   const [showSwap, setShowSwap] = useState(false);
   const [swapSearch, setSwapSearch] = useState('');
+  const [showAddBelow, setShowAddBelow] = useState(false);
+  const [addBelowSearch, setAddBelowSearch] = useState('');
   const longPressRef = useRef(null);
 
   const touchStartPos = useRef(null);
@@ -56,6 +58,7 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
   };
 
   return (
+    <>
     <div className="glass-card rounded-xl overflow-hidden mb-3">
       {/* Exercise Header */}
       <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
@@ -82,10 +85,10 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
                 </svg>
               </button>
             )}
-            {onAddSet && (
+            {onAddExercise && (
               <button
                 type="button"
-                onClick={() => onAddSet(exercise.name)}
+                onClick={() => { setShowAddBelow(true); setAddBelowSearch(''); }}
                 className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-green-400 hover:bg-green-500/20 active:scale-90 transition-all"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -146,7 +149,6 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
         <div className="w-14 shrink-0 text-center">Goal</div>
         <div className="flex-1 text-center">Actual</div>
         <div className="w-16 shrink-0 text-right">PR</div>
-        {!readOnly && onAddSet && <div className="w-14 shrink-0" />}
       </div>
 
       {/* Set Rows */}
@@ -247,8 +249,8 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
                 )}
               </div>
 
-              {/* Row set controls */}
-              {!readOnly && onAddSet && (
+              {/* Row set controls - hidden, use subheader buttons instead */}
+              {false && onAddSet && (
                 <div className="flex items-center gap-0.5 shrink-0">
                   <button
                     type="button"
@@ -390,7 +392,83 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, readOnl
           onClose={() => setShowVideo(false)}
         />
       )}
+
     </div>
+
+      {/* Add Exercise Below — inline card */}
+      {showAddBelow && onAddExercise && (() => {
+        const allEx = getAllExercises();
+        const q = addBelowSearch.toLowerCase().trim();
+        const seen = new Set();
+        const filtered = q
+          ? allEx.filter((ex) => {
+              if (seen.has(ex.name)) return false;
+              seen.add(ex.name);
+              return ex.name.toLowerCase().includes(q);
+            }).slice(0, 8)
+          : [];
+        return (
+          <div className="glass-card rounded-xl overflow-hidden mb-3 border border-green-500/20 animate-drop-down">
+            <div className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
+              <svg className="w-4 h-4 text-green-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              <input
+                type="text"
+                value={addBelowSearch}
+                onChange={(e) => setAddBelowSearch(e.target.value)}
+                placeholder="Search for an exercise..."
+                ref={iosFocusRef}
+                className="flex-1 bg-transparent text-white text-sm font-semibold placeholder:text-wf-gray-500 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => setShowAddBelow(false)}
+                className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="max-h-48 overflow-y-auto">
+              {/* Custom name option */}
+              {q && !allEx.some((ex) => ex.name.toLowerCase() === q) && (
+                <button
+                  type="button"
+                  onClick={() => { onAddExercise(addBelowSearch.trim()); setShowAddBelow(false); }}
+                  className="w-full text-left px-4 py-2.5 flex items-center gap-2 active:bg-white/10 transition-colors border-b border-white/5"
+                >
+                  <svg className="w-4 h-4 text-green-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                  <span className="text-sm text-white">Add "<span className="font-semibold">{addBelowSearch}</span>"</span>
+                </button>
+              )}
+              {/* Search results */}
+              {filtered.map((ex) => (
+                <button
+                  key={ex.name}
+                  type="button"
+                  onClick={() => { onAddExercise(ex.name); setShowAddBelow(false); }}
+                  className="w-full text-left px-4 py-2.5 flex items-center justify-between active:bg-white/10 transition-colors"
+                >
+                  <span className="text-sm text-white">{ex.name}</span>
+                  <span className="text-[10px] text-wf-gray-500 uppercase tracking-wider ml-2 shrink-0">{ex.muscle}</span>
+                </button>
+              ))}
+              {/* Empty state */}
+              {q && filtered.length === 0 && !allEx.some((ex) => ex.name.toLowerCase() === q) && (
+                <p className="text-wf-gray-500 text-xs text-center py-4">Type to search or add a custom exercise</p>
+              )}
+              {!q && (
+                <p className="text-wf-gray-500 text-xs text-center py-4">Start typing to search exercises...</p>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+    </>
   );
 }
 

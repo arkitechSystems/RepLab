@@ -782,6 +782,7 @@ export default function WorkoutSession() {
               onAddSet={handleAddSet}
               onDeleteSet={handleDeleteSet}
               onSwapExercise={handleSwapExercise}
+              onAddExercise={handleAddExercise}
               note={notes[exercise.name] || ''}
               onNoteChange={handleNoteChange}
             />
