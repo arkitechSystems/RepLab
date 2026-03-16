@@ -102,7 +102,7 @@ router.get('/users', adminAuth, async (req, res) => {
         const cells = allKeys.map((k) => {
           const val = u[k];
           if (val == null) return '<td>—</td>';
-          if (k === 'createdAt' || k.endsWith('At')) return `<td>${new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} <span style="color:#888;">${new Date(val).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</span></td>`;
+          if (k === 'createdAt' || k.endsWith('At')) return `<td>${new Date(val).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', year: 'numeric' })} <span style="color:#888;">${new Date(val).toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' })} CT</span></td>`;
           return `<td>${val}</td>`;
         }).join('');
         const deleteBtn = `<td style="text-align:center;">
@@ -140,20 +140,63 @@ router.get('/users', adminAuth, async (req, res) => {
       link.download = 'willfit_users_' + new Date().toISOString().slice(0,10) + '.csv';
       link.click();
     }
-    async function deleteUser(id, name) {
-      if (!confirm('Delete user "' + name + '"? This will permanently remove their account and all their data (programs, workouts, sessions, PRs). This cannot be undone.')) return;
-      try {
-        const res = await fetch('/admin/users/' + id + '?key=${key}', { method: 'DELETE' });
-        const data = await res.json();
-        if (res.ok) {
-          alert('User deleted.');
-          location.reload();
+    function deleteUser(id, name) {
+      // Create modal overlay
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
+      const modal = document.createElement('div');
+      modal.style.cssText = 'background:#fff;border-radius:16px;padding:28px;max-width:400px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.2);';
+      modal.innerHTML = \`
+        <h3 style="font-size:18px;font-weight:800;margin-bottom:6px;">Delete User</h3>
+        <p style="font-size:14px;color:#555;margin-bottom:16px;">
+          This will permanently delete <strong>\${name}</strong> and all their data (programs, workouts, sessions, PRs). This cannot be undone.
+        </p>
+        <p style="font-size:13px;color:#888;margin-bottom:8px;">Type <strong style="color:#ef4444;">delete</strong> to confirm:</p>
+        <input id="delete-confirm-input" type="text" placeholder="Type delete" style="width:100%;padding:10px 14px;border:2px solid #ddd;border-radius:8px;font-size:15px;outline:none;margin-bottom:16px;box-sizing:border-box;" />
+        <div style="display:flex;gap:10px;">
+          <button id="delete-cancel-btn" style="flex:1;padding:10px;border-radius:8px;border:1px solid #ddd;background:#fff;font-size:14px;font-weight:600;cursor:pointer;">Cancel</button>
+          <button id="delete-confirm-btn" style="flex:1;padding:10px;border-radius:8px;border:none;background:#ddd;color:#888;font-size:14px;font-weight:600;cursor:not-allowed;" disabled>Delete</button>
+        </div>
+      \`;
+      overlay.appendChild(modal);
+      document.body.appendChild(overlay);
+
+      const input = document.getElementById('delete-confirm-input');
+      const confirmBtn = document.getElementById('delete-confirm-btn');
+      const cancelBtn = document.getElementById('delete-cancel-btn');
+
+      input.focus();
+      input.addEventListener('input', () => {
+        if (input.value.toLowerCase().trim() === 'delete') {
+          confirmBtn.disabled = false;
+          confirmBtn.style.cssText = 'flex:1;padding:10px;border-radius:8px;border:none;background:#ef4444;color:#fff;font-size:14px;font-weight:600;cursor:pointer;';
         } else {
-          alert('Failed: ' + (data.error || 'Unknown error'));
+          confirmBtn.disabled = true;
+          confirmBtn.style.cssText = 'flex:1;padding:10px;border-radius:8px;border:none;background:#ddd;color:#888;font-size:14px;font-weight:600;cursor:not-allowed;';
         }
-      } catch (err) {
-        alert('Failed: ' + err.message);
-      }
+      });
+
+      cancelBtn.addEventListener('click', () => document.body.removeChild(overlay));
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) document.body.removeChild(overlay); });
+
+      confirmBtn.addEventListener('click', async () => {
+        confirmBtn.textContent = 'Deleting...';
+        confirmBtn.disabled = true;
+        try {
+          const res = await fetch('/admin/users/' + id + '?key=${key}', { method: 'DELETE' });
+          const data = await res.json();
+          if (res.ok) {
+            document.body.removeChild(overlay);
+            location.reload();
+          } else {
+            alert('Failed: ' + (data.error || 'Unknown error'));
+            document.body.removeChild(overlay);
+          }
+        } catch (err) {
+          alert('Failed: ' + err.message);
+          document.body.removeChild(overlay);
+        }
+      });
     }
   </script>
   <style>
