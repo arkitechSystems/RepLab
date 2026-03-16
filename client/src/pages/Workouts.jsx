@@ -75,6 +75,9 @@ export default function Workouts() {
   const [previewWorkout, setPreviewWorkout] = useState(null); // template object for detail view
   const [bioExpanded, setBioExpanded] = useState(false);
   const [expandedWorkoutCard, setExpandedWorkoutCard] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
+  const [streak, setStreak] = useState(0);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editName, setEditName] = useState('');
@@ -93,10 +96,28 @@ export default function Workouts() {
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
   useEffect(() => {
-    Promise.all([api('/programs'), api('/templates')])
-      .then(([progs, tmpls]) => {
+    Promise.all([api('/programs'), api('/templates'), api('/sessions')])
+      .then(([progs, tmpls, sessions]) => {
         setPrograms(progs);
         setTemplates(tmpls);
+
+        // Calculate streak — consecutive days with a session going back from today
+        const sessionDates = new Set(sessions.map((s) => s.date));
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        let count = 0;
+        for (let d = new Date(today); ; d.setDate(d.getDate() - 1)) {
+          const dateStr = d.toISOString().slice(0, 10);
+          if (sessionDates.has(dateStr)) {
+            count++;
+          } else if (count === 0 && d.getTime() === today.getTime()) {
+            // Today has no session yet — check yesterday onwards
+            continue;
+          } else {
+            break;
+          }
+        }
+        setStreak(count);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -1194,13 +1215,111 @@ export default function Workouts() {
   return (
     <div>
       <StickyHeader title="Workouts">
-        <button
-          onClick={() => setShowCreateMenu(true)}
-          className="btn-gradient active:scale-[0.98] text-white font-medium px-4 py-2.5 rounded-xl text-sm transition-all shrink-0"
-        >
-          + Create
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { setShowSearch(!showSearch); setSearchQuery(''); }}
+            className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center active:scale-90 transition-all shrink-0"
+          >
+            <svg className="w-5 h-5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+            </svg>
+          </button>
+          <button
+            onClick={() => setShowCreateMenu(true)}
+            className="btn-gradient active:scale-[0.98] text-white font-medium px-4 py-2.5 rounded-xl text-sm transition-all shrink-0"
+          >
+            + Create
+          </button>
+        </div>
       </StickyHeader>
+
+      {/* Search Bar */}
+      {showSearch && (
+        <div className="px-4 mb-3">
+          <div className="relative">
+            <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+            </svg>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search programs and workouts..."
+              autoFocus
+              className="w-full glass-input rounded-xl pl-10 pr-10 py-3 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none transition-all"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-wf-gray-500 active:text-white"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+
+          {/* Search Results */}
+          {searchQuery.trim() && (() => {
+            const q = searchQuery.toLowerCase();
+            const matchedPrograms = programs.filter((p) => p.name.toLowerCase().includes(q));
+            const matchedTemplates = templates.filter((t) => t.name.toLowerCase().includes(q));
+            const hasResults = matchedPrograms.length > 0 || matchedTemplates.length > 0;
+
+            return (
+              <div className="mt-3 space-y-2">
+                {!hasResults && (
+                  <p className="text-wf-gray-500 text-sm text-center py-6">No results for "{searchQuery}"</p>
+                )}
+                {matchedPrograms.length > 0 && (
+                  <>
+                    <p className="text-[10px] uppercase tracking-widest text-wf-gray-500 font-semibold px-1">Programs</p>
+                    {matchedPrograms.map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => { setShowSearch(false); setSearchQuery(''); setSelectedGroup(p.userId ? 'my' : 'browse'); setSelectedProgram(p.id); }}
+                        className="w-full text-left glass-card rounded-xl px-4 py-3 flex items-center justify-between active:scale-[0.98] transition-all"
+                      >
+                        <div>
+                          <span className="text-sm font-semibold text-white">{p.name}</span>
+                          {p.description && <p className="text-xs text-wf-gray-500 mt-0.5 truncate">{p.description}</p>}
+                        </div>
+                        <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                        </svg>
+                      </button>
+                    ))}
+                  </>
+                )}
+                {matchedTemplates.length > 0 && (
+                  <>
+                    <p className="text-[10px] uppercase tracking-widest text-wf-gray-500 font-semibold px-1 mt-3">Workouts</p>
+                    {matchedTemplates.map((t) => {
+                      const program = programs.find((p) => p.id === t.programId);
+                      return (
+                        <button
+                          key={t.id}
+                          onClick={() => { setShowSearch(false); setSearchQuery(''); setSelectedGroup(program?.userId ? 'my' : 'browse'); setSelectedProgram(t.programId); }}
+                          className="w-full text-left glass-card rounded-xl px-4 py-3 flex items-center justify-between active:scale-[0.98] transition-all"
+                        >
+                          <div>
+                            <span className="text-sm font-semibold text-white">{t.name}</span>
+                            <p className="text-xs text-wf-gray-500 mt-0.5">{program?.name || 'Unknown program'}</p>
+                          </div>
+                          <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                          </svg>
+                        </button>
+                      );
+                    })}
+                  </>
+                )}
+              </div>
+            );
+          })()}
+        </div>
+      )}
 
       <div className="px-4">
         {loading ? (
@@ -1211,6 +1330,27 @@ export default function Workouts() {
           </div>
         ) : (
           <div className="space-y-4 pb-4">
+            {/* Streak Card */}
+            {streak > 0 && (
+              <div className="glass-card rounded-2xl p-4 fade-slide-up flex items-center gap-4 border-l-4 border-orange-500">
+                <div className="w-14 h-14 rounded-full bg-orange-500/15 flex items-center justify-center shrink-0">
+                  <span className="text-2xl">🔥</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-white">
+                    {streak} Day Streak{streak >= 7 ? '!' : ''}
+                  </h3>
+                  <p className="text-xs text-wf-gray-400 mt-0.5">
+                    {streak === 1 ? "You worked out today — keep it going!" :
+                     streak < 7 ? `${streak} days in a row — keep pushing!` :
+                     streak < 14 ? "A full week strong — on fire!" :
+                     streak < 30 ? `${streak} days — unstoppable!` :
+                     `${streak} days — legendary consistency!`}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Featured Workouts video card */}
             <div
               onClick={() => setSelectedGroup('featured')}

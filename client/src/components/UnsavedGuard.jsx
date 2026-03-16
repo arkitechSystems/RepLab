@@ -1,18 +1,17 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
+import { useBlocker } from 'react-router-dom';
 
 /**
- * useUnsavedGuard — hook that shows a confirmation modal when navigating away with unsaved data.
+ * useUnsavedGuard — blocks ALL navigation (back button, nav tabs, links) when dirty.
  *
- * Returns:
- *   guardedNavigate(fn) — wrap your navigate calls with this
- *   UnsavedModal — render this JSX in your component
+ * Uses React Router's useBlocker to intercept route changes, plus beforeunload for browser refresh/close.
  */
 export function useUnsavedGuard({ isDirty, onSave, saveLabel = 'Save' }) {
-  const [showModal, setShowModal] = useState(false);
-  const [pendingAction, setPendingAction] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  // Block browser back / refresh
+  const blocker = useBlocker(isDirty);
+
+  // Block browser refresh / close
   useEffect(() => {
     if (!isDirty) return;
     const handler = (e) => {
@@ -23,37 +22,27 @@ export function useUnsavedGuard({ isDirty, onSave, saveLabel = 'Save' }) {
     return () => window.removeEventListener('beforeunload', handler);
   }, [isDirty]);
 
-  const guardedNavigate = useCallback((navigateFn) => {
-    if (isDirty) {
-      setPendingAction(() => navigateFn);
-      setShowModal(true);
-    } else {
-      navigateFn();
-    }
-  }, [isDirty]);
-
   async function handleSave() {
     if (!onSave) return;
     setSaving(true);
     try {
       await onSave();
+      // If save navigates away itself, blocker resets. Otherwise proceed:
+      if (blocker.state === 'blocked') blocker.proceed();
     } catch {
       setSaving(false);
-      setShowModal(false);
     }
   }
 
   function handleLeave() {
-    setShowModal(false);
-    if (pendingAction) pendingAction();
+    if (blocker.state === 'blocked') blocker.proceed();
   }
 
   function handleStay() {
-    setShowModal(false);
-    setPendingAction(null);
+    if (blocker.state === 'blocked') blocker.reset();
   }
 
-  const UnsavedModal = showModal ? (
+  const UnsavedModal = blocker.state === 'blocked' ? (
     <div className="fixed inset-0 z-[100] flex items-center justify-center px-5" onClick={handleStay}>
       <div className="absolute inset-0 bg-black/70" />
       <div
@@ -91,5 +80,5 @@ export function useUnsavedGuard({ isDirty, onSave, saveLabel = 'Save' }) {
     </div>
   ) : null;
 
-  return { guardedNavigate, UnsavedModal };
+  return { UnsavedModal };
 }

@@ -34,6 +34,11 @@ export default function WorkoutSession() {
   const [elapsed, setElapsed] = useState(0);
   const startTimeRef = useRef(null);
   const timerRef = useRef(null);
+  // Rest timer
+  const [restDuration, setRestDuration] = useState(90); // seconds
+  const [restRemaining, setRestRemaining] = useState(null); // null = not running
+  const restTimerRef = useRef(null);
+  const REST_OPTIONS = [30, 45, 60, 90, 120, 180];
 
   const startTimer = useCallback(() => {
     if (timerStarted) return;
@@ -44,8 +49,34 @@ export default function WorkoutSession() {
     }, 1000);
   }, [timerStarted]);
 
+  function startRestTimer() {
+    if (restTimerRef.current) clearInterval(restTimerRef.current);
+    setRestRemaining(restDuration);
+    restTimerRef.current = setInterval(() => {
+      setRestRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(restTimerRef.current);
+          restTimerRef.current = null;
+          // Vibrate and/or play sound when done
+          if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }
+
+  function stopRestTimer() {
+    if (restTimerRef.current) clearInterval(restTimerRef.current);
+    restTimerRef.current = null;
+    setRestRemaining(null);
+  }
+
   useEffect(() => {
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (restTimerRef.current) clearInterval(restTimerRef.current);
+    };
   }, []);
 
   function formatTime(secs) {
@@ -349,6 +380,7 @@ export default function WorkoutSession() {
         next.add(key);
         navigator.vibrate?.(40);
         startTimer();
+        startRestTimer();
       }
       return next;
     });
@@ -509,7 +541,7 @@ export default function WorkoutSession() {
     exEntries.some((e) => (e.weight !== '' && e.weight !== undefined) || (e.reps !== '' && e.reps !== undefined))
   );
   const sessionDirty = hasEntryData && !saved;
-  const { guardedNavigate, UnsavedModal } = useUnsavedGuard({
+  const { UnsavedModal } = useUnsavedGuard({
     isDirty: sessionDirty,
     onSave: handleSave,
     saveLabel: 'Save Workout',
@@ -579,7 +611,7 @@ export default function WorkoutSession() {
       {UnsavedModal}
       {/* Back button */}
       <div className="px-4 pt-6">
-        <button onClick={() => guardedNavigate(() => navigate(-1))} className="flex items-center gap-1 text-wf-red text-sm font-medium mb-2 active:opacity-70">
+        <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-wf-red text-sm font-medium mb-2 active:opacity-70">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>
@@ -660,6 +692,75 @@ export default function WorkoutSession() {
           </div>
         }
       />
+
+      {/* Rest Timer Bar */}
+      {timerStarted && (
+        <div className="px-4 mb-3">
+          <div className={`glass-card rounded-xl overflow-hidden transition-all ${restRemaining !== null && restRemaining <= 0 ? 'border-2 border-green-500/50' : ''}`}>
+            {/* Rest timer progress bar */}
+            {restRemaining !== null && restRemaining > 0 && (
+              <div className="h-1 bg-white/5">
+                <div
+                  className="h-full bg-wf-red transition-all duration-1000 ease-linear"
+                  style={{ width: `${(restRemaining / restDuration) * 100}%` }}
+                />
+              </div>
+            )}
+            <div className="px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {restRemaining !== null ? (
+                  restRemaining <= 0 ? (
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                      </svg>
+                      <span className="text-sm font-bold text-green-400">Rest complete — go!</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span className="text-lg font-black text-white tabular-nums font-mono-stat">{formatTime(restRemaining)}</span>
+                      <span className="text-xs text-wf-gray-500">rest</span>
+                    </div>
+                  )
+                ) : (
+                  <span className="text-xs text-wf-gray-500">Rest timer starts when you complete a set</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {restRemaining !== null && (
+                  <button
+                    onClick={stopRestTimer}
+                    className="text-xs text-wf-gray-400 font-medium px-2 py-1 rounded-lg active:bg-white/10 transition-colors"
+                  >
+                    Dismiss
+                  </button>
+                )}
+                {restRemaining === null && (
+                  <button
+                    onClick={startRestTimer}
+                    className="text-xs text-wf-red font-semibold px-3 py-1.5 rounded-lg bg-wf-red/10 active:bg-wf-red/20 transition-colors"
+                  >
+                    Start Rest
+                  </button>
+                )}
+                {/* Rest duration selector */}
+                <select
+                  value={restDuration}
+                  onChange={(e) => setRestDuration(Number(e.target.value))}
+                  className="text-xs font-semibold text-wf-gray-300 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 outline-none cursor-pointer"
+                >
+                  {REST_OPTIONS.map((s) => (
+                    <option key={s} value={s} className="bg-wf-gray-900">{s >= 60 ? `${s / 60}m` : `${s}s`}{s < 60 ? '' : s % 60 ? ` ${s % 60}s` : ''}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Exercise Cards */}
       <div className="px-4">

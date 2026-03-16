@@ -264,11 +264,16 @@ export default function Profile() {
           <div className="flex items-center gap-4 mb-6">
             <div className="w-16 h-16 rounded-full bg-wf-red/20 flex items-center justify-center">
               <span className="text-2xl font-bold text-wf-red">
-                {(user?.email || user?.phone || 'W')[0].toUpperCase()}
+                {(user?.firstName || user?.email || user?.phone || 'W')[0].toUpperCase()}
               </span>
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-white">{user?.email || user?.phone || 'User'}</h2>
+              <h2 className="text-lg font-semibold text-white">
+                {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : (user?.email || user?.phone || 'User')}
+              </h2>
+              {user?.firstName && (
+                <p className="text-wf-gray-500 text-xs">{user?.email || user?.phone}</p>
+              )}
               <p className="text-wf-gray-400 text-sm">WILLFIT Member</p>
             </div>
           </div>
