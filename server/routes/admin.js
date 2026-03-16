@@ -20,37 +20,119 @@ function adminPage(title, body) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>WillFit Admin — ${title}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; padding: 32px; color: #111; }
-    .header { margin-bottom: 24px; }
-    .header h1 { font-size: 28px; font-weight: 800; }
-    .header h2 { font-size: 18px; font-weight: 600; color: #666; margin-top: 4px; }
-    .header p { color: #666; margin-top: 4px; font-size: 14px; }
-    .breadcrumb { font-size: 13px; color: #888; margin-bottom: 20px; }
-    .breadcrumb a { color: #111; text-decoration: none; font-weight: 600; }
+    body {
+      font-family: 'Space Grotesk', -apple-system, sans-serif;
+      background: #000;
+      color: #fff;
+      padding: 32px;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+    .container { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; }
+
+    /* Logo */
+    .logo { font-size: 24px; font-weight: 900; letter-spacing: 2px; margin-bottom: 4px; }
+    .logo span { color: #ef4444; }
+
+    .header { margin-bottom: 28px; }
+    .header h1 { font-size: 28px; font-weight: 800; color: #fff; }
+    .header h2 { font-size: 16px; font-weight: 600; color: rgba(255,255,255,0.5); margin-top: 4px; }
+    .header p { color: rgba(255,255,255,0.4); margin-top: 4px; font-size: 13px; }
+    .breadcrumb { font-size: 13px; color: rgba(255,255,255,0.4); margin-bottom: 20px; }
+    .breadcrumb a { color: #ef4444; text-decoration: none; font-weight: 600; }
     .breadcrumb a:hover { text-decoration: underline; }
-    .stats { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
-    .stat { background: #fff; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .stat .value { font-size: 28px; font-weight: 800; }
-    .stat .label { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
-    table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    th { background: #111; color: #fff; text-align: left; padding: 12px 16px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
-    td { padding: 12px 16px; border-top: 1px solid #eee; font-size: 14px; }
-    tr:hover td { background: #f9f9f9; }
-    .btn { background: #111; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 24px; margin-right: 8px; text-decoration: none; display: inline-block; }
-    .btn:hover { background: #333; }
+
+    /* Glass cards */
+    .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; }
+
+    .stats { display: flex; gap: 16px; margin-bottom: 28px; flex-wrap: wrap; }
+    .stat { flex: 1; min-width: 140px; padding: 20px; }
+    .stat .value { font-size: 32px; font-weight: 800; background: linear-gradient(135deg, #ef4444, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .stat .label { font-size: 11px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 1.5px; margin-top: 4px; }
+
+    /* Tables */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.5); text-align: left; padding: 12px 16px; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
+    td { padding: 12px 16px; border-top: 1px solid rgba(255,255,255,0.05); font-size: 13px; color: rgba(255,255,255,0.8); }
+    tr:hover td { background: rgba(255,255,255,0.03); }
+
+    /* Buttons */
+    .btn {
+      background: linear-gradient(135deg, #DC2626, #EF4444, #F97316);
+      background-size: 200% 200%;
+      animation: gradShift 3s ease infinite;
+      color: #fff; border: none; padding: 10px 20px; border-radius: 10px;
+      font-size: 13px; font-weight: 700; cursor: pointer; margin-bottom: 24px;
+      margin-right: 8px; text-decoration: none; display: inline-block;
+      box-shadow: 0 4px 20px rgba(239,68,68,0.3);
+      transition: box-shadow 0.2s, transform 0.2s;
+    }
+    .btn:hover { box-shadow: 0 6px 30px rgba(239,68,68,0.45); transform: translateY(-1px); }
+    @keyframes gradShift { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+
+    .btn-ghost {
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.7); padding: 10px 20px; border-radius: 10px;
+      font-size: 13px; font-weight: 600; cursor: pointer; margin-bottom: 24px;
+      margin-right: 8px; text-decoration: none; display: inline-block;
+      transition: all 0.2s;
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+    /* Card grid */
     .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
-    .card { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-decoration: none; color: #111; transition: box-shadow 0.2s, transform 0.2s; display: block; }
-    .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.15); transform: translateY(-2px); }
-    .card .card-icon { font-size: 32px; margin-bottom: 12px; }
+    .card { padding: 28px; text-decoration: none; color: #fff; transition: all 0.2s; display: block; border-left: 3px solid transparent; }
+    .card:hover { border-left-color: #ef4444; transform: translateX(4px); background: rgba(255,255,255,0.08); }
+    .card .card-icon { font-size: 32px; margin-bottom: 14px; }
     .card .card-title { font-size: 18px; font-weight: 700; }
-    .card .card-desc { font-size: 14px; color: #666; margin-top: 6px; line-height: 1.5; }
-    @media print { .btn, .breadcrumb { display: none; } body { padding: 0; background: #fff; } .stat { box-shadow: none; border: 1px solid #ddd; } table { box-shadow: none; } }
+    .card .card-desc { font-size: 13px; color: rgba(255,255,255,0.4); margin-top: 8px; line-height: 1.6; }
+
+    /* Section titles */
+    h3 { color: #fff; }
+
+    /* Delete button */
+    .delete-btn { background: none; border: none; cursor: pointer; color: rgba(255,255,255,0.3); padding: 4px 8px; border-radius: 6px; transition: all 0.15s; }
+    .delete-btn:hover { color: #ef4444; background: rgba(239,68,68,0.15); }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+
+    @media print {
+      .btn, .btn-ghost, .breadcrumb, .delete-btn { display: none; }
+      body { padding: 16px; background: #fff; color: #111; }
+      body::before { display: none; }
+      .glass { background: #fff; border: 1px solid #ddd; backdrop-filter: none; }
+      .stat .value { -webkit-text-fill-color: #111; background: none; }
+      .stat .label { color: #888; }
+      th { background: #111; color: #fff; }
+      td { color: #333; border-top-color: #eee; }
+      tr:hover td { background: transparent; }
+      .card { border: 1px solid #ddd; }
+      .card .card-desc { color: #666; }
+    }
   </style>
 </head>
 <body>
+<div class="container">
+<div class="logo">WILL<span>FIT</span></div>
 ${body}
+</div>
 </body>
 </html>`;
 }
@@ -121,7 +203,7 @@ router.get('/users', adminAuth, async (req, res) => {
     <p>Generated ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
   </div>
   <a class="btn" onclick="window.print()" href="javascript:void(0)">Print / Save as PDF</a>
-  <a class="btn" onclick="exportExcel()" href="javascript:void(0)">Export to Excel</a>
+  <a class="btn-ghost" onclick="exportExcel()" href="javascript:void(0)">Export to Excel</a>
   <script>
     function exportExcel() {
       const table = document.querySelector('table');
@@ -204,26 +286,28 @@ router.get('/users', adminAuth, async (req, res) => {
     .delete-btn:hover { color: #ef4444; background: rgba(239,68,68,0.1); }
     @media print { .delete-btn { display: none; } }
   </style>
-  <div class="stats">
-    <div class="stat">
+  <div class="stats" style="margin-top:8px;">
+    <div class="stat glass">
       <div class="value">${users.length}</div>
       <div class="label">Total Users</div>
     </div>
-    <div class="stat">
+    <div class="stat glass">
       <div class="value">${users.filter(u => u.email).length}</div>
       <div class="label">Email Signups</div>
     </div>
-    <div class="stat">
+    <div class="stat glass">
       <div class="value">${users.filter(u => u.phone).length}</div>
       <div class="label">Phone Signups</div>
     </div>
   </div>
+  <div class="glass table-wrap" style="border-radius:16px;overflow:hidden;">
   <table>
     <thead>
       <tr>${headerCells}</tr>
     </thead>
     <tbody>${rows}</tbody>
-  </table>`));
+  </table>
+  </div>`));
     }
 
     res.json({ count: users.length, users });
@@ -315,48 +399,54 @@ router.get('/analytics', adminAuth, async (req, res) => {
     <h2>Session Analytics</h2>
     <p>Generated ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
   </div>
-  <div class="stats">
-    <div class="stat">
+  <div class="stats" style="margin-top:8px;">
+    <div class="stat glass">
       <div class="value">${completed.length}</div>
       <div class="label">Total Workouts</div>
     </div>
-    <div class="stat">
+    <div class="stat glass">
       <div class="value">${uniqueUsers.size}</div>
       <div class="label">Active Users</div>
     </div>
-    <div class="stat">
+    <div class="stat glass">
       <div class="value">${completedThisWeek.length}</div>
       <div class="label">This Week</div>
     </div>
-    <div class="stat">
+    <div class="stat glass">
       <div class="value">${completedThisMonth.length}</div>
       <div class="label">This Month</div>
     </div>
   </div>
 
-  <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 12px;">Most Active Users</h3>
-  <table style="margin-bottom: 32px;">
+  <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 12px; color: rgba(255,255,255,0.7);">Most Active Users</h3>
+  <div class="glass table-wrap" style="border-radius:16px;overflow:hidden;margin-bottom:32px;">
+  <table>
     <thead>
       <tr><th>#</th><th>Name</th><th>Email</th><th>Workouts</th><th>Last Workout</th></tr>
     </thead>
-    <tbody>${topUserRows || '<tr><td colspan="5" style="text-align:center; color:#888;">No completed workouts yet</td></tr>'}</tbody>
+    <tbody>${topUserRows || '<tr><td colspan="5" style="text-align:center; color:rgba(255,255,255,0.3);">No completed workouts yet</td></tr>'}</tbody>
   </table>
+  </div>
 
-  <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 12px;">Most Popular Workouts</h3>
-  <table style="margin-bottom: 32px;">
+  <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 12px; color: rgba(255,255,255,0.7);">Most Popular Workouts</h3>
+  <div class="glass table-wrap" style="border-radius:16px;overflow:hidden;margin-bottom:32px;">
+  <table>
     <thead>
       <tr><th>#</th><th>Workout</th><th>Times Completed</th></tr>
     </thead>
-    <tbody>${topWorkoutRows || '<tr><td colspan="3" style="text-align:center; color:#888;">No completed workouts yet</td></tr>'}</tbody>
+    <tbody>${topWorkoutRows || '<tr><td colspan="3" style="text-align:center; color:rgba(255,255,255,0.3);">No completed workouts yet</td></tr>'}</tbody>
   </table>
+  </div>
 
-  <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 12px;">Recent Activity</h3>
+  <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 12px; color: rgba(255,255,255,0.7);">Recent Activity</h3>
+  <div class="glass table-wrap" style="border-radius:16px;overflow:hidden;">
   <table>
     <thead>
       <tr><th>User</th><th>Workout</th><th>Status</th><th>Date</th></tr>
     </thead>
-    <tbody>${recentRows || '<tr><td colspan="4" style="text-align:center; color:#888;">No sessions yet</td></tr>'}</tbody>
+    <tbody>${recentRows || '<tr><td colspan="4" style="text-align:center; color:rgba(255,255,255,0.3);">No sessions yet</td></tr>'}</tbody>
   </table>
+  </div>
     `));
   } catch (err) {
     console.error(err);
