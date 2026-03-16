@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import initDb from './initDb.js';
@@ -28,6 +29,7 @@ const corsOptions = process.env.NODE_ENV === 'production'
   : { origin: ['http://localhost:5173', 'http://127.0.0.1:5173'] };
 app.use(cors(corsOptions));
 app.use(express.json());
+app.use(cookieParser());
 
 // API Routes
 app.use('/auth', authRoutes);

@@ -1,16 +1,139 @@
-import { Router } from 'express';
+import express, { Router } from 'express';
+import crypto from 'crypto';
 import db from '../db.js';
 
 const router = Router();
 
+// Generate a session token
+const activeSessions = new Set();
+
 function adminAuth(req, res, next) {
-  const key = req.query.key || req.headers['x-admin-key'];
-  if (!process.env.ADMIN_KEY || key !== process.env.ADMIN_KEY) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  // Check cookie first
+  const sessionToken = req.cookies?.admin_session;
+  if (sessionToken && activeSessions.has(sessionToken)) {
+    req.adminKey = process.env.ADMIN_KEY;
+    return next();
   }
-  // Pass key to use in links
-  req.adminKey = key;
-  next();
+  // Fall back to key in URL/header
+  const key = req.query.key || req.headers['x-admin-key'];
+  if (process.env.ADMIN_KEY && key === process.env.ADMIN_KEY) {
+    req.adminKey = key;
+    return next();
+  }
+  // Not authenticated — redirect to login for HTML requests, 401 for API
+  if (req.headers.accept?.includes('text/html') || req.query.format === 'html') {
+    return res.redirect('/admin/login');
+  }
+  return res.status(401).json({ error: 'Unauthorized' });
+}
+
+// GET /admin/login — Login page
+router.get('/login', (req, res) => {
+  const error = req.query.error || '';
+  res.send(adminLoginPage(error));
+});
+
+// POST /admin/login — Handle login
+router.post('/login', express.urlencoded({ extended: false }), (req, res) => {
+  const { username, password } = req.body;
+
+  const validUser = process.env.ADMIN_USER || 'admin';
+  const validPass = process.env.ADMIN_PASS || process.env.ADMIN_KEY;
+
+  if (username === validUser && password === validPass) {
+    const token = crypto.randomBytes(32).toString('hex');
+    activeSessions.add(token);
+    res.cookie('admin_session', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    });
+    return res.redirect('/admin');
+  }
+  return res.redirect('/admin/login?error=Invalid+credentials');
+});
+
+// GET /admin/logout
+router.get('/logout', (req, res) => {
+  const sessionToken = req.cookies?.admin_session;
+  if (sessionToken) activeSessions.delete(sessionToken);
+  res.clearCookie('admin_session');
+  res.redirect('/admin/login');
+});
+
+function adminLoginPage(error) {
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WillFit Admin — Login</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Space Grotesk', -apple-system, sans-serif;
+      background: #000; color: #fff;
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      -webkit-font-smoothing: antialiased;
+    }
+    body::before {
+      content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+    .login-card {
+      position: relative; z-index: 1; width: 100%; max-width: 380px; padding: 0 24px;
+    }
+    .logo { font-size: 36px; font-weight: 900; letter-spacing: 2px; text-align: center; margin-bottom: 8px; }
+    .logo span { color: #ef4444; }
+    .subtitle { text-align: center; color: rgba(255,255,255,0.4); font-size: 14px; margin-bottom: 32px; }
+    .glass {
+      background: rgba(255,255,255,0.05); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 28px;
+    }
+    label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.4); margin-bottom: 6px; font-weight: 600; }
+    input[type="text"], input[type="password"] {
+      width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.06); color: #fff; font-size: 15px; font-family: inherit;
+      outline: none; transition: border-color 0.2s;
+    }
+    input:focus { border-color: rgba(239,68,68,0.6); box-shadow: 0 0 0 2px rgba(239,68,68,0.15); }
+    .field { margin-bottom: 16px; }
+    .btn-login {
+      width: 100%; padding: 14px; border: none; border-radius: 12px; font-size: 15px; font-weight: 700;
+      font-family: inherit; cursor: pointer; color: #fff;
+      background: linear-gradient(135deg, #DC2626, #EF4444, #F97316);
+      background-size: 200% 200%; animation: grad 3s ease infinite;
+      box-shadow: 0 4px 20px rgba(239,68,68,0.3); transition: all 0.2s;
+    }
+    .btn-login:hover { box-shadow: 0 6px 30px rgba(239,68,68,0.45); transform: translateY(-1px); }
+    @keyframes grad { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+    .error { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); border-radius: 10px; padding: 10px 14px; font-size: 13px; color: #f87171; margin-bottom: 16px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <div class="logo">WILL<span>FIT</span></div>
+    <p class="subtitle">Admin Dashboard</p>
+    <div class="glass">
+      ${error ? `<div class="error">${error}</div>` : ''}
+      <form method="POST" action="/admin/login">
+        <div class="field">
+          <label>Username</label>
+          <input type="text" name="username" placeholder="Enter username" required autocomplete="username" />
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input type="password" name="password" placeholder="Enter password" required autocomplete="current-password" />
+        </div>
+        <button type="submit" class="btn-login">Sign In</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>`;
 }
 
 function adminPage(title, body) {
@@ -130,7 +253,10 @@ function adminPage(title, body) {
 </head>
 <body>
 <div class="container">
-<div class="logo">WILL<span>FIT</span></div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+  <div class="logo">WILL<span>FIT</span></div>
+  <a href="/admin/logout" class="btn-ghost" style="margin:0;font-size:12px;padding:8px 16px;">Logout</a>
+</div>
 ${body}
 </div>
 </body>
