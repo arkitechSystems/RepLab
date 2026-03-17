@@ -80,6 +80,35 @@ export default async function initDb() {
     ) AND sort_order = 0
   `, ["Will's Pull 1", "Will's PPL"]);
 
+  // Remove Straight-Arm Pulldowns, Cable Rows, Hammer Curls (warm-up) from Will's Pull 1
+  // and change Single-Arm Cable Curls to 1 set of 50
+  await pool.query(`
+    DELETE FROM template_exercises WHERE template_id IN (
+      SELECT t.id FROM templates t
+      JOIN programs p ON t.program_id = p.id
+      WHERE t.name = $1 AND p.name = $2 AND t.user_id IS NULL
+    ) AND name IN ('Straight-Arm Pulldowns', 'Cable Rows', 'Hammer Curls (warm-up)')
+    AND sort_order IN (1, 2, 3)
+  `, ["Will's Pull 1", "Will's PPL"]);
+
+  await pool.query(`
+    UPDATE template_exercises SET planned_reps = 50, exercise_description = '50 total reps per arm.'
+    WHERE template_id IN (
+      SELECT t.id FROM templates t
+      JOIN programs p ON t.program_id = p.id
+      WHERE t.name = $1 AND p.name = $2 AND t.user_id IS NULL
+    ) AND name = 'Single-Arm Cable Curls'
+  `, ["Will's Pull 1", "Will's PPL"]);
+
+  // Delete extra sets for Single-Arm Cable Curls (keep only set_number 1)
+  await pool.query(`
+    DELETE FROM template_exercises WHERE template_id IN (
+      SELECT t.id FROM templates t
+      JOIN programs p ON t.program_id = p.id
+      WHERE t.name = $1 AND p.name = $2 AND t.user_id IS NULL
+    ) AND name = 'Single-Arm Cable Curls' AND set_number > 1
+  `, ["Will's Pull 1", "Will's PPL"]);
+
   // Update warm-up superset descriptions in Will's Pull 1
   await pool.query(`
     UPDATE template_exercises SET exercise_description = 'Superset: Face Pulls, Straight-Arm Pulldowns, Cable Rows, Hammer Curls'
@@ -623,10 +652,7 @@ async function seedWillsPPL() {
         sortOrder: 0,
         exercises: [
           { name: 'Cable Warm Up with Rope Attachment', sets: 3, repRange: '12-15', description: 'Superset: Face Pulls, Straight-Arm Pulldowns, Cable Rows, Hammer Curls' },
-          { name: 'Straight-Arm Pulldowns', sets: 3, repRange: '12-15', description: 'Superset: Face Pulls, Straight-Arm Pulldowns, Cable Rows, Hammer Curls' },
-          { name: 'Cable Rows', sets: 3, repRange: '12-15', description: 'Superset: Face Pulls, Straight-Arm Pulldowns, Cable Rows, Hammer Curls' },
-          { name: 'Hammer Curls (warm-up)', sets: 3, repRange: '12-15', description: 'Superset: Face Pulls, Straight-Arm Pulldowns, Cable Rows, Hammer Curls' },
-          { name: 'Single-Arm Cable Curls', sets: 5, repRange: '10', description: '50 total reps. Break into sets as needed to reach 50 reps per arm.' },
+          { name: 'Single-Arm Cable Curls', sets: 1, repRange: '50', description: '50 total reps per arm.' },
           { name: 'Supinated Weighted Pull-Ups', sets: 3, repRange: '6', description: 'Underhand grip pull-ups with added weight. Focus on full range of motion and controlled reps.' },
           { name: 'Barbell Shrugs', sets: 3, repRange: '10-12', description: 'Superset with Hammer Curls. Heavy shrugs targeting upper traps — squeeze and hold at the top.' },
           { name: 'Hammer Curls', sets: 3, repRange: '10-12', description: 'Superset with Barbell Shrugs. Neutral grip curls targeting brachialis and forearms.' },
