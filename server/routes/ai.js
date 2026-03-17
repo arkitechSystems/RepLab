@@ -73,7 +73,7 @@ Rules:
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
     const message = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-3-haiku-20240307',
       max_tokens: 1024,
       messages: [{ role: 'user', content: prompt }],
     });
@@ -107,7 +107,7 @@ Rules:
 
     res.json(workout);
   } catch (err) {
-    console.error('AI generation error:', err.message);
+    console.error('AI generation error:', err.status, err.message, err.error || '');
     if (err.status === 429) {
       return res.status(429).json({ error: 'Too many AI requests. Please wait a moment and try again.' });
     }
