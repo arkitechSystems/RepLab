@@ -26,7 +26,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-app.set('trust proxy', true); // Render runs behind a proxy — needed for real IP
+app.set('trust proxy', 1); // Render uses 1 reverse proxy — trust only the first hop
 const PORT = process.env.PORT || 3001;
 
 // In production, client is served from same origin (no CORS needed)
