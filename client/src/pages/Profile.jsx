@@ -130,6 +130,60 @@ export default function Profile() {
       <StickyHeader title="Profile" />
 
       <div className="px-4">
+        {/* Member Info */}
+        <div className="glass-card rounded-xl p-6 mb-4 fade-slide-up">
+          {/* Avatar */}
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-16 h-16 rounded-full bg-wf-red/20 flex items-center justify-center">
+              <span className="text-2xl font-bold text-wf-red">
+                {(user?.firstName || user?.email || user?.phone || 'W')[0].toUpperCase()}
+              </span>
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-white">
+                {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : (user?.email || user?.phone || 'User')}
+              </h2>
+              {user?.firstName && (
+                <p className="text-wf-gray-500 text-xs">{user?.email || user?.phone}</p>
+              )}
+              <p className="text-wf-gray-400 text-sm">WILLFIT Member</p>
+            </div>
+          </div>
+
+          {/* Info */}
+          <div className="space-y-4 border-t border-white/10 pt-4">
+            {user?.email && (
+              <div className="flex justify-between items-center">
+                <span className="text-wf-gray-400 text-sm">Email</span>
+                <span className="text-white text-sm">{user.email}</span>
+              </div>
+            )}
+            {user?.phone && (
+              <div className="flex justify-between items-center">
+                <span className="text-wf-gray-400 text-sm">Phone</span>
+                <span className="text-white text-sm">{user.phone}</span>
+              </div>
+            )}
+            <div className="flex justify-between items-center">
+              <span className="text-wf-gray-400 text-sm">Plan</span>
+              <div className="flex items-center gap-2">
+                <span className={`text-sm font-medium ${
+                  user?.plan === 'Elite' ? 'text-purple-400' :
+                  user?.plan === 'Pro' ? 'text-wf-blue' :
+                  'text-green-400'
+                }`}>{user?.plan || 'Free'}</span>
+                {(!user?.plan || user?.plan === 'Free') && (
+                  <span className="text-[10px] text-wf-gray-500 bg-white/5 px-2 py-0.5 rounded-full">Pro & Elite coming soon</span>
+                )}
+              </div>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-wf-gray-400 text-sm">Account ID</span>
+              <span className="text-wf-gray-500 text-sm">#{user?.id}</span>
+            </div>
+          </div>
+        </div>
+
         {/* Beta banner + feedback */}
         <div className="glass-card rounded-xl p-4 mb-4 fade-slide-up border border-wf-red/20 bg-wf-red/5">
           <div className="flex items-start gap-3">
@@ -255,160 +309,6 @@ export default function Profile() {
           </div>
         </div>
 
-        <div className="glass-card rounded-xl p-6 mb-4 fade-slide-up" style={{ animationDelay: '60ms' }}>
-          {/* Avatar */}
-          <div className="flex items-center gap-4 mb-6">
-            <div className="w-16 h-16 rounded-full bg-wf-red/20 flex items-center justify-center">
-              <span className="text-2xl font-bold text-wf-red">
-                {(user?.firstName || user?.email || user?.phone || 'W')[0].toUpperCase()}
-              </span>
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-white">
-                {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : (user?.email || user?.phone || 'User')}
-              </h2>
-              {user?.firstName && (
-                <p className="text-wf-gray-500 text-xs">{user?.email || user?.phone}</p>
-              )}
-              <p className="text-wf-gray-400 text-sm">WILLFIT Member</p>
-            </div>
-          </div>
-
-          {/* Info */}
-          <div className="space-y-4 border-t border-white/10 pt-4">
-            {user?.email && (
-              <div className="flex justify-between items-center">
-                <span className="text-wf-gray-400 text-sm">Email</span>
-                <span className="text-white text-sm">{user.email}</span>
-              </div>
-            )}
-            {user?.phone && (
-              <div className="flex justify-between items-center">
-                <span className="text-wf-gray-400 text-sm">Phone</span>
-                <span className="text-white text-sm">{user.phone}</span>
-              </div>
-            )}
-            <div className="flex justify-between items-center">
-              <span className="text-wf-gray-400 text-sm">Plan</span>
-              <div className="flex items-center gap-2">
-                <span className={`text-sm font-medium ${
-                  user?.plan === 'Elite' ? 'text-purple-400' :
-                  user?.plan === 'Pro' ? 'text-wf-blue' :
-                  'text-green-400'
-                }`}>{user?.plan || 'Free'}</span>
-                {(!user?.plan || user?.plan === 'Free') && (
-                  <span className="text-[10px] text-wf-gray-500 bg-white/5 px-2 py-0.5 rounded-full">Pro & Elite coming soon</span>
-                )}
-              </div>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-wf-gray-400 text-sm">Account ID</span>
-              <span className="text-wf-gray-500 text-sm">#{user?.id}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Change Password */}
-        <div className="glass-card rounded-xl p-6 mb-4 fade-slide-up" style={{ animationDelay: '60ms' }}>
-          <button
-            onClick={() => { setShowChangePassword(!showChangePassword); setPasswordError(''); setPasswordChanged(false); setCurrentPassword(''); setNewPassword(''); setConfirmNewPassword(''); }}
-            className="flex items-center justify-between w-full"
-          >
-            <div className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-              </svg>
-              <h3 className="text-base font-semibold text-white">Change Password</h3>
-            </div>
-            <svg className={`w-5 h-5 text-wf-gray-400 transition-transform ${showChangePassword ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-            </svg>
-          </button>
-
-          {showChangePassword && (
-            <div className="mt-4 pt-4 border-t border-white/10 space-y-3">
-              {passwordError && (
-                <div className="bg-red-900/30 border border-red-800 rounded-lg px-4 py-3 text-red-300 text-sm">
-                  {passwordError}
-                </div>
-              )}
-              {passwordChanged && (
-                <div className="bg-green-900/30 border border-green-800 rounded-lg px-4 py-3 text-green-300 text-sm">
-                  Password changed successfully!
-                </div>
-              )}
-              <div>
-                <label className="text-xs text-wf-gray-400 uppercase tracking-wider mb-1 block">Current Password</label>
-                <input
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Enter current password"
-                  className="w-full glass-input rounded-xl px-4 py-3 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none transition-all"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-wf-gray-400 uppercase tracking-wider mb-1 block">New Password</label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter new password"
-                  className="w-full glass-input rounded-xl px-4 py-3 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none transition-all"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-wf-gray-400 uppercase tracking-wider mb-1 block">Confirm New Password</label>
-                <input
-                  type="password"
-                  value={confirmNewPassword}
-                  onChange={(e) => setConfirmNewPassword(e.target.value)}
-                  placeholder="Confirm new password"
-                  className="w-full glass-input rounded-xl px-4 py-3 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none transition-all"
-                />
-              </div>
-              <button
-                onClick={async () => {
-                  setPasswordError('');
-                  setPasswordChanged(false);
-                  const pe = [];
-                  if (newPassword.length < 8) pe.push('at least 8 characters');
-                  if (!/[A-Z]/.test(newPassword)) pe.push('at least 1 uppercase letter');
-                  if (!/[0-9]/.test(newPassword)) pe.push('at least 1 number');
-                  if (/\s/.test(newPassword)) pe.push('no spaces');
-                  if (pe.length > 0) {
-                    setPasswordError('Password must have: ' + pe.join(', '));
-                    return;
-                  }
-                  if (newPassword !== confirmNewPassword) {
-                    setPasswordError('New passwords do not match');
-                    return;
-                  }
-                  setPasswordSaving(true);
-                  try {
-                    await api('/auth/change-password', {
-                      method: 'POST',
-                      body: JSON.stringify({ currentPassword, newPassword }),
-                    });
-                    setPasswordChanged(true);
-                    setCurrentPassword('');
-                    setNewPassword('');
-                    setConfirmNewPassword('');
-                  } catch (err) {
-                    setPasswordError(err.message);
-                  } finally {
-                    setPasswordSaving(false);
-                  }
-                }}
-                disabled={passwordSaving || !currentPassword || !newPassword || !confirmNewPassword}
-                className="w-full btn-gradient text-white font-semibold py-3 rounded-xl text-sm transition-all active:scale-[0.98] disabled:opacity-50"
-              >
-                {passwordSaving ? 'Changing...' : 'Change Password'}
-              </button>
-            </div>
-          )}
-        </div>
-
         {/* Body Metrics */}
         <div className="glass-card rounded-xl p-6 mb-4 fade-slide-up" style={{ animationDelay: '60ms' }}>
           <div className="flex items-center gap-2 mb-4">
@@ -528,6 +428,107 @@ export default function Profile() {
               Load Screen
             </button>
           </div>
+        </div>
+
+        {/* Change Password */}
+        <div className="glass-card rounded-xl p-6 mb-4 fade-slide-up">
+          <button
+            onClick={() => { setShowChangePassword(!showChangePassword); setPasswordError(''); setPasswordChanged(false); setCurrentPassword(''); setNewPassword(''); setConfirmNewPassword(''); }}
+            className="flex items-center justify-between w-full"
+          >
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+              </svg>
+              <h3 className="text-base font-semibold text-white">Change Password</h3>
+            </div>
+            <svg className={`w-5 h-5 text-wf-gray-400 transition-transform ${showChangePassword ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
+
+          {showChangePassword && (
+            <div className="mt-4 pt-4 border-t border-white/10 space-y-3">
+              {passwordError && (
+                <div className="bg-red-900/30 border border-red-800 rounded-lg px-4 py-3 text-red-300 text-sm">
+                  {passwordError}
+                </div>
+              )}
+              {passwordChanged && (
+                <div className="bg-green-900/30 border border-green-800 rounded-lg px-4 py-3 text-green-300 text-sm">
+                  Password changed successfully!
+                </div>
+              )}
+              <div>
+                <label className="text-xs text-wf-gray-400 uppercase tracking-wider mb-1 block">Current Password</label>
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Enter current password"
+                  className="w-full glass-input rounded-xl px-4 py-3 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none transition-all"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-wf-gray-400 uppercase tracking-wider mb-1 block">New Password</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter new password"
+                  className="w-full glass-input rounded-xl px-4 py-3 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none transition-all"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-wf-gray-400 uppercase tracking-wider mb-1 block">Confirm New Password</label>
+                <input
+                  type="password"
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  placeholder="Confirm new password"
+                  className="w-full glass-input rounded-xl px-4 py-3 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none transition-all"
+                />
+              </div>
+              <button
+                onClick={async () => {
+                  setPasswordError('');
+                  setPasswordChanged(false);
+                  const pe = [];
+                  if (newPassword.length < 8) pe.push('at least 8 characters');
+                  if (!/[A-Z]/.test(newPassword)) pe.push('at least 1 uppercase letter');
+                  if (!/[0-9]/.test(newPassword)) pe.push('at least 1 number');
+                  if (/\s/.test(newPassword)) pe.push('no spaces');
+                  if (pe.length > 0) {
+                    setPasswordError('Password must have: ' + pe.join(', '));
+                    return;
+                  }
+                  if (newPassword !== confirmNewPassword) {
+                    setPasswordError('New passwords do not match');
+                    return;
+                  }
+                  setPasswordSaving(true);
+                  try {
+                    await api('/auth/change-password', {
+                      method: 'POST',
+                      body: JSON.stringify({ currentPassword, newPassword }),
+                    });
+                    setPasswordChanged(true);
+                    setCurrentPassword('');
+                    setNewPassword('');
+                    setConfirmNewPassword('');
+                  } catch (err) {
+                    setPasswordError(err.message);
+                  } finally {
+                    setPasswordSaving(false);
+                  }
+                }}
+                disabled={passwordSaving || !currentPassword || !newPassword || !confirmNewPassword}
+                className="w-full btn-gradient text-white font-semibold py-3 rounded-xl text-sm transition-all active:scale-[0.98] disabled:opacity-50"
+              >
+                {passwordSaving ? 'Changing...' : 'Change Password'}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Logout */}
