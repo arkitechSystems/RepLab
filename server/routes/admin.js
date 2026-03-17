@@ -817,6 +817,18 @@ router.get('/users', adminAuth, async (req, res) => {
       <div class="label">Total Users</div>
     </div>
     <div class="stat glass">
+      <div class="value" style="-webkit-text-fill-color:#4ade80;">${users.filter(u => (u.plan || 'Free') === 'Free').length}</div>
+      <div class="label">Free</div>
+    </div>
+    <div class="stat glass">
+      <div class="value" style="-webkit-text-fill-color:#60a5fa;">${users.filter(u => u.plan === 'Pro').length}</div>
+      <div class="label">Pro</div>
+    </div>
+    <div class="stat glass">
+      <div class="value" style="-webkit-text-fill-color:#c084fc;">${users.filter(u => u.plan === 'Elite').length}</div>
+      <div class="label">Elite</div>
+    </div>
+    <div class="stat glass">
       <div class="value">${users.filter(u => u.email).length}</div>
       <div class="label">Email Signups</div>
     </div>
