@@ -42,7 +42,7 @@ function normalizePhone(value) {
 }
 
 function userResponse(user) {
-  return { id: user.id, email: user.email, phone: user.phone, firstName: user.firstName, lastName: user.lastName, username: user.username };
+  return { id: user.id, email: user.email, phone: user.phone, firstName: user.firstName, lastName: user.lastName, username: user.username, plan: user.plan || 'Free' };
 }
 
 router.post('/signup', async (req, res) => {

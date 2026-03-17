@@ -291,8 +291,14 @@ export default function Profile() {
             <div className="flex justify-between items-center">
               <span className="text-wf-gray-400 text-sm">Plan</span>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-green-400">Free</span>
-                <span className="text-[10px] text-wf-gray-500 bg-white/5 px-2 py-0.5 rounded-full">Pro & Elite coming soon</span>
+                <span className={`text-sm font-medium ${
+                  user?.plan === 'Elite' ? 'text-purple-400' :
+                  user?.plan === 'Pro' ? 'text-wf-blue' :
+                  'text-green-400'
+                }`}>{user?.plan || 'Free'}</span>
+                {(!user?.plan || user?.plan === 'Free') && (
+                  <span className="text-[10px] text-wf-gray-500 bg-white/5 px-2 py-0.5 rounded-full">Pro & Elite coming soon</span>
+                )}
               </div>
             </div>
             <div className="flex justify-between items-center">

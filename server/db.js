@@ -18,11 +18,11 @@ const db = {
   // Users
   async getAllUsers() {
     const { rows } = await pool.query(
-      `SELECT id, email, phone, first_name, last_name, gender, username, referral_source, referral_code, zip_code, signup_city, signup_state, signup_device, utm_source, utm_medium, utm_campaign, utm_content, utm_term, created_at FROM users
+      `SELECT id, email, phone, first_name, last_name, gender, username, plan, referral_source, referral_code, zip_code, signup_city, signup_state, signup_device, utm_source, utm_medium, utm_campaign, utm_content, utm_term, created_at FROM users
        WHERE email NOT LIKE '%@willfit.demo' OR email IS NULL
        ORDER BY created_at DESC`
     );
-    return rows.map((u) => ({ id: u.id, email: u.email, phone: u.phone, firstName: u.first_name, lastName: u.last_name, gender: u.gender, username: u.username, referralSource: u.referral_source, referralCode: u.referral_code, zipCode: u.zip_code, signupCity: u.signup_city, signupState: u.signup_state, signupDevice: u.signup_device, utmSource: u.utm_source, utmMedium: u.utm_medium, utmCampaign: u.utm_campaign, utmContent: u.utm_content, utmTerm: u.utm_term, createdAt: u.created_at }));
+    return rows.map((u) => ({ id: u.id, email: u.email, phone: u.phone, firstName: u.first_name, lastName: u.last_name, gender: u.gender, username: u.username, plan: u.plan || 'Free', referralSource: u.referral_source, referralCode: u.referral_code, zipCode: u.zip_code, signupCity: u.signup_city, signupState: u.signup_state, signupDevice: u.signup_device, utmSource: u.utm_source, utmMedium: u.utm_medium, utmCampaign: u.utm_campaign, utmContent: u.utm_content, utmTerm: u.utm_term, createdAt: u.created_at }));
   },
 
   async getDailyStats() {
@@ -146,7 +146,7 @@ const db = {
     );
     if (!rows[0]) return null;
     const u = rows[0];
-    return { id: u.id, email: u.email, phone: u.phone, passwordHash: u.password_hash, firstName: u.first_name, lastName: u.last_name, username: u.username, createdAt: u.created_at };
+    return { id: u.id, email: u.email, phone: u.phone, passwordHash: u.password_hash, firstName: u.first_name, lastName: u.last_name, username: u.username, plan: u.plan || 'Free', createdAt: u.created_at };
   },
 
   async createUser({ email, phone, passwordHash, firstName, lastName, gender, username, referralSource, referralCode, zipCode, signupCity, signupState, signupDevice, utmSource, utmMedium, utmCampaign, utmContent, utmTerm }) {
