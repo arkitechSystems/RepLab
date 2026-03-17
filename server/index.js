@@ -16,6 +16,7 @@ import metricsRoutes from './routes/metrics.js';
 import adminRoutes from './routes/admin.js';
 import feedbackRoutes from './routes/feedback.js';
 import aiRoutes from './routes/ai.js';
+import exerciseRoutes from './routes/exercises.js';
 import db from './db.js';
 import { sendDailySummaryEmail } from './email.js';
 
@@ -70,6 +71,7 @@ app.use('/sessions', apiLimiter);
 app.use('/pbs', apiLimiter);
 app.use('/metrics', apiLimiter);
 app.use('/feedback', apiLimiter);
+app.use('/exercises', apiLimiter);
 
 // API Routes
 app.use('/auth', authRoutes);
@@ -82,6 +84,7 @@ app.use('/metrics', metricsRoutes);
 app.use('/admin', adminRoutes);
 app.use('/feedback', feedbackRoutes);
 app.use('/ai', aiRoutes);
+app.use('/exercises', exerciseRoutes);
 
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'ok' }));

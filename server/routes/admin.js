@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import db from '../db.js';
 import { Resend } from 'resend';
 import pool from '../dbPool.js';
+import { syncFromWger } from '../syncExercises.js';
 
 const router = Router();
 
@@ -1947,6 +1948,17 @@ router.get('/ai-usage', adminAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /admin/sync-exercises — pull new exercises from wger.de
+router.post('/sync-exercises', adminAuth, async (req, res) => {
+  try {
+    const result = await syncFromWger();
+    res.json(result);
+  } catch (err) {
+    console.error('Exercise sync error:', err);
+    res.status(500).json({ error: 'Sync failed: ' + err.message });
   }
 });
 

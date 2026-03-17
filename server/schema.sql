@@ -136,3 +136,13 @@ CREATE TABLE IF NOT EXISTS feature_flags (
   enabled BOOLEAN DEFAULT FALSE,
   description TEXT DEFAULT ''
 );
+
+CREATE TABLE IF NOT EXISTS exercises (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  muscle_group TEXT NOT NULL,
+  tags TEXT[] DEFAULT '{}',
+  is_custom BOOLEAN DEFAULT FALSE,
+  created_by INT REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);

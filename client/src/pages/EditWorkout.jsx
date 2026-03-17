@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../api';
+import { useExercises } from '../hooks/useExercises';
 import { useUnsavedGuard } from '../components/UnsavedGuard';
 
 const SET_TYPES = [
@@ -22,6 +23,9 @@ export default function EditWorkout() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [originalData, setOriginalData] = useState(null);
+  const [activeAutocomplete, setActiveAutocomplete] = useState(null);
+  const autocompleteRef = useRef(null);
+  const { exercises: allExercises, createCustom } = useExercises();
 
   const isDirty = originalData !== null && JSON.stringify({ name, description, exercises }) !== originalData;
   const { guardedNavigate, UnsavedModal } = useUnsavedGuard({ isDirty });
@@ -91,6 +95,24 @@ export default function EditWorkout() {
     setExercises(updated);
   }
 
+  function getSuggestions(query) {
+    if (!query || query.length < 1) return [];
+    const q = query.toLowerCase();
+    const seen = new Set();
+    return allExercises
+      .filter((ex) => {
+        if (seen.has(ex.name)) return false;
+        seen.add(ex.name);
+        return ex.name.toLowerCase().includes(q);
+      })
+      .sort((a, b) => {
+        const aStarts = a.name.toLowerCase().startsWith(q) ? 0 : 1;
+        const bStarts = b.name.toLowerCase().startsWith(q) ? 0 : 1;
+        return aStarts - bStarts || a.name.localeCompare(b.name);
+      })
+      .slice(0, 8);
+  }
+
   async function handleSave() {
     setError('');
     if (!name.trim()) {
@@ -113,6 +135,13 @@ export default function EditWorkout() {
           exercises: validExercises,
         }),
       });
+      // Auto-save any custom exercises not in the library
+      const knownNames = new Set(allExercises.map(e => e.name.toLowerCase()));
+      for (const ex of validExercises) {
+        if (!knownNames.has(ex.name.toLowerCase())) {
+          createCustom(ex.name, 'Other').catch(() => {});
+        }
+      }
       navigate('/');
     } catch (err) {
       setError(err.message);
@@ -200,15 +229,41 @@ export default function EditWorkout() {
               </div>
             </div>
 
-            {/* Exercise Name */}
+            {/* Exercise Name with Autocomplete */}
             <div className="flex items-center gap-2 mb-3">
-              <input
-                type="text"
-                value={ex.name}
-                onChange={(e) => updateExercise(exIdx, 'name', e.target.value)}
-                placeholder="Exercise name"
-                className="flex-1 glass-input rounded-lg px-3 py-2.5 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none transition-all"
-              />
+              <div className="flex-1 relative" ref={activeAutocomplete === exIdx ? autocompleteRef : null}>
+                <input
+                  type="text"
+                  value={ex.name}
+                  onChange={(e) => {
+                    updateExercise(exIdx, 'name', e.target.value);
+                    setActiveAutocomplete(e.target.value.length >= 1 ? exIdx : null);
+                  }}
+                  onFocus={() => { if (ex.name.length >= 1) setActiveAutocomplete(exIdx); }}
+                  onBlur={() => { setTimeout(() => setActiveAutocomplete(null), 150); }}
+                  placeholder="Exercise name"
+                  className="w-full glass-input rounded-lg px-3 py-2.5 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none transition-all"
+                />
+                {activeAutocomplete === exIdx && getSuggestions(ex.name).length > 0 && (
+                  <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-wf-gray-900 border border-white/10 rounded-xl shadow-2xl shadow-black/60 overflow-hidden max-h-64 overflow-y-auto">
+                    {getSuggestions(ex.name).map((suggestion) => (
+                      <button
+                        key={suggestion.name}
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          updateExercise(exIdx, 'name', suggestion.name);
+                          setActiveAutocomplete(null);
+                        }}
+                        className="w-full text-left px-3 py-2.5 flex items-center justify-between hover:bg-white/5 active:bg-white/10 transition-colors"
+                      >
+                        <span className="text-sm text-white">{suggestion.name}</span>
+                        <span className="text-[10px] text-wf-gray-500 uppercase tracking-wider ml-2 shrink-0">{suggestion.muscle}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               {exercises.length > 1 && (
                 <button
                   onClick={() => removeExercise(exIdx)}

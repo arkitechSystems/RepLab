@@ -765,6 +765,71 @@ const db = {
     return rows;
   },
 
+  // Exercise library
+  async getExercises(userId, { search, muscle, limit } = {}) {
+    let query = 'SELECT * FROM exercises WHERE (created_by IS NULL OR created_by = $1)';
+    const params = [userId];
+    let paramIdx = 2;
+
+    if (muscle) {
+      query += ` AND muscle_group = $${paramIdx}`;
+      params.push(muscle);
+      paramIdx++;
+    }
+
+    if (search) {
+      query += ` AND name ILIKE $${paramIdx}`;
+      params.push(`%${search}%`);
+      paramIdx++;
+    }
+
+    query += ' ORDER BY is_custom ASC, name ASC';
+
+    if (limit) {
+      query += ` LIMIT $${paramIdx}`;
+      params.push(limit);
+    }
+
+    const { rows } = await pool.query(query, params);
+    return rows.map(e => ({
+      id: e.id,
+      name: e.name,
+      muscle: e.muscle_group,
+      tags: e.tags || [],
+      isCustom: e.is_custom,
+      createdBy: e.created_by,
+    }));
+  },
+
+  async createExercise(userId, name, muscleGroup, tags = []) {
+    // Check for existing first
+    const existing = await this.findExerciseByName(name, userId);
+    if (existing) return existing;
+
+    const { rows } = await pool.query(
+      `INSERT INTO exercises (name, muscle_group, tags, is_custom, created_by)
+       VALUES ($1, $2, $3, TRUE, $4) RETURNING *`,
+      [name, muscleGroup, tags, userId]
+    );
+    const e = rows[0];
+    return { id: e.id, name: e.name, muscle: e.muscle_group, tags: e.tags, isCustom: true, createdBy: e.created_by };
+  },
+
+  async findExerciseByName(name, userId) {
+    const { rows } = await pool.query(
+      'SELECT * FROM exercises WHERE LOWER(name) = LOWER($1) AND (created_by IS NULL OR created_by = $2) LIMIT 1',
+      [name, userId]
+    );
+    if (!rows[0]) return null;
+    const e = rows[0];
+    return { id: e.id, name: e.name, muscle: e.muscle_group, tags: e.tags || [], isCustom: e.is_custom, createdBy: e.created_by };
+  },
+
+  async getMuscleGroups() {
+    const { rows } = await pool.query('SELECT DISTINCT muscle_group FROM exercises ORDER BY muscle_group');
+    return rows.map(r => r.muscle_group);
+  },
+
   // Workout library (all programs with template counts)
   async getWorkoutLibrary() {
     const { rows } = await pool.query(`

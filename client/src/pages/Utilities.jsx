@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import StickyHeader from '../components/StickyHeader';
 import { beepCountdown, beepPhaseChange, beepComplete, initAudio } from '../utils/sounds';
@@ -724,6 +725,7 @@ function OneRepMaxEstimator({ onClose }) {
 }
 
 export default function Utilities() {
+  const navigate = useNavigate();
   const [showHIIT, setShowHIIT] = useState(false);
   const [showPRs, setShowPRs] = useState(false);
   const [show1RM, setShow1RM] = useState(false);
@@ -749,6 +751,27 @@ export default function Utilities() {
             <div className="flex-1">
               <h3 className="text-base font-semibold text-white">Personal Records</h3>
               <p className="text-wf-gray-400 text-sm mt-0.5">View your PRs by muscle group</p>
+            </div>
+            <svg className="w-5 h-5 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            </svg>
+          </div>
+        </button>
+
+        {/* Exercise Library card */}
+        <button
+          onClick={() => navigate('/exercises')}
+          className="w-full glass-card rounded-xl p-5 active:scale-[0.98] transition-transform fade-slide-up text-left"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-blue-500/15 flex items-center justify-center shrink-0">
+              <svg className="w-6 h-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-base font-semibold text-white">Exercise Library</h3>
+              <p className="text-wf-gray-400 text-sm mt-0.5">Browse exercises and add custom ones</p>
             </div>
             <svg className="w-5 h-5 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />

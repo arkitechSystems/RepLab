@@ -1,12 +1,13 @@
 import { useState, useRef, useCallback, useMemo } from 'react';
 import { getExerciseVideoId, getExerciseSearchUrl } from '../utils/exerciseVideos.js';
-import { getSubstitutes, getAllExercises } from '../utils/exerciseLibrary.js';
+import { useExercises, getSubstitutesFromList } from '../hooks/useExercises.js';
 import VideoPlayerModal from './VideoPlayerModal.jsx';
 import { iosFocusRef } from '../utils/iosFocus.js';
 
 export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onSwapExercise, onAddExercise, onMoveUp, onMoveDown, note, onNoteChange }) {
   const exercisePbs = pbs?.[exercise.name] || {};
   const videoId = getExerciseVideoId(exercise.name);
+  const { exercises: allExercises } = useExercises();
   const [showVideo, setShowVideo] = useState(false);
   const [deleteIdx, setDeleteIdx] = useState(null);
   const [confirmDeleteLast, setConfirmDeleteLast] = useState(false);
@@ -399,6 +400,7 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
       {/* Swap Exercise Modal */}
       {showSwap && <SwapModal
         exerciseName={exercise.name}
+        allExercises={allExercises}
         search={swapSearch}
         onSearchChange={setSwapSearch}
         onSelect={(newName) => {
@@ -421,7 +423,7 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
 
       {/* Add Exercise Below — inline card */}
       {showAddBelow && onAddExercise && (() => {
-        const allEx = getAllExercises();
+        const allEx = allExercises;
         const q = addBelowSearch.toLowerCase().trim();
         const seen = new Set();
         const filtered = q
@@ -496,8 +498,8 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
   );
 }
 
-function SwapModal({ exerciseName, search, onSearchChange, onSelect, onClose }) {
-  const substitutes = useMemo(() => getSubstitutes(exerciseName), [exerciseName]);
+function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelect, onClose }) {
+  const substitutes = useMemo(() => getSubstitutesFromList(exerciseName, allExercises), [exerciseName, allExercises]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return substitutes;

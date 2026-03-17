@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { api } from '../api';
 import ExerciseCard from '../components/ExerciseCard';
-import { getAllExercises } from '../utils/exerciseLibrary';
+import { useExercises } from '../hooks/useExercises';
 import RestDayCard from '../components/RestDayCard';
 import StickyHeader from '../components/StickyHeader';
 import { useUnsavedGuard } from '../components/UnsavedGuard';
@@ -13,6 +13,7 @@ import { iosFocusRef } from '../utils/iosFocus';
 export default function WorkoutSession() {
   const { templateId, date } = useParams();
   const navigate = useNavigate();
+  const { exercises: allExercisesFromDB, createCustom } = useExercises();
   const [template, setTemplate] = useState(null);
   const [pbs, setPbs] = useState({});
   const [entries, setEntries] = useState({});
@@ -599,6 +600,14 @@ export default function WorkoutSession() {
         navigator.vibrate?.([40, 30, 80]);
       }
 
+      // Auto-save any custom exercises not in the library
+      const knownNames = new Set(allExercisesFromDB.map(e => e.name.toLowerCase()));
+      for (const ex of template.exercises) {
+        if (!knownNames.has(ex.name.toLowerCase())) {
+          createCustom(ex.name, 'Other').catch(() => {});
+        }
+      }
+
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
@@ -873,7 +882,7 @@ export default function WorkoutSession() {
 
       {/* Add Exercise Modal */}
       {showAddExercise && (() => {
-        const allExercises = getAllExercises();
+        const allExercises = allExercisesFromDB;
         const existingNames = new Set(template.exercises.map((ex) => ex.name));
         const q = addExerciseSearch.toLowerCase();
         const seen = new Set();

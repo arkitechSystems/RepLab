@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
-import { getAllExercises } from '../utils/exerciseLibrary';
+import { useExercises } from '../hooks/useExercises';
 import { useUnsavedGuard } from '../components/UnsavedGuard';
 
 const SET_TYPES = [
@@ -33,7 +33,7 @@ export default function CreateWorkout() {
   const [userPBs, setUserPBs] = useState([]); // all user PRs
   const [expandedPR, setExpandedPR] = useState(null); // exercise index showing PR picker
 
-  const allExercises = getAllExercises();
+  const { exercises: allExercises, createCustom } = useExercises();
 
   // Build lookup: exercise name (lowercase) → PRs sorted by weight desc
   const prByExercise = {};
@@ -179,6 +179,13 @@ export default function CreateWorkout() {
           programId: Number(selectedProgramId),
         }),
       });
+      // Auto-save any custom exercises not in the library
+      const knownNames = new Set(allExercises.map(e => e.name.toLowerCase()));
+      for (const ex of validExercises) {
+        if (!knownNames.has(ex.name.toLowerCase())) {
+          createCustom(ex.name, 'Other').catch(() => {});
+        }
+      }
       navigate('/');
     } catch (err) {
       setError(err.message);

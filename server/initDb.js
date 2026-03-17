@@ -2,6 +2,7 @@ import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import pool from './dbPool.js';
+import SEED_EXERCISES from './seedExercises.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -68,6 +69,38 @@ export default async function initDb() {
     enabled BOOLEAN DEFAULT FALSE,
     description TEXT DEFAULT ''
   )`);
+
+  // Exercises table + seed
+  await pool.query(`CREATE TABLE IF NOT EXISTS exercises (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    muscle_group TEXT NOT NULL,
+    tags TEXT[] DEFAULT '{}',
+    is_custom BOOLEAN DEFAULT FALSE,
+    created_by INT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  )`);
+
+  const { rows: exCount } = await pool.query('SELECT COUNT(*) FROM exercises');
+  if (parseInt(exCount[0].count) === 0) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      for (const ex of SEED_EXERCISES) {
+        await client.query(
+          'INSERT INTO exercises (name, muscle_group, tags, is_custom, created_by) VALUES ($1, $2, $3, FALSE, NULL)',
+          [ex.name, ex.muscle, ex.tags]
+        );
+      }
+      await client.query('COMMIT');
+      console.log('Seeded exercise library');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
 
   console.log('Database schema initialized');
 

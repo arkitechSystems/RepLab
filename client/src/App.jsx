@@ -19,6 +19,7 @@ import Welcome from './pages/Welcome';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import AIWorkoutGenerator from './pages/AIWorkoutGenerator';
+import ExerciseLibrary from './pages/ExerciseLibrary';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -77,6 +78,7 @@ export default function App() {
         <Route path="/session/:templateId/:date" element={<WorkoutSession />} />
         <Route path="/workouts/create" element={<CreateWorkout />} />
         <Route path="/workouts/ai" element={<AIWorkoutGenerator />} />
+        <Route path="/exercises" element={<ExerciseLibrary />} />
         <Route path="/programs/create" element={<CreateProgram />} />
         <Route path="/workouts/edit/:id" element={<EditWorkout />} />
         <Route path="/history" element={<History />} />
