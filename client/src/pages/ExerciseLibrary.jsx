@@ -2,6 +2,11 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useExercises } from '../hooks/useExercises';
 
+// Exercises with detail pages (slug → true)
+const DETAIL_PAGES = {
+  'Incline Bench Press': '/exercises/incline-bench-press',
+};
+
 export default function ExerciseLibrary() {
   const navigate = useNavigate();
   const { exercises, muscleGroups, loading, createCustom } = useExercises();
@@ -13,7 +18,7 @@ export default function ExerciseLibrary() {
   const [customSaving, setCustomSaving] = useState(false);
 
   const filtered = useMemo(() => {
-    let result = exercises;
+    let result = exercises || [];
     if (selectedMuscle) {
       result = result.filter(e => e.muscle === selectedMuscle);
     }
@@ -95,7 +100,7 @@ export default function ExerciseLibrary() {
             className="w-full glass-input rounded-lg px-3 py-2.5 text-white text-sm bg-transparent focus:outline-none appearance-none cursor-pointer mb-3"
           >
             <option value="" className="bg-wf-gray-900">Select muscle group</option>
-            {muscleGroups.map(m => (
+            {(muscleGroups || []).map(m => (
               <option key={m} value={m} className="bg-wf-gray-900">{m}</option>
             ))}
             <option value="Other" className="bg-wf-gray-900">Other</option>
@@ -142,7 +147,7 @@ export default function ExerciseLibrary() {
         >
           All
         </button>
-        {muscleGroups.map(m => (
+        {(muscleGroups || []).map(m => (
           <button
             key={m}
             onClick={() => setSelectedMuscle(selectedMuscle === m ? '' : m)}
@@ -167,17 +172,32 @@ export default function ExerciseLibrary() {
       {/* Exercise List */}
       {!loading && search.trim() && (
         <div className="space-y-1">
-          {filtered.map(ex => (
-            <div key={ex.id} className="glass-card rounded-xl px-4 py-3 flex items-center justify-between">
-              <div>
-                <span className="text-sm font-medium text-white">{ex.name}</span>
-                {ex.isCustom && (
-                  <span className="ml-2 text-[10px] text-wf-red uppercase tracking-wider font-semibold">Custom</span>
-                )}
-              </div>
-              <span className="text-[10px] text-wf-gray-500 uppercase tracking-wider">{ex.muscle}</span>
-            </div>
-          ))}
+          {filtered.map(ex => {
+            const detailUrl = DETAIL_PAGES[ex.name];
+            const Row = detailUrl ? 'button' : 'div';
+            return (
+              <Row
+                key={ex.id}
+                {...(detailUrl ? { onClick: () => navigate(detailUrl) } : {})}
+                className={`w-full glass-card rounded-xl px-4 py-3 flex items-center justify-between text-left ${detailUrl ? 'active:scale-[0.98] transition-transform cursor-pointer' : ''}`}
+              >
+                <div>
+                  <span className="text-sm font-medium text-white">{ex.name}</span>
+                  {ex.isCustom && (
+                    <span className="ml-2 text-[10px] text-wf-red uppercase tracking-wider font-semibold">Custom</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-wf-gray-500 uppercase tracking-wider">{ex.muscle}</span>
+                  {detailUrl && (
+                    <svg className="w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                    </svg>
+                  )}
+                </div>
+              </Row>
+            );
+          })}
           {filtered.length === 0 && (
             <p className="text-center text-wf-gray-500 text-sm py-8">No exercises found</p>
           )}
@@ -191,21 +211,36 @@ export default function ExerciseLibrary() {
             <div key={muscle} className="mb-4">
               <h3 className="text-xs text-wf-gray-500 uppercase tracking-widest font-medium mb-2">{muscle}</h3>
               <div className="space-y-1">
-                {exs.map(ex => (
-                  <div key={ex.id} className="glass-card rounded-xl px-4 py-3 flex items-center justify-between">
-                    <div>
-                      <span className="text-sm font-medium text-white">{ex.name}</span>
-                      {ex.isCustom && (
-                        <span className="ml-2 text-[10px] text-wf-red uppercase tracking-wider font-semibold">Custom</span>
-                      )}
-                    </div>
-                    <div className="flex gap-1 flex-wrap justify-end">
-                      {ex.tags.slice(0, 3).map(tag => (
-                        <span key={tag} className="text-[9px] text-wf-gray-600 bg-white/5 rounded-full px-2 py-0.5">{tag}</span>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+                {exs.map(ex => {
+                  const detailUrl = DETAIL_PAGES[ex.name];
+                  const Row = detailUrl ? 'button' : 'div';
+                  return (
+                    <Row
+                      key={ex.id}
+                      {...(detailUrl ? { onClick: () => navigate(detailUrl) } : {})}
+                      className={`w-full glass-card rounded-xl px-4 py-3 flex items-center justify-between text-left ${detailUrl ? 'active:scale-[0.98] transition-transform cursor-pointer' : ''}`}
+                    >
+                      <div>
+                        <span className="text-sm font-medium text-white">{ex.name}</span>
+                        {ex.isCustom && (
+                          <span className="ml-2 text-[10px] text-wf-red uppercase tracking-wider font-semibold">Custom</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex gap-1 flex-wrap justify-end">
+                          {ex.tags.slice(0, 3).map(tag => (
+                            <span key={tag} className="text-[9px] text-wf-gray-600 bg-white/5 rounded-full px-2 py-0.5">{tag}</span>
+                          ))}
+                        </div>
+                        {detailUrl && (
+                          <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                          </svg>
+                        )}
+                      </div>
+                    </Row>
+                  );
+                })}
               </div>
             </div>
           ))}

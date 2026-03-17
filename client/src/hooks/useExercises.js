@@ -8,6 +8,7 @@ let muscleGroupCache = null;
 export function useExercises() {
   const [exercises, setExercises] = useState(exerciseCache || []);
   const [muscleGroups, setMuscleGroups] = useState(muscleGroupCache || []);
+
   const [loading, setLoading] = useState(!exerciseCache);
 
   useEffect(() => {
