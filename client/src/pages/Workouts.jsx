@@ -711,8 +711,8 @@ export default function Workouts() {
               </button>
               <div className="border-t border-white/5 mx-2" />
               <button
-                className="w-full text-left rounded-xl p-3.5 flex items-center gap-3.5 opacity-50 cursor-not-allowed"
-                disabled
+                onClick={() => { setShowCreateMenu(false); navigate('/workouts/ai'); }}
+                className="w-full text-left rounded-xl p-3.5 flex items-center gap-3.5 active:scale-[0.98] transition-all hover:bg-white/5 active:bg-white/10"
               >
                 <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center shrink-0">
                   <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -721,8 +721,11 @@ export default function Workouts() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <h4 className="text-sm font-semibold text-white">Create a Workout for Me</h4>
-                  <p className="text-xs text-wf-gray-400 mt-0.5">Coming soon</p>
+                  <p className="text-xs text-wf-gray-400 mt-0.5">AI-powered personalized workout</p>
                 </div>
+                <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
               </button>
             </div>
           </div>
