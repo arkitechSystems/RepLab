@@ -101,6 +101,16 @@ CREATE TABLE IF NOT EXISTS user_metrics (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS ai_usage (
+  id SERIAL PRIMARY KEY,
+  user_id INT REFERENCES users(id),
+  input_tokens INT DEFAULT 0,
+  output_tokens INT DEFAULT 0,
+  model TEXT,
+  cost_cents NUMERIC DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS admin_settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL

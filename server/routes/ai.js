@@ -80,6 +80,14 @@ Rules:
 
     const text = message.content[0]?.text || '';
 
+    // Log usage — Haiku pricing: $0.25/M input, $1.25/M output
+    const inputTokens = message.usage?.input_tokens || 0;
+    const outputTokens = message.usage?.output_tokens || 0;
+    const costCents = (inputTokens * 0.000025) + (outputTokens * 0.000125);
+    try {
+      await db.logAIUsage(req.userId, inputTokens, outputTokens, 'claude-haiku-4-5', Math.round(costCents * 10000) / 10000);
+    } catch {}
+
     // Parse JSON from response
     let workout;
     try {

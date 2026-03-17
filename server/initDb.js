@@ -39,6 +39,16 @@ export default async function initDb() {
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMPTZ`);
 
+  await pool.query(`CREATE TABLE IF NOT EXISTS ai_usage (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id),
+    input_tokens INT DEFAULT 0,
+    output_tokens INT DEFAULT 0,
+    model TEXT,
+    cost_cents NUMERIC DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  )`);
+
   // New tables for admin features
   await pool.query(`CREATE TABLE IF NOT EXISTS feedback (
     id SERIAL PRIMARY KEY,

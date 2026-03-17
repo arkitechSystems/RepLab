@@ -600,6 +600,36 @@ const db = {
     };
   },
 
+  // AI usage
+  async logAIUsage(userId, inputTokens, outputTokens, model, costCents) {
+    await pool.query(
+      'INSERT INTO ai_usage (user_id, input_tokens, output_tokens, model, cost_cents) VALUES ($1, $2, $3, $4, $5)',
+      [userId, inputTokens, outputTokens, model, costCents]
+    );
+  },
+
+  async getAIUsageStats() {
+    const { rows: [total] } = await pool.query('SELECT COUNT(*) as count, COALESCE(SUM(input_tokens),0) as input, COALESCE(SUM(output_tokens),0) as output, COALESCE(SUM(cost_cents),0) as cost FROM ai_usage');
+    const { rows: [today] } = await pool.query("SELECT COUNT(*) as count, COALESCE(SUM(cost_cents),0) as cost FROM ai_usage WHERE created_at::date = CURRENT_DATE");
+    const { rows: [month] } = await pool.query("SELECT COUNT(*) as count, COALESCE(SUM(cost_cents),0) as cost FROM ai_usage WHERE created_at >= date_trunc('month', CURRENT_DATE)");
+    const { rows: recent } = await pool.query(`
+      SELECT a.*, u.email, u.first_name, u.last_name
+      FROM ai_usage a LEFT JOIN users u ON a.user_id = u.id
+      ORDER BY a.created_at DESC LIMIT 50
+    `);
+    return {
+      totalRequests: parseInt(total.count),
+      totalInputTokens: parseInt(total.input),
+      totalOutputTokens: parseInt(total.output),
+      totalCostCents: parseFloat(total.cost),
+      todayRequests: parseInt(today.count),
+      todayCostCents: parseFloat(today.cost),
+      monthRequests: parseInt(month.count),
+      monthCostCents: parseFloat(month.cost),
+      recent,
+    };
+  },
+
   // Feedback
   async saveFeedback(userId, type, message) {
     await pool.query('INSERT INTO feedback (user_id, type, message) VALUES ($1, $2, $3)', [userId, type, message]);

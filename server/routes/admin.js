@@ -522,6 +522,11 @@ router.get('/', adminAuth, async (req, res) => {
       <div class="card-title">Pending Builds</div>
       <div class="card-desc">Track progress on features, integrations, and requirements needed for launch.</div>
     </a>
+    <a class="card glass" href="/admin/ai-usage">
+      <div class="card-icon">🤖</div>
+      <div class="card-title">AI Usage</div>
+      <div class="card-desc">Track Claude API usage, costs, and request history.</div>
+    </a>
     <a class="card glass" href="/admin/feedback">
       <div class="card-icon">💬</div>
       <div class="card-title">Feedback</div>
@@ -1857,6 +1862,88 @@ router.post('/builds/update', express.urlencoded({ extended: false }), adminAuth
     saved[req.body.name] = req.body.status;
     await db.setAdminSetting('build_statuses', JSON.stringify(saved));
     res.redirect('/admin/builds');
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// AI Usage Tracking
+// ============================================================
+router.get('/ai-usage', adminAuth, async (req, res) => {
+  try {
+    const stats = await db.getAIUsageStats();
+    const fmt = (cents) => '$' + (cents / 100).toFixed(4);
+    const fmtUsd = (cents) => '$' + (cents / 100).toFixed(2);
+
+    const rows = stats.recent.map((r, i) => {
+      const name = [r.first_name, r.last_name].filter(Boolean).join(' ') || r.email || 'Unknown';
+      const date = new Date(r.created_at).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', year: 'numeric' });
+      const time = new Date(r.created_at).toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' });
+      return `<tr>
+        <td>${i + 1}</td>
+        <td>${esc(name)}</td>
+        <td>${r.model || '—'}</td>
+        <td>${r.input_tokens?.toLocaleString() || 0}</td>
+        <td>${r.output_tokens?.toLocaleString() || 0}</td>
+        <td>${fmt(parseFloat(r.cost_cents || 0))}</td>
+        <td>${date} <span style="color:#888;">${time} CT</span></td>
+      </tr>`;
+    }).join('');
+
+    res.send(adminPage('AI Usage', `
+  <div class="breadcrumb"><a href="/admin">Dashboard</a> / AI Usage</div>
+  <div class="header">
+    <h1>Admin Dashboard</h1>
+    <h2>AI Usage Tracking</h2>
+    <p>Claude API usage and costs</p>
+  </div>
+  <div class="stats" style="margin-top:8px;">
+    <div class="stat glass">
+      <div class="value">${stats.totalRequests}</div>
+      <div class="label">Total Requests</div>
+    </div>
+    <div class="stat glass">
+      <div class="value">${stats.todayRequests}</div>
+      <div class="label">Today</div>
+    </div>
+    <div class="stat glass">
+      <div class="value">${stats.monthRequests}</div>
+      <div class="label">This Month</div>
+    </div>
+    <div class="stat glass">
+      <div class="value" style="-webkit-text-fill-color:#4ade80;">${fmtUsd(stats.todayCostCents)}</div>
+      <div class="label">Cost Today</div>
+    </div>
+    <div class="stat glass">
+      <div class="value" style="-webkit-text-fill-color:#4ade80;">${fmtUsd(stats.monthCostCents)}</div>
+      <div class="label">Cost This Month</div>
+    </div>
+    <div class="stat glass">
+      <div class="value" style="-webkit-text-fill-color:#4ade80;">${fmtUsd(stats.totalCostCents)}</div>
+      <div class="label">Cost All Time</div>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat glass">
+      <div class="value" style="font-size:20px;">${stats.totalInputTokens.toLocaleString()}</div>
+      <div class="label">Total Input Tokens</div>
+    </div>
+    <div class="stat glass">
+      <div class="value" style="font-size:20px;">${stats.totalOutputTokens.toLocaleString()}</div>
+      <div class="label">Total Output Tokens</div>
+    </div>
+  </div>
+  <h3 style="font-size:16px;font-weight:700;margin-bottom:12px;color:rgba(255,255,255,0.7);">Recent Requests</h3>
+  <div class="glass table-wrap" style="border-radius:16px;">
+  <table>
+    <thead><tr><th>#</th><th>User</th><th>Model</th><th>Input Tokens</th><th>Output Tokens</th><th>Cost</th><th>Date</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="7" style="text-align:center;color:rgba(255,255,255,0.3);">No AI requests yet</td></tr>'}</tbody>
+  </table>
+  </div>
+  ${helpBlock('AI Usage tracks every request made to the Claude API through the AI Workout Generator. Each request logs the user who made it, the model used (currently Claude Haiku for cost efficiency), the number of input and output tokens consumed, the calculated cost, and the timestamp. Costs are calculated using Anthropic pricing: $0.25 per million input tokens and $1.25 per million output tokens for Haiku. A typical workout generation costs approximately $0.001 (one-tenth of a cent). The stats cards show request counts and costs for today, this month, and all time. Use this page to monitor usage patterns and ensure costs stay within budget. If costs are higher than expected, check if any users are generating an unusually high number of workouts. Consider adding per-user daily limits if needed.')}
+    `));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
