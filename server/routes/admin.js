@@ -488,10 +488,51 @@ router.get('/', adminAuth, async (req, res) => {
     activeUsers7d = active.last7d;
   } catch {}
 
+  // Read version from client
+  let appVersion = '—';
+  try {
+    const fs = await import('fs');
+    const path = await import('path');
+    const { fileURLToPath } = await import('url');
+    const __dir = path.dirname(fileURLToPath(import.meta.url));
+    const versionPath = path.join(__dir, '..', '..', 'client', 'src', 'version.js');
+    const content = fs.readFileSync(versionPath, 'utf-8');
+    const match = content.match(/APP_VERSION\s*=\s*['"](.+?)['"]/);
+    if (match) appVersion = match[1];
+  } catch {}
+
+  // Get app size (client dist folder)
+  let appSize = '—';
+  try {
+    const fs = await import('fs');
+    const path = await import('path');
+    const { fileURLToPath } = await import('url');
+    const __dir = path.dirname(fileURLToPath(import.meta.url));
+    const distPath = path.join(__dir, '..', '..', 'client', 'dist');
+    function dirSize(dirPath) {
+      let size = 0;
+      for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
+        const full = path.join(dirPath, entry.name);
+        if (entry.isDirectory()) size += dirSize(full);
+        else size += fs.statSync(full).size;
+      }
+      return size;
+    }
+    const bytes = dirSize(distPath);
+    if (bytes > 1024 * 1024) appSize = (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    else appSize = (bytes / 1024).toFixed(0) + ' KB';
+  } catch {}
+
   res.send(adminPage('Dashboard', `
-  <div class="header">
-    <h1>Admin Dashboard</h1>
-    <p>WillFit administration panel</p>
+  <div class="header" style="display:flex;justify-content:space-between;align-items:flex-start;">
+    <div>
+      <h1>Admin Dashboard</h1>
+      <p>WillFit administration panel</p>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:14px;font-weight:700;color:#fff;">v${appVersion}</div>
+      <div style="font-size:11px;color:#6b7280;margin-top:2px;">App size: ${appSize}</div>
+    </div>
   </div>
   <div class="stats" style="margin-top:8px;">
     <div class="stat glass">
