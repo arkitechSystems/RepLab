@@ -837,6 +837,20 @@ router.get('/users', adminAuth, async (req, res) => {
       <div class="label">Phone Signups</div>
     </div>
   </div>
+  <div class="stats">
+    <div class="stat glass">
+      <div class="value" style="-webkit-text-fill-color:#4ade80;">$0.00</div>
+      <div class="label">Revenue Today</div>
+    </div>
+    <div class="stat glass">
+      <div class="value" style="-webkit-text-fill-color:#4ade80;">$0.00</div>
+      <div class="label">Revenue This Month</div>
+    </div>
+    <div class="stat glass">
+      <div class="value" style="-webkit-text-fill-color:#4ade80;">$0.00</div>
+      <div class="label">Revenue YTD</div>
+    </div>
+  </div>
   <div class="glass table-wrap" style="border-radius:16px;width:98vw;position:relative;left:50%;transform:translateX(-50%);">
   <table>
     <thead>
