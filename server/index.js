@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
+import sanitize from './middleware/sanitize.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import initDb from './initDb.js';
@@ -35,6 +36,7 @@ const corsOptions = process.env.NODE_ENV === 'production'
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
+app.use(sanitize); // Strip XSS from all request inputs
 
 // Rate limiting
 const authLimiter = rateLimit({

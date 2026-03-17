@@ -435,6 +435,12 @@ ${body}
 </html>`;
 }
 
+// Escape HTML entities to prevent XSS in admin dashboard output
+function esc(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 function helpBlock(text) {
   const id = 'help-' + Math.random().toString(36).slice(2, 8);
   return `<div style="margin-top:32px;padding:20px 24px;border-top:1px solid rgba(255,255,255,0.06);cursor:pointer;" onclick="document.getElementById('${id}').style.display='flex'">
@@ -597,7 +603,7 @@ router.get('/users', adminAuth, async (req, res) => {
           const val = u[k];
           if (val == null) return '<td>—</td>';
           if (k === 'createdAt' || k.endsWith('At')) return `<td>${new Date(val).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', year: 'numeric' })} <span style="color:#888;">${new Date(val).toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' })} CT</span></td>`;
-          return `<td>${val}</td>`;
+          return `<td>${esc(val)}</td>`;
         }).join('');
         const deleteBtn = `<td style="text-align:center;">
           <button onclick="deleteUser(${u.id}, '${(u.email || u.phone || 'User #' + u.id).replace(/'/g, "\\'")}')" class="delete-btn" title="Delete user">
@@ -827,14 +833,14 @@ router.get('/analytics', adminAuth, async (req, res) => {
     }
     const topWorkouts = Object.entries(workoutCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
     const topWorkoutRows = topWorkouts.map(([name, count], i) => `
-      <tr><td>${i + 1}</td><td>${name}</td><td>${count}</td></tr>`).join('');
+      <tr><td>${i + 1}</td><td>${esc(name)}</td><td>${count}</td></tr>`).join('');
 
     // Recent activity (last 20 sessions)
     const recentRows = sessions.slice(0, 20).map((s) => {
       const name = [s.firstName, s.lastName].filter(Boolean).join(' ') || s.email || s.username || `User #${s.userId}`;
       return `
       <tr>
-        <td>${name}</td>
+        <td>${esc(name)}</td>
         <td>${s.templateName || '—'}</td>
         <td>${s.completed ? '<span style="color: #22c55e; font-weight: 600;">Completed</span>' : '<span style="color: #888;">In Progress</span>'}</td>
         <td>${new Date(s.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
@@ -919,9 +925,9 @@ router.get('/feedback', adminAuth, async (req, res) => {
         : '<span style="background:rgba(59,130,246,0.15);color:#60a5fa;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">Idea</span>';
       return `<tr>
         <td>${i + 1}</td>
-        <td>${name}</td>
+        <td>${esc(name)}</td>
         <td>${typeBadge}</td>
-        <td style="max-width:400px;word-wrap:break-word;">${f.message}</td>
+        <td style="max-width:400px;word-wrap:break-word;">${esc(f.message)}</td>
         <td>${date} <span style="color:#888;">${time} CT</span></td>
       </tr>`;
     }).join('');
@@ -1180,7 +1186,7 @@ router.get('/announcements', adminAuth, async (req, res) => {
       const date = new Date(a.created_at).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', year: 'numeric' });
       return `<tr>
         <td>${a.id}</td>
-        <td style="max-width:400px;word-wrap:break-word;">${a.message}</td>
+        <td style="max-width:400px;word-wrap:break-word;">${esc(a.message)}</td>
         <td>${statusBadge}</td>
         <td>${date}</td>
         <td>
@@ -1504,7 +1510,7 @@ router.get('/active', adminAuth, async (req, res) => {
       const time = new Date(u.last_session).toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' });
       return `<tr>
         <td>${i + 1}</td>
-        <td>${name}</td>
+        <td>${esc(name)}</td>
         <td>${u.email || '—'}</td>
         <td>${date} <span style="color:#888;">${time} CT</span></td>
       </tr>`;
