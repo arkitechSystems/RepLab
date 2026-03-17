@@ -399,10 +399,20 @@ function adminPage(title, body) {
   <a href="/admin" style="text-decoration:none;"><div class="logo" style="margin:0;color:#fff;">WILL<span style="color:#ef4444;">FIT</span></div></a>
   <div style="display:flex;align-items:center;gap:8px;">
     <a href="/admin" style="color:rgba(255,255,255,0.5);font-size:12px;font-weight:600;text-decoration:none;padding:8px 14px;border-radius:8px;transition:all 0.2s;" onmouseover="this.style.color='#fff';this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.color='rgba(255,255,255,0.5)';this.style.background='none'">Home</a>
-    <button onclick="document.getElementById('pw-modal').style.display=document.getElementById('pw-modal').style.display==='flex'?'none':'flex'" style="color:rgba(255,255,255,0.5);font-size:12px;font-weight:600;background:none;border:none;cursor:pointer;padding:8px 14px;border-radius:8px;font-family:inherit;transition:all 0.2s;" onmouseover="this.style.color='#fff';this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.color='rgba(255,255,255,0.5)';this.style.background='none'">Change Password</button>
+    <div style="position:relative;">
+      <button onclick="var d=document.getElementById('settings-dropdown');d.style.display=d.style.display==='block'?'none':'block'" style="color:rgba(255,255,255,0.5);font-size:12px;font-weight:600;background:none;border:none;cursor:pointer;padding:8px 14px;border-radius:8px;font-family:inherit;transition:all 0.2s;display:flex;align-items:center;gap:4px;" onmouseover="this.style.color='#fff';this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.color='rgba(255,255,255,0.5)';this.style.background='none'">
+        Settings
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+      </button>
+      <div id="settings-dropdown" style="display:none;position:absolute;right:0;top:100%;margin-top:4px;background:rgba(20,20,20,0.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:4px;min-width:180px;box-shadow:0 8px 32px rgba(0,0,0,0.4);">
+        <button onclick="document.getElementById('settings-dropdown').style.display='none';document.getElementById('pw-modal').style.display='flex'" style="width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:rgba(255,255,255,0.7);font-size:12px;font-weight:600;cursor:pointer;border-radius:8px;font-family:inherit;" onmouseover="this.style.background='rgba(255,255,255,0.08)';this.style.color='#fff'" onmouseout="this.style.background='none';this.style.color='rgba(255,255,255,0.7)'">Change Password</button>
+        <button onclick="document.getElementById('settings-dropdown').style.display='none';window.location.href='/admin/forgot-password'" style="width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:rgba(255,255,255,0.7);font-size:12px;font-weight:600;cursor:pointer;border-radius:8px;font-family:inherit;" onmouseover="this.style.background='rgba(255,255,255,0.08)';this.style.color='#fff'" onmouseout="this.style.background='none';this.style.color='rgba(255,255,255,0.7)'">Reset Password</button>
+      </div>
+    </div>
     <a href="/admin/logout" style="color:#ef4444;font-size:12px;font-weight:600;text-decoration:none;padding:8px 14px;border-radius:8px;transition:all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.1)'" onmouseout="this.style.background='none'">Logout</a>
   </div>
 </nav>
+<script>document.addEventListener('click',function(e){var d=document.getElementById('settings-dropdown');if(d&&d.style.display==='block'&&!e.target.closest('[onclick*="settings-dropdown"]')&&!d.contains(e.target))d.style.display='none';});</script>
 <div style="height:56px;"></div>
 <div class="container">
 <!-- Change Password Modal -->
@@ -1584,7 +1594,7 @@ router.get('/subscriptions', adminAuth, (req, res) => {
     <h3 style="font-size:20px;font-weight:700;margin-bottom:12px;">Coming Soon</h3>
     <p style="color:rgba(255,255,255,0.4);font-size:14px;max-width:400px;margin:0 auto;line-height:1.8;">Subscription management will appear here when paid plans are launched. This will include user plan management, cancellations, and billing history.</p>
   </div>
-  ${helpBlock('The Subscription Manager will allow you to view and manage individual user subscriptions once paid plans are live. Features will include: viewing each user\'s current plan (Free, Pro, or Lifetime); manually upgrading or downgrading a user\'s plan for customer support situations; issuing refunds or credits through Stripe; viewing payment history and invoice details for each user; canceling subscriptions on behalf of users who request it; and identifying users whose payments have failed so you can send them a reminder. This page integrates with Stripe\'s customer and subscription APIs. Until paid plans are configured, this page serves as a placeholder. To begin accepting payments, set up Stripe Connect, create subscription products, and add the billing routes to the server.')}`));
+  ${helpBlock('The Subscription Manager will allow you to view and manage individual user subscriptions once paid plans are live. Features will include: viewing each user\'s current plan (Free, Pro, or Elite); manually upgrading or downgrading a user\'s plan for customer support situations; issuing refunds or credits through Stripe; viewing payment history and invoice details for each user; canceling subscriptions on behalf of users who request it; and identifying users whose payments have failed so you can send them a reminder. This page integrates with Stripe\'s customer and subscription APIs. Until paid plans are configured, this page serves as a placeholder. To begin accepting payments, set up Stripe Connect, create subscription products, and add the billing routes to the server.')}`));
 });
 
 // ============================================================
@@ -1593,9 +1603,8 @@ router.get('/subscriptions', adminAuth, (req, res) => {
 const PENDING_BUILDS = [
   // Payments & Monetization
   { category: 'Payments & Monetization', name: 'Stripe Integration', desc: 'Subscription billing, one-time purchases, webhooks for payment events', status: 'not_started' },
-  { category: 'Payments & Monetization', name: 'Subscription Tiers (Free/Pro/Lifetime)', desc: 'Feature gating based on user plan with upgrade prompts', status: 'not_started' },
-  { category: 'Payments & Monetization', name: 'Apple In-App Purchases', desc: 'Required for selling through iOS app — Apple takes 15-30%', status: 'not_started' },
-  { category: 'Payments & Monetization', name: 'Receipt Validation', desc: 'Verify App Store receipts server-side to prevent fraud', status: 'not_started' },
+  { category: 'Payments & Monetization', name: 'Subscription Tiers (Free/Pro/Elite)', desc: 'Feature gating based on user plan — Free (basic), Pro (advanced features), Elite (everything + priority)', status: 'not_started' },
+  { category: 'Payments & Monetization', name: 'Web-to-App Pro Upgrade Flow', desc: 'In-app screen directing users to will-fit.shop to subscribe via Stripe — avoids Apple\'s 15-30% cut', status: 'not_started' },
 
   // AI Features
   { category: 'AI Features (Claude API)', name: 'AI Workout Generator', desc: 'Generate personalized workouts based on user goals, experience, equipment, and PR history using Claude API', status: 'not_started' },
@@ -1636,6 +1645,11 @@ const PENDING_BUILDS = [
   { category: 'Analytics & Growth', name: 'Google Analytics / Mixpanel', desc: 'Detailed user behavior tracking beyond the admin dashboard', status: 'not_started' },
   { category: 'Analytics & Growth', name: 'A/B Testing Framework', desc: 'Test different onboarding flows, pricing pages, and UI variants', status: 'not_started' },
   { category: 'Analytics & Growth', name: 'Referral Program', desc: 'Reward users for inviting friends with credits or free months', status: 'not_started' },
+
+  // Optional
+  { category: 'Optional', name: 'Apple In-App Purchases', desc: 'Native iOS IAP for in-app subscriptions — Apple takes 15-30%. Optional if using web-only Stripe payments and directing users to will-fit.shop', status: 'not_started' },
+  { category: 'Optional', name: 'Receipt Validation', desc: 'Verify App Store receipts server-side to prevent fraud — only needed if using Apple IAP', status: 'not_started' },
+  { category: 'Optional', name: 'Google Play Billing', desc: 'Native Android IAP if an Android app is built — Google takes 15-30%', status: 'not_started' },
 ];
 
 router.get('/builds', adminAuth, async (req, res) => {
