@@ -180,7 +180,7 @@ export default function WorkoutSession() {
       updated[exerciseName] = [...(updated[exerciseName] || [])];
       updated[exerciseName][setIdx] = {
         ...updated[exerciseName][setIdx],
-        [field]: value === '' ? '' : Number(value),
+        [field]: field === 'setType' ? value : (value === '' ? '' : Number(value)),
       };
       return updated;
     });

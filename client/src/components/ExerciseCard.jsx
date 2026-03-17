@@ -4,6 +4,22 @@ import { useExercises, getSubstitutesFromList } from '../hooks/useExercises.js';
 import VideoPlayerModal from './VideoPlayerModal.jsx';
 import { iosFocusRef } from '../utils/iosFocus.js';
 
+const SET_TYPES = [
+  { value: 'warm_up',      short: 'WU',   label: 'Warm Up' },
+  { value: 'touch_up',     short: 'TU',   label: 'Touch Up' },
+  { value: 'straight',     short: 'REG',  label: 'Regular' },
+  { value: 'drop',         short: 'DS',   label: 'Drop Set' },
+  { value: 'rest_pause',   short: 'RP',   label: 'Rest-Pause Set' },
+  { value: 'superset',     short: 'SS',   label: 'Super Set' },
+  { value: 'alternating',  short: 'Alt',  label: 'Alternating Set' },
+  { value: 'giant',        short: 'Gia',  label: 'Giant Set' },
+  { value: 'pre_exhaust',  short: 'PrEx', label: 'Pre-Exhaust' },
+];
+
+function getSetTypeShort(value) {
+  return SET_TYPES.find(t => t.value === value)?.short || 'REG';
+}
+
 export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onSwapExercise, onAddExercise, onMoveUp, onMoveDown, note, onNoteChange }) {
   const exercisePbs = pbs?.[exercise.name] || {};
   const videoId = getExerciseVideoId(exercise.name);
@@ -168,10 +184,10 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
       <div className="px-3 pt-2 pb-1 flex items-center gap-1.5 text-[9px] text-wf-gray-500 uppercase tracking-wider">
         {!readOnly && onToggleComplete && <div className="w-7 shrink-0" />}
         <div className="w-8 shrink-0 text-center">Set</div>
+        <div className="w-14 shrink-0 text-center">Type</div>
         <div className="flex-1 text-center">Weight</div>
         <div className="w-14 shrink-0 text-center">Goal</div>
         <div className="flex-1 text-center">Actual</div>
-        <div className="w-16 shrink-0 text-right">PR</div>
       </div>
 
       {/* Set Rows */}
@@ -218,6 +234,28 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
                 {set.setNumber}
               </span>
 
+              {/* Set type dropdown — shows shorthand, dropdown lists full names */}
+              <div className="w-14 shrink-0 relative">
+                <span className="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-wf-gray-400 uppercase pointer-events-none">
+                  {getSetTypeShort(entry.setType || exercise.setType || 'straight')}
+                </span>
+                {!readOnly ? (
+                  <select
+                    value={entry.setType || exercise.setType || 'straight'}
+                    onChange={(e) => onChange?.(exercise.name, idx, 'setType', e.target.value)}
+                    className="w-full h-10 bg-transparent text-transparent rounded-lg border border-white/5 focus:outline-none appearance-none cursor-pointer"
+                  >
+                    {SET_TYPES.map(t => (
+                      <option key={t.value} value={t.value} className="bg-wf-gray-900 text-white text-sm">
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="h-10" />
+                )}
+              </div>
+
               {/* Weight input */}
               <div className="flex-1">
                 <input
@@ -256,22 +294,6 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
                   className={`w-full lcd-input rounded-lg px-2 py-2.5 text-center text-base focus:outline-none disabled:opacity-50 placeholder:text-wf-gray-700 ${isCompleted ? 'completed text-white' : isAutoFill ? 'text-wf-gray-500 italic' : 'text-white'}`}
                   disabled={readOnly}
                 />
-              </div>
-
-              {/* PR display — best reps at this weight */}
-              <div className="w-16 shrink-0 text-right">
-                {pbReps !== undefined ? (
-                  <div className="pb-badge rounded-lg px-1.5 py-1.5 inline-flex items-center gap-0.5">
-                    <svg className="w-3 h-3 text-amber-400" viewBox="0 0 24 24" fill="currentColor">
-                      <path fillRule="evenodd" d="M5.166 2.621v.858c-1.035.148-2.059.33-3.071.543a.75.75 0 00-.584.859 6.753 6.753 0 006.138 5.6 6.73 6.73 0 002.743 1.346A6.707 6.707 0 019.279 15H8.54c-1.036 0-1.875.84-1.875 1.875V19.5h-.75a.75.75 0 000 1.5h12.75a.75.75 0 000-1.5h-.75v-2.625c0-1.036-.84-1.875-1.875-1.875h-.739a6.707 6.707 0 01-1.112-3.173 6.73 6.73 0 002.743-1.347 6.753 6.753 0 006.139-5.6.75.75 0 00-.585-.858 47.077 47.077 0 00-3.07-.543V2.62a.75.75 0 00-.658-.744 49.22 49.22 0 00-6.093-.377c-2.063 0-4.096.128-6.093.377a.75.75 0 00-.657.744z" clipRule="evenodd" />
-                    </svg>
-                    <span className="text-[11px] font-bold text-amber-400 font-mono-stat">
-                      {pbReps}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="text-xs font-medium text-wf-gray-500 py-2">—</div>
-                )}
               </div>
 
               {/* Row set controls - hidden, use subheader buttons instead */}

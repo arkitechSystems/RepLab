@@ -268,23 +268,21 @@ export default function Calendar() {
                   onClick={() => handleDayTap(date)}
                   style={{ animationDelay: `${idx * 60}ms` }}
                   className={`w-full text-left rounded-xl overflow-hidden transition-all active:scale-[0.98] fade-slide-up ${
-                    dayCompleted
-                      ? 'glass-card !border-2 !border-wf-red'
-                      : dayIsToday
-                        ? 'glass-card !border-2 !border-wf-red today-glow'
-                        : 'glass-card'
+                    dayIsToday
+                      ? 'glass-card !border-2 !border-wf-red today-glow'
+                      : 'glass-card'
                   }`}
                 >
                   <div className="flex">
                     {/* Color accent bar */}
-                    <div className={`w-1 shrink-0 ${dayCompleted ? 'bg-wf-red' : color.dot}`} />
+                    <div className={`w-1 shrink-0 ${dayCompleted ? 'bg-green-500' : color.dot}`} />
                     <div className="flex-1 p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                           {/* Day circle */}
                           <div
                             className={`w-12 h-12 rounded-full flex flex-col items-center justify-center shrink-0 ${
-                              dayCompleted ? 'bg-wf-red/20 text-wf-red' : dayIsToday ? 'btn-gradient text-white' : `${color.bg} text-wf-gray-400`
+                              dayIsToday ? 'btn-gradient text-white' : dayCompleted ? 'bg-green-500/15 text-green-400' : `${color.bg} text-wf-gray-400`
                             }`}
                           >
                             <span className="text-[10px] font-medium uppercase leading-none">
@@ -301,7 +299,7 @@ export default function Calendar() {
                               {workout?.templateName || 'No workout'}
                             </h3>
                             {dayCompleted ? (
-                              <span className="text-xs text-wf-red font-medium">Complete</span>
+                              <span className="text-xs text-green-400 font-medium">Complete</span>
                             ) : dayIsToday ? (
                               <span className="text-xs text-wf-red font-medium">Today</span>
                             ) : null}
