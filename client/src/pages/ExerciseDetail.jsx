@@ -1,7 +1,11 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { getExerciseBySlug } from '../data/exercises/index.js';
+import ExerciseDetailCard from '../components/ExerciseDetailCard.jsx';
 
 export default function ExerciseDetail() {
   const navigate = useNavigate();
+  const { slug } = useParams();
+  const exercise = getExerciseBySlug(slug);
 
   return (
     <div className="px-4 pt-6 pb-24">
@@ -12,16 +16,13 @@ export default function ExerciseDetail() {
         Back
       </button>
 
-      <h1 className="text-3xl font-black text-white tracking-tight mb-1">Incline Bench Press</h1>
-      <div className="flex items-center gap-2 mb-5">
-        <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-wf-red/15 text-wf-red">Chest</span>
-        <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-white/5 text-wf-gray-400 border border-white/10">Compound</span>
-        <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-white/5 text-wf-gray-400 border border-white/10">Intermediate</span>
-      </div>
-
-      <div className="glass-card rounded-xl p-8 flex items-center justify-center">
-        <p className="text-wf-gray-500 text-sm">Coming soon</p>
-      </div>
+      {exercise ? (
+        <ExerciseDetailCard exercise={exercise} />
+      ) : (
+        <div className="text-center py-16">
+          <p className="text-wf-gray-500 text-sm">Exercise not found</p>
+        </div>
+      )}
     </div>
   );
 }

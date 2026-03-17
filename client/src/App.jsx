@@ -80,7 +80,7 @@ export default function App() {
         <Route path="/workouts/create" element={<CreateWorkout />} />
         <Route path="/workouts/ai" element={<AIWorkoutGenerator />} />
         <Route path="/exercises" element={<ExerciseLibrary />} />
-        <Route path="/exercises/incline-bench-press" element={<ExerciseDetail />} />
+        <Route path="/exercises/:slug" element={<ExerciseDetail />} />
         <Route path="/programs/create" element={<CreateProgram />} />
         <Route path="/workouts/edit/:id" element={<EditWorkout />} />
         <Route path="/history" element={<History />} />

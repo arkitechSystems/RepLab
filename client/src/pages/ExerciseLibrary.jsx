@@ -1,11 +1,10 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useExercises } from '../hooks/useExercises';
+import { getDetailSlugs } from '../data/exercises/index.js';
 
-// Exercises with detail pages (slug → true)
-const DETAIL_PAGES = {
-  'Incline Bench Press': '/exercises/incline-bench-press',
-};
+// Auto-generated from registered exercise detail pages
+const DETAIL_PAGES = getDetailSlugs();
 
 export default function ExerciseLibrary() {
   const navigate = useNavigate();
