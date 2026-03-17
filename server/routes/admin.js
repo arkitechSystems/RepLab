@@ -327,7 +327,8 @@ function adminPage(title, body) {
     .stat .label { font-size: 11px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 1.5px; margin-top: 4px; }
 
     /* Tables */
-    .table-wrap { }
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .table-wrap table { min-width: 600px; }
     .table-wrap th { position: sticky; top: 0; z-index: 1; }
     table { width: 100%; border-collapse: collapse; }
     th { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.5); text-align: left; padding: 12px 16px; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
@@ -763,7 +764,7 @@ router.get('/users', adminAuth, async (req, res) => {
       <div class="label">Phone Signups</div>
     </div>
   </div>
-  <div class="glass table-wrap" style="border-radius:16px;">
+  <div class="glass table-wrap" style="border-radius:16px;width:98vw;position:relative;left:50%;transform:translateX(-50%);">
   <table>
     <thead>
       <tr>${headerCells}</tr>
