@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import initDb from './initDb.js';
@@ -34,6 +35,38 @@ const corsOptions = process.env.NODE_ENV === 'production'
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
+
+// Rate limiting
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 15, // 15 attempts per window
+  message: { error: 'Too many attempts. Please try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 100, // 100 requests per minute
+  message: { error: 'Too many requests. Please slow down.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply strict limiter to auth endpoints (login, signup, reset)
+app.use('/auth/login', authLimiter);
+app.use('/auth/signup', authLimiter);
+app.use('/auth/request-reset', authLimiter);
+app.use('/admin/login', authLimiter);
+
+// Apply general limiter to all API routes
+app.use('/programs', apiLimiter);
+app.use('/templates', apiLimiter);
+app.use('/schedule', apiLimiter);
+app.use('/sessions', apiLimiter);
+app.use('/pbs', apiLimiter);
+app.use('/metrics', apiLimiter);
+app.use('/feedback', apiLimiter);
 
 // API Routes
 app.use('/auth', authRoutes);
