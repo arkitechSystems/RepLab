@@ -80,6 +80,16 @@ export default async function initDb() {
     ) AND sort_order = 0
   `, ["Will's Pull 1", "Will's PPL"]);
 
+  // Update warm-up superset descriptions in Will's Pull 1
+  await pool.query(`
+    UPDATE template_exercises SET exercise_description = 'Superset: Face Pulls, Straight-Arm Pulldowns, Cable Rows, Hammer Curls'
+    WHERE template_id IN (
+      SELECT t.id FROM templates t
+      JOIN programs p ON t.program_id = p.id
+      WHERE t.name = $1 AND p.name = $2 AND t.user_id IS NULL
+    ) AND sort_order IN (0, 1, 2, 3)
+  `, ["Will's Pull 1", "Will's PPL"]);
+
   // Exercises table + seed
   await pool.query(`CREATE TABLE IF NOT EXISTS exercises (
     id SERIAL PRIMARY KEY,
@@ -612,10 +622,10 @@ async function seedWillsPPL() {
         description: 'Back, Biceps, Rear Delts',
         sortOrder: 0,
         exercises: [
-          { name: 'Cable Warm Up with Rope Attachment', sets: 3, repRange: '12-15', description: 'Warm-up round 1 of 4. Rope attachment, progressively heavier each round. Superset back-to-back with Straight-Arm Pulldowns, Rows, and Hammer Curls — no rest between exercises.' },
-          { name: 'Straight-Arm Pulldowns', sets: 3, repRange: '12-15', description: 'Warm-up round 2 of 4. Rope attachment, performed immediately after Face Pulls. Focus on lat engagement and controlled movement.' },
-          { name: 'Cable Rows', sets: 3, repRange: '12-15', description: 'Warm-up round 3 of 4. Rope attachment, performed immediately after Straight-Arm Pulldowns. Increase weight each round.' },
-          { name: 'Hammer Curls (warm-up)', sets: 3, repRange: '12-15', description: 'Warm-up round 4 of 4. Performed immediately after Cable Rows to complete the warm-up circuit. Increase weight each round.' },
+          { name: 'Cable Warm Up with Rope Attachment', sets: 3, repRange: '12-15', description: 'Superset: Face Pulls, Straight-Arm Pulldowns, Cable Rows, Hammer Curls' },
+          { name: 'Straight-Arm Pulldowns', sets: 3, repRange: '12-15', description: 'Superset: Face Pulls, Straight-Arm Pulldowns, Cable Rows, Hammer Curls' },
+          { name: 'Cable Rows', sets: 3, repRange: '12-15', description: 'Superset: Face Pulls, Straight-Arm Pulldowns, Cable Rows, Hammer Curls' },
+          { name: 'Hammer Curls (warm-up)', sets: 3, repRange: '12-15', description: 'Superset: Face Pulls, Straight-Arm Pulldowns, Cable Rows, Hammer Curls' },
           { name: 'Single-Arm Cable Curls', sets: 5, repRange: '10', description: '50 total reps. Break into sets as needed to reach 50 reps per arm.' },
           { name: 'Supinated Weighted Pull-Ups', sets: 3, repRange: '6', description: 'Underhand grip pull-ups with added weight. Focus on full range of motion and controlled reps.' },
           { name: 'Barbell Shrugs', sets: 3, repRange: '10-12', description: 'Superset with Hammer Curls. Heavy shrugs targeting upper traps — squeeze and hold at the top.' },
