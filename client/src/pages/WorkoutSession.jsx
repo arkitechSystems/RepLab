@@ -41,7 +41,7 @@ export default function WorkoutSession() {
   const restDurationRef = useRef(restDuration); // ref so interval always reads current value
   const [restRemaining, setRestRemaining] = useState(null); // null = not running
   const restTimerRef = useRef(null);
-  const REST_OPTIONS = [30, 45, 60, 90, 120, 180];
+  const REST_OPTIONS = [15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180];
 
   // Keep ref in sync with state
   useEffect(() => { restDurationRef.current = restDuration; }, [restDuration]);
@@ -589,8 +589,7 @@ export default function WorkoutSession() {
         for (const [weight, newReps] of Object.entries(newWeights)) {
           const oldReps = oldWeights[weight];
           if (oldReps === undefined || newReps > oldReps) {
-            improved.push(exerciseName);
-            break;
+            improved.push({ name: exerciseName, weight: Number(weight), reps: newReps });
           }
         }
       }
@@ -684,7 +683,7 @@ export default function WorkoutSession() {
       {/* PB Celebration */}
       {newPBs && (
         <PBCelebration
-          exerciseNames={newPBs}
+          prs={newPBs}
           onDismiss={() => setNewPBs(null)}
         />
       )}
