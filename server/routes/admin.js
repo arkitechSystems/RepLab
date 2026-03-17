@@ -606,7 +606,7 @@ router.get('/users', adminAuth, async (req, res) => {
       // Pretty labels: camelCase → Title Case
       const label = (k) => k.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase());
 
-      const headerCells = `<th>#</th>` + allKeys.map((k) => `<th>${label(k)}</th>`).join('') + `<th style="text-align:center;">Actions</th>`;
+      const headerCells = `<th>#</th>` + allKeys.map((k, i) => `<th style="cursor:pointer;user-select:none;" onclick="sortTable(${i + 1})" title="Sort by ${label(k)}">${label(k)} <span style="opacity:0.3;font-size:9px;">⇅</span></th>`).join('') + `<th style="text-align:center;">Actions</th>`;
 
       const rows = users.map((u, i) => {
         const cells = allKeys.map((k) => {
@@ -634,6 +634,67 @@ router.get('/users', adminAuth, async (req, res) => {
   <a class="btn-ghost" onclick="exportExcel()" href="javascript:void(0)">Export to Excel</a>
   <a class="btn-ghost" onclick="toggleFullscreen()" href="javascript:void(0)" id="fs-btn">Fullscreen Table</a>
   <script>
+    let sortCol = -1;
+    let sortAsc = true;
+    function sortTable(colIdx) {
+      const table = document.querySelector('table');
+      const tbody = table.querySelector('tbody');
+      const rows = Array.from(tbody.querySelectorAll('tr'));
+
+      if (sortCol === colIdx) {
+        sortAsc = !sortAsc;
+      } else {
+        sortCol = colIdx;
+        sortAsc = true;
+      }
+
+      rows.sort((a, b) => {
+        const aCell = a.cells[colIdx];
+        const bCell = b.cells[colIdx];
+        if (!aCell || !bCell) return 0;
+        let aVal = aCell.textContent.trim();
+        let bVal = bCell.textContent.trim();
+
+        // Try numeric sort
+        const aNum = parseFloat(aVal.replace(/[^0-9.-]/g, ''));
+        const bNum = parseFloat(bVal.replace(/[^0-9.-]/g, ''));
+        if (!isNaN(aNum) && !isNaN(bNum)) {
+          return sortAsc ? aNum - bNum : bNum - aNum;
+        }
+
+        // Try date sort
+        const aDate = new Date(aVal);
+        const bDate = new Date(bVal);
+        if (!isNaN(aDate) && !isNaN(bDate) && aVal.length > 5) {
+          return sortAsc ? aDate - bDate : bDate - aDate;
+        }
+
+        // Treat dashes as empty (sort to end)
+        if (aVal === '—') aVal = '';
+        if (bVal === '—') bVal = '';
+
+        // String sort
+        return sortAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      });
+
+      // Re-number rows and re-append
+      rows.forEach((row, i) => {
+        row.cells[0].textContent = i + 1;
+        tbody.appendChild(row);
+      });
+
+      // Update header arrows
+      table.querySelectorAll('th span').forEach((s, i) => {
+        if (i === colIdx - 1) {
+          s.textContent = sortAsc ? '▲' : '▼';
+          s.style.opacity = '1';
+        } else {
+          s.textContent = '⇅';
+          s.style.opacity = '0.3';
+        }
+      });
+    }
+
     function exportExcel() {
       const table = document.querySelector('table');
       let csv = '';
