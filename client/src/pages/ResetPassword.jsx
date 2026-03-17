@@ -14,6 +14,15 @@ export default function ResetPassword() {
     e.preventDefault();
     setError('');
 
+    const pe = [];
+    if (password.length < 8) pe.push('at least 8 characters');
+    if (!/[A-Z]/.test(password)) pe.push('at least 1 uppercase letter');
+    if (!/[0-9]/.test(password)) pe.push('at least 1 number');
+    if (/\s/.test(password)) pe.push('no spaces');
+    if (pe.length > 0) {
+      setError('Password must have: ' + pe.join(', '));
+      return;
+    }
     if (password !== confirm) {
       setError('Passwords do not match');
       return;

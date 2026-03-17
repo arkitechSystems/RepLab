@@ -41,6 +41,16 @@ export default function Signup() {
     e.preventDefault();
     setError('');
 
+    // Password strength validation
+    const pwErrors = [];
+    if (password.length < 8) pwErrors.push('at least 8 characters');
+    if (!/[A-Z]/.test(password)) pwErrors.push('at least 1 uppercase letter');
+    if (!/[0-9]/.test(password)) pwErrors.push('at least 1 number');
+    if (/\s/.test(password)) pwErrors.push('no spaces');
+    if (pwErrors.length > 0) {
+      setError('Password must have: ' + pwErrors.join(', '));
+      return;
+    }
     if (password !== confirm) {
       setError('Passwords do not match');
       return;

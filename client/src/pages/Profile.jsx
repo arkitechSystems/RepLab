@@ -362,6 +362,15 @@ export default function Profile() {
                 onClick={async () => {
                   setPasswordError('');
                   setPasswordChanged(false);
+                  const pe = [];
+                  if (newPassword.length < 8) pe.push('at least 8 characters');
+                  if (!/[A-Z]/.test(newPassword)) pe.push('at least 1 uppercase letter');
+                  if (!/[0-9]/.test(newPassword)) pe.push('at least 1 number');
+                  if (/\s/.test(newPassword)) pe.push('no spaces');
+                  if (pe.length > 0) {
+                    setPasswordError('Password must have: ' + pe.join(', '));
+                    return;
+                  }
                   if (newPassword !== confirmNewPassword) {
                     setPasswordError('New passwords do not match');
                     return;

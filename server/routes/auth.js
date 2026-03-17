@@ -53,8 +53,13 @@ router.post('/signup', async (req, res) => {
     if (!identifier || !password) {
       return res.status(400).json({ error: 'Email or phone and password are required' });
     }
-    if (password.length < 4) {
-      return res.status(400).json({ error: 'Password must be at least 4 characters' });
+    const pwErrors = [];
+    if (password.length < 8) pwErrors.push('at least 8 characters');
+    if (!/[A-Z]/.test(password)) pwErrors.push('at least 1 uppercase letter');
+    if (!/[0-9]/.test(password)) pwErrors.push('at least 1 number');
+    if (/\s/.test(password)) pwErrors.push('no spaces');
+    if (pwErrors.length > 0) {
+      return res.status(400).json({ error: 'Password must have: ' + pwErrors.join(', ') });
     }
     if (!firstName || !firstName.trim()) {
       return res.status(400).json({ error: 'First name is required' });
@@ -214,7 +219,12 @@ router.post('/reset-password', async (req, res) => {
   try {
     const { token, password } = req.body;
     if (!token || !password) return res.status(400).json({ error: 'Token and password are required' });
-    if (password.length < 4) return res.status(400).json({ error: 'Password must be at least 4 characters' });
+    const rpErrors = [];
+    if (password.length < 8) rpErrors.push('at least 8 characters');
+    if (!/[A-Z]/.test(password)) rpErrors.push('at least 1 uppercase letter');
+    if (!/[0-9]/.test(password)) rpErrors.push('at least 1 number');
+    if (/\s/.test(password)) rpErrors.push('no spaces');
+    if (rpErrors.length > 0) return res.status(400).json({ error: 'Password must have: ' + rpErrors.join(', ') });
 
     const user = await db.findUserByResetToken(token);
     if (!user) return res.status(400).json({ error: 'Invalid or expired reset link. Please request a new one.' });
@@ -234,7 +244,12 @@ router.post('/change-password', authMiddleware, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
     if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Current and new passwords are required' });
-    if (newPassword.length < 4) return res.status(400).json({ error: 'New password must be at least 4 characters' });
+    const cpErrors = [];
+    if (newPassword.length < 8) cpErrors.push('at least 8 characters');
+    if (!/[A-Z]/.test(newPassword)) cpErrors.push('at least 1 uppercase letter');
+    if (!/[0-9]/.test(newPassword)) cpErrors.push('at least 1 number');
+    if (/\s/.test(newPassword)) cpErrors.push('no spaces');
+    if (cpErrors.length > 0) return res.status(400).json({ error: 'Password must have: ' + cpErrors.join(', ') });
 
     const user = await db.findUserById(req.userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
