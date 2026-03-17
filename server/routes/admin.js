@@ -812,21 +812,23 @@ router.get('/users', adminAuth, async (req, res) => {
     });
   </script>
   <div class="stats" style="margin-top:8px;">
-    <div class="stat glass">
+    <div class="stat glass" style="min-width:180px;">
       <div class="value">${users.length}</div>
       <div class="label">Total Users</div>
-    </div>
-    <div class="stat glass">
-      <div class="value" style="-webkit-text-fill-color:#4ade80;">${users.filter(u => (u.plan || 'Free') === 'Free').length}</div>
-      <div class="label">Free</div>
-    </div>
-    <div class="stat glass">
-      <div class="value" style="-webkit-text-fill-color:#60a5fa;">${users.filter(u => u.plan === 'Pro').length}</div>
-      <div class="label">Pro</div>
-    </div>
-    <div class="stat glass">
-      <div class="value" style="-webkit-text-fill-color:#c084fc;">${users.filter(u => u.plan === 'Elite').length}</div>
-      <div class="label">Elite</div>
+      <div style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.08);padding-top:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span style="font-size:11px;color:rgba(255,255,255,0.4);">Free</span>
+          <span style="font-size:14px;font-weight:700;color:#4ade80;">${users.filter(u => (u.plan || 'Free') === 'Free').length}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span style="font-size:11px;color:rgba(255,255,255,0.4);">Pro</span>
+          <span style="font-size:14px;font-weight:700;color:#60a5fa;">${users.filter(u => u.plan === 'Pro').length}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:11px;color:rgba(255,255,255,0.4);">Elite</span>
+          <span style="font-size:14px;font-weight:700;color:#c084fc;">${users.filter(u => u.plan === 'Elite').length}</span>
+        </div>
+      </div>
     </div>
     <div class="stat glass">
       <div class="value">${users.filter(u => u.email).length}</div>
