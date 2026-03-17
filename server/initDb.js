@@ -70,6 +70,16 @@ export default async function initDb() {
     description TEXT DEFAULT ''
   )`);
 
+  // Rename Face Pulls to Cable Warm Up in Will's Pull 1
+  await pool.query(`
+    UPDATE template_exercises SET name = 'Cable Warm Up with Rope Attachment'
+    WHERE name = 'Face Pulls' AND template_id IN (
+      SELECT t.id FROM templates t
+      JOIN programs p ON t.program_id = p.id
+      WHERE t.name = $1 AND p.name = $2 AND t.user_id IS NULL
+    ) AND sort_order = 0
+  `, ["Will's Pull 1", "Will's PPL"]);
+
   // Exercises table + seed
   await pool.query(`CREATE TABLE IF NOT EXISTS exercises (
     id SERIAL PRIMARY KEY,
@@ -602,7 +612,7 @@ async function seedWillsPPL() {
         description: 'Back, Biceps, Rear Delts',
         sortOrder: 0,
         exercises: [
-          { name: 'Face Pulls', sets: 3, repRange: '12-15', description: 'Warm-up round 1 of 4. Rope attachment, progressively heavier each round. Superset back-to-back with Straight-Arm Pulldowns, Rows, and Hammer Curls — no rest between exercises.' },
+          { name: 'Cable Warm Up with Rope Attachment', sets: 3, repRange: '12-15', description: 'Warm-up round 1 of 4. Rope attachment, progressively heavier each round. Superset back-to-back with Straight-Arm Pulldowns, Rows, and Hammer Curls — no rest between exercises.' },
           { name: 'Straight-Arm Pulldowns', sets: 3, repRange: '12-15', description: 'Warm-up round 2 of 4. Rope attachment, performed immediately after Face Pulls. Focus on lat engagement and controlled movement.' },
           { name: 'Cable Rows', sets: 3, repRange: '12-15', description: 'Warm-up round 3 of 4. Rope attachment, performed immediately after Straight-Arm Pulldowns. Increase weight each round.' },
           { name: 'Hammer Curls (warm-up)', sets: 3, repRange: '12-15', description: 'Warm-up round 4 of 4. Performed immediately after Cable Rows to complete the warm-up circuit. Increase weight each round.' },
