@@ -17,6 +17,7 @@ import adminRoutes from './routes/admin.js';
 import feedbackRoutes from './routes/feedback.js';
 import aiRoutes from './routes/ai.js';
 import exerciseRoutes from './routes/exercises.js';
+import challengeRoutes from './routes/challenges.js';
 import db from './db.js';
 import { sendDailySummaryEmail } from './email.js';
 
@@ -85,6 +86,7 @@ app.use('/admin', adminRoutes);
 app.use('/feedback', feedbackRoutes);
 app.use('/ai', aiRoutes);
 app.use('/exercises', exerciseRoutes);
+app.use('/challenges', challengeRoutes);
 
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'ok' }));

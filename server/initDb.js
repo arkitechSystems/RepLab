@@ -207,6 +207,15 @@ export default async function initDb() {
     }
   }
 
+  // Challenge entries table
+  await pool.query(`CREATE TABLE IF NOT EXISTS challenge_entries (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    challenge TEXT NOT NULL,
+    value INT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  )`);
+
   // Expand Will's PPL to 7-day cycle and 4 weeks (non-fatal if it fails)
   try {
     const { rows: pplRows } = await pool.query("SELECT id FROM programs WHERE name = $1 AND user_id IS NULL", ["Will's PPL"]);

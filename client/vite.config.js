@@ -17,6 +17,7 @@ export default defineConfig({
       '/feedback': 'http://localhost:3024',
       '/ai': 'http://localhost:3024',
       '/exercises': 'http://localhost:3024',
+      '/challenges': 'http://localhost:3024',
     },
   },
 });

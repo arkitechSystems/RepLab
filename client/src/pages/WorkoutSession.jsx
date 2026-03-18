@@ -9,6 +9,7 @@ import StickyHeader from '../components/StickyHeader';
 import { useUnsavedGuard } from '../components/UnsavedGuard';
 import PBCelebration from '../components/PBCelebration';
 import { iosFocusRef } from '../utils/iosFocus';
+import { getWeightSuggestion } from '../utils/weightSuggestion';
 
 export default function WorkoutSession() {
   const { templateId, date } = useParams();
@@ -27,6 +28,7 @@ export default function WorkoutSession() {
   const [addExerciseSearch, setAddExerciseSearch] = useState('');
   const [autoFilled, setAutoFilled] = useState(new Set()); // tracks predicted entries
   const [isCompleted, setIsCompleted] = useState(false);
+  const [weightSuggestions, setWeightSuggestions] = useState({});
   const [timerStarted, setTimerStarted] = useState(false);
   const [timerHidden, setTimerHidden] = useState(false);
   const [timerFloating, setTimerFloating] = useState(false);
@@ -170,9 +172,37 @@ export default function WorkoutSession() {
           }
         }
       })
+      .then(() => {
+        // Fetch exercise history for smart weight suggestions (non-blocking)
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [templateId, date]);
+
+  // Fetch exercise history for smart weight suggestions after template loads
+  useEffect(() => {
+    if (!template || template.isRest) return;
+    const exerciseNames = template.exercises.map(e => e.name);
+    if (exerciseNames.length === 0) return;
+
+    api('/sessions/exercise-history', {
+      method: 'POST',
+      body: JSON.stringify({ exerciseNames, limit: 3 }),
+    })
+      .then(history => {
+        const suggestions = {};
+        for (const ex of template.exercises) {
+          const exHistory = history[ex.name];
+          if (exHistory) {
+            const goalReps = ex.sets[0]?.plannedReps || 10;
+            const suggestion = getWeightSuggestion(exHistory, goalReps);
+            if (suggestion) suggestions[ex.name] = suggestion;
+          }
+        }
+        setWeightSuggestions(suggestions);
+      })
+      .catch(() => {}); // Non-fatal
+  }, [template]);
 
   function handleChange(exerciseName, setIdx, field, value) {
     setEntries((prev) => {
@@ -863,6 +893,16 @@ export default function WorkoutSession() {
               onMoveDown={idx < template.exercises.length - 1 ? () => handleMoveExercise(idx, idx + 1) : undefined}
               note={notes[exercise.name] || ''}
               onNoteChange={handleNoteChange}
+              weightSuggestion={weightSuggestions[exercise.name]}
+              onApplySuggestion={(exName, weight) => {
+                setEntries(prev => {
+                  const updated = { ...prev };
+                  updated[exName] = (updated[exName] || []).map(e => ({ ...e, weight }));
+                  return updated;
+                });
+                setWeightSuggestions(prev => { const next = { ...prev }; delete next[exName]; return next; });
+              }}
+              allWorkoutExercises={template.exercises.map(e => e.name)}
             />
           </div>
         ))}

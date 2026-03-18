@@ -562,6 +562,40 @@ const db = {
     return rows.map((r) => ({ templateId: r.template_id, date: r.date }));
   },
 
+  // Exercise history (for smart weight suggestions)
+  async getExerciseHistoryBatch(userId, exerciseNames, limit = 3) {
+    if (!exerciseNames.length) return {};
+
+    const { rows } = await pool.query(
+      `SELECT se.exercise_name, s.date, se.set_number, se.weight, se.reps
+       FROM session_entries se
+       JOIN sessions s ON se.session_id = s.id
+       WHERE s.user_id = $1
+         AND LOWER(se.exercise_name) = ANY(SELECT LOWER(unnest($2::text[])))
+         AND se.weight > 0 AND se.reps > 0
+       ORDER BY se.exercise_name, s.date DESC, se.set_number ASC`,
+      [userId, exerciseNames]
+    );
+
+    // Group by exercise name, then by session date, limit to N most recent sessions
+    const result = {};
+    for (const row of rows) {
+      const name = row.exercise_name;
+      if (!result[name]) result[name] = {};
+      const dateKey = row.date instanceof Date ? row.date.toISOString().slice(0, 10) : String(row.date).slice(0, 10);
+      if (!result[name][dateKey]) result[name][dateKey] = [];
+      result[name][dateKey].push({ setNumber: row.set_number, weight: Number(row.weight), reps: row.reps });
+    }
+
+    // Flatten: keep only the most recent N sessions per exercise
+    const output = {};
+    for (const [name, dates] of Object.entries(result)) {
+      const sortedDates = Object.keys(dates).sort().reverse().slice(0, limit);
+      output[name] = sortedDates.map(d => ({ date: d, sets: dates[d] }));
+    }
+    return output;
+  },
+
   // Personal Bests
   async getPBs(userId, templateId) {
     let query = 'SELECT * FROM personal_bests WHERE user_id = $1';
@@ -853,6 +887,35 @@ const db = {
       [userId, metrics.height, metrics.weight, metrics.bodyFat, metrics.maxBench, metrics.maxSquat, metrics.maxDeadlift]
     );
     return this.getMetrics(userId);
+  },
+  // Challenges
+  async getChallengeLeaderboard(challenge) {
+    const { rows } = await pool.query(
+      `SELECT ce.id, ce.value, ce.created_at,
+              u.id AS user_id, u.first_name, u.last_name, u.username
+       FROM challenge_entries ce
+       JOIN users u ON ce.user_id = u.id
+       WHERE ce.challenge = $1
+       ORDER BY ce.value DESC, ce.created_at ASC`,
+      [challenge]
+    );
+    return rows.map(r => ({
+      id: r.id,
+      userId: r.user_id,
+      value: r.value,
+      firstName: r.first_name,
+      lastName: r.last_name,
+      username: r.username,
+      createdAt: r.created_at,
+    }));
+  },
+
+  async postChallengeEntry(userId, challenge, value) {
+    const { rows } = await pool.query(
+      'INSERT INTO challenge_entries (user_id, challenge, value) VALUES ($1, $2, $3) RETURNING *',
+      [userId, challenge, value]
+    );
+    return rows[0];
   },
 };
 

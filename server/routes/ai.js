@@ -115,4 +115,78 @@ Rules:
   }
 });
 
+router.post('/suggest-swap', authMiddleware, async (req, res) => {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return res.status(503).json({ error: 'AI is not configured' });
+  }
+
+  try {
+    const { exerciseName, reason, currentWorkoutExercises } = req.body;
+
+    if (!exerciseName) {
+      return res.status(400).json({ error: 'exerciseName is required' });
+    }
+
+    const avoidList = (currentWorkoutExercises || []).filter(n => n !== exerciseName);
+
+    const prompt = `You are a certified personal trainer helping a user of the WillFit fitness app swap an exercise mid-workout.
+
+The user wants to replace: "${exerciseName}"
+${reason ? `Reason: ${reason}` : 'Reason: equipment unavailable'}
+${avoidList.length > 0 ? `Already in this workout (avoid duplicates): ${avoidList.join(', ')}` : ''}
+
+Suggest exactly 3 alternative exercises. Each should:
+1. Target the same primary muscle group
+2. Use different equipment than the original (since it may be taken)
+3. Not duplicate any exercise already in the workout
+
+IMPORTANT: Respond ONLY with valid JSON, no other text:
+{
+  "suggestions": [
+    { "name": "Exercise Name", "reason": "Brief explanation of why this is a good substitute" },
+    { "name": "Exercise Name", "reason": "Brief explanation" },
+    { "name": "Exercise Name", "reason": "Brief explanation" }
+  ]
+}`;
+
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+    const message = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 512,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const text = message.content[0]?.text || '';
+
+    const inputTokens = message.usage?.input_tokens || 0;
+    const outputTokens = message.usage?.output_tokens || 0;
+    const costCents = (inputTokens * 0.000025) + (outputTokens * 0.000125);
+    try {
+      await db.logAIUsage(req.userId, inputTokens, outputTokens, 'claude-haiku-4-5', Math.round(costCents * 10000) / 10000);
+    } catch {}
+
+    let result;
+    try {
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('No JSON found');
+      result = JSON.parse(jsonMatch[0]);
+    } catch {
+      return res.status(500).json({ error: 'Failed to parse AI response. Please try again.' });
+    }
+
+    if (!result.suggestions || !Array.isArray(result.suggestions)) {
+      return res.status(500).json({ error: 'AI generated an invalid response. Please try again.' });
+    }
+
+    res.json(result);
+  } catch (err) {
+    console.error('AI swap error:', err.status, err.message);
+    if (err.status === 429) {
+      return res.status(429).json({ error: 'Too many requests. Please wait a moment.' });
+    }
+    res.status(500).json({ error: 'Failed to generate suggestions. Please try again.' });
+  }
+});
+
 export default router;

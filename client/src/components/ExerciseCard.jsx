@@ -3,6 +3,7 @@ import { getExerciseVideoId, getExerciseSearchUrl } from '../utils/exerciseVideo
 import { useExercises, getSubstitutesFromList } from '../hooks/useExercises.js';
 import VideoPlayerModal from './VideoPlayerModal.jsx';
 import { iosFocusRef } from '../utils/iosFocus.js';
+import { api } from '../api.js';
 
 const SET_TYPES = [
   { value: 'warm_up',      short: 'WU',   label: 'Warm Up' },
@@ -20,7 +21,7 @@ function getSetTypeShort(value) {
   return SET_TYPES.find(t => t.value === value)?.short || 'REG';
 }
 
-export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onSwapExercise, onAddExercise, onMoveUp, onMoveDown, note, onNoteChange }) {
+export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onSwapExercise, onAddExercise, onMoveUp, onMoveDown, note, onNoteChange, weightSuggestion, onApplySuggestion, allWorkoutExercises }) {
   const exercisePbs = pbs?.[exercise.name] || {};
   const videoId = getExerciseVideoId(exercise.name);
   const { exercises: allExercises } = useExercises();
@@ -138,6 +139,42 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
           </div>
         )}
       </div>
+
+      {/* Smart Weight Suggestion Banner */}
+      {!readOnly && weightSuggestion && (
+        <div className={`px-4 py-2 border-b border-white/5 flex items-center justify-between ${
+          weightSuggestion.direction === 'up' ? 'bg-green-500/10' :
+          weightSuggestion.direction === 'hold' ? 'bg-yellow-500/10' :
+          'bg-orange-500/10'
+        }`}>
+          <div className="flex items-center gap-2 min-w-0">
+            <span className={`text-sm shrink-0 ${
+              weightSuggestion.direction === 'up' ? 'text-green-400' :
+              weightSuggestion.direction === 'hold' ? 'text-yellow-400' :
+              'text-orange-400'
+            }`}>
+              {weightSuggestion.direction === 'up' ? '\u2191' : weightSuggestion.direction === 'hold' ? '\u2192' : '\u2193'}
+            </span>
+            <div className="min-w-0">
+              <span className="text-xs text-white font-semibold">
+                {weightSuggestion.direction === 'up' ? `Try ${weightSuggestion.weight} lbs` :
+                 weightSuggestion.direction === 'hold' ? `Hold at ${weightSuggestion.weight} lbs` :
+                 `Drop to ${weightSuggestion.weight} lbs`}
+              </span>
+              <span className="text-[10px] text-wf-gray-400 ml-1.5">{weightSuggestion.reason}</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 shrink-0 ml-2">
+            <button
+              type="button"
+              onClick={() => onApplySuggestion(exercise.name, weightSuggestion.weight)}
+              className="h-6 px-2 rounded-full bg-white/10 text-[10px] font-semibold text-white uppercase tracking-wider hover:bg-white/20 active:scale-90 transition-all"
+            >
+              Apply
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Set Controls Subheader */}
       {!readOnly && onAddSet && (
@@ -430,6 +467,7 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
           setShowSwap(false);
         }}
         onClose={() => setShowSwap(false)}
+        allWorkoutExercises={allWorkoutExercises}
       />}
 
       {/* Video Player Modal */}
@@ -520,8 +558,11 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
   );
 }
 
-function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelect, onClose }) {
+function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelect, onClose, allWorkoutExercises }) {
   const substitutes = useMemo(() => getSubstitutesFromList(exerciseName, allExercises), [exerciseName, allExercises]);
+  const [aiSuggestions, setAiSuggestions] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState(null);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return substitutes;
@@ -530,6 +571,26 @@ function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelec
       e.name.toLowerCase().includes(q) || e.muscle.toLowerCase().includes(q)
     );
   }, [substitutes, search]);
+
+  const handleAISuggest = async () => {
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const result = await api('/ai/suggest-swap', {
+        method: 'POST',
+        body: JSON.stringify({
+          exerciseName,
+          reason: 'equipment_taken',
+          currentWorkoutExercises: allWorkoutExercises || [],
+        }),
+      });
+      setAiSuggestions(result.suggestions);
+    } catch (err) {
+      setAiError(err.message || 'Failed to get AI suggestions');
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   // Group into suggested (high score, same muscle) and the rest
   const suggested = filtered.filter((e) => e.score >= 12);
@@ -555,24 +616,72 @@ function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelec
           <p className="text-wf-gray-500 text-xs mb-3">
             Replacing <span className="text-white font-semibold">{exerciseName}</span>
           </p>
-          {/* Search */}
-          <div className="relative">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-            </svg>
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Search exercises..."
-              ref={iosFocusRef}
-              className="w-full glass-input rounded-xl pl-10 pr-4 py-3 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none"
-            />
+          {/* Search + AI Button */}
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+              </svg>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder="Search exercises..."
+                ref={iosFocusRef}
+                className="w-full glass-input rounded-xl pl-10 pr-4 py-3 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleAISuggest}
+              disabled={aiLoading}
+              className="shrink-0 h-[46px] px-3 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center gap-1.5 text-purple-300 text-xs font-semibold active:scale-95 transition-all disabled:opacity-50"
+            >
+              {aiLoading ? (
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+                </svg>
+              )}
+              AI
+            </button>
           </div>
         </div>
 
         {/* Exercise List */}
         <div className="flex-1 overflow-y-auto px-4 pb-6">
+          {/* AI Suggestions */}
+          {aiSuggestions && aiSuggestions.length > 0 && (
+            <>
+              <p className="text-[10px] text-purple-400 uppercase tracking-widest font-medium mt-3 mb-2 flex items-center gap-1">
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                </svg>
+                AI Suggestions
+              </p>
+              {aiSuggestions.map((s, i) => (
+                <button
+                  key={i}
+                  onClick={() => onSelect(s.name)}
+                  className="w-full text-left px-3 py-3 rounded-xl mb-1 bg-purple-500/10 border border-purple-500/20 active:scale-[0.98] transition-all"
+                >
+                  <span className="text-sm font-medium text-purple-300">{s.name}</span>
+                  <p className="text-[10px] text-wf-gray-400 mt-0.5">{s.reason}</p>
+                </button>
+              ))}
+            </>
+          )}
+
+          {aiError && (
+            <div className="mt-3 mb-2 px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20">
+              <p className="text-xs text-red-400">{aiError}</p>
+            </div>
+          )}
+
           {suggested.length > 0 && !search.trim() && (
             <>
               <p className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-medium mt-3 mb-2">Suggested Substitutes</p>
@@ -593,7 +702,7 @@ function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelec
             </>
           )}
 
-          {filtered.length === 0 && (
+          {filtered.length === 0 && !aiSuggestions && (
             <div className="text-center py-12">
               <p className="text-wf-gray-500 text-sm">No exercises found</p>
             </div>

@@ -64,6 +64,21 @@ router.get('/completed', authMiddleware, async (req, res) => {
   }
 });
 
+// Batch exercise history for smart weight suggestions
+router.post('/exercise-history', authMiddleware, async (req, res) => {
+  try {
+    const { exerciseNames, limit } = req.body;
+    if (!exerciseNames || !Array.isArray(exerciseNames)) {
+      return res.status(400).json({ error: 'exerciseNames array is required' });
+    }
+    const history = await db.getExerciseHistoryBatch(req.userId, exerciseNames, limit || 3);
+    res.json(history);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.get('/:id', authMiddleware, async (req, res) => {
   try {
     const session = await db.getSession(req.userId, Number(req.params.id));

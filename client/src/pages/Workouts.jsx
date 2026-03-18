@@ -6,6 +6,7 @@ import StickyHeader from '../components/StickyHeader';
 import { iosFocusRef } from '../utils/iosFocus';
 import TrainerProfile from '../components/TrainerProfile';
 import { getTrainers, getTrainerById } from '../data/trainers';
+import { useAuth } from '../context/AuthContext';
 
 const DAY_NAMES_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -67,6 +68,10 @@ function ProgramCard({ program, idx, onSelect, onBegin }) {
 }
 
 export default function Workouts() {
+  const { user } = useAuth();
+  const isPremium = user?.plan && user.plan !== 'Free';
+  const [showPremiumGate, setShowPremiumGate] = useState(false);
+  const [selectedChallenge, setSelectedChallenge] = useState(null);
   const [programs, setPrograms] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1020,6 +1025,70 @@ export default function Workouts() {
     );
   }
 
+  // Challenges view
+  if (selectedGroup === 'challenges') {
+    return (
+      <div>
+        <StickyHeader title="Challenges" />
+        <div className="px-4 mb-3">
+          <button
+            onClick={() => selectedChallenge ? setSelectedChallenge(null) : setSelectedGroup(null)}
+            className="inline-flex items-center gap-1 text-sm text-wf-gray-400 active:text-white transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+            </svg>
+            {selectedChallenge ? 'All Challenges' : 'All Workouts'}
+          </button>
+        </div>
+
+        {!selectedChallenge ? (
+          <div className="px-4 pb-4 space-y-3">
+            {/* Max Pushups Challenge Card */}
+            <div
+              onClick={() => setSelectedChallenge('max-pushups')}
+              className="glass-card rounded-xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
+            >
+              <div className="h-1.5 bg-gradient-to-r from-orange-500 to-yellow-500" />
+              <div className="p-4">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-orange-500" />
+                    <h4 className="text-lg font-semibold text-white">Max Pushups</h4>
+                  </div>
+                  <svg className="w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </div>
+                <p className="text-xs text-wf-gray-400 ml-4.5 mb-3">Drop and give us everything you've got. How many can you do in one set?</p>
+                <div className="flex items-center gap-3 ml-4.5">
+                  <span className="flex items-center gap-1 text-xs text-wf-gray-500">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" />
+                    </svg>
+                    1 set to failure
+                  </span>
+                  <span className="flex items-center gap-1 text-xs text-wf-gray-500">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+                    </svg>
+                    Leaderboard
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-center pt-8">
+              <p className="text-wf-gray-500 text-sm">More challenges coming soon</p>
+            </div>
+          </div>
+        ) : (
+          <MaxPushupsChallenge />
+        )}
+      </div>
+    );
+  }
+
   // Featured Workouts view
   if (selectedGroup === 'featured') {
     return (
@@ -1048,10 +1117,7 @@ export default function Workouts() {
               description: 'German Volume Training — 10 sets of 10 reps per exercise. High volume, maximum hypertrophy.',
               exercises: [
                 { name: 'Barbell Bench Press', sets: Array(10).fill({ plannedReps: 10 }), repRange: '10' },
-                { name: 'Barbell Back Squat', sets: Array(10).fill({ plannedReps: 10 }), repRange: '10' },
-                { name: 'Bent Over Rows', sets: Array(10).fill({ plannedReps: 10 }), repRange: '10' },
-                { name: 'Overhead Press', sets: Array(10).fill({ plannedReps: 10 }), repRange: '10' },
-                { name: 'Romanian Deadlift', sets: Array(10).fill({ plannedReps: 10 }), repRange: '10' },
+                { name: 'Lat Pulldowns', sets: Array(10).fill({ plannedReps: 10 }), repRange: '10' },
               ],
               isRest: false,
             })}
@@ -1080,13 +1146,13 @@ export default function Workouts() {
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
                   </svg>
-                  5 exercises
+                  2 exercises
                 </span>
                 <span className="flex items-center gap-1 text-xs text-wf-gray-500">
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 13.5V3.75m0 9.75a1.5 1.5 0 010 3m0-3a1.5 1.5 0 000 3m0 3.75V16.5m12-3V3.75m0 9.75a1.5 1.5 0 010 3m0-3a1.5 1.5 0 000 3m0 3.75V16.5m-6-9V3.75m0 3.75a1.5 1.5 0 010 3m0-3a1.5 1.5 0 000 3m0 9.75V10.5" />
                   </svg>
-                  50 total sets
+                  20 total sets
                 </span>
               </div>
               <div className="flex items-center justify-end mt-2">
@@ -1360,7 +1426,7 @@ export default function Workouts() {
 
             {/* Featured Workouts video card */}
             <div
-              onClick={() => setSelectedGroup('featured')}
+              onClick={() => isPremium ? setSelectedGroup('featured') : setShowPremiumGate(true)}
               className="w-full rounded-2xl overflow-hidden fade-slide-up relative cursor-pointer active:scale-[0.98] transition-transform"
               style={{ animationDelay: '0ms', minHeight: '140px' }}
             >
@@ -1391,11 +1457,57 @@ export default function Workouts() {
               {/* Card content */}
               <div className="relative z-10 p-5 flex flex-col justify-end h-full" style={{ minHeight: '140px' }}>
                 <div className="mt-auto">
-                  <h2 className="text-2xl font-black text-white tracking-tight drop-shadow-lg">Featured Workouts</h2>
-                  <p className="text-white/70 text-sm mt-1 drop-shadow">Watch the latest drops</p>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-2xl font-black text-white tracking-tight drop-shadow-lg">Featured Workouts</h2>
+                    {!isPremium && (
+                      <span className="px-2 py-0.5 rounded-full bg-yellow-500/20 border border-yellow-500/40 text-[10px] font-bold text-yellow-400 uppercase tracking-wider">
+                        Pro
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-white/70 text-sm mt-1 drop-shadow">
+                    {isPremium ? 'Watch the latest drops' : 'Upgrade to access featured workouts'}
+                  </p>
                 </div>
               </div>
             </div>
+
+            {/* Premium Gate Modal */}
+            {showPremiumGate && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center px-5" onClick={() => setShowPremiumGate(false)}>
+                <div className="absolute inset-0 bg-black/70" />
+                <div
+                  className="relative w-full max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl p-6 shadow-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="text-center mb-4">
+                    <div className="w-12 h-12 rounded-full bg-yellow-500/20 flex items-center justify-center mx-auto mb-3">
+                      <svg className="w-6 h-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-bold text-white">Premium Feature</h3>
+                    <p className="text-wf-gray-400 text-sm mt-2">
+                      Featured Workouts are available exclusively for Pro members. Upgrade your plan to access curated workouts from top trainers.
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowPremiumGate(false)}
+                      className="flex-1 glass-card text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+                    >
+                      Maybe Later
+                    </button>
+                    <button
+                      onClick={() => { setShowPremiumGate(false); navigate('/profile'); }}
+                      className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+                    >
+                      Upgrade
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Featured Trainers card */}
             <div
@@ -1409,6 +1521,31 @@ export default function Workouts() {
                   <div className="flex-1 min-w-0">
                     <h2 className="text-xl font-black text-white tracking-tight">Featured Trainers</h2>
                     <p className="text-wf-gray-400 text-sm mt-1">Expert-led workouts from certified trainers</p>
+                  </div>
+                  <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            {/* Challenges card */}
+            <div
+              onClick={() => setSelectedGroup('challenges')}
+              className="w-full text-left glass-card rounded-2xl overflow-hidden active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
+              style={{ animationDelay: '0ms' }}
+            >
+              <div className="h-1.5 bg-gradient-to-r from-orange-500 to-yellow-500" />
+              <div className="p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-xl font-black text-white tracking-tight">Challenges</h2>
+                      <span className="px-2 py-0.5 rounded-full bg-orange-500/15 border border-orange-500/30 text-[10px] font-bold text-orange-400 uppercase tracking-wider">
+                        New
+                      </span>
+                    </div>
+                    <p className="text-wf-gray-400 text-sm mt-1">Compete, push your limits, and earn rewards</p>
                   </div>
                   <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
@@ -1513,6 +1650,204 @@ export default function Workouts() {
 
       {renderBeginModals()}
       {renderCreateMenu()}
+    </div>
+  );
+}
+
+function MaxPushupsChallenge() {
+  const { user } = useAuth();
+  const [entries, setEntries] = useState([]);
+  const [inputValue, setInputValue] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [posting, setPosting] = useState(false);
+  const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0, ended: false });
+
+  // Countdown to Mar 20, 2026 midnight ET
+  useEffect(() => {
+    function update() {
+      const end = new Date('2026-03-20T05:00:00Z'); // midnight ET = 5am UTC
+      const now = new Date();
+      const diff = end - now;
+      if (diff <= 0) {
+        setCountdown({ days: 0, hours: 0, minutes: 0, seconds: 0, ended: true });
+        return;
+      }
+      setCountdown({
+        days: Math.floor(diff / 86400000),
+        hours: Math.floor((diff % 86400000) / 3600000),
+        minutes: Math.floor((diff % 3600000) / 60000),
+        seconds: Math.floor((diff % 60000) / 1000),
+        ended: false,
+      });
+    }
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    api('/challenges/max-pushups/leaderboard')
+      .then(setEntries)
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function handlePost() {
+    const num = parseInt(inputValue);
+    if (!num || num < 1) return;
+    setPosting(true);
+    try {
+      const updated = await api('/challenges/max-pushups', {
+        method: 'POST',
+        body: JSON.stringify({ value: num }),
+      });
+      setEntries(updated);
+      setInputValue('');
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setPosting(false);
+    }
+  }
+
+  function getInitials(entry) {
+    if (entry.firstName && entry.lastName) return `${entry.firstName[0]}${entry.lastName[0]}`.toUpperCase();
+    if (entry.firstName) return entry.firstName[0].toUpperCase();
+    if (entry.username) return entry.username[0].toUpperCase();
+    return '?';
+  }
+
+  function getDisplayName(entry) {
+    if (entry.username) return `@${entry.username}`;
+    if (entry.firstName) return entry.firstName;
+    return 'Anonymous';
+  }
+
+  const rankColors = ['text-yellow-400', 'text-gray-300', 'text-orange-400'];
+  const rankBgs = ['bg-yellow-500/20', 'bg-gray-400/20', 'bg-orange-500/20'];
+
+  return (
+    <div className="px-4 pb-24">
+      {/* Header */}
+      <div className="text-center mb-4">
+        <h2 className="text-2xl font-black text-white">Max Pushups</h2>
+        <p className="text-wf-gray-400 text-sm mt-1">How many can you do in one set? Post your best.</p>
+      </div>
+
+      {/* Countdown Timer */}
+      <div className="glass-card rounded-xl p-4 mb-5 border border-orange-500/20">
+        {countdown.ended ? (
+          <div className="text-center">
+            <p className="text-orange-400 text-sm font-bold uppercase tracking-wider">Challenge Ended</p>
+          </div>
+        ) : (
+          <>
+            <p className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-medium text-center mb-3">Challenge ends in</p>
+            <div className="flex items-center justify-center gap-3">
+              {[
+                { value: countdown.days, label: 'Days' },
+                { value: countdown.hours, label: 'Hrs' },
+                { value: countdown.minutes, label: 'Min' },
+                { value: countdown.seconds, label: 'Sec' },
+              ].map((unit) => (
+                <div key={unit.label} className="flex flex-col items-center">
+                  <div className="w-14 h-14 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+                    <span className="text-xl font-black text-white tabular-nums">{String(unit.value).padStart(2, '0')}</span>
+                  </div>
+                  <span className="text-[9px] text-wf-gray-500 uppercase tracking-wider mt-1">{unit.label}</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-[10px] text-wf-gray-500 text-center mt-3">Mar 20, 2026 at midnight ET</p>
+          </>
+        )}
+      </div>
+
+      {/* Input */}
+      <div className="glass-card rounded-xl p-4 mb-5">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
+            {user?.firstName?.[0]?.toUpperCase() || '?'}
+          </div>
+          <div className="flex-1 relative">
+            <input
+              type="number"
+              inputMode="numeric"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handlePost()}
+              placeholder="Enter your max pushups..."
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none focus:border-orange-500/50"
+            />
+          </div>
+          <button
+            onClick={handlePost}
+            disabled={posting || !inputValue}
+            className="h-11 px-4 rounded-xl bg-gradient-to-r from-orange-500 to-yellow-500 text-black text-sm font-bold active:scale-95 transition-all disabled:opacity-40"
+          >
+            {posting ? '...' : 'Post'}
+          </button>
+        </div>
+      </div>
+
+      {/* Leaderboard */}
+      <div>
+        <p className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-medium mb-3">Leaderboard</p>
+
+        {loading ? (
+          <div className="space-y-2">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="glass-skeleton rounded-xl h-16" />
+            ))}
+          </div>
+        ) : entries.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-wf-gray-500 text-sm">No entries yet. Be the first!</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {entries.map((entry, idx) => (
+              <div
+                key={entry.id}
+                className={`glass-card rounded-xl px-4 py-3 flex items-center gap-3 ${idx === 0 ? 'border border-yellow-500/20' : ''}`}
+              >
+                {/* Rank */}
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-black shrink-0 ${idx < 3 ? rankBgs[idx] : 'bg-white/5'}`}>
+                  <span className={idx < 3 ? rankColors[idx] : 'text-wf-gray-500'}>{idx + 1}</span>
+                </div>
+
+                {/* Avatar */}
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                  entry.userId === user?.id
+                    ? 'bg-gradient-to-br from-orange-500 to-yellow-500 text-white'
+                    : 'bg-white/10 text-wf-gray-300'
+                }`}>
+                  {getInitials(entry)}
+                </div>
+
+                {/* Name */}
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-semibold truncate ${entry.userId === user?.id ? 'text-orange-400' : 'text-white'}`}>
+                    {getDisplayName(entry)}
+                    {entry.userId === user?.id && <span className="text-[10px] text-wf-gray-500 ml-1.5">you</span>}
+                  </p>
+                  <p className="text-[10px] text-wf-gray-500">
+                    {new Date(entry.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </p>
+                </div>
+
+                {/* Count */}
+                <div className="text-right shrink-0">
+                  <span className={`text-xl font-black tabular-nums ${idx === 0 ? 'text-yellow-400' : 'text-white'}`}>
+                    {entry.value}
+                  </span>
+                  <p className="text-[10px] text-wf-gray-500">reps</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
