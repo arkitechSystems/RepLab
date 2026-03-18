@@ -28,7 +28,7 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 app.set('trust proxy', 1); // Render uses 1 reverse proxy — trust only the first hop
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3024;
 
 // In production, client is served from same origin (no CORS needed)
 // In development, allow Vite dev server

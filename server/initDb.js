@@ -207,6 +207,37 @@ export default async function initDb() {
     }
   }
 
+  // Expand Will's PPL to 7-day cycle: Push, Pull, Legs, Push, Pull, Legs, Rest
+  {
+    const { rows: pplRows } = await pool.query("SELECT id FROM programs WHERE name = $1 AND user_id IS NULL", ["Will's PPL"]);
+    if (pplRows.length > 0) {
+      const pplId = pplRows[0].id;
+      // Check if already expanded (look for Push 2 or Rest Day)
+      const { rows: expandedCheck } = await pool.query(
+        "SELECT id FROM templates WHERE program_id = $1 AND name IN ($2, $3)",
+        [pplId, "Will's Push 2", "Rest Day"]
+      );
+      if (expandedCheck.length === 0) {
+        await expandPPLto7Days(pplId);
+      }
+    }
+  }
+
+  // Expand Will's PPL to 4 weeks (28 days) by duplicating week 1 into weeks 2-4
+  {
+    const { rows: pplRows } = await pool.query("SELECT id FROM programs WHERE name = $1 AND user_id IS NULL", ["Will's PPL"]);
+    if (pplRows.length > 0) {
+      const pplId = pplRows[0].id;
+      const { rows: week2Check } = await pool.query(
+        "SELECT id FROM templates WHERE program_id = $1 AND name LIKE '%(Week 2)%'",
+        [pplId]
+      );
+      if (week2Check.length === 0) {
+        await expandPPLto4Weeks(pplId);
+      }
+    }
+  }
+
   // Seed ZJ's Workout if not already present
   const { rows: zjRows } = await pool.query("SELECT id FROM programs WHERE name = $1 AND user_id IS NULL", ["ZJ's Workout"]);
   if (zjRows.length === 0) {
@@ -829,6 +860,117 @@ async function seedWillsPush1(programId) {
 
     await client.query('COMMIT');
     console.log("Seeded Will's Push 1 template");
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+async function expandPPLto7Days(programId) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // First, reorder existing templates: Push=0, Pull=1, Legs=2
+    await client.query(
+      "UPDATE templates SET sort_order = 0 WHERE program_id = $1 AND name = $2",
+      [programId, "Will's Push 1"]
+    );
+    await client.query(
+      "UPDATE templates SET sort_order = 1 WHERE program_id = $1 AND name = $2",
+      [programId, "Will's Pull 1"]
+    );
+    await client.query(
+      "UPDATE templates SET sort_order = 2 WHERE program_id = $1 AND name = $2",
+      [programId, "Will's Legs 2"]
+    );
+
+    // Duplicate Push, Pull, Legs as days 4-6 (sort_order 3-5)
+    const originals = [
+      { origName: "Will's Push 1", newName: "Will's Push 2", newSort: 3 },
+      { origName: "Will's Pull 1", newName: "Will's Pull 2", newSort: 4 },
+      { origName: "Will's Legs 2", newName: "Will's Legs 2b", newSort: 5 },
+    ];
+
+    for (const { origName, newName, newSort } of originals) {
+      // Get original template
+      const { rows: [orig] } = await client.query(
+        "SELECT id, description FROM templates WHERE program_id = $1 AND name = $2",
+        [programId, origName]
+      );
+      if (!orig) continue;
+
+      // Create duplicate template
+      const { rows: [newTmpl] } = await client.query(
+        'INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES (NULL, $1, $2, $3, FALSE, $4) RETURNING id',
+        [programId, newName, orig.description, newSort]
+      );
+
+      // Copy all exercises from original
+      await client.query(
+        `INSERT INTO template_exercises (template_id, name, set_number, planned_reps, suggested_weight, sort_order, set_type, rep_range, exercise_description)
+         SELECT $1, name, set_number, planned_reps, suggested_weight, sort_order, set_type, rep_range, exercise_description
+         FROM template_exercises WHERE template_id = $2`,
+        [newTmpl.id, orig.id]
+      );
+    }
+
+    // Add Rest Day as day 7 (sort_order 6)
+    await client.query(
+      'INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES (NULL, $1, $2, $3, TRUE, $4)',
+      [programId, "Rest Day", "Recovery day", 6]
+    );
+
+    await client.query('COMMIT');
+    console.log("Expanded Will's PPL to 7-day cycle: Push, Pull, Legs, Push, Pull, Legs, Rest");
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+async function expandPPLto4Weeks(programId) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Get all week 1 templates (sort_order 0-6)
+    const { rows: week1Templates } = await client.query(
+      "SELECT id, name, description, is_rest, sort_order FROM templates WHERE program_id = $1 AND sort_order <= 6 ORDER BY sort_order",
+      [programId]
+    );
+
+    // Duplicate week 1 into weeks 2, 3, 4
+    for (let week = 2; week <= 4; week++) {
+      const offset = (week - 1) * 7;
+
+      for (const tmpl of week1Templates) {
+        const newName = tmpl.is_rest ? `Rest Day (Week ${week})` : `${tmpl.name} (Week ${week})`;
+        const newSort = tmpl.sort_order + offset;
+
+        const { rows: [newTmpl] } = await client.query(
+          'INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES (NULL, $1, $2, $3, $4, $5) RETURNING id',
+          [programId, newName, tmpl.description, tmpl.is_rest, newSort]
+        );
+
+        // Copy exercises (skip for rest days)
+        if (!tmpl.is_rest) {
+          await client.query(
+            `INSERT INTO template_exercises (template_id, name, set_number, planned_reps, suggested_weight, sort_order, set_type, rep_range, exercise_description)
+             SELECT $1, name, set_number, planned_reps, suggested_weight, sort_order, set_type, rep_range, exercise_description
+             FROM template_exercises WHERE template_id = $2`,
+            [newTmpl.id, tmpl.id]
+          );
+        }
+      }
+    }
+
+    await client.query('COMMIT');
+    console.log("Expanded Will's PPL to 4-week (28-day) program");
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
