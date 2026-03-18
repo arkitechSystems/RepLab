@@ -39,6 +39,7 @@ export default async function initDb() {
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS signup_state TEXT`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMPTZ`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_end TIMESTAMPTZ`);
 
   await pool.query(`CREATE TABLE IF NOT EXISTS ai_usage (
     id SERIAL PRIMARY KEY,

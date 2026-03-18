@@ -69,10 +69,15 @@ export function AuthProvider({ children }) {
     return data;
   }, []);
 
+  const updateUser = useCallback((newUser) => {
+    try { localStorage.setItem('willfit_user', JSON.stringify(newUser)); } catch {}
+    setUser(newUser);
+  }, []);
+
   const isAuthenticated = !!token;
 
   return (
-    <AuthContext.Provider value={{ user, token, login, signup, demo, logout, isAuthenticated }}>
+    <AuthContext.Provider value={{ user, token, login, signup, demo, logout, updateUser, isAuthenticated }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import db from '../db.js';
+import pool from '../dbPool.js';
 import crypto from 'crypto';
 import { generateToken, authMiddleware } from '../middleware/auth.js';
 import { sendWelcomeEmail, sendPasswordResetEmail, sendNewSignupNotification } from '../email.js';
@@ -42,7 +43,7 @@ function normalizePhone(value) {
 }
 
 function userResponse(user) {
-  return { id: user.id, email: user.email, phone: user.phone, firstName: user.firstName, lastName: user.lastName, username: user.username, plan: user.plan || 'Free' };
+  return { id: user.id, email: user.email, phone: user.phone, firstName: user.firstName, lastName: user.lastName, username: user.username, plan: user.plan || 'Free', trialEnd: user.trialEnd || null };
 }
 
 router.post('/signup', async (req, res) => {
@@ -261,6 +262,39 @@ router.post('/change-password', authMiddleware, async (req, res) => {
     await db.updatePassword(user.id, passwordHash);
 
     res.json({ message: 'Password changed successfully' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Start free trial
+router.post('/start-trial', authMiddleware, async (req, res) => {
+  try {
+    const { plan } = req.body;
+    if (!plan || !['Pro', 'Elite'].includes(plan)) {
+      return res.status(400).json({ error: 'Invalid plan. Choose Pro or Elite.' });
+    }
+
+    const user = await db.findUserById(req.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // Don't allow trial if already on a paid plan or already had a trial
+    if (user.plan !== 'Free') {
+      return res.status(400).json({ error: 'You are already on a paid plan.' });
+    }
+    if (user.trialEnd) {
+      return res.status(400).json({ error: 'You have already used your free trial.' });
+    }
+
+    const trialEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    await pool.query(
+      'UPDATE users SET plan = $1, trial_end = $2 WHERE id = $3',
+      [plan, trialEnd, req.userId]
+    );
+
+    const updated = await db.findUserById(req.userId);
+    res.json({ user: userResponse(updated) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });

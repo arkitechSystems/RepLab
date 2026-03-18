@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
   referral_source TEXT,
   referral_code TEXT,
   plan TEXT DEFAULT 'Free',
+  trial_end TIMESTAMPTZ,
   signup_device TEXT,
   utm_source TEXT,
   utm_medium TEXT,

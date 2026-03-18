@@ -131,7 +131,8 @@ const db = {
   async findUserById(id) {
     const { rows } = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
     if (!rows[0]) return null;
-    return { id: rows[0].id, email: rows[0].email, phone: rows[0].phone, passwordHash: rows[0].password_hash };
+    const u = rows[0];
+    return { id: u.id, email: u.email, phone: u.phone, passwordHash: u.password_hash, firstName: u.first_name, lastName: u.last_name, username: u.username, plan: u.plan || 'Free', trialEnd: u.trial_end || null };
   },
 
   async findUserByUsername(username) {
@@ -146,7 +147,7 @@ const db = {
     );
     if (!rows[0]) return null;
     const u = rows[0];
-    return { id: u.id, email: u.email, phone: u.phone, passwordHash: u.password_hash, firstName: u.first_name, lastName: u.last_name, username: u.username, plan: u.plan || 'Free', createdAt: u.created_at };
+    return { id: u.id, email: u.email, phone: u.phone, passwordHash: u.password_hash, firstName: u.first_name, lastName: u.last_name, username: u.username, plan: u.plan || 'Free', trialEnd: u.trial_end || null, createdAt: u.created_at };
   },
 
   async createUser({ email, phone, passwordHash, firstName, lastName, gender, username, referralSource, referralCode, zipCode, signupCity, signupState, signupDevice, utmSource, utmMedium, utmCampaign, utmContent, utmTerm }) {
@@ -362,12 +363,14 @@ const db = {
        ORDER BY sd.day_of_week`,
       [userId]
     );
-    return rows.map((r) => ({
-      dayOfWeek: r.day_of_week,
-      templateId: r.template_id,
-      templateName: r.template_name || 'Unknown',
-      isRest: r.is_rest || false,
-    }));
+    return rows
+      .filter((r) => r.template_id === null || r.template_name !== null)
+      .map((r) => ({
+        dayOfWeek: r.day_of_week,
+        templateId: r.template_id,
+        templateName: r.template_name || null,
+        isRest: r.is_rest || false,
+      }));
   },
 
   async setDefaultSchedule(_userId) {

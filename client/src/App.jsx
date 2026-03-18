@@ -17,6 +17,7 @@ import Profile from './pages/Profile';
 import Utilities from './pages/Utilities';
 import Welcome from './pages/Welcome';
 import ForgotPassword from './pages/ForgotPassword';
+import FreeTrialOffer from './pages/FreeTrialOffer';
 import ResetPassword from './pages/ResetPassword';
 import AIWorkoutGenerator from './pages/AIWorkoutGenerator';
 import ExerciseLibrary from './pages/ExerciseLibrary';
@@ -66,6 +67,7 @@ export default function App() {
       <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
       <Route path="/reset-password/:token" element={<PublicRoute><ResetPassword /></PublicRoute>} />
       <Route path="/welcome" element={<ProtectedRoute><Welcome /></ProtectedRoute>} />
+      <Route path="/free-trial" element={<ProtectedRoute><FreeTrialOffer /></ProtectedRoute>} />
 
       <Route
         element={

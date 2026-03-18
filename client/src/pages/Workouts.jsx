@@ -404,7 +404,7 @@ export default function Workouts() {
                       <span className="w-12 text-sm font-mono-stat text-wf-gray-500">{setIdx + 1}</span>
                       <div className="flex-1 text-center">
                         <span className="text-sm font-mono-stat text-wf-gray-400">
-                          {set.plannedWeight ? `${set.plannedWeight} lbs` : '—'}
+                          {set.suggestedWeight ? `${set.suggestedWeight} lbs` : '—'}
                         </span>
                       </div>
                       <div className="flex-1 text-center">
