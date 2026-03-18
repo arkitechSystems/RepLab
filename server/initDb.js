@@ -247,6 +247,40 @@ export default async function initDb() {
   if (zjRows.length === 0) {
     await seedZJsWorkout();
   }
+
+  // Seed or expand Mike Mentzer Workout
+  const { rows: mmRows } = await pool.query("SELECT id FROM programs WHERE name = $1 AND user_id IS NULL", ['Mike Mentzer Workout']);
+  if (mmRows.length === 0) {
+    await seedMikeMentzer();
+  } else {
+    // Expand to 28 days if still the old 4-template version
+    const mmId = mmRows[0].id;
+    const { rows: mmCount } = await pool.query("SELECT COUNT(*)::int AS cnt FROM templates WHERE program_id = $1", [mmId]);
+    if (mmCount[0].cnt < 28) {
+      try {
+        await pool.query("DELETE FROM templates WHERE program_id = $1", [mmId]);
+        await pool.query("UPDATE programs SET description = $1 WHERE id = $2", ['4-week Heavy Duty program — 4-day cycle with 1 working set to failure', mmId]);
+        await seedMikeMentzerTemplates(mmId);
+        console.log('Expanded Mike Mentzer Workout to 28 days');
+      } catch (err) {
+        console.error('Mike Mentzer expansion failed (non-fatal):', err.message);
+      }
+    }
+  }
+
+  // Expand Push, Pull, Legs to 6-week program (non-fatal)
+  try {
+    const { rows: pplBrowseRows } = await pool.query("SELECT id FROM programs WHERE name = $1 AND user_id IS NULL", ['Push, Pull, Legs']);
+    if (pplBrowseRows.length > 0) {
+      const pid = pplBrowseRows[0].id;
+      const { rows: tmplCount } = await pool.query("SELECT COUNT(*)::int AS cnt FROM templates WHERE program_id = $1", [pid]);
+      if (tmplCount[0].cnt < 42) {
+        await expandBrowsePPLto6Weeks(pid);
+      }
+    }
+  } catch (err) {
+    console.error('Browse PPL expansion failed (non-fatal):', err.message);
+  }
 }
 
 async function seedDefaults() {
@@ -261,12 +295,11 @@ async function seedDefaults() {
     );
     const programId = program.id;
 
-    const templates = [
+    // Base week template: Push, Pull, Legs, Push, Pull, Legs, Rest
+    const baseWorkouts = [
       {
         name: 'Push',
         description: 'Chest, Shoulders, Triceps',
-        isRest: false,
-        sortOrder: 0,
         exercises: [
           { name: 'Barbell Bench Press', sets: [{ reps: 10, weight: 135 }, { reps: 8, weight: 155 }, { reps: 6, weight: 175 }, { reps: 6, weight: 175 }] },
           { name: 'Incline Dumbbell Press', sets: [{ reps: 10, weight: 50 }, { reps: 10, weight: 50 }, { reps: 8, weight: 55 }] },
@@ -279,8 +312,6 @@ async function seedDefaults() {
       {
         name: 'Pull',
         description: 'Back, Rear Delts, Biceps',
-        isRest: false,
-        sortOrder: 1,
         exercises: [
           { name: 'Lat Pulldown', sets: [{ reps: 12, weight: 120 }, { reps: 10, weight: 140 }, { reps: 8, weight: 160 }] },
           { name: 'Barbell Row', sets: [{ reps: 10, weight: 135 }, { reps: 8, weight: 155 }, { reps: 8, weight: 155 }] },
@@ -293,8 +324,6 @@ async function seedDefaults() {
       {
         name: 'Legs',
         description: 'Quads, Hamstrings, Glutes, Calves',
-        isRest: false,
-        sortOrder: 2,
         exercises: [
           { name: 'Back Squat', sets: [{ reps: 10, weight: 185 }, { reps: 8, weight: 205 }, { reps: 6, weight: 225 }, { reps: 6, weight: 225 }] },
           { name: 'Romanian Deadlift', sets: [{ reps: 10, weight: 135 }, { reps: 10, weight: 155 }, { reps: 8, weight: 185 }] },
@@ -304,31 +333,44 @@ async function seedDefaults() {
           { name: 'Standing Calf Raise', sets: [{ reps: 15, weight: 140 }, { reps: 15, weight: 160 }, { reps: 12, weight: 180 }] },
         ],
       },
-      {
-        name: 'Rest',
-        description: 'Recovery Day',
-        isRest: true,
-        sortOrder: 3,
-        exercises: [],
-      },
     ];
 
-    for (const t of templates) {
-      const { rows: [tmpl] } = await client.query(
-        'INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES (NULL, $1, $2, $3, $4, $5) RETURNING id',
-        [programId, t.name, t.description, t.isRest, t.sortOrder]
-      );
+    // Generate 6 weeks: weight increases +5 lbs every 2 weeks
+    // Weeks 1-2: base, Weeks 3-4: +5, Weeks 5-6: +10
+    for (let week = 1; week <= 6; week++) {
+      const weightBonus = Math.floor((week - 1) / 2) * 5; // 0, 0, 5, 5, 10, 10
+      const weekOffset = (week - 1) * 7;
+      const weekLabel = week > 1 ? ` (Week ${week})` : '';
 
-      let exSortOrder = 0;
-      for (const ex of t.exercises) {
-        for (let i = 0; i < ex.sets.length; i++) {
-          await client.query(
-            'INSERT INTO template_exercises (template_id, name, set_number, planned_reps, suggested_weight, sort_order) VALUES ($1, $2, $3, $4, $5, $6)',
-            [tmpl.id, ex.name, i + 1, ex.sets[i].reps, ex.sets[i].weight, exSortOrder]
-          );
+      // 6 workouts per week: Push, Pull, Legs, Push, Pull, Legs
+      for (let dayIdx = 0; dayIdx < 6; dayIdx++) {
+        const base = baseWorkouts[dayIdx % 3];
+        const sortOrder = weekOffset + dayIdx;
+        const name = `${base.name}${weekLabel}`;
+
+        const { rows: [tmpl] } = await client.query(
+          'INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES (NULL, $1, $2, $3, FALSE, $4) RETURNING id',
+          [programId, name, base.description, sortOrder]
+        );
+
+        let exSortOrder = 0;
+        for (const ex of base.exercises) {
+          for (let i = 0; i < ex.sets.length; i++) {
+            await client.query(
+              'INSERT INTO template_exercises (template_id, name, set_number, planned_reps, suggested_weight, sort_order) VALUES ($1, $2, $3, $4, $5, $6)',
+              [tmpl.id, ex.name, i + 1, ex.sets[i].reps, ex.sets[i].weight + weightBonus, exSortOrder]
+            );
+          }
+          exSortOrder++;
         }
-        exSortOrder++;
       }
+
+      // Rest day at end of each week
+      const restName = week > 1 ? `Rest (Week ${week})` : 'Rest';
+      await client.query(
+        'INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES (NULL, $1, $2, $3, TRUE, $4)',
+        [programId, restName, 'Recovery Day', weekOffset + 6]
+      );
     }
 
     await client.query('COMMIT');
@@ -937,6 +979,73 @@ async function expandPPLto7Days(programId) {
   }
 }
 
+async function expandBrowsePPLto6Weeks(programId) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Get the base workout templates (Push, Pull, Legs — first 3 non-rest)
+    const { rows: originals } = await client.query(
+      "SELECT id, name, description FROM templates WHERE program_id = $1 AND is_rest = FALSE ORDER BY sort_order LIMIT 3",
+      [programId]
+    );
+
+    // Get exercises for each base template
+    const baseExercises = {};
+    for (const orig of originals) {
+      const { rows } = await client.query(
+        'SELECT name, set_number, planned_reps, suggested_weight, sort_order FROM template_exercises WHERE template_id = $1 ORDER BY sort_order, set_number',
+        [orig.id]
+      );
+      baseExercises[orig.id] = rows;
+    }
+
+    // Delete all existing templates for this program (start fresh)
+    await client.query('DELETE FROM templates WHERE program_id = $1', [programId]);
+
+    // Generate 6 weeks: weight increases +5 lbs every 2 weeks
+    for (let week = 1; week <= 6; week++) {
+      const weightBonus = Math.floor((week - 1) / 2) * 5;
+      const weekOffset = (week - 1) * 7;
+      const weekLabel = week > 1 ? ` (Week ${week})` : '';
+
+      // 6 workouts per week: Push, Pull, Legs, Push, Pull, Legs
+      for (let dayIdx = 0; dayIdx < 6; dayIdx++) {
+        const base = originals[dayIdx % 3];
+        const sortOrder = weekOffset + dayIdx;
+        const name = `${base.name}${weekLabel}`;
+
+        const { rows: [newTmpl] } = await client.query(
+          'INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES (NULL, $1, $2, $3, FALSE, $4) RETURNING id',
+          [programId, name, base.description, sortOrder]
+        );
+
+        for (const ex of baseExercises[base.id]) {
+          await client.query(
+            'INSERT INTO template_exercises (template_id, name, set_number, planned_reps, suggested_weight, sort_order) VALUES ($1, $2, $3, $4, $5, $6)',
+            [newTmpl.id, ex.name, ex.set_number, ex.planned_reps, ex.suggested_weight + weightBonus, ex.sort_order]
+          );
+        }
+      }
+
+      // Rest day at end of each week
+      const restName = week > 1 ? `Rest (Week ${week})` : 'Rest';
+      await client.query(
+        'INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES (NULL, $1, $2, $3, TRUE, $4)',
+        [programId, restName, 'Recovery Day', weekOffset + 6]
+      );
+    }
+
+    await client.query('COMMIT');
+    console.log('Expanded Browse PPL to 6-week program with progressive overload');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 async function expandPPLto4Weeks(programId) {
   const client = await pool.connect();
   try {
@@ -975,6 +1084,125 @@ async function expandPPLto4Weeks(programId) {
 
     await client.query('COMMIT');
     console.log("Expanded Will's PPL to 4-week (28-day) program");
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+const MENTZER_CYCLE = [
+      {
+        name: 'Chest & Back',
+        description: 'Incline Press, Pull-Ups, Dips, Deadlifts — 1 working set to failure',
+        isRest: false,
+        exercises: [
+          { name: 'Incline Barbell Press (warm-up 50%)', sets: [{ reps: 10, weight: 0 }] },
+          { name: 'Incline Barbell Press (warm-up 70%)', sets: [{ reps: 5, weight: 0 }] },
+          { name: 'Incline Barbell Press', sets: [{ reps: 7, weight: 0 }] },
+          { name: 'Pull-Ups (warm-up)', sets: [{ reps: 7, weight: 0 }] },
+          { name: 'Pull-Ups', sets: [{ reps: 7, weight: 0 }] },
+          { name: 'Weighted Dips (warm-up)', sets: [{ reps: 7, weight: 0 }] },
+          { name: 'Weighted Dips', sets: [{ reps: 7, weight: 0 }] },
+          { name: 'Deadlifts (warm-up 50%)', sets: [{ reps: 5, weight: 0 }] },
+          { name: 'Deadlifts (warm-up 70%)', sets: [{ reps: 3, weight: 0 }] },
+          { name: 'Deadlifts', sets: [{ reps: 6, weight: 0 }] },
+        ],
+      },
+      {
+        name: 'Legs',
+        description: 'Leg Extensions, Leg Press, Squats, Calf Raises — 1 working set to failure',
+        isRest: false,
+        exercises: [
+          { name: 'Leg Extensions (warm-up)', sets: [{ reps: 10, weight: 0 }] },
+          { name: 'Leg Extensions', sets: [{ reps: 9, weight: 0 }] },
+          { name: 'Leg Press (warm-up 50%)', sets: [{ reps: 8, weight: 0 }] },
+          { name: 'Leg Press (warm-up 70%)', sets: [{ reps: 5, weight: 0 }] },
+          { name: 'Leg Press', sets: [{ reps: 9, weight: 0 }] },
+          { name: 'Squats (warm-up 50%)', sets: [{ reps: 5, weight: 0 }] },
+          { name: 'Squats (warm-up 70%)', sets: [{ reps: 3, weight: 0 }] },
+          { name: 'Squats', sets: [{ reps: 7, weight: 0 }] },
+          { name: 'Standing Calf Raises (warm-up)', sets: [{ reps: 10, weight: 0 }] },
+          { name: 'Standing Calf Raises', sets: [{ reps: 12, weight: 0 }, { reps: 10, weight: 0 }] },
+        ],
+      },
+      {
+        name: 'Shoulders & Arms',
+        description: 'Curls, Shoulder Press, Lateral Raises, Close-Grip Bench, Pushdowns — 1 working set to failure',
+        isRest: false,
+        exercises: [
+          { name: 'Barbell Curl (warm-up)', sets: [{ reps: 8, weight: 0 }] },
+          { name: 'Barbell Curl', sets: [{ reps: 7, weight: 0 }] },
+          { name: 'Shoulder Press (warm-up 50%)', sets: [{ reps: 8, weight: 0 }] },
+          { name: 'Shoulder Press (warm-up 70%)', sets: [{ reps: 5, weight: 0 }] },
+          { name: 'Shoulder Press', sets: [{ reps: 7, weight: 0 }] },
+          { name: 'Lateral Raises (warm-up)', sets: [{ reps: 10, weight: 0 }] },
+          { name: 'Lateral Raises', sets: [{ reps: 9, weight: 0 }] },
+          { name: 'Close-Grip Bench Press (warm-up 50%)', sets: [{ reps: 6, weight: 0 }] },
+          { name: 'Close-Grip Bench Press', sets: [{ reps: 7, weight: 0 }] },
+          { name: 'Triceps Pushdown (warm-up)', sets: [{ reps: 9, weight: 0 }] },
+          { name: 'Triceps Pushdown', sets: [{ reps: 8, weight: 0 }] },
+        ],
+      },
+      {
+        name: 'Rest',
+        description: 'Recovery Day',
+        isRest: true,
+        exercises: [],
+      },
+    ];
+
+async function seedMikeMentzerTemplates(programId) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Repeat the 4-day cycle 7 times for 28 days (4 weeks)
+    for (let day = 0; day < 28; day++) {
+      const base = MENTZER_CYCLE[day % 4];
+      const week = Math.floor(day / 7) + 1;
+      const name = week > 1 ? `${base.name} (Week ${week})` : base.name;
+
+      const { rows: [tmpl] } = await client.query(
+        'INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES (NULL, $1, $2, $3, $4, $5) RETURNING id',
+        [programId, name, base.description, base.isRest, day]
+      );
+
+      if (base.exercises.length > 0) {
+        let exSortOrder = 0;
+        for (const ex of base.exercises) {
+          for (let i = 0; i < ex.sets.length; i++) {
+            await client.query(
+              'INSERT INTO template_exercises (template_id, name, set_number, planned_reps, suggested_weight, sort_order) VALUES ($1, $2, $3, $4, $5, $6)',
+              [tmpl.id, ex.name, i + 1, ex.sets[i].reps, ex.sets[i].weight, exSortOrder]
+            );
+          }
+          exSortOrder++;
+        }
+      }
+    }
+
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+async function seedMikeMentzer() {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: [program] } = await client.query(
+      "INSERT INTO programs (user_id, name, description) VALUES (NULL, $1, $2) RETURNING id",
+      ['Mike Mentzer Workout', '4-week Heavy Duty program — 4-day cycle with 1 working set to failure']
+    );
+    await client.query('COMMIT');
+    await seedMikeMentzerTemplates(program.id);
+    console.log('Seeded Mike Mentzer Workout program');
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;

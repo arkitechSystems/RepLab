@@ -834,7 +834,7 @@ export default function Utilities() {
               <h3 className="text-base font-semibold text-white">BMR / Calorie Calculator</h3>
               <p className="text-wf-gray-400 text-sm mt-0.5">Estimate your daily calorie needs based on your stats and activity level</p>
             </div>
-            <span className="text-[10px] text-wf-gray-500 uppercase tracking-wider shrink-0">Soon</span>
+            <span className="px-2 py-0.5 rounded-full bg-yellow-500/20 border border-yellow-500/40 text-[10px] font-bold text-yellow-400 uppercase tracking-wider shrink-0">Pro</span>
           </div>
         </div>
 
@@ -851,7 +851,7 @@ export default function Utilities() {
               <h3 className="text-base font-semibold text-white">Macro Calculator</h3>
               <p className="text-wf-gray-400 text-sm mt-0.5">Break down your calories into protein, carbs, and fat for any goal</p>
             </div>
-            <span className="text-[10px] text-wf-gray-500 uppercase tracking-wider shrink-0">Soon</span>
+            <span className="px-2 py-0.5 rounded-full bg-yellow-500/20 border border-yellow-500/40 text-[10px] font-bold text-yellow-400 uppercase tracking-wider shrink-0">Pro</span>
           </div>
         </div>
 
@@ -867,7 +867,7 @@ export default function Utilities() {
               <h3 className="text-base font-semibold text-white">Body Fat Calculator</h3>
               <p className="text-wf-gray-400 text-sm mt-0.5">Estimate your body fat percentage using the U.S. Navy method</p>
             </div>
-            <span className="text-[10px] text-wf-gray-500 uppercase tracking-wider shrink-0">Soon</span>
+            <span className="px-2 py-0.5 rounded-full bg-yellow-500/20 border border-yellow-500/40 text-[10px] font-bold text-yellow-400 uppercase tracking-wider shrink-0">Pro</span>
           </div>
         </div>
 
@@ -883,7 +883,7 @@ export default function Utilities() {
               <h3 className="text-base font-semibold text-white">Plate Calculator</h3>
               <p className="text-wf-gray-400 text-sm mt-0.5">See which plates to load on each side of the bar</p>
             </div>
-            <span className="text-[10px] text-wf-gray-500 uppercase tracking-wider shrink-0">Soon</span>
+            <span className="px-2 py-0.5 rounded-full bg-yellow-500/20 border border-yellow-500/40 text-[10px] font-bold text-yellow-400 uppercase tracking-wider shrink-0">Pro</span>
           </div>
         </div>
 
@@ -899,7 +899,7 @@ export default function Utilities() {
               <h3 className="text-base font-semibold text-white">Ideal Body Proportions</h3>
               <p className="text-wf-gray-400 text-sm mt-0.5">Calculate your ideal muscle proportions based on bone structure</p>
             </div>
-            <span className="text-[10px] text-wf-gray-500 uppercase tracking-wider shrink-0">Soon</span>
+            <span className="px-2 py-0.5 rounded-full bg-yellow-500/20 border border-yellow-500/40 text-[10px] font-bold text-yellow-400 uppercase tracking-wider shrink-0">Pro</span>
           </div>
         </div>
 
@@ -915,7 +915,7 @@ export default function Utilities() {
               <h3 className="text-base font-semibold text-white">RPE / RIR Calculator</h3>
               <p className="text-wf-gray-400 text-sm mt-0.5">Convert between Rate of Perceived Exertion and Reps in Reserve</p>
             </div>
-            <span className="text-[10px] text-wf-gray-500 uppercase tracking-wider shrink-0">Soon</span>
+            <span className="px-2 py-0.5 rounded-full bg-yellow-500/20 border border-yellow-500/40 text-[10px] font-bold text-yellow-400 uppercase tracking-wider shrink-0">Pro</span>
           </div>
         </div>
       </div>

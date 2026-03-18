@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
-import { getWorkoutColor } from '../utils/workoutColors';
+import { buildProgramColorMap, getColorFromMap } from '../utils/workoutColors';
 import StickyHeader from '../components/StickyHeader';
 import { iosFocusRef } from '../utils/iosFocus';
 import TrainerProfile from '../components/TrainerProfile';
@@ -19,7 +19,7 @@ function ProgramCard({ program, idx, onSelect, onBegin }) {
     >
       {/* Color strip */}
       <div className="flex h-1.5">
-        {program.colors.map((c, i) => (
+        {[...program.colorMap.values()].map((c, i) => (
           <div key={i} className={`flex-1 ${c.dot}`} />
         ))}
       </div>
@@ -29,7 +29,7 @@ function ProgramCard({ program, idx, onSelect, onBegin }) {
           <div className="min-w-0">
             <h2 className="text-xl font-black text-white tracking-tight">{program.name}</h2>
             <p className="text-wf-gray-400 text-sm mt-1">
-              {program.workoutCount} workouts &middot; {program.exerciseCount} exercises
+              {program.weekCount} {program.weekCount === 1 ? 'week' : 'weeks'} &middot; {program.workoutCount} workouts
             </p>
           </div>
           {program.workoutCount > 0 && (
@@ -42,17 +42,14 @@ function ProgramCard({ program, idx, onSelect, onBegin }) {
           )}
         </div>
 
-        {/* Workout preview dots */}
+        {/* Workout preview dots — unique names only */}
         <div className="flex items-center gap-3 mt-4">
-          {program.templates.filter((t) => !t.isRest).map((t) => {
-            const color = getWorkoutColor(t.name);
-            return (
-              <div key={t.id} className="flex items-center gap-1.5">
-                <div className={`w-2.5 h-2.5 rounded-full ${color.dot}`} />
-                <span className="text-xs text-wf-gray-400 font-medium">{t.name}</span>
-              </div>
-            );
-          })}
+          {[...program.colorMap.entries()].map(([name, color]) => (
+            <div key={name} className="flex items-center gap-1.5">
+              <div className={`w-2.5 h-2.5 rounded-full ${color.dot}`} />
+              <span className="text-xs text-wf-gray-400 font-medium capitalize">{name}</span>
+            </div>
+          ))}
         </div>
 
         {/* Tap hint */}
@@ -87,6 +84,7 @@ export default function Workouts() {
   const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editName, setEditName] = useState('');
+  const [selectedWeek, setSelectedWeek] = useState(null); // week number (1-based)
   // Begin Program modal state
   const [beginModal, setBeginModal] = useState(null); // program object
   const [beginDateInput, setBeginDateInput] = useState('');
@@ -245,12 +243,14 @@ export default function Workouts() {
         .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
       const nonRest = programTemplates.filter((t) => !t.isRest);
       const totalExercises = nonRest.reduce((sum, t) => sum + (t.exercises?.length || 0), 0);
+      const colorMap = buildProgramColorMap(programTemplates);
       return {
         ...p,
         templates: programTemplates,
-        workoutCount: programTemplates.length,
+        weekCount: Math.max(1, Math.ceil(programTemplates.length / 7)),
+        workoutCount: nonRest.length,
         exerciseCount: totalExercises,
-        colors: nonRest.map((t) => getWorkoutColor(t.name)),
+        colorMap,
       };
     });
   }
@@ -327,31 +327,8 @@ export default function Workouts() {
       setPrograms((prev) => prev.filter((p) => p.id !== programId));
       setTemplates((prev) => prev.filter((t) => t.programId !== programId));
       setSelectedProgram(null);
+      setSelectedWeek(null);
       setEditMode(false);
-    } catch (err) {
-      console.error(err);
-    }
-  }
-
-  async function handleDuplicateTemplate(template) {
-    try {
-      const exercises = template.exercises.map((ex) => ({
-        name: ex.name,
-        setType: ex.setType || 'straight',
-        sets: ex.sets.map((s) => ({ reps: s.plannedReps || s.reps || 10, weight: s.suggestedWeight || s.weight || 0 })),
-      }));
-      const result = await api('/templates', {
-        method: 'POST',
-        body: JSON.stringify({
-          name: `${template.name} (Copy)`,
-          description: template.description || '',
-          exercises,
-          programId: template.programId,
-        }),
-      });
-      // Refetch templates to get the full data
-      const updated = await api('/templates');
-      setTemplates(updated);
     } catch (err) {
       console.error(err);
     }
@@ -360,7 +337,8 @@ export default function Workouts() {
   // Workout detail/preview view
   if (previewWorkout) {
     const pw = previewWorkout;
-    const pwColor = getWorkoutColor(pw.name);
+    const pwProgram = enrichedPrograms.find((p) => p.id === pw.programId);
+    const pwColor = pwProgram ? getColorFromMap(pwProgram.colorMap, pw.name, pw.isRest) : getColorFromMap(new Map(), pw.name, pw.isRest);
     const totalSets = pw.exercises?.reduce((sum, ex) => sum + (ex.sets?.length || 0), 0) || 0;
     return (
       <div>
@@ -461,9 +439,112 @@ export default function Workouts() {
     const program = enrichedPrograms.find((p) => p.id === selectedProgram);
     if (!program) return null;
 
+    // Group templates into weeks (7 days per week)
+    const weeks = [];
+    for (let i = 0; i < program.templates.length; i += 7) {
+      weeks.push(program.templates.slice(i, i + 7));
+    }
+    // Show week picker when no week is selected
+    if (selectedWeek === null) {
+      return (
+        <div>
+          <StickyHeader title={program.name}>
+            {program.workoutCount > 0 && (
+              <button
+                onClick={(e) => openBeginProgram(e, program)}
+                className="btn-gradient shrink-0 text-white font-semibold text-xs px-3 py-2 rounded-xl active:scale-[0.97] transition-all"
+              >
+                Begin Program
+              </button>
+            )}
+          </StickyHeader>
+
+          {/* Back button */}
+          <div className="px-4 mb-3">
+            <button
+              onClick={() => { setSelectedProgram(null); setSelectedWeek(null); }}
+              className="inline-flex items-center gap-1 text-sm text-wf-gray-400 active:text-white transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+              </svg>
+              {selectedGroup === 'browse' ? 'Browse Workout Library' : selectedGroup === 'my' ? 'My Workouts' : 'All Workouts'}
+            </button>
+          </div>
+
+          <div className="px-4">
+            <p className="text-wf-gray-400 text-sm mb-4">
+              {weeks.length} weeks &middot; {program.workoutCount} workouts &middot; Select a week to view
+            </p>
+            <div className="space-y-3 pb-4">
+              {weeks.map((weekTemplates, wIdx) => {
+                const weekNum = wIdx + 1;
+                const weekWorkouts = weekTemplates.filter((t) => !t.isRest);
+                const weightBump = Math.floor(wIdx / 2) * 5;
+                // Get unique workout color dots for this week
+                const uniqueNames = [];
+                weekWorkouts.forEach((t) => {
+                  const key = t.name.toLowerCase().replace(/\s*\(week\s*\d+\)\s*/gi, '').trim();
+                  if (!uniqueNames.includes(key)) uniqueNames.push(key);
+                });
+
+                return (
+                  <div
+                    key={wIdx}
+                    onClick={() => setSelectedWeek(weekNum)}
+                    style={{ animationDelay: `${wIdx * 60}ms` }}
+                    className="w-full text-left glass-card rounded-2xl overflow-hidden active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
+                  >
+                    {/* Color strip from this week's unique workouts */}
+                    <div className="flex h-1.5">
+                      {uniqueNames.map((name, i) => {
+                        const color = program.colorMap.get(name);
+                        return <div key={i} className={`flex-1 ${color ? color.dot : 'bg-wf-orange'}`} />;
+                      })}
+                    </div>
+                    <div className="p-5">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-lg font-bold text-white">Week {weekNum}</h3>
+                          <p className="text-wf-gray-400 text-sm mt-1">
+                            {weekWorkouts.length} workouts{weightBump > 0 ? ` · +${weightBump} lbs` : ''}
+                          </p>
+                        </div>
+                        <svg className="w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                        </svg>
+                      </div>
+                      {/* Workout preview dots */}
+                      <div className="flex items-center gap-3 mt-3">
+                        {uniqueNames.map((name, i) => {
+                          const color = program.colorMap.get(name);
+                          return (
+                            <div key={i} className="flex items-center gap-1.5">
+                              <div className={`w-2 h-2 rounded-full ${color ? color.dot : 'bg-wf-orange'}`} />
+                              <span className="text-xs text-wf-gray-400 font-medium capitalize">{name}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {renderBeginModals()}
+        </div>
+      );
+    }
+
+    // Show workouts for selected week
+    const weekTemplates = weeks[selectedWeek - 1] || [];
+    const weekTitle = `${program.name} — Week ${selectedWeek}`;
+
     return (
       <div>
-        <StickyHeader title={editMode ? '' : program.name}>
+        <StickyHeader title={editMode ? '' : weekTitle}>
           {editMode ? (
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <input
@@ -491,6 +572,14 @@ export default function Workouts() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
               </button>
+              {program.workoutCount > 0 && (
+                <button
+                  onClick={(e) => openBeginProgram(e, program)}
+                  className="btn-gradient shrink-0 text-white font-semibold text-xs px-3 py-2 rounded-xl active:scale-[0.97] transition-all"
+                >
+                  Begin Program
+                </button>
+              )}
               <button
                 onClick={() => navigate(`/workouts/create?programId=${program.id}`)}
                 className="btn-gradient active:scale-[0.98] text-white font-medium px-4 py-2.5 rounded-xl text-sm transition-all shrink-0"
@@ -504,20 +593,23 @@ export default function Workouts() {
         {/* Back button */}
         <div className="px-4 mb-3">
           <button
-            onClick={() => { setSelectedProgram(null); setEditMode(false); }}
+            onClick={() => {
+              setSelectedWeek(null);
+              setEditMode(false);
+            }}
             className="inline-flex items-center gap-1 text-sm text-wf-gray-400 active:text-white transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
             </svg>
-            {selectedGroup === 'browse' ? 'Browse Workout Library' : selectedGroup === 'my' ? 'My Workouts' : 'All Workouts'}
+            {program.name}
           </button>
         </div>
 
         <div className="px-4">
           <div className="space-y-3 pb-4">
-            {program.templates.map((t, idx) => {
-              const color = getWorkoutColor(t.name);
+            {weekTemplates.map((t, idx) => {
+              const color = getColorFromMap(program.colorMap, t.name, t.isRest);
               return (
                 <div
                   key={t.id}
@@ -539,7 +631,7 @@ export default function Workouts() {
                         </button>
                         <button
                           onClick={() => handleMoveTemplate(program, idx, 1)}
-                          disabled={idx === program.templates.length - 1}
+                          disabled={idx === weekTemplates.length - 1}
                           className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center disabled:opacity-25 active:bg-white/20 transition-colors"
                         >
                           <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -586,15 +678,6 @@ export default function Workouts() {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                           </svg>
                           <span className="text-xs font-semibold text-green-400">Add</span>
-                        </button>
-                        <button
-                          onClick={() => handleDuplicateTemplate(t)}
-                          className="w-9 h-9 rounded-lg bg-wf-blue/20 flex items-center justify-center shrink-0 active:bg-wf-blue/40 transition-colors"
-                          title="Duplicate workout"
-                        >
-                          <svg className="w-4 h-4 text-wf-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75" />
-                          </svg>
                         </button>
                         <button
                           onClick={() => navigate(`/workouts/edit/${t.id}`)}
@@ -646,6 +729,7 @@ export default function Workouts() {
         </div>
 
         {renderAddWorkoutModals()}
+        {renderBeginModals()}
       </div>
     );
   }
@@ -1509,63 +1593,13 @@ export default function Workouts() {
               </div>
             )}
 
-            {/* Featured Trainers card */}
-            <div
-              onClick={() => setSelectedGroup('partners')}
-              className="w-full text-left glass-card rounded-2xl overflow-hidden active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
-              style={{ animationDelay: '0ms' }}
-            >
-              <div className="h-1.5 bg-gradient-to-r from-wf-blue to-purple-500" />
-              <div className="p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <h2 className="text-xl font-black text-white tracking-tight">Featured Trainers</h2>
-                    <p className="text-wf-gray-400 text-sm mt-1">Expert-led workouts from certified trainers</p>
-                  </div>
-                  <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            {/* Challenges card */}
-            <div
-              onClick={() => setSelectedGroup('challenges')}
-              className="w-full text-left glass-card rounded-2xl overflow-hidden active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
-              style={{ animationDelay: '0ms' }}
-            >
-              <div className="h-1.5 bg-gradient-to-r from-orange-500 to-yellow-500" />
-              <div className="p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-xl font-black text-white tracking-tight">Challenges</h2>
-                      <span className="px-2 py-0.5 rounded-full bg-orange-500/15 border border-orange-500/30 text-[10px] font-bold text-orange-400 uppercase tracking-wider">
-                        New
-                      </span>
-                    </div>
-                    <p className="text-wf-gray-400 text-sm mt-1">Compete, push your limits, and earn rewards</p>
-                  </div>
-                  <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
             {/* Browse Workout Library card */}
             <div
               onClick={() => setSelectedGroup('browse')}
               className="w-full text-left glass-card rounded-2xl overflow-hidden active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
-              style={{ animationDelay: '80ms' }}
+              style={{ animationDelay: '0ms' }}
             >
-              {/* Color strip from all browse programs */}
-              <div className="flex h-1.5">
-                {browsePrograms.flatMap((p) => p.colors).map((c, i) => (
-                  <div key={i} className={`flex-1 ${c.dot}`} />
-                ))}
-              </div>
+              <div className="h-1.5 bg-wf-green" />
               <div className="p-5">
                 <h2 className="text-xl font-black text-white tracking-tight">Browse Workout Library</h2>
                 <p className="text-wf-gray-400 text-sm mt-1">
@@ -1585,21 +1619,58 @@ export default function Workouts() {
               </div>
             </div>
 
+            {/* Featured Trainers card */}
+            <div
+              onClick={() => setSelectedGroup('partners')}
+              className="w-full text-left glass-card rounded-2xl overflow-hidden active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
+              style={{ animationDelay: '80ms' }}
+            >
+              <div className="h-1.5 bg-wf-blue" />
+              <div className="p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-xl font-black text-white tracking-tight">Featured Trainers</h2>
+                    <p className="text-wf-gray-400 text-sm mt-1">Expert-led workouts from certified trainers</p>
+                  </div>
+                  <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            {/* Challenges card */}
+            <div
+              onClick={() => setSelectedGroup('challenges')}
+              className="w-full text-left glass-card rounded-2xl overflow-hidden active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
+              style={{ animationDelay: '0ms' }}
+            >
+              <div className="h-1.5 bg-wf-orange" />
+              <div className="p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-xl font-black text-white tracking-tight">Challenges</h2>
+                      <span className="px-2 py-0.5 rounded-full bg-orange-500/15 border border-orange-500/30 text-[10px] font-bold text-orange-400 uppercase tracking-wider">
+                        New
+                      </span>
+                    </div>
+                    <p className="text-wf-gray-400 text-sm mt-1">Compete, push your limits, and earn rewards</p>
+                  </div>
+                  <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
             {/* My Workouts card */}
             <div
               onClick={() => setSelectedGroup('my')}
               className="w-full text-left glass-card rounded-2xl overflow-hidden active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
               style={{ animationDelay: '160ms' }}
             >
-              {myPrograms.length > 0 ? (
-                <div className="flex h-1.5">
-                  {myPrograms.flatMap((p) => p.colors).map((c, i) => (
-                    <div key={i} className={`flex-1 ${c.dot}`} />
-                  ))}
-                </div>
-              ) : (
-                <div className="h-1.5 bg-white/10" />
-              )}
+              <div className="h-1.5 bg-wf-red" />
               <div className="p-5">
                 <h2 className="text-xl font-black text-white tracking-tight">My Workouts</h2>
                 <p className="text-wf-gray-400 text-sm mt-1">
