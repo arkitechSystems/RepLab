@@ -207,12 +207,12 @@ export default async function initDb() {
     }
   }
 
-  // Expand Will's PPL to 7-day cycle: Push, Pull, Legs, Push, Pull, Legs, Rest
-  {
+  // Expand Will's PPL to 7-day cycle and 4 weeks (non-fatal if it fails)
+  try {
     const { rows: pplRows } = await pool.query("SELECT id FROM programs WHERE name = $1 AND user_id IS NULL", ["Will's PPL"]);
     if (pplRows.length > 0) {
       const pplId = pplRows[0].id;
-      // Check if already expanded (look for Push 2 or Rest Day)
+      // Expand to 7-day cycle
       const { rows: expandedCheck } = await pool.query(
         "SELECT id FROM templates WHERE program_id = $1 AND name IN ($2, $3)",
         [pplId, "Will's Push 2", "Rest Day"]
@@ -220,14 +220,7 @@ export default async function initDb() {
       if (expandedCheck.length === 0) {
         await expandPPLto7Days(pplId);
       }
-    }
-  }
-
-  // Expand Will's PPL to 4 weeks (28 days) by duplicating week 1 into weeks 2-4
-  {
-    const { rows: pplRows } = await pool.query("SELECT id FROM programs WHERE name = $1 AND user_id IS NULL", ["Will's PPL"]);
-    if (pplRows.length > 0) {
-      const pplId = pplRows[0].id;
+      // Expand to 4 weeks
       const { rows: week2Check } = await pool.query(
         "SELECT id FROM templates WHERE program_id = $1 AND name LIKE '%(Week 2)%'",
         [pplId]
@@ -236,6 +229,8 @@ export default async function initDb() {
         await expandPPLto4Weeks(pplId);
       }
     }
+  } catch (err) {
+    console.error('PPL expansion migration failed (non-fatal):', err.message);
   }
 
   // Seed ZJ's Workout if not already present
