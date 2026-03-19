@@ -56,7 +56,7 @@ function PRsSection() {
     if (!group) continue;
     if (!grouped[group]) grouped[group] = {};
     if (!grouped[group][pb.exerciseName]) grouped[group][pb.exerciseName] = [];
-    grouped[group][pb.exerciseName].push({ weight: pb.bestWeight, reps: pb.bestReps, achievedAt: pb.achievedAt });
+    grouped[group][pb.exerciseName].push({ weight: pb.bestWeight, reps: pb.bestReps, achievedAt: pb.achievedAt, sessionId: pb.sessionId });
   }
   // Sort weights descending within each exercise
   for (const group of Object.values(grouped)) {
@@ -213,7 +213,7 @@ function PRsSection() {
                                 </span>
                                 {calDate ? (
                                   <button
-                                    onClick={() => navigate('/calendar')}
+                                    onClick={() => r.sessionId ? navigate(`/history/${r.sessionId}`) : navigate('/calendar')}
                                     className="flex-1 text-center text-xs text-wf-blue font-medium active:opacity-70 transition-opacity"
                                   >
                                     {dateStr}

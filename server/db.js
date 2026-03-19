@@ -599,10 +599,15 @@ const db = {
 
   // Personal Bests
   async getPBs(userId, templateId) {
-    let query = 'SELECT * FROM personal_bests WHERE user_id = $1';
+    let query = `SELECT pb.*, s.id AS session_id
+      FROM personal_bests pb
+      LEFT JOIN sessions s ON s.user_id = pb.user_id
+        AND s.template_id = pb.template_id
+        AND s.date = TO_CHAR(pb.achieved_at AT TIME ZONE 'UTC', 'YYYY-MM-DD')
+      WHERE pb.user_id = $1`;
     const params = [userId];
     if (templateId) {
-      query += ' AND template_id = $2';
+      query += ' AND pb.template_id = $2';
       params.push(Number(templateId));
     }
     const { rows } = await pool.query(query, params);
@@ -614,6 +619,7 @@ const db = {
       bestWeight: Number(pb.best_weight),
       bestReps: pb.best_reps,
       achievedAt: pb.achieved_at,
+      sessionId: pb.session_id || null,
     }));
   },
 
