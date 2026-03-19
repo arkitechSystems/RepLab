@@ -375,13 +375,35 @@ function adminPage(title, body) {
     .delete-btn { background: none; border: none; cursor: pointer; color: rgba(255,255,255,0.3); padding: 4px 8px; border-radius: 6px; transition: all 0.15s; }
     .delete-btn:hover { color: #ef4444; background: rgba(239,68,68,0.15); }
 
+    /* Sidebar */
+    .sidebar {
+      position: fixed; top: 49px; left: 0; bottom: 0; width: 200px; z-index: 50;
+      background: rgba(10,10,10,0.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border-right: 1px solid rgba(255,255,255,0.06);
+      overflow-y: auto; padding: 16px 0;
+    }
+    .sidebar a {
+      display: block; padding: 8px 20px; font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.4);
+      text-decoration: none; transition: all 0.15s; border-left: 2px solid transparent;
+    }
+    .sidebar a:hover { color: #fff; background: rgba(255,255,255,0.05); border-left-color: rgba(239,68,68,0.4); }
+    .sidebar a.active { color: #ef4444; background: rgba(239,68,68,0.08); border-left-color: #ef4444; font-weight: 700; }
+    .sidebar .sidebar-section { font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.2); padding: 16px 20px 6px; font-weight: 700; }
+    .main-with-sidebar { margin-left: 200px; }
+
     /* Scrollbar */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
 
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main-with-sidebar { margin-left: 0; }
+    }
     @media print {
+      .sidebar { display: none; }
+      .main-with-sidebar { margin-left: 0; }
       .btn, .btn-ghost, .breadcrumb, .delete-btn { display: none; }
       body { padding: 16px; background: #fff; color: #111; }
       body::before { display: none; }
@@ -416,6 +438,34 @@ function adminPage(title, body) {
 </nav>
 <script>document.addEventListener('click',function(e){var d=document.getElementById('settings-dropdown');if(d&&d.style.display==='block'&&!e.target.closest('[onclick*="settings-dropdown"]')&&!d.contains(e.target))d.style.display='none';});</script>
 <div style="height:56px;"></div>
+<!-- Sidebar -->
+<div class="sidebar">
+  <div class="sidebar-section">Overview</div>
+  <a href="/admin"${title === 'Dashboard' ? ' class="active"' : ''}>Dashboard</a>
+  <a href="/admin/users?format=html"${title === 'Users' ? ' class="active"' : ''}>User Sign Ups</a>
+  <a href="/admin/analytics"${title === 'Analytics' ? ' class="active"' : ''}>Session Analytics</a>
+  <a href="/admin/builds"${title === 'Builds' ? ' class="active"' : ''}>Pending Builds</a>
+  <a href="/admin/ai-usage"${title === 'AI Usage' ? ' class="active"' : ''}>AI Usage</a>
+  <div class="sidebar-section">Users</div>
+  <a href="/admin/feedback"${title === 'Feedback' ? ' class="active"' : ''}>Feedback</a>
+  <a href="/admin/retention"${title === 'Retention' ? ' class="active"' : ''}>Retention</a>
+  <a href="/admin/active"${title === 'Active Users' ? ' class="active"' : ''}>Active Users</a>
+  <a href="/admin/referrals"${title === 'Referrals' ? ' class="active"' : ''}>Referrals</a>
+  <a href="/admin/devices"${title === 'Devices' ? ' class="active"' : ''}>Devices</a>
+  <div class="sidebar-section">Content</div>
+  <a href="/admin/workouts"${title === 'Workouts' ? ' class="active"' : ''}>Workout Library</a>
+  <a href="/admin/announcements"${title === 'Announcements' ? ' class="active"' : ''}>Announcements</a>
+  <a href="/admin/flags"${title === 'Feature Flags' ? ' class="active"' : ''}>Feature Flags</a>
+  <a href="/admin/correspondence"${title === 'User Correspondence' ? ' class="active"' : ''}>Correspondence</a>
+  <a href="/admin/custom-exercises"${title === 'Custom Exercises' ? ' class="active"' : ''}>Custom Exercises</a>
+  <div class="sidebar-section">System</div>
+  <a href="/admin/health"${title === 'Health' ? ' class="active"' : ''}>Health Check</a>
+  <a href="/admin/errors"${title === 'Errors' ? ' class="active"' : ''}>Error Log</a>
+  <a href="/admin/revenue"${title === 'Revenue' ? ' class="active"' : ''}>Revenue</a>
+  <a href="/admin/subscriptions"${title === 'Subscriptions' ? ' class="active"' : ''}>Subscriptions</a>
+  <a href="/admin/trainer-login"${title === 'Trainer' ? ' class="active"' : ''}>Trainer Dashboard</a>
+</div>
+<div class="main-with-sidebar">
 <div class="container">
 <!-- Change Password Modal -->
 <div id="pw-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);" onclick="if(event.target===this)this.style.display='none'">
@@ -442,6 +492,7 @@ function adminPage(title, body) {
   </div>
 </div>
 ${body}
+</div>
 </div>
 </body>
 </html>`;
