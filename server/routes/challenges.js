@@ -15,6 +15,17 @@ router.get('/:challenge/leaderboard', authMiddleware, async (req, res) => {
   }
 });
 
+// GET /challenges/:challenge/my-entry
+router.get('/:challenge/my-entry', authMiddleware, async (req, res) => {
+  try {
+    const entry = await db.getUserChallengeEntry(req.userId, req.params.challenge);
+    res.json(entry || { value: null });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // POST /challenges/:challenge
 router.post('/:challenge', authMiddleware, async (req, res) => {
   try {

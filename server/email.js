@@ -1,4 +1,12 @@
 import { Resend } from 'resend';
+import pool from './dbPool.js';
+
+async function getTemplate(name) {
+  try {
+    const { rows } = await pool.query('SELECT subject, html FROM email_templates WHERE name = $1', [name]);
+    return rows[0] || null;
+  } catch { return null; }
+}
 
 export async function sendWelcomeEmail(email) {
   if (!process.env.RESEND_API_KEY) {
@@ -7,41 +15,91 @@ export async function sendWelcomeEmail(email) {
   }
 
   const resend = new Resend(process.env.RESEND_API_KEY);
+  const custom = await getTemplate('welcome');
+
+  const defaultSubject = 'Welcome to WillFit — Your Fitness Journey Starts Now';
+  const defaultHtml = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px; color: #333;">
+          <!-- Logo -->
+          <div style="text-align: center; margin-bottom: 32px;">
+            <h1 style="font-size: 32px; font-weight: 900; letter-spacing: 2px; margin: 0; color: #111;">WILL<span style="color: #EF4444;">FIT</span></h1>
+          </div>
+
+          <h2 style="color: #111; font-size: 24px; font-weight: 800; margin: 0 0 8px 0;">Welcome to WillFit!</h2>
+          <p style="font-size: 16px; line-height: 1.7; margin: 0 0 24px 0; color: #444;">
+            Your account is set up and you're ready to go. WillFit is a workout tracking app designed to help you train smarter, stay consistent, and see real progress over time.
+          </p>
+
+          <!-- What You Can Do -->
+          <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">What You Can Do</h3>
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+            <tr>
+              <td style="padding: 10px 12px; vertical-align: top; width: 32px; font-size: 20px;">&#128170;</td>
+              <td style="padding: 10px 12px; font-size: 14px; line-height: 1.6; color: #444;">
+                <strong style="color: #111;">Browse & Build Workouts</strong><br/>
+                Choose from pre-built programs like Push Pull Legs, Upper/Lower, and more — or create your own from scratch.
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 12px; vertical-align: top; width: 32px; font-size: 20px;">&#128197;</td>
+              <td style="padding: 10px 12px; font-size: 14px; line-height: 1.6; color: #444;">
+                <strong style="color: #111;">Schedule Your Week</strong><br/>
+                Assign workouts to specific days on the calendar. Tap a day to start your session and log every set, rep, and weight.
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 12px; vertical-align: top; width: 32px; font-size: 20px;">&#127942;</td>
+              <td style="padding: 10px 12px; font-size: 14px; line-height: 1.6; color: #444;">
+                <strong style="color: #111;">Track Personal Records</strong><br/>
+                The app automatically tracks your PRs for every exercise at every weight. Watch your numbers climb over time.
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 12px; vertical-align: top; width: 32px; font-size: 20px;">&#129302;</td>
+              <td style="padding: 10px 12px; font-size: 14px; line-height: 1.6; color: #444;">
+                <strong style="color: #111;">AI-Powered Workouts</strong><br/>
+                Let AI build a custom workout based on your goals, experience, and equipment. Refine it with natural language.
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 12px; vertical-align: top; width: 32px; font-size: 20px;">&#128736;</td>
+              <td style="padding: 10px 12px; font-size: 14px; line-height: 1.6; color: #444;">
+                <strong style="color: #111;">Utilities & Tools</strong><br/>
+                Estimate your one-rep max, view your PR history, use the rest timer, and more tools coming soon.
+              </td>
+            </tr>
+          </table>
+
+          <!-- Getting Started -->
+          <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">Getting Started</h3>
+          <p style="font-size: 14px; line-height: 1.7; margin: 0 0 20px 0; color: #444;">
+            Open the app, browse the workout library, and schedule your first session. It only takes a minute to get your week set up — from there, just show up and the app handles the rest.
+          </p>
+
+          <a href="https://will-fit.shop"
+             style="display: inline-block; padding: 14px 32px; background: #111; color: #fff; text-decoration: none; border-radius: 10px; font-size: 15px; font-weight: 700; letter-spacing: 0.5px;">
+            Open WillFit
+          </a>
+
+          <!-- Early Access -->
+          <div style="margin-top: 28px; padding: 16px 20px; background: #f8f4e8; border-left: 4px solid #e6a817; border-radius: 8px;">
+            <p style="color: #333; font-size: 13px; line-height: 1.7; margin: 0;">
+              <strong>You have early access.</strong> WillFit is actively being built and improved. Your feedback matters — head to <strong>Profile > Send Feedback</strong> to share ideas or report bugs. You're helping shape this app from day one.
+            </p>
+          </div>
+
+          <p style="color: #999; font-size: 12px; margin-top: 32px; line-height: 1.6;">
+            If you didn't create a WillFit account, you can safely ignore this email.
+          </p>
+        </div>
+      `;
 
   try {
     await resend.emails.send({
       from: 'WillFit <noreply@will-fit.shop>',
       to: email,
-      subject: 'Welcome to WillFit!',
-      html: `
-        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 32px;">
-          <h1 style="color: #111; font-size: 28px; margin-bottom: 8px;">Welcome to WillFit 💪</h1>
-          <p style="color: #444; font-size: 16px; line-height: 1.6;">
-            Your account has been created. You're all set to start tracking your workouts,
-            logging personal bests, and building programs.
-          </p>
-          <p style="color: #444; font-size: 16px; line-height: 1.6; margin-top: 16px;">
-            Congrats — you're part of a select group getting early access to the alpha version of WillFit.
-            Your feedback will directly shape how this app evolves, so thank you for being here from the start.
-          </p>
-          <div style="margin-top: 24px; padding: 16px 20px; background: #f8f4e8; border-left: 4px solid #e6a817; border-radius: 8px;">
-            <p style="color: #333; font-size: 14px; line-height: 1.6; margin: 0;">
-              <strong>You're using the alpha version of WillFit!</strong> Things are still being built and improved.
-              If you run into any bugs or have features you'd like to see added, head to the
-              <strong>Profile</strong> tab and tap <strong>Send Feedback</strong> — we'd love to hear from you.
-            </p>
-          </div>
-          <a href="https://will-fit.shop"
-             style="display: inline-block; margin-top: 24px; padding: 12px 24px;
-                    background: #111; color: #fff; text-decoration: none;
-                    border-radius: 8px; font-size: 15px;">
-            Go to WillFit
-          </a>
-          <p style="color: #999; font-size: 13px; margin-top: 32px;">
-            If you didn't sign up for WillFit, you can ignore this email.
-          </p>
-        </div>
-      `,
+      subject: custom?.subject || defaultSubject,
+      html: custom?.html || defaultHtml,
     });
   } catch (err) {
     // Don't fail signup if email sending fails

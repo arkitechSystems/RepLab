@@ -619,6 +619,16 @@ router.get('/', adminAuth, async (req, res) => {
       <div class="card-title">Error Log</div>
       <div class="card-desc">View the last 50 server errors captured in memory.</div>
     </a>
+    <a class="card glass" href="/admin/correspondence">
+      <div class="card-icon">📧</div>
+      <div class="card-title">User Correspondence</div>
+      <div class="card-desc">Edit welcome emails, notification templates, and text message content.</div>
+    </a>
+    <a class="card glass" href="/admin/custom-exercises">
+      <div class="card-icon">🆕</div>
+      <div class="card-title">Custom Exercises</div>
+      <div class="card-desc">User-created exercises to review and add to the official library.</div>
+    </a>
     <a class="card glass" href="/admin/revenue">
       <div class="card-icon">💰</div>
       <div class="card-title">Revenue Dashboard</div>
@@ -2000,6 +2010,203 @@ router.post('/sync-exercises', adminAuth, async (req, res) => {
   } catch (err) {
     console.error('Exercise sync error:', err);
     res.status(500).json({ error: 'Sync failed: ' + err.message });
+  }
+});
+
+// GET /admin/correspondence — Email & SMS template editor
+router.get('/correspondence', adminAuth, async (req, res) => {
+  try {
+    // Load saved templates from DB, fall back to defaults
+    const { rows } = await pool.query('SELECT * FROM email_templates ORDER BY name');
+    const templates = {};
+    for (const r of rows) templates[r.name] = { subject: r.subject, html: r.html, updatedAt: r.updated_at };
+
+    const defaultTemplates = [
+      { name: 'welcome', label: 'Welcome Email', desc: 'Sent to new users upon sign up' },
+      { name: 'password_reset', label: 'Password Reset', desc: 'Sent when a user requests a password reset' },
+      { name: 'admin_signup_notification', label: 'Admin Signup Notification', desc: 'Sent to admin when a new user signs up' },
+      { name: 'daily_summary', label: 'Daily Summary', desc: 'Daily analytics email sent to admin' },
+    ];
+
+    const cards = defaultTemplates.map(t => {
+      const saved = templates[t.name];
+      const lastEdited = saved?.updatedAt
+        ? new Date(saved.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        : 'Never (using default)';
+      return `<a class="card glass" href="/admin/correspondence/${t.name}" style="text-decoration:none;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div class="card-title" style="font-size:16px;">${t.label}</div>
+            <div class="card-desc" style="margin-top:4px;">${t.desc}</div>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+        </div>
+        <div style="margin-top:12px;font-size:11px;color:rgba(255,255,255,0.3);">Last edited: ${lastEdited}</div>
+      </a>`;
+    }).join('');
+
+    res.send(adminPage('User Correspondence', `
+      <div class="breadcrumb"><a href="/admin">Dashboard</a> / User Correspondence</div>
+      <div class="header">
+        <h1>User Correspondence</h1>
+        <p>Edit the emails and messages sent to users. Changes take effect immediately.</p>
+      </div>
+      <div class="card-grid">${cards}</div>
+      <div style="margin-top:24px;padding:16px 20px;border-radius:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);">
+        <p style="font-size:12px;color:rgba(255,255,255,0.3);">
+          <strong style="color:rgba(255,255,255,0.5);">Coming soon:</strong> SMS templates for text message notifications.
+        </p>
+      </div>
+    `));
+  } catch (err) {
+    console.error(err);
+    res.status(500).send(adminPage('Error', '<p style="color:#f87171;">Failed to load correspondence settings.</p>'));
+  }
+});
+
+// GET /admin/correspondence/:name — Edit a specific email template
+router.get('/correspondence/:name', adminAuth, async (req, res) => {
+  const templateName = req.params.name;
+  const labels = {
+    welcome: 'Welcome Email',
+    password_reset: 'Password Reset',
+    admin_signup_notification: 'Admin Signup Notification',
+    daily_summary: 'Daily Summary',
+  };
+
+  if (!labels[templateName]) {
+    return res.redirect('/admin/correspondence');
+  }
+
+  // Load saved or use current default
+  const { rows } = await pool.query('SELECT * FROM email_templates WHERE name = $1', [templateName]);
+  const saved = rows[0];
+
+  // Get defaults from email.js (approximate — show current content)
+  const defaults = {
+    welcome: { subject: 'Welcome to WillFit!', html: 'Default welcome email template' },
+    password_reset: { subject: 'Reset your WillFit password', html: 'Default password reset template' },
+    admin_signup_notification: { subject: 'New WillFit Signup', html: 'Default admin notification template' },
+    daily_summary: { subject: 'WillFit Daily Summary', html: 'Default daily summary template' },
+  };
+
+  const current = saved || defaults[templateName];
+  const msg = req.query.msg || '';
+
+  res.send(adminPage(`Edit — ${labels[templateName]}`, `
+    <div class="breadcrumb"><a href="/admin">Dashboard</a> / <a href="/admin/correspondence">Correspondence</a> / ${labels[templateName]}</div>
+    <div class="header">
+      <h1>${labels[templateName]}</h1>
+      <p>Edit the subject line and HTML body. Use {{firstName}}, {{email}}, {{resetUrl}} as placeholders.</p>
+    </div>
+    ${msg ? `<div class="glass" style="padding:12px 16px;border-left:3px solid #22c55e;margin-bottom:20px;"><p style="color:#4ade80;font-size:13px;">${esc(msg)}</p></div>` : ''}
+    <form method="POST" action="/admin/correspondence/${templateName}">
+      <div class="glass" style="padding:24px;border-radius:16px;">
+        <div style="margin-bottom:16px;">
+          <label>Subject Line</label>
+          <input type="text" name="subject" value="${esc(current.subject)}" required
+            style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;" />
+        </div>
+        <div style="margin-bottom:16px;">
+          <label>HTML Body</label>
+          <textarea name="html" required rows="18"
+            style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:13px;font-family:'Space Mono',monospace;outline:none;resize:vertical;line-height:1.6;box-sizing:border-box;">${esc(current.html)}</textarea>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button type="submit" class="btn" style="margin:0;">Save Template</button>
+          <a href="/admin/correspondence" class="btn-ghost" style="margin:0;text-align:center;">Cancel</a>
+        </div>
+      </div>
+    </form>
+  `));
+});
+
+// POST /admin/correspondence/:name — Save email template
+router.post('/correspondence/:name', adminAuth, express.urlencoded({ extended: false }), async (req, res) => {
+  const templateName = req.params.name;
+  const { subject, html } = req.body;
+
+  if (!subject || !html) {
+    return res.redirect(`/admin/correspondence/${templateName}?msg=Subject+and+body+are+required`);
+  }
+
+  try {
+    const { rows: existing } = await pool.query('SELECT id FROM email_templates WHERE name = $1', [templateName]);
+    if (existing.length > 0) {
+      await pool.query(
+        'UPDATE email_templates SET subject = $1, html = $2, updated_at = NOW() WHERE name = $3',
+        [subject, html, templateName]
+      );
+    } else {
+      await pool.query(
+        'INSERT INTO email_templates (name, subject, html) VALUES ($1, $2, $3)',
+        [templateName, subject, html]
+      );
+    }
+    res.redirect(`/admin/correspondence/${templateName}?msg=Template+saved+successfully`);
+  } catch (err) {
+    console.error(err);
+    res.redirect(`/admin/correspondence/${templateName}?msg=Failed+to+save+template`);
+  }
+});
+
+// GET /admin/custom-exercises — User-created exercises
+router.get('/custom-exercises', adminAuth, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT e.id, e.name, e.muscle_group, e.tags, e.created_at,
+              u.username, u.first_name, u.last_name, u.email
+       FROM exercises e
+       LEFT JOIN users u ON e.created_by = u.id
+       WHERE e.is_custom = TRUE
+       ORDER BY e.created_at DESC`
+    );
+
+    const tableRows = rows.map(r => {
+      const username = r.first_name && r.last_name
+        ? `${r.first_name} ${r.last_name}`
+        : r.username || r.email || 'Unknown';
+      const date = r.created_at
+        ? new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' })
+        : '—';
+      return `<tr>
+        <td>${esc(username)}</td>
+        <td style="font-weight:600;color:#fff;">${esc(r.name)}</td>
+        <td>${esc(r.muscle_group)}</td>
+        <td>${r.tags?.length ? esc(r.tags.join(', ')) : '—'}</td>
+        <td>${date}</td>
+      </tr>`;
+    }).join('');
+
+    res.send(adminPage('Custom Exercises', `
+      <div class="breadcrumb"><a href="/admin">Dashboard</a> / Custom Exercises</div>
+      <div class="header">
+        <h1>Custom Exercises</h1>
+        <p>${rows.length} user-created exercise${rows.length !== 1 ? 's' : ''} — review and add to the official library</p>
+      </div>
+      ${rows.length === 0
+        ? '<div class="glass" style="padding:40px;text-align:center;"><p style="color:rgba(255,255,255,0.4);font-size:14px;">No custom exercises yet. Users will create them during workout sessions.</p></div>'
+        : `<div class="glass" style="border-radius:16px;overflow:hidden;">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Exercise Name</th>
+                    <th>Muscle Group</th>
+                    <th>Tags</th>
+                    <th>Date Created</th>
+                  </tr>
+                </thead>
+                <tbody>${tableRows}</tbody>
+              </table>
+            </div>
+          </div>`
+      }
+    `));
+  } catch (err) {
+    console.error(err);
+    res.status(500).send(adminPage('Error', '<p style="color:#f87171;">Failed to load custom exercises.</p>'));
   }
 });
 

@@ -778,8 +778,8 @@ export default function WorkoutSession() {
 
       {/* Sticky Header with Progress Bar */}
       <StickyHeader
-        title={template.name}
-        subtitle={`${template.description} \u2022 ${displayDate}`}
+        title={`${template.name} — ${displayDate}`}
+        subtitle={template.description || null}
         bottomContent={
           <div className="mt-2 space-y-2">
             <div>
@@ -990,17 +990,21 @@ export default function WorkoutSession() {
           }
         }
         return (
-          <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setShowAddExercise(false)}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4" onClick={() => setShowAddExercise(false)}>
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             <div
-              className="relative w-full max-w-lg bg-wf-gray-900 rounded-t-2xl animate-slide-up max-h-[80vh] flex flex-col"
+              className="relative w-full max-w-lg bg-wf-gray-900 border border-white/10 rounded-2xl shadow-2xl max-h-[75vh] flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex justify-center pt-3 pb-1">
-                <div className="w-10 h-1 bg-white/20 rounded-full" />
-              </div>
-              <div className="px-5 pt-2 pb-3 border-b border-white/10 shrink-0">
-                <h3 className="text-lg font-bold text-white mb-3">Add Exercise</h3>
+              <div className="px-5 pt-5 pb-3 border-b border-white/10 shrink-0">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-bold text-white">Add Exercise</h3>
+                  <button onClick={() => setShowAddExercise(false)} className="text-wf-gray-400 active:opacity-70">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
                 <input
                   type="text"
                   value={addExerciseSearch}

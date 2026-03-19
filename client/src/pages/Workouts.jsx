@@ -1794,6 +1794,9 @@ function MaxPushupsChallenge() {
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
+  const [myCurrentValue, setMyCurrentValue] = useState(null);
+  const [showOverwriteConfirm, setShowOverwriteConfirm] = useState(false);
+  const [pendingValue, setPendingValue] = useState(null);
   const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0, ended: false });
 
   // Countdown to Mar 20, 2026 midnight ET
@@ -1820,23 +1823,30 @@ function MaxPushupsChallenge() {
   }, []);
 
   useEffect(() => {
-    api('/challenges/max-pushups/leaderboard')
-      .then(setEntries)
+    Promise.all([
+      api('/challenges/max-pushups/leaderboard'),
+      api('/challenges/max-pushups/my-entry'),
+    ])
+      .then(([leaderboard, myEntry]) => {
+        setEntries(leaderboard);
+        if (myEntry?.value) setMyCurrentValue(myEntry.value);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
 
-  async function handlePost() {
-    const num = parseInt(inputValue);
-    if (!num || num < 1) return;
+  async function submitEntry(value) {
     setPosting(true);
     try {
       const updated = await api('/challenges/max-pushups', {
         method: 'POST',
-        body: JSON.stringify({ value: num }),
+        body: JSON.stringify({ value }),
       });
       setEntries(updated);
+      setMyCurrentValue(value);
       setInputValue('');
+      setShowOverwriteConfirm(false);
+      setPendingValue(null);
     } catch (err) {
       alert(err.message);
     } finally {
@@ -1844,16 +1854,28 @@ function MaxPushupsChallenge() {
     }
   }
 
+  function handlePost() {
+    const num = parseInt(inputValue);
+    if (!num || num < 1) return;
+    // If user already has an entry and new value is lower, confirm overwrite
+    if (myCurrentValue && num < myCurrentValue) {
+      setPendingValue(num);
+      setShowOverwriteConfirm(true);
+      return;
+    }
+    submitEntry(num);
+  }
+
   function getInitials(entry) {
     if (entry.firstName && entry.lastName) return `${entry.firstName[0]}${entry.lastName[0]}`.toUpperCase();
     if (entry.firstName) return entry.firstName[0].toUpperCase();
-    if (entry.username) return entry.username[0].toUpperCase();
     return '?';
   }
 
   function getDisplayName(entry) {
-    if (entry.username) return `@${entry.username}`;
+    if (entry.firstName && entry.lastName) return `${entry.firstName} ${entry.lastName[0]}.`;
     if (entry.firstName) return entry.firstName;
+    if (entry.username && !entry.username.startsWith('user')) return `@${entry.username}`;
     return 'Anonymous';
   }
 
@@ -1982,6 +2004,37 @@ function MaxPushupsChallenge() {
           </div>
         )}
       </div>
+
+      {/* Overwrite confirmation modal */}
+      {showOverwriteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-5" onClick={() => { setShowOverwriteConfirm(false); setPendingValue(null); }}>
+          <div className="absolute inset-0 bg-black/70" />
+          <div
+            className="relative w-full max-w-xs bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-bold text-white text-center mb-2">Lower Score</h3>
+            <p className="text-wf-gray-400 text-sm text-center mb-5">
+              Your current record is <span className="text-white font-bold">{myCurrentValue}</span> reps. You're about to replace it with <span className="text-orange-400 font-bold">{pendingValue}</span> reps. Are you sure?
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setShowOverwriteConfirm(false); setPendingValue(null); }}
+                className="flex-1 glass-card text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+              >
+                Keep Current
+              </button>
+              <button
+                onClick={() => submitEntry(pendingValue)}
+                disabled={posting}
+                className="flex-1 bg-gradient-to-r from-orange-500 to-yellow-500 text-black font-bold py-3 rounded-xl text-sm active:scale-[0.98] transition-all disabled:opacity-50"
+              >
+                {posting ? '...' : 'Overwrite'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

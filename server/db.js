@@ -917,12 +917,31 @@ const db = {
     }));
   },
 
-  async postChallengeEntry(userId, challenge, value) {
+  async getUserChallengeEntry(userId, challenge) {
     const { rows } = await pool.query(
-      'INSERT INTO challenge_entries (user_id, challenge, value) VALUES ($1, $2, $3) RETURNING *',
-      [userId, challenge, value]
+      'SELECT * FROM challenge_entries WHERE user_id = $1 AND challenge = $2',
+      [userId, challenge]
     );
-    return rows[0];
+    return rows[0] || null;
+  },
+
+  async postChallengeEntry(userId, challenge, value) {
+    // Upsert: one entry per user per challenge
+    const { rows: existing } = await pool.query(
+      'SELECT id FROM challenge_entries WHERE user_id = $1 AND challenge = $2',
+      [userId, challenge]
+    );
+    if (existing.length > 0) {
+      await pool.query(
+        'UPDATE challenge_entries SET value = $1, created_at = NOW() WHERE id = $2',
+        [value, existing[0].id]
+      );
+    } else {
+      await pool.query(
+        'INSERT INTO challenge_entries (user_id, challenge, value) VALUES ($1, $2, $3)',
+        [userId, challenge, value]
+      );
+    }
   },
 };
 
