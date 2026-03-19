@@ -380,16 +380,36 @@ function adminPage(title, body) {
       position: fixed; top: 49px; left: 0; bottom: 0; width: 200px; z-index: 50;
       background: rgba(10,10,10,0.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
       border-right: 1px solid rgba(255,255,255,0.06);
-      overflow-y: auto; padding: 16px 0;
+      overflow-y: auto; padding: 8px 0; transition: width 0.2s, transform 0.2s;
     }
+    .sidebar.collapsed { width: 0; overflow: hidden; border-right: none; }
+    .sidebar-toggle {
+      display: flex; align-items: center; justify-content: flex-end; padding: 4px 12px 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.06); margin-bottom: 4px;
+    }
+    .sidebar-toggle button {
+      background: none; border: none; color: rgba(255,255,255,0.3); cursor: pointer; padding: 6px;
+      border-radius: 6px; transition: all 0.15s; display: flex; align-items: center; justify-content: center;
+    }
+    .sidebar-toggle button:hover { color: #fff; background: rgba(255,255,255,0.08); }
     .sidebar a {
       display: block; padding: 8px 20px; font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.4);
-      text-decoration: none; transition: all 0.15s; border-left: 2px solid transparent;
+      text-decoration: none; transition: all 0.15s; border-left: 2px solid transparent; white-space: nowrap;
     }
     .sidebar a:hover { color: #fff; background: rgba(255,255,255,0.05); border-left-color: rgba(239,68,68,0.4); }
     .sidebar a.active { color: #ef4444; background: rgba(239,68,68,0.08); border-left-color: #ef4444; font-weight: 700; }
-    .sidebar .sidebar-section { font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.2); padding: 16px 20px 6px; font-weight: 700; }
-    .main-with-sidebar { margin-left: 200px; }
+    .sidebar-section {
+      font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.2);
+      padding: 12px 20px 6px; font-weight: 700; cursor: pointer; display: flex; align-items: center;
+      justify-content: space-between; user-select: none; transition: color 0.15s;
+    }
+    .sidebar-section:hover { color: rgba(255,255,255,0.4); }
+    .sidebar-section .chevron { transition: transform 0.2s; }
+    .sidebar-section.collapsed-section .chevron { transform: rotate(-90deg); }
+    .sidebar-links { overflow: hidden; transition: max-height 0.25s ease; max-height: 500px; }
+    .sidebar-links.hidden { max-height: 0; }
+    .main-with-sidebar { margin-left: 200px; transition: margin-left 0.2s; }
+    .main-with-sidebar.expanded { margin-left: 0; }
 
     /* Scrollbar */
     html { overflow-y: scroll; }
@@ -399,8 +419,8 @@ function adminPage(title, body) {
     ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.35); }
 
     @media (max-width: 768px) {
-      .sidebar { display: none; }
-      .main-with-sidebar { margin-left: 0; }
+      .sidebar { width: 0; overflow: hidden; border-right: none; }
+      .main-with-sidebar { margin-left: 0 !important; }
     }
     @media print {
       .sidebar { display: none; }
@@ -440,32 +460,91 @@ function adminPage(title, body) {
 <script>document.addEventListener('click',function(e){var d=document.getElementById('settings-dropdown');if(d&&d.style.display==='block'&&!e.target.closest('[onclick*="settings-dropdown"]')&&!d.contains(e.target))d.style.display='none';});</script>
 <div style="height:56px;"></div>
 <!-- Sidebar -->
-<div class="sidebar">
-  <div class="sidebar-section">Overview</div>
-  <a href="/admin"${title === 'Dashboard' ? ' class="active"' : ''}>Dashboard</a>
-  <a href="/admin/users?format=html"${title === 'Users' ? ' class="active"' : ''}>User Sign Ups</a>
-  <a href="/admin/analytics"${title === 'Analytics' ? ' class="active"' : ''}>Session Analytics</a>
-  <a href="/admin/builds"${title === 'Builds' ? ' class="active"' : ''}>Pending Builds</a>
-  <a href="/admin/ai-usage"${title === 'AI Usage' ? ' class="active"' : ''}>AI Usage</a>
-  <div class="sidebar-section">Users</div>
-  <a href="/admin/feedback"${title === 'Feedback' ? ' class="active"' : ''}>Feedback</a>
-  <a href="/admin/retention"${title === 'Retention' ? ' class="active"' : ''}>Retention</a>
-  <a href="/admin/active"${title === 'Active Users' ? ' class="active"' : ''}>Active Users</a>
-  <a href="/admin/referrals"${title === 'Referrals' ? ' class="active"' : ''}>Referrals</a>
-  <a href="/admin/devices"${title === 'Devices' ? ' class="active"' : ''}>Devices</a>
-  <div class="sidebar-section">Content</div>
-  <a href="/admin/workouts"${title === 'Workouts' ? ' class="active"' : ''}>Workout Library</a>
-  <a href="/admin/announcements"${title === 'Announcements' ? ' class="active"' : ''}>Announcements</a>
-  <a href="/admin/flags"${title === 'Feature Flags' ? ' class="active"' : ''}>Feature Flags</a>
-  <a href="/admin/correspondence"${title === 'User Correspondence' ? ' class="active"' : ''}>Correspondence</a>
-  <a href="/admin/custom-exercises"${title === 'Custom Exercises' ? ' class="active"' : ''}>Custom Exercises</a>
-  <div class="sidebar-section">System</div>
-  <a href="/admin/health"${title === 'Health' ? ' class="active"' : ''}>Health Check</a>
-  <a href="/admin/errors"${title === 'Errors' ? ' class="active"' : ''}>Error Log</a>
-  <a href="/admin/revenue"${title === 'Revenue' ? ' class="active"' : ''}>Revenue</a>
-  <a href="/admin/subscriptions"${title === 'Subscriptions' ? ' class="active"' : ''}>Subscriptions</a>
-  <a href="/admin/trainer-login"${title === 'Trainer' ? ' class="active"' : ''}>Trainer Dashboard</a>
+<div class="sidebar" id="admin-sidebar">
+  <div class="sidebar-toggle">
+    <button onclick="toggleSidebar()" title="Collapse sidebar">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
+    </button>
+  </div>
+  <div class="sidebar-section" onclick="toggleSection('overview')">
+    <span>Overview</span>
+    <svg class="chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+  </div>
+  <div class="sidebar-links" id="section-overview">
+    <a href="/admin"${title === 'Dashboard' ? ' class="active"' : ''}>Dashboard</a>
+    <a href="/admin/users?format=html"${title === 'Users' ? ' class="active"' : ''}>User Sign Ups</a>
+    <a href="/admin/analytics"${title === 'Analytics' ? ' class="active"' : ''}>Session Analytics</a>
+    <a href="/admin/builds"${title === 'Builds' ? ' class="active"' : ''}>Pending Builds</a>
+    <a href="/admin/ai-usage"${title === 'AI Usage' ? ' class="active"' : ''}>AI Usage</a>
+  </div>
+  <div class="sidebar-section" onclick="toggleSection('users')">
+    <span>Users</span>
+    <svg class="chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+  </div>
+  <div class="sidebar-links" id="section-users">
+    <a href="/admin/feedback"${title === 'Feedback' ? ' class="active"' : ''}>Feedback</a>
+    <a href="/admin/retention"${title === 'Retention' ? ' class="active"' : ''}>Retention</a>
+    <a href="/admin/active"${title === 'Active Users' ? ' class="active"' : ''}>Active Users</a>
+    <a href="/admin/referrals"${title === 'Referrals' ? ' class="active"' : ''}>Referrals</a>
+    <a href="/admin/devices"${title === 'Devices' ? ' class="active"' : ''}>Devices</a>
+  </div>
+  <div class="sidebar-section" onclick="toggleSection('content')">
+    <span>Content</span>
+    <svg class="chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+  </div>
+  <div class="sidebar-links" id="section-content">
+    <a href="/admin/workouts"${title === 'Workouts' ? ' class="active"' : ''}>Workout Library</a>
+    <a href="/admin/announcements"${title === 'Announcements' ? ' class="active"' : ''}>Announcements</a>
+    <a href="/admin/flags"${title === 'Feature Flags' ? ' class="active"' : ''}>Feature Flags</a>
+    <a href="/admin/correspondence"${title === 'User Correspondence' ? ' class="active"' : ''}>Correspondence</a>
+    <a href="/admin/custom-exercises"${title === 'Custom Exercises' ? ' class="active"' : ''}>Custom Exercises</a>
+  </div>
+  <div class="sidebar-section" onclick="toggleSection('system')">
+    <span>System</span>
+    <svg class="chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+  </div>
+  <div class="sidebar-links" id="section-system">
+    <a href="/admin/health"${title === 'Health' ? ' class="active"' : ''}>Health Check</a>
+    <a href="/admin/errors"${title === 'Errors' ? ' class="active"' : ''}>Error Log</a>
+    <a href="/admin/revenue"${title === 'Revenue' ? ' class="active"' : ''}>Revenue</a>
+    <a href="/admin/subscriptions"${title === 'Subscriptions' ? ' class="active"' : ''}>Subscriptions</a>
+    <a href="/admin/trainer-login"${title === 'Trainer' ? ' class="active"' : ''}>Trainer Dashboard</a>
+  </div>
 </div>
+<script>
+function toggleSidebar() {
+  const sb = document.getElementById('admin-sidebar');
+  const main = document.querySelector('.main-with-sidebar');
+  const collapsed = sb.classList.toggle('collapsed');
+  main.classList.toggle('expanded', collapsed);
+  try { localStorage.setItem('admin_sidebar', collapsed ? 'collapsed' : 'open'); } catch {}
+}
+function toggleSection(name) {
+  const links = document.getElementById('section-' + name);
+  const section = links.previousElementSibling;
+  links.classList.toggle('hidden');
+  section.classList.toggle('collapsed-section');
+  try {
+    const state = JSON.parse(localStorage.getItem('admin_sections') || '{}');
+    state[name] = links.classList.contains('hidden');
+    localStorage.setItem('admin_sections', JSON.stringify(state));
+  } catch {}
+}
+// Restore state
+try {
+  if (localStorage.getItem('admin_sidebar') === 'collapsed') {
+    document.getElementById('admin-sidebar').classList.add('collapsed');
+    document.querySelector('.main-with-sidebar').classList.add('expanded');
+  }
+  const sections = JSON.parse(localStorage.getItem('admin_sections') || '{}');
+  for (const [name, hidden] of Object.entries(sections)) {
+    if (hidden) {
+      const el = document.getElementById('section-' + name);
+      if (el) { el.classList.add('hidden'); el.previousElementSibling.classList.add('collapsed-section'); }
+    }
+  }
+} catch {}
+</script>
 <div class="main-with-sidebar">
 <div class="container">
 <!-- Change Password Modal -->
