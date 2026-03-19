@@ -96,7 +96,11 @@ app.get('/health', (req, res) => res.json({ status: 'ok' }));
 // Serve built client in production
 const clientDist = path.join(__dirname, '..', 'client', 'dist');
 app.use(express.static(clientDist));
-app.get('*', (req, res) => {
+// Catch-all for React SPA — skip server-rendered pages (/admin, /trainer)
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/admin') || req.path.startsWith('/trainer')) {
+    return next();
+  }
   res.sendFile(path.join(clientDist, 'index.html'));
 });
 
