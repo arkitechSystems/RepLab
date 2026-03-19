@@ -2,6 +2,7 @@ import express, { Router } from 'express';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import pool from '../dbPool.js';
+import db from '../db.js';
 
 const router = Router();
 
@@ -250,6 +251,38 @@ function esc(str) {
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+// JSON API: search exercises for autocomplete
+router.get('/api/exercises', trainerAuth, async (req, res) => {
+  try {
+    const exercises = await db.getExercises(req.trainer.userId, { search: req.query.q, limit: 20 });
+    res.json(exercises);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch exercises' });
+  }
+});
+
+// JSON API: get muscle groups
+router.get('/api/muscle-groups', trainerAuth, async (req, res) => {
+  try {
+    const groups = await db.getMuscleGroups();
+    res.json(groups);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch muscle groups' });
+  }
+});
+
+// JSON API: create custom exercise
+router.post('/api/exercises', trainerAuth, express.json(), async (req, res) => {
+  try {
+    const { name, muscleGroup } = req.body;
+    if (!name || !muscleGroup) return res.status(400).json({ error: 'Name and muscle group required' });
+    const exercise = await db.createExercise(req.trainer.userId, name.trim(), muscleGroup, []);
+    res.status(201).json(exercise);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create exercise' });
+  }
+});
+
 // GET /trainer/create-workout — Workout builder form
 router.get('/create-workout', trainerAuth, async (req, res) => {
   const isAdmin = req.trainer.isAdmin || false;
@@ -263,6 +296,9 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
       : 'SELECT id, name FROM programs WHERE user_id = $1 ORDER BY name',
     isAdmin ? [] : [req.trainer.userId]
   );
+
+  // Get muscle groups for custom exercise modal
+  const muscleGroups = await db.getMuscleGroups();
 
   res.send(trainerPage('Create a Workout', `
     <div style="margin-bottom:20px;">
@@ -299,7 +335,6 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
         </div>
       </div>
 
-      <!-- Exercises -->
       <div id="exercises-container"></div>
 
       <button type="button" onclick="addExercise()" class="btn-ghost" style="width:100%;text-align:center;padding:14px;margin-bottom:20px;">
@@ -311,8 +346,41 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
       </button>
     </form>
 
+    <!-- Custom Exercise Modal -->
+    <div id="custom-ex-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);" onclick="if(event.target===this)this.style.display='none'">
+      <div class="glass" style="padding:24px;max-width:400px;width:90%;border-radius:16px;">
+        <h3 style="font-size:16px;font-weight:700;color:#fff;margin-bottom:16px;">Add Custom Exercise</h3>
+        <div style="margin-bottom:12px;">
+          <label>Exercise Name</label>
+          <input type="text" id="custom-ex-name" placeholder="e.g. Cable Lateral Raise"
+            style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;" />
+        </div>
+        <div style="margin-bottom:16px;">
+          <label>Muscle Group</label>
+          <select id="custom-ex-muscle" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;-webkit-appearance:none;">
+            ${muscleGroups.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join('')}
+          </select>
+        </div>
+        <button type="button" onclick="saveCustomExercise()" class="btn" style="margin:0;width:100%;padding:12px;font-size:14px;">Add Exercise</button>
+      </div>
+    </div>
+
     <script>
+      const SET_TYPES = [
+        { value: 'warm_up', label: 'Warm Up' },
+        { value: 'straight', label: 'Regular' },
+        { value: 'drop', label: 'Drop Set' },
+        { value: 'rest_pause', label: 'Rest-Pause' },
+        { value: 'superset', label: 'Super Set' },
+        { value: 'alternating', label: 'Alternating' },
+        { value: 'giant', label: 'Giant Set' },
+        { value: 'pre_exhaust', label: 'Pre-Exhaust' },
+      ];
+      const setTypeOptions = SET_TYPES.map(t => '<option value="' + t.value + '"' + (t.value === 'straight' ? ' selected' : '') + '>' + t.label + '</option>').join('');
+
       let exerciseCount = 0;
+      let searchTimeout = null;
+      let activeSearchIdx = null;
 
       function addExercise() {
         const idx = exerciseCount++;
@@ -320,27 +388,100 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
         const div = document.createElement('div');
         div.className = 'glass';
         div.id = 'exercise-' + idx;
-        div.style.cssText = 'padding:20px;border-radius:16px;margin-bottom:16px;';
-        div.innerHTML = \`
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-            <label style="margin:0;font-size:13px;font-weight:700;color:#fff;">Exercise \${idx + 1}</label>
-            <button type="button" onclick="removeExercise(\${idx})" style="background:none;border:none;color:rgba(255,255,255,0.3);cursor:pointer;padding:4px 8px;border-radius:6px;font-family:inherit;font-size:12px;" onmouseover="this.style.color='#ef4444';this.style.background='rgba(239,68,68,0.15)'" onmouseout="this.style.color='rgba(255,255,255,0.3)';this.style.background='none'">Remove</button>
-          </div>
-          <input type="text" name="exercises[\${idx}][name]" placeholder="Exercise name" required
-            style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;margin-bottom:12px;box-sizing:border-box;" />
-          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
-            <span style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);width:40px;">Set</span>
-            <span style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);flex:1;text-align:center;">Reps</span>
-            <span style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);flex:1;text-align:center;">Weight (lbs)</span>
-            <span style="width:28px;"></span>
-          </div>
-          <div id="sets-\${idx}"></div>
-          <button type="button" onclick="addSet(\${idx})" style="margin-top:8px;background:none;border:1px dashed rgba(255,255,255,0.15);color:rgba(255,255,255,0.4);padding:8px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;width:100%;transition:all 0.15s;" onmouseover="this.style.borderColor='rgba(255,255,255,0.3)';this.style.color='#fff'" onmouseout="this.style.borderColor='rgba(255,255,255,0.15)';this.style.color='rgba(255,255,255,0.4)'">+ Add Set</button>
-        \`;
+        div.style.cssText = 'padding:20px;border-radius:16px;margin-bottom:16px;position:relative;';
+        div.innerHTML =
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">' +
+            '<label style="margin:0;font-size:13px;font-weight:700;color:#fff;">Exercise ' + (idx + 1) + '</label>' +
+            '<button type="button" onclick="removeExercise(' + idx + ')" style="background:none;border:none;color:rgba(255,255,255,0.3);cursor:pointer;padding:4px 8px;border-radius:6px;font-family:inherit;font-size:12px;" onmouseover="this.style.color=\'#ef4444\';this.style.background=\'rgba(239,68,68,0.15)\'" onmouseout="this.style.color=\'rgba(255,255,255,0.3)\';this.style.background=\'none\'">Remove</button>' +
+          '</div>' +
+          '<div style="position:relative;">' +
+            '<input type="text" id="ex-search-' + idx + '" name="exercises[' + idx + '][name]" placeholder="Search exercises..." required autocomplete="off"' +
+              ' oninput="searchExercises(' + idx + ',this.value)" onfocus="searchExercises(' + idx + ',this.value)"' +
+              ' style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;margin-bottom:0;box-sizing:border-box;" />' +
+            '<div id="ex-results-' + idx + '" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:50;max-height:200px;overflow-y:auto;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.12);border-radius:10px;margin-top:4px;box-shadow:0 8px 32px rgba(0,0,0,0.5);"></div>' +
+          '</div>' +
+          '<div style="margin-top:12px;margin-bottom:12px;display:flex;gap:8px;align-items:center;">' +
+            '<label style="margin:0;font-size:11px;color:rgba(255,255,255,0.4);white-space:nowrap;">Set Type</label>' +
+            '<select name="exercises[' + idx + '][setType]" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:13px;font-family:inherit;outline:none;-webkit-appearance:none;box-sizing:border-box;">' + setTypeOptions + '</select>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">' +
+            '<span style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);width:40px;">Set</span>' +
+            '<span style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);flex:1;text-align:center;">Reps</span>' +
+            '<span style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);flex:1;text-align:center;">Weight (lbs)</span>' +
+            '<span style="width:28px;"></span>' +
+          '</div>' +
+          '<div id="sets-' + idx + '"></div>' +
+          '<button type="button" onclick="addSet(' + idx + ')" style="margin-top:8px;background:none;border:1px dashed rgba(255,255,255,0.15);color:rgba(255,255,255,0.4);padding:8px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;width:100%;transition:all 0.15s;" onmouseover="this.style.borderColor=\'rgba(255,255,255,0.3)\';this.style.color=\'#fff\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,0.15)\';this.style.color=\'rgba(255,255,255,0.4)\'">+ Add Set</button>';
         container.appendChild(div);
-        // Auto-add 3 sets
         addSet(idx); addSet(idx); addSet(idx);
       }
+
+      function searchExercises(exIdx, query) {
+        activeSearchIdx = exIdx;
+        clearTimeout(searchTimeout);
+        const resultsDiv = document.getElementById('ex-results-' + exIdx);
+        if (!query || query.length < 1) { resultsDiv.style.display = 'none'; return; }
+        searchTimeout = setTimeout(async () => {
+          try {
+            const resp = await fetch('/trainer/api/exercises?q=' + encodeURIComponent(query));
+            const exercises = await resp.json();
+            let html = '';
+            exercises.forEach(ex => {
+              html += '<button type="button" onclick="selectExercise(' + exIdx + ',\\'' + ex.name.replace(/'/g, "\\\\'") + '\\')" style="width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#fff;font-size:13px;cursor:pointer;font-family:inherit;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.05);" onmouseover="this.style.background=\'rgba(255,255,255,0.08)\'" onmouseout="this.style.background=\'none\'">' +
+                '<span>' + ex.name + (ex.isCustom ? ' <span style=\\"font-size:9px;color:#ef4444;\\">custom</span>' : '') + '</span>' +
+                '<span style="font-size:10px;color:rgba(255,255,255,0.3);">' + (ex.muscle || '') + '</span>' +
+              '</button>';
+            });
+            // Add custom exercise option
+            html += '<button type="button" onclick="openCustomModal(' + exIdx + ')" style="width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#ef4444;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600;" onmouseover="this.style.background=\'rgba(239,68,68,0.08)\'" onmouseout="this.style.background=\'none\'">+ Add &quot;' + query.replace(/"/g, '&amp;quot;') + '&quot; as custom exercise</button>';
+            resultsDiv.innerHTML = html;
+            resultsDiv.style.display = 'block';
+          } catch (err) { console.error(err); }
+        }, 200);
+      }
+
+      function selectExercise(exIdx, name) {
+        document.getElementById('ex-search-' + exIdx).value = name;
+        document.getElementById('ex-results-' + exIdx).style.display = 'none';
+      }
+
+      function openCustomModal(exIdx) {
+        document.getElementById('ex-results-' + exIdx).style.display = 'none';
+        const input = document.getElementById('ex-search-' + exIdx);
+        document.getElementById('custom-ex-name').value = input.value;
+        activeSearchIdx = exIdx;
+        document.getElementById('custom-ex-modal').style.display = 'flex';
+      }
+
+      async function saveCustomExercise() {
+        const name = document.getElementById('custom-ex-name').value.trim();
+        const muscle = document.getElementById('custom-ex-muscle').value;
+        if (!name) return;
+        try {
+          await fetch('/trainer/api/exercises', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, muscleGroup: muscle }),
+          });
+        } catch (err) { console.error('Failed to save custom exercise:', err); }
+        // Set the exercise name in the form
+        if (activeSearchIdx !== null) {
+          document.getElementById('ex-search-' + activeSearchIdx).value = name;
+        }
+        document.getElementById('custom-ex-modal').style.display = 'none';
+      }
+
+      function getCookie(name) {
+        const v = document.cookie.match('(^|;)\\\\s*' + name + '\\\\s*=\\\\s*([^;]+)');
+        return v ? v.pop() : '';
+      }
+
+      // Close dropdowns when clicking outside
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('[id^="ex-search-"]') && !e.target.closest('[id^="ex-results-"]')) {
+          document.querySelectorAll('[id^="ex-results-"]').forEach(d => d.style.display = 'none');
+        }
+      });
 
       const setCounts = {};
       function addSet(exIdx) {
@@ -350,16 +491,13 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
         const row = document.createElement('div');
         row.id = 'set-' + exIdx + '-' + setIdx;
         row.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:6px;';
-        row.innerHTML = \`
-          <span style="font-size:13px;color:rgba(255,255,255,0.5);width:40px;text-align:center;font-weight:600;">\${setIdx + 1}</span>
-          <input type="number" name="exercises[\${exIdx}][sets][\${setIdx}][reps]" placeholder="10" value="10"
-            style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;text-align:center;box-sizing:border-box;" />
-          <input type="number" name="exercises[\${exIdx}][sets][\${setIdx}][weight]" placeholder="0" value="0"
-            style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;text-align:center;box-sizing:border-box;" />
-          <button type="button" onclick="removeSet(\${exIdx},\${setIdx})" style="background:none;border:none;color:rgba(255,255,255,0.2);cursor:pointer;padding:2px;width:28px;display:flex;align-items:center;justify-content:center;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='rgba(255,255,255,0.2)'">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-          </button>
-        \`;
+        row.innerHTML =
+          '<span style="font-size:13px;color:rgba(255,255,255,0.5);width:40px;text-align:center;font-weight:600;">' + (setIdx + 1) + '</span>' +
+          '<input type="number" name="exercises[' + exIdx + '][sets][' + setIdx + '][reps]" placeholder="10" value="10" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;text-align:center;box-sizing:border-box;" />' +
+          '<input type="number" name="exercises[' + exIdx + '][sets][' + setIdx + '][weight]" placeholder="0" value="0" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;text-align:center;box-sizing:border-box;" />' +
+          '<button type="button" onclick="removeSet(' + exIdx + ',' + setIdx + ')" style="background:none;border:none;color:rgba(255,255,255,0.2);cursor:pointer;padding:2px;width:28px;display:flex;align-items:center;justify-content:center;" onmouseover="this.style.color=\'#ef4444\'" onmouseout="this.style.color=\'rgba(255,255,255,0.2)\'">' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>' +
+          '</button>';
         setsDiv.appendChild(row);
       }
 
@@ -373,7 +511,6 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
         if (el) el.remove();
       }
 
-      // Start with one exercise
       addExercise();
     </script>
   `, req.trainer));
@@ -432,13 +569,14 @@ router.post('/create-workout', trainerAuth, express.urlencoded({ extended: true 
       let exSortOrder = 0;
       for (const ex of exArray) {
         if (!ex?.name?.trim()) continue;
+        const setType = ex.setType || 'straight';
         const sets = ex.sets ? (Array.isArray(ex.sets) ? ex.sets : Object.values(ex.sets)) : [];
         let setNum = 1;
         for (const set of sets) {
           if (!set) continue;
           await pool.query(
-            'INSERT INTO template_exercises (template_id, name, set_number, planned_reps, suggested_weight, sort_order) VALUES ($1, $2, $3, $4, $5, $6)',
-            [tmpl.id, ex.name.trim(), setNum++, parseInt(set.reps) || 10, parseInt(set.weight) || 0, exSortOrder]
+            'INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+            [tmpl.id, ex.name.trim(), setType, setNum++, parseInt(set.reps) || 10, parseInt(set.weight) || 0, exSortOrder]
           );
         }
         exSortOrder++;
