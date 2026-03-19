@@ -363,14 +363,12 @@ const db = {
        ORDER BY sd.day_of_week`,
       [userId]
     );
-    return rows
-      .filter((r) => r.template_id === null || r.template_name !== null)
-      .map((r) => ({
-        dayOfWeek: r.day_of_week,
-        templateId: r.template_id,
-        templateName: r.template_name || null,
-        isRest: r.is_rest || false,
-      }));
+    return rows.map((r) => ({
+      dayOfWeek: r.day_of_week,
+      templateId: r.template_id,
+      templateName: r.template_name || null,
+      isRest: r.is_rest || false,
+    }));
   },
 
   async setDefaultSchedule(_userId) {

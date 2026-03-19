@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { buildProgramColorMap, getColorFromMap } from '../utils/workoutColors';
@@ -96,6 +96,7 @@ export default function Workouts() {
   const [showAddDatePicker, setShowAddDatePicker] = useState(false);
   const [addConflictInfo, setAddConflictInfo] = useState(null);
   const navigate = useNavigate();
+  const beginDateRef = useRef(null);
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
@@ -827,13 +828,12 @@ export default function Workouts() {
     return (
       <>
         {beginModal && !conflictInfo && (
-          <div className="fixed inset-0 z-50 flex items-end" onClick={closeBeginModal}>
-            <div className="absolute inset-0 bg-black/60" />
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-5" onClick={closeBeginModal}>
+            <div className="absolute inset-0 bg-black/70" />
             <div
-              className="relative w-full bg-wf-gray-900 border-t border-white/10 rounded-t-2xl p-5 pb-24 animate-drop-down"
+              className="relative w-full max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-5" />
               <h3 className="text-lg font-black text-white mb-1">Begin Program</h3>
               <p className="text-wf-gray-400 text-sm mb-5">
                 Schedule <span className="text-white font-semibold">{beginModal.name}</span> starting from a day of your choice.
@@ -847,7 +847,15 @@ export default function Workouts() {
                     Start Today
                   </button>
                   <button
-                    onClick={() => setShowDatePicker(true)}
+                    onClick={() => {
+                      setShowDatePicker(true);
+                      setTimeout(() => {
+                        if (beginDateRef.current) {
+                          beginDateRef.current.focus();
+                          try { beginDateRef.current.showPicker(); } catch {}
+                        }
+                      }, 50);
+                    }}
                     className="flex-1 glass-card text-white font-semibold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-all"
                   >
                     Choose Date
@@ -861,7 +869,7 @@ export default function Workouts() {
                     min={new Date().toISOString().slice(0, 10)}
                     onChange={(e) => setBeginDateInput(e.target.value)}
                     className="flex-1 glass-input rounded-xl px-3 py-3 text-white text-sm focus:outline-none"
-                    ref={iosFocusRef}
+                    ref={beginDateRef}
                   />
                   <button
                     onClick={handleBeginDate}
@@ -1583,7 +1591,7 @@ export default function Workouts() {
                       Maybe Later
                     </button>
                     <button
-                      onClick={() => { setShowPremiumGate(false); navigate('/profile'); }}
+                      onClick={() => { setShowPremiumGate(false); navigate('/upgrade'); }}
                       className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
                     >
                       Upgrade

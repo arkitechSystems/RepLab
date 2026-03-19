@@ -173,7 +173,12 @@ export default function Profile() {
                   'text-green-400'
                 }`}>{user?.plan || 'Free'}</span>
                 {(!user?.plan || user?.plan === 'Free') && (
-                  <span className="text-[10px] text-wf-gray-500 bg-white/5 px-2 py-0.5 rounded-full">Pro & Elite coming soon</span>
+                  <button
+                    onClick={() => navigate('/upgrade')}
+                    className="text-[10px] font-bold text-yellow-400 bg-yellow-500/10 px-2 py-0.5 rounded-full active:bg-yellow-500/20 transition-colors"
+                  >
+                    Upgrade
+                  </button>
                 )}
               </div>
             </div>

@@ -301,4 +301,27 @@ router.post('/start-trial', authMiddleware, async (req, res) => {
   }
 });
 
+// Upgrade plan (payment)
+router.post('/upgrade', authMiddleware, async (req, res) => {
+  try {
+    const { plan, billing } = req.body;
+    if (!plan || !['Pro', 'Elite'].includes(plan)) {
+      return res.status(400).json({ error: 'Invalid plan. Choose Pro or Elite.' });
+    }
+
+    // In production, process payment with Stripe here.
+    // For now, just update the plan directly.
+    await pool.query(
+      'UPDATE users SET plan = $1, trial_end = NULL WHERE id = $2',
+      [plan, req.userId]
+    );
+
+    const updated = await db.findUserById(req.userId);
+    res.json({ user: userResponse(updated) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

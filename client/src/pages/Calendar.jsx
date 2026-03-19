@@ -339,16 +339,12 @@ export default function Calendar() {
         const currentWorkout = getWorkoutForDay(editingDay);
         const hasWorkout = currentWorkout && !currentWorkout.isRest;
         return (
-          <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setEditingDay(null)}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4" onClick={() => setEditingDay(null)}>
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             <div
-              className="relative w-full max-w-lg bg-wf-gray-900 rounded-t-2xl animate-slide-up max-h-[80vh] flex flex-col"
+              className="relative w-full max-w-lg bg-wf-gray-900 border border-white/10 rounded-2xl shadow-2xl max-h-[75vh] flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Drag handle */}
-              <div className="flex justify-center pt-3 pb-1">
-                <div className="w-10 h-1 bg-white/20 rounded-full" />
-              </div>
 
               {/* Modal header */}
               <div className="px-5 pt-2 pb-3 border-b border-white/10 shrink-0">

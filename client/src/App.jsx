@@ -18,6 +18,7 @@ import Utilities from './pages/Utilities';
 import Welcome from './pages/Welcome';
 import ForgotPassword from './pages/ForgotPassword';
 import FreeTrialOffer from './pages/FreeTrialOffer';
+import Upgrade from './pages/Upgrade';
 import ResetPassword from './pages/ResetPassword';
 import AIWorkoutGenerator from './pages/AIWorkoutGenerator';
 import ExerciseLibrary from './pages/ExerciseLibrary';
@@ -89,6 +90,7 @@ export default function App() {
         <Route path="/history/:id" element={<SessionDetail />} />
         <Route path="/utilities" element={<Utilities />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/upgrade" element={<Upgrade />} />
       </Route>
 
       <Route path="*" element={<CatchAllRedirect />} />

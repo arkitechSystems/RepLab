@@ -14,6 +14,7 @@ export function useUnsavedGuard({ isDirty, onSave, saveLabel = 'Save' }) {
   const location = useLocation();
   const isDirtyRef = useRef(isDirty);
   const pushedStateRef = useRef(false);
+  const pushCountRef = useRef(0); // track how many extra history entries we've added
 
   // Keep ref in sync
   useEffect(() => { isDirtyRef.current = isDirty; }, [isDirty]);
@@ -22,6 +23,7 @@ export function useUnsavedGuard({ isDirty, onSave, saveLabel = 'Save' }) {
   useEffect(() => {
     if (!isDirty) {
       pushedStateRef.current = false;
+      pushCountRef.current = 0;
       return;
     }
 
@@ -34,6 +36,7 @@ export function useUnsavedGuard({ isDirty, onSave, saveLabel = 'Save' }) {
       if (isDirtyRef.current) {
         // Re-push so we stay on the page
         window.history.pushState(null, '', location.pathname);
+        pushCountRef.current++;
         setPendingPath('__back__');
         setShowModal(true);
       }
@@ -43,6 +46,7 @@ export function useUnsavedGuard({ isDirty, onSave, saveLabel = 'Save' }) {
     if (!pushedStateRef.current) {
       window.history.pushState(null, '', location.pathname);
       pushedStateRef.current = true;
+      pushCountRef.current = 1;
     }
 
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -72,7 +76,6 @@ export function useUnsavedGuard({ isDirty, onSave, saveLabel = 'Save' }) {
     setSaveError('');
     try {
       await onSave();
-      // onSave succeeded — if it navigated away, we're done. If not, close modal.
       setShowModal(false);
     } catch (err) {
       setSaveError(err?.message || 'Save failed. Please try again.');
@@ -83,15 +86,21 @@ export function useUnsavedGuard({ isDirty, onSave, saveLabel = 'Save' }) {
   function handleLeave() {
     setShowModal(false);
     setSaveError('');
+
+    // Disable the guard so popstate/navigation doesn't re-trigger
+    isDirtyRef.current = false;
+
     if (pendingPath === '__back__') {
-      // Go back: we pushed 1 extra entry, so go(-1) undoes that, then navigate(-1) actually goes back
-      navigate(-1);
+      // Go back past all the extra entries we pushed, plus the original page
+      window.history.go(-(pushCountRef.current + 1));
     } else if (typeof pendingPath === 'function') {
-      pendingPath();
+      // For in-app back buttons using navigate(-1), go back past pushed entries
+      window.history.go(-(pushCountRef.current + 1));
     } else if (pendingPath) {
-      navigate(pendingPath);
+      navigate(pendingPath, { replace: true });
     }
     setPendingPath(null);
+    pushCountRef.current = 0;
   }
 
   function handleStay() {
