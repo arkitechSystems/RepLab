@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import StickyHeader from '../components/StickyHeader';
 import { beepCountdown, beepPhaseChange, beepComplete, initAudio } from '../utils/sounds';
+import { useAuth } from '../context/AuthContext';
 
 const MUSCLE_GROUPS = [
   'Chest', 'Shoulders', 'Traps', 'Biceps', 'Back', 'Triceps', 'Quads', 'Glutes', 'Hamstrings',
@@ -32,10 +33,14 @@ function classifyExercise(name) {
 }
 
 function PRsSection() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const isPremium = user?.plan && user.plan !== 'Free';
   const [pbs, setPbs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedGroup, setExpandedGroup] = useState(null);
   const [expandedExercise, setExpandedExercise] = useState(null);
+  const [prSearch, setPrSearch] = useState('');
 
   useEffect(() => {
     api('/pbs')
@@ -51,7 +56,7 @@ function PRsSection() {
     if (!group) continue;
     if (!grouped[group]) grouped[group] = {};
     if (!grouped[group][pb.exerciseName]) grouped[group][pb.exerciseName] = [];
-    grouped[group][pb.exerciseName].push({ weight: pb.bestWeight, reps: pb.bestReps });
+    grouped[group][pb.exerciseName].push({ weight: pb.bestWeight, reps: pb.bestReps, achievedAt: pb.achievedAt });
   }
   // Sort weights descending within each exercise
   for (const group of Object.values(grouped)) {
@@ -72,17 +77,70 @@ function PRsSection() {
 
   const hasAny = Object.keys(grouped).length > 0;
 
+  // Filter by search (Pro only)
+  const q = isPremium ? prSearch.toLowerCase().trim() : '';
+  const filteredGroups = MUSCLE_GROUPS.filter((g) => {
+    if (!grouped[g]) return false;
+    if (!q) return true;
+    return Object.keys(grouped[g]).some((ex) => ex.toLowerCase().includes(q));
+  });
+
   return (
     <div className="space-y-2">
+      {/* Search bar */}
+      {hasAny && (
+        <div className="relative mb-2">
+          <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+          </svg>
+          <input
+            type="text"
+            value={prSearch}
+            onChange={(e) => {
+              if (!isPremium) {
+                navigate('/upgrade');
+                return;
+              }
+              setPrSearch(e.target.value);
+            }}
+            onFocus={() => { if (!isPremium) navigate('/upgrade'); }}
+            placeholder="Search exercises..."
+            className="w-full glass-input rounded-xl pl-10 pr-20 py-2.5 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none"
+            readOnly={!isPremium}
+          />
+          {isPremium && prSearch ? (
+            <button
+              onClick={() => setPrSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-wf-gray-500 active:text-white"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          ) : (
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-yellow-400 bg-yellow-500/15 px-1.5 py-0.5 rounded-full">PRO</span>
+          )}
+        </div>
+      )}
+
       {!hasAny && (
         <div className="glass-card rounded-xl p-6 text-center">
           <p className="text-wf-gray-400 text-sm">No PRs recorded yet</p>
           <p className="text-wf-gray-500 text-xs mt-1">Complete workouts to start tracking</p>
         </div>
       )}
-      {MUSCLE_GROUPS.filter((g) => grouped[g]).map((group) => {
-        const exercises = grouped[group];
-        const exerciseNames = Object.keys(exercises);
+      {q && filteredGroups.length === 0 && (
+        <div className="glass-card rounded-xl p-6 text-center">
+          <p className="text-wf-gray-400 text-sm">No exercises matching "{prSearch}"</p>
+        </div>
+      )}
+      {filteredGroups.map((group) => {
+        const allExercises = grouped[group];
+        const exerciseNames = q
+          ? Object.keys(allExercises).filter((ex) => ex.toLowerCase().includes(q))
+          : Object.keys(allExercises);
+        const exercises = {};
+        for (const name of exerciseNames) exercises[name] = allExercises[name];
         const isExpanded = expandedGroup === group;
         const totalPRs = exerciseNames.reduce((s, ex) => s + exercises[ex].length, 0);
 
@@ -139,24 +197,39 @@ function PRsSection() {
                           {/* Column headers */}
                           <div className="flex items-center px-3 py-1">
                             <span className="flex-1 text-[10px] uppercase tracking-widest text-wf-gray-600">Weight</span>
-                            <span className="w-20 text-[10px] uppercase tracking-widest text-wf-gray-600 text-right">Best Reps</span>
+                            <span className="flex-1 text-[10px] uppercase tracking-widest text-wf-gray-600 text-center">Date</span>
+                            <span className="w-16 text-[10px] uppercase tracking-widest text-wf-gray-600 text-right">Reps</span>
                           </div>
-                          {records.map((r) => (
-                            <div
-                              key={r.weight}
-                              className="flex items-center px-3 py-2 rounded-lg bg-white/[0.03]"
-                            >
-                              <span className="flex-1 text-sm text-white font-medium tabular-nums">
-                                {r.weight} <span className="text-xs text-wf-gray-500">lbs</span>
-                              </span>
-                              <div className="flex items-center gap-1.5">
-                                <svg className="w-3.5 h-3.5 text-amber-400" viewBox="0 0 24 24" fill="currentColor">
-                                  <path fillRule="evenodd" d="M5.166 2.621v.858c-1.035.148-2.059.33-3.071.543a.75.75 0 00-.584.859 6.753 6.753 0 006.138 5.6 6.73 6.73 0 002.743 1.346A6.707 6.707 0 019.279 15H8.54c-1.036 0-1.875.84-1.875 1.875V19.5h-.75a.75.75 0 000 1.5h12.75a.75.75 0 000-1.5h-.75v-2.625c0-1.036-.84-1.875-1.875-1.875h-.739a6.707 6.707 0 01-1.112-3.173 6.73 6.73 0 002.743-1.347 6.753 6.753 0 006.139-5.6.75.75 0 00-.585-.858 47.077 47.077 0 00-3.07-.543V2.62a.75.75 0 00-.658-.744 49.22 49.22 0 00-6.093-.377c-2.063 0-4.096.128-6.093.377a.75.75 0 00-.657.744z" clipRule="evenodd" />
-                                </svg>
-                                <span className="text-sm font-bold text-amber-400 tabular-nums">{r.reps}</span>
+                          {records.map((r) => {
+                            const dateStr = r.achievedAt ? new Date(r.achievedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }) : '—';
+                            const calDate = r.achievedAt ? new Date(r.achievedAt) : null;
+                            return (
+                              <div
+                                key={r.weight}
+                                className="flex items-center px-3 py-2 rounded-lg bg-white/[0.03]"
+                              >
+                                <span className="flex-1 text-sm text-white font-medium tabular-nums">
+                                  {r.weight} <span className="text-xs text-wf-gray-500">lbs</span>
+                                </span>
+                                {calDate ? (
+                                  <button
+                                    onClick={() => navigate('/calendar')}
+                                    className="flex-1 text-center text-xs text-wf-blue font-medium active:opacity-70 transition-opacity"
+                                  >
+                                    {dateStr}
+                                  </button>
+                                ) : (
+                                  <span className="flex-1 text-center text-xs text-wf-gray-500">{dateStr}</span>
+                                )}
+                                <div className="w-16 flex items-center justify-end gap-1.5">
+                                  <svg className="w-3.5 h-3.5 text-amber-400" viewBox="0 0 24 24" fill="currentColor">
+                                    <path fillRule="evenodd" d="M5.166 2.621v.858c-1.035.148-2.059.33-3.071.543a.75.75 0 00-.584.859 6.753 6.753 0 006.138 5.6 6.73 6.73 0 002.743 1.346A6.707 6.707 0 019.279 15H8.54c-1.036 0-1.875.84-1.875 1.875V19.5h-.75a.75.75 0 000 1.5h12.75a.75.75 0 000-1.5h-.75v-2.625c0-1.036-.84-1.875-1.875-1.875h-.739a6.707 6.707 0 01-1.112-3.173 6.73 6.73 0 002.743-1.347 6.753 6.753 0 006.139-5.6.75.75 0 00-.585-.858 47.077 47.077 0 00-3.07-.543V2.62a.75.75 0 00-.658-.744 49.22 49.22 0 00-6.093-.377c-2.063 0-4.096.128-6.093.377a.75.75 0 00-.657.744z" clipRule="evenodd" />
+                                  </svg>
+                                  <span className="text-sm font-bold text-amber-400 tabular-nums">{r.reps}</span>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </div>
