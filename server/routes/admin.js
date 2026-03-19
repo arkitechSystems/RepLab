@@ -5,6 +5,7 @@ import db from '../db.js';
 import { Resend } from 'resend';
 import pool from '../dbPool.js';
 import { syncFromWger } from '../syncExercises.js';
+import { trainerSessions } from './trainer.js';
 
 const router = Router();
 
@@ -638,6 +639,11 @@ router.get('/', adminAuth, async (req, res) => {
       <div class="card-icon">💳</div>
       <div class="card-title">Subscription Manager</div>
       <div class="card-desc">Manage user subscriptions when paid plans are launched.</div>
+    </a>
+    <a class="card glass" href="/admin/trainer-login" style="border-color:rgba(239,68,68,0.25);">
+      <div class="card-icon">🏋️‍♂️</div>
+      <div class="card-title">Trainer Dashboard</div>
+      <div class="card-desc">Create and manage workouts in the browse library. Workouts show up for all users.</div>
     </a>
   </div>
 
@@ -2147,6 +2153,47 @@ router.post('/correspondence/:name', adminAuth, express.urlencoded({ extended: f
   } catch (err) {
     console.error(err);
     res.redirect(`/admin/correspondence/${templateName}?msg=Failed+to+save+template`);
+  }
+});
+
+// GET /admin/trainer-login — Auto-login admin to trainer dashboard
+router.get('/trainer-login', adminAuth, async (req, res) => {
+  try {
+    // Find the admin user by email
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (!adminEmail) {
+      return res.redirect('/admin?msg=ADMIN_EMAIL+not+configured');
+    }
+
+    const { rows } = await pool.query(
+      'SELECT id, email, first_name, last_name FROM users WHERE email = $1',
+      [adminEmail]
+    );
+
+    if (rows.length === 0) {
+      return res.redirect('/admin?msg=Admin+user+not+found+in+users+table');
+    }
+
+    const user = rows[0];
+    const token = crypto.randomBytes(32).toString('hex');
+    trainerSessions.set(token, {
+      userId: user.id,
+      email: user.email,
+      firstName: user.first_name,
+      lastName: user.last_name,
+      isAdmin: true,
+    });
+
+    res.cookie('trainer_session', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60 * 1000,
+    });
+    return res.redirect('/trainer');
+  } catch (err) {
+    console.error('Admin trainer login error:', err);
+    return res.redirect('/admin?msg=Failed+to+login+to+trainer+dashboard');
   }
 });
 

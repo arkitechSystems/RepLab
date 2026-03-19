@@ -222,12 +222,21 @@ router.get('/logout', (req, res) => {
 
 // GET /trainer — Dashboard home
 router.get('/', trainerAuth, (req, res) => {
+  const isAdmin = req.trainer.isAdmin || false;
+  const scopeMsg = isAdmin
+    ? 'Workouts you create here will appear in the <strong style="color:#ef4444;">Browse Workout Library</strong> for all users.'
+    : 'Workouts you create here will appear in your <strong style="color:#ef4444;">My Workouts</strong> section.';
+
   res.send(trainerPage('Dashboard', `
     <div class="header">
-      <h1>Trainer Dashboard</h1>
+      <h1>Trainer Dashboard${isAdmin ? ' <span style="font-size:14px;background:rgba(239,68,68,0.15);color:#ef4444;padding:4px 10px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:8px;">ADMIN</span>' : ''}</h1>
       <p>Welcome back, ${req.trainer.firstName || req.trainer.email}. Manage your workouts and programs.</p>
+    </div>
+    <div class="glass" style="padding:16px 20px;margin-bottom:24px;border-left:3px solid ${isAdmin ? '#ef4444' : '#3b82f6'};">
+      <p style="font-size:13px;color:rgba(255,255,255,0.6);line-height:1.6;">${scopeMsg}</p>
     </div>
   `, req.trainer));
 });
 
+export { trainerSessions };
 export default router;
