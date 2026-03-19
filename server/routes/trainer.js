@@ -242,6 +242,11 @@ router.get('/', trainerAuth, (req, res) => {
         <div class="card-title">Create a Workout</div>
         <div class="card-desc">Build a new workout from scratch. Add exercises, sets, reps, and weights.</div>
       </a>
+      <a class="card glass" href="/trainer/workouts">
+        <div class="card-icon">📋</div>
+        <div class="card-title">View Current Workouts</div>
+        <div class="card-desc">Browse and manage your existing programs and workouts.</div>
+      </a>
     </div>
   `, req.trainer));
 });
@@ -759,6 +764,76 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
       addExercise();
     </script>
   `, req.trainer));
+});
+
+// GET /trainer/workouts — View current workouts
+router.get('/workouts', trainerAuth, async (req, res) => {
+  const isAdmin = req.trainer.isAdmin || false;
+  try {
+    const { rows: programs } = await pool.query(
+      isAdmin
+        ? 'SELECT id, name, description FROM programs WHERE user_id IS NULL ORDER BY name'
+        : 'SELECT id, name, description FROM programs WHERE user_id = $1 ORDER BY name',
+      isAdmin ? [] : [req.trainer.userId]
+    );
+
+    let content = '';
+    if (programs.length === 0) {
+      content = '<div class="glass" style="padding:40px;text-align:center;"><p style="color:rgba(255,255,255,0.4);font-size:14px;">No programs yet. <a href="/trainer/create-workout" style="color:#ef4444;text-decoration:none;font-weight:600;">Create your first workout</a></p></div>';
+    } else {
+      for (const program of programs) {
+        const { rows: templates } = await pool.query(
+          'SELECT t.id, t.name, t.description, t.is_rest, t.sort_order, ' +
+          '(SELECT COUNT(*) FROM template_exercises te WHERE te.template_id = t.id) AS exercise_count ' +
+          'FROM templates t WHERE t.program_id = $1 ORDER BY t.sort_order',
+          [program.id]
+        );
+
+        const workoutRows = templates.map(t => {
+          if (t.is_rest) {
+            return '<tr><td style="color:rgba(255,255,255,0.3);font-style:italic;">Rest Day</td><td>—</td><td>—</td></tr>';
+          }
+          return '<tr>' +
+            '<td style="font-weight:600;color:#fff;">' + esc(t.name) + '</td>' +
+            '<td>' + (t.description ? esc(t.description) : '—') + '</td>' +
+            '<td>' + t.exercise_count + ' exercises</td>' +
+          '</tr>';
+        }).join('');
+
+        const nonRest = templates.filter(t => !t.is_rest).length;
+        content += '<div class="glass" style="border-radius:16px;overflow:hidden;margin-bottom:20px;">' +
+          '<div style="padding:20px 24px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between;">' +
+            '<div>' +
+              '<h3 style="font-size:16px;font-weight:700;color:#fff;margin:0;">' + esc(program.name) + '</h3>' +
+              '<p style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:2px;">' + nonRest + ' workout' + (nonRest !== 1 ? 's' : '') + (program.description ? ' &middot; ' + esc(program.description) : '') + '</p>' +
+            '</div>' +
+          '</div>' +
+          (templates.length > 0
+            ? '<div class="table-wrap"><table>' +
+                '<thead><tr><th>Workout</th><th>Description</th><th>Exercises</th></tr></thead>' +
+                '<tbody>' + workoutRows + '</tbody>' +
+              '</table></div>'
+            : '<div style="padding:20px 24px;"><p style="color:rgba(255,255,255,0.3);font-size:13px;">No workouts in this program yet.</p></div>'
+          ) +
+        '</div>';
+      }
+    }
+
+    res.send(trainerPage('View Current Workouts', '<div style="margin-bottom:20px;">' +
+      '<a href="/trainer" style="color:rgba(255,255,255,0.4);font-size:13px;text-decoration:none;font-weight:600;">' +
+        '<span style="margin-right:4px;">&larr;</span> Back to Dashboard' +
+      '</a>' +
+    '</div>' +
+    '<div class="header">' +
+      '<h1>Current Workouts</h1>' +
+      '<p>' + programs.length + ' program' + (programs.length !== 1 ? 's' : '') + ' &middot; ' + (isAdmin ? 'Browse Workout Library' : 'My Workouts') + '</p>' +
+    '</div>' +
+    '<a href="/trainer/create-workout" class="btn" style="margin-bottom:24px;">+ Create New Workout</a>' +
+    content, req.trainer));
+  } catch (err) {
+    console.error('View workouts error:', err);
+    res.status(500).send(trainerPage('Error', '<p style="color:#f87171;">Failed to load workouts.</p>', req.trainer));
+  }
 });
 
 // POST /trainer/create-workout — Save the workout
