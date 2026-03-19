@@ -558,18 +558,40 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
         if (!query || query.length < 1) { resultsDiv.style.display = 'none'; return; }
         searchTimeout = setTimeout(async () => {
           try {
-            const resp = await fetch('/trainer/api/exercises?q=' + encodeURIComponent(query));
-            const exercises = await resp.json();
-            let html = '';
-            exercises.forEach(ex => {
-              html += '<button type="button" onclick="selectExercise(' + exIdx + ',\\'' + ex.name.replace(/'/g, "\\\\'") + '\\')" style="width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#fff;font-size:13px;cursor:pointer;font-family:inherit;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.05);" onmouseover="this.style.background=\'rgba(255,255,255,0.08)\'" onmouseout="this.style.background=\'none\'">' +
-                '<span>' + ex.name + (ex.isCustom ? ' <span style=\\"font-size:9px;color:#ef4444;\\">custom</span>' : '') + '</span>' +
-                '<span style="font-size:10px;color:rgba(255,255,255,0.3);">' + (ex.muscle || '') + '</span>' +
-              '</button>';
+            var resp = await fetch('/trainer/api/exercises?q=' + encodeURIComponent(query));
+            var exercises = await resp.json();
+            resultsDiv.innerHTML = '';
+            exercises.forEach(function(ex) {
+              var btn = document.createElement('button');
+              btn.type = 'button';
+              btn.style.cssText = 'width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#fff;font-size:13px;cursor:pointer;font-family:inherit;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.05);';
+              btn.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.08)'; };
+              btn.onmouseout = function() { this.style.background = 'none'; };
+              btn.onclick = function() { selectExercise(exIdx, ex.name); };
+              var nameSpan = document.createElement('span');
+              nameSpan.textContent = ex.name;
+              if (ex.isCustom) {
+                var tag = document.createElement('span');
+                tag.textContent = ' custom';
+                tag.style.cssText = 'font-size:9px;color:#ef4444;margin-left:4px;';
+                nameSpan.appendChild(tag);
+              }
+              var muscleSpan = document.createElement('span');
+              muscleSpan.textContent = ex.muscle || '';
+              muscleSpan.style.cssText = 'font-size:10px;color:rgba(255,255,255,0.3);';
+              btn.appendChild(nameSpan);
+              btn.appendChild(muscleSpan);
+              resultsDiv.appendChild(btn);
             });
             // Add custom exercise option
-            html += '<button type="button" onclick="openCustomModal(' + exIdx + ')" style="width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#ef4444;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600;" onmouseover="this.style.background=\'rgba(239,68,68,0.08)\'" onmouseout="this.style.background=\'none\'">+ Add &quot;' + query.replace(/"/g, '&amp;quot;') + '&quot; as custom exercise</button>';
-            resultsDiv.innerHTML = html;
+            var customBtn = document.createElement('button');
+            customBtn.type = 'button';
+            customBtn.style.cssText = 'width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#ef4444;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600;';
+            customBtn.onmouseover = function() { this.style.background = 'rgba(239,68,68,0.08)'; };
+            customBtn.onmouseout = function() { this.style.background = 'none'; };
+            customBtn.onclick = function() { openCustomModal(exIdx); };
+            customBtn.textContent = '+ Add "' + query + '" as custom exercise';
+            resultsDiv.appendChild(customBtn);
             resultsDiv.style.display = 'block';
           } catch (err) { console.error(err); }
         }, 200);
@@ -606,9 +628,9 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
         document.getElementById('custom-ex-modal').style.display = 'none';
       }
 
-      function getCookie(name) {
-        const v = document.cookie.match('(^|;)\\\\s*' + name + '\\\\s*=\\\\s*([^;]+)');
-        return v ? v.pop() : '';
+      function getCookie(n) {
+        var m = document.cookie.match(new RegExp('(^|;)\\\\s*' + n + '\\\\s*=\\\\s*([^;]+)'));
+        return m ? m.pop() : '';
       }
 
       function toggleSetTypeDD(exIdx) {
