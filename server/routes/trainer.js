@@ -331,7 +331,7 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
     ${msg ? `<div class="glass" style="padding:12px 16px;border-left:3px solid #22c55e;margin-bottom:20px;"><p style="color:#4ade80;font-size:13px;">${esc(msg)}</p></div>` : ''}
     ${error ? `<div class="glass" style="padding:12px 16px;border-left:3px solid #ef4444;margin-bottom:20px;"><p style="color:#f87171;font-size:13px;">${esc(error)}</p></div>` : ''}
     <form method="POST" action="/trainer/create-workout" id="workout-form">
-      <div class="glass" style="padding:24px;border-radius:16px;margin-bottom:20px;">
+      <div class="glass" style="padding:24px;border-radius:16px;margin-bottom:20px;overflow:visible;">
         <div style="display:flex;gap:16px;flex-wrap:wrap;">
           <div style="flex:1;min-width:200px;">
             <label>Workout Name</label>
@@ -346,7 +346,7 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
               <span id="program-label">— No Program —</span>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="opacity:0.4;"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
             </button>
-            <div id="program-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:60;margin-top:4px;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.15);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.6);max-height:280px;overflow-y:auto;">
+            <div id="program-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:200;margin-top:4px;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.15);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.6);max-height:280px;overflow-y:auto;">
               <div style="padding:4px;">
                 <button type="button" onclick="selectProgram('','— No Program —')" style="width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;font-family:inherit;border-radius:8px;transition:background 0.1s;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='none'">— No Program —</button>
                 ${programs.map(p => `<button type="button" onclick="selectProgram('${p.id}','${esc(p.name).replace(/'/g, "\\'")}')" style="width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#fff;font-size:13px;cursor:pointer;font-family:inherit;border-radius:8px;transition:background 0.1s;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='none'">${esc(p.name)}</button>`).join('')}
