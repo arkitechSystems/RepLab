@@ -135,24 +135,71 @@ export default function WorkoutSession() {
         setPbs(pbMap);
 
         if (tmpl && !tmpl.isRest) {
-          if (existingSession && existingSession.entries) {
-            // Restore saved session data
+          if (existingSession && existingSession.entries && existingSession.entries.length > 0) {
+            // Restore saved session data — reconstruct template to include any added sets/exercises
             const saved = {};
             const restoredCompleted = new Set();
+            const restoredTemplate = { ...tmpl, exercises: [] };
+
+            // Group saved entries by exercise name (preserving order)
+            const savedByExercise = new Map();
+            for (const entry of existingSession.entries) {
+              if (!savedByExercise.has(entry.exerciseName)) {
+                savedByExercise.set(entry.exerciseName, []);
+              }
+              savedByExercise.get(entry.exerciseName).push(entry);
+            }
+
+            // First, process template exercises in order
             for (const ex of tmpl.exercises) {
-              saved[ex.name] = ex.sets.map((s, setIdx) => {
-                const match = existingSession.entries.find(
-                  (e) => e.exerciseName === ex.name && e.setNumber === s.setNumber
-                );
-                if (match && (match.weight > 0 || match.reps > 0)) {
-                  restoredCompleted.add(`${ex.name}-${setIdx}`);
+              const savedSets = savedByExercise.get(ex.name);
+              if (savedSets) {
+                // Sort by setNumber
+                savedSets.sort((a, b) => a.setNumber - b.setNumber);
+                // Rebuild exercise with the saved number of sets
+                const sets = savedSets.map((s, i) => ({
+                  setNumber: s.setNumber,
+                  plannedReps: ex.sets[i]?.plannedReps ?? 10,
+                  suggestedWeight: ex.sets[i]?.suggestedWeight ?? 0,
+                }));
+                restoredTemplate.exercises.push({ ...ex, sets });
+                saved[ex.name] = savedSets.map((s, i) => {
+                  if (s.weight > 0 || s.reps > 0) {
+                    restoredCompleted.add(`${ex.name}-${i}`);
+                  }
+                  return { weight: s.weight || '', reps: s.reps || '' };
+                });
+                savedByExercise.delete(ex.name);
+              } else {
+                // Exercise was in template but not saved — keep template defaults
+                restoredTemplate.exercises.push(ex);
+                saved[ex.name] = ex.sets.map((s) => ({
+                  weight: s.suggestedWeight || '',
+                  reps: '',
+                }));
+              }
+            }
+
+            // Then, add any exercises that were added during the session (not in template)
+            for (const [exName, savedSets] of savedByExercise) {
+              savedSets.sort((a, b) => a.setNumber - b.setNumber);
+              restoredTemplate.exercises.push({
+                name: exName,
+                sets: savedSets.map((s) => ({
+                  setNumber: s.setNumber,
+                  plannedReps: 10,
+                  suggestedWeight: 0,
+                })),
+              });
+              saved[exName] = savedSets.map((s, i) => {
+                if (s.weight > 0 || s.reps > 0) {
+                  restoredCompleted.add(`${exName}-${i}`);
                 }
-                return {
-                  weight: match ? (match.weight || '') : (s.suggestedWeight || ''),
-                  reps: match ? (match.reps || '') : '',
-                };
+                return { weight: s.weight || '', reps: s.reps || '' };
               });
             }
+
+            setTemplate(restoredTemplate);
             setEntries(saved);
             setCompletedSets(restoredCompleted);
             if (existingSession.notes) setNotes(existingSession.notes);

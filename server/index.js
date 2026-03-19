@@ -18,6 +18,7 @@ import feedbackRoutes from './routes/feedback.js';
 import aiRoutes from './routes/ai.js';
 import exerciseRoutes from './routes/exercises.js';
 import challengeRoutes from './routes/challenges.js';
+import trainerRoutes from './routes/trainer.js';
 import db from './db.js';
 import { sendDailySummaryEmail } from './email.js';
 
@@ -83,6 +84,7 @@ app.use('/sessions', sessionRoutes);
 app.use('/pbs', pbRoutes);
 app.use('/metrics', metricsRoutes);
 app.use('/admin', adminRoutes);
+app.use('/trainer', trainerRoutes);
 app.use('/feedback', feedbackRoutes);
 app.use('/ai', aiRoutes);
 app.use('/exercises', exerciseRoutes);
