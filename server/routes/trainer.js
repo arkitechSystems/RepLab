@@ -509,45 +509,100 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
       let searchTimeout = null;
       let activeSearchIdx = null;
 
+      function el(tag, styles, attrs) {
+        var e = document.createElement(tag);
+        if (styles) e.style.cssText = styles;
+        if (attrs) Object.keys(attrs).forEach(function(k) { e[k] = attrs[k]; });
+        return e;
+      }
+
       function addExercise() {
-        const idx = exerciseCount++;
-        const container = document.getElementById('exercises-container');
-        const div = document.createElement('div');
+        var idx = exerciseCount++;
+        var container = document.getElementById('exercises-container');
+        var div = el('div', 'padding:20px;border-radius:16px;margin-bottom:16px;position:relative;');
         div.className = 'glass';
         div.id = 'exercise-' + idx;
-        div.style.cssText = 'padding:20px;border-radius:16px;margin-bottom:16px;position:relative;';
-        div.innerHTML =
-          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">' +
-            '<label style="margin:0;font-size:13px;font-weight:700;color:#fff;">Exercise ' + (idx + 1) + '</label>' +
-            '<button type="button" onclick="removeExercise(' + idx + ')" style="background:none;border:none;color:rgba(255,255,255,0.3);cursor:pointer;padding:4px 8px;border-radius:6px;font-family:inherit;font-size:12px;" onmouseover="this.style.color=\'#ef4444\';this.style.background=\'rgba(239,68,68,0.15)\'" onmouseout="this.style.color=\'rgba(255,255,255,0.3)\';this.style.background=\'none\'">Remove</button>' +
-          '</div>' +
-          '<div style="position:relative;">' +
-            '<input type="text" id="ex-search-' + idx + '" name="exercises[' + idx + '][name]" placeholder="Search exercises..." required autocomplete="off"' +
-              ' oninput="searchExercises(' + idx + ',this.value)" onfocus="searchExercises(' + idx + ',this.value)"' +
-              ' style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;margin-bottom:0;box-sizing:border-box;" />' +
-            '<div id="ex-results-' + idx + '" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:50;max-height:200px;overflow-y:auto;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.12);border-radius:10px;margin-top:4px;box-shadow:0 8px 32px rgba(0,0,0,0.5);"></div>' +
-          '</div>' +
-          '<div style="margin-top:12px;margin-bottom:12px;display:flex;gap:8px;align-items:center;position:relative;">' +
-            '<label style="margin:0;font-size:11px;color:rgba(255,255,255,0.4);white-space:nowrap;">Set Type</label>' +
-            '<input type="hidden" name="exercises[' + idx + '][setType]" id="settype-val-' + idx + '" value="straight" />' +
-            '<button type="button" id="settype-btn-' + idx + '" onclick="toggleSetTypeDD(' + idx + ')" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:13px;font-family:inherit;outline:none;cursor:pointer;text-align:left;display:flex;justify-content:space-between;align-items:center;box-sizing:border-box;">' +
-              '<span id="settype-label-' + idx + '">Regular</span>' +
-              '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="opacity:0.4;"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>' +
-            '</button>' +
-            '<div id="settype-dd-' + idx + '" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:55;margin-top:4px;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.15);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.5);padding:4px;"></div>' +
-          '</div>' +
-          '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">' +
-            '<span style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);width:40px;">Set</span>' +
-            '<span style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);flex:1;text-align:center;">Reps</span>' +
-            '<span style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);flex:1;text-align:center;">Weight (lbs)</span>' +
-            '<span style="width:28px;"></span>' +
-          '</div>' +
-          '<div id="sets-' + idx + '"></div>' +
-          '<button type="button" onclick="addSet(' + idx + ')" style="margin-top:8px;background:none;border:1px dashed rgba(255,255,255,0.15);color:rgba(255,255,255,0.4);padding:8px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;width:100%;transition:all 0.15s;" onmouseover="this.style.borderColor=\'rgba(255,255,255,0.3)\';this.style.color=\'#fff\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,0.15)\';this.style.color=\'rgba(255,255,255,0.4)\'">+ Add Set</button>';
+
+        // Header row
+        var header = el('div', 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;');
+        var lbl = el('label', 'margin:0;font-size:13px;font-weight:700;color:#fff;');
+        lbl.textContent = 'Exercise ' + (idx + 1);
+        var removeBtn = el('button', 'background:none;border:none;color:rgba(255,255,255,0.3);cursor:pointer;padding:4px 8px;border-radius:6px;font-family:inherit;font-size:12px;', { type: 'button' });
+        removeBtn.textContent = 'Remove';
+        removeBtn.onmouseover = function() { this.style.color = '#ef4444'; this.style.background = 'rgba(239,68,68,0.15)'; };
+        removeBtn.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.3)'; this.style.background = 'none'; };
+        removeBtn.onclick = function() { removeExercise(idx); };
+        header.appendChild(lbl);
+        header.appendChild(removeBtn);
+        div.appendChild(header);
+
+        // Exercise search
+        var searchWrap = el('div', 'position:relative;');
+        var searchInput = el('input', 'width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;margin-bottom:0;box-sizing:border-box;');
+        searchInput.type = 'text';
+        searchInput.id = 'ex-search-' + idx;
+        searchInput.name = 'exercises[' + idx + '][name]';
+        searchInput.placeholder = 'Search exercises...';
+        searchInput.required = true;
+        searchInput.autocomplete = 'off';
+        searchInput.oninput = function() { searchExercises(idx, this.value); };
+        searchInput.onfocus = function() { searchExercises(idx, this.value); };
+        var resultsDiv = el('div', 'display:none;position:absolute;top:100%;left:0;right:0;z-index:50;max-height:200px;overflow-y:auto;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.12);border-radius:10px;margin-top:4px;box-shadow:0 8px 32px rgba(0,0,0,0.5);');
+        resultsDiv.id = 'ex-results-' + idx;
+        searchWrap.appendChild(searchInput);
+        searchWrap.appendChild(resultsDiv);
+        div.appendChild(searchWrap);
+
+        // Set type row
+        var stRow = el('div', 'margin-top:12px;margin-bottom:12px;display:flex;gap:8px;align-items:center;position:relative;');
+        var stLabel = el('label', 'margin:0;font-size:11px;color:rgba(255,255,255,0.4);white-space:nowrap;');
+        stLabel.textContent = 'Set Type';
+        var stHidden = el('input');
+        stHidden.type = 'hidden';
+        stHidden.name = 'exercises[' + idx + '][setType]';
+        stHidden.id = 'settype-val-' + idx;
+        stHidden.value = 'straight';
+        var stBtn = el('button', 'flex:1;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:13px;font-family:inherit;outline:none;cursor:pointer;text-align:left;display:flex;justify-content:space-between;align-items:center;box-sizing:border-box;', { type: 'button' });
+        stBtn.id = 'settype-btn-' + idx;
+        stBtn.onclick = function() { toggleSetTypeDD(idx); };
+        var stBtnLabel = el('span');
+        stBtnLabel.id = 'settype-label-' + idx;
+        stBtnLabel.textContent = 'Regular';
+        stBtn.appendChild(stBtnLabel);
+        stBtn.insertAdjacentHTML('beforeend', '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="opacity:0.4;flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>');
+        var stDD = el('div', 'display:none;position:absolute;top:100%;left:0;right:0;z-index:55;margin-top:4px;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.15);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.5);padding:4px;');
+        stDD.id = 'settype-dd-' + idx;
+        buildSetTypeButtons(idx).forEach(function(b) { stDD.appendChild(b); });
+        stRow.appendChild(stLabel);
+        stRow.appendChild(stHidden);
+        stRow.appendChild(stBtn);
+        stRow.appendChild(stDD);
+        div.appendChild(stRow);
+
+        // Column headers
+        var colHeaders = el('div', 'display:flex;gap:8px;align-items:center;margin-bottom:8px;');
+        ['Set:40px', 'Reps:1', 'Weight (lbs):1', ':28px'].forEach(function(c) {
+          var parts = c.split(':');
+          var sp = el('span', 'font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);' + (parts[1] === '1' ? 'flex:1;text-align:center;' : 'width:' + parts[1] + ';'));
+          sp.textContent = parts[0];
+          colHeaders.appendChild(sp);
+        });
+        div.appendChild(colHeaders);
+
+        // Sets container
+        var setsDiv = el('div');
+        setsDiv.id = 'sets-' + idx;
+        div.appendChild(setsDiv);
+
+        // Add set button
+        var addSetBtn = el('button', 'margin-top:8px;background:none;border:1px dashed rgba(255,255,255,0.15);color:rgba(255,255,255,0.4);padding:8px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;width:100%;transition:all 0.15s;', { type: 'button' });
+        addSetBtn.textContent = '+ Add Set';
+        addSetBtn.onmouseover = function() { this.style.borderColor = 'rgba(255,255,255,0.3)'; this.style.color = '#fff'; };
+        addSetBtn.onmouseout = function() { this.style.borderColor = 'rgba(255,255,255,0.15)'; this.style.color = 'rgba(255,255,255,0.4)'; };
+        addSetBtn.onclick = function() { addSet(idx); };
+        div.appendChild(addSetBtn);
+
         container.appendChild(div);
-        // Populate set type dropdown with DOM elements (avoids escaping issues)
-        var stDD = document.getElementById('settype-dd-' + idx);
-        buildSetTypeButtons(idx).forEach(function(btn) { stDD.appendChild(btn); });
         addSet(idx); addSet(idx); addSet(idx);
       }
 
@@ -653,32 +708,52 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
         }
       });
 
-      const setCounts = {};
+      var setCounts = {};
+      var inputStyle = 'flex:1;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;text-align:center;box-sizing:border-box;';
+
       function addSet(exIdx) {
         if (!setCounts[exIdx]) setCounts[exIdx] = 0;
-        const setIdx = setCounts[exIdx]++;
-        const setsDiv = document.getElementById('sets-' + exIdx);
-        const row = document.createElement('div');
+        var setIdx = setCounts[exIdx]++;
+        var setsDiv = document.getElementById('sets-' + exIdx);
+        var row = el('div', 'display:flex;gap:8px;align-items:center;margin-bottom:6px;');
         row.id = 'set-' + exIdx + '-' + setIdx;
-        row.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:6px;';
-        row.innerHTML =
-          '<span style="font-size:13px;color:rgba(255,255,255,0.5);width:40px;text-align:center;font-weight:600;">' + (setIdx + 1) + '</span>' +
-          '<input type="number" name="exercises[' + exIdx + '][sets][' + setIdx + '][reps]" placeholder="10" value="10" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;text-align:center;box-sizing:border-box;" />' +
-          '<input type="number" name="exercises[' + exIdx + '][sets][' + setIdx + '][weight]" placeholder="0" value="0" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;text-align:center;box-sizing:border-box;" />' +
-          '<button type="button" onclick="removeSet(' + exIdx + ',' + setIdx + ')" style="background:none;border:none;color:rgba(255,255,255,0.2);cursor:pointer;padding:2px;width:28px;display:flex;align-items:center;justify-content:center;" onmouseover="this.style.color=\'#ef4444\'" onmouseout="this.style.color=\'rgba(255,255,255,0.2)\'">' +
-            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>' +
-          '</button>';
+
+        var num = el('span', 'font-size:13px;color:rgba(255,255,255,0.5);width:40px;text-align:center;font-weight:600;');
+        num.textContent = setIdx + 1;
+
+        var repsInput = el('input', inputStyle);
+        repsInput.type = 'number';
+        repsInput.name = 'exercises[' + exIdx + '][sets][' + setIdx + '][reps]';
+        repsInput.placeholder = '10';
+        repsInput.value = '10';
+
+        var weightInput = el('input', inputStyle);
+        weightInput.type = 'number';
+        weightInput.name = 'exercises[' + exIdx + '][sets][' + setIdx + '][weight]';
+        weightInput.placeholder = '0';
+        weightInput.value = '0';
+
+        var delBtn = el('button', 'background:none;border:none;color:rgba(255,255,255,0.2);cursor:pointer;padding:2px;width:28px;display:flex;align-items:center;justify-content:center;', { type: 'button' });
+        delBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>';
+        delBtn.onmouseover = function() { this.style.color = '#ef4444'; };
+        delBtn.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.2)'; };
+        delBtn.onclick = function() { removeSet(exIdx, setIdx); };
+
+        row.appendChild(num);
+        row.appendChild(repsInput);
+        row.appendChild(weightInput);
+        row.appendChild(delBtn);
         setsDiv.appendChild(row);
       }
 
       function removeSet(exIdx, setIdx) {
-        const el = document.getElementById('set-' + exIdx + '-' + setIdx);
-        if (el) el.remove();
+        var e = document.getElementById('set-' + exIdx + '-' + setIdx);
+        if (e) e.remove();
       }
 
       function removeExercise(idx) {
-        const el = document.getElementById('exercise-' + idx);
-        if (el) el.remove();
+        var e = document.getElementById('exercise-' + idx);
+        if (e) e.remove();
       }
 
       addExercise();

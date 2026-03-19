@@ -382,7 +382,11 @@ function adminPage(title, body) {
       border-right: 1px solid rgba(255,255,255,0.06);
       overflow-y: auto; padding: 8px 0; transition: width 0.2s, transform 0.2s;
     }
-    .sidebar.collapsed { width: 0; overflow: hidden; border-right: none; }
+    .sidebar.collapsed { width: 40px; overflow: hidden; }
+    .sidebar.collapsed .sidebar-section,
+    .sidebar.collapsed .sidebar-links,
+    .sidebar.collapsed a:not(.sidebar-toggle button) { display: none; }
+    .sidebar.collapsed .sidebar-toggle { justify-content: center; }
     .sidebar-toggle {
       display: flex; align-items: center; justify-content: flex-end; padding: 4px 12px 8px;
       border-bottom: 1px solid rgba(255,255,255,0.06); margin-bottom: 4px;
@@ -409,7 +413,7 @@ function adminPage(title, body) {
     .sidebar-links { overflow: hidden; transition: max-height 0.25s ease; max-height: 500px; }
     .sidebar-links.hidden { max-height: 0; }
     .main-with-sidebar { margin-left: 200px; transition: margin-left 0.2s; }
-    .main-with-sidebar.expanded { margin-left: 0; }
+    .main-with-sidebar.expanded { margin-left: 40px; }
 
     /* Scrollbar */
     html { overflow-y: scroll; }
@@ -462,8 +466,8 @@ function adminPage(title, body) {
 <!-- Sidebar -->
 <div class="sidebar" id="admin-sidebar">
   <div class="sidebar-toggle">
-    <button onclick="toggleSidebar()" title="Collapse sidebar">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
+    <button id="sidebar-toggle-btn" onclick="toggleSidebar()" title="Toggle sidebar">
+      <svg id="sidebar-toggle-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition:transform 0.2s;"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
     </button>
   </div>
   <div class="sidebar-section" onclick="toggleSection('overview')">
@@ -515,8 +519,10 @@ function adminPage(title, body) {
 function toggleSidebar() {
   const sb = document.getElementById('admin-sidebar');
   const main = document.querySelector('.main-with-sidebar');
+  const icon = document.getElementById('sidebar-toggle-icon');
   const collapsed = sb.classList.toggle('collapsed');
   main.classList.toggle('expanded', collapsed);
+  icon.style.transform = collapsed ? 'rotate(180deg)' : '';
   try { localStorage.setItem('admin_sidebar', collapsed ? 'collapsed' : 'open'); } catch {}
 }
 function toggleSection(name) {
@@ -535,6 +541,8 @@ try {
   if (localStorage.getItem('admin_sidebar') === 'collapsed') {
     document.getElementById('admin-sidebar').classList.add('collapsed');
     document.querySelector('.main-with-sidebar').classList.add('expanded');
+    var ic = document.getElementById('sidebar-toggle-icon');
+    if (ic) ic.style.transform = 'rotate(180deg)';
   }
   const sections = JSON.parse(localStorage.getItem('admin_sections') || '{}');
   for (const [name, hidden] of Object.entries(sections)) {
