@@ -115,6 +115,91 @@ Rules:
   }
 });
 
+router.post('/edit-workout', authMiddleware, async (req, res) => {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return res.status(503).json({ error: 'AI is not configured' });
+  }
+
+  try {
+    const { workout, instruction } = req.body;
+
+    if (!workout || !instruction) {
+      return res.status(400).json({ error: 'Workout and instruction are required' });
+    }
+
+    const prompt = `You are a certified personal trainer helping edit a workout in the WillFit fitness app.
+
+Current workout:
+${JSON.stringify(workout, null, 2)}
+
+User's instruction: "${instruction}"
+
+Apply the user's requested changes to the workout. Keep everything else the same unless the instruction implies otherwise.
+
+IMPORTANT: Respond ONLY with valid JSON in this exact format, no other text:
+{
+  "name": "Workout name",
+  "description": "Brief description",
+  "exercises": [
+    {
+      "name": "Exercise Name",
+      "setType": "straight",
+      "sets": [
+        { "reps": 10, "weight": 135 }
+      ]
+    }
+  ]
+}
+
+Rules:
+- Apply the user's changes precisely
+- "drop set" means setType should be "drop"
+- "superset" means setType should be "superset"
+- Keep all unchanged exercises exactly as they are
+- When adding sets, match the weight/rep pattern of existing sets
+- When removing exercises, keep the rest in order
+- Return the complete workout, not just the changed parts`;
+
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+    const message = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1024,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const text = message.content[0]?.text || '';
+
+    const inputTokens = message.usage?.input_tokens || 0;
+    const outputTokens = message.usage?.output_tokens || 0;
+    const costCents = (inputTokens * 0.000025) + (outputTokens * 0.000125);
+    try {
+      await db.logAIUsage(req.userId, inputTokens, outputTokens, 'claude-haiku-4-5', Math.round(costCents * 10000) / 10000);
+    } catch {}
+
+    let result;
+    try {
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('No JSON found');
+      result = JSON.parse(jsonMatch[0]);
+    } catch {
+      return res.status(500).json({ error: 'Failed to parse AI response. Please try again.' });
+    }
+
+    if (!result.name || !result.exercises || !Array.isArray(result.exercises)) {
+      return res.status(500).json({ error: 'AI generated an invalid workout. Please try again.' });
+    }
+
+    res.json(result);
+  } catch (err) {
+    console.error('AI edit error:', err.status, err.message);
+    if (err.status === 429) {
+      return res.status(429).json({ error: 'Too many requests. Please wait a moment.' });
+    }
+    res.status(500).json({ error: 'Failed to edit workout. Please try again.' });
+  }
+});
+
 router.post('/suggest-swap', authMiddleware, async (req, res) => {
   if (!process.env.ANTHROPIC_API_KEY) {
     return res.status(503).json({ error: 'AI is not configured' });

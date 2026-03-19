@@ -79,6 +79,7 @@ export default function Workouts() {
   const [bioExpanded, setBioExpanded] = useState(false);
   const [expandedWorkoutCard, setExpandedWorkoutCard] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [browseSearch, setBrowseSearch] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [streak, setStreak] = useState(0);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
@@ -1355,19 +1356,85 @@ export default function Workouts() {
           </button>
         </div>
 
+        {/* Search bar (browse only) */}
+        {isBrowse && groupPrograms.length > 0 && (
+          <div className="px-4 mb-3">
+            <div className="relative">
+              <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+              </svg>
+              <input
+                type="text"
+                value={browseSearch}
+                onChange={(e) => setBrowseSearch(e.target.value)}
+                placeholder="Search programs..."
+                className="w-full glass-input rounded-xl pl-10 pr-9 py-2.5 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none"
+              />
+              {browseSearch && (
+                <button
+                  onClick={() => setBrowseSearch('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-wf-gray-500 active:text-white"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Filter toggles (browse only) */}
+        {isBrowse && (
+          <div className="px-4 mb-3 flex gap-2">
+            <button className="text-xs font-medium px-3 py-1.5 rounded-full bg-white/10 text-wf-gray-400 border border-white/10 active:bg-white/20 transition-all flex items-center gap-1">
+              Strength
+              <span className="text-[9px] font-bold text-yellow-400 bg-yellow-500/15 px-1.5 py-0.5 rounded-full">PRO</span>
+            </button>
+            <button className="text-xs font-medium px-3 py-1.5 rounded-full bg-white/10 text-wf-gray-400 border border-white/10 active:bg-white/20 transition-all flex items-center gap-1">
+              Hypertrophy
+              <span className="text-[9px] font-bold text-yellow-400 bg-yellow-500/15 px-1.5 py-0.5 rounded-full">PRO</span>
+            </button>
+            <button className="text-xs font-medium px-3 py-1.5 rounded-full bg-white/10 text-wf-gray-400 border border-white/10 active:bg-white/20 transition-all flex items-center gap-1">
+              Beginner Friendly
+              <span className="text-[9px] font-bold text-yellow-400 bg-yellow-500/15 px-1.5 py-0.5 rounded-full">PRO</span>
+            </button>
+          </div>
+        )}
+
         <div className="px-4">
-          {groupPrograms.length === 0 ? (
-            <div className="glass-card rounded-2xl p-8 text-center">
-              <p className="text-wf-gray-400 text-sm">No custom workouts yet</p>
-              <p className="text-wf-gray-500 text-xs mt-1">Tap + Create to build your own</p>
-            </div>
-          ) : (
-            <div className="space-y-4 pb-4">
-              {groupPrograms.map((program, idx) => (
-                <ProgramCard key={program.id} program={program} idx={idx} onSelect={setSelectedProgram} onBegin={openBeginProgram} />
-              ))}
-            </div>
-          )}
+          {(() => {
+            const filtered = isBrowse && browseSearch.trim()
+              ? groupPrograms.filter((p) => p.name.toLowerCase().includes(browseSearch.toLowerCase()))
+              : groupPrograms;
+            if (filtered.length === 0 && browseSearch.trim()) {
+              return (
+                <div className="glass-card rounded-2xl p-8 text-center">
+                  <p className="text-wf-gray-400 text-sm">No programs matching "{browseSearch}"</p>
+                </div>
+              );
+            }
+            if (filtered.length === 0) {
+              return (
+                <div className="glass-card rounded-2xl p-8 flex flex-col items-center text-center">
+                  <p className="text-wf-gray-400 text-sm">Your created workouts will appear here</p>
+                  <button
+                    onClick={() => setShowCreateMenu(true)}
+                    className="mt-4 btn-gradient text-white font-semibold px-6 py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+                  >
+                    Create Your First Workout
+                  </button>
+                </div>
+              );
+            }
+            return (
+              <div className="space-y-4 pb-4">
+                {filtered.map((program, idx) => (
+                  <ProgramCard key={program.id} program={program} idx={idx} onSelect={(id) => { setSelectedProgram(id); setBrowseSearch(''); }} onBegin={openBeginProgram} />
+                ))}
+              </div>
+            );
+          })()}
         </div>
 
         {renderBeginModals()}
@@ -1558,7 +1625,7 @@ export default function Workouts() {
                     )}
                   </div>
                   <p className="text-white/70 text-sm mt-1 drop-shadow">
-                    {isPremium ? 'Watch the latest drops' : 'Upgrade to access featured workouts'}
+                    View the latest drops
                   </p>
                 </div>
               </div>
@@ -1601,6 +1668,29 @@ export default function Workouts() {
               </div>
             )}
 
+            {/* My Workouts card */}
+            <div
+              onClick={() => setSelectedGroup('my')}
+              className="w-full text-left glass-card rounded-2xl overflow-hidden active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
+              style={{ animationDelay: '0ms' }}
+            >
+              <div className="h-1.5 bg-wf-red" />
+              <div className="p-5">
+                <h2 className="text-xl font-black text-white tracking-tight">My Workouts</h2>
+                <p className="text-wf-gray-400 text-sm mt-1">
+                  {myPrograms.length === 0
+                    ? 'Your created workouts will appear here'
+                    : `${myPrograms.length} program${myPrograms.length !== 1 ? 's' : ''} · Your custom workouts`}
+                </p>
+                <div className="flex items-center justify-end mt-3">
+                  <span className="text-xs text-wf-gray-500 mr-1">{myPrograms.length === 0 ? 'Get started' : 'View programs'}</span>
+                  <svg className="w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
             {/* Browse Workout Library card */}
             <div
               onClick={() => setSelectedGroup('browse')}
@@ -1611,13 +1701,8 @@ export default function Workouts() {
               <div className="p-5">
                 <h2 className="text-xl font-black text-white tracking-tight">Browse Workout Library</h2>
                 <p className="text-wf-gray-400 text-sm mt-1">
-                  {browsePrograms.length} programs &middot; Pre-built workout plans
+                  Pre-built workout plans &middot; {browsePrograms.length} programs
                 </p>
-                <div className="flex items-center gap-3 mt-4 flex-wrap">
-                  {browsePrograms.map((p) => (
-                    <span key={p.id} className="text-xs text-wf-gray-400 font-medium">{p.name}</span>
-                  ))}
-                </div>
                 <div className="flex items-center justify-end mt-3">
                   <span className="text-xs text-wf-gray-500 mr-1">View programs</span>
                   <svg className="w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1666,36 +1751,6 @@ export default function Workouts() {
                     <p className="text-wf-gray-400 text-sm mt-1">Compete, push your limits, and earn rewards</p>
                   </div>
                   <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            {/* My Workouts card */}
-            <div
-              onClick={() => setSelectedGroup('my')}
-              className="w-full text-left glass-card rounded-2xl overflow-hidden active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
-              style={{ animationDelay: '160ms' }}
-            >
-              <div className="h-1.5 bg-wf-red" />
-              <div className="p-5">
-                <h2 className="text-xl font-black text-white tracking-tight">My Workouts</h2>
-                <p className="text-wf-gray-400 text-sm mt-1">
-                  {myPrograms.length === 0
-                    ? 'No custom workouts yet'
-                    : `${myPrograms.length} program${myPrograms.length !== 1 ? 's' : ''} · Your custom workouts`}
-                </p>
-                {myPrograms.length > 0 && (
-                  <div className="flex items-center gap-3 mt-4 flex-wrap">
-                    {myPrograms.map((p) => (
-                      <span key={p.id} className="text-xs text-wf-gray-400 font-medium">{p.name}</span>
-                    ))}
-                  </div>
-                )}
-                <div className="flex items-center justify-end mt-3">
-                  <span className="text-xs text-wf-gray-500 mr-1">{myPrograms.length === 0 ? 'Get started' : 'View programs'}</span>
-                  <svg className="w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                   </svg>
                 </div>

@@ -48,6 +48,8 @@ export default function AIWorkoutGenerator() {
   const [workout, setWorkout] = useState(null);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [editInput, setEditInput] = useState('');
+  const [editing, setEditing] = useState(false);
 
   function toggleMuscle(m) {
     if (m === 'Full Body') {
@@ -84,6 +86,27 @@ export default function AIWorkoutGenerator() {
       setStep(2); // go back to details
     } finally {
       setGenerating(false);
+    }
+  }
+
+  async function handleEdit() {
+    if (!editInput.trim() || !workout || editing) return;
+    setEditing(true);
+    setError('');
+    try {
+      const result = await api('/ai/edit-workout', {
+        method: 'POST',
+        body: JSON.stringify({
+          workout,
+          instruction: editInput.trim(),
+        }),
+      });
+      setWorkout(result);
+      setEditInput('');
+    } catch (err) {
+      setError(err.message || 'Failed to edit workout');
+    } finally {
+      setEditing(false);
     }
   }
 
@@ -337,9 +360,40 @@ export default function AIWorkoutGenerator() {
             ))}
           </div>
 
+          {/* Edit input */}
+          <div className="glass-card rounded-xl p-3 mb-6">
+            <label className="text-[10px] text-wf-gray-500 uppercase tracking-wider mb-2 block">Refine this workout</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={editInput}
+                onChange={(e) => setEditInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleEdit()}
+                placeholder="e.g. Make barbell curls a drop set, add 2 sets to bench press..."
+                className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm placeholder:text-wf-gray-600 focus:outline-none focus:border-wf-red/50"
+                disabled={editing}
+              />
+              <button
+                onClick={handleEdit}
+                disabled={editing || !editInput.trim()}
+                className="shrink-0 bg-wf-red/20 text-wf-red font-semibold px-4 py-2.5 rounded-lg text-sm active:scale-[0.98] transition-all disabled:opacity-40"
+              >
+                {editing ? (
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                  </svg>
+                )}
+              </button>
+            </div>
+          </div>
+
           <div className="flex gap-3">
             <button
-              onClick={() => { setWorkout(null); setStep(2); }}
+              onClick={() => { setWorkout(null); setStep(2); setEditInput(''); }}
               className="flex-1 glass-card text-white font-semibold py-4 rounded-xl text-sm active:scale-[0.98] transition-all"
             >
               Regenerate
