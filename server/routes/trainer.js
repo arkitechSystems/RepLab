@@ -338,13 +338,22 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
             <input type="text" name="workoutName" placeholder="e.g. Upper Body A" required
               style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;" />
           </div>
-          <div style="flex:1;min-width:200px;">
+          <div style="flex:1;min-width:200px;position:relative;">
             <label>Program</label>
-            <select name="programId" id="program-select" onchange="if(this.value==='__new__'){this.value='';openNewProgramModal();}" style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;-webkit-appearance:none;">
-              <option value="">— No Program —</option>
-              ${programs.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}
-              <option value="__new__" style="color:#ef4444;">+ New Program</option>
-            </select>
+            <input type="hidden" name="programId" id="program-value" value="" />
+            <button type="button" id="program-btn" onclick="toggleProgramDropdown()"
+              style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+              <span id="program-label">— No Program —</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="opacity:0.4;"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+            </button>
+            <div id="program-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:60;margin-top:4px;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.15);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.6);max-height:280px;overflow-y:auto;">
+              <div style="padding:4px;">
+                <button type="button" onclick="selectProgram('','— No Program —')" style="width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;font-family:inherit;border-radius:8px;transition:background 0.1s;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='none'">— No Program —</button>
+                ${programs.map(p => `<button type="button" onclick="selectProgram('${p.id}','${esc(p.name).replace(/'/g, "\\'")}')" style="width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#fff;font-size:13px;cursor:pointer;font-family:inherit;border-radius:8px;transition:background 0.1s;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='none'">${esc(p.name)}</button>`).join('')}
+                <div style="border-top:1px solid rgba(255,255,255,0.08);margin:4px 0;"></div>
+                <button type="button" onclick="document.getElementById('program-dropdown').style.display='none';openNewProgramModal()" style="width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#ef4444;font-size:13px;cursor:pointer;font-family:inherit;border-radius:8px;font-weight:600;transition:background 0.1s;" onmouseover="this.style.background='rgba(239,68,68,0.08)'" onmouseout="this.style.background='none'">+ New Program</button>
+              </div>
+            </div>
           </div>
         </div>
         <div style="margin-top:16px;">
@@ -407,6 +416,23 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
     </div>
 
     <script>
+      function toggleProgramDropdown() {
+        const dd = document.getElementById('program-dropdown');
+        dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+      }
+      function selectProgram(id, name) {
+        document.getElementById('program-value').value = id;
+        document.getElementById('program-label').textContent = name;
+        document.getElementById('program-btn').style.color = id ? '#fff' : 'rgba(255,255,255,0.5)';
+        document.getElementById('program-dropdown').style.display = 'none';
+      }
+      // Close program dropdown on outside click
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('#program-btn') && !e.target.closest('#program-dropdown')) {
+          document.getElementById('program-dropdown').style.display = 'none';
+        }
+      });
+
       function openNewProgramModal() {
         document.getElementById('new-program-name').value = '';
         document.getElementById('new-program-desc').value = '';
@@ -438,14 +464,17 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
             return;
           }
           // Add the new program to the dropdown and select it
-          const select = document.getElementById('program-select');
-          const newOption = document.createElement('option');
-          newOption.value = data.id;
-          newOption.textContent = data.name;
-          // Insert before the "+ New Program" option
-          const newProgramOption = select.querySelector('option[value="__new__"]');
-          select.insertBefore(newOption, newProgramOption);
-          select.value = data.id;
+          const dd = document.getElementById('program-dropdown').querySelector('div');
+          const separator = dd.querySelector('div[style*="border-top"]');
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.onclick = function() { selectProgram(data.id, data.name); };
+          btn.style.cssText = 'width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#fff;font-size:13px;cursor:pointer;font-family:inherit;border-radius:8px;transition:background 0.1s;';
+          btn.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.08)'; };
+          btn.onmouseout = function() { this.style.background = 'none'; };
+          btn.textContent = data.name;
+          dd.insertBefore(btn, separator);
+          selectProgram(data.id, data.name);
           document.getElementById('new-program-modal').style.display = 'none';
         } catch (err) {
           errorDiv.textContent = 'Something went wrong';
@@ -463,7 +492,9 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
         { value: 'giant', label: 'Giant Set' },
         { value: 'pre_exhaust', label: 'Pre-Exhaust' },
       ];
-      const setTypeOptions = SET_TYPES.map(t => '<option value="' + t.value + '"' + (t.value === 'straight' ? ' selected' : '') + '>' + t.label + '</option>').join('');
+      const setTypeButtons = SET_TYPES.map(t => {
+        return '<button type=\\"button\\" onclick=\\"selectSetType(EX_IDX,\\'' + t.value + '\\',\\'' + t.label + '\\')\\" style=\\"width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:#fff;font-size:12px;cursor:pointer;font-family:inherit;border-radius:6px;transition:background 0.1s;\\" onmouseover=\\"this.style.background=\\'rgba(255,255,255,0.08)\\'\\" onmouseout=\\"this.style.background=\\'none\\'\\">' + t.label + '</button>';
+      }).join('');
 
       let exerciseCount = 0;
       let searchTimeout = null;
@@ -487,9 +518,16 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
               ' style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;margin-bottom:0;box-sizing:border-box;" />' +
             '<div id="ex-results-' + idx + '" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:50;max-height:200px;overflow-y:auto;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.12);border-radius:10px;margin-top:4px;box-shadow:0 8px 32px rgba(0,0,0,0.5);"></div>' +
           '</div>' +
-          '<div style="margin-top:12px;margin-bottom:12px;display:flex;gap:8px;align-items:center;">' +
+          '<div style="margin-top:12px;margin-bottom:12px;display:flex;gap:8px;align-items:center;position:relative;">' +
             '<label style="margin:0;font-size:11px;color:rgba(255,255,255,0.4);white-space:nowrap;">Set Type</label>' +
-            '<select name="exercises[' + idx + '][setType]" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:13px;font-family:inherit;outline:none;-webkit-appearance:none;box-sizing:border-box;">' + setTypeOptions + '</select>' +
+            '<input type="hidden" name="exercises[' + idx + '][setType]" id="settype-val-' + idx + '" value="straight" />' +
+            '<button type="button" id="settype-btn-' + idx + '" onclick="toggleSetTypeDD(' + idx + ')" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:13px;font-family:inherit;outline:none;cursor:pointer;text-align:left;display:flex;justify-content:space-between;align-items:center;box-sizing:border-box;">' +
+              '<span id="settype-label-' + idx + '">Regular</span>' +
+              '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="opacity:0.4;"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>' +
+            '</button>' +
+            '<div id="settype-dd-' + idx + '" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:55;margin-top:4px;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.15);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.5);padding:4px;">' +
+              setTypeButtons.replace(/EX_IDX/g, idx) +
+            '</div>' +
           '</div>' +
           '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">' +
             '<span style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);width:40px;">Set</span>' +
@@ -563,10 +601,23 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
         return v ? v.pop() : '';
       }
 
-      // Close dropdowns when clicking outside
+      function toggleSetTypeDD(exIdx) {
+        const dd = document.getElementById('settype-dd-' + exIdx);
+        dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+      }
+      function selectSetType(exIdx, value, label) {
+        document.getElementById('settype-val-' + exIdx).value = value;
+        document.getElementById('settype-label-' + exIdx).textContent = label;
+        document.getElementById('settype-dd-' + exIdx).style.display = 'none';
+      }
+
+      // Close all dropdowns when clicking outside
       document.addEventListener('click', function(e) {
         if (!e.target.closest('[id^="ex-search-"]') && !e.target.closest('[id^="ex-results-"]')) {
           document.querySelectorAll('[id^="ex-results-"]').forEach(d => d.style.display = 'none');
+        }
+        if (!e.target.closest('[id^="settype-btn-"]') && !e.target.closest('[id^="settype-dd-"]')) {
+          document.querySelectorAll('[id^="settype-dd-"]').forEach(d => d.style.display = 'none');
         }
       });
 
