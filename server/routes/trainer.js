@@ -492,9 +492,18 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
         { value: 'giant', label: 'Giant Set' },
         { value: 'pre_exhaust', label: 'Pre-Exhaust' },
       ];
-      const setTypeButtons = SET_TYPES.map(t => {
-        return '<button type=\\"button\\" onclick=\\"selectSetType(EX_IDX,\\'' + t.value + '\\',\\'' + t.label + '\\')\\" style=\\"width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:#fff;font-size:12px;cursor:pointer;font-family:inherit;border-radius:6px;transition:background 0.1s;\\" onmouseover=\\"this.style.background=\\'rgba(255,255,255,0.08)\\'\\" onmouseout=\\"this.style.background=\\'none\\'\\">' + t.label + '</button>';
-      }).join('');
+      function buildSetTypeButtons(exIdx) {
+        return SET_TYPES.map(function(t) {
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.textContent = t.label;
+          btn.style.cssText = 'width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:#fff;font-size:12px;cursor:pointer;font-family:inherit;border-radius:6px;transition:background 0.1s;';
+          btn.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.08)'; };
+          btn.onmouseout = function() { this.style.background = 'none'; };
+          btn.onclick = function() { selectSetType(exIdx, t.value, t.label); };
+          return btn;
+        });
+      }
 
       let exerciseCount = 0;
       let searchTimeout = null;
@@ -525,9 +534,7 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
               '<span id="settype-label-' + idx + '">Regular</span>' +
               '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="opacity:0.4;"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>' +
             '</button>' +
-            '<div id="settype-dd-' + idx + '" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:55;margin-top:4px;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.15);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.5);padding:4px;">' +
-              setTypeButtons.replace(/EX_IDX/g, idx) +
-            '</div>' +
+            '<div id="settype-dd-' + idx + '" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:55;margin-top:4px;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.15);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.5);padding:4px;"></div>' +
           '</div>' +
           '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">' +
             '<span style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);width:40px;">Set</span>' +
@@ -538,6 +545,9 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
           '<div id="sets-' + idx + '"></div>' +
           '<button type="button" onclick="addSet(' + idx + ')" style="margin-top:8px;background:none;border:1px dashed rgba(255,255,255,0.15);color:rgba(255,255,255,0.4);padding:8px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;width:100%;transition:all 0.15s;" onmouseover="this.style.borderColor=\'rgba(255,255,255,0.3)\';this.style.color=\'#fff\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,0.15)\';this.style.color=\'rgba(255,255,255,0.4)\'">+ Add Set</button>';
         container.appendChild(div);
+        // Populate set type dropdown with DOM elements (avoids escaping issues)
+        var stDD = document.getElementById('settype-dd-' + idx);
+        buildSetTypeButtons(idx).forEach(function(btn) { stDD.appendChild(btn); });
         addSet(idx); addSet(idx); addSet(idx);
       }
 
