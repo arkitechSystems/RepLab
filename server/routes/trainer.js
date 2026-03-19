@@ -235,7 +235,221 @@ router.get('/', trainerAuth, (req, res) => {
     <div class="glass" style="padding:16px 20px;margin-bottom:24px;border-left:3px solid ${isAdmin ? '#ef4444' : '#3b82f6'};">
       <p style="font-size:13px;color:rgba(255,255,255,0.6);line-height:1.6;">${scopeMsg}</p>
     </div>
+    <div class="card-grid">
+      <a class="card glass" href="/trainer/create-workout">
+        <div class="card-icon">➕</div>
+        <div class="card-title">Create a Workout</div>
+        <div class="card-desc">Build a new workout from scratch. Add exercises, sets, reps, and weights.</div>
+      </a>
+    </div>
   `, req.trainer));
+});
+
+function esc(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// GET /trainer/create-workout — Workout builder form
+router.get('/create-workout', trainerAuth, async (req, res) => {
+  const isAdmin = req.trainer.isAdmin || false;
+  const msg = req.query.msg || '';
+  const error = req.query.error || '';
+
+  // Get programs for the dropdown
+  const { rows: programs } = await pool.query(
+    isAdmin
+      ? 'SELECT id, name FROM programs WHERE user_id IS NULL ORDER BY name'
+      : 'SELECT id, name FROM programs WHERE user_id = $1 ORDER BY name',
+    isAdmin ? [] : [req.trainer.userId]
+  );
+
+  res.send(trainerPage('Create a Workout', `
+    <div style="margin-bottom:20px;">
+      <a href="/trainer" style="color:rgba(255,255,255,0.4);font-size:13px;text-decoration:none;font-weight:600;">
+        <span style="margin-right:4px;">&larr;</span> Back to Dashboard
+      </a>
+    </div>
+    <div class="header">
+      <h1>Create a Workout</h1>
+      <p>Add exercises, sets, reps, and weights. ${isAdmin ? 'This workout will be added to the Browse Workout Library.' : 'This workout will appear in your My Workouts.'}</p>
+    </div>
+    ${msg ? `<div class="glass" style="padding:12px 16px;border-left:3px solid #22c55e;margin-bottom:20px;"><p style="color:#4ade80;font-size:13px;">${esc(msg)}</p></div>` : ''}
+    ${error ? `<div class="glass" style="padding:12px 16px;border-left:3px solid #ef4444;margin-bottom:20px;"><p style="color:#f87171;font-size:13px;">${esc(error)}</p></div>` : ''}
+    <form method="POST" action="/trainer/create-workout" id="workout-form">
+      <div class="glass" style="padding:24px;border-radius:16px;margin-bottom:20px;">
+        <div style="display:flex;gap:16px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:200px;">
+            <label>Workout Name</label>
+            <input type="text" name="workoutName" placeholder="e.g. Upper Body A" required
+              style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;" />
+          </div>
+          <div style="flex:1;min-width:200px;">
+            <label>Program</label>
+            <select name="programId" style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;-webkit-appearance:none;">
+              <option value="">— No Program —</option>
+              ${programs.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:16px;">
+          <label>Description <span style="color:rgba(255,255,255,0.2);">(optional)</span></label>
+          <input type="text" name="description" placeholder="e.g. Chest, Shoulders, Triceps"
+            style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;" />
+        </div>
+      </div>
+
+      <!-- Exercises -->
+      <div id="exercises-container"></div>
+
+      <button type="button" onclick="addExercise()" class="btn-ghost" style="width:100%;text-align:center;padding:14px;margin-bottom:20px;">
+        + Add Exercise
+      </button>
+
+      <button type="submit" class="btn" style="width:100%;padding:14px;font-size:15px;margin:0;">
+        Save Workout
+      </button>
+    </form>
+
+    <script>
+      let exerciseCount = 0;
+
+      function addExercise() {
+        const idx = exerciseCount++;
+        const container = document.getElementById('exercises-container');
+        const div = document.createElement('div');
+        div.className = 'glass';
+        div.id = 'exercise-' + idx;
+        div.style.cssText = 'padding:20px;border-radius:16px;margin-bottom:16px;';
+        div.innerHTML = \`
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <label style="margin:0;font-size:13px;font-weight:700;color:#fff;">Exercise \${idx + 1}</label>
+            <button type="button" onclick="removeExercise(\${idx})" style="background:none;border:none;color:rgba(255,255,255,0.3);cursor:pointer;padding:4px 8px;border-radius:6px;font-family:inherit;font-size:12px;" onmouseover="this.style.color='#ef4444';this.style.background='rgba(239,68,68,0.15)'" onmouseout="this.style.color='rgba(255,255,255,0.3)';this.style.background='none'">Remove</button>
+          </div>
+          <input type="text" name="exercises[\${idx}][name]" placeholder="Exercise name" required
+            style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;margin-bottom:12px;box-sizing:border-box;" />
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+            <span style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);width:40px;">Set</span>
+            <span style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);flex:1;text-align:center;">Reps</span>
+            <span style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);flex:1;text-align:center;">Weight (lbs)</span>
+            <span style="width:28px;"></span>
+          </div>
+          <div id="sets-\${idx}"></div>
+          <button type="button" onclick="addSet(\${idx})" style="margin-top:8px;background:none;border:1px dashed rgba(255,255,255,0.15);color:rgba(255,255,255,0.4);padding:8px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;width:100%;transition:all 0.15s;" onmouseover="this.style.borderColor='rgba(255,255,255,0.3)';this.style.color='#fff'" onmouseout="this.style.borderColor='rgba(255,255,255,0.15)';this.style.color='rgba(255,255,255,0.4)'">+ Add Set</button>
+        \`;
+        container.appendChild(div);
+        // Auto-add 3 sets
+        addSet(idx); addSet(idx); addSet(idx);
+      }
+
+      const setCounts = {};
+      function addSet(exIdx) {
+        if (!setCounts[exIdx]) setCounts[exIdx] = 0;
+        const setIdx = setCounts[exIdx]++;
+        const setsDiv = document.getElementById('sets-' + exIdx);
+        const row = document.createElement('div');
+        row.id = 'set-' + exIdx + '-' + setIdx;
+        row.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:6px;';
+        row.innerHTML = \`
+          <span style="font-size:13px;color:rgba(255,255,255,0.5);width:40px;text-align:center;font-weight:600;">\${setIdx + 1}</span>
+          <input type="number" name="exercises[\${exIdx}][sets][\${setIdx}][reps]" placeholder="10" value="10"
+            style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;text-align:center;box-sizing:border-box;" />
+          <input type="number" name="exercises[\${exIdx}][sets][\${setIdx}][weight]" placeholder="0" value="0"
+            style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;text-align:center;box-sizing:border-box;" />
+          <button type="button" onclick="removeSet(\${exIdx},\${setIdx})" style="background:none;border:none;color:rgba(255,255,255,0.2);cursor:pointer;padding:2px;width:28px;display:flex;align-items:center;justify-content:center;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='rgba(255,255,255,0.2)'">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        \`;
+        setsDiv.appendChild(row);
+      }
+
+      function removeSet(exIdx, setIdx) {
+        const el = document.getElementById('set-' + exIdx + '-' + setIdx);
+        if (el) el.remove();
+      }
+
+      function removeExercise(idx) {
+        const el = document.getElementById('exercise-' + idx);
+        if (el) el.remove();
+      }
+
+      // Start with one exercise
+      addExercise();
+    </script>
+  `, req.trainer));
+});
+
+// POST /trainer/create-workout — Save the workout
+router.post('/create-workout', trainerAuth, express.urlencoded({ extended: true }), async (req, res) => {
+  const isAdmin = req.trainer.isAdmin || false;
+  const { workoutName, description, programId, exercises } = req.body;
+
+  if (!workoutName?.trim()) {
+    return res.redirect('/trainer/create-workout?error=Workout+name+is+required');
+  }
+
+  try {
+    // If no program selected, find or create a default one
+    let finalProgramId = programId ? Number(programId) : null;
+    if (!finalProgramId) {
+      const programName = isAdmin ? 'Trainer Workouts' : 'My Workouts';
+      const userId = isAdmin ? null : req.trainer.userId;
+      const { rows: existing } = await pool.query(
+        userId
+          ? 'SELECT id FROM programs WHERE name = $1 AND user_id = $2'
+          : 'SELECT id FROM programs WHERE name = $1 AND user_id IS NULL',
+        userId ? [programName, userId] : [programName]
+      );
+      if (existing.length > 0) {
+        finalProgramId = existing[0].id;
+      } else {
+        const { rows: [newProg] } = await pool.query(
+          'INSERT INTO programs (user_id, name, description) VALUES ($1, $2, $3) RETURNING id',
+          [userId, programName, '']
+        );
+        finalProgramId = newProg.id;
+      }
+    }
+
+    const userId = isAdmin ? null : req.trainer.userId;
+
+    // Get current max sort_order
+    const { rows: sortRows } = await pool.query(
+      'SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_sort FROM templates WHERE program_id = $1',
+      [finalProgramId]
+    );
+    const sortOrder = sortRows[0].next_sort;
+
+    // Create template
+    const { rows: [tmpl] } = await pool.query(
+      'INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES ($1, $2, $3, $4, FALSE, $5) RETURNING id',
+      [userId, finalProgramId, workoutName.trim(), description?.trim() || '', sortOrder]
+    );
+
+    // Insert exercises and sets
+    if (exercises && typeof exercises === 'object') {
+      const exArray = Array.isArray(exercises) ? exercises : Object.values(exercises);
+      let exSortOrder = 0;
+      for (const ex of exArray) {
+        if (!ex?.name?.trim()) continue;
+        const sets = ex.sets ? (Array.isArray(ex.sets) ? ex.sets : Object.values(ex.sets)) : [];
+        let setNum = 1;
+        for (const set of sets) {
+          if (!set) continue;
+          await pool.query(
+            'INSERT INTO template_exercises (template_id, name, set_number, planned_reps, suggested_weight, sort_order) VALUES ($1, $2, $3, $4, $5, $6)',
+            [tmpl.id, ex.name.trim(), setNum++, parseInt(set.reps) || 10, parseInt(set.weight) || 0, exSortOrder]
+          );
+        }
+        exSortOrder++;
+      }
+    }
+
+    res.redirect('/trainer/create-workout?msg=Workout+"' + encodeURIComponent(workoutName.trim()) + '"+created+successfully');
+  } catch (err) {
+    console.error('Create workout error:', err);
+    res.redirect('/trainer/create-workout?error=Failed+to+create+workout');
+  }
 });
 
 export { trainerSessions };
