@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   date TEXT NOT NULL,
   notes JSONB DEFAULT '{}',
   completed BOOLEAN DEFAULT FALSE,
+  workout_data JSONB,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

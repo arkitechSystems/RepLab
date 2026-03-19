@@ -6,11 +6,11 @@ const router = Router();
 
 router.post('/', authMiddleware, async (req, res) => {
   try {
-    const { templateId, date, entries, notes } = req.body;
+    const { templateId, date, entries, notes, workoutData } = req.body;
     if (!templateId || !date || !entries || !entries.length) {
       return res.status(400).json({ error: 'templateId, date, and entries are required' });
     }
-    const result = await db.createSession(req.userId, templateId, date, entries, notes);
+    const result = await db.createSession(req.userId, templateId, date, entries, notes, workoutData);
     res.status(201).json(result);
   } catch (err) {
     console.error(err);

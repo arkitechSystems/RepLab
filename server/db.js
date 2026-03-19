@@ -392,7 +392,7 @@ const db = {
   },
 
   // Sessions
-  async createSession(userId, templateId, date, entries, notes) {
+  async createSession(userId, templateId, date, entries, notes, workoutData) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -407,11 +407,14 @@ const db = {
       if (existing.length > 0) {
         sessionId = existing[0].id;
         await client.query('DELETE FROM session_entries WHERE session_id = $1', [sessionId]);
-        await client.query('UPDATE sessions SET notes = $1 WHERE id = $2', [JSON.stringify(notes || {}), sessionId]);
+        await client.query(
+          'UPDATE sessions SET notes = $1, workout_data = $2 WHERE id = $3',
+          [JSON.stringify(notes || {}), workoutData ? JSON.stringify(workoutData) : null, sessionId]
+        );
       } else {
         const { rows: sessionRows } = await client.query(
-          'INSERT INTO sessions (user_id, template_id, date, notes) VALUES ($1, $2, $3, $4) RETURNING id',
-          [userId, templateId, date, JSON.stringify(notes || {})]
+          'INSERT INTO sessions (user_id, template_id, date, notes, workout_data) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+          [userId, templateId, date, JSON.stringify(notes || {}), workoutData ? JSON.stringify(workoutData) : null]
         );
         sessionId = sessionRows[0].id;
       }
@@ -489,7 +492,7 @@ const db = {
 
   async getSession(userId, sessionId) {
     const { rows: sessionRows } = await pool.query(
-      `SELECT s.id, s.date, s.template_id, s.created_at, COALESCE(t.name, 'Unknown') AS template_name
+      `SELECT s.id, s.date, s.template_id, s.created_at, s.workout_data, COALESCE(t.name, 'Unknown') AS template_name
        FROM sessions s
        LEFT JOIN templates t ON t.id = s.template_id
        WHERE s.id = $1 AND s.user_id = $2`,
@@ -499,16 +502,19 @@ const db = {
 
     const session = sessionRows[0];
     const { rows: entries } = await pool.query(
-      'SELECT * FROM session_entries WHERE session_id = $1 ORDER BY exercise_name, set_number',
+      'SELECT * FROM session_entries WHERE session_id = $1 ORDER BY id',
       [sessionId]
     );
+
+    const workoutData = typeof session.workout_data === 'string' ? JSON.parse(session.workout_data) : (session.workout_data || null);
 
     return {
       id: session.id,
       date: session.date,
       templateId: session.template_id,
       createdAt: session.created_at,
-      templateName: session.template_name,
+      templateName: workoutData?.name || session.template_name,
+      workoutData,
       entries: entries.map((e) => ({
         id: e.id,
         sessionId: e.session_id,
@@ -522,22 +528,25 @@ const db = {
 
   async getSessionByTemplateAndDate(userId, templateId, date) {
     const { rows: sessionRows } = await pool.query(
-      'SELECT id, notes, completed FROM sessions WHERE user_id = $1 AND template_id = $2 AND date = $3',
+      'SELECT id, notes, completed, workout_data FROM sessions WHERE user_id = $1 AND template_id = $2 AND date = $3',
       [userId, templateId, date]
     );
     if (!sessionRows[0]) return null;
 
-    const sessionId = sessionRows[0].id;
-    const sessionNotes = sessionRows[0].notes;
+    const session = sessionRows[0];
     const { rows: entries } = await pool.query(
-      'SELECT * FROM session_entries WHERE session_id = $1 ORDER BY exercise_name, set_number',
-      [sessionId]
+      'SELECT * FROM session_entries WHERE session_id = $1 ORDER BY id',
+      [session.id]
     );
 
+    const notes = typeof session.notes === 'string' ? JSON.parse(session.notes) : (session.notes || {});
+    const workoutData = typeof session.workout_data === 'string' ? JSON.parse(session.workout_data) : (session.workout_data || null);
+
     return {
-      id: sessionId,
-      completed: sessionRows[0].completed || false,
-      notes: typeof sessionNotes === 'string' ? JSON.parse(sessionNotes) : (sessionNotes || {}),
+      id: session.id,
+      completed: session.completed || false,
+      notes,
+      workoutData,
       entries: entries.map((e) => ({
         exerciseName: e.exercise_name,
         setNumber: e.set_number,
