@@ -283,6 +283,24 @@ router.post('/api/exercises', trainerAuth, express.json(), async (req, res) => {
   }
 });
 
+// JSON API: create program
+router.post('/api/programs', trainerAuth, express.json(), async (req, res) => {
+  try {
+    const { name, description } = req.body;
+    if (!name?.trim()) return res.status(400).json({ error: 'Program name is required' });
+    const isAdmin = req.trainer.isAdmin || false;
+    const userId = isAdmin ? null : req.trainer.userId;
+    const { rows: [program] } = await pool.query(
+      'INSERT INTO programs (user_id, name, description) VALUES ($1, $2, $3) RETURNING id, name',
+      [userId, name.trim(), description?.trim() || '']
+    );
+    res.status(201).json(program);
+  } catch (err) {
+    if (err.code === '23505') return res.status(409).json({ error: 'A program with that name already exists' });
+    res.status(500).json({ error: 'Failed to create program' });
+  }
+});
+
 // GET /trainer/create-workout — Workout builder form
 router.get('/create-workout', trainerAuth, async (req, res) => {
   const isAdmin = req.trainer.isAdmin || false;
@@ -322,9 +340,10 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
           </div>
           <div style="flex:1;min-width:200px;">
             <label>Program</label>
-            <select name="programId" style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;-webkit-appearance:none;">
+            <select name="programId" id="program-select" onchange="if(this.value==='__new__'){this.value='';openNewProgramModal();}" style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;-webkit-appearance:none;">
               <option value="">— No Program —</option>
               ${programs.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}
+              <option value="__new__" style="color:#ef4444;">+ New Program</option>
             </select>
           </div>
         </div>
@@ -365,7 +384,75 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
       </div>
     </div>
 
+    <!-- New Program Modal -->
+    <div id="new-program-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);" onclick="if(event.target===this)this.style.display='none'">
+      <div class="glass" style="padding:24px;max-width:400px;width:90%;border-radius:16px;">
+        <h3 style="font-size:16px;font-weight:700;color:#fff;margin-bottom:16px;">Create New Program</h3>
+        <div style="margin-bottom:12px;">
+          <label>Program Name</label>
+          <input type="text" id="new-program-name" placeholder="e.g. 4-Week Strength Program"
+            style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;" />
+        </div>
+        <div style="margin-bottom:16px;">
+          <label>Description <span style="color:rgba(255,255,255,0.2);">(optional)</span></label>
+          <input type="text" id="new-program-desc" placeholder="e.g. Progressive overload focused"
+            style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;" />
+        </div>
+        <div id="new-program-error" style="display:none;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);border-radius:10px;padding:10px 14px;font-size:13px;color:#f87171;margin-bottom:12px;text-align:center;"></div>
+        <div style="display:flex;gap:8px;">
+          <button type="button" onclick="document.getElementById('new-program-modal').style.display='none'" class="btn-ghost" style="margin:0;flex:1;text-align:center;padding:12px;font-size:14px;">Cancel</button>
+          <button type="button" onclick="saveNewProgram()" class="btn" style="margin:0;flex:1;padding:12px;font-size:14px;">Create Program</button>
+        </div>
+      </div>
+    </div>
+
     <script>
+      function openNewProgramModal() {
+        document.getElementById('new-program-name').value = '';
+        document.getElementById('new-program-desc').value = '';
+        document.getElementById('new-program-error').style.display = 'none';
+        document.getElementById('new-program-modal').style.display = 'flex';
+        setTimeout(() => document.getElementById('new-program-name').focus(), 100);
+      }
+
+      async function saveNewProgram() {
+        const name = document.getElementById('new-program-name').value.trim();
+        const desc = document.getElementById('new-program-desc').value.trim();
+        const errorDiv = document.getElementById('new-program-error');
+        if (!name) {
+          errorDiv.textContent = 'Program name is required';
+          errorDiv.style.display = 'block';
+          return;
+        }
+        errorDiv.style.display = 'none';
+        try {
+          const resp = await fetch('/trainer/api/programs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, description: desc }),
+          });
+          const data = await resp.json();
+          if (!resp.ok) {
+            errorDiv.textContent = data.error || 'Failed to create program';
+            errorDiv.style.display = 'block';
+            return;
+          }
+          // Add the new program to the dropdown and select it
+          const select = document.getElementById('program-select');
+          const newOption = document.createElement('option');
+          newOption.value = data.id;
+          newOption.textContent = data.name;
+          // Insert before the "+ New Program" option
+          const newProgramOption = select.querySelector('option[value="__new__"]');
+          select.insertBefore(newOption, newProgramOption);
+          select.value = data.id;
+          document.getElementById('new-program-modal').style.display = 'none';
+        } catch (err) {
+          errorDiv.textContent = 'Something went wrong';
+          errorDiv.style.display = 'block';
+        }
+      }
+
       const SET_TYPES = [
         { value: 'warm_up', label: 'Warm Up' },
         { value: 'straight', label: 'Regular' },
