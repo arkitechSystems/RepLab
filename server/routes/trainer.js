@@ -370,9 +370,14 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
 
       <div id="exercises-container"></div>
 
-      <button type="button" onclick="addExercise()" class="btn-ghost" style="width:100%;text-align:center;padding:14px;margin-bottom:20px;">
-        + Add Exercise
-      </button>
+      <div style="display:flex;gap:8px;margin-bottom:20px;">
+        <button type="button" onclick="addExercise()" class="btn-ghost" style="flex:1;text-align:center;padding:14px;margin:0;">
+          + Add Exercise
+        </button>
+        <button type="button" onclick="addGroupTitle()" class="btn-ghost" style="flex:1;text-align:center;padding:14px;margin:0;border-color:rgba(239,68,68,0.2);color:rgba(239,68,68,0.7);">
+          + Group Title
+        </button>
+      </div>
 
       <button type="submit" class="btn" style="width:100%;padding:14px;font-size:15px;margin:0;">
         Save Workout
@@ -521,6 +526,55 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
         return e;
       }
 
+      var groupCount = 0;
+      function addGroupTitle() {
+        var gIdx = groupCount++;
+        var container = document.getElementById('exercises-container');
+        var card = el('div', 'border-radius:12px;margin-bottom:16px;border:1px solid rgba(239,68,68,0.15);background:rgba(239,68,68,0.03);padding:16px;position:relative;');
+        card.id = 'group-' + gIdx;
+
+        var header = el('div', 'display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;');
+        var badge = el('span', 'font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:#ef4444;font-weight:700;');
+        badge.textContent = 'GROUP TITLE';
+        var removeBtn = el('button', 'background:none;border:none;color:rgba(255,255,255,0.25);cursor:pointer;padding:4px;border-radius:6px;display:flex;align-items:center;', { type: 'button' });
+        removeBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>';
+        removeBtn.onmouseover = function() { this.style.color = '#ef4444'; };
+        removeBtn.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.25)'; };
+        removeBtn.onclick = function() { var e = document.getElementById('group-' + gIdx); if (e) e.remove(); };
+        header.appendChild(badge); header.appendChild(removeBtn);
+        card.appendChild(header);
+
+        var titleInput = el('input', 'width:100%;padding:10px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#fff;font-size:15px;font-weight:700;font-family:inherit;outline:none;box-sizing:border-box;margin-bottom:8px;');
+        titleInput.type = 'text'; titleInput.name = 'groups[' + gIdx + '][title]';
+        titleInput.placeholder = 'e.g. Warm Up, Superset With, Circuit...'; titleInput.required = true;
+        card.appendChild(titleInput);
+
+        var descInput = el('input', 'width:100%;padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:rgba(255,255,255,0.6);font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;');
+        descInput.type = 'text'; descInput.name = 'groups[' + gIdx + '][description]';
+        descInput.placeholder = 'Description (optional)';
+        card.appendChild(descInput);
+
+        container.appendChild(card);
+        titleInput.focus();
+      }
+
+      function updateSetCount(idx) {
+        var setsDiv = document.getElementById('sets-' + idx);
+        var count = setsDiv ? setsDiv.children.length : 0;
+        var label = document.getElementById('set-count-' + idx);
+        if (label) label.textContent = count + ' set' + (count !== 1 ? 's' : '');
+      }
+
+      function moveExercise(idx, direction) {
+        var card = document.getElementById('exercise-' + idx);
+        if (!card) return;
+        var sibling = direction === -1 ? card.previousElementSibling : card.nextElementSibling;
+        if (!sibling) return;
+        var container = document.getElementById('exercises-container');
+        if (direction === -1) container.insertBefore(card, sibling);
+        else container.insertBefore(sibling, card);
+      }
+
       function addExercise() {
         var idx = exerciseCount++;
         var container = document.getElementById('exercises-container');
@@ -528,57 +582,88 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
         card.className = 'glass';
         card.id = 'exercise-' + idx;
 
-        // Card header — exercise name + remove
-        var header = el('div', 'padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:10px;');
-        var searchWrap = el('div', 'flex:1;position:relative;');
-        var searchInput = el('input', 'width:100%;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#fff;font-size:14px;font-weight:600;font-family:inherit;outline:none;box-sizing:border-box;');
+        // === HEADER: Exercise name + move up/down + remove ===
+        var header = el('div', 'padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between;');
+        var searchWrap = el('div', 'flex:1;position:relative;min-width:0;');
+        var searchInput = el('input', 'width:100%;padding:0;border:none;background:none;color:#fff;font-size:15px;font-weight:600;font-family:inherit;outline:none;');
         searchInput.type = 'text'; searchInput.id = 'ex-search-' + idx; searchInput.name = 'exercises[' + idx + '][name]';
         searchInput.placeholder = 'Search exercises...'; searchInput.required = true; searchInput.autocomplete = 'off';
         searchInput.oninput = function() { searchExercises(idx, this.value); };
         searchInput.onfocus = function() { searchExercises(idx, this.value); };
-        var resultsDiv = el('div', 'display:none;position:absolute;top:100%;left:0;right:0;z-index:50;max-height:200px;overflow-y:auto;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.12);border-radius:10px;margin-top:4px;box-shadow:0 8px 32px rgba(0,0,0,0.5);');
+        var resultsDiv = el('div', 'display:none;position:absolute;top:calc(100% + 8px);left:-16px;right:-16px;z-index:50;max-height:220px;overflow-y:auto;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.12);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.5);');
         resultsDiv.id = 'ex-results-' + idx;
         searchWrap.appendChild(searchInput); searchWrap.appendChild(resultsDiv);
-        var removeBtn = el('button', 'background:none;border:none;color:rgba(255,255,255,0.25);cursor:pointer;padding:6px;border-radius:6px;display:flex;align-items:center;', { type: 'button' });
-        removeBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>';
-        removeBtn.onmouseover = function() { this.style.color = '#ef4444'; this.style.background = 'rgba(239,68,68,0.1)'; };
-        removeBtn.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.25)'; this.style.background = 'none'; };
+        var headerBtns = el('div', 'display:flex;align-items:center;gap:4px;shrink:0;');
+        function mkCircleBtn(svg, hoverColor, hoverBg) {
+          var b = el('button', 'width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.06);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,0.4);transition:all 0.15s;', { type: 'button' });
+          b.innerHTML = svg;
+          b.onmouseover = function() { this.style.color = hoverColor; this.style.background = hoverBg; };
+          b.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.4)'; this.style.background = 'rgba(255,255,255,0.06)'; };
+          return b;
+        }
+        var upBtn = mkCircleBtn('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5"/></svg>', '#fff', 'rgba(255,255,255,0.15)');
+        upBtn.onclick = function() { moveExercise(idx, -1); };
+        var downBtn = mkCircleBtn('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>', '#fff', 'rgba(255,255,255,0.15)');
+        downBtn.onclick = function() { moveExercise(idx, 1); };
+        var removeBtn = mkCircleBtn('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>', '#ef4444', 'rgba(239,68,68,0.15)');
         removeBtn.onclick = function() { removeExercise(idx); };
-        header.appendChild(searchWrap); header.appendChild(removeBtn);
+        headerBtns.appendChild(upBtn); headerBtns.appendChild(downBtn); headerBtns.appendChild(removeBtn);
+        header.appendChild(searchWrap); header.appendChild(headerBtns);
         card.appendChild(header);
 
-        // Hidden set type for the exercise (will be set per-set but we keep one for the form)
+        // Hidden set type
         var stHidden = el('input'); stHidden.type = 'hidden'; stHidden.name = 'exercises[' + idx + '][setType]'; stHidden.id = 'settype-val-' + idx; stHidden.value = 'straight';
         card.appendChild(stHidden);
 
-        // Column headers
-        var colHeaders = el('div', 'display:flex;align-items:center;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.05);');
-        var cols = [
-          { text: 'SET', width: '36px', align: 'center' },
-          { text: 'TYPE', width: '72px', align: 'center' },
-          { text: 'WEIGHT', flex: '1', align: 'center' },
-          { text: 'REPS', flex: '1', align: 'center' },
-          { text: '', width: '28px' },
-        ];
-        cols.forEach(function(c) {
-          var sp = el('span', 'font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.3);font-weight:600;text-align:' + c.align + ';' + (c.flex ? 'flex:' + c.flex + ';' : 'width:' + c.width + ';'));
-          sp.textContent = c.text; colHeaders.appendChild(sp);
+        // === SET CONTROLS SUBHEADER: count + add/remove set buttons ===
+        var setControls = el('div', 'padding:8px 16px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.015);');
+        var setCountLabel = el('span', 'font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1.5px;font-weight:600;');
+        setCountLabel.id = 'set-count-' + idx;
+        setCountLabel.textContent = '3 sets';
+        var setBtns = el('div', 'display:flex;align-items:center;gap:6px;');
+        var addSetPill = el('button', 'height:26px;padding:0 10px;border-radius:13px;background:rgba(255,255,255,0.06);border:none;display:flex;align-items:center;gap:4px;cursor:pointer;color:rgba(255,255,255,0.4);font-family:inherit;transition:all 0.15s;', { type: 'button' });
+        addSetPill.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>';
+        var addSetText = el('span', 'font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;'); addSetText.textContent = 'Add Set';
+        addSetPill.appendChild(addSetText);
+        addSetPill.onmouseover = function() { this.style.color = '#fff'; this.style.background = 'rgba(255,255,255,0.12)'; };
+        addSetPill.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.4)'; this.style.background = 'rgba(255,255,255,0.06)'; };
+        addSetPill.onclick = function() { addSet(idx); updateSetCount(idx); };
+        var rmSetPill = el('button', 'height:26px;padding:0 10px;border-radius:13px;background:rgba(255,255,255,0.06);border:none;display:flex;align-items:center;gap:4px;cursor:pointer;color:rgba(255,255,255,0.4);font-family:inherit;transition:all 0.15s;', { type: 'button' });
+        rmSetPill.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12h-15"/></svg>';
+        var rmSetText = el('span', 'font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;'); rmSetText.textContent = 'Remove';
+        rmSetPill.appendChild(rmSetText);
+        rmSetPill.onmouseover = function() { this.style.color = '#ef4444'; this.style.background = 'rgba(239,68,68,0.12)'; };
+        rmSetPill.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.4)'; this.style.background = 'rgba(255,255,255,0.06)'; };
+        rmSetPill.onclick = function() { var sd = document.getElementById('sets-' + idx); if (sd && sd.lastChild) { sd.lastChild.remove(); updateSetCount(idx); } };
+        setBtns.appendChild(addSetPill); setBtns.appendChild(rmSetPill);
+        setControls.appendChild(setCountLabel); setControls.appendChild(setBtns);
+        card.appendChild(setControls);
+
+        // === COLUMN HEADERS ===
+        var colHeaders = el('div', 'display:flex;align-items:center;padding:8px 16px;border-bottom:1px solid rgba(255,255,255,0.04);');
+        [{ t: 'Set', w: '36px' }, { t: 'Type', w: '72px' }, { t: 'Weight', f: '1' }, { t: 'Reps', f: '1' }, { t: '', w: '28px' }].forEach(function(c) {
+          var sp = el('span', 'font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.25);font-weight:600;text-align:center;' + (c.f ? 'flex:' + c.f + ';' : 'width:' + c.w + ';'));
+          sp.textContent = c.t; colHeaders.appendChild(sp);
         });
         card.appendChild(colHeaders);
 
-        // Sets container
-        var setsDiv = el('div', 'padding:4px 0;'); setsDiv.id = 'sets-' + idx; card.appendChild(setsDiv);
+        // === SETS CONTAINER ===
+        var setsDiv = el('div'); setsDiv.id = 'sets-' + idx; card.appendChild(setsDiv);
 
-        // Add set button
-        var addSetBtn = el('button', 'width:100%;padding:10px;background:none;border:none;border-top:1px solid rgba(255,255,255,0.05);color:rgba(255,255,255,0.4);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s;', { type: 'button' });
-        addSetBtn.textContent = '+ Add Set';
-        addSetBtn.onmouseover = function() { this.style.color = '#fff'; this.style.background = 'rgba(255,255,255,0.03)'; };
-        addSetBtn.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.4)'; this.style.background = 'none'; };
-        addSetBtn.onclick = function() { addSet(idx); };
-        card.appendChild(addSetBtn);
+        // === NOTES SECTION ===
+        var notesWrap = el('div', 'padding:10px 16px;border-top:1px solid rgba(255,255,255,0.05);');
+        var notesLabel = el('div', 'display:flex;align-items:center;gap:4px;margin-bottom:6px;');
+        var notesIcon = el('span'); notesIcon.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/></svg>';
+        var notesText = el('span', 'font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:1px;font-weight:600;'); notesText.textContent = 'Notes';
+        notesLabel.appendChild(notesIcon); notesLabel.appendChild(notesText);
+        var notesInput = el('textarea', 'width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:rgba(255,255,255,0.5);font-size:12px;font-family:inherit;outline:none;resize:vertical;box-sizing:border-box;min-height:36px;');
+        notesInput.name = 'exercises[' + idx + '][notes]'; notesInput.placeholder = 'Add notes for this exercise...'; notesInput.rows = 2;
+        notesWrap.appendChild(notesLabel); notesWrap.appendChild(notesInput);
+        card.appendChild(notesWrap);
 
         container.appendChild(card);
         addSet(idx); addSet(idx); addSet(idx);
+        updateSetCount(idx);
       }
 
       function searchExercises(exIdx, query) {
@@ -738,7 +823,7 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
         delBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>';
         delBtn.onmouseover = function() { this.style.color = '#ef4444'; this.style.background = 'rgba(239,68,68,0.1)'; };
         delBtn.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.15)'; this.style.background = 'none'; };
-        delBtn.onclick = function() { var e = document.getElementById('set-' + exIdx + '-' + setIdx); if (e) e.remove(); };
+        delBtn.onclick = function() { var e = document.getElementById('set-' + exIdx + '-' + setIdx); if (e) { e.remove(); updateSetCount(exIdx); } };
 
         row.appendChild(num); row.appendChild(typeWrap); row.appendChild(weightInput); row.appendChild(repsInput); row.appendChild(delBtn);
         setsDiv.appendChild(row);

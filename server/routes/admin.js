@@ -2623,17 +2623,213 @@ router.get('/workout-manager/workouts', adminAuth, async (req, res) => {
     } else {
       for (const program of programs) {
         const { rows: templates } = await pool.query('SELECT t.id, t.name, t.description, t.is_rest, (SELECT COUNT(*) FROM template_exercises te WHERE te.template_id = t.id) AS exercise_count FROM templates t WHERE t.program_id = $1 ORDER BY t.sort_order', [program.id]);
-        const rows = templates.map(t => t.is_rest
-          ? '<tr><td style="color:rgba(255,255,255,0.3);font-style:italic;">Rest Day</td><td>—</td><td>—</td></tr>'
-          : '<tr><td style="font-weight:600;color:#fff;">' + esc(t.name) + '</td><td>' + (t.description ? esc(t.description) : '—') + '</td><td>' + t.exercise_count + ' exercises</td></tr>'
-        ).join('');
+        const rows = templates.map((t, i) => {
+          const rowBg = i % 2 === 0 ? 'background:rgba(255,255,255,0.02);' : '';
+          if (t.is_rest) {
+            return '<tr style="' + rowBg + '"><td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.3);font-style:italic;">Rest Day</td><td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);">—</td><td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);">—</td><td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);"></td></tr>';
+          }
+          return '<tr style="' + rowBg + '">' +
+            '<td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);font-weight:600;color:#fff;">' + esc(t.name) + '</td>' +
+            '<td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);font-size:13px;">' + (t.description ? esc(t.description) : '<span style="color:rgba(255,255,255,0.2);">—</span>') + '</td>' +
+            '<td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);"><span style="padding:4px 10px;border-radius:6px;background:rgba(255,255,255,0.06);font-size:12px;color:rgba(255,255,255,0.6);font-weight:600;">' + t.exercise_count + ' exercises</span></td>' +
+            '<td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);text-align:right;white-space:nowrap;">' +
+              '<a href="/admin/workout-manager/edit/' + t.id + '" style="color:#ef4444;text-decoration:none;font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;border:1px solid rgba(239,68,68,0.3);margin-right:6px;" onmouseover="this.style.background=\'rgba(239,68,68,0.1)\'" onmouseout="this.style.background=\'none\'">Edit</a>' +
+              '<a href="/admin/workout-manager/delete/' + t.id + '" onclick="return confirm(\'Delete this workout and all its exercises? This cannot be undone.\')" style="color:rgba(255,255,255,0.3);text-decoration:none;font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);" onmouseover="this.style.color=\'#ef4444\';this.style.borderColor=\'rgba(239,68,68,0.3)\';this.style.background=\'rgba(239,68,68,0.08)\'" onmouseout="this.style.color=\'rgba(255,255,255,0.3)\';this.style.borderColor=\'rgba(255,255,255,0.1)\';this.style.background=\'none\'">Delete</a>' +
+            '</td></tr>';
+        }).join('');
         const nonRest = templates.filter(t => !t.is_rest).length;
-        content += '<div class="glass" style="border-radius:16px;overflow:hidden;margin-bottom:20px;"><div style="padding:20px 24px;border-bottom:1px solid rgba(255,255,255,0.06);"><h3 style="font-size:16px;font-weight:700;color:#fff;margin:0;">' + esc(program.name) + '</h3><p style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:2px;">' + nonRest + ' workouts' + (program.description ? ' &middot; ' + esc(program.description) : '') + '</p></div>' +
-          (templates.length > 0 ? '<div class="table-wrap"><table><thead><tr><th>Workout</th><th>Description</th><th>Exercises</th></tr></thead><tbody>' + rows + '</tbody></table></div>' : '<div style="padding:20px 24px;"><p style="color:rgba(255,255,255,0.3);font-size:13px;">No workouts yet.</p></div>') + '</div>';
+        content += '<div class="glass" style="border-radius:16px;overflow:hidden;margin-bottom:20px;"><div style="padding:20px 24px;border-bottom:1px solid rgba(255,255,255,0.08);"><h3 style="font-size:16px;font-weight:700;color:#fff;margin:0;">' + esc(program.name) + '</h3><p style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:2px;">' + nonRest + ' workouts' + (program.description ? ' &middot; ' + esc(program.description) : '') + '</p></div>' +
+          (templates.length > 0 ? '<div class="table-wrap"><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="padding:12px 20px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);font-weight:700;background:rgba(255,255,255,0.04);border-bottom:2px solid rgba(255,255,255,0.08);">Workout</th><th style="padding:12px 20px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);font-weight:700;background:rgba(255,255,255,0.04);border-bottom:2px solid rgba(255,255,255,0.08);">Description</th><th style="padding:12px 20px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);font-weight:700;background:rgba(255,255,255,0.04);border-bottom:2px solid rgba(255,255,255,0.08);">Exercises</th><th style="padding:12px 20px;width:160px;background:rgba(255,255,255,0.04);border-bottom:2px solid rgba(255,255,255,0.08);"></th></tr></thead><tbody>' + rows + '</tbody></table></div>' : '<div style="padding:20px 24px;"><p style="color:rgba(255,255,255,0.3);font-size:13px;">No workouts yet.</p></div>') + '</div>';
       }
     }
     res.send(adminPage('View Current Workouts', '<div class="breadcrumb"><a href="/admin">Dashboard</a> / <a href="/admin/workout-manager">Workout Manager</a> / Workouts</div><div class="header"><h1>Current Workouts</h1><p>' + programs.length + ' programs in the Browse Workout Library</p></div><a href="/admin/workout-manager/create" class="btn" style="margin-bottom:24px;">+ Create New Workout</a>' + content));
   } catch (err) { console.error(err); res.status(500).send(adminPage('Error', '<p style="color:#f87171;">Failed to load workouts.</p>')); }
+});
+
+// GET /admin/workout-manager/edit/:id — Edit workout
+router.get('/workout-manager/edit/:id', adminAuth, async (req, res) => {
+  const templateId = Number(req.params.id);
+  const msg = req.query.msg || '';
+  const error = req.query.error || '';
+  try {
+    const { rows: tmplRows } = await pool.query('SELECT t.*, p.name AS program_name FROM templates t LEFT JOIN programs p ON p.id = t.program_id WHERE t.id = $1', [templateId]);
+    if (!tmplRows[0]) return res.redirect('/admin/workout-manager/workouts');
+    const tmpl = tmplRows[0];
+    const { rows: exercises } = await pool.query('SELECT name, set_type, set_number, planned_reps, suggested_weight, sort_order FROM template_exercises WHERE template_id = $1 ORDER BY sort_order, set_number', [templateId]);
+    const exerciseMap = new Map();
+    for (const ex of exercises) {
+      if (!exerciseMap.has(ex.sort_order)) exerciseMap.set(ex.sort_order, { name: ex.name, setType: ex.set_type || 'straight', sets: [] });
+      exerciseMap.get(ex.sort_order).sets.push({ reps: ex.planned_reps, weight: Number(ex.suggested_weight) });
+    }
+    const exerciseList = [...exerciseMap.values()];
+    const { rows: programs } = await pool.query('SELECT id, name FROM programs WHERE user_id IS NULL ORDER BY name');
+    const muscleGroups = await db.getMuscleGroups();
+    const apiBase = '/admin/workout-manager/api';
+
+    res.send(adminPage('Edit Workout', `
+      <div class="breadcrumb"><a href="/admin">Dashboard</a> / <a href="/admin/workout-manager">Workout Manager</a> / <a href="/admin/workout-manager/workouts">Workouts</a> / Edit</div>
+      <div class="header">
+        <h1>Edit Workout</h1>
+        <p>Editing <strong style="color:#fff;">${esc(tmpl.name)}</strong>${tmpl.program_name ? ' in ' + esc(tmpl.program_name) : ''}</p>
+      </div>
+      ${msg ? '<div class="glass" style="padding:12px 16px;border-left:3px solid #22c55e;margin-bottom:20px;"><p style="color:#4ade80;font-size:13px;">' + esc(msg) + '</p></div>' : ''}
+      ${error ? '<div class="glass" style="padding:12px 16px;border-left:3px solid #ef4444;margin-bottom:20px;"><p style="color:#f87171;font-size:13px;">' + esc(error) + '</p></div>' : ''}
+      <form method="POST" action="/admin/workout-manager/edit/${templateId}">
+        <div class="glass" style="padding:24px;border-radius:16px;margin-bottom:20px;overflow:visible;">
+          <div style="display:flex;gap:16px;flex-wrap:wrap;">
+            <div style="flex:1;min-width:200px;">
+              <label>Workout Name</label>
+              <input type="text" name="workoutName" value="${esc(tmpl.name)}" required style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;" />
+            </div>
+            <div style="flex:1;min-width:200px;">
+              <label>Program</label>
+              <select name="programId" style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;">
+                ${programs.map(p => '<option value="' + p.id + '"' + (p.id === tmpl.program_id ? ' selected' : '') + '>' + esc(p.name) + '</option>').join('')}
+              </select>
+            </div>
+          </div>
+          <div style="margin-top:16px;">
+            <label>Description <span style="color:rgba(255,255,255,0.2);">(optional)</span></label>
+            <input type="text" name="description" value="${esc(tmpl.description || '')}" style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;" />
+          </div>
+        </div>
+        <div id="exercises-container"></div>
+        <button type="button" onclick="addExercise()" class="btn-ghost" style="width:100%;text-align:center;padding:14px;margin-bottom:20px;">+ Add Exercise</button>
+        <div style="display:flex;gap:8px;">
+          <button type="submit" class="btn" style="flex:1;padding:14px;font-size:15px;margin:0;">Save Changes</button>
+          <a href="/admin/workout-manager/workouts" class="btn-ghost" style="flex:none;padding:14px 24px;margin:0;text-align:center;">Cancel</a>
+        </div>
+      </form>
+      <script>
+        var API = '${apiBase}';
+        var EXISTING = ${JSON.stringify(exerciseList)};
+        var SET_TYPES = [
+          { value: 'warm_up', label: 'Warm Up' }, { value: 'straight', label: 'Regular' }, { value: 'drop', label: 'Drop Set' },
+          { value: 'rest_pause', label: 'Rest-Pause' }, { value: 'superset', label: 'Super Set' }, { value: 'alternating', label: 'Alternating' },
+          { value: 'giant', label: 'Giant Set' }, { value: 'pre_exhaust', label: 'Pre-Exhaust' },
+        ];
+        var SET_SHORT = { warm_up: 'WU', straight: 'REG', drop: 'DS', rest_pause: 'RP', superset: 'SS', alternating: 'Alt', giant: 'Gia', pre_exhaust: 'PrEx' };
+        function getSetTypeLabel(v) { var t = SET_TYPES.find(function(x) { return x.value === v; }); return t ? t.label : 'Regular'; }
+        function mk(tag, css, attrs) { var e = document.createElement(tag); if (css) e.style.cssText = css; if (attrs) Object.keys(attrs).forEach(function(k) { e[k] = attrs[k]; }); return e; }
+        var exerciseCount = 0, searchTimeout = null, activeSearchIdx = null, setCounts = {};
+        var inputCSS = 'flex:1;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);color:#fff;font-size:14px;font-family:inherit;outline:none;text-align:center;box-sizing:border-box;';
+        document.addEventListener('click', function(e) {
+          if (!e.target.closest('[id^="ex-search-"]') && !e.target.closest('[id^="ex-results-"]')) document.querySelectorAll('[id^="ex-results-"]').forEach(function(d) { d.style.display = 'none'; });
+          if (!e.target.closest('[id^="st-btn-"]') && !e.target.closest('[id^="st-dd-"]')) document.querySelectorAll('[id^="st-dd-"]').forEach(function(d) { d.style.display = 'none'; });
+        });
+        function addExercise(prefill) {
+          var idx = exerciseCount++; var container = document.getElementById('exercises-container');
+          var card = mk('div', 'border-radius:12px;margin-bottom:12px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);');
+          card.id = 'exercise-' + idx;
+          var hdr = mk('div', 'padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:8px;');
+          var si = mk('input', 'flex:1;padding:0;border:none;background:none;color:#fff;font-size:14px;font-weight:600;font-family:inherit;outline:none;');
+          si.type = 'text'; si.id = 'ex-search-' + idx; si.name = 'exercises[' + idx + '][name]'; si.placeholder = 'Search exercises...'; si.required = true; si.autocomplete = 'off';
+          if (prefill) si.value = prefill.name;
+          si.oninput = function() { searchExercises(idx, this.value); }; si.onfocus = function() { searchExercises(idx, this.value); };
+          var rd = mk('div', 'display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:50;max-height:200px;overflow-y:auto;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.12);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.5);');
+          rd.id = 'ex-results-' + idx;
+          var sw = mk('div', 'flex:1;position:relative;'); sw.appendChild(si); sw.appendChild(rd);
+          var rmBtn = mk('button', 'background:none;border:none;color:rgba(255,255,255,0.25);cursor:pointer;padding:4px;border-radius:6px;display:flex;', { type: 'button' });
+          rmBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>';
+          rmBtn.onmouseover = function() { this.style.color = '#ef4444'; }; rmBtn.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.25)'; };
+          rmBtn.onclick = function() { var e = document.getElementById('exercise-' + idx); if (e) e.remove(); };
+          hdr.appendChild(sw); hdr.appendChild(rmBtn); card.appendChild(hdr);
+          var stH = mk('input'); stH.type = 'hidden'; stH.name = 'exercises[' + idx + '][setType]'; stH.id = 'settype-val-' + idx; stH.value = prefill ? prefill.setType : 'straight';
+          card.appendChild(stH);
+          var ch = mk('div', 'display:flex;padding:8px 16px;border-bottom:1px solid rgba(255,255,255,0.04);');
+          [{ t: 'Set', w: '36px' }, { t: 'Type', w: '72px' }, { t: 'Weight', f: '1' }, { t: 'Reps', f: '1' }, { t: '', w: '28px' }].forEach(function(c) {
+            var sp = mk('span', 'font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.25);font-weight:600;text-align:center;' + (c.f ? 'flex:' + c.f + ';' : 'width:' + c.w + ';'));
+            sp.textContent = c.t; ch.appendChild(sp);
+          }); card.appendChild(ch);
+          var sd = mk('div'); sd.id = 'sets-' + idx; card.appendChild(sd);
+          var asb = mk('button', 'width:100%;padding:8px;background:none;border:none;border-top:1px solid rgba(255,255,255,0.04);color:rgba(255,255,255,0.3);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;', { type: 'button' });
+          asb.textContent = '+ Add Set'; asb.onmouseover = function() { this.style.color = '#fff'; }; asb.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.3)'; };
+          asb.onclick = function() { addSet(idx); }; card.appendChild(asb);
+          container.appendChild(card);
+          if (prefill && prefill.sets.length > 0) prefill.sets.forEach(function(s) { addSet(idx, s.reps, s.weight); });
+          else { addSet(idx); addSet(idx); addSet(idx); }
+        }
+        function addSet(exIdx, pr, pw) {
+          if (!setCounts[exIdx]) setCounts[exIdx] = 0; var si = setCounts[exIdx]++;
+          var sd = document.getElementById('sets-' + exIdx); var r = mk('div', 'display:flex;align-items:center;padding:6px 16px;border-bottom:1px solid rgba(255,255,255,0.03);' + (si % 2 === 0 ? 'background:rgba(255,255,255,0.015);' : ''));
+          r.id = 'set-' + exIdx + '-' + si;
+          var n = mk('span', 'width:36px;text-align:center;font-size:13px;color:rgba(255,255,255,0.4);font-weight:700;'); n.textContent = si + 1;
+          var tw = mk('div', 'width:72px;position:relative;');
+          var tb = mk('button', 'width:100%;padding:5px 4px;border-radius:6px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.6);font-size:10px;font-weight:700;font-family:inherit;cursor:pointer;text-align:center;outline:none;', { type: 'button' });
+          tb.textContent = 'REG'; tb.id = 'st-btn-' + exIdx + '-' + si;
+          var tdd = mk('div', 'display:none;position:absolute;top:100%;left:0;z-index:60;margin-top:2px;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.15);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.5);padding:2px;min-width:120px;');
+          tdd.id = 'st-dd-' + exIdx + '-' + si;
+          tb.onclick = function() { tdd.style.display = tdd.style.display === 'none' ? 'block' : 'none'; };
+          SET_TYPES.forEach(function(t) {
+            var o = mk('button', 'width:100%;text-align:left;padding:6px 10px;border:none;background:none;color:#fff;font-size:11px;cursor:pointer;font-family:inherit;border-radius:5px;', { type: 'button' });
+            o.textContent = t.label; o.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.08)'; }; o.onmouseout = function() { this.style.background = 'none'; };
+            o.onclick = function() { tb.textContent = SET_SHORT[t.value] || 'REG'; tb.style.color = t.value === 'straight' ? 'rgba(255,255,255,0.6)' : '#ef4444'; document.getElementById('settype-val-' + exIdx).value = t.value; tdd.style.display = 'none'; };
+            tdd.appendChild(o);
+          }); tw.appendChild(tb); tw.appendChild(tdd);
+          var wi = mk('input', inputCSS); wi.type = 'number'; wi.name = 'exercises[' + exIdx + '][sets][' + si + '][weight]'; wi.placeholder = '0'; wi.value = pw !== undefined ? pw : '0';
+          var ri = mk('input', inputCSS); ri.type = 'number'; ri.name = 'exercises[' + exIdx + '][sets][' + si + '][reps]'; ri.placeholder = '10'; ri.value = pr !== undefined ? pr : '10';
+          var db = mk('button', 'background:none;border:none;color:rgba(255,255,255,0.15);cursor:pointer;padding:4px;width:28px;display:flex;align-items:center;justify-content:center;border-radius:4px;', { type: 'button' });
+          db.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>';
+          db.onmouseover = function() { this.style.color = '#ef4444'; }; db.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.15)'; };
+          db.onclick = function() { var e = document.getElementById('set-' + exIdx + '-' + si); if (e) e.remove(); };
+          r.appendChild(n); r.appendChild(tw); r.appendChild(wi); r.appendChild(ri); r.appendChild(db); sd.appendChild(r);
+        }
+        function searchExercises(exIdx, query) {
+          activeSearchIdx = exIdx; clearTimeout(searchTimeout);
+          var rd = document.getElementById('ex-results-' + exIdx);
+          if (!query || query.length < 1) { rd.style.display = 'none'; return; }
+          searchTimeout = setTimeout(async function() {
+            try {
+              var resp = await fetch(API + '/exercises?q=' + encodeURIComponent(query));
+              var exs = await resp.json(); rd.innerHTML = '';
+              exs.forEach(function(ex) {
+                var b = document.createElement('button'); b.type = 'button';
+                b.style.cssText = 'width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#fff;font-size:13px;cursor:pointer;font-family:inherit;display:flex;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.05);';
+                b.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.08)'; }; b.onmouseout = function() { this.style.background = 'none'; };
+                b.onclick = function() { document.getElementById('ex-search-' + exIdx).value = ex.name; rd.style.display = 'none'; };
+                b.textContent = ex.name; rd.appendChild(b);
+              });
+              rd.style.display = 'block';
+            } catch (e) { console.error(e); }
+          }, 200);
+        }
+        EXISTING.forEach(function(ex) { addExercise(ex); });
+        if (EXISTING.length === 0) addExercise();
+      </script>
+    `));
+  } catch (err) { console.error(err); res.redirect('/admin/workout-manager/workouts'); }
+});
+
+// POST /admin/workout-manager/edit/:id — Save edited workout
+router.post('/workout-manager/edit/:id', adminAuth, express.urlencoded({ extended: true }), async (req, res) => {
+  const templateId = Number(req.params.id);
+  const { workoutName, description, programId, exercises } = req.body;
+  if (!workoutName?.trim()) return res.redirect('/admin/workout-manager/edit/' + templateId + '?error=Name+is+required');
+  try {
+    await pool.query('UPDATE templates SET name = $1, description = $2, program_id = $3 WHERE id = $4', [workoutName.trim(), description?.trim() || '', programId ? Number(programId) : null, templateId]);
+    await pool.query('DELETE FROM template_exercises WHERE template_id = $1', [templateId]);
+    if (exercises && typeof exercises === 'object') {
+      const exArray = Array.isArray(exercises) ? exercises : Object.values(exercises);
+      let exSort = 0;
+      for (const ex of exArray) {
+        if (!ex?.name?.trim()) continue;
+        const setType = ex.setType || 'straight';
+        const sets = ex.sets ? (Array.isArray(ex.sets) ? ex.sets : Object.values(ex.sets)) : [];
+        let setNum = 1;
+        for (const set of sets) { if (!set) continue; await pool.query('INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7)', [templateId, ex.name.trim(), setType, setNum++, parseInt(set.reps) || 10, parseInt(set.weight) || 0, exSort]); }
+        exSort++;
+      }
+    }
+    res.redirect('/admin/workout-manager/edit/' + templateId + '?msg=Workout+updated+successfully');
+  } catch (err) { console.error(err); res.redirect('/admin/workout-manager/edit/' + templateId + '?error=Failed+to+save'); }
+});
+
+// GET /admin/workout-manager/delete/:id — Delete workout
+router.get('/workout-manager/delete/:id', adminAuth, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM templates WHERE id = $1', [Number(req.params.id)]);
+    res.redirect('/admin/workout-manager/workouts?msg=Workout+deleted');
+  } catch (err) { console.error(err); res.redirect('/admin/workout-manager/workouts'); }
 });
 
 // GET /admin/custom-exercises — User-created exercises
