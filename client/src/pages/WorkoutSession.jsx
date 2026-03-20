@@ -444,6 +444,33 @@ export default function WorkoutSession() {
 
   const exerciseRefs = useRef({});
 
+  function handleDeleteExercise(exerciseName) {
+    if (!confirm(`Remove "${exerciseName}" from this workout?`)) return;
+    setTemplate((prev) => ({
+      ...prev,
+      exercises: prev.exercises.filter((ex) => ex.name !== exerciseName),
+    }));
+    setEntries((prev) => {
+      const updated = { ...prev };
+      delete updated[exerciseName];
+      return updated;
+    });
+    setCompletedSets((prev) => {
+      const next = new Set();
+      for (const key of prev) {
+        if (!key.startsWith(exerciseName + '-')) next.add(key);
+      }
+      return next;
+    });
+    setAutoFilled((prev) => {
+      const next = new Set();
+      for (const key of prev) {
+        if (!key.startsWith(exerciseName + '-')) next.add(key);
+      }
+      return next;
+    });
+  }
+
   function handleMoveExercise(fromIdx, toIdx) {
     const movingName = template.exercises[fromIdx]?.name;
     setTemplate((prev) => {
@@ -912,6 +939,7 @@ export default function WorkoutSession() {
               onDeleteSet={isCompleted ? undefined : handleDeleteSet}
               onSwapExercise={isCompleted ? undefined : handleSwapExercise}
               onAddExercise={isCompleted ? undefined : (name) => handleAddExercise(name, idx)}
+              onDeleteExercise={isCompleted ? undefined : () => handleDeleteExercise(exercise.name)}
               onMoveUp={isCompleted ? undefined : (idx > 0 ? () => handleMoveExercise(idx, idx - 1) : undefined)}
               onMoveDown={isCompleted ? undefined : (idx < template.exercises.length - 1 ? () => handleMoveExercise(idx, idx + 1) : undefined)}
               note={notes[exercise.name] || ''}
