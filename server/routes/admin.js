@@ -5,7 +5,6 @@ import db from '../db.js';
 import { Resend } from 'resend';
 import pool from '../dbPool.js';
 import { syncFromWger } from '../syncExercises.js';
-import { trainerSessions } from './trainer.js';
 
 const router = Router();
 
@@ -512,7 +511,7 @@ function adminPage(title, body) {
     <a href="/admin/errors"${title === 'Errors' ? ' class="active"' : ''}>Error Log</a>
     <a href="/admin/revenue"${title === 'Revenue' ? ' class="active"' : ''}>Revenue</a>
     <a href="/admin/subscriptions"${title === 'Subscriptions' ? ' class="active"' : ''}>Subscriptions</a>
-    <a href="/admin/trainer-login"${title === 'Trainer' ? ' class="active"' : ''}>Trainer Dashboard</a>
+    <a href="/admin/workout-manager"${title === 'Workout Manager' || title === 'Create a Workout' || title === 'View Current Workouts' ? ' class="active"' : ''}>Workout Manager</a>
   </div>
 </div>
 <script>
@@ -779,9 +778,9 @@ router.get('/', adminAuth, async (req, res) => {
       <div class="card-title">Subscription Manager</div>
       <div class="card-desc">Manage user subscriptions when paid plans are launched.</div>
     </a>
-    <a class="card glass" href="/admin/trainer-login" style="border-color:rgba(239,68,68,0.25);">
+    <a class="card glass" href="/admin/workout-manager" style="border-color:rgba(239,68,68,0.25);">
       <div class="card-icon">🏋️‍♂️</div>
-      <div class="card-title">Trainer Dashboard</div>
+      <div class="card-title">Workout Manager</div>
       <div class="card-desc">Create and manage workouts in the browse library. Workouts show up for all users.</div>
     </a>
   </div>
@@ -2295,45 +2294,346 @@ router.post('/correspondence/:name', adminAuth, express.urlencoded({ extended: f
   }
 });
 
-// GET /admin/trainer-login — Auto-login admin to trainer dashboard
-router.get('/trainer-login', adminAuth, async (req, res) => {
+// GET /admin/workout-manager — Workout manager home
+router.get('/workout-manager', adminAuth, (req, res) => {
+  res.send(adminPage('Workout Manager', `
+    <div class="breadcrumb"><a href="/admin">Dashboard</a> / Workout Manager</div>
+    <div class="header">
+      <h1>Workout Manager</h1>
+      <p>Create and manage workouts in the Browse Workout Library. Changes are visible to all users.</p>
+    </div>
+    <div class="glass" style="padding:16px 20px;margin-bottom:24px;border-left:3px solid #ef4444;">
+      <p style="font-size:13px;color:rgba(255,255,255,0.6);line-height:1.6;">Workouts created here will appear in the <strong style="color:#ef4444;">Browse Workout Library</strong> for all users.</p>
+    </div>
+    <div class="card-grid">
+      <a class="card glass" href="/admin/workout-manager/create">
+        <div class="card-icon">➕</div>
+        <div class="card-title">Create a Workout</div>
+        <div class="card-desc">Build a new workout from scratch. Add exercises, sets, reps, and weights.</div>
+      </a>
+      <a class="card glass" href="/admin/workout-manager/workouts">
+        <div class="card-icon">📋</div>
+        <div class="card-title">View Current Workouts</div>
+        <div class="card-desc">Browse and manage existing programs and workouts in the library.</div>
+      </a>
+    </div>
+  `));
+});
+
+// Admin workout manager API endpoints
+router.get('/workout-manager/api/exercises', adminAuth, async (req, res) => {
   try {
-    // Find the admin user by email
-    const adminEmail = process.env.ADMIN_EMAIL;
-    if (!adminEmail) {
-      return res.redirect('/admin?msg=ADMIN_EMAIL+not+configured');
-    }
+    const exercises = await db.getExercises(null, { search: req.query.q, limit: 20 });
+    res.json(exercises);
+  } catch (err) { res.status(500).json({ error: 'Failed' }); }
+});
 
-    const { rows } = await pool.query(
-      'SELECT id, email, first_name, last_name FROM users WHERE email = $1',
-      [adminEmail]
+router.get('/workout-manager/api/muscle-groups', adminAuth, async (req, res) => {
+  try {
+    const groups = await db.getMuscleGroups();
+    res.json(groups);
+  } catch (err) { res.status(500).json({ error: 'Failed' }); }
+});
+
+router.post('/workout-manager/api/exercises', adminAuth, express.json(), async (req, res) => {
+  try {
+    const { name, muscleGroup } = req.body;
+    if (!name || !muscleGroup) return res.status(400).json({ error: 'Name and muscle group required' });
+    const exercise = await db.createExercise(null, name.trim(), muscleGroup, []);
+    res.status(201).json(exercise);
+  } catch (err) { res.status(500).json({ error: 'Failed' }); }
+});
+
+router.post('/workout-manager/api/programs', adminAuth, express.json(), async (req, res) => {
+  try {
+    const { name, description } = req.body;
+    if (!name?.trim()) return res.status(400).json({ error: 'Program name is required' });
+    const { rows: [program] } = await pool.query(
+      'INSERT INTO programs (user_id, name, description) VALUES (NULL, $1, $2) RETURNING id, name',
+      [name.trim(), description?.trim() || '']
     );
-
-    if (rows.length === 0) {
-      return res.redirect('/admin?msg=Admin+user+not+found+in+users+table');
-    }
-
-    const user = rows[0];
-    const token = crypto.randomBytes(32).toString('hex');
-    trainerSessions.set(token, {
-      userId: user.id,
-      email: user.email,
-      firstName: user.first_name,
-      lastName: user.last_name,
-      isAdmin: true,
-    });
-
-    res.cookie('trainer_session', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 24 * 60 * 60 * 1000,
-    });
-    return res.redirect('/trainer');
+    res.status(201).json(program);
   } catch (err) {
-    console.error('Admin trainer login error:', err);
-    return res.redirect('/admin?msg=Failed+to+login+to+trainer+dashboard');
+    if (err.code === '23505') return res.status(409).json({ error: 'Program already exists' });
+    res.status(500).json({ error: 'Failed' });
   }
+});
+
+// GET /admin/workout-manager/create — Create workout (mirrors trainer)
+router.get('/workout-manager/create', adminAuth, async (req, res) => {
+  const msg = req.query.msg || '';
+  const error = req.query.error || '';
+  const { rows: programs } = await pool.query('SELECT id, name FROM programs WHERE user_id IS NULL ORDER BY name');
+  const muscleGroups = await db.getMuscleGroups();
+
+  // Reuse the same page structure as trainer, but with admin API paths
+  const apiBase = '/admin/workout-manager/api';
+
+  res.send(adminPage('Create a Workout', `
+    <div class="breadcrumb"><a href="/admin">Dashboard</a> / <a href="/admin/workout-manager">Workout Manager</a> / Create</div>
+    <div class="header">
+      <h1>Create a Workout</h1>
+      <p>Add exercises, sets, reps, and weights. This workout will be added to the Browse Workout Library.</p>
+    </div>
+    ${msg ? '<div class="glass" style="padding:12px 16px;border-left:3px solid #22c55e;margin-bottom:20px;"><p style="color:#4ade80;font-size:13px;">' + esc(msg) + '</p></div>' : ''}
+    ${error ? '<div class="glass" style="padding:12px 16px;border-left:3px solid #ef4444;margin-bottom:20px;"><p style="color:#f87171;font-size:13px;">' + esc(error) + '</p></div>' : ''}
+    <form method="POST" action="/admin/workout-manager/create" id="workout-form">
+      <div class="glass" style="padding:24px;border-radius:16px;margin-bottom:20px;overflow:visible;">
+        <div style="display:flex;gap:16px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:200px;">
+            <label>Workout Name</label>
+            <input type="text" name="workoutName" placeholder="e.g. Upper Body A" required style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;" />
+          </div>
+          <div style="flex:1;min-width:200px;position:relative;">
+            <label>Program</label>
+            <input type="hidden" name="programId" id="program-value" value="" />
+            <button type="button" id="program-btn" onclick="toggleProgramDropdown()" style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+              <span id="program-label">— No Program —</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="opacity:0.4;"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+            </button>
+            <div id="program-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:200;margin-top:4px;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.15);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.6);max-height:280px;overflow-y:auto;">
+              <div style="padding:4px;">
+                <button type="button" onclick="selectProgram('','— No Program —')" style="width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;font-family:inherit;border-radius:8px;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='none'">— No Program —</button>
+                ${programs.map(p => '<button type="button" onclick="selectProgram(\'' + p.id + '\',\'' + esc(p.name).replace(/'/g, "\\'") + '\')" style="width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#fff;font-size:13px;cursor:pointer;font-family:inherit;border-radius:8px;" onmouseover="this.style.background=\'rgba(255,255,255,0.08)\'" onmouseout="this.style.background=\'none\'">' + esc(p.name) + '</button>').join('')}
+                <div style="border-top:1px solid rgba(255,255,255,0.08);margin:4px 0;"></div>
+                <button type="button" onclick="document.getElementById('program-dropdown').style.display='none';openNewProgramModal()" style="width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#ef4444;font-size:13px;cursor:pointer;font-family:inherit;border-radius:8px;font-weight:600;" onmouseover="this.style.background='rgba(239,68,68,0.08)'" onmouseout="this.style.background='none'">+ New Program</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:16px;">
+          <label>Description <span style="color:rgba(255,255,255,0.2);">(optional)</span></label>
+          <input type="text" name="description" placeholder="e.g. Chest, Shoulders, Triceps" style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;" />
+        </div>
+      </div>
+      <div id="exercises-container"></div>
+      <button type="button" onclick="addExercise()" class="btn-ghost" style="width:100%;text-align:center;padding:14px;margin-bottom:20px;">+ Add Exercise</button>
+      <button type="submit" class="btn" style="width:100%;padding:14px;font-size:15px;margin:0;">Save Workout</button>
+    </form>
+
+    <!-- Custom Exercise Modal -->
+    <div id="custom-ex-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);" onclick="if(event.target===this)this.style.display='none'">
+      <div class="glass" style="padding:24px;max-width:400px;width:90%;border-radius:16px;">
+        <h3 style="font-size:16px;font-weight:700;color:#fff;margin-bottom:16px;">Add Custom Exercise</h3>
+        <div style="margin-bottom:12px;"><label>Exercise Name</label>
+          <input type="text" id="custom-ex-name" placeholder="e.g. Cable Lateral Raise" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;" />
+        </div>
+        <div style="margin-bottom:16px;"><label>Muscle Group</label>
+          <select id="custom-ex-muscle" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;">
+            ${muscleGroups.map(g => '<option value="' + esc(g) + '">' + esc(g) + '</option>').join('')}
+          </select>
+        </div>
+        <button type="button" onclick="saveCustomExercise()" class="btn" style="margin:0;width:100%;padding:12px;font-size:14px;">Add Exercise</button>
+      </div>
+    </div>
+
+    <!-- New Program Modal -->
+    <div id="new-program-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);" onclick="if(event.target===this)this.style.display='none'">
+      <div class="glass" style="padding:24px;max-width:400px;width:90%;border-radius:16px;">
+        <h3 style="font-size:16px;font-weight:700;color:#fff;margin-bottom:16px;">Create New Program</h3>
+        <div style="margin-bottom:12px;"><label>Program Name</label>
+          <input type="text" id="new-program-name" placeholder="e.g. 4-Week Strength Program" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;" />
+        </div>
+        <div style="margin-bottom:16px;"><label>Description <span style="color:rgba(255,255,255,0.2);">(optional)</span></label>
+          <input type="text" id="new-program-desc" placeholder="e.g. Progressive overload focused" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;" />
+        </div>
+        <div id="new-program-error" style="display:none;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);border-radius:10px;padding:10px 14px;font-size:13px;color:#f87171;margin-bottom:12px;text-align:center;"></div>
+        <div style="display:flex;gap:8px;">
+          <button type="button" onclick="document.getElementById('new-program-modal').style.display='none'" class="btn-ghost" style="margin:0;flex:1;text-align:center;padding:12px;">Cancel</button>
+          <button type="button" onclick="saveNewProgram()" class="btn" style="margin:0;flex:1;padding:12px;">Create</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      var API = '${apiBase}';
+
+      function toggleProgramDropdown() { var d = document.getElementById('program-dropdown'); d.style.display = d.style.display === 'none' ? 'block' : 'none'; }
+      function selectProgram(id, name) { document.getElementById('program-value').value = id; document.getElementById('program-label').textContent = name; document.getElementById('program-btn').style.color = id ? '#fff' : 'rgba(255,255,255,0.5)'; document.getElementById('program-dropdown').style.display = 'none'; }
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('#program-btn') && !e.target.closest('#program-dropdown')) document.getElementById('program-dropdown').style.display = 'none';
+        if (!e.target.closest('[id^="ex-search-"]') && !e.target.closest('[id^="ex-results-"]')) document.querySelectorAll('[id^="ex-results-"]').forEach(function(d) { d.style.display = 'none'; });
+        if (!e.target.closest('[id^="settype-btn-"]') && !e.target.closest('[id^="settype-dd-"]')) document.querySelectorAll('[id^="settype-dd-"]').forEach(function(d) { d.style.display = 'none'; });
+      });
+
+      function openNewProgramModal() { document.getElementById('new-program-name').value = ''; document.getElementById('new-program-desc').value = ''; document.getElementById('new-program-error').style.display = 'none'; document.getElementById('new-program-modal').style.display = 'flex'; }
+      async function saveNewProgram() {
+        var name = document.getElementById('new-program-name').value.trim();
+        var desc = document.getElementById('new-program-desc').value.trim();
+        var errDiv = document.getElementById('new-program-error');
+        if (!name) { errDiv.textContent = 'Program name is required'; errDiv.style.display = 'block'; return; }
+        errDiv.style.display = 'none';
+        try {
+          var resp = await fetch(API + '/programs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name, description: desc }) });
+          var data = await resp.json();
+          if (!resp.ok) { errDiv.textContent = data.error || 'Failed'; errDiv.style.display = 'block'; return; }
+          var dd = document.getElementById('program-dropdown').querySelector('div');
+          var sep = dd.querySelector('div[style*="border-top"]');
+          var btn = document.createElement('button'); btn.type = 'button'; btn.textContent = data.name;
+          btn.style.cssText = 'width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#fff;font-size:13px;cursor:pointer;font-family:inherit;border-radius:8px;';
+          btn.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.08)'; }; btn.onmouseout = function() { this.style.background = 'none'; };
+          btn.onclick = function() { selectProgram(data.id, data.name); };
+          dd.insertBefore(btn, sep); selectProgram(data.id, data.name);
+          document.getElementById('new-program-modal').style.display = 'none';
+        } catch (e) { errDiv.textContent = 'Something went wrong'; errDiv.style.display = 'block'; }
+      }
+
+      var SET_TYPES = [
+        { value: 'warm_up', label: 'Warm Up' }, { value: 'straight', label: 'Regular' }, { value: 'drop', label: 'Drop Set' },
+        { value: 'rest_pause', label: 'Rest-Pause' }, { value: 'superset', label: 'Super Set' }, { value: 'alternating', label: 'Alternating' },
+        { value: 'giant', label: 'Giant Set' }, { value: 'pre_exhaust', label: 'Pre-Exhaust' },
+      ];
+      function buildSetTypeButtons(exIdx) {
+        return SET_TYPES.map(function(t) {
+          var b = document.createElement('button'); b.type = 'button'; b.textContent = t.label;
+          b.style.cssText = 'width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:#fff;font-size:12px;cursor:pointer;font-family:inherit;border-radius:6px;';
+          b.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.08)'; }; b.onmouseout = function() { this.style.background = 'none'; };
+          b.onclick = function() { selectSetType(exIdx, t.value, t.label); };
+          return b;
+        });
+      }
+      function toggleSetTypeDD(i) { var d = document.getElementById('settype-dd-' + i); d.style.display = d.style.display === 'none' ? 'block' : 'none'; }
+      function selectSetType(i, v, l) { document.getElementById('settype-val-' + i).value = v; document.getElementById('settype-label-' + i).textContent = l; document.getElementById('settype-dd-' + i).style.display = 'none'; }
+
+      function mk(tag, css, attrs) { var e = document.createElement(tag); if (css) e.style.cssText = css; if (attrs) Object.keys(attrs).forEach(function(k) { e[k] = attrs[k]; }); return e; }
+
+      var exerciseCount = 0, searchTimeout = null, activeSearchIdx = null, setCounts = {};
+      var inputCSS = 'flex:1;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;text-align:center;box-sizing:border-box;';
+
+      function addExercise() {
+        var idx = exerciseCount++; var container = document.getElementById('exercises-container');
+        var div = mk('div', 'padding:20px;border-radius:16px;margin-bottom:16px;position:relative;'); div.className = 'glass'; div.id = 'exercise-' + idx;
+        var hdr = mk('div', 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;');
+        var lbl = mk('label', 'margin:0;font-size:13px;font-weight:700;color:#fff;'); lbl.textContent = 'Exercise ' + (idx + 1);
+        var rmBtn = mk('button', 'background:none;border:none;color:rgba(255,255,255,0.3);cursor:pointer;padding:4px 8px;border-radius:6px;font-family:inherit;font-size:12px;', { type: 'button' });
+        rmBtn.textContent = 'Remove'; rmBtn.onmouseover = function() { this.style.color = '#ef4444'; }; rmBtn.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.3)'; };
+        rmBtn.onclick = function() { var e = document.getElementById('exercise-' + idx); if (e) e.remove(); };
+        hdr.appendChild(lbl); hdr.appendChild(rmBtn); div.appendChild(hdr);
+        var sw = mk('div', 'position:relative;');
+        var si = mk('input', 'width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;');
+        si.type = 'text'; si.id = 'ex-search-' + idx; si.name = 'exercises[' + idx + '][name]'; si.placeholder = 'Search exercises...'; si.required = true; si.autocomplete = 'off';
+        si.oninput = function() { searchExercises(idx, this.value); }; si.onfocus = function() { searchExercises(idx, this.value); };
+        var rd = mk('div', 'display:none;position:absolute;top:100%;left:0;right:0;z-index:50;max-height:200px;overflow-y:auto;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.12);border-radius:10px;margin-top:4px;box-shadow:0 8px 32px rgba(0,0,0,0.5);');
+        rd.id = 'ex-results-' + idx; sw.appendChild(si); sw.appendChild(rd); div.appendChild(sw);
+        var str = mk('div', 'margin-top:12px;margin-bottom:12px;display:flex;gap:8px;align-items:center;position:relative;');
+        var stl = mk('label', 'margin:0;font-size:11px;color:rgba(255,255,255,0.4);white-space:nowrap;'); stl.textContent = 'Set Type';
+        var sth = mk('input'); sth.type = 'hidden'; sth.name = 'exercises[' + idx + '][setType]'; sth.id = 'settype-val-' + idx; sth.value = 'straight';
+        var stb = mk('button', 'flex:1;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:13px;font-family:inherit;outline:none;cursor:pointer;text-align:left;display:flex;justify-content:space-between;align-items:center;box-sizing:border-box;', { type: 'button' });
+        stb.id = 'settype-btn-' + idx; stb.onclick = function() { toggleSetTypeDD(idx); };
+        var sbl = mk('span'); sbl.id = 'settype-label-' + idx; sbl.textContent = 'Regular'; stb.appendChild(sbl);
+        stb.insertAdjacentHTML('beforeend', '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="opacity:0.4;flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>');
+        var sdd = mk('div', 'display:none;position:absolute;top:100%;left:0;right:0;z-index:55;margin-top:4px;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.15);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.5);padding:4px;');
+        sdd.id = 'settype-dd-' + idx; buildSetTypeButtons(idx).forEach(function(b) { sdd.appendChild(b); });
+        str.appendChild(stl); str.appendChild(sth); str.appendChild(stb); str.appendChild(sdd); div.appendChild(str);
+        var ch = mk('div', 'display:flex;gap:8px;align-items:center;margin-bottom:8px;');
+        ['Set:40px', 'Reps:1', 'Weight (lbs):1', ':28px'].forEach(function(c) { var p = c.split(':'); var s = mk('span', 'font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);' + (p[1] === '1' ? 'flex:1;text-align:center;' : 'width:' + p[1] + ';')); s.textContent = p[0]; ch.appendChild(s); });
+        div.appendChild(ch);
+        var sd = mk('div'); sd.id = 'sets-' + idx; div.appendChild(sd);
+        var asb = mk('button', 'margin-top:8px;background:none;border:1px dashed rgba(255,255,255,0.15);color:rgba(255,255,255,0.4);padding:8px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;width:100%;', { type: 'button' });
+        asb.textContent = '+ Add Set'; asb.onmouseover = function() { this.style.borderColor = 'rgba(255,255,255,0.3)'; this.style.color = '#fff'; };
+        asb.onmouseout = function() { this.style.borderColor = 'rgba(255,255,255,0.15)'; this.style.color = 'rgba(255,255,255,0.4)'; };
+        asb.onclick = function() { addSet(idx); }; div.appendChild(asb);
+        container.appendChild(div); addSet(idx); addSet(idx); addSet(idx);
+      }
+      function addSet(exIdx) {
+        if (!setCounts[exIdx]) setCounts[exIdx] = 0; var si = setCounts[exIdx]++;
+        var sd = document.getElementById('sets-' + exIdx); var r = mk('div', 'display:flex;gap:8px;align-items:center;margin-bottom:6px;'); r.id = 'set-' + exIdx + '-' + si;
+        var n = mk('span', 'font-size:13px;color:rgba(255,255,255,0.5);width:40px;text-align:center;font-weight:600;'); n.textContent = si + 1;
+        var ri = mk('input', inputCSS); ri.type = 'number'; ri.name = 'exercises[' + exIdx + '][sets][' + si + '][reps]'; ri.placeholder = '10'; ri.value = '10';
+        var wi = mk('input', inputCSS); wi.type = 'number'; wi.name = 'exercises[' + exIdx + '][sets][' + si + '][weight]'; wi.placeholder = '0'; wi.value = '0';
+        var db = mk('button', 'background:none;border:none;color:rgba(255,255,255,0.2);cursor:pointer;padding:2px;width:28px;display:flex;align-items:center;justify-content:center;', { type: 'button' });
+        db.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>';
+        db.onmouseover = function() { this.style.color = '#ef4444'; }; db.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.2)'; };
+        db.onclick = function() { var e = document.getElementById('set-' + exIdx + '-' + si); if (e) e.remove(); };
+        r.appendChild(n); r.appendChild(ri); r.appendChild(wi); r.appendChild(db); sd.appendChild(r);
+      }
+      function searchExercises(exIdx, query) {
+        activeSearchIdx = exIdx; clearTimeout(searchTimeout);
+        var rd = document.getElementById('ex-results-' + exIdx);
+        if (!query || query.length < 1) { rd.style.display = 'none'; return; }
+        searchTimeout = setTimeout(async function() {
+          try {
+            var resp = await fetch(API + '/exercises?q=' + encodeURIComponent(query));
+            var exercises = await resp.json(); rd.innerHTML = '';
+            exercises.forEach(function(ex) {
+              var b = document.createElement('button'); b.type = 'button';
+              b.style.cssText = 'width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#fff;font-size:13px;cursor:pointer;font-family:inherit;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.05);';
+              b.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.08)'; }; b.onmouseout = function() { this.style.background = 'none'; };
+              b.onclick = function() { document.getElementById('ex-search-' + exIdx).value = ex.name; rd.style.display = 'none'; };
+              var ns = document.createElement('span'); ns.textContent = ex.name;
+              var ms = document.createElement('span'); ms.textContent = ex.muscle || ''; ms.style.cssText = 'font-size:10px;color:rgba(255,255,255,0.3);';
+              b.appendChild(ns); b.appendChild(ms); rd.appendChild(b);
+            });
+            var cb = document.createElement('button'); cb.type = 'button';
+            cb.style.cssText = 'width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#ef4444;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600;';
+            cb.onmouseover = function() { this.style.background = 'rgba(239,68,68,0.08)'; }; cb.onmouseout = function() { this.style.background = 'none'; };
+            cb.onclick = function() { rd.style.display = 'none'; document.getElementById('custom-ex-name').value = query; activeSearchIdx = exIdx; document.getElementById('custom-ex-modal').style.display = 'flex'; };
+            cb.textContent = '+ Add "' + query + '" as custom exercise'; rd.appendChild(cb);
+            rd.style.display = 'block';
+          } catch (e) { console.error(e); }
+        }, 200);
+      }
+      async function saveCustomExercise() {
+        var name = document.getElementById('custom-ex-name').value.trim();
+        var muscle = document.getElementById('custom-ex-muscle').value;
+        if (!name) return;
+        try { await fetch(API + '/exercises', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name, muscleGroup: muscle }) }); } catch (e) {}
+        if (activeSearchIdx !== null) document.getElementById('ex-search-' + activeSearchIdx).value = name;
+        document.getElementById('custom-ex-modal').style.display = 'none';
+      }
+      addExercise();
+    </script>
+  `));
+});
+
+// POST /admin/workout-manager/create — Save workout
+router.post('/workout-manager/create', adminAuth, express.urlencoded({ extended: true }), async (req, res) => {
+  const { workoutName, description, programId, exercises } = req.body;
+  if (!workoutName?.trim()) return res.redirect('/admin/workout-manager/create?error=Workout+name+is+required');
+  try {
+    let finalProgramId = programId ? Number(programId) : null;
+    if (!finalProgramId) {
+      const { rows: existing } = await pool.query("SELECT id FROM programs WHERE name = 'Admin Workouts' AND user_id IS NULL");
+      if (existing.length > 0) { finalProgramId = existing[0].id; }
+      else { const { rows: [p] } = await pool.query("INSERT INTO programs (user_id, name) VALUES (NULL, 'Admin Workouts') RETURNING id"); finalProgramId = p.id; }
+    }
+    const { rows: sortRows } = await pool.query('SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_sort FROM templates WHERE program_id = $1', [finalProgramId]);
+    const { rows: [tmpl] } = await pool.query('INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES (NULL, $1, $2, $3, FALSE, $4) RETURNING id', [finalProgramId, workoutName.trim(), description?.trim() || '', sortRows[0].next_sort]);
+    if (exercises && typeof exercises === 'object') {
+      var exArray = Array.isArray(exercises) ? exercises : Object.values(exercises); var exSort = 0;
+      for (const ex of exArray) {
+        if (!ex?.name?.trim()) continue;
+        var setType = ex.setType || 'straight';
+        var sets = ex.sets ? (Array.isArray(ex.sets) ? ex.sets : Object.values(ex.sets)) : []; var setNum = 1;
+        for (const set of sets) { if (!set) continue; await pool.query('INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7)', [tmpl.id, ex.name.trim(), setType, setNum++, parseInt(set.reps) || 10, parseInt(set.weight) || 0, exSort]); }
+        exSort++;
+      }
+    }
+    res.redirect('/admin/workout-manager/create?msg=Workout+"' + encodeURIComponent(workoutName.trim()) + '"+created+successfully');
+  } catch (err) { console.error(err); res.redirect('/admin/workout-manager/create?error=Failed+to+create+workout'); }
+});
+
+// GET /admin/workout-manager/workouts — View current workouts
+router.get('/workout-manager/workouts', adminAuth, async (req, res) => {
+  try {
+    const { rows: programs } = await pool.query('SELECT id, name, description FROM programs WHERE user_id IS NULL ORDER BY name');
+    let content = '';
+    if (programs.length === 0) {
+      content = '<div class="glass" style="padding:40px;text-align:center;"><p style="color:rgba(255,255,255,0.4);">No programs yet. <a href="/admin/workout-manager/create" style="color:#ef4444;text-decoration:none;font-weight:600;">Create your first workout</a></p></div>';
+    } else {
+      for (const program of programs) {
+        const { rows: templates } = await pool.query('SELECT t.id, t.name, t.description, t.is_rest, (SELECT COUNT(*) FROM template_exercises te WHERE te.template_id = t.id) AS exercise_count FROM templates t WHERE t.program_id = $1 ORDER BY t.sort_order', [program.id]);
+        const rows = templates.map(t => t.is_rest
+          ? '<tr><td style="color:rgba(255,255,255,0.3);font-style:italic;">Rest Day</td><td>—</td><td>—</td></tr>'
+          : '<tr><td style="font-weight:600;color:#fff;">' + esc(t.name) + '</td><td>' + (t.description ? esc(t.description) : '—') + '</td><td>' + t.exercise_count + ' exercises</td></tr>'
+        ).join('');
+        const nonRest = templates.filter(t => !t.is_rest).length;
+        content += '<div class="glass" style="border-radius:16px;overflow:hidden;margin-bottom:20px;"><div style="padding:20px 24px;border-bottom:1px solid rgba(255,255,255,0.06);"><h3 style="font-size:16px;font-weight:700;color:#fff;margin:0;">' + esc(program.name) + '</h3><p style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:2px;">' + nonRest + ' workouts' + (program.description ? ' &middot; ' + esc(program.description) : '') + '</p></div>' +
+          (templates.length > 0 ? '<div class="table-wrap"><table><thead><tr><th>Workout</th><th>Description</th><th>Exercises</th></tr></thead><tbody>' + rows + '</tbody></table></div>' : '<div style="padding:20px 24px;"><p style="color:rgba(255,255,255,0.3);font-size:13px;">No workouts yet.</p></div>') + '</div>';
+      }
+    }
+    res.send(adminPage('View Current Workouts', '<div class="breadcrumb"><a href="/admin">Dashboard</a> / <a href="/admin/workout-manager">Workout Manager</a> / Workouts</div><div class="header"><h1>Current Workouts</h1><p>' + programs.length + ' programs in the Browse Workout Library</p></div><a href="/admin/workout-manager/create" class="btn" style="margin-bottom:24px;">+ Create New Workout</a>' + content));
+  } catch (err) { console.error(err); res.status(500).send(adminPage('Error', '<p style="color:#f87171;">Failed to load workouts.</p>')); }
 });
 
 // GET /admin/custom-exercises — User-created exercises
