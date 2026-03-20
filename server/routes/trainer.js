@@ -592,7 +592,9 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
         searchInput.onfocus = function() { searchExercises(idx, this.value); };
         var resultsDiv = el('div', 'display:none;position:absolute;top:calc(100% + 8px);left:-16px;right:-16px;z-index:50;max-height:220px;overflow-y:auto;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.12);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.5);');
         resultsDiv.id = 'ex-results-' + idx;
-        searchWrap.appendChild(searchInput); searchWrap.appendChild(resultsDiv);
+        var validBadge = el('span', 'display:none;align-items:center;margin-left:6px;');
+        validBadge.id = 'ex-valid-' + idx;
+        searchWrap.appendChild(searchInput); searchWrap.appendChild(validBadge); searchWrap.appendChild(resultsDiv);
         var headerBtns = el('div', 'display:flex;align-items:center;gap:4px;shrink:0;');
         function mkCircleBtn(svg, hoverColor, hoverBg) {
           var b = el('button', 'width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.06);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,0.4);transition:all 0.15s;', { type: 'button' });
@@ -669,6 +671,9 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
       function searchExercises(exIdx, query) {
         activeSearchIdx = exIdx;
         clearTimeout(searchTimeout);
+        validatedExercises[exIdx] = false;
+        var badge = document.getElementById('ex-valid-' + exIdx);
+        if (badge) { badge.style.display = 'none'; }
         const resultsDiv = document.getElementById('ex-results-' + exIdx);
         if (!query || query.length < 1) { resultsDiv.style.display = 'none'; return; }
         searchTimeout = setTimeout(async () => {
@@ -713,8 +718,13 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
       }
 
       function selectExercise(exIdx, name) {
-        document.getElementById('ex-search-' + exIdx).value = name;
+        var input = document.getElementById('ex-search-' + exIdx);
+        input.value = name;
+        input.style.color = '#fff';
         document.getElementById('ex-results-' + exIdx).style.display = 'none';
+        validatedExercises[exIdx] = true;
+        var badge = document.getElementById('ex-valid-' + exIdx);
+        if (badge) { badge.style.display = 'inline-flex'; badge.style.color = '#22c55e'; badge.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>'; }
       }
 
       function openCustomModal(exIdx) {
@@ -736,9 +746,8 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
             body: JSON.stringify({ name, muscleGroup: muscle }),
           });
         } catch (err) { console.error('Failed to save custom exercise:', err); }
-        // Set the exercise name in the form
         if (activeSearchIdx !== null) {
-          document.getElementById('ex-search-' + activeSearchIdx).value = name;
+          selectExercise(activeSearchIdx, name);
         }
         document.getElementById('custom-ex-modal').style.display = 'none';
       }
@@ -840,6 +849,24 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
       }
 
       addExercise();
+
+      // Validate all exercises are from library before submit
+      document.getElementById('workout-form').addEventListener('submit', function(e) {
+        var cards = document.querySelectorAll('[id^="exercise-"]');
+        var invalid = [];
+        cards.forEach(function(card) {
+          var idx = card.id.replace('exercise-', '');
+          var input = document.getElementById('ex-search-' + idx);
+          if (input && input.value.trim() && !validatedExercises[idx]) {
+            invalid.push(input.value.trim());
+            input.style.borderBottom = '2px solid #ef4444';
+          }
+        });
+        if (invalid.length > 0) {
+          e.preventDefault();
+          alert('Please select exercises from the library or add them as custom exercises:\\n\\n' + invalid.join('\\n') + '\\n\\nClick an exercise from the dropdown or use "+ Add as custom exercise".');
+        }
+      });
     </script>
   `, req.trainer));
 });
@@ -1141,6 +1168,7 @@ router.get('/edit-workout/:id', trainerAuth, async (req, res) => {
 
       function mk(tag, css, attrs) { var e = document.createElement(tag); if (css) e.style.cssText = css; if (attrs) Object.keys(attrs).forEach(function(k) { e[k] = attrs[k]; }); return e; }
       var exerciseCount = 0, searchTimeout = null, activeSearchIdx = null, setCounts = {};
+      var validatedExercises = {}; // idx -> true if selected from library or added as custom
       var inputCSS = 'flex:1;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;text-align:center;box-sizing:border-box;';
 
       function addExercise(prefill) {
