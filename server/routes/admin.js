@@ -3089,6 +3089,13 @@ router.get('/workout-manager/move-program/:id', adminAuth, async (req, res) => {
     const { rows: programs } = await pool.query(
       'SELECT id, sort_order FROM programs WHERE user_id IS NULL ORDER BY sort_order, id'
     );
+    // Normalize sort orders first (in case of duplicates)
+    for (let i = 0; i < programs.length; i++) {
+      if (programs[i].sort_order !== i) {
+        await pool.query('UPDATE programs SET sort_order = $1 WHERE id = $2', [i, programs[i].id]);
+        programs[i].sort_order = i;
+      }
+    }
     const idx = programs.findIndex(p => p.id === programId);
     if (idx === -1) return res.redirect('/admin/workout-manager/workouts');
     const swapIdx = dir === 'up' ? idx - 1 : idx + 1;
