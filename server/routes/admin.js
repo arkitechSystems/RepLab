@@ -2384,22 +2384,27 @@ router.get('/workout-manager/create', adminAuth, async (req, res) => {
             <label>Workout Name</label>
             <input type="text" name="workoutName" placeholder="e.g. Upper Body A" required style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;" />
           </div>
-          <div style="flex:1;min-width:200px;position:relative;">
+          <div style="flex:1;min-width:200px;">
             <label>Program</label>
             <input type="hidden" name="programId" id="program-value" value="" />
             <button type="button" id="program-btn" onclick="toggleProgramDropdown()" style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
               <span id="program-label">— No Program —</span>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="opacity:0.4;"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
             </button>
-            <div id="program-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:200;margin-top:4px;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.15);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.6);max-height:280px;overflow-y:auto;">
-              <div style="padding:4px;">
-                <button type="button" onclick="selectProgram('','— No Program —')" style="width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;font-family:inherit;border-radius:8px;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='none'">— No Program —</button>
-                ${programs.map(p => '<button type="button" onclick="selectProgram(\'' + p.id + '\',\'' + esc(p.name).replace(/'/g, "\\'") + '\')" style="width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#fff;font-size:13px;cursor:pointer;font-family:inherit;border-radius:8px;" onmouseover="this.style.background=\'rgba(255,255,255,0.08)\'" onmouseout="this.style.background=\'none\'">' + esc(p.name) + '</button>').join('')}
-                <div style="border-top:1px solid rgba(255,255,255,0.08);margin:4px 0;"></div>
-                <button type="button" onclick="document.getElementById('program-dropdown').style.display='none';openNewProgramModal()" style="width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#ef4444;font-size:13px;cursor:pointer;font-family:inherit;border-radius:8px;font-weight:600;" onmouseover="this.style.background='rgba(239,68,68,0.08)'" onmouseout="this.style.background='none'">+ New Program</button>
-              </div>
-            </div>
           </div>
+
+    <!-- Program Picker Modal -->
+    <div id="program-dropdown" style="display:none;position:fixed;inset:0;z-index:9998;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);" onclick="if(event.target===this)this.style.display='none'">
+      <div class="glass" style="padding:20px;max-width:400px;width:90%;border-radius:16px;max-height:70vh;display:flex;flex-direction:column;">
+        <h3 style="font-size:15px;font-weight:700;color:#fff;margin-bottom:12px;">Select Program</h3>
+        <div style="overflow-y:auto;flex:1;padding:4px 0;">
+          <button type="button" onclick="selectProgram('','— No Program —')" style="width:100%;text-align:left;padding:12px 14px;border:none;background:none;color:rgba(255,255,255,0.5);font-size:14px;cursor:pointer;font-family:inherit;border-radius:8px;border-bottom:1px solid rgba(255,255,255,0.05);" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='none'">— No Program —</button>
+          ${programs.map(p => '<button type="button" onclick="selectProgram(\'' + p.id + '\',\'' + esc(p.name).replace(/'/g, "\\'") + '\')" style="width:100%;text-align:left;padding:12px 14px;border:none;background:none;color:#fff;font-size:14px;cursor:pointer;font-family:inherit;border-radius:8px;border-bottom:1px solid rgba(255,255,255,0.05);" onmouseover="this.style.background=\'rgba(255,255,255,0.08)\'" onmouseout="this.style.background=\'none\'">' + esc(p.name) + '</button>').join('')}
+          <div style="border-top:1px solid rgba(255,255,255,0.1);margin:8px 0;"></div>
+          <button type="button" onclick="document.getElementById('program-dropdown').style.display='none';openNewProgramModal()" style="width:100%;text-align:left;padding:12px 14px;border:none;background:none;color:#ef4444;font-size:14px;cursor:pointer;font-family:inherit;border-radius:8px;font-weight:600;" onmouseover="this.style.background='rgba(239,68,68,0.08)'" onmouseout="this.style.background='none'">+ New Program</button>
+        </div>
+      </div>
+    </div>
         </div>
         <div style="margin-top:16px;">
           <label>Description <span style="color:rgba(255,255,255,0.2);">(optional)</span></label>
@@ -2448,10 +2453,9 @@ router.get('/workout-manager/create', adminAuth, async (req, res) => {
     <script>
       var API = '${apiBase}';
 
-      function toggleProgramDropdown() { var d = document.getElementById('program-dropdown'); d.style.display = d.style.display === 'none' ? 'block' : 'none'; }
+      function toggleProgramDropdown() { document.getElementById('program-dropdown').style.display = 'flex'; }
       function selectProgram(id, name) { document.getElementById('program-value').value = id; document.getElementById('program-label').textContent = name; document.getElementById('program-btn').style.color = id ? '#fff' : 'rgba(255,255,255,0.5)'; document.getElementById('program-dropdown').style.display = 'none'; }
       document.addEventListener('click', function(e) {
-        if (!e.target.closest('#program-btn') && !e.target.closest('#program-dropdown')) document.getElementById('program-dropdown').style.display = 'none';
         if (!e.target.closest('[id^="ex-search-"]') && !e.target.closest('[id^="ex-results-"]')) document.querySelectorAll('[id^="ex-results-"]').forEach(function(d) { d.style.display = 'none'; });
         if (!e.target.closest('[id^="settype-btn-"]') && !e.target.closest('[id^="settype-dd-"]')) document.querySelectorAll('[id^="settype-dd-"]').forEach(function(d) { d.style.display = 'none'; });
       });
@@ -2467,13 +2471,13 @@ router.get('/workout-manager/create', adminAuth, async (req, res) => {
           var resp = await fetch(API + '/programs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name, description: desc }) });
           var data = await resp.json();
           if (!resp.ok) { errDiv.textContent = data.error || 'Failed'; errDiv.style.display = 'block'; return; }
-          var dd = document.getElementById('program-dropdown').querySelector('div');
-          var sep = dd.querySelector('div[style*="border-top"]');
+          var scrollDiv = document.getElementById('program-dropdown').querySelector('[style*="overflow-y"]');
+          var sep = scrollDiv.querySelector('div[style*="border-top"]');
           var btn = document.createElement('button'); btn.type = 'button'; btn.textContent = data.name;
-          btn.style.cssText = 'width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#fff;font-size:13px;cursor:pointer;font-family:inherit;border-radius:8px;';
+          btn.style.cssText = 'width:100%;text-align:left;padding:12px 14px;border:none;background:none;color:#fff;font-size:14px;cursor:pointer;font-family:inherit;border-radius:8px;border-bottom:1px solid rgba(255,255,255,0.05);';
           btn.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.08)'; }; btn.onmouseout = function() { this.style.background = 'none'; };
           btn.onclick = function() { selectProgram(data.id, data.name); };
-          dd.insertBefore(btn, sep); selectProgram(data.id, data.name);
+          scrollDiv.insertBefore(btn, sep); selectProgram(data.id, data.name);
           document.getElementById('new-program-modal').style.display = 'none';
         } catch (e) { errDiv.textContent = 'Something went wrong'; errDiv.style.display = 'block'; }
       }
@@ -2666,12 +2670,20 @@ router.get('/workout-manager/program/:id', adminAuth, async (req, res) => {
       [programId]
     );
 
+    const btnStyle = 'display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:6px;background:rgba(255,255,255,0.06);border:none;cursor:pointer;color:rgba(255,255,255,0.4);text-decoration:none;transition:all 0.15s;';
     const rows = templates.map((t, i) => {
       const rowBg = i % 2 === 0 ? 'background:rgba(255,255,255,0.02);' : '';
+      const upLink = i > 0 ? '/admin/workout-manager/move/' + t.id + '?dir=up&programId=' + programId : '';
+      const downLink = i < templates.length - 1 ? '/admin/workout-manager/move/' + t.id + '?dir=down&programId=' + programId : '';
+      const orderBtns =
+        '<td style="padding:10px 8px;border-bottom:1px solid rgba(255,255,255,0.06);text-align:center;white-space:nowrap;">' +
+          (upLink ? '<a href="' + upLink + '" style="' + btnStyle + '" onmouseover="this.style.color=\'#fff\';this.style.background=\'rgba(255,255,255,0.12)\'" onmouseout="this.style.color=\'rgba(255,255,255,0.4)\';this.style.background=\'rgba(255,255,255,0.06)\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5"/></svg></a>' : '<span style="' + btnStyle + 'opacity:0.2;cursor:default;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5"/></svg></span>') +
+          (downLink ? '<a href="' + downLink + '" style="' + btnStyle + 'margin-left:2px;" onmouseover="this.style.color=\'#fff\';this.style.background=\'rgba(255,255,255,0.12)\'" onmouseout="this.style.color=\'rgba(255,255,255,0.4)\';this.style.background=\'rgba(255,255,255,0.06)\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg></a>' : '<span style="' + btnStyle + 'margin-left:2px;opacity:0.2;cursor:default;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg></span>') +
+        '</td>';
       if (t.is_rest) {
-        return '<tr style="' + rowBg + '"><td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.3);font-style:italic;">Rest Day</td><td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.2);">—</td><td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.2);">—</td><td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);"></td></tr>';
+        return '<tr style="' + rowBg + '">' + orderBtns + '<td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.3);font-style:italic;">Rest Day</td><td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.2);">—</td><td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.2);">—</td><td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);"></td></tr>';
       }
-      return '<tr style="' + rowBg + '">' +
+      return '<tr style="' + rowBg + '">' + orderBtns +
         '<td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);font-weight:600;color:#fff;">' + esc(t.name) + '</td>' +
         '<td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);font-size:13px;">' + (t.description ? esc(t.description) : '<span style="color:rgba(255,255,255,0.2);">—</span>') + '</td>' +
         '<td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);"><span style="padding:4px 10px;border-radius:6px;background:rgba(255,255,255,0.06);font-size:12px;color:rgba(255,255,255,0.6);font-weight:600;">' + t.exercise_count + ' exercises</span></td>' +
@@ -2693,7 +2705,7 @@ router.get('/workout-manager/program/:id', adminAuth, async (req, res) => {
       </div>
       ${req.query.msg ? '<div class="glass" style="padding:12px 16px;border-left:3px solid #22c55e;margin-bottom:20px;"><p style="color:#4ade80;font-size:13px;">' + esc(req.query.msg) + '</p></div>' : ''}
       ${templates.length > 0
-        ? '<div class="glass" style="border-radius:16px;overflow:hidden;"><div class="table-wrap"><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="${thStyle}">Workout</th><th style="${thStyle}">Description</th><th style="${thStyle}">Exercises</th><th style="${thStyle}width:160px;"></th></tr></thead><tbody>' + rows + '</tbody></table></div></div>'
+        ? '<div class="glass" style="border-radius:16px;overflow:hidden;"><div class="table-wrap"><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="${thStyle}width:70px;">Order</th><th style="${thStyle}">Workout</th><th style="${thStyle}">Description</th><th style="${thStyle}">Exercises</th><th style="${thStyle}width:200px;"></th></tr></thead><tbody>' + rows + '</tbody></table></div></div>'
         : '<div class="glass" style="padding:40px;text-align:center;border-radius:16px;"><p style="color:rgba(255,255,255,0.4);">No workouts in this program yet.</p></div>'
       }
     `));
@@ -2914,6 +2926,33 @@ router.get('/workout-manager/copy/:id', adminAuth, async (req, res) => {
     const redirectTo = programId ? '/admin/workout-manager/program/' + programId + '?msg=Workout+copied' : '/admin/workout-manager/workouts?msg=Workout+copied';
     res.redirect(redirectTo);
   } catch (err) { console.error(err); res.redirect('/admin/workout-manager/workouts'); }
+});
+
+// GET /admin/workout-manager/move/:id — Move workout up or down
+router.get('/workout-manager/move/:id', adminAuth, async (req, res) => {
+  const templateId = Number(req.params.id);
+  const dir = req.query.dir; // 'up' or 'down'
+  const programId = req.query.programId;
+  try {
+    // Get all templates in this program ordered by sort_order
+    const { rows: templates } = await pool.query(
+      'SELECT id, sort_order FROM templates WHERE program_id = $1 ORDER BY sort_order',
+      [programId]
+    );
+    const idx = templates.findIndex(t => t.id === templateId);
+    if (idx === -1) return res.redirect('/admin/workout-manager/program/' + programId);
+
+    const swapIdx = dir === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= templates.length) return res.redirect('/admin/workout-manager/program/' + programId);
+
+    // Swap sort_order values
+    const a = templates[idx];
+    const b = templates[swapIdx];
+    await pool.query('UPDATE templates SET sort_order = $1 WHERE id = $2', [b.sort_order, a.id]);
+    await pool.query('UPDATE templates SET sort_order = $1 WHERE id = $2', [a.sort_order, b.id]);
+
+    res.redirect('/admin/workout-manager/program/' + programId);
+  } catch (err) { console.error(err); res.redirect('/admin/workout-manager/program/' + programId); }
 });
 
 // GET /admin/custom-exercises — User-created exercises
