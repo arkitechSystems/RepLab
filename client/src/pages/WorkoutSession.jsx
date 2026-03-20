@@ -10,6 +10,7 @@ import { useUnsavedGuard } from '../components/UnsavedGuard';
 import PBCelebration from '../components/PBCelebration';
 import { iosFocusRef } from '../utils/iosFocus';
 import { getWeightSuggestion } from '../utils/weightSuggestion';
+import { beepCountdown, beepComplete, initAudio } from '../utils/sounds';
 
 export default function WorkoutSession() {
   const { templateId, date } = useParams();
@@ -59,6 +60,7 @@ export default function WorkoutSession() {
 
   function startRestTimer() {
     if (restTimerRef.current) clearInterval(restTimerRef.current);
+    initAudio(); // ensure audio context is ready (iOS)
     const duration = restDurationRef.current;
     setRestRemaining(duration);
     restTimerRef.current = setInterval(() => {
@@ -66,8 +68,13 @@ export default function WorkoutSession() {
         if (prev <= 1) {
           clearInterval(restTimerRef.current);
           restTimerRef.current = null;
+          beepComplete(); // alarm sound when rest is over
           if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
           return 0;
+        }
+        // Countdown beeps at 3, 2, 1
+        if (prev === 4 || prev === 3 || prev === 2) {
+          beepCountdown();
         }
         return prev - 1;
       });
@@ -813,125 +820,76 @@ export default function WorkoutSession() {
                 />
               </div>
             </div>
-            {!timerFloating && (
-              <>
-                <div className="flex items-center justify-between w-full">
-                  <button
-                    onClick={() => setTimerHidden((h) => !h)}
-                    className="flex-1 flex items-center"
-                  >
-                    <span className="text-xs text-wf-gray-400 font-medium uppercase tracking-wider">Workout Time</span>
-                  </button>
-                  {timerHidden ? (
-                    <button onClick={() => setTimerHidden(false)} className="text-xs text-wf-gray-500">Show</button>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      {timerStarted && (
-                        <>
-                          <span className="text-base font-black text-white tabular-nums font-mono-stat">{formatTime(elapsed)}</span>
-                          <button
-                            onClick={() => setTimerFloating(true)}
-                            className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90 transition-all"
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                            </svg>
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-                {!timerHidden && !timerStarted && (
-                  <button
-                    onClick={startTimer}
-                    className="w-full bg-wf-red/90 hover:bg-wf-red text-white text-xs font-semibold px-4 py-2 rounded-lg active:scale-[0.98] transition-all mt-1"
-                  >
-                    Begin Workout
-                  </button>
-                )}
-              </>
-            )}
-            {timerFloating && (
+            {!timerStarted ? (
               <button
-                onClick={() => setTimerFloating(false)}
-                className="flex items-center gap-1.5 text-xs text-wf-gray-500"
+                onClick={startTimer}
+                className="w-full bg-wf-red/90 hover:bg-wf-red text-white text-xs font-semibold px-4 py-2 rounded-lg active:scale-[0.98] transition-all mt-1"
               >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
-                </svg>
-                Dock Timer
+                Begin Workout
               </button>
+            ) : (
+              <div className={`mt-2 rounded-lg overflow-hidden ${restRemaining !== null && restRemaining <= 0 ? 'border border-green-500/50' : 'border border-white/8'}`} style={{ background: 'rgba(255,255,255,0.04)' }}>
+                {restRemaining !== null && restRemaining > 0 && (
+                  <div className="h-1 bg-white/5">
+                    <div className="h-full bg-wf-red transition-all duration-1000 ease-linear" style={{ width: `${(restRemaining / restDuration) * 100}%` }} />
+                  </div>
+                )}
+                <div className="px-3 py-2.5 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-semibold">Time</span>
+                    <span className="bg-black/60 rounded-md px-2.5 py-1 border border-white/10">
+                      <span className="text-xl font-mono-stat font-bold text-white tracking-wider" style={{ letterSpacing: '2px' }}>{formatTime(elapsed)}</span>
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {restRemaining !== null ? (
+                      restRemaining <= 0 ? (
+                        <>
+                          <span className="bg-green-500/20 rounded-md px-3 py-1 border border-green-500/30">
+                            <span className="text-lg font-mono-stat font-black text-green-400 tracking-wider" style={{ letterSpacing: '2px' }}>GO!</span>
+                          </span>
+                          <button onClick={stopRestTimer} className="text-xs text-wf-gray-500 px-2 py-1 rounded active:bg-white/10">Dismiss</button>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-semibold">Rest</span>
+                          <span className="bg-black/60 rounded-md px-2.5 py-1 border border-wf-red/30">
+                            <span className="text-xl font-mono-stat font-black text-wf-red tracking-wider" style={{ letterSpacing: '2px' }}>{formatTime(restRemaining)}</span>
+                          </span>
+                          <button onClick={stopRestTimer} className="text-xs text-wf-gray-500 px-2 py-1 rounded active:bg-white/10">Skip</button>
+                        </>
+                      )
+                    ) : (
+                      <button onClick={startRestTimer} className="text-xs text-wf-red font-semibold px-3 py-1.5 rounded-lg bg-wf-red/10 active:bg-wf-red/20 transition-colors">
+                        Start Rest
+                      </button>
+                    )}
+                    <select
+                      value={restDuration}
+                      onChange={(e) => setRestDuration(Number(e.target.value))}
+                      className="text-xs font-semibold text-wf-gray-400 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 outline-none cursor-pointer"
+                    >
+                      {REST_OPTIONS.map((s) => (
+                        <option key={s} value={s} className="bg-wf-gray-900">{s >= 60 ? `${Math.floor(s/60)}m` : `${s}s`}{s >= 60 && s % 60 ? ` ${s%60}s` : ''}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         }
       />
 
-      {/* Rest Timer Bar */}
-      {timerStarted && (
+      {/* Completed Banner */}
+      {isCompleted && (
         <div className="px-4 mb-3">
-          <div className={`glass-card rounded-xl overflow-hidden transition-all ${restRemaining !== null && restRemaining <= 0 ? 'border-2 border-green-500/50' : ''}`}>
-            {/* Rest timer progress bar */}
-            {restRemaining !== null && restRemaining > 0 && (
-              <div className="h-1 bg-white/5">
-                <div
-                  className="h-full bg-wf-red transition-all duration-1000 ease-linear"
-                  style={{ width: `${(restRemaining / restDuration) * 100}%` }}
-                />
-              </div>
-            )}
-            <div className="px-4 py-3 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {restRemaining !== null ? (
-                  restRemaining <= 0 ? (
-                    <div className="flex items-center gap-2">
-                      <svg className="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                      </svg>
-                      <span className="text-sm font-bold text-green-400">Rest complete — go!</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <svg className="w-5 h-5 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <span className="text-lg font-black text-white tabular-nums font-mono-stat">{formatTime(restRemaining)}</span>
-                      <span className="text-xs text-wf-gray-500">rest</span>
-                    </div>
-                  )
-                ) : (
-                  <span className="text-xs text-wf-gray-500">Rest timer starts when you complete a set</span>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                {restRemaining !== null && (
-                  <button
-                    onClick={stopRestTimer}
-                    className="text-xs text-wf-gray-400 font-medium px-2 py-1 rounded-lg active:bg-white/10 transition-colors"
-                  >
-                    Dismiss
-                  </button>
-                )}
-                {restRemaining === null && (
-                  <button
-                    onClick={startRestTimer}
-                    className="text-xs text-wf-red font-semibold px-3 py-1.5 rounded-lg bg-wf-red/10 active:bg-wf-red/20 transition-colors"
-                  >
-                    Start Rest
-                  </button>
-                )}
-                {/* Rest duration selector */}
-                <select
-                  value={restDuration}
-                  onChange={(e) => setRestDuration(Number(e.target.value))}
-                  className="text-xs font-semibold text-wf-gray-300 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 outline-none cursor-pointer"
-                >
-                  {REST_OPTIONS.map((s) => (
-                    <option key={s} value={s} className="bg-wf-gray-900">{s >= 60 ? `${s / 60}m` : `${s}s`}{s < 60 ? '' : s % 60 ? ` ${s % 60}s` : ''}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
+          <div className="rounded-xl bg-green-500/10 border border-green-500/20 px-4 py-3 flex items-center gap-2">
+            <svg className="w-5 h-5 text-green-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-sm text-green-400 font-semibold">Workout Complete</span>
+            <span className="text-xs text-green-400/60 ml-auto">Tap "Undo Completion" to edit</span>
           </div>
         </div>
       )}
@@ -944,21 +902,22 @@ export default function WorkoutSession() {
               exercise={exercise}
               entries={entries[exercise.name]}
               pbs={pbs}
-              onChange={handleChange}
-              onBlur={handleBlur}
+              readOnly={isCompleted}
+              onChange={isCompleted ? undefined : handleChange}
+              onBlur={isCompleted ? undefined : handleBlur}
               completedSets={completedSets}
               autoFilled={autoFilled}
-              onToggleComplete={handleToggleComplete}
-              onAddSet={handleAddSet}
-              onDeleteSet={handleDeleteSet}
-              onSwapExercise={handleSwapExercise}
-              onAddExercise={(name) => handleAddExercise(name, idx)}
-              onMoveUp={idx > 0 ? () => handleMoveExercise(idx, idx - 1) : undefined}
-              onMoveDown={idx < template.exercises.length - 1 ? () => handleMoveExercise(idx, idx + 1) : undefined}
+              onToggleComplete={isCompleted ? undefined : handleToggleComplete}
+              onAddSet={isCompleted ? undefined : handleAddSet}
+              onDeleteSet={isCompleted ? undefined : handleDeleteSet}
+              onSwapExercise={isCompleted ? undefined : handleSwapExercise}
+              onAddExercise={isCompleted ? undefined : (name) => handleAddExercise(name, idx)}
+              onMoveUp={isCompleted ? undefined : (idx > 0 ? () => handleMoveExercise(idx, idx - 1) : undefined)}
+              onMoveDown={isCompleted ? undefined : (idx < template.exercises.length - 1 ? () => handleMoveExercise(idx, idx + 1) : undefined)}
               note={notes[exercise.name] || ''}
-              onNoteChange={handleNoteChange}
-              weightSuggestion={weightSuggestions[exercise.name]}
-              onApplySuggestion={(exName, weight) => {
+              onNoteChange={isCompleted ? undefined : handleNoteChange}
+              weightSuggestion={isCompleted ? undefined : weightSuggestions[exercise.name]}
+              onApplySuggestion={isCompleted ? undefined : (exName, weight) => {
                 setEntries(prev => {
                   const updated = { ...prev };
                   updated[exName] = (updated[exName] || []).map(e => ({ ...e, weight }));
@@ -972,18 +931,20 @@ export default function WorkoutSession() {
         ))}
 
         {/* Add Exercise Button */}
-        <button
-          onClick={() => { setShowAddExercise(true); setAddExerciseSearch(''); }}
-          className="w-full border border-dashed border-white/15 rounded-xl py-3.5 text-wf-gray-400 text-sm font-medium active:border-wf-red active:text-wf-red transition-colors flex items-center justify-center gap-2 mb-3"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-          </svg>
-          Add Exercise
-        </button>
+        {!isCompleted && (
+          <button
+            onClick={() => { setShowAddExercise(true); setAddExerciseSearch(''); }}
+            className="w-full border border-dashed border-white/15 rounded-xl py-3.5 text-wf-gray-400 text-sm font-medium active:border-wf-red active:text-wf-red transition-colors flex items-center justify-center gap-2 mb-3"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Add Exercise
+          </button>
+        )}
 
         {/* Quick Add Buttons */}
-        <div className="flex gap-2 mb-3">
+        {!isCompleted && <div className="flex gap-2 mb-3">
           <button className="flex-1 glass-card rounded-xl py-3 text-wf-gray-400 text-xs font-semibold active:text-wf-red active:border-wf-red/30 transition-colors flex items-center justify-center gap-1.5">
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
@@ -1002,7 +963,7 @@ export default function WorkoutSession() {
             </svg>
             Add a Warm Up
           </button>
-        </div>
+        </div>}
       </div>
 
       {/* Add Exercise Modal */}
