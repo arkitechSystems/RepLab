@@ -2614,36 +2614,89 @@ router.post('/workout-manager/create', adminAuth, express.urlencoded({ extended:
 });
 
 // GET /admin/workout-manager/workouts — View current workouts
+// Programs list
 router.get('/workout-manager/workouts', adminAuth, async (req, res) => {
   try {
-    const { rows: programs } = await pool.query('SELECT id, name, description FROM programs WHERE user_id IS NULL ORDER BY name');
-    let content = '';
+    const { rows: programs } = await pool.query(
+      `SELECT p.id, p.name, p.description,
+        (SELECT COUNT(*) FROM templates t WHERE t.program_id = p.id AND t.is_rest = FALSE) AS workout_count,
+        (SELECT COUNT(*) FROM templates t WHERE t.program_id = p.id) AS total_days
+       FROM programs p WHERE p.user_id IS NULL ORDER BY p.name`
+    );
+
+    let cards = '';
     if (programs.length === 0) {
-      content = '<div class="glass" style="padding:40px;text-align:center;"><p style="color:rgba(255,255,255,0.4);">No programs yet. <a href="/admin/workout-manager/create" style="color:#ef4444;text-decoration:none;font-weight:600;">Create your first workout</a></p></div>';
+      cards = '<div class="glass" style="padding:40px;text-align:center;"><p style="color:rgba(255,255,255,0.4);">No programs yet. <a href="/admin/workout-manager/create" style="color:#ef4444;text-decoration:none;font-weight:600;">Create your first workout</a></p></div>';
     } else {
-      for (const program of programs) {
-        const { rows: templates } = await pool.query('SELECT t.id, t.name, t.description, t.is_rest, (SELECT COUNT(*) FROM template_exercises te WHERE te.template_id = t.id) AS exercise_count FROM templates t WHERE t.program_id = $1 ORDER BY t.sort_order', [program.id]);
-        const rows = templates.map((t, i) => {
-          const rowBg = i % 2 === 0 ? 'background:rgba(255,255,255,0.02);' : '';
-          if (t.is_rest) {
-            return '<tr style="' + rowBg + '"><td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.3);font-style:italic;">Rest Day</td><td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);">—</td><td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);">—</td><td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);"></td></tr>';
-          }
-          return '<tr style="' + rowBg + '">' +
-            '<td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);font-weight:600;color:#fff;">' + esc(t.name) + '</td>' +
-            '<td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);font-size:13px;">' + (t.description ? esc(t.description) : '<span style="color:rgba(255,255,255,0.2);">—</span>') + '</td>' +
-            '<td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);"><span style="padding:4px 10px;border-radius:6px;background:rgba(255,255,255,0.06);font-size:12px;color:rgba(255,255,255,0.6);font-weight:600;">' + t.exercise_count + ' exercises</span></td>' +
-            '<td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);text-align:right;white-space:nowrap;">' +
-              '<a href="/admin/workout-manager/edit/' + t.id + '" style="color:#ef4444;text-decoration:none;font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;border:1px solid rgba(239,68,68,0.3);margin-right:6px;" onmouseover="this.style.background=\'rgba(239,68,68,0.1)\'" onmouseout="this.style.background=\'none\'">Edit</a>' +
-              '<a href="/admin/workout-manager/delete/' + t.id + '" onclick="return confirm(\'Delete this workout and all its exercises? This cannot be undone.\')" style="color:rgba(255,255,255,0.3);text-decoration:none;font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);" onmouseover="this.style.color=\'#ef4444\';this.style.borderColor=\'rgba(239,68,68,0.3)\';this.style.background=\'rgba(239,68,68,0.08)\'" onmouseout="this.style.color=\'rgba(255,255,255,0.3)\';this.style.borderColor=\'rgba(255,255,255,0.1)\';this.style.background=\'none\'">Delete</a>' +
-            '</td></tr>';
-        }).join('');
-        const nonRest = templates.filter(t => !t.is_rest).length;
-        content += '<div class="glass" style="border-radius:16px;overflow:hidden;margin-bottom:20px;"><div style="padding:20px 24px;border-bottom:1px solid rgba(255,255,255,0.08);"><h3 style="font-size:16px;font-weight:700;color:#fff;margin:0;">' + esc(program.name) + '</h3><p style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:2px;">' + nonRest + ' workouts' + (program.description ? ' &middot; ' + esc(program.description) : '') + '</p></div>' +
-          (templates.length > 0 ? '<div class="table-wrap"><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="padding:12px 20px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);font-weight:700;background:rgba(255,255,255,0.04);border-bottom:2px solid rgba(255,255,255,0.08);">Workout</th><th style="padding:12px 20px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);font-weight:700;background:rgba(255,255,255,0.04);border-bottom:2px solid rgba(255,255,255,0.08);">Description</th><th style="padding:12px 20px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);font-weight:700;background:rgba(255,255,255,0.04);border-bottom:2px solid rgba(255,255,255,0.08);">Exercises</th><th style="padding:12px 20px;width:160px;background:rgba(255,255,255,0.04);border-bottom:2px solid rgba(255,255,255,0.08);"></th></tr></thead><tbody>' + rows + '</tbody></table></div>' : '<div style="padding:20px 24px;"><p style="color:rgba(255,255,255,0.3);font-size:13px;">No workouts yet.</p></div>') + '</div>';
-      }
+      cards = '<div class="card-grid">' + programs.map(p =>
+        '<a class="card glass" href="/admin/workout-manager/program/' + p.id + '" style="text-decoration:none;">' +
+          '<div class="card-title" style="margin-bottom:8px;">' + esc(p.name) + '</div>' +
+          '<div style="display:flex;gap:8px;margin-bottom:10px;">' +
+            '<span style="padding:4px 10px;border-radius:6px;background:rgba(239,68,68,0.1);font-size:11px;color:#ef4444;font-weight:700;">' + p.workout_count + ' workouts</span>' +
+            '<span style="padding:4px 10px;border-radius:6px;background:rgba(255,255,255,0.06);font-size:11px;color:rgba(255,255,255,0.5);font-weight:600;">' + p.total_days + ' days</span>' +
+          '</div>' +
+          (p.description ? '<div class="card-desc">' + esc(p.description) + '</div>' : '<div class="card-desc" style="color:rgba(255,255,255,0.2);">No description</div>') +
+        '</a>'
+      ).join('') + '</div>';
     }
-    res.send(adminPage('View Current Workouts', '<div class="breadcrumb"><a href="/admin">Dashboard</a> / <a href="/admin/workout-manager">Workout Manager</a> / Workouts</div><div class="header"><h1>Current Workouts</h1><p>' + programs.length + ' programs in the Browse Workout Library</p></div><a href="/admin/workout-manager/create" class="btn" style="margin-bottom:24px;">+ Create New Workout</a>' + content));
-  } catch (err) { console.error(err); res.status(500).send(adminPage('Error', '<p style="color:#f87171;">Failed to load workouts.</p>')); }
+
+    res.send(adminPage('View Current Workouts', `
+      <div class="breadcrumb"><a href="/admin">Dashboard</a> / <a href="/admin/workout-manager">Workout Manager</a> / Programs</div>
+      <div class="header">
+        <h1>Programs</h1>
+        <p>${programs.length} program${programs.length !== 1 ? 's' : ''} in the Browse Workout Library</p>
+      </div>
+      <a href="/admin/workout-manager/create" class="btn" style="margin-bottom:24px;">+ Create New Workout</a>
+      ${req.query.msg ? '<div class="glass" style="padding:12px 16px;border-left:3px solid #22c55e;margin-bottom:20px;"><p style="color:#4ade80;font-size:13px;">' + esc(req.query.msg) + '</p></div>' : ''}
+      ${cards}
+    `));
+  } catch (err) { console.error(err); res.status(500).send(adminPage('Error', '<p style="color:#f87171;">Failed to load programs.</p>')); }
+});
+
+// Workouts within a program
+router.get('/workout-manager/program/:id', adminAuth, async (req, res) => {
+  const programId = Number(req.params.id);
+  try {
+    const { rows: progRows } = await pool.query('SELECT id, name, description FROM programs WHERE id = $1', [programId]);
+    if (!progRows[0]) return res.redirect('/admin/workout-manager/workouts');
+    const program = progRows[0];
+
+    const { rows: templates } = await pool.query(
+      'SELECT t.id, t.name, t.description, t.is_rest, t.sort_order, (SELECT COUNT(*) FROM template_exercises te WHERE te.template_id = t.id) AS exercise_count FROM templates t WHERE t.program_id = $1 ORDER BY t.sort_order',
+      [programId]
+    );
+
+    const rows = templates.map((t, i) => {
+      const rowBg = i % 2 === 0 ? 'background:rgba(255,255,255,0.02);' : '';
+      if (t.is_rest) {
+        return '<tr style="' + rowBg + '"><td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.3);font-style:italic;">Rest Day</td><td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.2);">—</td><td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.2);">—</td><td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);"></td></tr>';
+      }
+      return '<tr style="' + rowBg + '">' +
+        '<td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);font-weight:600;color:#fff;">' + esc(t.name) + '</td>' +
+        '<td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);font-size:13px;">' + (t.description ? esc(t.description) : '<span style="color:rgba(255,255,255,0.2);">—</span>') + '</td>' +
+        '<td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);"><span style="padding:4px 10px;border-radius:6px;background:rgba(255,255,255,0.06);font-size:12px;color:rgba(255,255,255,0.6);font-weight:600;">' + t.exercise_count + ' exercises</span></td>' +
+        '<td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);text-align:right;white-space:nowrap;">' +
+          '<a href="/admin/workout-manager/edit/' + t.id + '" style="color:#ef4444;text-decoration:none;font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;border:1px solid rgba(239,68,68,0.3);margin-right:6px;" onmouseover="this.style.background=\'rgba(239,68,68,0.1)\'" onmouseout="this.style.background=\'none\'">Edit</a>' +
+          '<a href="/admin/workout-manager/delete/' + t.id + '?programId=' + programId + '" onclick="return confirm(\'Delete this workout and all its exercises? This cannot be undone.\')" style="color:rgba(255,255,255,0.3);text-decoration:none;font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);" onmouseover="this.style.color=\'#ef4444\';this.style.borderColor=\'rgba(239,68,68,0.3)\';this.style.background=\'rgba(239,68,68,0.08)\'" onmouseout="this.style.color=\'rgba(255,255,255,0.3)\';this.style.borderColor=\'rgba(255,255,255,0.1)\';this.style.background=\'none\'">Delete</a>' +
+        '</td></tr>';
+    }).join('');
+
+    const nonRest = templates.filter(t => !t.is_rest).length;
+    const thStyle = 'padding:12px 20px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);font-weight:700;background:rgba(255,255,255,0.04);border-bottom:2px solid rgba(255,255,255,0.08);';
+
+    res.send(adminPage('Program — ' + program.name, `
+      <div class="breadcrumb"><a href="/admin">Dashboard</a> / <a href="/admin/workout-manager">Workout Manager</a> / <a href="/admin/workout-manager/workouts">Programs</a> / ${esc(program.name)}</div>
+      <div class="header">
+        <h1>${esc(program.name)}</h1>
+        <p>${nonRest} workout${nonRest !== 1 ? 's' : ''} &middot; ${templates.length} total days${program.description ? ' &middot; ' + esc(program.description) : ''}</p>
+      </div>
+      ${req.query.msg ? '<div class="glass" style="padding:12px 16px;border-left:3px solid #22c55e;margin-bottom:20px;"><p style="color:#4ade80;font-size:13px;">' + esc(req.query.msg) + '</p></div>' : ''}
+      ${templates.length > 0
+        ? '<div class="glass" style="border-radius:16px;overflow:hidden;"><div class="table-wrap"><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="${thStyle}">Workout</th><th style="${thStyle}">Description</th><th style="${thStyle}">Exercises</th><th style="${thStyle}width:160px;"></th></tr></thead><tbody>' + rows + '</tbody></table></div></div>'
+        : '<div class="glass" style="padding:40px;text-align:center;border-radius:16px;"><p style="color:rgba(255,255,255,0.4);">No workouts in this program yet.</p></div>'
+      }
+    `));
+  } catch (err) { console.error(err); res.redirect('/admin/workout-manager/workouts'); }
 });
 
 // GET /admin/workout-manager/edit/:id — Edit workout
@@ -2826,9 +2879,11 @@ router.post('/workout-manager/edit/:id', adminAuth, express.urlencoded({ extende
 
 // GET /admin/workout-manager/delete/:id — Delete workout
 router.get('/workout-manager/delete/:id', adminAuth, async (req, res) => {
+  const programId = req.query.programId;
   try {
     await pool.query('DELETE FROM templates WHERE id = $1', [Number(req.params.id)]);
-    res.redirect('/admin/workout-manager/workouts?msg=Workout+deleted');
+    const redirectTo = programId ? '/admin/workout-manager/program/' + programId + '?msg=Workout+deleted' : '/admin/workout-manager/workouts?msg=Workout+deleted';
+    res.redirect(redirectTo);
   } catch (err) { console.error(err); res.redirect('/admin/workout-manager/workouts'); }
 });
 
