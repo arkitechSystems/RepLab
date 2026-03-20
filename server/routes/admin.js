@@ -2393,18 +2393,6 @@ router.get('/workout-manager/create', adminAuth, async (req, res) => {
             </button>
           </div>
 
-    <!-- Program Picker Modal -->
-    <div id="program-dropdown" style="display:none;position:fixed;inset:0;z-index:9998;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);" onclick="if(event.target===this)this.style.display='none'">
-      <div class="glass" style="padding:20px;max-width:400px;width:90%;border-radius:16px;max-height:70vh;display:flex;flex-direction:column;">
-        <h3 style="font-size:15px;font-weight:700;color:#fff;margin-bottom:12px;">Select Program</h3>
-        <div style="overflow-y:auto;flex:1;padding:4px 0;">
-          <button type="button" onclick="selectProgram('','— No Program —')" style="width:100%;text-align:left;padding:12px 14px;border:none;background:none;color:rgba(255,255,255,0.5);font-size:14px;cursor:pointer;font-family:inherit;border-radius:8px;border-bottom:1px solid rgba(255,255,255,0.05);" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='none'">— No Program —</button>
-          ${programs.map(p => '<button type="button" onclick="selectProgram(\'' + p.id + '\',\'' + esc(p.name).replace(/'/g, "\\'") + '\')" style="width:100%;text-align:left;padding:12px 14px;border:none;background:none;color:#fff;font-size:14px;cursor:pointer;font-family:inherit;border-radius:8px;border-bottom:1px solid rgba(255,255,255,0.05);" onmouseover="this.style.background=\'rgba(255,255,255,0.08)\'" onmouseout="this.style.background=\'none\'">' + esc(p.name) + '</button>').join('')}
-          <div style="border-top:1px solid rgba(255,255,255,0.1);margin:8px 0;"></div>
-          <button type="button" onclick="document.getElementById('program-dropdown').style.display='none';openNewProgramModal()" style="width:100%;text-align:left;padding:12px 14px;border:none;background:none;color:#ef4444;font-size:14px;cursor:pointer;font-family:inherit;border-radius:8px;font-weight:600;" onmouseover="this.style.background='rgba(239,68,68,0.08)'" onmouseout="this.style.background='none'">+ New Program</button>
-        </div>
-      </div>
-    </div>
         </div>
         <div style="margin-top:16px;">
           <label>Description <span style="color:rgba(255,255,255,0.2);">(optional)</span></label>
@@ -2415,6 +2403,19 @@ router.get('/workout-manager/create', adminAuth, async (req, res) => {
       <button type="button" onclick="addExercise()" class="btn-ghost" style="width:100%;text-align:center;padding:14px;margin-bottom:20px;">+ Add Exercise</button>
       <button type="submit" class="btn" style="width:100%;padding:14px;font-size:15px;margin:0;">Save Workout</button>
     </form>
+
+    <!-- Program Picker Modal (outside form to avoid stacking context issues) -->
+    <div id="program-dropdown" style="display:none;position:fixed;inset:0;z-index:9998;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);" onclick="if(event.target===this)this.style.display='none'">
+      <div style="padding:20px;max-width:400px;width:90%;border-radius:16px;max-height:70vh;display:flex;flex-direction:column;background:rgba(25,25,25,0.98);border:1px solid rgba(255,255,255,0.1);box-shadow:0 20px 60px rgba(0,0,0,0.8);">
+        <h3 style="font-size:15px;font-weight:700;color:#fff;margin-bottom:12px;">Select Program</h3>
+        <div style="overflow-y:auto;flex:1;padding:4px 0;">
+          <button type="button" onclick="selectProgram('','— No Program —')" style="width:100%;text-align:left;padding:12px 14px;border:none;background:none;color:rgba(255,255,255,0.5);font-size:14px;cursor:pointer;font-family:inherit;border-radius:8px;border-bottom:1px solid rgba(255,255,255,0.05);" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='none'">— No Program —</button>
+          ${programs.map(p => '<button type="button" onclick="selectProgram(\'' + p.id + '\',\'' + esc(p.name).replace(/'/g, "\\'") + '\')" style="width:100%;text-align:left;padding:12px 14px;border:none;background:none;color:#fff;font-size:14px;cursor:pointer;font-family:inherit;border-radius:8px;border-bottom:1px solid rgba(255,255,255,0.05);" onmouseover="this.style.background=\'rgba(255,255,255,0.08)\'" onmouseout="this.style.background=\'none\'">' + esc(p.name) + '</button>').join('')}
+          <div style="border-top:1px solid rgba(255,255,255,0.1);margin:8px 0;"></div>
+          <button type="button" onclick="document.getElementById('program-dropdown').style.display='none';openNewProgramModal()" style="width:100%;text-align:left;padding:12px 14px;border:none;background:none;color:#ef4444;font-size:14px;cursor:pointer;font-family:inherit;border-radius:8px;font-weight:600;" onmouseover="this.style.background='rgba(239,68,68,0.08)'" onmouseout="this.style.background='none'">+ New Program</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Custom Exercise Modal -->
     <div id="custom-ex-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);" onclick="if(event.target===this)this.style.display='none'">
