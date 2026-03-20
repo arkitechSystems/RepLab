@@ -3206,7 +3206,7 @@ router.get('/workout-manager/move/:id', adminAuth, async (req, res) => {
 router.get('/trainer-logins', adminAuth, async (req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT tlh.id, tlh.email, tlh.ip, tlh.user_agent, tlh.created_at,
+      `SELECT tlh.id, tlh.email, tlh.ip, tlh.user_agent, tlh.created_at, tlh.city, tlh.state,
               u.first_name, u.last_name, u.username
        FROM trainer_login_history tlh
        LEFT JOIN users u ON tlh.user_id = u.id
@@ -3218,6 +3218,7 @@ router.get('/trainer-logins', adminAuth, async (req, res) => {
       const name = r.first_name && r.last_name
         ? r.first_name + ' ' + r.last_name
         : r.username || r.email || 'Unknown';
+      const location = [r.city, r.state].filter(Boolean).join(', ') || '—';
       const date = r.created_at
         ? new Date(r.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Chicago' })
         : '—';
@@ -3225,6 +3226,7 @@ router.get('/trainer-logins', adminAuth, async (req, res) => {
       return '<tr style="' + rowBg + '">' +
         '<td style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);font-weight:600;color:#fff;">' + esc(name) + '</td>' +
         '<td style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);font-size:13px;">' + esc(r.email || '—') + '</td>' +
+        '<td style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);font-size:13px;">' + esc(location) + '</td>' +
         '<td style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);font-size:12px;font-family:monospace;">' + esc(r.ip || '—') + '</td>' +
         '<td style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);font-size:13px;">' + date + '</td>' +
       '</tr>';
@@ -3240,7 +3242,7 @@ router.get('/trainer-logins', adminAuth, async (req, res) => {
       </div>
       ${rows.length === 0
         ? '<div class="glass" style="padding:40px;text-align:center;border-radius:16px;"><p style="color:rgba(255,255,255,0.4);">No trainer logins recorded yet.</p></div>'
-        : '<div class="glass" style="border-radius:16px;overflow:hidden;"><div class="table-wrap"><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="' + thStyle + '">User</th><th style="' + thStyle + '">Email</th><th style="' + thStyle + '">IP</th><th style="' + thStyle + '">Date</th></tr></thead><tbody>' + tableRows + '</tbody></table></div></div>'
+        : '<div class="glass" style="border-radius:16px;overflow:hidden;"><div class="table-wrap"><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="' + thStyle + '">User</th><th style="' + thStyle + '">Email</th><th style="' + thStyle + '">Location</th><th style="' + thStyle + '">IP</th><th style="' + thStyle + '">Date</th></tr></thead><tbody>' + tableRows + '</tbody></table></div></div>'
       }
     `));
   } catch (err) {

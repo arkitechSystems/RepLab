@@ -50,8 +50,12 @@ export default async function initDb() {
     email TEXT,
     ip TEXT,
     user_agent TEXT,
+    city TEXT,
+    state TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
   )`);
+  await pool.query(`ALTER TABLE trainer_login_history ADD COLUMN IF NOT EXISTS city TEXT`);
+  await pool.query(`ALTER TABLE trainer_login_history ADD COLUMN IF NOT EXISTS state TEXT`);
 
   await pool.query(`CREATE TABLE IF NOT EXISTS email_templates (
     id SERIAL PRIMARY KEY,

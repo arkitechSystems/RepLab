@@ -190,11 +190,20 @@ router.post('/login', express.urlencoded({ extended: false }), async (req, res) 
       return res.redirect('/trainer/login?error=Invalid+credentials');
     }
 
-    // Log login
+    // Log login with geo lookup
     try {
+      const loginIp = req.ip === '::1' || req.ip === '127.0.0.1' ? '' : req.ip;
+      let city = null, state = null;
+      if (loginIp) {
+        try {
+          const geoRes = await fetch(`http://ip-api.com/json/${loginIp}?fields=city,regionName,status`);
+          const geo = await geoRes.json();
+          if (geo.status === 'success') { city = geo.city || null; state = geo.regionName || null; }
+        } catch {}
+      }
       await pool.query(
-        'INSERT INTO trainer_login_history (user_id, email, ip, user_agent) VALUES ($1, $2, $3, $4)',
-        [user.id, user.email || user.phone, req.ip, req.headers['user-agent']?.substring(0, 200)]
+        'INSERT INTO trainer_login_history (user_id, email, ip, user_agent, city, state) VALUES ($1, $2, $3, $4, $5, $6)',
+        [user.id, user.email || user.phone, req.ip, req.headers['user-agent']?.substring(0, 200), city, state]
       );
     } catch {}
 
