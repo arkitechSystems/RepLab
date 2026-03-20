@@ -31,7 +31,36 @@ const PLANS = [
   },
 ];
 
+const PAYMENTS_ENABLED = false; // Set to true when ready to accept payments
+
 export default function Upgrade() {
+  const navigate = useNavigate();
+
+  if (!PAYMENTS_ENABLED) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center px-6 relative">
+        <div className="ambient-bg" />
+        <div className="w-full max-w-sm relative z-10 flex flex-col items-center gap-6 text-center">
+          <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center">
+            <svg className="w-8 h-8 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-black text-white">Paid Plans Coming Soon</h1>
+          <p className="text-wf-gray-400 text-sm leading-relaxed">
+            We're working on Pro and Elite plans with premium features. Stay tuned!
+          </p>
+          <button
+            onClick={() => navigate(-1)}
+            className="w-full btn-gradient active:scale-[0.98] text-white font-semibold py-3.5 rounded-xl text-base transition-all"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const [selectedPlan, setSelectedPlan] = useState('Pro');
   const [billing, setBilling] = useState('monthly'); // 'monthly' | 'yearly'
   const [cardNumber, setCardNumber] = useState('');
@@ -41,7 +70,6 @@ export default function Upgrade() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-  const navigate = useNavigate();
   const { user, updateUser } = useAuth();
 
   const currentPlan = PLANS.find((p) => p.name === selectedPlan);

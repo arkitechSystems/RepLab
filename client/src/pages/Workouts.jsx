@@ -1868,10 +1868,10 @@ function MaxPushupsChallenge() {
   const [pendingValue, setPendingValue] = useState(null);
   const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0, ended: false });
 
-  // Countdown to Mar 20, 2026 midnight ET
+  // Countdown to Mar 28, 2026 midnight ET
   useEffect(() => {
     function update() {
-      const end = new Date('2026-03-20T05:00:00Z'); // midnight ET = 5am UTC
+      const end = new Date('2026-03-28T05:00:00Z'); // midnight ET = 5am UTC
       const now = new Date();
       const diff = end - now;
       if (diff <= 0) {
@@ -1983,7 +1983,7 @@ function MaxPushupsChallenge() {
                 </div>
               ))}
             </div>
-            <p className="text-[10px] text-wf-gray-500 text-center mt-3">Mar 20, 2026 at midnight ET</p>
+            <p className="text-[10px] text-wf-gray-500 text-center mt-3">Mar 28, 2026 at midnight ET</p>
           </>
         )}
       </div>
