@@ -2407,7 +2407,10 @@ router.get('/workout-manager/create', adminAuth, async (req, res) => {
         </div>
       </div>
       <div id="exercises-container"></div>
-      <button type="button" onclick="addExercise()" class="btn-ghost" style="width:100%;text-align:center;padding:14px;margin-bottom:20px;">+ Add Exercise</button>
+      <div style="display:flex;gap:8px;margin-bottom:20px;">
+        <button type="button" onclick="addExercise()" class="btn-ghost" style="flex:1;text-align:center;padding:14px;margin:0;">+ Add Exercise</button>
+        <button type="button" onclick="addGroupTitle()" class="btn-ghost" style="flex:1;text-align:center;padding:14px;margin:0;border-color:rgba(239,68,68,0.2);color:rgba(239,68,68,0.7);">+ Group Title</button>
+      </div>
       <button type="submit" class="btn" style="width:100%;padding:14px;font-size:15px;margin:0;">Save Workout</button>
     </form>
 
@@ -2465,7 +2468,7 @@ router.get('/workout-manager/create', adminAuth, async (req, res) => {
       function selectProgram(id, name) { document.getElementById('program-value').value = id; document.getElementById('program-label').textContent = name; document.getElementById('program-btn').style.color = id ? '#fff' : 'rgba(255,255,255,0.5)'; document.getElementById('program-dropdown').style.display = 'none'; }
       document.addEventListener('click', function(e) {
         if (!e.target.closest('[id^="ex-search-"]') && !e.target.closest('[id^="ex-results-"]')) document.querySelectorAll('[id^="ex-results-"]').forEach(function(d) { d.style.display = 'none'; });
-        if (!e.target.closest('[id^="settype-btn-"]') && !e.target.closest('[id^="settype-dd-"]')) document.querySelectorAll('[id^="settype-dd-"]').forEach(function(d) { d.style.display = 'none'; });
+        if (!e.target.closest('[id^="st-btn-"]') && !e.target.closest('[id^="st-dd-"]')) document.querySelectorAll('[id^="st-dd-"]').forEach(function(d) { d.style.display = 'none'; });
       });
 
       function openNewProgramModal() { document.getElementById('new-program-name').value = ''; document.getElementById('new-program-desc').value = ''; document.getElementById('new-program-error').style.display = 'none'; document.getElementById('new-program-modal').style.display = 'flex'; }
@@ -2509,55 +2512,96 @@ router.get('/workout-manager/create', adminAuth, async (req, res) => {
 
       function mk(tag, css, attrs) { var e = document.createElement(tag); if (css) e.style.cssText = css; if (attrs) Object.keys(attrs).forEach(function(k) { e[k] = attrs[k]; }); return e; }
 
-      var exerciseCount = 0, searchTimeout = null, activeSearchIdx = null, setCounts = {};
-      var inputCSS = 'flex:1;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;text-align:center;box-sizing:border-box;';
+      var exerciseCount = 0, groupCount = 0, searchTimeout = null, activeSearchIdx = null, setCounts = {};
+      var inputCSS = 'flex:1;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);color:#fff;font-size:14px;font-family:inherit;outline:none;text-align:center;box-sizing:border-box;';
+      var SET_SHORT = { warm_up: 'WU', straight: 'REG', drop: 'DS', rest_pause: 'RP', superset: 'SS', alternating: 'Alt', giant: 'Gia', pre_exhaust: 'PrEx' };
+
+      function addGroupTitle() {
+        var gIdx = groupCount++;
+        var container = document.getElementById('exercises-container');
+        var card = mk('div', 'border-radius:12px;margin-bottom:16px;border:1px solid rgba(239,68,68,0.15);background:rgba(239,68,68,0.03);padding:16px;');
+        card.id = 'group-' + gIdx;
+        var hdr = mk('div', 'display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;');
+        var badge = mk('span', 'font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:#ef4444;font-weight:700;'); badge.textContent = 'GROUP TITLE';
+        var rmBtn = mk('button', 'background:none;border:none;color:rgba(255,255,255,0.25);cursor:pointer;padding:4px;border-radius:6px;display:flex;align-items:center;', { type: 'button' });
+        rmBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>';
+        rmBtn.onmouseover = function() { this.style.color = '#ef4444'; }; rmBtn.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.25)'; };
+        rmBtn.onclick = function() { var e = document.getElementById('group-' + gIdx); if (e) e.remove(); };
+        hdr.appendChild(badge); hdr.appendChild(rmBtn); card.appendChild(hdr);
+        var ti = mk('input', 'width:100%;padding:10px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#fff;font-size:15px;font-weight:700;font-family:inherit;outline:none;box-sizing:border-box;margin-bottom:8px;');
+        ti.type = 'text'; ti.name = 'groups[' + gIdx + '][title]'; ti.placeholder = 'e.g. Warm Up, Superset, Circuit...'; ti.required = true;
+        var di = mk('input', 'width:100%;padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:rgba(255,255,255,0.6);font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;');
+        di.type = 'text'; di.name = 'groups[' + gIdx + '][description]'; di.placeholder = 'Description (optional)';
+        card.appendChild(ti); card.appendChild(di); container.appendChild(card); ti.focus();
+      }
 
       function addExercise() {
         var idx = exerciseCount++; var container = document.getElementById('exercises-container');
-        var div = mk('div', 'padding:20px;border-radius:16px;margin-bottom:16px;position:relative;'); div.className = 'glass'; div.id = 'exercise-' + idx;
-        var hdr = mk('div', 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;');
-        var lbl = mk('label', 'margin:0;font-size:13px;font-weight:700;color:#fff;'); lbl.textContent = 'Exercise ' + (idx + 1);
-        var rmBtn = mk('button', 'background:none;border:none;color:rgba(255,255,255,0.3);cursor:pointer;padding:4px 8px;border-radius:6px;font-family:inherit;font-size:12px;', { type: 'button' });
-        rmBtn.textContent = 'Remove'; rmBtn.onmouseover = function() { this.style.color = '#ef4444'; }; rmBtn.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.3)'; };
-        rmBtn.onclick = function() { var e = document.getElementById('exercise-' + idx); if (e) e.remove(); };
-        hdr.appendChild(lbl); hdr.appendChild(rmBtn); div.appendChild(hdr);
-        var sw = mk('div', 'position:relative;');
-        var si = mk('input', 'width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;');
+        var card = mk('div', 'border-radius:16px;margin-bottom:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);'); card.className = 'glass'; card.id = 'exercise-' + idx;
+        // Header
+        var hdr = mk('div', 'padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between;');
+        var sw = mk('div', 'flex:1;position:relative;min-width:0;');
+        var si = mk('input', 'width:100%;padding:0;border:none;background:none;color:#fff;font-size:15px;font-weight:600;font-family:inherit;outline:none;');
         si.type = 'text'; si.id = 'ex-search-' + idx; si.name = 'exercises[' + idx + '][name]'; si.placeholder = 'Search exercises...'; si.required = true; si.autocomplete = 'off';
         si.oninput = function() { searchExercises(idx, this.value); }; si.onfocus = function() { searchExercises(idx, this.value); };
-        var rd = mk('div', 'display:none;position:absolute;top:100%;left:0;right:0;z-index:50;max-height:200px;overflow-y:auto;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.12);border-radius:10px;margin-top:4px;box-shadow:0 8px 32px rgba(0,0,0,0.5);');
-        rd.id = 'ex-results-' + idx; sw.appendChild(si); sw.appendChild(rd); div.appendChild(sw);
-        var str = mk('div', 'margin-top:12px;margin-bottom:12px;display:flex;gap:8px;align-items:center;position:relative;');
-        var stl = mk('label', 'margin:0;font-size:11px;color:rgba(255,255,255,0.4);white-space:nowrap;'); stl.textContent = 'Set Type';
-        var sth = mk('input'); sth.type = 'hidden'; sth.name = 'exercises[' + idx + '][setType]'; sth.id = 'settype-val-' + idx; sth.value = 'straight';
-        var stb = mk('button', 'flex:1;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:13px;font-family:inherit;outline:none;cursor:pointer;text-align:left;display:flex;justify-content:space-between;align-items:center;box-sizing:border-box;', { type: 'button' });
-        stb.id = 'settype-btn-' + idx; stb.onclick = function() { toggleSetTypeDD(idx); };
-        var sbl = mk('span'); sbl.id = 'settype-label-' + idx; sbl.textContent = 'Regular'; stb.appendChild(sbl);
-        stb.insertAdjacentHTML('beforeend', '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="opacity:0.4;flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>');
-        var sdd = mk('div', 'display:none;position:absolute;top:100%;left:0;right:0;z-index:55;margin-top:4px;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.15);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.5);padding:4px;');
-        sdd.id = 'settype-dd-' + idx; buildSetTypeButtons(idx).forEach(function(b) { sdd.appendChild(b); });
-        str.appendChild(stl); str.appendChild(sth); str.appendChild(stb); str.appendChild(sdd); div.appendChild(str);
-        var ch = mk('div', 'display:flex;gap:8px;align-items:center;margin-bottom:8px;');
-        ['Set:40px', 'Reps:1', 'Weight (lbs):1', ':28px'].forEach(function(c) { var p = c.split(':'); var s = mk('span', 'font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);' + (p[1] === '1' ? 'flex:1;text-align:center;' : 'width:' + p[1] + ';')); s.textContent = p[0]; ch.appendChild(s); });
-        div.appendChild(ch);
-        var sd = mk('div'); sd.id = 'sets-' + idx; div.appendChild(sd);
-        var asb = mk('button', 'margin-top:8px;background:none;border:1px dashed rgba(255,255,255,0.15);color:rgba(255,255,255,0.4);padding:8px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;width:100%;', { type: 'button' });
-        asb.textContent = '+ Add Set'; asb.onmouseover = function() { this.style.borderColor = 'rgba(255,255,255,0.3)'; this.style.color = '#fff'; };
-        asb.onmouseout = function() { this.style.borderColor = 'rgba(255,255,255,0.15)'; this.style.color = 'rgba(255,255,255,0.4)'; };
-        asb.onclick = function() { addSet(idx); }; div.appendChild(asb);
-        container.appendChild(div); addSet(idx); addSet(idx); addSet(idx);
+        var rd = mk('div', 'display:none;position:absolute;top:calc(100% + 8px);left:-16px;right:-16px;z-index:50;max-height:220px;overflow-y:auto;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.12);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.5);');
+        rd.id = 'ex-results-' + idx; sw.appendChild(si); sw.appendChild(rd);
+        var rmBtn = mk('button', 'background:none;border:none;color:rgba(255,255,255,0.25);cursor:pointer;padding:6px;border-radius:6px;display:flex;', { type: 'button' });
+        rmBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>';
+        rmBtn.onmouseover = function() { this.style.color = '#ef4444'; }; rmBtn.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.25)'; };
+        rmBtn.onclick = function() { var e = document.getElementById('exercise-' + idx); if (e) e.remove(); };
+        hdr.appendChild(sw); hdr.appendChild(rmBtn); card.appendChild(hdr);
+        // Hidden set type
+        var sth = mk('input'); sth.type = 'hidden'; sth.name = 'exercises[' + idx + '][setType]'; sth.id = 'settype-val-' + idx; sth.value = 'straight'; card.appendChild(sth);
+        // Column headers
+        var ch = mk('div', 'display:flex;align-items:center;padding:8px 16px;border-bottom:1px solid rgba(255,255,255,0.04);');
+        [{ t: 'Set', w: '36px' }, { t: 'Type', w: '72px' }, { t: 'Weight', f: '1' }, { t: 'Reps', f: '1' }, { t: '', w: '28px' }].forEach(function(c) {
+          var sp = mk('span', 'font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.25);font-weight:600;text-align:center;' + (c.f ? 'flex:' + c.f + ';' : 'width:' + c.w + ';'));
+          sp.textContent = c.t; ch.appendChild(sp);
+        }); card.appendChild(ch);
+        // Sets container
+        var sd = mk('div'); sd.id = 'sets-' + idx; card.appendChild(sd);
+        // Add set button
+        var asb = mk('button', 'width:100%;padding:10px;background:none;border:none;border-top:1px solid rgba(255,255,255,0.05);color:rgba(255,255,255,0.4);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;', { type: 'button' });
+        asb.textContent = '+ Add Set'; asb.onmouseover = function() { this.style.color = '#fff'; }; asb.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.4)'; };
+        asb.onclick = function() { addSet(idx); }; card.appendChild(asb);
+        // Notes section
+        var nw = mk('div', 'padding:10px 16px;border-top:1px solid rgba(255,255,255,0.05);');
+        var nl = mk('div', 'display:flex;align-items:center;gap:4px;margin-bottom:6px;');
+        nl.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/></svg>';
+        var nt = mk('span', 'font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:1px;font-weight:600;'); nt.textContent = 'Notes'; nl.appendChild(nt);
+        var ni = mk('textarea', 'width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:rgba(255,255,255,0.5);font-size:12px;font-family:inherit;outline:none;resize:vertical;box-sizing:border-box;min-height:36px;');
+        ni.name = 'exercises[' + idx + '][notes]'; ni.placeholder = 'Add notes for this exercise...'; ni.rows = 2;
+        nw.appendChild(nl); nw.appendChild(ni); card.appendChild(nw);
+        container.appendChild(card); addSet(idx); addSet(idx); addSet(idx);
       }
       function addSet(exIdx) {
         if (!setCounts[exIdx]) setCounts[exIdx] = 0; var si = setCounts[exIdx]++;
-        var sd = document.getElementById('sets-' + exIdx); var r = mk('div', 'display:flex;gap:8px;align-items:center;margin-bottom:6px;'); r.id = 'set-' + exIdx + '-' + si;
-        var n = mk('span', 'font-size:13px;color:rgba(255,255,255,0.5);width:40px;text-align:center;font-weight:600;'); n.textContent = si + 1;
+        var sd = document.getElementById('sets-' + exIdx);
+        var r = mk('div', 'display:flex;align-items:center;padding:6px 16px;border-bottom:1px solid rgba(255,255,255,0.04);' + (si % 2 === 0 ? 'background:rgba(255,255,255,0.02);' : ''));
+        r.id = 'set-' + exIdx + '-' + si;
+        var n = mk('span', 'width:36px;text-align:center;font-size:13px;color:rgba(255,255,255,0.4);font-weight:700;'); n.textContent = si + 1;
+        // Per-set type dropdown
+        var tw = mk('div', 'width:72px;position:relative;');
+        var tb = mk('button', 'width:100%;padding:6px 4px;border-radius:6px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.6);font-size:10px;font-weight:700;font-family:inherit;cursor:pointer;text-align:center;outline:none;', { type: 'button' });
+        tb.textContent = 'REG'; tb.id = 'st-btn-' + exIdx + '-' + si;
+        var tdd = mk('div', 'display:none;position:absolute;top:100%;left:0;z-index:60;margin-top:2px;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.15);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.5);padding:2px;min-width:120px;');
+        tdd.id = 'st-dd-' + exIdx + '-' + si;
+        tb.onclick = function() { tdd.style.display = tdd.style.display === 'none' ? 'block' : 'none'; };
+        SET_TYPES.forEach(function(t) {
+          var o = mk('button', 'width:100%;text-align:left;padding:6px 10px;border:none;background:none;color:#fff;font-size:11px;cursor:pointer;font-family:inherit;border-radius:5px;', { type: 'button' });
+          o.textContent = t.label; o.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.08)'; }; o.onmouseout = function() { this.style.background = 'none'; };
+          o.onclick = function() { tb.textContent = SET_SHORT[t.value] || 'REG'; tb.style.color = t.value === 'straight' ? 'rgba(255,255,255,0.6)' : '#ef4444'; document.getElementById('settype-val-' + exIdx).value = t.value; tdd.style.display = 'none'; };
+          tdd.appendChild(o);
+        }); tw.appendChild(tb); tw.appendChild(tdd);
+        var wi = mk('input', inputCSS); wi.type = 'number'; wi.name = 'exercises[' + exIdx + '][sets][' + si + '][weight]'; wi.placeholder = '—'; wi.value = '0';
+        wi.onfocus = function() { if (this.value === '0') this.value = ''; }; wi.onblur = function() { if (!this.value) this.value = '0'; };
         var ri = mk('input', inputCSS); ri.type = 'number'; ri.name = 'exercises[' + exIdx + '][sets][' + si + '][reps]'; ri.placeholder = '10'; ri.value = '10';
-        var wi = mk('input', inputCSS); wi.type = 'number'; wi.name = 'exercises[' + exIdx + '][sets][' + si + '][weight]'; wi.placeholder = '0'; wi.value = '0';
-        var db = mk('button', 'background:none;border:none;color:rgba(255,255,255,0.2);cursor:pointer;padding:2px;width:28px;display:flex;align-items:center;justify-content:center;', { type: 'button' });
+        var db = mk('button', 'background:none;border:none;color:rgba(255,255,255,0.15);cursor:pointer;padding:4px;width:28px;display:flex;align-items:center;justify-content:center;border-radius:4px;', { type: 'button' });
         db.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>';
-        db.onmouseover = function() { this.style.color = '#ef4444'; }; db.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.2)'; };
+        db.onmouseover = function() { this.style.color = '#ef4444'; }; db.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.15)'; };
         db.onclick = function() { var e = document.getElementById('set-' + exIdx + '-' + si); if (e) e.remove(); };
-        r.appendChild(n); r.appendChild(ri); r.appendChild(wi); r.appendChild(db); sd.appendChild(r);
+        r.appendChild(n); r.appendChild(tw); r.appendChild(wi); r.appendChild(ri); r.appendChild(db); sd.appendChild(r);
       }
       function searchExercises(exIdx, query) {
         activeSearchIdx = exIdx; clearTimeout(searchTimeout);
