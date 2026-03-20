@@ -2339,8 +2339,15 @@ router.post('/workout-manager/api/exercises', adminAuth, express.json(), async (
   try {
     const { name, muscleGroup } = req.body;
     if (!name || !muscleGroup) return res.status(400).json({ error: 'Name and muscle group required' });
-    const exercise = await db.createExercise(null, name.trim(), muscleGroup, []);
-    res.status(201).json(exercise);
+    // Admin exercises go into master library (is_custom = false, created_by = null)
+    const existing = await db.findExerciseByName(name.trim(), null);
+    if (existing) return res.json(existing);
+    const { rows } = await pool.query(
+      'INSERT INTO exercises (name, muscle_group, tags, is_custom, created_by) VALUES ($1, $2, $3, FALSE, NULL) RETURNING *',
+      [name.trim(), muscleGroup, []]
+    );
+    const e = rows[0];
+    res.status(201).json({ id: e.id, name: e.name, muscle: e.muscle_group, tags: e.tags || [], isCustom: false, createdBy: null });
   } catch (err) { res.status(500).json({ error: 'Failed' }); }
 });
 
@@ -2569,11 +2576,15 @@ router.get('/workout-manager/create', adminAuth, async (req, res) => {
               var ms = document.createElement('span'); ms.textContent = ex.muscle || ''; ms.style.cssText = 'font-size:10px;color:rgba(255,255,255,0.3);';
               b.appendChild(ns); b.appendChild(ms); rd.appendChild(b);
             });
-            var cb = document.createElement('button'); cb.type = 'button';
-            cb.style.cssText = 'width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#ef4444;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600;';
-            cb.onmouseover = function() { this.style.background = 'rgba(239,68,68,0.08)'; }; cb.onmouseout = function() { this.style.background = 'none'; };
-            cb.onclick = function() { rd.style.display = 'none'; document.getElementById('custom-ex-name').value = query; activeSearchIdx = exIdx; document.getElementById('custom-ex-modal').style.display = 'flex'; };
-            cb.textContent = '+ Add "' + query + '" as custom exercise'; rd.appendChild(cb);
+            var exactMatch = exercises.some(function(ex) { return ex.name.toLowerCase() === query.toLowerCase(); });
+            if (!exactMatch) {
+              var sep = document.createElement('div'); sep.style.cssText = 'border-top:1px solid rgba(255,255,255,0.06);margin:4px 0;'; rd.appendChild(sep);
+              var cb = document.createElement('button'); cb.type = 'button';
+              cb.style.cssText = 'width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#ef4444;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600;';
+              cb.onmouseover = function() { this.style.background = 'rgba(239,68,68,0.08)'; }; cb.onmouseout = function() { this.style.background = 'none'; };
+              cb.onclick = function() { rd.style.display = 'none'; document.getElementById('custom-ex-name').value = ''; activeSearchIdx = exIdx; document.getElementById('custom-ex-modal').style.display = 'flex'; };
+              cb.textContent = '+ Add to Library'; rd.appendChild(cb);
+            }
             rd.style.display = 'block';
           } catch (e) { console.error(e); }
         }, 200);

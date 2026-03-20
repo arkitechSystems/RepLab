@@ -703,15 +703,21 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
               btn.appendChild(muscleSpan);
               resultsDiv.appendChild(btn);
             });
-            // Add custom exercise option
-            var customBtn = document.createElement('button');
-            customBtn.type = 'button';
-            customBtn.style.cssText = 'width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#ef4444;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600;';
-            customBtn.onmouseover = function() { this.style.background = 'rgba(239,68,68,0.08)'; };
-            customBtn.onmouseout = function() { this.style.background = 'none'; };
-            customBtn.onclick = function() { openCustomModal(exIdx); };
-            customBtn.textContent = '+ Add "' + query + '" as custom exercise';
-            resultsDiv.appendChild(customBtn);
+            // Only show "Add Custom" if no exact match found in results
+            var exactMatch = exercises.some(function(ex) { return ex.name.toLowerCase() === query.toLowerCase(); });
+            if (!exactMatch) {
+              var sep = document.createElement('div');
+              sep.style.cssText = 'border-top:1px solid rgba(255,255,255,0.06);margin:4px 0;';
+              resultsDiv.appendChild(sep);
+              var customBtn = document.createElement('button');
+              customBtn.type = 'button';
+              customBtn.style.cssText = 'width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#ef4444;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600;';
+              customBtn.onmouseover = function() { this.style.background = 'rgba(239,68,68,0.08)'; };
+              customBtn.onmouseout = function() { this.style.background = 'none'; };
+              customBtn.onclick = function() { openCustomModal(exIdx); };
+              customBtn.textContent = '+ Add Custom Exercise';
+              resultsDiv.appendChild(customBtn);
+            }
             resultsDiv.style.display = 'block';
           } catch (err) { console.error(err); }
         }, 200);
@@ -729,8 +735,7 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
 
       function openCustomModal(exIdx) {
         document.getElementById('ex-results-' + exIdx).style.display = 'none';
-        const input = document.getElementById('ex-search-' + exIdx);
-        document.getElementById('custom-ex-name').value = input.value;
+        document.getElementById('custom-ex-name').value = '';
         activeSearchIdx = exIdx;
         document.getElementById('custom-ex-modal').style.display = 'flex';
       }
