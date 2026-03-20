@@ -2427,6 +2427,14 @@ router.get('/workout-manager/create', adminAuth, async (req, res) => {
       </div>
     </div>
 
+    <!-- Set Type Picker Modal -->
+    <div id="settype-modal" style="display:none;position:fixed;inset:0;z-index:9998;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);" onclick="if(event.target===this)this.style.display='none'">
+      <div style="padding:16px;max-width:300px;width:85%;border-radius:16px;background:rgba(25,25,25,0.98);border:1px solid rgba(255,255,255,0.1);box-shadow:0 20px 60px rgba(0,0,0,0.8);">
+        <h3 style="font-size:14px;font-weight:700;color:#fff;margin-bottom:12px;">Set Type</h3>
+        <div id="settype-options"></div>
+      </div>
+    </div>
+
     <!-- Custom Exercise Modal -->
     <div id="custom-ex-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);" onclick="if(event.target===this)this.style.display='none'">
       <div class="glass" style="padding:24px;max-width:400px;width:90%;border-radius:16px;">
@@ -2498,6 +2506,32 @@ router.get('/workout-manager/create', adminAuth, async (req, res) => {
         { value: 'rest_pause', label: 'Rest-Pause' }, { value: 'superset', label: 'Super Set' }, { value: 'alternating', label: 'Alternating' },
         { value: 'giant', label: 'Giant Set' }, { value: 'pre_exhaust', label: 'Pre-Exhaust' },
       ];
+      var SET_SHORT = { warm_up: 'WU', straight: 'REG', drop: 'DS', rest_pause: 'RP', superset: 'SS', alternating: 'Alt', giant: 'Gia', pre_exhaust: 'PrEx' };
+      var activeSetTypeBtn = null;
+      var activeSetTypeExIdx = null;
+
+      function openSetTypePicker(exIdx, btnEl) {
+        activeSetTypeBtn = btnEl;
+        activeSetTypeExIdx = exIdx;
+        var opts = document.getElementById('settype-options');
+        opts.innerHTML = '';
+        SET_TYPES.forEach(function(t) {
+          var b = document.createElement('button'); b.type = 'button'; b.textContent = t.label;
+          b.style.cssText = 'width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#fff;font-size:14px;cursor:pointer;font-family:inherit;border-radius:8px;border-bottom:1px solid rgba(255,255,255,0.05);';
+          b.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.08)'; };
+          b.onmouseout = function() { this.style.background = 'none'; };
+          b.onclick = function() {
+            activeSetTypeBtn.textContent = SET_SHORT[t.value] || 'REG';
+            activeSetTypeBtn.style.color = t.value === 'straight' ? 'rgba(255,255,255,0.6)' : '#ef4444';
+            document.getElementById('settype-val-' + activeSetTypeExIdx).value = t.value;
+            document.getElementById('settype-modal').style.display = 'none';
+          };
+          opts.appendChild(b);
+        });
+        document.getElementById('settype-modal').style.display = 'flex';
+      }
+
+      // Keep old functions for compatibility but unused
       function buildSetTypeButtons(exIdx) {
         return SET_TYPES.map(function(t) {
           var b = document.createElement('button'); b.type = 'button'; b.textContent = t.label;
@@ -2581,19 +2615,12 @@ router.get('/workout-manager/create', adminAuth, async (req, res) => {
         var r = mk('div', 'display:flex;align-items:center;padding:6px 16px;border-bottom:1px solid rgba(255,255,255,0.04);' + (si % 2 === 0 ? 'background:rgba(255,255,255,0.02);' : ''));
         r.id = 'set-' + exIdx + '-' + si;
         var n = mk('span', 'width:36px;text-align:center;font-size:13px;color:rgba(255,255,255,0.4);font-weight:700;'); n.textContent = si + 1;
-        // Per-set type dropdown
-        var tw = mk('div', 'width:72px;position:relative;');
+        // Per-set type button — opens shared modal
+        var tw = mk('div', 'width:72px;');
         var tb = mk('button', 'width:100%;padding:6px 4px;border-radius:6px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.6);font-size:10px;font-weight:700;font-family:inherit;cursor:pointer;text-align:center;outline:none;', { type: 'button' });
-        tb.textContent = 'REG'; tb.id = 'st-btn-' + exIdx + '-' + si;
-        var tdd = mk('div', 'display:none;position:absolute;top:100%;left:0;z-index:60;margin-top:2px;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.15);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.5);padding:2px;min-width:120px;');
-        tdd.id = 'st-dd-' + exIdx + '-' + si;
-        tb.onclick = function() { tdd.style.display = tdd.style.display === 'none' ? 'block' : 'none'; };
-        SET_TYPES.forEach(function(t) {
-          var o = mk('button', 'width:100%;text-align:left;padding:6px 10px;border:none;background:none;color:#fff;font-size:11px;cursor:pointer;font-family:inherit;border-radius:5px;', { type: 'button' });
-          o.textContent = t.label; o.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.08)'; }; o.onmouseout = function() { this.style.background = 'none'; };
-          o.onclick = function() { tb.textContent = SET_SHORT[t.value] || 'REG'; tb.style.color = t.value === 'straight' ? 'rgba(255,255,255,0.6)' : '#ef4444'; document.getElementById('settype-val-' + exIdx).value = t.value; tdd.style.display = 'none'; };
-          tdd.appendChild(o);
-        }); tw.appendChild(tb); tw.appendChild(tdd);
+        tb.textContent = 'REG';
+        tb.onclick = function() { openSetTypePicker(exIdx, tb); };
+        tw.appendChild(tb);
         var wi = mk('input', inputCSS); wi.type = 'number'; wi.name = 'exercises[' + exIdx + '][sets][' + si + '][weight]'; wi.placeholder = '—'; wi.value = '0';
         wi.onfocus = function() { if (this.value === '0') this.value = ''; }; wi.onblur = function() { if (!this.value) this.value = '0'; };
         var ri = mk('input', inputCSS); ri.type = 'number'; ri.name = 'exercises[' + exIdx + '][sets][' + si + '][reps]'; ri.placeholder = '10'; ri.value = '10';
