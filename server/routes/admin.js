@@ -2877,9 +2877,11 @@ router.get('/workout-manager/edit/:id', adminAuth, async (req, res) => {
             </div>
             <div style="flex:1;min-width:200px;">
               <label>Program</label>
-              <select name="programId" style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;">
-                ${programs.map(p => '<option value="' + p.id + '"' + (p.id === tmpl.program_id ? ' selected' : '') + '>' + esc(p.name) + '</option>').join('')}
-              </select>
+              <input type="hidden" name="programId" id="program-value" value="${tmpl.program_id || ''}" />
+              <button type="button" id="program-btn" onclick="toggleProgramDropdown()" style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:${tmpl.program_id ? '#fff' : 'rgba(255,255,255,0.5)'};font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+                <span id="program-label">${tmpl.program_name ? esc(tmpl.program_name) : '— No Program —'}</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="opacity:0.4;"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+              </button>
             </div>
           </div>
           <div style="margin-top:16px;">
@@ -2897,6 +2899,17 @@ router.get('/workout-manager/edit/:id', adminAuth, async (req, res) => {
           <a href="/admin/workout-manager/workouts" class="btn-ghost" style="flex:none;padding:14px 24px;margin:0;text-align:center;">Cancel</a>
         </div>
       </form>
+
+      <!-- Program Picker Modal for Edit page -->
+      <div id="program-dropdown" style="display:none;position:fixed;inset:0;z-index:9998;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);" onclick="if(event.target===this)this.style.display='none'">
+        <div style="padding:20px;max-width:400px;width:90%;border-radius:16px;max-height:70vh;display:flex;flex-direction:column;background:rgba(25,25,25,0.98);border:1px solid rgba(255,255,255,0.1);box-shadow:0 20px 60px rgba(0,0,0,0.8);">
+          <h3 style="font-size:15px;font-weight:700;color:#fff;margin-bottom:12px;">Select Program</h3>
+          <div style="overflow-y:auto;flex:1;padding:4px 0;">
+            ${programs.map(p => '<button type="button" onclick="selectProgram(\'' + p.id + '\',\'' + esc(p.name).replace(/'/g, "\\'") + '\')" style="width:100%;text-align:left;padding:12px 14px;border:none;background:none;color:#fff;font-size:14px;cursor:pointer;font-family:inherit;border-radius:8px;border-bottom:1px solid rgba(255,255,255,0.05);" onmouseover="this.style.background=\'rgba(255,255,255,0.08)\'" onmouseout="this.style.background=\'none\'">' + esc(p.name) + '</button>').join('')}
+          </div>
+        </div>
+      </div>
+
       <!-- Set Type Picker Modal for Edit page -->
       <div id="settype-modal" style="display:none;position:fixed;inset:0;z-index:9998;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);" onclick="if(event.target===this)this.style.display='none'">
         <div style="padding:16px;max-width:300px;width:85%;border-radius:16px;background:rgba(25,25,25,0.98);border:1px solid rgba(255,255,255,0.1);box-shadow:0 20px 60px rgba(0,0,0,0.8);">
@@ -2907,6 +2920,10 @@ router.get('/workout-manager/edit/:id', adminAuth, async (req, res) => {
       <script>
         var API = '${apiBase}';
         var EXISTING = ${JSON.stringify(exerciseList)};
+
+        function toggleProgramDropdown() { document.getElementById('program-dropdown').style.display = 'flex'; }
+        function selectProgram(id, name) { document.getElementById('program-value').value = id; document.getElementById('program-label').textContent = name; document.getElementById('program-btn').style.color = id ? '#fff' : 'rgba(255,255,255,0.5)'; document.getElementById('program-dropdown').style.display = 'none'; }
+
         var SET_TYPES = [
           { value: 'warm_up', label: 'Warm Up' }, { value: 'straight', label: 'Regular' }, { value: 'drop', label: 'Drop Set' },
           { value: 'rest_pause', label: 'Rest-Pause' }, { value: 'superset', label: 'Super Set' }, { value: 'alternating', label: 'Alternating' },

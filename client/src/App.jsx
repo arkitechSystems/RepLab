@@ -22,6 +22,7 @@ import Upgrade from './pages/Upgrade';
 import ResetPassword from './pages/ResetPassword';
 import AIWorkoutGenerator from './pages/AIWorkoutGenerator';
 import ExerciseLibrary from './pages/ExerciseLibrary';
+import Test from './pages/Test';
 import ExerciseDetail from './pages/ExerciseDetail';
 
 function ProtectedRoute({ children }) {
@@ -91,6 +92,7 @@ export default function App() {
         <Route path="/utilities" element={<Utilities />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/upgrade" element={<Upgrade />} />
+        <Route path="/test" element={<Test />} />
       </Route>
 
       <Route path="*" element={<CatchAllRedirect />} />

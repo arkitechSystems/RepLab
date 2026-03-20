@@ -432,6 +432,12 @@ export default function Profile() {
             >
               Load Screen
             </button>
+            <button
+              onClick={() => navigate('/test')}
+              className="w-full mt-2 glass-card text-wf-gray-400 text-sm font-medium py-2.5 rounded-xl transition-all active:scale-[0.98] hover:text-white"
+            >
+              Test
+            </button>
           </div>
         </div>
 

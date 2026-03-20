@@ -1846,6 +1846,7 @@ export default function Workouts() {
                 </svg>
               </div>
             </div>
+
           </div>
         )}
       </div>
