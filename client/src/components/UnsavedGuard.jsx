@@ -76,7 +76,18 @@ export function useUnsavedGuard({ isDirty, onSave, saveLabel = 'Save' }) {
     setSaveError('');
     try {
       await onSave();
+      // Save succeeded — now navigate away
+      isDirtyRef.current = false;
       setShowModal(false);
+      if (pendingPath === '__back__') {
+        window.history.go(-(pushCountRef.current + 1));
+      } else if (typeof pendingPath === 'function') {
+        window.history.go(-(pushCountRef.current + 1));
+      } else if (pendingPath) {
+        navigate(pendingPath, { replace: true });
+      }
+      setPendingPath(null);
+      pushCountRef.current = 0;
     } catch (err) {
       setSaveError(err?.message || 'Save failed. Please try again.');
       setSaving(false);
