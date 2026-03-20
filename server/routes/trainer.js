@@ -912,8 +912,10 @@ router.get('/workouts', trainerAuth, async (req, res) => {
             '<td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);">' +
               '<span style="display:inline-block;padding:4px 10px;border-radius:6px;background:rgba(255,255,255,0.06);font-size:12px;color:rgba(255,255,255,0.6);font-weight:600;">' + t.exercise_count + ' exercises</span>' +
             '</td>' +
-            '<td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);text-align:right;">' +
-              '<a href="/trainer/edit-workout/' + t.id + '" style="color:#ef4444;text-decoration:none;font-size:12px;font-weight:600;padding:7px 14px;border-radius:8px;border:1px solid rgba(239,68,68,0.3);transition:all 0.15s;display:inline-block;" onmouseover="this.style.background=\'rgba(239,68,68,0.15)\';this.style.borderColor=\'rgba(239,68,68,0.5)\'" onmouseout="this.style.background=\'none\';this.style.borderColor=\'rgba(239,68,68,0.3)\'">Edit</a>' +
+            '<td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);text-align:right;white-space:nowrap;">' +
+              '<a href="/trainer/edit-workout/' + t.id + '" style="color:#ef4444;text-decoration:none;font-size:11px;font-weight:600;padding:6px 10px;border-radius:7px;border:1px solid rgba(239,68,68,0.3);margin-right:4px;" onmouseover="this.style.background=\'rgba(239,68,68,0.1)\'" onmouseout="this.style.background=\'none\'">Edit</a>' +
+              '<a href="/trainer/copy-workout/' + t.id + '" style="color:rgba(255,255,255,0.5);text-decoration:none;font-size:11px;font-weight:600;padding:6px 10px;border-radius:7px;border:1px solid rgba(255,255,255,0.1);margin-right:4px;" onmouseover="this.style.color=\'#3b82f6\';this.style.borderColor=\'rgba(59,130,246,0.3)\';this.style.background=\'rgba(59,130,246,0.08)\'" onmouseout="this.style.color=\'rgba(255,255,255,0.5)\';this.style.borderColor=\'rgba(255,255,255,0.1)\';this.style.background=\'none\'">Copy</a>' +
+              '<a href="/trainer/delete-workout/' + t.id + '" onclick="return confirm(\'Delete this workout and all its exercises? This cannot be undone.\')" style="color:rgba(255,255,255,0.3);text-decoration:none;font-size:11px;font-weight:600;padding:6px 10px;border-radius:7px;border:1px solid rgba(255,255,255,0.08);" onmouseover="this.style.color=\'#ef4444\';this.style.borderColor=\'rgba(239,68,68,0.3)\';this.style.background=\'rgba(239,68,68,0.08)\'" onmouseout="this.style.color=\'rgba(255,255,255,0.3)\';this.style.borderColor=\'rgba(255,255,255,0.08)\';this.style.background=\'none\'">Delete</a>' +
             '</td>' +
           '</tr>';
         }).join('');
@@ -1314,6 +1316,52 @@ router.post('/edit-workout/:id', trainerAuth, express.urlencoded({ extended: tru
     console.error('Save edit error:', err);
     res.redirect('/trainer/edit-workout/' + templateId + '?error=Failed+to+save+changes');
   }
+});
+
+// GET /trainer/delete-workout/:id — Delete workout
+router.get('/delete-workout/:id', trainerAuth, async (req, res) => {
+  const isAdmin = req.trainer.isAdmin || false;
+  try {
+    const { rows } = await pool.query('SELECT user_id FROM templates WHERE id = $1', [Number(req.params.id)]);
+    if (rows[0] && (isAdmin || rows[0].user_id === req.trainer.userId)) {
+      await pool.query('DELETE FROM templates WHERE id = $1', [Number(req.params.id)]);
+    }
+    res.redirect('/trainer/workouts');
+  } catch (err) { console.error(err); res.redirect('/trainer/workouts'); }
+});
+
+// GET /trainer/copy-workout/:id — Duplicate workout
+router.get('/copy-workout/:id', trainerAuth, async (req, res) => {
+  const isAdmin = req.trainer.isAdmin || false;
+  const templateId = Number(req.params.id);
+  try {
+    const { rows: tmplRows } = await pool.query('SELECT * FROM templates WHERE id = $1', [templateId]);
+    if (!tmplRows[0]) return res.redirect('/trainer/workouts');
+    const tmpl = tmplRows[0];
+    if (!isAdmin && tmpl.user_id !== req.trainer.userId) return res.redirect('/trainer/workouts');
+
+    // Get max sort order
+    const { rows: sortRows } = await pool.query('SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_sort FROM templates WHERE program_id = $1', [tmpl.program_id]);
+
+    // Create copy
+    const { rows: [newTmpl] } = await pool.query(
+      'INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+      [tmpl.user_id, tmpl.program_id, tmpl.name + ' (Copy)', tmpl.description, tmpl.is_rest, sortRows[0].next_sort]
+    );
+
+    // Copy exercises
+    const { rows: exercises } = await pool.query(
+      'SELECT name, set_type, set_number, planned_reps, suggested_weight, sort_order FROM template_exercises WHERE template_id = $1 ORDER BY sort_order, set_number',
+      [templateId]
+    );
+    for (const ex of exercises) {
+      await pool.query(
+        'INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+        [newTmpl.id, ex.name, ex.set_type, ex.set_number, ex.planned_reps, ex.suggested_weight, ex.sort_order]
+      );
+    }
+    res.redirect('/trainer/workouts');
+  } catch (err) { console.error(err); res.redirect('/trainer/workouts'); }
 });
 
 export { trainerSessions };
