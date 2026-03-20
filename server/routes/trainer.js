@@ -524,90 +524,60 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
       function addExercise() {
         var idx = exerciseCount++;
         var container = document.getElementById('exercises-container');
-        var div = el('div', 'padding:20px;border-radius:16px;margin-bottom:16px;position:relative;');
-        div.className = 'glass';
-        div.id = 'exercise-' + idx;
+        var card = el('div', 'border-radius:16px;margin-bottom:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);');
+        card.className = 'glass';
+        card.id = 'exercise-' + idx;
 
-        // Header row
-        var header = el('div', 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;');
-        var lbl = el('label', 'margin:0;font-size:13px;font-weight:700;color:#fff;');
-        lbl.textContent = 'Exercise ' + (idx + 1);
-        var removeBtn = el('button', 'background:none;border:none;color:rgba(255,255,255,0.3);cursor:pointer;padding:4px 8px;border-radius:6px;font-family:inherit;font-size:12px;', { type: 'button' });
-        removeBtn.textContent = 'Remove';
-        removeBtn.onmouseover = function() { this.style.color = '#ef4444'; this.style.background = 'rgba(239,68,68,0.15)'; };
-        removeBtn.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.3)'; this.style.background = 'none'; };
-        removeBtn.onclick = function() { removeExercise(idx); };
-        header.appendChild(lbl);
-        header.appendChild(removeBtn);
-        div.appendChild(header);
-
-        // Exercise search
-        var searchWrap = el('div', 'position:relative;');
-        var searchInput = el('input', 'width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;margin-bottom:0;box-sizing:border-box;');
-        searchInput.type = 'text';
-        searchInput.id = 'ex-search-' + idx;
-        searchInput.name = 'exercises[' + idx + '][name]';
-        searchInput.placeholder = 'Search exercises...';
-        searchInput.required = true;
-        searchInput.autocomplete = 'off';
+        // Card header — exercise name + remove
+        var header = el('div', 'padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:10px;');
+        var searchWrap = el('div', 'flex:1;position:relative;');
+        var searchInput = el('input', 'width:100%;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#fff;font-size:14px;font-weight:600;font-family:inherit;outline:none;box-sizing:border-box;');
+        searchInput.type = 'text'; searchInput.id = 'ex-search-' + idx; searchInput.name = 'exercises[' + idx + '][name]';
+        searchInput.placeholder = 'Search exercises...'; searchInput.required = true; searchInput.autocomplete = 'off';
         searchInput.oninput = function() { searchExercises(idx, this.value); };
         searchInput.onfocus = function() { searchExercises(idx, this.value); };
         var resultsDiv = el('div', 'display:none;position:absolute;top:100%;left:0;right:0;z-index:50;max-height:200px;overflow-y:auto;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.12);border-radius:10px;margin-top:4px;box-shadow:0 8px 32px rgba(0,0,0,0.5);');
         resultsDiv.id = 'ex-results-' + idx;
-        searchWrap.appendChild(searchInput);
-        searchWrap.appendChild(resultsDiv);
-        div.appendChild(searchWrap);
+        searchWrap.appendChild(searchInput); searchWrap.appendChild(resultsDiv);
+        var removeBtn = el('button', 'background:none;border:none;color:rgba(255,255,255,0.25);cursor:pointer;padding:6px;border-radius:6px;display:flex;align-items:center;', { type: 'button' });
+        removeBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>';
+        removeBtn.onmouseover = function() { this.style.color = '#ef4444'; this.style.background = 'rgba(239,68,68,0.1)'; };
+        removeBtn.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.25)'; this.style.background = 'none'; };
+        removeBtn.onclick = function() { removeExercise(idx); };
+        header.appendChild(searchWrap); header.appendChild(removeBtn);
+        card.appendChild(header);
 
-        // Set type row
-        var stRow = el('div', 'margin-top:12px;margin-bottom:12px;display:flex;gap:8px;align-items:center;position:relative;');
-        var stLabel = el('label', 'margin:0;font-size:11px;color:rgba(255,255,255,0.4);white-space:nowrap;');
-        stLabel.textContent = 'Set Type';
-        var stHidden = el('input');
-        stHidden.type = 'hidden';
-        stHidden.name = 'exercises[' + idx + '][setType]';
-        stHidden.id = 'settype-val-' + idx;
-        stHidden.value = 'straight';
-        var stBtn = el('button', 'flex:1;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:13px;font-family:inherit;outline:none;cursor:pointer;text-align:left;display:flex;justify-content:space-between;align-items:center;box-sizing:border-box;', { type: 'button' });
-        stBtn.id = 'settype-btn-' + idx;
-        stBtn.onclick = function() { toggleSetTypeDD(idx); };
-        var stBtnLabel = el('span');
-        stBtnLabel.id = 'settype-label-' + idx;
-        stBtnLabel.textContent = 'Regular';
-        stBtn.appendChild(stBtnLabel);
-        stBtn.insertAdjacentHTML('beforeend', '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="opacity:0.4;flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>');
-        var stDD = el('div', 'display:none;position:absolute;top:100%;left:0;right:0;z-index:55;margin-top:4px;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.15);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.5);padding:4px;');
-        stDD.id = 'settype-dd-' + idx;
-        buildSetTypeButtons(idx).forEach(function(b) { stDD.appendChild(b); });
-        stRow.appendChild(stLabel);
-        stRow.appendChild(stHidden);
-        stRow.appendChild(stBtn);
-        stRow.appendChild(stDD);
-        div.appendChild(stRow);
+        // Hidden set type for the exercise (will be set per-set but we keep one for the form)
+        var stHidden = el('input'); stHidden.type = 'hidden'; stHidden.name = 'exercises[' + idx + '][setType]'; stHidden.id = 'settype-val-' + idx; stHidden.value = 'straight';
+        card.appendChild(stHidden);
 
         // Column headers
-        var colHeaders = el('div', 'display:flex;gap:8px;align-items:center;margin-bottom:8px;');
-        ['Set:40px', 'Reps:1', 'Weight (lbs):1', ':28px'].forEach(function(c) {
-          var parts = c.split(':');
-          var sp = el('span', 'font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);' + (parts[1] === '1' ? 'flex:1;text-align:center;' : 'width:' + parts[1] + ';'));
-          sp.textContent = parts[0];
-          colHeaders.appendChild(sp);
+        var colHeaders = el('div', 'display:flex;align-items:center;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.05);');
+        var cols = [
+          { text: 'SET', width: '36px', align: 'center' },
+          { text: 'TYPE', width: '72px', align: 'center' },
+          { text: 'WEIGHT', flex: '1', align: 'center' },
+          { text: 'REPS', flex: '1', align: 'center' },
+          { text: '', width: '28px' },
+        ];
+        cols.forEach(function(c) {
+          var sp = el('span', 'font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.3);font-weight:600;text-align:' + c.align + ';' + (c.flex ? 'flex:' + c.flex + ';' : 'width:' + c.width + ';'));
+          sp.textContent = c.text; colHeaders.appendChild(sp);
         });
-        div.appendChild(colHeaders);
+        card.appendChild(colHeaders);
 
         // Sets container
-        var setsDiv = el('div');
-        setsDiv.id = 'sets-' + idx;
-        div.appendChild(setsDiv);
+        var setsDiv = el('div', 'padding:4px 0;'); setsDiv.id = 'sets-' + idx; card.appendChild(setsDiv);
 
         // Add set button
-        var addSetBtn = el('button', 'margin-top:8px;background:none;border:1px dashed rgba(255,255,255,0.15);color:rgba(255,255,255,0.4);padding:8px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;width:100%;transition:all 0.15s;', { type: 'button' });
+        var addSetBtn = el('button', 'width:100%;padding:10px;background:none;border:none;border-top:1px solid rgba(255,255,255,0.05);color:rgba(255,255,255,0.4);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s;', { type: 'button' });
         addSetBtn.textContent = '+ Add Set';
-        addSetBtn.onmouseover = function() { this.style.borderColor = 'rgba(255,255,255,0.3)'; this.style.color = '#fff'; };
-        addSetBtn.onmouseout = function() { this.style.borderColor = 'rgba(255,255,255,0.15)'; this.style.color = 'rgba(255,255,255,0.4)'; };
+        addSetBtn.onmouseover = function() { this.style.color = '#fff'; this.style.background = 'rgba(255,255,255,0.03)'; };
+        addSetBtn.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.4)'; this.style.background = 'none'; };
         addSetBtn.onclick = function() { addSet(idx); };
-        div.appendChild(addSetBtn);
+        card.appendChild(addSetBtn);
 
-        container.appendChild(div);
+        container.appendChild(card);
         addSet(idx); addSet(idx); addSet(idx);
       }
 
@@ -706,48 +676,71 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
       // Close all dropdowns when clicking outside
       document.addEventListener('click', function(e) {
         if (!e.target.closest('[id^="ex-search-"]') && !e.target.closest('[id^="ex-results-"]')) {
-          document.querySelectorAll('[id^="ex-results-"]').forEach(d => d.style.display = 'none');
+          document.querySelectorAll('[id^="ex-results-"]').forEach(function(d) { d.style.display = 'none'; });
         }
-        if (!e.target.closest('[id^="settype-btn-"]') && !e.target.closest('[id^="settype-dd-"]')) {
-          document.querySelectorAll('[id^="settype-dd-"]').forEach(d => d.style.display = 'none');
+        if (!e.target.closest('[id^="st-btn-"]') && !e.target.closest('[id^="st-dd-"]')) {
+          document.querySelectorAll('[id^="st-dd-"]').forEach(function(d) { d.style.display = 'none'; });
         }
       });
 
       var setCounts = {};
-      var inputStyle = 'flex:1;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;text-align:center;box-sizing:border-box;';
+      var inputCSS = 'flex:1;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);color:#fff;font-size:14px;font-family:inherit;outline:none;text-align:center;box-sizing:border-box;';
+      var SET_SHORT = { warm_up: 'WU', straight: 'REG', drop: 'DS', rest_pause: 'RP', superset: 'SS', alternating: 'Alt', giant: 'Gia', pre_exhaust: 'PrEx' };
 
       function addSet(exIdx) {
         if (!setCounts[exIdx]) setCounts[exIdx] = 0;
         var setIdx = setCounts[exIdx]++;
         var setsDiv = document.getElementById('sets-' + exIdx);
-        var row = el('div', 'display:flex;gap:8px;align-items:center;margin-bottom:6px;');
+        var row = el('div', 'display:flex;align-items:center;padding:6px 16px;border-bottom:1px solid rgba(255,255,255,0.04);' + (setIdx % 2 === 0 ? 'background:rgba(255,255,255,0.02);' : ''));
         row.id = 'set-' + exIdx + '-' + setIdx;
 
-        var num = el('span', 'font-size:13px;color:rgba(255,255,255,0.5);width:40px;text-align:center;font-weight:600;');
+        // Set number
+        var num = el('span', 'width:36px;text-align:center;font-size:13px;color:rgba(255,255,255,0.4);font-weight:700;');
         num.textContent = setIdx + 1;
 
-        var repsInput = el('input', inputStyle);
-        repsInput.type = 'number';
-        repsInput.name = 'exercises[' + exIdx + '][sets][' + setIdx + '][reps]';
-        repsInput.placeholder = '10';
-        repsInput.value = '10';
+        // Set type dropdown
+        var typeWrap = el('div', 'width:72px;position:relative;');
+        var typeBtn = el('button', 'width:100%;padding:6px 4px;border-radius:6px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.6);font-size:10px;font-weight:700;font-family:inherit;cursor:pointer;text-align:center;outline:none;', { type: 'button' });
+        typeBtn.textContent = 'REG';
+        typeBtn.id = 'st-btn-' + exIdx + '-' + setIdx;
+        var typeDD = el('div', 'display:none;position:absolute;top:100%;left:0;z-index:60;margin-top:2px;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.15);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.5);padding:2px;min-width:120px;');
+        typeDD.id = 'st-dd-' + exIdx + '-' + setIdx;
+        typeBtn.onclick = function() { typeDD.style.display = typeDD.style.display === 'none' ? 'block' : 'none'; };
+        SET_TYPES.forEach(function(t) {
+          var opt = el('button', 'width:100%;text-align:left;padding:6px 10px;border:none;background:none;color:#fff;font-size:11px;cursor:pointer;font-family:inherit;border-radius:5px;', { type: 'button' });
+          opt.textContent = t.label;
+          opt.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.08)'; };
+          opt.onmouseout = function() { this.style.background = 'none'; };
+          opt.onclick = function() {
+            typeBtn.textContent = SET_SHORT[t.value] || 'REG';
+            typeBtn.style.color = t.value === 'straight' ? 'rgba(255,255,255,0.6)' : '#ef4444';
+            document.getElementById('settype-val-' + exIdx).value = t.value;
+            typeDD.style.display = 'none';
+          };
+          typeDD.appendChild(opt);
+        });
+        typeWrap.appendChild(typeBtn); typeWrap.appendChild(typeDD);
 
-        var weightInput = el('input', inputStyle);
-        weightInput.type = 'number';
-        weightInput.name = 'exercises[' + exIdx + '][sets][' + setIdx + '][weight]';
-        weightInput.placeholder = '0';
-        weightInput.value = '0';
+        // Weight input
+        var weightInput = el('input', inputCSS);
+        weightInput.type = 'number'; weightInput.name = 'exercises[' + exIdx + '][sets][' + setIdx + '][weight]';
+        weightInput.placeholder = '—'; weightInput.value = '0';
+        weightInput.onfocus = function() { if (this.value === '0') this.value = ''; };
+        weightInput.onblur = function() { if (!this.value) this.value = '0'; };
 
-        var delBtn = el('button', 'background:none;border:none;color:rgba(255,255,255,0.2);cursor:pointer;padding:2px;width:28px;display:flex;align-items:center;justify-content:center;', { type: 'button' });
+        // Reps input
+        var repsInput = el('input', inputCSS);
+        repsInput.type = 'number'; repsInput.name = 'exercises[' + exIdx + '][sets][' + setIdx + '][reps]';
+        repsInput.placeholder = '10'; repsInput.value = '10';
+
+        // Delete
+        var delBtn = el('button', 'background:none;border:none;color:rgba(255,255,255,0.15);cursor:pointer;padding:4px;width:28px;display:flex;align-items:center;justify-content:center;border-radius:4px;', { type: 'button' });
         delBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>';
-        delBtn.onmouseover = function() { this.style.color = '#ef4444'; };
-        delBtn.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.2)'; };
-        delBtn.onclick = function() { removeSet(exIdx, setIdx); };
+        delBtn.onmouseover = function() { this.style.color = '#ef4444'; this.style.background = 'rgba(239,68,68,0.1)'; };
+        delBtn.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.15)'; this.style.background = 'none'; };
+        delBtn.onclick = function() { var e = document.getElementById('set-' + exIdx + '-' + setIdx); if (e) e.remove(); };
 
-        row.appendChild(num);
-        row.appendChild(repsInput);
-        row.appendChild(weightInput);
-        row.appendChild(delBtn);
+        row.appendChild(num); row.appendChild(typeWrap); row.appendChild(weightInput); row.appendChild(repsInput); row.appendChild(delBtn);
         setsDiv.appendChild(row);
       }
 
