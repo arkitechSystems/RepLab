@@ -870,8 +870,10 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
 
       addExercise();
 
-      // Validate all exercises are from library before submit
+      // Validate and AJAX submit — stay on page after save
       document.getElementById('workout-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        var form = this;
         var cards = document.querySelectorAll('[id^="exercise-"]');
         var invalid = [];
         cards.forEach(function(card) {
@@ -883,9 +885,28 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
           }
         });
         if (invalid.length > 0) {
-          e.preventDefault();
-          alert('Please select exercises from the library or add them as custom exercises:\\n\\n' + invalid.join('\\n') + '\\n\\nClick an exercise from the dropdown or use "+ Add as custom exercise".');
+          alert('Please select exercises from the library or add them as custom exercises:\\n\\n' + invalid.join('\\n'));
+          return;
         }
+        var submitBtn = form.querySelector('[type="submit"]');
+        var origText = submitBtn.textContent;
+        submitBtn.textContent = 'Saving...';
+        submitBtn.disabled = true;
+        fetch(form.action, { method: 'POST', body: new URLSearchParams(new FormData(form)) })
+          .then(function() {
+            var existing = document.getElementById('save-msg');
+            if (existing) existing.remove();
+            var msg = document.createElement('div');
+            msg.id = 'save-msg';
+            msg.className = 'glass';
+            msg.style.cssText = 'padding:12px 16px;border-left:3px solid #22c55e;margin-bottom:20px;';
+            msg.innerHTML = '<p style="color:#4ade80;font-size:13px;">Workout saved successfully</p>';
+            form.parentNode.insertBefore(msg, form);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            setTimeout(function() { if (msg.parentNode) msg.remove(); }, 4000);
+          })
+          .catch(function() { alert('Failed to save. Please try again.'); })
+          .finally(function() { submitBtn.textContent = origText; submitBtn.disabled = false; });
       });
     </script>
   `, req.trainer));
@@ -1280,6 +1301,31 @@ router.get('/edit-workout/:id', trainerAuth, async (req, res) => {
       // Load existing exercises
       EXISTING.forEach(function(ex) { addExercise(ex); });
       if (EXISTING.length === 0) addExercise();
+
+      // AJAX form submit — stay on page after save
+      document.querySelector('form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        var form = this;
+        var submitBtn = form.querySelector('[type="submit"]');
+        var origText = submitBtn.textContent;
+        submitBtn.textContent = 'Saving...';
+        submitBtn.disabled = true;
+        fetch(form.action, { method: 'POST', body: new URLSearchParams(new FormData(form)) })
+          .then(function() {
+            var existing = document.getElementById('save-msg');
+            if (existing) existing.remove();
+            var msg = document.createElement('div');
+            msg.id = 'save-msg';
+            msg.className = 'glass';
+            msg.style.cssText = 'padding:12px 16px;border-left:3px solid #22c55e;margin-bottom:20px;';
+            msg.innerHTML = '<p style="color:#4ade80;font-size:13px;">Changes saved successfully</p>';
+            form.parentNode.insertBefore(msg, form);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            setTimeout(function() { if (msg.parentNode) msg.remove(); }, 4000);
+          })
+          .catch(function() { alert('Failed to save. Please try again.'); })
+          .finally(function() { submitBtn.textContent = origText; submitBtn.disabled = false; });
+      });
     </script>
     `, req.trainer));
   } catch (err) {
