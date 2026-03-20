@@ -190,6 +190,14 @@ router.post('/login', express.urlencoded({ extended: false }), async (req, res) 
       return res.redirect('/trainer/login?error=Invalid+credentials');
     }
 
+    // Log login
+    try {
+      await pool.query(
+        'INSERT INTO trainer_login_history (user_id, email, ip, user_agent) VALUES ($1, $2, $3, $4)',
+        [user.id, user.email || user.phone, req.ip, req.headers['user-agent']?.substring(0, 200)]
+      );
+    } catch {}
+
     const token = crypto.randomBytes(32).toString('hex');
     trainerSessions.set(token, {
       userId: user.id,

@@ -24,6 +24,8 @@ import AIWorkoutGenerator from './pages/AIWorkoutGenerator';
 import ExerciseLibrary from './pages/ExerciseLibrary';
 import Test from './pages/Test';
 import ExerciseDetail from './pages/ExerciseDetail';
+import CardsTest from './pages/CardsTest';
+import WorkoutSessionTest from './pages/WorkoutSessionTest';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -93,6 +95,8 @@ export default function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/upgrade" element={<Upgrade />} />
         <Route path="/test" element={<Test />} />
+        <Route path="/test/cards" element={<CardsTest />} />
+        <Route path="/test/workout-session" element={<WorkoutSessionTest />} />
       </Route>
 
       <Route path="*" element={<CatchAllRedirect />} />

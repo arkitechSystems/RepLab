@@ -4,18 +4,59 @@ export default function Test() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-black px-4 pt-6 pb-24">
-      <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-wf-red text-sm font-medium mb-6 active:opacity-70">
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-        </svg>
-        Back
-      </button>
+    <div className="min-h-screen relative">
+      {/* Background video */}
+      <video
+        ref={(el) => {
+          if (!el) return;
+          el.currentTime = 7;
+          el.ontimeupdate = () => {
+            if (el.duration && el.currentTime >= el.duration - 6) {
+              el.currentTime = 7;
+            }
+          };
+          el.play().catch(() => {});
+        }}
+        className="fixed inset-0 w-full h-full object-cover z-0 opacity-50"
+        autoPlay
+        loop
+        muted
+        playsInline
+        webkit-playsinline=""
+        preload="auto"
+        src="/Gym cinematic promotion video.mp4"
+      />
+      <div className="fixed inset-0 z-0 bg-gradient-to-b from-black/40 via-black/60 to-black/80" />
 
-      <h1 className="text-2xl font-black text-white mb-6">Test Page</h1>
+      {/* Page content */}
+      <div className="relative z-10 px-4 pt-6 pb-24">
+        <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-wf-red text-sm font-medium mb-6 active:opacity-70">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+          </svg>
+          Back
+        </button>
 
-      <div className="space-y-4">
-        <p className="text-wf-gray-400 text-sm">This is a blank test page for prototyping.</p>
+        <h1 className="text-2xl font-black text-white mb-6">Test Page</h1>
+
+        <div className="space-y-4">
+          <div
+            onClick={() => navigate('/test/cards')}
+            className="glass-card rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
+          >
+            <div className="p-5">
+              <h2 className="text-xl font-black text-white tracking-tight">Cards. Test.</h2>
+            </div>
+          </div>
+          <div
+            onClick={() => navigate('/test/workout-session')}
+            className="glass-card rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
+          >
+            <div className="p-5">
+              <h2 className="text-xl font-black text-white tracking-tight">Workout Session. Test.</h2>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

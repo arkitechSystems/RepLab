@@ -44,6 +44,15 @@ export default async function initDb() {
 
   await pool.query(`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS workout_data JSONB`);
 
+  await pool.query(`CREATE TABLE IF NOT EXISTS trainer_login_history (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    email TEXT,
+    ip TEXT,
+    user_agent TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  )`);
+
   await pool.query(`CREATE TABLE IF NOT EXISTS email_templates (
     id SERIAL PRIMARY KEY,
     name TEXT UNIQUE NOT NULL,

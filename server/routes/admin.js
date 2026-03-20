@@ -512,6 +512,7 @@ function adminPage(title, body) {
     <a href="/admin/revenue"${title === 'Revenue' ? ' class="active"' : ''}>Revenue</a>
     <a href="/admin/subscriptions"${title === 'Subscriptions' ? ' class="active"' : ''}>Subscriptions</a>
     <a href="/admin/workout-manager"${title === 'Workout Manager' || title === 'Create a Workout' || title === 'View Current Workouts' ? ' class="active"' : ''}>Workout Manager</a>
+    <a href="/admin/trainer-logins"${title === 'Trainer Login History' ? ' class="active"' : ''}>Trainer Logins</a>
   </div>
 </div>
 <script>
@@ -782,6 +783,11 @@ router.get('/', adminAuth, async (req, res) => {
       <div class="card-icon">🏋️‍♂️</div>
       <div class="card-title">Workout Manager</div>
       <div class="card-desc">Create and manage workouts in the browse library. Workouts show up for all users.</div>
+    </a>
+    <a class="card glass" href="/admin/trainer-logins">
+      <div class="card-icon">🔐</div>
+      <div class="card-title">Trainer Login History</div>
+      <div class="card-desc">View login activity on the trainer dashboard.</div>
     </a>
   </div>
 
@@ -3194,6 +3200,53 @@ router.get('/workout-manager/move/:id', adminAuth, async (req, res) => {
 
     res.redirect('/admin/workout-manager/program/' + programId);
   } catch (err) { console.error(err); res.redirect('/admin/workout-manager/program/' + programId); }
+});
+
+// GET /admin/trainer-logins — Trainer login history
+router.get('/trainer-logins', adminAuth, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT tlh.id, tlh.email, tlh.ip, tlh.user_agent, tlh.created_at,
+              u.first_name, u.last_name, u.username
+       FROM trainer_login_history tlh
+       LEFT JOIN users u ON tlh.user_id = u.id
+       ORDER BY tlh.created_at DESC
+       LIMIT 100`
+    );
+
+    const tableRows = rows.map((r, i) => {
+      const name = r.first_name && r.last_name
+        ? r.first_name + ' ' + r.last_name
+        : r.username || r.email || 'Unknown';
+      const date = r.created_at
+        ? new Date(r.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Chicago' })
+        : '—';
+      const rowBg = i % 2 === 0 ? 'background:rgba(255,255,255,0.02);' : '';
+      return '<tr style="' + rowBg + '">' +
+        '<td style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);font-weight:600;color:#fff;">' + esc(name) + '</td>' +
+        '<td style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);font-size:13px;">' + esc(r.email || '—') + '</td>' +
+        '<td style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);font-size:12px;font-family:monospace;">' + esc(r.ip || '—') + '</td>' +
+        '<td style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);font-size:13px;">' + date + '</td>' +
+      '</tr>';
+    }).join('');
+
+    const thStyle = 'padding:12px 16px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);font-weight:700;background:rgba(255,255,255,0.04);border-bottom:2px solid rgba(255,255,255,0.08);';
+
+    res.send(adminPage('Trainer Login History', `
+      <div class="breadcrumb"><a href="/admin">Dashboard</a> / Trainer Login History</div>
+      <div class="header">
+        <h1>Trainer Login History</h1>
+        <p>${rows.length} login${rows.length !== 1 ? 's' : ''} recorded &middot; Most recent 100</p>
+      </div>
+      ${rows.length === 0
+        ? '<div class="glass" style="padding:40px;text-align:center;border-radius:16px;"><p style="color:rgba(255,255,255,0.4);">No trainer logins recorded yet.</p></div>'
+        : '<div class="glass" style="border-radius:16px;overflow:hidden;"><div class="table-wrap"><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="' + thStyle + '">User</th><th style="' + thStyle + '">Email</th><th style="' + thStyle + '">IP</th><th style="' + thStyle + '">Date</th></tr></thead><tbody>' + tableRows + '</tbody></table></div></div>'
+      }
+    `));
+  } catch (err) {
+    console.error(err);
+    res.status(500).send(adminPage('Error', '<p style="color:#f87171;">Failed to load trainer login history.</p>'));
+  }
 });
 
 // GET /admin/custom-exercises — User-created exercises
