@@ -28,6 +28,55 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 
+// POST /sessions/initialize — Create initial session copy from template (no entries yet)
+router.post('/initialize', authMiddleware, async (req, res) => {
+  try {
+    const { templateId, date } = req.body;
+    if (!templateId || !date) return res.status(400).json({ error: 'templateId and date required' });
+
+    // Check if session already exists
+    const existing = await db.getSessionByTemplateAndDate(req.userId, Number(templateId), date);
+    if (existing) return res.json(existing);
+
+    // Load template to copy
+    const templates = await db.getTemplates(req.userId);
+    const tmpl = templates.find(t => t.id === Number(templateId));
+    if (!tmpl || tmpl.isRest) return res.status(404).json({ error: 'Template not found' });
+
+    // Build workout_data — the independent copy
+    const workoutData = {
+      name: tmpl.name,
+      exercises: tmpl.exercises.map(ex => ({
+        name: ex.name,
+        setType: ex.setType || 'straight',
+        sets: ex.sets.map(s => ({
+          setNumber: s.setNumber,
+          plannedReps: s.plannedReps ?? 10,
+          suggestedWeight: s.suggestedWeight ?? 0,
+        })),
+      })),
+    };
+
+    // Build blank entries (weight: 0, reps: 0) so the session exists in DB
+    const entries = [];
+    for (const ex of tmpl.exercises) {
+      for (const s of ex.sets) {
+        entries.push({ exerciseName: ex.name, setNumber: s.setNumber, weight: 0, reps: 0 });
+      }
+    }
+
+    // Create the session
+    const result = await db.createSession(req.userId, Number(templateId), date, entries, {}, workoutData);
+
+    // Return the full session
+    const session = await db.getSessionByTemplateAndDate(req.userId, Number(templateId), date);
+    res.status(201).json(session);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.get('/by-template/:templateId/:date', authMiddleware, async (req, res) => {
   try {
     const session = await db.getSessionByTemplateAndDate(

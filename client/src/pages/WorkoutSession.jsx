@@ -118,14 +118,12 @@ export default function WorkoutSession() {
   }
 
   useEffect(() => {
-    Promise.all([
-      api('/templates'),
-      api(`/pbs?templateId=${templateId}`),
-      api(`/sessions/by-template/${templateId}/${date}`),
-    ])
-      .then(([templates, pbList, existingSession]) => {
-        const tmpl = templates.find((t) => t.id === Number(templateId));
-
+    // Step 1: Ensure a session copy exists (creates one from template if needed)
+    // Step 2: Load everything from the session — never from the template directly
+    async function loadSession() {
+      try {
+        // Fetch PBs in parallel
+        const pbList = await api(`/pbs?templateId=${templateId}`);
         const pbMap = {};
         for (const pb of pbList) {
           if (!pbMap[pb.exerciseName]) pbMap[pb.exerciseName] = {};
@@ -133,113 +131,99 @@ export default function WorkoutSession() {
         }
         setPbs(pbMap);
 
-        if (tmpl && tmpl.isRest) {
-          setTemplate(tmpl);
-          return;
+        // Check for existing session
+        let session = await api(`/sessions/by-template/${templateId}/${date}`);
+
+        // If no session exists, initialize one from the template (creates independent copy)
+        if (!session || !session.workoutData) {
+          session = await api('/sessions/initialize', {
+            method: 'POST',
+            body: JSON.stringify({ templateId: Number(templateId), date }),
+          });
         }
 
-        // Priority 1: Use saved workout_data (fully independent copy of the workout)
-        if (existingSession?.workoutData?.exercises) {
-          const wd = existingSession.workoutData;
-          const sessionTemplate = { ...tmpl, name: wd.name || tmpl?.name || 'Workout', exercises: wd.exercises };
-          setTemplate(sessionTemplate);
-
-          // Restore entries from session_entries
-          const saved = {};
-          const restoredCompleted = new Set();
-          const savedByExercise = new Map();
-          for (const entry of (existingSession.entries || [])) {
-            if (!savedByExercise.has(entry.exerciseName)) savedByExercise.set(entry.exerciseName, []);
-            savedByExercise.get(entry.exerciseName).push(entry);
-          }
-
-          for (const ex of wd.exercises) {
-            const savedSets = savedByExercise.get(ex.name);
-            if (savedSets) {
-              savedSets.sort((a, b) => a.setNumber - b.setNumber);
-              saved[ex.name] = savedSets.map((s, i) => {
-                if (s.weight > 0 || s.reps > 0) restoredCompleted.add(`${ex.name}-${i}`);
-                return { weight: s.weight || '', reps: s.reps || '' };
-              });
-            } else {
-              saved[ex.name] = ex.sets.map((s) => ({
+        // If still no workout data (shouldn't happen, but safety net)
+        if (!session?.workoutData?.exercises) {
+          // Fallback: load template directly (legacy behavior)
+          const templates = await api('/templates');
+          const tmpl = templates.find((t) => t.id === Number(templateId));
+          if (tmpl) {
+            setTemplate(tmpl);
+            if (tmpl.isRest) return;
+            const initial = {};
+            for (const ex of tmpl.exercises) {
+              initial[ex.name] = ex.sets.map((s) => ({
                 weight: s.suggestedWeight || '',
                 reps: '',
               }));
             }
+            setEntries(initial);
           }
-
-          setEntries(saved);
-          setCompletedSets(restoredCompleted);
-          if (existingSession.notes) setNotes(existingSession.notes);
-          if (existingSession.completed) setIsCompleted(true);
-          setSaved(true);
-          setTimeout(() => setSaved(false), 1500);
           return;
         }
 
-        // Priority 2: Legacy session with entries but no workout_data — rebuild from entries
-        if (existingSession?.entries?.length > 0) {
-          const saved = {};
-          const restoredCompleted = new Set();
-          const savedExerciseOrder = [];
-          const savedByExercise = new Map();
-          for (const entry of existingSession.entries) {
-            if (!savedByExercise.has(entry.exerciseName)) {
-              savedByExercise.set(entry.exerciseName, []);
-              savedExerciseOrder.push(entry.exerciseName);
-            }
-            savedByExercise.get(entry.exerciseName).push(entry);
-          }
+        // Load from the session's independent workout_data copy
+        const wd = session.workoutData;
+        const sessionTemplate = {
+          id: Number(templateId),
+          name: wd.name || 'Workout',
+          isRest: false,
+          exercises: wd.exercises,
+        };
+        setTemplate(sessionTemplate);
 
-          const restoredExercises = savedExerciseOrder.map((exName) => {
-            const savedSets = savedByExercise.get(exName);
+        // Restore entries from session_entries
+        const saved = {};
+        const restoredCompleted = new Set();
+        const savedByExercise = new Map();
+        for (const entry of (session.entries || [])) {
+          if (!savedByExercise.has(entry.exerciseName)) savedByExercise.set(entry.exerciseName, []);
+          savedByExercise.get(entry.exerciseName).push(entry);
+        }
+
+        for (const ex of wd.exercises) {
+          const savedSets = savedByExercise.get(ex.name);
+          if (savedSets) {
             savedSets.sort((a, b) => a.setNumber - b.setNumber);
-            const tmplEx = tmpl?.exercises?.find((e) => e.name === exName);
-            saved[exName] = savedSets.map((s, i) => {
-              if (s.weight > 0 || s.reps > 0) restoredCompleted.add(`${exName}-${i}`);
+            saved[ex.name] = savedSets.map((s, i) => {
+              if (s.weight > 0 || s.reps > 0) restoredCompleted.add(`${ex.name}-${i}`);
               return { weight: s.weight || '', reps: s.reps || '' };
             });
-            return {
-              name: exName,
-              setType: tmplEx?.setType || 'straight',
-              sets: savedSets.map((s, i) => ({
-                setNumber: s.setNumber,
-                plannedReps: tmplEx?.sets?.[i]?.plannedReps ?? 10,
-                suggestedWeight: tmplEx?.sets?.[i]?.suggestedWeight ?? 0,
-              })),
-            };
-          });
-
-          setTemplate({ ...(tmpl || {}), name: tmpl?.name || 'Workout', exercises: restoredExercises });
-          setEntries(saved);
-          setCompletedSets(restoredCompleted);
-          if (existingSession.notes) setNotes(existingSession.notes);
-          if (existingSession.completed) setIsCompleted(true);
-          setSaved(true);
-          setTimeout(() => setSaved(false), 1500);
-          return;
-        }
-
-        // Priority 3: Fresh workout — copy template as initial state
-        if (tmpl) {
-          setTemplate(tmpl);
-          const initial = {};
-          for (const ex of tmpl.exercises) {
-            initial[ex.name] = ex.sets.map((s) => ({
+          } else {
+            saved[ex.name] = ex.sets.map((s) => ({
               weight: s.suggestedWeight || '',
               reps: '',
             }));
           }
-          setEntries(initial);
         }
-      })
-      .then(() => {
-        // Fetch exercise history for smart weight suggestions (non-blocking)
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+
+        setEntries(saved);
+        setCompletedSets(restoredCompleted);
+        if (session.notes) setNotes(session.notes);
+        if (session.completed) setIsCompleted(true);
+        if (session.entries?.some(e => e.weight > 0 || e.reps > 0)) {
+          setSaved(true);
+          setTimeout(() => setSaved(false), 1500);
+        }
+      } catch (err) {
+        console.error('Failed to load session:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadSession();
   }, [templateId, date]);
+
+  // Keep the old useEffect structure reference for the rest of the file
+  // (exercise history fetch is handled separately below)
+  const _loadComplete = !loading;
+  void(_loadComplete); // suppress unused warning
+
+  /* REMOVED: old template-based loading logic. Sessions now always load from
+     their own workout_data copy, created via /sessions/initialize on first access.
+     Templates are never consulted after the initial copy. */
+
 
   // Fetch exercise history for smart weight suggestions after template loads
   useEffect(() => {
