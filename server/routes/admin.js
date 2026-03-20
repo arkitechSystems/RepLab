@@ -2888,12 +2888,22 @@ router.get('/workout-manager/edit/:id', adminAuth, async (req, res) => {
           </div>
         </div>
         <div id="exercises-container"></div>
-        <button type="button" onclick="addExercise()" class="btn-ghost" style="width:100%;text-align:center;padding:14px;margin-bottom:20px;">+ Add Exercise</button>
+        <div style="display:flex;gap:8px;margin-bottom:20px;">
+          <button type="button" onclick="addExercise()" class="btn-ghost" style="flex:1;text-align:center;padding:14px;margin:0;">+ Add Exercise</button>
+          <button type="button" onclick="addGroupTitle()" class="btn-ghost" style="flex:1;text-align:center;padding:14px;margin:0;border-color:rgba(239,68,68,0.2);color:rgba(239,68,68,0.7);">+ Group Title</button>
+        </div>
         <div style="display:flex;gap:8px;">
           <button type="submit" class="btn" style="flex:1;padding:14px;font-size:15px;margin:0;">Save Changes</button>
           <a href="/admin/workout-manager/workouts" class="btn-ghost" style="flex:none;padding:14px 24px;margin:0;text-align:center;">Cancel</a>
         </div>
       </form>
+      <!-- Set Type Picker Modal for Edit page -->
+      <div id="settype-modal" style="display:none;position:fixed;inset:0;z-index:9998;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);" onclick="if(event.target===this)this.style.display='none'">
+        <div style="padding:16px;max-width:300px;width:85%;border-radius:16px;background:rgba(25,25,25,0.98);border:1px solid rgba(255,255,255,0.1);box-shadow:0 20px 60px rgba(0,0,0,0.8);">
+          <h3 style="font-size:14px;font-weight:700;color:#fff;margin-bottom:12px;">Set Type</h3>
+          <div id="settype-options"></div>
+        </div>
+      </div>
       <script>
         var API = '${apiBase}';
         var EXISTING = ${JSON.stringify(exerciseList)};
@@ -2903,6 +2913,20 @@ router.get('/workout-manager/edit/:id', adminAuth, async (req, res) => {
           { value: 'giant', label: 'Giant Set' }, { value: 'pre_exhaust', label: 'Pre-Exhaust' },
         ];
         var SET_SHORT = { warm_up: 'WU', straight: 'REG', drop: 'DS', rest_pause: 'RP', superset: 'SS', alternating: 'Alt', giant: 'Gia', pre_exhaust: 'PrEx' };
+        var activeSetTypeBtn = null, activeSetTypeExIdx = null;
+        function openSetTypePicker(exIdx, btnEl) {
+          activeSetTypeBtn = btnEl; activeSetTypeExIdx = exIdx;
+          var opts = document.getElementById('settype-options'); opts.innerHTML = '';
+          SET_TYPES.forEach(function(t) {
+            var b = document.createElement('button'); b.type = 'button'; b.textContent = t.label;
+            b.style.cssText = 'width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#fff;font-size:14px;cursor:pointer;font-family:inherit;border-radius:8px;border-bottom:1px solid rgba(255,255,255,0.05);';
+            b.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.08)'; };
+            b.onmouseout = function() { this.style.background = 'none'; };
+            b.onclick = function() { activeSetTypeBtn.textContent = SET_SHORT[t.value] || 'REG'; activeSetTypeBtn.style.color = t.value === 'straight' ? 'rgba(255,255,255,0.6)' : '#ef4444'; document.getElementById('settype-val-' + activeSetTypeExIdx).value = t.value; document.getElementById('settype-modal').style.display = 'none'; };
+            opts.appendChild(b);
+          });
+          document.getElementById('settype-modal').style.display = 'flex';
+        }
         function getSetTypeLabel(v) { var t = SET_TYPES.find(function(x) { return x.value === v; }); return t ? t.label : 'Regular'; }
         function mk(tag, css, attrs) { var e = document.createElement(tag); if (css) e.style.cssText = css; if (attrs) Object.keys(attrs).forEach(function(k) { e[k] = attrs[k]; }); return e; }
         var exerciseCount = 0, searchTimeout = null, activeSearchIdx = null, setCounts = {};
@@ -2939,27 +2963,47 @@ router.get('/workout-manager/edit/:id', adminAuth, async (req, res) => {
           var asb = mk('button', 'width:100%;padding:8px;background:none;border:none;border-top:1px solid rgba(255,255,255,0.04);color:rgba(255,255,255,0.3);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;', { type: 'button' });
           asb.textContent = '+ Add Set'; asb.onmouseover = function() { this.style.color = '#fff'; }; asb.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.3)'; };
           asb.onclick = function() { addSet(idx); }; card.appendChild(asb);
+          // Notes section
+          var nw = mk('div', 'padding:10px 16px;border-top:1px solid rgba(255,255,255,0.05);');
+          var nl = mk('div', 'display:flex;align-items:center;gap:4px;margin-bottom:6px;');
+          nl.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/></svg>';
+          var nt = mk('span', 'font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:1px;font-weight:600;'); nt.textContent = 'Notes'; nl.appendChild(nt);
+          var ni = mk('textarea', 'width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:rgba(255,255,255,0.5);font-size:12px;font-family:inherit;outline:none;resize:vertical;box-sizing:border-box;min-height:36px;');
+          ni.name = 'exercises[' + idx + '][notes]'; ni.placeholder = 'Add notes for this exercise...'; ni.rows = 2;
+          nw.appendChild(nl); nw.appendChild(ni); card.appendChild(nw);
           container.appendChild(card);
           if (prefill && prefill.sets.length > 0) prefill.sets.forEach(function(s) { addSet(idx, s.reps, s.weight); });
           else { addSet(idx); addSet(idx); addSet(idx); }
+        }
+        var groupCount = 0;
+        function addGroupTitle() {
+          var gIdx = groupCount++;
+          var container = document.getElementById('exercises-container');
+          var card = mk('div', 'border-radius:12px;margin-bottom:16px;border:1px solid rgba(239,68,68,0.15);background:rgba(239,68,68,0.03);padding:16px;');
+          card.id = 'group-' + gIdx;
+          var hdr = mk('div', 'display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;');
+          var badge = mk('span', 'font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:#ef4444;font-weight:700;'); badge.textContent = 'GROUP TITLE';
+          var rmBtn = mk('button', 'background:none;border:none;color:rgba(255,255,255,0.25);cursor:pointer;padding:4px;border-radius:6px;display:flex;align-items:center;', { type: 'button' });
+          rmBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>';
+          rmBtn.onmouseover = function() { this.style.color = '#ef4444'; }; rmBtn.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.25)'; };
+          rmBtn.onclick = function() { var e = document.getElementById('group-' + gIdx); if (e) e.remove(); };
+          hdr.appendChild(badge); hdr.appendChild(rmBtn); card.appendChild(hdr);
+          var ti = mk('input', 'width:100%;padding:10px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#fff;font-size:15px;font-weight:700;font-family:inherit;outline:none;box-sizing:border-box;margin-bottom:8px;');
+          ti.type = 'text'; ti.name = 'groups[' + gIdx + '][title]'; ti.placeholder = 'e.g. Warm Up, Superset, Circuit...'; ti.required = true;
+          var di = mk('input', 'width:100%;padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:rgba(255,255,255,0.6);font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;');
+          di.type = 'text'; di.name = 'groups[' + gIdx + '][description]'; di.placeholder = 'Description (optional)';
+          card.appendChild(ti); card.appendChild(di); container.appendChild(card); ti.focus();
         }
         function addSet(exIdx, pr, pw) {
           if (!setCounts[exIdx]) setCounts[exIdx] = 0; var si = setCounts[exIdx]++;
           var sd = document.getElementById('sets-' + exIdx); var r = mk('div', 'display:flex;align-items:center;padding:6px 16px;border-bottom:1px solid rgba(255,255,255,0.03);' + (si % 2 === 0 ? 'background:rgba(255,255,255,0.015);' : ''));
           r.id = 'set-' + exIdx + '-' + si;
           var n = mk('span', 'width:36px;text-align:center;font-size:13px;color:rgba(255,255,255,0.4);font-weight:700;'); n.textContent = si + 1;
-          var tw = mk('div', 'width:72px;position:relative;');
+          var tw = mk('div', 'width:72px;');
           var tb = mk('button', 'width:100%;padding:5px 4px;border-radius:6px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.6);font-size:10px;font-weight:700;font-family:inherit;cursor:pointer;text-align:center;outline:none;', { type: 'button' });
-          tb.textContent = 'REG'; tb.id = 'st-btn-' + exIdx + '-' + si;
-          var tdd = mk('div', 'display:none;position:absolute;top:100%;left:0;z-index:60;margin-top:2px;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.15);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.5);padding:2px;min-width:120px;');
-          tdd.id = 'st-dd-' + exIdx + '-' + si;
-          tb.onclick = function() { tdd.style.display = tdd.style.display === 'none' ? 'block' : 'none'; };
-          SET_TYPES.forEach(function(t) {
-            var o = mk('button', 'width:100%;text-align:left;padding:6px 10px;border:none;background:none;color:#fff;font-size:11px;cursor:pointer;font-family:inherit;border-radius:5px;', { type: 'button' });
-            o.textContent = t.label; o.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.08)'; }; o.onmouseout = function() { this.style.background = 'none'; };
-            o.onclick = function() { tb.textContent = SET_SHORT[t.value] || 'REG'; tb.style.color = t.value === 'straight' ? 'rgba(255,255,255,0.6)' : '#ef4444'; document.getElementById('settype-val-' + exIdx).value = t.value; tdd.style.display = 'none'; };
-            tdd.appendChild(o);
-          }); tw.appendChild(tb); tw.appendChild(tdd);
+          tb.textContent = 'REG';
+          tb.onclick = function() { openSetTypePicker(exIdx, tb); };
+          tw.appendChild(tb);
           var wi = mk('input', inputCSS); wi.type = 'number'; wi.name = 'exercises[' + exIdx + '][sets][' + si + '][weight]'; wi.placeholder = '0'; wi.value = pw !== undefined ? pw : '0';
           var ri = mk('input', inputCSS); ri.type = 'number'; ri.name = 'exercises[' + exIdx + '][sets][' + si + '][reps]'; ri.placeholder = '10'; ri.value = pr !== undefined ? pr : '10';
           var db = mk('button', 'background:none;border:none;color:rgba(255,255,255,0.15);cursor:pointer;padding:4px;width:28px;display:flex;align-items:center;justify-content:center;border-radius:4px;', { type: 'button' });
