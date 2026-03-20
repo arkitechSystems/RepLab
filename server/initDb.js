@@ -14,6 +14,7 @@ export default async function initDb() {
 
   // Migrations
   await pool.query(`ALTER TABLE programs ADD COLUMN IF NOT EXISTS description TEXT DEFAULT ''`);
+  await pool.query(`ALTER TABLE programs ADD COLUMN IF NOT EXISTS sort_order INT DEFAULT 0`);
   await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS set_type TEXT DEFAULT 'straight'`);
   await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS rep_range TEXT DEFAULT ''`);
   await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS exercise_description TEXT DEFAULT ''`);

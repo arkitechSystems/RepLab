@@ -2705,37 +2705,52 @@ router.post('/workout-manager/create', adminAuth, express.urlencoded({ extended:
 router.get('/workout-manager/workouts', adminAuth, async (req, res) => {
   try {
     const { rows: programs } = await pool.query(
-      `SELECT p.id, p.name, p.description,
+      `SELECT p.id, p.name, p.description, p.sort_order,
         (SELECT COUNT(*) FROM templates t WHERE t.program_id = p.id AND t.is_rest = FALSE) AS workout_count,
         (SELECT COUNT(*) FROM templates t WHERE t.program_id = p.id) AS total_days
-       FROM programs p WHERE p.user_id IS NULL ORDER BY p.name`
+       FROM programs p WHERE p.user_id IS NULL ORDER BY p.sort_order, p.id`
     );
 
-    let cards = '';
+    const btnStyle = 'display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:6px;background:rgba(255,255,255,0.06);border:none;cursor:pointer;color:rgba(255,255,255,0.4);text-decoration:none;transition:all 0.15s;';
+    let content = '';
     if (programs.length === 0) {
-      cards = '<div class="glass" style="padding:40px;text-align:center;"><p style="color:rgba(255,255,255,0.4);">No programs yet. <a href="/admin/workout-manager/create" style="color:#ef4444;text-decoration:none;font-weight:600;">Create your first workout</a></p></div>';
+      content = '<div class="glass" style="padding:40px;text-align:center;"><p style="color:rgba(255,255,255,0.4);">No programs yet. <a href="/admin/workout-manager/create" style="color:#ef4444;text-decoration:none;font-weight:600;">Create your first workout</a></p></div>';
     } else {
-      cards = '<div class="card-grid">' + programs.map(p =>
-        '<a class="card glass" href="/admin/workout-manager/program/' + p.id + '" style="text-decoration:none;">' +
-          '<div class="card-title" style="margin-bottom:8px;">' + esc(p.name) + '</div>' +
-          '<div style="display:flex;gap:8px;margin-bottom:10px;">' +
+      const thStyle = 'padding:12px 20px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);font-weight:700;background:rgba(255,255,255,0.04);border-bottom:2px solid rgba(255,255,255,0.08);';
+      const rows = programs.map((p, i) => {
+        const rowBg = i % 2 === 0 ? 'background:rgba(255,255,255,0.02);' : '';
+        const upLink = i > 0 ? '/admin/workout-manager/move-program/' + p.id + '?dir=up' : '';
+        const downLink = i < programs.length - 1 ? '/admin/workout-manager/move-program/' + p.id + '?dir=down' : '';
+        return '<tr style="' + rowBg + '">' +
+          '<td style="padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.06);text-align:center;white-space:nowrap;">' +
+            (upLink ? '<a href="' + upLink + '" style="' + btnStyle + '" onmouseover="this.style.color=\'#fff\';this.style.background=\'rgba(255,255,255,0.12)\'" onmouseout="this.style.color=\'rgba(255,255,255,0.4)\';this.style.background=\'rgba(255,255,255,0.06)\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5"/></svg></a>' : '<span style="' + btnStyle + 'opacity:0.2;cursor:default;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5"/></svg></span>') +
+            (downLink ? '<a href="' + downLink + '" style="' + btnStyle + 'margin-left:2px;" onmouseover="this.style.color=\'#fff\';this.style.background=\'rgba(255,255,255,0.12)\'" onmouseout="this.style.color=\'rgba(255,255,255,0.4)\';this.style.background=\'rgba(255,255,255,0.06)\'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg></a>' : '<span style="' + btnStyle + 'margin-left:2px;opacity:0.2;cursor:default;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg></span>') +
+          '</td>' +
+          '<td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);"><a href="/admin/workout-manager/program/' + p.id + '" style="color:#fff;text-decoration:none;font-weight:700;font-size:15px;" onmouseover="this.style.color=\'#ef4444\'" onmouseout="this.style.color=\'#fff\'">' + esc(p.name) + '</a></td>' +
+          '<td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);font-size:13px;">' + (p.description ? esc(p.description) : '<span style="color:rgba(255,255,255,0.2);">—</span>') + '</td>' +
+          '<td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);">' +
             '<span style="padding:4px 10px;border-radius:6px;background:rgba(239,68,68,0.1);font-size:11px;color:#ef4444;font-weight:700;">' + p.workout_count + ' workouts</span>' +
-            '<span style="padding:4px 10px;border-radius:6px;background:rgba(255,255,255,0.06);font-size:11px;color:rgba(255,255,255,0.5);font-weight:600;">' + p.total_days + ' days</span>' +
-          '</div>' +
-          (p.description ? '<div class="card-desc">' + esc(p.description) + '</div>' : '<div class="card-desc" style="color:rgba(255,255,255,0.2);">No description</div>') +
-        '</a>'
-      ).join('') + '</div>';
+            '<span style="padding:4px 10px;border-radius:6px;background:rgba(255,255,255,0.06);font-size:11px;color:rgba(255,255,255,0.5);font-weight:600;margin-left:6px;">' + p.total_days + ' days</span>' +
+          '</td>' +
+        '</tr>';
+      }).join('');
+      content = '<div class="glass" style="border-radius:16px;overflow:hidden;"><div class="table-wrap"><table style="width:100%;border-collapse:collapse;"><thead><tr>' +
+        '<th style="' + thStyle + 'width:70px;">Order</th>' +
+        '<th style="' + thStyle + '">Program</th>' +
+        '<th style="' + thStyle + '">Description</th>' +
+        '<th style="' + thStyle + '">Workouts</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
     }
 
     res.send(adminPage('View Current Workouts', `
       <div class="breadcrumb"><a href="/admin">Dashboard</a> / <a href="/admin/workout-manager">Workout Manager</a> / Programs</div>
       <div class="header">
         <h1>Programs</h1>
-        <p>${programs.length} program${programs.length !== 1 ? 's' : ''} in the Browse Workout Library</p>
+        <p>${programs.length} program${programs.length !== 1 ? 's' : ''} in the Browse Workout Library &middot; Drag to reorder</p>
       </div>
       <a href="/admin/workout-manager/create" class="btn" style="margin-bottom:24px;">+ Create New Workout</a>
       ${req.query.msg ? '<div class="glass" style="padding:12px 16px;border-left:3px solid #22c55e;margin-bottom:20px;"><p style="color:#4ade80;font-size:13px;">' + esc(req.query.msg) + '</p></div>' : ''}
-      ${cards}
+      ${content}
     `));
   } catch (err) { console.error(err); res.status(500).send(adminPage('Error', '<p style="color:#f87171;">Failed to load programs.</p>')); }
 });
@@ -3008,6 +3023,26 @@ router.get('/workout-manager/copy/:id', adminAuth, async (req, res) => {
     }
     const redirectTo = programId ? '/admin/workout-manager/program/' + programId + '?msg=Workout+copied' : '/admin/workout-manager/workouts?msg=Workout+copied';
     res.redirect(redirectTo);
+  } catch (err) { console.error(err); res.redirect('/admin/workout-manager/workouts'); }
+});
+
+// GET /admin/workout-manager/move-program/:id — Move program up or down
+router.get('/workout-manager/move-program/:id', adminAuth, async (req, res) => {
+  const programId = Number(req.params.id);
+  const dir = req.query.dir;
+  try {
+    const { rows: programs } = await pool.query(
+      'SELECT id, sort_order FROM programs WHERE user_id IS NULL ORDER BY sort_order, id'
+    );
+    const idx = programs.findIndex(p => p.id === programId);
+    if (idx === -1) return res.redirect('/admin/workout-manager/workouts');
+    const swapIdx = dir === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= programs.length) return res.redirect('/admin/workout-manager/workouts');
+    const a = programs[idx];
+    const b = programs[swapIdx];
+    await pool.query('UPDATE programs SET sort_order = $1 WHERE id = $2', [b.sort_order, a.id]);
+    await pool.query('UPDATE programs SET sort_order = $1 WHERE id = $2', [a.sort_order, b.id]);
+    res.redirect('/admin/workout-manager/workouts');
   } catch (err) { console.error(err); res.redirect('/admin/workout-manager/workouts'); }
 });
 

@@ -163,10 +163,10 @@ const db = {
   // Programs
   async getPrograms(userId) {
     const { rows } = await pool.query(
-      'SELECT * FROM programs WHERE user_id IS NULL OR user_id = $1 ORDER BY id',
+      'SELECT * FROM programs WHERE user_id IS NULL OR user_id = $1 ORDER BY sort_order, id',
       [userId]
     );
-    return rows.map((p) => ({ id: p.id, userId: p.user_id, name: p.name, description: p.description || '', createdAt: p.created_at }));
+    return rows.map((p) => ({ id: p.id, userId: p.user_id, name: p.name, description: p.description || '', sortOrder: p.sort_order || 0, createdAt: p.created_at }));
   },
 
   async createProgram(userId, name, description = '') {

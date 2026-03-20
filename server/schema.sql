@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS programs (
   user_id INT REFERENCES users(id),
   name TEXT NOT NULL,
   description TEXT DEFAULT '',
+  sort_order INT DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
