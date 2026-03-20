@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import pool from '../dbPool.js';
 import db from '../db.js';
+import { DASHBOARD_CSS, SIDEBAR_JS } from '../dashboardCSS.js';
 
 const router = Router();
 
@@ -21,66 +22,7 @@ function trainerAuth(req, res, next) {
   return res.status(401).json({ error: 'Unauthorized' });
 }
 
-// Shared CSS (references the same design system as admin dashboard)
-const SHARED_CSS = `
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'Space Grotesk', -apple-system, sans-serif;
-      background: #000; color: #fff;
-      -webkit-font-smoothing: antialiased;
-    }
-    body::before {
-      content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
-      background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
-      background-size: 28px 28px;
-    }
-    .container { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; }
-    .logo { font-size: 24px; font-weight: 900; letter-spacing: 2px; }
-    .logo span { color: #ef4444; }
-    .glass {
-      background: rgba(255,255,255,0.05); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(255,255,255,0.08); border-radius: 16px;
-    }
-    .header { margin-bottom: 28px; }
-    .header h1 { font-size: 28px; font-weight: 800; color: #fff; }
-    .header p { color: rgba(255,255,255,0.4); margin-top: 4px; font-size: 13px; }
-    .btn {
-      background: linear-gradient(135deg, #DC2626, #EF4444, #F97316);
-      background-size: 200% 200%; animation: gradShift 3s ease infinite;
-      color: #fff; border: none; padding: 10px 20px; border-radius: 10px;
-      font-size: 13px; font-weight: 700; cursor: pointer;
-      text-decoration: none; display: inline-block;
-      box-shadow: 0 4px 20px rgba(239,68,68,0.3); transition: box-shadow 0.2s, transform 0.2s;
-    }
-    .btn:hover { box-shadow: 0 6px 30px rgba(239,68,68,0.45); transform: translateY(-1px); }
-    @keyframes gradShift { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
-    .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
-    .card {
-      padding: 28px; text-decoration: none; color: #fff; transition: all 0.3s; display: block;
-      border: 1px solid rgba(255,255,255,0.15);
-      box-shadow: 0 2px 12px rgba(0,0,0,0.3), 0 0 8px rgba(255,255,255,0.04), inset 0 0 0 1px rgba(255,255,255,0.05);
-    }
-    .card:hover {
-      border-color: rgba(255,255,255,0.25); transform: translateY(-2px); background: rgba(255,255,255,0.08);
-      box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 20px rgba(255,255,255,0.06), 0 0 1px rgba(255,255,255,0.2);
-    }
-    .card .card-icon { font-size: 32px; margin-bottom: 14px; }
-    .card .card-title { font-size: 18px; font-weight: 700; }
-    .card .card-desc { font-size: 13px; color: rgba(255,255,255,0.4); margin-top: 8px; line-height: 1.6; }
-    label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.4); margin-bottom: 6px; font-weight: 600; }
-    input[type="text"], input[type="password"], input[type="email"] {
-      width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);
-      background: rgba(255,255,255,0.06); color: #fff; font-size: 15px; font-family: inherit;
-      outline: none; transition: border-color 0.2s;
-    }
-    input:focus { border-color: rgba(239,68,68,0.6); box-shadow: 0 0 0 2px rgba(239,68,68,0.15); }
-    .field { margin-bottom: 16px; }
-    .error { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); border-radius: 10px; padding: 10px 14px; font-size: 13px; color: #f87171; margin-bottom: 16px; text-align: center; }
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
-`;
+// CSS is now shared via dashboardCSS.js
 
 function trainerLoginPage(error) {
   return `<!DOCTYPE html>
@@ -91,8 +33,8 @@ function trainerLoginPage(error) {
   <title>WillFit Trainer — Login</title>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    ${SHARED_CSS}
-    body { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    ${DASHBOARD_CSS}
+    body { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 0; }
     .login-card { position: relative; z-index: 1; width: 100%; max-width: 380px; padding: 0 24px; }
     .login-logo { font-size: 36px; font-weight: 900; letter-spacing: 2px; text-align: center; margin-bottom: 8px; }
     .login-logo span { color: #ef4444; }
@@ -138,10 +80,7 @@ function trainerPage(title, body, trainer) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>WillFit Trainer — ${title}</title>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    ${SHARED_CSS}
-    body { padding: 32px; min-height: 100vh; }
-  </style>
+  <style>${DASHBOARD_CSS}</style>
 </head>
 <body>
 <nav style="position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:12px 32px;background:linear-gradient(135deg,rgba(20,0,0,0.92),rgba(30,5,5,0.92),rgba(20,0,0,0.92));backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(239,68,68,0.2);box-shadow:0 2px 20px rgba(239,68,68,0.08),inset 0 -1px 0 rgba(239,68,68,0.1);">
@@ -153,8 +92,35 @@ function trainerPage(title, body, trainer) {
   </div>
 </nav>
 <div style="height:56px;"></div>
+<!-- Sidebar -->
+<div class="sidebar" id="dashboard-sidebar">
+  <div class="sidebar-toggle">
+    <button id="sidebar-toggle-btn" onclick="toggleSidebar()" title="Toggle sidebar">
+      <svg id="sidebar-toggle-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition:transform 0.2s;"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
+    </button>
+  </div>
+  <div class="sidebar-section" onclick="toggleSection('workouts')">
+    <span>Workouts</span>
+    <svg class="chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+  </div>
+  <div class="sidebar-links" id="section-workouts">
+    <a href="/trainer"${title === 'Dashboard' ? ' class="active"' : ''}>Dashboard</a>
+    <a href="/trainer/create-workout"${title === 'Create a Workout' ? ' class="active"' : ''}>Create Workout</a>
+    <a href="/trainer/workouts"${title === 'View Current Workouts' ? ' class="active"' : ''}>View Workouts</a>
+  </div>
+  <div class="sidebar-section" onclick="toggleSection('resources')">
+    <span>Resources</span>
+    <svg class="chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+  </div>
+  <div class="sidebar-links" id="section-resources">
+    <a href="/trainer/guide"${title === 'User Guide' ? ' class="active"' : ''}>User Guide</a>
+  </div>
+</div>
+<script>${SIDEBAR_JS}</script>
+<div class="main-with-sidebar">
 <div class="container">
 ${body}
+</div>
 </div>
 </body>
 </html>`;
@@ -230,12 +196,6 @@ router.post('/login', express.urlencoded({ extended: false }), async (req, res) 
 
 // GET /trainer/guide — User Manual (public, no auth required)
 router.get('/guide', (req, res) => {
-  const SHARED_CSS_REF = `
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Space Grotesk', -apple-system, sans-serif; background: #000; color: #fff; -webkit-font-smoothing: antialiased; }
-    body::before { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none; background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px); background-size: 28px 28px; }
-  `;
-
   res.send(`<!DOCTYPE html>
 <html>
 <head>
@@ -244,7 +204,9 @@ router.get('/guide', (req, res) => {
   <title>WillFit — User Guide</title>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    ${SHARED_CSS_REF}
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Space Grotesk', -apple-system, sans-serif; background: #000; color: #fff; -webkit-font-smoothing: antialiased; }
+    body::before { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none; background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px); background-size: 28px 28px; }
     .container { position: relative; z-index: 1; max-width: 720px; margin: 0 auto; padding: 32px 24px 80px; }
     .logo { font-size: 24px; font-weight: 900; letter-spacing: 2px; text-align: center; margin-bottom: 8px; }
     .logo span { color: #ef4444; }
