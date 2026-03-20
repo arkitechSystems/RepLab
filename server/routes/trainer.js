@@ -789,32 +789,57 @@ router.get('/workouts', trainerAuth, async (req, res) => {
           [program.id]
         );
 
-        const workoutRows = templates.map(t => {
+        const workoutRows = templates.map((t, i) => {
+          const rowBg = i % 2 === 0 ? 'background:rgba(255,255,255,0.02);' : '';
           if (t.is_rest) {
-            return '<tr><td style="color:rgba(255,255,255,0.3);font-style:italic;">Rest Day</td><td>—</td><td>—</td><td></td></tr>';
+            return '<tr style="' + rowBg + '">' +
+              '<td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.3);font-style:italic;">' +
+                '<span style="display:inline-flex;align-items:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.4;"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z"/></svg>Rest Day</span>' +
+              '</td><td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.2);">—</td>' +
+              '<td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.2);">—</td>' +
+              '<td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);"></td></tr>';
           }
-          return '<tr>' +
-            '<td style="font-weight:600;color:#fff;">' + esc(t.name) + '</td>' +
-            '<td>' + (t.description ? esc(t.description) : '—') + '</td>' +
-            '<td>' + t.exercise_count + ' exercises</td>' +
-            '<td><a href="/trainer/edit-workout/' + t.id + '" style="color:#ef4444;text-decoration:none;font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;border:1px solid rgba(239,68,68,0.3);transition:all 0.15s;" onmouseover="this.style.background=\'rgba(239,68,68,0.1)\'" onmouseout="this.style.background=\'none\'">Edit</a></td>' +
+          return '<tr style="' + rowBg + 'transition:background 0.15s;" onmouseover="this.style.background=\'rgba(255,255,255,0.05)\'" onmouseout="this.style.background=\'' + (i % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent') + '\'">' +
+            '<td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);">' +
+              '<div style="font-weight:700;color:#fff;font-size:14px;">' + esc(t.name) + '</div>' +
+            '</td>' +
+            '<td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);font-size:13px;">' + (t.description ? esc(t.description) : '<span style="color:rgba(255,255,255,0.2);">—</span>') + '</td>' +
+            '<td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);">' +
+              '<span style="display:inline-block;padding:4px 10px;border-radius:6px;background:rgba(255,255,255,0.06);font-size:12px;color:rgba(255,255,255,0.6);font-weight:600;">' + t.exercise_count + ' exercises</span>' +
+            '</td>' +
+            '<td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);text-align:right;">' +
+              '<a href="/trainer/edit-workout/' + t.id + '" style="color:#ef4444;text-decoration:none;font-size:12px;font-weight:600;padding:7px 14px;border-radius:8px;border:1px solid rgba(239,68,68,0.3);transition:all 0.15s;display:inline-block;" onmouseover="this.style.background=\'rgba(239,68,68,0.15)\';this.style.borderColor=\'rgba(239,68,68,0.5)\'" onmouseout="this.style.background=\'none\';this.style.borderColor=\'rgba(239,68,68,0.3)\'">Edit</a>' +
+            '</td>' +
           '</tr>';
         }).join('');
 
         const nonRest = templates.filter(t => !t.is_rest).length;
-        content += '<div class="glass" style="border-radius:16px;overflow:hidden;margin-bottom:20px;">' +
-          '<div style="padding:20px 24px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between;">' +
+        const totalExercises = templates.reduce((s, t) => s + (Number(t.exercise_count) || 0), 0);
+        content += '<div class="glass" style="border-radius:16px;overflow:hidden;margin-bottom:24px;">' +
+          '<div style="padding:20px 24px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:space-between;">' +
             '<div>' +
-              '<h3 style="font-size:16px;font-weight:700;color:#fff;margin:0;">' + esc(program.name) + '</h3>' +
-              '<p style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:2px;">' + nonRest + ' workout' + (nonRest !== 1 ? 's' : '') + (program.description ? ' &middot; ' + esc(program.description) : '') + '</p>' +
+              '<h3 style="font-size:18px;font-weight:800;color:#fff;margin:0;letter-spacing:-0.3px;">' + esc(program.name) + '</h3>' +
+              '<p style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:4px;">' +
+                nonRest + ' workout' + (nonRest !== 1 ? 's' : '') +
+                ' &middot; ' + totalExercises + ' total exercises' +
+                (program.description ? ' &middot; ' + esc(program.description) : '') +
+              '</p>' +
+            '</div>' +
+            '<div style="display:flex;gap:6px;">' +
+              '<span style="padding:5px 12px;border-radius:8px;background:rgba(239,68,68,0.1);color:#ef4444;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">' + templates.length + ' days</span>' +
             '</div>' +
           '</div>' +
           (templates.length > 0
-            ? '<div class="table-wrap"><table>' +
-                '<thead><tr><th>Workout</th><th>Description</th><th>Exercises</th><th style="width:80px;"></th></tr></thead>' +
+            ? '<div class="table-wrap"><table style="width:100%;border-collapse:collapse;">' +
+                '<thead><tr>' +
+                  '<th style="padding:12px 20px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);font-weight:700;background:rgba(255,255,255,0.04);border-bottom:2px solid rgba(255,255,255,0.08);">Workout</th>' +
+                  '<th style="padding:12px 20px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);font-weight:700;background:rgba(255,255,255,0.04);border-bottom:2px solid rgba(255,255,255,0.08);">Description</th>' +
+                  '<th style="padding:12px 20px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);font-weight:700;background:rgba(255,255,255,0.04);border-bottom:2px solid rgba(255,255,255,0.08);">Exercises</th>' +
+                  '<th style="padding:12px 20px;width:90px;background:rgba(255,255,255,0.04);border-bottom:2px solid rgba(255,255,255,0.08);"></th>' +
+                '</tr></thead>' +
                 '<tbody>' + workoutRows + '</tbody>' +
               '</table></div>'
-            : '<div style="padding:20px 24px;"><p style="color:rgba(255,255,255,0.3);font-size:13px;">No workouts in this program yet.</p></div>'
+            : '<div style="padding:24px;text-align:center;"><p style="color:rgba(255,255,255,0.3);font-size:13px;">No workouts in this program yet.</p></div>'
           ) +
         '</div>';
       }
