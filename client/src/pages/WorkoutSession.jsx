@@ -22,6 +22,7 @@ export default function WorkoutSession() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [persisted, setPersisted] = useState(false);
   const [completedSets, setCompletedSets] = useState(new Set());
   const [newPBs, setNewPBs] = useState(null);
   const [notes, setNotes] = useState({});
@@ -234,8 +235,7 @@ export default function WorkoutSession() {
         if (session.notes) setNotes(session.notes);
         if (session.completed) setIsCompleted(true);
         if (session.entries?.some(e => e.weight > 0 || e.reps > 0)) {
-          setSaved(true);
-          setTimeout(() => setSaved(false), 1500);
+          setPersisted(true);
         }
       } catch (err) {
         console.error('Failed to load session:', err);
@@ -283,6 +283,7 @@ export default function WorkoutSession() {
   }, [template]);
 
   function handleChange(exerciseName, setIdx, field, value) {
+    setPersisted(false);
     setEntries((prev) => {
       const updated = { ...prev };
       updated[exerciseName] = [...(updated[exerciseName] || [])];
@@ -760,6 +761,7 @@ export default function WorkoutSession() {
         }
       }
 
+      setPersisted(true);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
@@ -773,7 +775,7 @@ export default function WorkoutSession() {
   const hasEntryData = Object.values(entries).some((exEntries) =>
     exEntries.some((e) => (e.weight !== '' && e.weight !== undefined) || (e.reps !== '' && e.reps !== undefined))
   );
-  const sessionDirty = hasEntryData && !saved;
+  const sessionDirty = hasEntryData && !persisted;
   const { guardedNavigate, UnsavedModal } = useUnsavedGuard({
     isDirty: sessionDirty,
     onSave: handleSave,
