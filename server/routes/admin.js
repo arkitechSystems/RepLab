@@ -343,11 +343,12 @@ function adminPage(title, body) {
     /* Frozen columns */
     .sticky-col { position: sticky; z-index: 2; }
     .sticky-col-0 { left: 0; min-width: 40px; background: rgba(10,10,10,0.97); }
-    .sticky-col-1 { left: 40px; min-width: 100px; background: rgba(10,10,10,0.97); border-right: 1px solid rgba(255,255,255,0.08); }
+    .sticky-col-1 { left: 40px; min-width: 100px; background: rgba(10,10,10,0.97); }
+    .sticky-col-2 { left: 140px; min-width: 120px; background: rgba(10,10,10,0.97); border-right: 1px solid rgba(255,255,255,0.08); }
     th.sticky-col { z-index: 3; background: rgba(20,20,20,0.98); }
-    tr:hover .sticky-col-0, tr:hover .sticky-col-1 { background: rgba(20,20,20,0.97); }
-    tbody tr:nth-child(even) .sticky-col-0, tbody tr:nth-child(even) .sticky-col-1 { background: rgba(14,14,14,0.97); }
-    tbody tr:nth-child(even):hover .sticky-col-0, tbody tr:nth-child(even):hover .sticky-col-1 { background: rgba(20,20,20,0.97); }
+    tr:hover .sticky-col-0, tr:hover .sticky-col-1, tr:hover .sticky-col-2 { background: rgba(20,20,20,0.97); }
+    tbody tr:nth-child(even) .sticky-col-0, tbody tr:nth-child(even) .sticky-col-1, tbody tr:nth-child(even) .sticky-col-2 { background: rgba(14,14,14,0.97); }
+    tbody tr:nth-child(even):hover .sticky-col-0, tbody tr:nth-child(even):hover .sticky-col-1, tbody tr:nth-child(even):hover .sticky-col-2 { background: rgba(20,20,20,0.97); }
 
     /* Buttons */
     .btn {
@@ -855,21 +856,22 @@ router.get('/users', adminAuth, async (req, res) => {
       const rawKeys = users.length > 0
         ? Object.keys(users[0]).filter((k) => !skipKeys.has(k))
         : [];
-      // Move username to first position
-      const allKeys = rawKeys.filter(k => k !== 'username');
+      // Move username to first position, email to second
+      const allKeys = rawKeys.filter(k => k !== 'username' && k !== 'email');
+      if (rawKeys.includes('email')) allKeys.unshift('email');
       if (rawKeys.includes('username')) allKeys.unshift('username');
 
       // Pretty labels: camelCase → Title Case
       const label = (k) => k.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase());
 
       const headerCells = `<th class="sticky-col sticky-col-0">#</th>` + allKeys.map((k, i) => {
-        const stickyClass = i === 0 ? ' class="sticky-col sticky-col-1"' : '';
+        const stickyClass = i <= 1 ? ` class="sticky-col sticky-col-${i + 1}"` : '';
         return `<th${stickyClass} style="cursor:pointer;user-select:none;" onclick="sortTable(${i + 1})" title="Sort by ${label(k)}">${label(k)} <span style="opacity:0.3;font-size:9px;">⇅</span></th>`;
       }).join('') + `<th style="text-align:center;">Actions</th>`;
 
       const rows = users.map((u, i) => {
         const cells = allKeys.map((k, ci) => {
-          const stickyClass = ci === 0 ? ' class="sticky-col sticky-col-1"' : '';
+          const stickyClass = ci <= 1 ? ` class="sticky-col sticky-col-${ci + 1}"` : '';
           const val = u[k];
           if (val == null) return `<td${stickyClass}>—</td>`;
           if (k === 'createdAt' || k.endsWith('At')) return `<td${stickyClass}>${new Date(val).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', year: 'numeric' })} <span style="color:#888;">${new Date(val).toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' })} CT</span></td>`;
