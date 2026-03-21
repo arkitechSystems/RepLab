@@ -34,6 +34,8 @@ export default function WorkoutSession() {
   const [timerHidden, setTimerHidden] = useState(false);
   const [timerFloating, setTimerFloating] = useState(false);
   const [floatPos, setFloatPos] = useState({ x: 16, y: 80 });
+  const [restFloating, setRestFloating] = useState(false);
+  const [restFloatPos, setRestFloatPos] = useState({ x: 16, y: 140 });
   const [showSummary, setShowSummary] = useState(false);
   const dragRef = useRef(null);
   const [elapsed, setElapsed] = useState(0);
@@ -45,6 +47,8 @@ export default function WorkoutSession() {
   const [restRemaining, setRestRemaining] = useState(null); // null = not running
   const restTimerRef = useRef(null);
   const REST_OPTIONS = [15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180];
+  const [pinWorkoutTimer, setPinWorkoutTimer] = useState(true);
+  const [pinRestTimer, setPinRestTimer] = useState(true);
 
   // Keep ref in sync with state
   useEffect(() => { restDurationRef.current = restDuration; }, [restDuration]);
@@ -122,6 +126,27 @@ export default function WorkoutSession() {
 
   function handleFloatTouchEnd() {
     dragRef.current = null;
+  }
+
+  const restDragRef = useRef(null);
+  function handleRestFloatTouchStart(e) {
+    const touch = e.touches[0];
+    restDragRef.current = {
+      startX: touch.clientX - restFloatPos.x,
+      startY: touch.clientY - restFloatPos.y,
+      moved: false,
+    };
+  }
+  function handleRestFloatTouchMove(e) {
+    if (!restDragRef.current) return;
+    const touch = e.touches[0];
+    restDragRef.current.moved = true;
+    const x = Math.max(0, Math.min(window.innerWidth - 180, touch.clientX - restDragRef.current.startX));
+    const y = Math.max(0, Math.min(window.innerHeight - 50, touch.clientY - restDragRef.current.startY));
+    setRestFloatPos({ x, y });
+  }
+  function handleRestFloatTouchEnd() {
+    restDragRef.current = null;
   }
 
   useEffect(() => {
@@ -831,7 +856,7 @@ export default function WorkoutSession() {
       <StickyHeader
         title={`${template.name} — ${displayDate}`}
         subtitle={template.description || null}
-        bottomContent={
+        bottomContent={(collapsed) =>
           <div className="mt-2 space-y-2">
             <div>
               <div className="flex items-center justify-between mb-1">
@@ -855,51 +880,105 @@ export default function WorkoutSession() {
                 Begin Workout
               </button>
             ) : (
-              <div className={`mt-2 rounded-lg overflow-hidden ${restRemaining !== null && restRemaining <= 0 ? 'border border-green-500/50' : 'border border-white/8'}`} style={{ background: 'rgba(255,255,255,0.04)' }}>
-                {restRemaining !== null && restRemaining > 0 && (
-                  <div className="h-1 bg-white/5">
-                    <div className="h-full bg-wf-red transition-all duration-1000 ease-linear" style={{ width: `${(restRemaining / restDuration) * 100}%` }} />
-                  </div>
-                )}
-                <div className="px-3 py-2.5 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-semibold">Time</span>
-                    <span className="bg-black/60 rounded-md px-2.5 py-1 border border-white/10">
-                      <span className="text-xl font-mono-stat font-bold text-white tracking-wider" style={{ letterSpacing: '2px' }}>{formatTime(elapsed)}</span>
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {restRemaining !== null ? (
-                      restRemaining <= 0 ? (
-                        <>
-                          <span className="bg-green-500/20 rounded-md px-3 py-1 border border-green-500/30">
-                            <span className="text-lg font-mono-stat font-black text-green-400 tracking-wider" style={{ letterSpacing: '2px' }}>GO!</span>
-                          </span>
-                          <button onClick={stopRestTimer} className="text-xs text-wf-gray-500 px-2 py-1 rounded active:bg-white/10">Dismiss</button>
-                        </>
-                      ) : (
-                        <>
-                          <span className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-semibold">Rest</span>
-                          <span className="bg-black/60 rounded-md px-2.5 py-1 border border-wf-red/30">
-                            <span className="text-xl font-mono-stat font-black text-wf-red tracking-wider" style={{ letterSpacing: '2px' }}>{formatTime(restRemaining)}</span>
-                          </span>
-                          <button onClick={stopRestTimer} className="text-xs text-wf-gray-500 px-2 py-1 rounded active:bg-white/10">Skip</button>
-                        </>
-                      )
-                    ) : (
-                      <button onClick={startRestTimer} className="text-xs text-wf-red font-semibold px-3 py-1.5 rounded-lg bg-wf-red/10 active:bg-wf-red/20 transition-colors">
-                        Start Rest
-                      </button>
-                    )}
-                    <select
-                      value={restDuration}
-                      onChange={(e) => setRestDuration(Number(e.target.value))}
-                      className="text-xs font-semibold text-wf-gray-400 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 outline-none cursor-pointer"
+              <div className="mt-2 space-y-2">
+                <div className={`rounded-lg overflow-hidden border border-white/8 transition-all duration-300 ${collapsed && !pinWorkoutTimer ? 'hidden' : ''}`} style={{ background: 'rgba(255,255,255,0.04)' }}>
+                  <div className="px-3 py-2.5 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-semibold">Time</span>
+                      <span className="bg-black/60 rounded-md px-2.5 py-1 border border-white/10">
+                        <span className="text-xl font-mono-stat font-bold text-white tracking-wider" style={{ letterSpacing: '2px' }}>{formatTime(elapsed)}</span>
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setTimerFloating(true)}
+                      className="p-1.5 rounded-md text-wf-gray-500 active:scale-90 hover:text-white/70 transition-colors"
+                      title="Pop out timer"
                     >
-                      {REST_OPTIONS.map((s) => (
-                        <option key={s} value={s} className="bg-wf-gray-900">{s >= 60 ? `${Math.floor(s/60)}m` : `${s}s`}{s >= 60 && s % 60 ? ` ${s%60}s` : ''}</option>
-                      ))}
-                    </select>
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 5H1v14h18v-6M15 3h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => setPinWorkoutTimer(p => !p)}
+                      className={`relative w-8 h-[18px] rounded-full transition-all duration-200 ${pinWorkoutTimer ? '' : 'bg-wf-gray-700'}`}
+                      style={pinWorkoutTimer ? { background: 'linear-gradient(to right, rgba(239,68,68,0.8), rgba(239,68,68,0.3))' } : {}}
+                      title={pinWorkoutTimer ? 'Unpin timer' : 'Pin timer'}
+                    >
+                      {pinWorkoutTimer && (
+                        <svg className="absolute left-[3px] top-[3px] w-[12px] h-[12px] text-white/70" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM9 8V6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9z"/>
+                        </svg>
+                      )}
+                      <span className={`absolute top-[2px] left-[2px] w-[14px] h-[14px] rounded-full bg-white transition-transform duration-200 ${pinWorkoutTimer ? 'translate-x-[14px]' : 'translate-x-0'}`} />
+                    </button>
+                    </div>
+                  </div>
+                </div>
+                <div className={`rounded-lg overflow-hidden transition-all duration-300 ${collapsed && !pinRestTimer ? 'hidden' : ''} ${restRemaining !== null && restRemaining <= 0 ? 'border border-green-500/50' : 'border border-white/8'}`} style={{ background: 'rgba(255,255,255,0.04)' }}>
+                  {restRemaining !== null && restRemaining > 0 && (
+                    <div className="h-1 bg-white/5">
+                      <div className="h-full bg-wf-red transition-all duration-1000 ease-linear" style={{ width: `${(restRemaining / restDuration) * 100}%` }} />
+                    </div>
+                  )}
+                  <div className="px-3 py-2.5 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {restRemaining !== null ? (
+                        restRemaining <= 0 ? (
+                          <>
+                            <span className="bg-green-500/20 rounded-md px-3 py-1 border border-green-500/30">
+                              <span className="text-lg font-mono-stat font-black text-green-400 tracking-wider" style={{ letterSpacing: '2px' }}>GO!</span>
+                            </span>
+                            <button onClick={stopRestTimer} className="text-xs text-wf-gray-500 px-2 py-1 rounded active:bg-white/10">Dismiss</button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-semibold">Rest</span>
+                            <span className="bg-black/60 rounded-md px-2.5 py-1 border border-wf-red/30">
+                              <span className="text-xl font-mono-stat font-black text-wf-red tracking-wider" style={{ letterSpacing: '2px' }}>{formatTime(restRemaining)}</span>
+                            </span>
+                            <button onClick={stopRestTimer} className="text-xs text-wf-gray-500 px-2 py-1 rounded active:bg-white/10">Skip</button>
+                          </>
+                        )
+                      ) : (
+                        <button onClick={startRestTimer} className="text-xs text-wf-red font-semibold px-3 py-1.5 rounded-lg bg-wf-red/10 active:bg-wf-red/20 transition-colors">
+                          Start Rest
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={restDuration}
+                        onChange={(e) => setRestDuration(Number(e.target.value))}
+                        className="text-xs font-semibold text-wf-gray-400 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 outline-none cursor-pointer"
+                      >
+                        {REST_OPTIONS.map((s) => (
+                          <option key={s} value={s} className="bg-wf-gray-900">{s >= 60 ? `${Math.floor(s/60)}m` : `${s}s`}{s >= 60 && s % 60 ? ` ${s%60}s` : ''}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => setRestFloating(true)}
+                        className="p-1.5 rounded-md text-wf-gray-500 active:scale-90 hover:text-white/70 transition-colors"
+                        title="Pop out rest timer"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13 5H1v14h18v-6M15 3h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => setPinRestTimer(p => !p)}
+                        className={`relative w-8 h-[18px] rounded-full transition-all duration-200 ${pinRestTimer ? '' : 'bg-wf-gray-700'}`}
+                        style={pinRestTimer ? { background: 'linear-gradient(to right, rgba(239,68,68,0.8), rgba(239,68,68,0.3))' } : {}}
+                        title={pinRestTimer ? 'Unpin rest timer' : 'Pin rest timer'}
+                      >
+                        {pinRestTimer && (
+                          <svg className="absolute left-[3px] top-[3px] w-[12px] h-[12px] text-white/70" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM9 8V6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9z"/>
+                          </svg>
+                        )}
+                        <span className={`absolute top-[2px] left-[2px] w-[14px] h-[14px] rounded-full bg-white transition-transform duration-200 ${pinRestTimer ? 'translate-x-[14px]' : 'translate-x-0'}`} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1156,6 +1235,7 @@ export default function WorkoutSession() {
       )}
 
       {/* Floating Timer */}
+      {/* Floating Workout Timer */}
       {timerFloating && timerStarted && (
         <div
           className="fixed z-50 touch-none"
@@ -1165,9 +1245,44 @@ export default function WorkoutSession() {
           onTouchEnd={handleFloatTouchEnd}
         >
           <div className="bg-wf-gray-900/95 border border-white/15 rounded-2xl px-4 py-2.5 shadow-2xl backdrop-blur-sm flex items-center gap-3">
+            <span className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-semibold">Time</span>
             <span className="text-lg font-black text-white tabular-nums font-mono-stat">{formatTime(elapsed)}</span>
             <button
               onClick={() => setTimerFloating(false)}
+              className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Rest Timer */}
+      {restFloating && timerStarted && (
+        <div
+          className="fixed z-50 touch-none"
+          style={{ left: restFloatPos.x, top: restFloatPos.y }}
+          onTouchStart={handleRestFloatTouchStart}
+          onTouchMove={handleRestFloatTouchMove}
+          onTouchEnd={handleRestFloatTouchEnd}
+        >
+          <div className={`rounded-2xl px-4 py-2.5 shadow-2xl backdrop-blur-sm flex items-center gap-3 ${restRemaining !== null && restRemaining <= 0 ? 'bg-green-900/95 border border-green-500/30' : 'bg-wf-gray-900/95 border border-white/15'}`}>
+            {restRemaining !== null ? (
+              restRemaining <= 0 ? (
+                <span className="text-lg font-mono-stat font-black text-green-400">GO!</span>
+              ) : (
+                <>
+                  <span className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-semibold">Rest</span>
+                  <span className="text-lg font-black text-wf-red tabular-nums font-mono-stat">{formatTime(restRemaining)}</span>
+                </>
+              )
+            ) : (
+              <span className="text-sm text-wf-gray-400 font-semibold">Rest idle</span>
+            )}
+            <button
+              onClick={() => setRestFloating(false)}
               className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>

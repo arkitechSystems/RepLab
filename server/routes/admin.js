@@ -822,7 +822,10 @@ router.get('/users', adminAuth, async (req, res) => {
           if (k === 'createdAt' || k.endsWith('At')) return `<td>${new Date(val).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', year: 'numeric' })} <span style="color:#888;">${new Date(val).toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' })} CT</span></td>`;
           return `<td>${esc(val)}</td>`;
         }).join('');
-        const deleteBtn = `<td style="text-align:center;">
+        const deleteBtn = `<td style="text-align:center;white-space:nowrap;">
+          <button onclick="resetPassword(${u.id}, '${esc((u.email || u.phone || 'User #' + u.id)).replace(/'/g, "\\'")}')" class="reset-btn" title="Reset password">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+          </button>
           <button onclick="deleteUser(${u.id}, '${(u.email || u.phone || 'User #' + u.id).replace(/'/g, "\\'")}')" class="delete-btn" title="Delete user">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
@@ -973,10 +976,71 @@ router.get('/users', adminAuth, async (req, res) => {
         }
       });
     }
+    function resetPassword(id, name) {
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
+      const modal = document.createElement('div');
+      modal.style.cssText = 'background:#fff;border-radius:16px;padding:28px;max-width:400px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.2);';
+      modal.innerHTML = '<h3 style="font-size:18px;font-weight:800;margin-bottom:6px;color:#000;">Reset Password</h3>'
+        + '<p style="font-size:14px;color:#555;margin-bottom:16px;">Set a new password for <strong>' + name + '</strong></p>'
+        + '<input id="reset-pw-input" type="text" placeholder="New password" style="width:100%;padding:10px 14px;border:2px solid #ddd;border-radius:8px;font-size:15px;outline:none;margin-bottom:8px;box-sizing:border-box;color:#000;" />'
+        + '<p id="reset-pw-error" style="font-size:12px;color:#ef4444;margin-bottom:12px;min-height:16px;"></p>'
+        + '<div style="display:flex;gap:10px;">'
+        + '<button id="reset-cancel-btn" style="flex:1;padding:10px;border-radius:8px;border:1px solid #ddd;background:#fff;font-size:14px;font-weight:600;cursor:pointer;color:#000;">Cancel</button>'
+        + '<button id="reset-confirm-btn" style="flex:1;padding:10px;border-radius:8px;border:none;background:#3b82f6;color:#fff;font-size:14px;font-weight:600;cursor:pointer;">Reset Password</button>'
+        + '</div>';
+      overlay.appendChild(modal);
+      document.body.appendChild(overlay);
+
+      const input = document.getElementById('reset-pw-input');
+      const confirmBtn = document.getElementById('reset-confirm-btn');
+      const cancelBtn = document.getElementById('reset-cancel-btn');
+      const errorEl = document.getElementById('reset-pw-error');
+      input.focus();
+
+      cancelBtn.addEventListener('click', () => document.body.removeChild(overlay));
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) document.body.removeChild(overlay); });
+
+      confirmBtn.addEventListener('click', async () => {
+        const pw = input.value;
+        if (pw.length < 8) { errorEl.textContent = 'Must be at least 8 characters'; return; }
+        if (!/[A-Z]/.test(pw)) { errorEl.textContent = 'Must contain an uppercase letter'; return; }
+        if (!/[0-9]/.test(pw)) { errorEl.textContent = 'Must contain a number'; return; }
+        if (/\\s/.test(pw)) { errorEl.textContent = 'Must not contain spaces'; return; }
+        errorEl.textContent = '';
+        confirmBtn.textContent = 'Resetting...';
+        confirmBtn.disabled = true;
+        try {
+          const res = await fetch('/admin/users/' + id + '/reset-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: pw })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            document.body.removeChild(overlay);
+            const banner = document.createElement('div');
+            banner.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#22c55e;color:#fff;padding:12px 24px;border-radius:10px;font-weight:600;font-size:14px;z-index:10000;box-shadow:0 4px 12px rgba(0,0,0,0.2);';
+            banner.textContent = 'Password reset for ' + name;
+            document.body.appendChild(banner);
+            setTimeout(() => banner.remove(), 3000);
+          } else {
+            errorEl.textContent = data.error || 'Failed to reset password';
+            confirmBtn.textContent = 'Reset Password';
+            confirmBtn.disabled = false;
+          }
+        } catch (err) {
+          errorEl.textContent = 'Failed: ' + err.message;
+          confirmBtn.textContent = 'Reset Password';
+          confirmBtn.disabled = false;
+        }
+      });
+    }
   </script>
   <style>
-    .delete-btn { background: none; border: none; cursor: pointer; color: #999; padding: 4px 8px; border-radius: 6px; transition: all 0.15s; }
+    .delete-btn, .reset-btn { background: none; border: none; cursor: pointer; color: #999; padding: 4px 8px; border-radius: 6px; transition: all 0.15s; }
     .delete-btn:hover { color: #ef4444; background: rgba(239,68,68,0.1); }
+    .reset-btn:hover { color: #60a5fa; background: rgba(96,165,250,0.1); }
     .table-fullscreen {
       position: fixed !important; inset: 0 !important; z-index: 9998 !important;
       border-radius: 0 !important; max-height: 100vh !important;
@@ -1089,6 +1153,31 @@ router.delete('/users/:id', adminAuth, async (req, res) => {
 
     await db.deleteUser(userId);
     res.json({ message: 'User deleted' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /admin/users/:id/reset-password — Admin resets a user's password
+router.post('/users/:id/reset-password', adminAuth, express.json(), async (req, res) => {
+  try {
+    const userId = Number(req.params.id);
+    if (!userId) return res.status(400).json({ error: 'Invalid user ID' });
+
+    const { password } = req.body;
+    if (!password) return res.status(400).json({ error: 'Password is required' });
+    if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    if (!/[A-Z]/.test(password)) return res.status(400).json({ error: 'Password must contain an uppercase letter' });
+    if (!/[0-9]/.test(password)) return res.status(400).json({ error: 'Password must contain a number' });
+    if (/\s/.test(password)) return res.status(400).json({ error: 'Password must not contain spaces' });
+
+    const user = await db.findUserById(userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const hash = bcrypt.hashSync(password, 10);
+    await db.updatePassword(userId, hash);
+    res.json({ message: 'Password reset successfully' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });

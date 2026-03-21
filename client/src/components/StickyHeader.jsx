@@ -48,7 +48,7 @@ export default function StickyHeader({ title, subtitle, children, bottomContent 
           </div> : null}
           {children}
         </div>
-        {bottomContent}
+        {typeof bottomContent === 'function' ? bottomContent(collapsed) : bottomContent}
       </div>
     </>
   );
