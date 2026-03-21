@@ -1812,6 +1812,9 @@ export default function Workouts() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h2 className="text-xl font-black text-white tracking-tight">Challenges</h2>
+                      <span className="px-2 py-0.5 rounded-full bg-yellow-500/20 border border-yellow-500/40 text-[10px] font-bold text-yellow-400 uppercase tracking-wider">
+                        Pro
+                      </span>
                       <span className="px-2 py-0.5 rounded-full bg-orange-500/15 border border-orange-500/30 text-[10px] font-bold text-orange-400 uppercase tracking-wider">
                         New
                       </span>
