@@ -3,18 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useExercises } from '../hooks/useExercises';
 import { useUnsavedGuard } from '../components/UnsavedGuard';
-
-const SET_TYPES = [
-  { value: 'warm_up',      short: 'WU',   label: 'Warm Up' },
-  { value: 'touch_up',     short: 'TU',   label: 'Touch Up' },
-  { value: 'straight',     short: 'REG',  label: 'Regular' },
-  { value: 'drop',         short: 'DS',   label: 'Drop Set' },
-  { value: 'rest_pause',   short: 'RP',   label: 'Rest-Pause' },
-  { value: 'superset',     short: 'SS',   label: 'Super Set' },
-  { value: 'alternating',  short: 'Alt',  label: 'Alternating' },
-  { value: 'giant',        short: 'Gia',  label: 'Giant Set' },
-  { value: 'pre_exhaust',  short: 'PrEx', label: 'Pre-Exhaust' },
-];
+import ExerciseCard from '../components/ExerciseCard';
 
 export default function EditWorkout() {
   const { id } = useParams();
@@ -26,8 +15,6 @@ export default function EditWorkout() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [originalData, setOriginalData] = useState(null);
-  const [activeAutocomplete, setActiveAutocomplete] = useState(null);
-  const autocompleteRef = useRef(null);
   const { exercises: allExercises, createCustom } = useExercises();
 
   const isDirty = originalData !== null && JSON.stringify({ name, description, exercises }) !== originalData;
@@ -98,22 +85,65 @@ export default function EditWorkout() {
     setExercises(updated);
   }
 
-  function getSuggestions(query) {
-    if (!query || query.length < 1) return [];
-    const q = query.toLowerCase();
-    const seen = new Set();
-    return allExercises
-      .filter((ex) => {
-        if (seen.has(ex.name)) return false;
-        seen.add(ex.name);
-        return ex.name.toLowerCase().includes(q);
-      })
-      .sort((a, b) => {
-        const aStarts = a.name.toLowerCase().startsWith(q) ? 0 : 1;
-        const bStarts = b.name.toLowerCase().startsWith(q) ? 0 : 1;
-        return aStarts - bStarts || a.name.localeCompare(b.name);
-      })
-      .slice(0, 8);
+  // Build exercise object format for ExerciseCard
+  function toCardExercise(ex) {
+    return {
+      name: ex.name,
+      setType: ex.setType,
+      sets: ex.sets.map((s, i) => ({ setNumber: i + 1 })),
+    };
+  }
+
+  // Build entries array for ExerciseCard
+  function toCardEntries(ex) {
+    return ex.sets.map((s) => ({
+      weight: s.weight || '',
+      reps: s.reps || '',
+      setType: ex.setType,
+    }));
+  }
+
+  // Handle onChange from ExerciseCard
+  function handleCardChange(exIdx) {
+    return (_exerciseName, setIdx, field, value) => {
+      if (field === 'setType') {
+        updateExercise(exIdx, 'setType', value);
+      } else {
+        updateSet(exIdx, setIdx, field, value);
+      }
+    };
+  }
+
+  function handleSwapExercise(exIdx) {
+    return (_oldName, newName) => {
+      updateExercise(exIdx, 'name', newName);
+    };
+  }
+
+  function handleAddExerciseBelow(exIdx) {
+    return (newName) => {
+      const updated = [...exercises];
+      updated.splice(exIdx + 1, 0, { name: newName, setType: 'straight', sets: [{ reps: 10, weight: 0 }] });
+      setExercises(updated);
+    };
+  }
+
+  function handleMoveUp(exIdx) {
+    if (exIdx <= 0) return null;
+    return () => {
+      const updated = [...exercises];
+      [updated[exIdx - 1], updated[exIdx]] = [updated[exIdx], updated[exIdx - 1]];
+      setExercises(updated);
+    };
+  }
+
+  function handleMoveDown(exIdx) {
+    if (exIdx >= exercises.length - 1) return null;
+    return () => {
+      const updated = [...exercises];
+      [updated[exIdx], updated[exIdx + 1]] = [updated[exIdx + 1], updated[exIdx]];
+      setExercises(updated);
+    };
   }
 
   async function handleSave() {
@@ -210,150 +240,24 @@ export default function EditWorkout() {
         <h2 className="text-lg font-semibold text-white mb-3">Exercises</h2>
 
         {exercises.map((ex, exIdx) => (
-          <div key={exIdx} className="glass-card rounded-xl overflow-hidden mb-3">
-            {/* Exercise Header */}
-            <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
-              <div className="flex-1 relative min-w-0" ref={activeAutocomplete === exIdx ? autocompleteRef : null}>
-                <input
-                  type="text"
-                  value={ex.name}
-                  onChange={(e) => {
-                    updateExercise(exIdx, 'name', e.target.value);
-                    setActiveAutocomplete(e.target.value.length >= 1 ? exIdx : null);
-                  }}
-                  onFocus={() => { if (ex.name.length >= 1) setActiveAutocomplete(exIdx); }}
-                  onBlur={() => { setTimeout(() => setActiveAutocomplete(null), 150); }}
-                  placeholder="Exercise name"
-                  className="w-full bg-transparent text-base font-semibold text-white placeholder:text-wf-gray-500 focus:outline-none"
-                />
-                {activeAutocomplete === exIdx && getSuggestions(ex.name).length > 0 && (
-                  <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-wf-gray-900 border border-white/10 rounded-xl shadow-2xl shadow-black/60 overflow-hidden max-h-64 overflow-y-auto">
-                    {getSuggestions(ex.name).map((suggestion) => (
-                      <button
-                        key={suggestion.name}
-                        type="button"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => {
-                          updateExercise(exIdx, 'name', suggestion.name);
-                          setActiveAutocomplete(null);
-                        }}
-                        className="w-full text-left px-3 py-2.5 flex items-center justify-between hover:bg-white/5 active:bg-white/10 transition-colors"
-                      >
-                        <span className="text-sm text-white">{suggestion.name}</span>
-                        <span className="text-[10px] text-wf-gray-500 uppercase tracking-wider ml-2 shrink-0">{suggestion.muscle}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {exercises.length > 1 && (
-                <button
-                  onClick={() => removeExercise(exIdx)}
-                  className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-red-400 hover:bg-red-500/20 active:scale-90 transition-all shrink-0 ml-2"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-            </div>
-
-            {/* Set Controls Subheader */}
-            <div className="px-4 py-2 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
-              <span className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-medium">
-                {ex.sets.length} set{ex.sets.length !== 1 ? 's' : ''}
-              </span>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => addSet(exIdx)}
-                  className="h-7 px-2.5 rounded-full bg-white/10 flex items-center justify-center gap-1 text-wf-gray-400 hover:text-white hover:bg-white/20 active:scale-90 transition-all"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                  </svg>
-                  <span className="text-[10px] font-semibold uppercase tracking-wider">Add Set</span>
-                </button>
-                {ex.sets.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeSet(exIdx, ex.sets.length - 1)}
-                    className="h-7 px-2.5 rounded-full bg-white/10 flex items-center justify-center gap-1 text-wf-gray-400 hover:text-red-400 hover:bg-red-500/20 active:scale-90 transition-all"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12h-15" />
-                    </svg>
-                    <span className="text-[10px] font-semibold uppercase tracking-wider">Remove</span>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Column Headers */}
-            <div className="px-3 pt-2 pb-1 flex items-center gap-1.5 text-[9px] text-wf-gray-500 uppercase tracking-wider">
-              <div className="w-8 shrink-0 text-center">Set</div>
-              <div className="w-14 shrink-0 text-center">Type</div>
-              <div className="flex-1 text-center">Weight</div>
-              <div className="flex-1 text-center">Reps</div>
-            </div>
-
-            {/* Set Rows */}
-            <div className="divide-y divide-white/5">
-              {ex.sets.map((set, setIdx) => (
-                <div key={setIdx} className="px-3 py-2.5 flex items-center gap-1.5">
-                  {/* Set label */}
-                  <span className="text-wf-gray-400 text-xs font-medium w-8 shrink-0 text-center">
-                    {setIdx + 1}
-                  </span>
-
-                  {/* Set type dropdown */}
-                  <div className="w-14 shrink-0 relative">
-                    <span className="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-wf-gray-400 uppercase pointer-events-none">
-                      {SET_TYPES.find(t => t.value === ex.setType)?.short || 'REG'}
-                    </span>
-                    <select
-                      value={ex.setType}
-                      onChange={(e) => updateExercise(exIdx, 'setType', e.target.value)}
-                      className="w-full h-10 bg-transparent text-transparent rounded-lg border border-white/5 focus:outline-none appearance-none cursor-pointer"
-                    >
-                      {SET_TYPES.map(t => (
-                        <option key={t.value} value={t.value} className="bg-wf-gray-900 text-white text-sm">
-                          {t.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Weight input */}
-                  <div className="flex-1">
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      value={set.weight || ''}
-                      onChange={(e) => updateSet(exIdx, setIdx, 'weight', e.target.value)}
-                      onFocus={(e) => e.target.select()}
-                      placeholder="0"
-                      className="w-full lcd-input rounded-lg px-2 py-2.5 text-center text-base text-white focus:outline-none"
-                    />
-                  </div>
-
-                  {/* Reps input */}
-                  <div className="flex-1">
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      value={set.reps || ''}
-                      onChange={(e) => updateSet(exIdx, setIdx, 'reps', e.target.value)}
-                      onFocus={(e) => e.target.select()}
-                      placeholder="0"
-                      className="w-full lcd-input rounded-lg px-2 py-2.5 text-center text-base text-white focus:outline-none"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <TemplateExerciseWrapper
+            key={exIdx}
+            ex={ex}
+            exIdx={exIdx}
+            exercises={exercises}
+            allExercises={allExercises}
+            updateExercise={updateExercise}
+            toCardExercise={toCardExercise}
+            toCardEntries={toCardEntries}
+            handleCardChange={handleCardChange}
+            addSet={addSet}
+            removeSet={removeSet}
+            removeExercise={removeExercise}
+            handleSwapExercise={handleSwapExercise}
+            handleAddExerciseBelow={handleAddExerciseBelow}
+            handleMoveUp={handleMoveUp}
+            handleMoveDown={handleMoveDown}
+          />
         ))}
 
         <button
@@ -375,5 +279,110 @@ export default function EditWorkout() {
         </button>
       </div>
     </div>
+  );
+}
+
+/**
+ * Wrapper component that renders an exercise name input with autocomplete,
+ * then delegates the set table to ExerciseCard in template mode.
+ */
+function TemplateExerciseWrapper({
+  ex, exIdx, exercises, allExercises,
+  updateExercise, toCardExercise, toCardEntries, handleCardChange,
+  addSet, removeSet, removeExercise,
+  handleSwapExercise, handleAddExerciseBelow, handleMoveUp, handleMoveDown,
+}) {
+  const [activeAutocomplete, setActiveAutocomplete] = useState(false);
+  const autocompleteRef = useRef(null);
+
+  function getSuggestions(query) {
+    if (!query || query.length < 1) return [];
+    const q = query.toLowerCase();
+    const seen = new Set();
+    return allExercises
+      .filter((ex) => {
+        if (seen.has(ex.name)) return false;
+        seen.add(ex.name);
+        return ex.name.toLowerCase().includes(q);
+      })
+      .sort((a, b) => {
+        const aStarts = a.name.toLowerCase().startsWith(q) ? 0 : 1;
+        const bStarts = b.name.toLowerCase().startsWith(q) ? 0 : 1;
+        return aStarts - bStarts || a.name.localeCompare(b.name);
+      })
+      .slice(0, 8);
+  }
+
+  // If no name yet, show the name input card instead of ExerciseCard
+  if (!ex.name.trim()) {
+    return (
+      <div className="glass-card rounded-xl overflow-hidden mb-3">
+        <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
+          <div className="flex-1 relative min-w-0" ref={activeAutocomplete ? autocompleteRef : null}>
+            <input
+              type="text"
+              value={ex.name}
+              onChange={(e) => {
+                updateExercise(exIdx, 'name', e.target.value);
+                setActiveAutocomplete(e.target.value.length >= 1);
+              }}
+              onFocus={() => { if (ex.name.length >= 1) setActiveAutocomplete(true); }}
+              onBlur={() => { setTimeout(() => setActiveAutocomplete(false), 150); }}
+              placeholder="Exercise name"
+              className="w-full bg-transparent text-base font-semibold text-white placeholder:text-wf-gray-500 focus:outline-none"
+            />
+            {activeAutocomplete && getSuggestions(ex.name).length > 0 && (
+              <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-wf-gray-900 border border-white/10 rounded-xl shadow-2xl shadow-black/60 overflow-hidden max-h-64 overflow-y-auto">
+                {getSuggestions(ex.name).map((suggestion) => (
+                  <button
+                    key={suggestion.name}
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      updateExercise(exIdx, 'name', suggestion.name);
+                      setActiveAutocomplete(false);
+                    }}
+                    className="w-full text-left px-3 py-2.5 flex items-center justify-between hover:bg-white/5 active:bg-white/10 transition-colors"
+                  >
+                    <span className="text-sm text-white">{suggestion.name}</span>
+                    <span className="text-[10px] text-wf-gray-500 uppercase tracking-wider ml-2 shrink-0">{suggestion.muscle}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {exercises.length > 1 && (
+            <button
+              onClick={() => removeExercise(exIdx)}
+              className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-red-400 hover:bg-red-500/20 active:scale-90 transition-all shrink-0 ml-2"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Named exercise — render with ExerciseCard in template mode
+  const cardExercise = toCardExercise(ex);
+  const cardEntries = toCardEntries(ex);
+
+  return (
+    <ExerciseCard
+      mode="template"
+      exercise={cardExercise}
+      entries={cardEntries}
+      onChange={handleCardChange(exIdx)}
+      onAddSet={() => addSet(exIdx)}
+      onDeleteSet={(_name, setIdx) => removeSet(exIdx, setIdx)}
+      onSwapExercise={handleSwapExercise(exIdx)}
+      onAddExercise={handleAddExerciseBelow(exIdx)}
+      onDeleteExercise={exercises.length > 1 ? () => removeExercise(exIdx) : undefined}
+      onMoveUp={handleMoveUp(exIdx)}
+      onMoveDown={handleMoveDown(exIdx)}
+    />
   );
 }

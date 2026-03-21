@@ -21,7 +21,10 @@ function getSetTypeShort(value) {
   return SET_TYPES.find(t => t.value === value)?.short || 'REG';
 }
 
-export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, note, onNoteChange, weightSuggestion, onApplySuggestion, allWorkoutExercises }) {
+export { SET_TYPES };
+
+export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, note, onNoteChange, weightSuggestion, onApplySuggestion, allWorkoutExercises, mode = 'session' }) {
+  const isTemplate = mode === 'template';
   const exercisePbs = pbs?.[exercise.name] || {};
   const videoId = getExerciseVideoId(exercise.name);
   const { exercises: allExercises } = useExercises();
@@ -152,7 +155,7 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
       </div>
 
       {/* Smart Weight Suggestion Banner */}
-      {!readOnly && weightSuggestion && (
+      {!isTemplate && !readOnly && weightSuggestion && (
         <div className={`px-4 py-2 border-b border-white/5 flex items-center justify-between ${
           weightSuggestion.direction === 'up' ? 'bg-green-500/10' :
           weightSuggestion.direction === 'hold' ? 'bg-yellow-500/10' :
@@ -230,12 +233,18 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
 
       {/* Column Headers */}
       <div className="px-3 pt-2 pb-1 flex items-center gap-1.5 text-[9px] text-wf-gray-500 uppercase tracking-wider">
-        {!readOnly && onToggleComplete && <div className="w-7 shrink-0" />}
+        {!isTemplate && !readOnly && onToggleComplete && <div className="w-7 shrink-0" />}
         <div className="w-8 shrink-0 text-center">Set</div>
         <div className="w-14 shrink-0 text-center">Type</div>
         <div className="flex-1 text-center">Weight</div>
-        <div className="w-14 shrink-0 text-center">Goal</div>
-        <div className="flex-1 text-center">Actual</div>
+        {isTemplate ? (
+          <div className="flex-1 text-center">Reps</div>
+        ) : (
+          <>
+            <div className="w-14 shrink-0 text-center">Goal</div>
+            <div className="flex-1 text-center">Actual</div>
+          </>
+        )}
       </div>
 
       {/* Set Rows */}
@@ -243,8 +252,8 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
         {exercise.sets.map((set, idx) => {
           const entry = entries?.[idx] || {};
           const setKey = `${exercise.name}-${idx}`;
-          const isCompleted = completedSets?.has(setKey);
-          const isAutoFill = autoFilled?.has(setKey) && !isCompleted;
+          const isCompleted = !isTemplate && completedSets?.has(setKey);
+          const isAutoFill = !isTemplate && autoFilled?.has(setKey) && !isCompleted;
           const rowWeight = entry.weight ?? set.suggestedWeight;
           const pbReps = (rowWeight !== undefined && rowWeight !== '' && rowWeight !== null) ? exercisePbs[rowWeight] : undefined;
           return (
@@ -258,8 +267,8 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
               onTouchMove={!readOnly && onDeleteSet ? handleTouchMove : undefined}
               onContextMenu={!readOnly && onDeleteSet ? (e) => { e.preventDefault(); setDeleteIdx(idx); } : undefined}
             >
-              {/* Checkmark circle */}
-              {!readOnly && onToggleComplete && (
+              {/* Checkmark circle — session mode only */}
+              {!isTemplate && !readOnly && onToggleComplete && (
                 <button
                   type="button"
                   onClick={() => onToggleComplete(exercise.name, idx)}
@@ -279,7 +288,7 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
 
               {/* Set label */}
               <span className="text-wf-gray-400 text-xs font-medium w-8 shrink-0 text-center">
-                {set.setNumber}
+                {isTemplate ? idx + 1 : set.setNumber}
               </span>
 
               {/* Set type dropdown — shows shorthand, dropdown lists full names */}
@@ -309,7 +318,7 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
                 <input
                   type="number"
                   inputMode="decimal"
-                  value={entry.weight ?? set.suggestedWeight ?? ''}
+                  value={entry.weight ?? (isTemplate ? '' : set.suggestedWeight ?? '')}
                   placeholder={readOnly ? '—' : '0'}
                   onChange={(e) => onChange?.(exercise.name, idx, 'weight', e.target.value)}
                   onFocus={(e) => e.target.select()}
@@ -320,29 +329,47 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
                 />
               </div>
 
-              {/* Goal reps (read-only, from template) */}
-              <div className="w-14 shrink-0">
-                <div className="w-full rounded-lg px-2 py-2.5 text-center text-base font-mono-stat text-wf-gray-500 bg-black/40 border border-white/5">
-                  {set.plannedReps ?? '—'}
+              {isTemplate ? (
+                /* Template mode: editable Reps input */
+                <div className="flex-1">
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={entry.reps ?? ''}
+                    onChange={(e) => onChange?.(exercise.name, idx, 'reps', e.target.value)}
+                    onFocus={(e) => e.target.select()}
+                    placeholder="0"
+                    className="w-full lcd-input rounded-lg px-2 py-2.5 text-center text-base text-white focus:outline-none"
+                  />
                 </div>
-              </div>
+              ) : (
+                <>
+                  {/* Goal reps (read-only, from template) */}
+                  <div className="w-14 shrink-0">
+                    <div className="w-full rounded-lg px-2 py-2.5 text-center text-base font-mono-stat text-wf-gray-500 bg-black/40 border border-white/5">
+                      {set.plannedReps ?? '—'}
+                    </div>
+                  </div>
 
-              {/* Actual reps (editable) */}
-              <div className="flex-1">
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={entry.reps ?? ''}
-                  onChange={(e) => onChange?.(exercise.name, idx, 'reps', e.target.value)}
-                  onFocus={(e) => e.target.select()}
-                  onBlur={() => onBlur?.(exercise.name, idx, 'reps')}
-                  readOnly={readOnly}
-                  placeholder={readOnly ? '—' : '0'}
-                  className={`w-full lcd-input rounded-lg px-2 py-2.5 text-center text-base focus:outline-none disabled:opacity-50 placeholder:text-wf-gray-700 ${isCompleted ? 'completed text-white' : isAutoFill ? 'text-wf-gray-500 italic' : 'text-white'}`}
-                  disabled={readOnly}
-                />
-              </div>
+                  {/* Actual reps (editable) */}
+                  <div className="flex-1">
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={entry.reps ?? ''}
+                      onChange={(e) => onChange?.(exercise.name, idx, 'reps', e.target.value)}
+                      onFocus={(e) => e.target.select()}
+                      onBlur={() => onBlur?.(exercise.name, idx, 'reps')}
+                      readOnly={readOnly}
+                      placeholder={readOnly ? '—' : '0'}
+                      className={`w-full lcd-input rounded-lg px-2 py-2.5 text-center text-base focus:outline-none disabled:opacity-50 placeholder:text-wf-gray-700 ${isCompleted ? 'completed text-white' : isAutoFill ? 'text-wf-gray-500 italic' : 'text-white'}`}
+                      disabled={readOnly}
+                    />
+                  </div>
+                </>
+              )}
 
               {/* Row set controls - hidden, use subheader buttons instead */}
               {false && onAddSet && (
