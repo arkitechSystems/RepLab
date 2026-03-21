@@ -56,14 +56,39 @@ export default function WorkoutSession() {
   // Keep ref in sync with state
   useEffect(() => { restDurationRef.current = restDuration; }, [restDuration]);
 
+  const MAX_TIMER_SECS = 14400; // 4 hours
+  const timerStorageKey = `wf-timer-${templateId}-${date}`;
+
+  const clearTimerStorage = useCallback(() => {
+    try { localStorage.removeItem(timerStorageKey); } catch (_) {}
+  }, [timerStorageKey]);
+
+  // Start (or resume) the interval that updates elapsed every second.
+  // `origin` is the Date.now() timestamp when the workout originally began.
+  const runTimerInterval = useCallback((origin) => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    startTimeRef.current = origin;
+    timerRef.current = setInterval(() => {
+      const secs = Math.floor((Date.now() - origin) / 1000);
+      if (secs >= MAX_TIMER_SECS) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+        setElapsed(MAX_TIMER_SECS);
+        try { localStorage.removeItem(`wf-timer-${templateId}-${date}`); } catch (_) {}
+      } else {
+        setElapsed(secs);
+      }
+    }, 1000);
+  }, [templateId, date]);
+
   const startTimer = useCallback(() => {
     if (timerStarted) return;
+    const now = Date.now();
+    try { localStorage.setItem(timerStorageKey, String(now)); } catch (_) {}
     setTimerStarted(true);
-    startTimeRef.current = Date.now();
-    timerRef.current = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000));
-    }, 1000);
-  }, [timerStarted]);
+    setElapsed(0);
+    runTimerInterval(now);
+  }, [timerStarted, timerStorageKey, runTimerInterval]);
 
   const handleBeginWorkout = useCallback(() => {
     const sessionDate = parseISO(date);
@@ -250,15 +275,33 @@ export default function WorkoutSession() {
         setCompletedSets(restoredCompleted);
         if (session.notes) setNotes(session.notes);
         if (session.completed) setIsCompleted(true);
-        if (session.entries?.some(e => e.weight > 0 || e.reps > 0)) {
+        // Check localStorage for a persisted timer for this session
+        const storedStart = (() => {
+          try { return localStorage.getItem(`wf-timer-${templateId}-${date}`); } catch (_) { return null; }
+        })();
+
+        if (storedStart && !session.completed) {
+          const origin = Number(storedStart);
+          const secsSinceStart = Math.floor((Date.now() - origin) / 1000);
           setPersisted(true);
           setTimerStarted(true);
-          // Start the live timer only for in-progress (not completed) sessions
+          if (secsSinceStart >= MAX_TIMER_SECS) {
+            // Timer expired while away — cap it
+            setElapsed(MAX_TIMER_SECS);
+            try { localStorage.removeItem(`wf-timer-${templateId}-${date}`); } catch (_) {}
+          } else {
+            setElapsed(secsSinceStart);
+            runTimerInterval(origin);
+          }
+        } else if (session.entries?.some(e => e.weight > 0 || e.reps > 0)) {
+          setPersisted(true);
+          setTimerStarted(true);
+          // No stored timer — session has data but timer origin is unknown.
+          // For in-progress sessions, start a fresh timer from now.
           if (!session.completed) {
-            startTimeRef.current = Date.now();
-            timerRef.current = setInterval(() => {
-              setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000));
-            }, 1000);
+            const now = Date.now();
+            try { localStorage.setItem(`wf-timer-${templateId}-${date}`, String(now)); } catch (_) {}
+            runTimerInterval(now);
           }
         }
       } catch (err) {
@@ -635,6 +678,7 @@ export default function WorkoutSession() {
       setIsCompleted(newCompleted);
       if (newCompleted) {
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+        clearTimerStorage();
         navigator.vibrate?.([40, 30, 80]);
         setShowSummary(true);
       }
@@ -1008,12 +1052,12 @@ export default function WorkoutSession() {
                 Begin Workout
               </button>
             ) : (
-              <div className="mt-2 space-y-2">
-                <div className={`rounded-lg overflow-hidden border border-white/8 transition-all duration-300 ${collapsed && !pinWorkoutTimer ? 'hidden' : ''}`} style={{ background: 'rgba(255,255,255,0.04)' }}>
+              <div className="mt-2">
+                <div className={`rounded-t-lg overflow-hidden transition-all duration-300 ${collapsed && !pinWorkoutTimer ? 'hidden' : ''} bg-black`}>
                   <div className="px-3 py-2.5 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-semibold">Time</span>
-                      <span className="bg-black/60 rounded-md px-2.5 py-1 border border-white/10">
+                      <span className="bg-black/60 rounded-md px-2.5 py-1">
                         <span className="text-xl font-mono-stat font-bold text-white tracking-wider" style={{ letterSpacing: '2px' }}>{formatTime(elapsed)}</span>
                       </span>
                     </div>
@@ -1043,7 +1087,7 @@ export default function WorkoutSession() {
                     </div>
                   </div>
                 </div>
-                <div className={`rounded-lg overflow-hidden transition-all duration-300 ${collapsed && !pinRestTimer ? 'hidden' : ''} ${restRemaining !== null && restRemaining <= 0 ? 'border border-green-500/50' : 'border border-white/8'}`} style={{ background: 'rgba(255,255,255,0.04)' }}>
+                <div className={`rounded-b-lg overflow-hidden transition-all duration-300 ${collapsed && !pinRestTimer ? 'hidden' : ''} ${restRemaining !== null && restRemaining <= 0 ? 'border border-green-500/50' : ''} bg-black`}>
                   {restRemaining !== null && restRemaining > 0 && (
                     <div className="h-1 bg-white/5">
                       <div className="h-full bg-wf-red transition-all duration-1000 ease-linear" style={{ width: `${(restRemaining / restDuration) * 100}%` }} />
@@ -1384,7 +1428,7 @@ export default function WorkoutSession() {
           onTouchMove={handleFloatTouchMove}
           onTouchEnd={handleFloatTouchEnd}
         >
-          <div className="bg-wf-gray-900/95 border border-white/15 rounded-2xl px-4 py-2.5 shadow-2xl backdrop-blur-sm flex items-center gap-3">
+          <div className="bg-wf-gray-900/95 rounded-2xl px-4 py-2.5 shadow-2xl backdrop-blur-sm flex items-center gap-3">
             <span className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-semibold">Time</span>
             <span className="text-lg font-black text-white tabular-nums font-mono-stat">{formatTime(elapsed)}</span>
             <button
@@ -1408,7 +1452,7 @@ export default function WorkoutSession() {
           onTouchMove={handleRestFloatTouchMove}
           onTouchEnd={handleRestFloatTouchEnd}
         >
-          <div className={`rounded-2xl px-4 py-2.5 shadow-2xl backdrop-blur-sm flex items-center gap-3 ${restRemaining !== null && restRemaining <= 0 ? 'bg-green-900/95 border border-green-500/30' : 'bg-wf-gray-900/95 border border-white/15'}`}>
+          <div className={`rounded-2xl px-4 py-2.5 shadow-2xl backdrop-blur-sm flex items-center gap-3 ${restRemaining !== null && restRemaining <= 0 ? 'bg-green-900/95 border border-green-500/30' : 'bg-wf-gray-900/95'}`}>
             {restRemaining !== null ? (
               restRemaining <= 0 ? (
                 <span className="text-lg font-mono-stat font-black text-green-400">GO!</span>
@@ -1419,7 +1463,9 @@ export default function WorkoutSession() {
                 </>
               )
             ) : (
-              <span className="text-sm text-wf-gray-400 font-semibold">Rest idle</span>
+              <button onClick={startRestTimer} className="text-xs text-wf-red font-semibold px-3 py-1.5 rounded-lg bg-wf-red/10 active:bg-wf-red/20 transition-colors">
+                Start Rest
+              </button>
             )}
             <button
               onClick={() => setRestFloating(false)}
