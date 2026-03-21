@@ -195,49 +195,47 @@ export default function Calendar() {
         body: JSON.stringify({ schedule: [{ dayOfWeek: targetDow, templateId: copySource.templateId }] }),
       });
 
-      if (useReps) {
-        // Fetch source session to get actual reps
-        const sourceSession = await api(`/sessions/by-template/${copySource.templateId}/${copySource.date}`);
+      // Fetch source session to copy weights (and optionally reps as goals)
+      const sourceSession = await api(`/sessions/by-template/${copySource.templateId}/${copySource.date}`).catch(() => null);
 
-        if (sourceSession && sourceSession.workoutData) {
-          // Build modified workoutData with plannedReps from actual reps
-          const modifiedWorkoutData = { ...sourceSession.workoutData };
-          if (modifiedWorkoutData.exercises && sourceSession.entries) {
-            modifiedWorkoutData.exercises = modifiedWorkoutData.exercises.map((ex) => {
-              const exEntries = sourceSession.entries.filter((e) => e.exerciseName === ex.name);
-              return {
-                ...ex,
-                sets: ex.sets.map((s) => {
-                  const matchingEntry = exEntries.find((e) => e.setNumber === s.setNumber);
-                  return {
-                    ...s,
-                    plannedReps: matchingEntry && matchingEntry.reps > 0 ? matchingEntry.reps : s.plannedReps,
-                  };
-                }),
-              };
-            });
-          }
-
-          // Build blank entries
-          const entries = [];
-          for (const ex of modifiedWorkoutData.exercises) {
-            for (const s of ex.sets) {
-              entries.push({ exerciseName: ex.name, setNumber: s.setNumber, weight: 0, reps: 0 });
-            }
-          }
-
-          const targetDateStr = format(targetDate, 'yyyy-MM-dd');
-          await api('/sessions', {
-            method: 'POST',
-            body: JSON.stringify({
-              templateId: copySource.templateId,
-              date: targetDateStr,
-              entries,
-              notes: {},
-              workoutData: modifiedWorkoutData,
-            }),
+      if (sourceSession && sourceSession.workoutData) {
+        const modifiedWorkoutData = { ...sourceSession.workoutData };
+        if (modifiedWorkoutData.exercises && sourceSession.entries) {
+          modifiedWorkoutData.exercises = modifiedWorkoutData.exercises.map((ex) => {
+            const exEntries = sourceSession.entries.filter((e) => e.exerciseName === ex.name);
+            return {
+              ...ex,
+              sets: ex.sets.map((s) => {
+                const matchingEntry = exEntries.find((e) => e.setNumber === s.setNumber);
+                return {
+                  ...s,
+                  plannedReps: useReps && matchingEntry && matchingEntry.reps > 0 ? matchingEntry.reps : s.plannedReps,
+                  suggestedWeight: matchingEntry && matchingEntry.weight > 0 ? matchingEntry.weight : s.suggestedWeight,
+                };
+              }),
+            };
           });
         }
+
+        // Build blank entries (user starts fresh, weights show as suggestions)
+        const entries = [];
+        for (const ex of modifiedWorkoutData.exercises) {
+          for (const s of ex.sets) {
+            entries.push({ exerciseName: ex.name, setNumber: s.setNumber, weight: 0, reps: 0 });
+          }
+        }
+
+        const targetDateStr = format(targetDate, 'yyyy-MM-dd');
+        await api('/sessions', {
+          method: 'POST',
+          body: JSON.stringify({
+            templateId: copySource.templateId,
+            date: targetDateStr,
+            entries,
+            notes: {},
+            workoutData: modifiedWorkoutData,
+          }),
+        });
       }
 
       // Refresh schedule and completed sessions
