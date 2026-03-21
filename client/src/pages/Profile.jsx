@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
@@ -28,7 +28,7 @@ function MetricInput({ label, value, unit, onChange }) {
 }
 
 export default function Profile() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const navigate = useNavigate();
   const [metrics, setMetrics] = useState({
     height: null,
@@ -56,6 +56,9 @@ export default function Profile() {
   const [passwordError, setPasswordError] = useState('');
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordChanged, setPasswordChanged] = useState(false);
+  const [showPhotoMenu, setShowPhotoMenu] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef(null);
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
@@ -125,6 +128,61 @@ export default function Profile() {
     navigate('/login');
   }
 
+  function resizeAndCropImage(file, maxSize = 256) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = maxSize;
+          canvas.height = maxSize;
+          const ctx = canvas.getContext('2d');
+          const min = Math.min(img.width, img.height);
+          const sx = (img.width - min) / 2;
+          const sy = (img.height - min) / 2;
+          ctx.drawImage(img, sx, sy, min, min, 0, 0, maxSize, maxSize);
+          resolve(canvas.toDataURL('image/jpeg', 0.8));
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handlePhotoUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setUploadingPhoto(true);
+    setShowPhotoMenu(false);
+    try {
+      const photo = await resizeAndCropImage(file);
+      const result = await api('/auth/profile-photo', {
+        method: 'PUT',
+        body: JSON.stringify({ photo }),
+      });
+      updateUser({ ...user, photoUrl: result.photoUrl });
+    } catch (err) {
+      console.error('Failed to upload photo:', err);
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
+
+  async function handleRemovePhoto() {
+    setShowPhotoMenu(false);
+    setUploadingPhoto(true);
+    try {
+      await api('/auth/profile-photo', { method: 'DELETE' });
+      updateUser({ ...user, photoUrl: null });
+    } catch (err) {
+      console.error('Failed to remove photo:', err);
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
+
   return (
     <div>
       <StickyHeader title="Profile" />
@@ -133,12 +191,42 @@ export default function Profile() {
         {/* Member Info */}
         <div className="glass-card rounded-xl p-6 mb-4 fade-slide-up">
           {/* Avatar */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handlePhotoUpload}
+          />
           <div className="flex items-center gap-4 mb-6">
-            <div className="w-16 h-16 rounded-full bg-wf-red/20 flex items-center justify-center">
-              <span className="text-2xl font-bold text-wf-red">
-                {(user?.firstName || user?.email || user?.phone || 'W')[0].toUpperCase()}
-              </span>
-            </div>
+            <button
+              onClick={() => setShowPhotoMenu(true)}
+              className="relative w-16 h-16 rounded-full overflow-hidden shrink-0 active:scale-95 transition-transform"
+            >
+              {user?.photoUrl ? (
+                <img src={user.photoUrl} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-wf-red/20 flex items-center justify-center">
+                  <span className="text-2xl font-bold text-wf-red">
+                    {(user?.firstName || user?.email || user?.phone || 'W')[0].toUpperCase()}
+                  </span>
+                </div>
+              )}
+              {uploadingPhoto ? (
+                <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                </div>
+              ) : (
+                <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-end pb-0.5 pr-0.5">
+                  <div className="w-5 h-5 rounded-full bg-wf-red flex items-center justify-center">
+                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+                    </svg>
+                  </div>
+                </div>
+              )}
+            </button>
             <div>
               <h2 className="text-lg font-semibold text-white">
                 {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : (user?.email || user?.phone || 'User')}
@@ -555,6 +643,60 @@ export default function Profile() {
       {showSplash && (
         <div onClick={() => setShowSplash(false)} className="cursor-pointer">
           <SplashScreen onDone={() => {}} persistent />
+        </div>
+      )}
+
+      {/* Photo Menu Modal */}
+      {showPhotoMenu && (
+        <div className="fixed inset-0 z-[100] flex items-end justify-center px-4 pb-8" onClick={() => setShowPhotoMenu(false)}>
+          <div className="absolute inset-0 bg-black/70" />
+          <div
+            className="relative w-full max-w-xs bg-wf-gray-900 border border-white/10 rounded-2xl overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {user?.photoUrl ? (
+              <>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full px-5 py-4 text-left text-sm font-semibold text-white active:bg-white/5 transition-colors flex items-center gap-3"
+                >
+                  <svg className="w-5 h-5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+                  </svg>
+                  Change Photo
+                </button>
+                <div className="border-t border-white/10" />
+                <button
+                  onClick={handleRemovePhoto}
+                  className="w-full px-5 py-4 text-left text-sm font-semibold text-wf-red active:bg-white/5 transition-colors flex items-center gap-3"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                  </svg>
+                  Remove Photo
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => { setShowPhotoMenu(false); fileInputRef.current?.click(); }}
+                className="w-full px-5 py-4 text-left text-sm font-semibold text-white active:bg-white/5 transition-colors flex items-center gap-3"
+              >
+                <svg className="w-5 h-5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+                </svg>
+                Upload Photo
+              </button>
+            )}
+            <div className="border-t border-white/10" />
+            <button
+              onClick={() => setShowPhotoMenu(false)}
+              className="w-full px-5 py-4 text-center text-sm font-medium text-wf-gray-400 active:bg-white/5 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
     </div>

@@ -132,7 +132,7 @@ const db = {
     const { rows } = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
     if (!rows[0]) return null;
     const u = rows[0];
-    return { id: u.id, email: u.email, phone: u.phone, passwordHash: u.password_hash, firstName: u.first_name, lastName: u.last_name, username: u.username, plan: u.plan || 'Free', trialEnd: u.trial_end || null };
+    return { id: u.id, email: u.email, phone: u.phone, passwordHash: u.password_hash, firstName: u.first_name, lastName: u.last_name, username: u.username, plan: u.plan || 'Free', trialEnd: u.trial_end || null, profilePhoto: u.profile_photo || null };
   },
 
   async findUserByUsername(username) {
@@ -147,7 +147,7 @@ const db = {
     );
     if (!rows[0]) return null;
     const u = rows[0];
-    return { id: u.id, email: u.email, phone: u.phone, passwordHash: u.password_hash, firstName: u.first_name, lastName: u.last_name, username: u.username, plan: u.plan || 'Free', trialEnd: u.trial_end || null, createdAt: u.created_at };
+    return { id: u.id, email: u.email, phone: u.phone, passwordHash: u.password_hash, firstName: u.first_name, lastName: u.last_name, username: u.username, plan: u.plan || 'Free', trialEnd: u.trial_end || null, profilePhoto: u.profile_photo || null, createdAt: u.created_at };
   },
 
   async createUser({ email, phone, passwordHash, firstName, lastName, gender, username, referralSource, referralCode, zipCode, signupCity, signupState, signupDevice, utmSource, utmMedium, utmCampaign, utmContent, utmTerm }) {
@@ -908,7 +908,7 @@ const db = {
   async getChallengeLeaderboard(challenge) {
     const { rows } = await pool.query(
       `SELECT ce.id, ce.value, ce.created_at,
-              u.id AS user_id, u.first_name, u.last_name, u.username
+              u.id AS user_id, u.first_name, u.last_name, u.username, u.profile_photo
        FROM challenge_entries ce
        JOIN users u ON ce.user_id = u.id
        WHERE ce.challenge = $1
@@ -922,6 +922,7 @@ const db = {
       firstName: r.first_name,
       lastName: r.last_name,
       username: r.username,
+      photoUrl: r.profile_photo || null,
       createdAt: r.created_at,
     }));
   },

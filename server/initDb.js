@@ -42,6 +42,7 @@ export default async function initDb() {
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMPTZ`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_end TIMESTAMPTZ`);
 
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_photo TEXT`);
   await pool.query(`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS workout_data JSONB`);
 
   await pool.query(`CREATE TABLE IF NOT EXISTS trainer_login_history (

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isToday } from 'date-fns';
 import { api } from '../api';
 import ExerciseCard from '../components/ExerciseCard';
 import { useExercises } from '../hooks/useExercises';
@@ -38,6 +38,7 @@ export default function WorkoutSession() {
   const [restFloating, setRestFloating] = useState(false);
   const [restFloatPos, setRestFloatPos] = useState({ x: 16, y: 140 });
   const [showSummary, setShowSummary] = useState(false);
+  const [showDateConfirm, setShowDateConfirm] = useState(false);
   const dragRef = useRef(null);
   const [elapsed, setElapsed] = useState(0);
   const startTimeRef = useRef(null);
@@ -62,6 +63,15 @@ export default function WorkoutSession() {
       setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000));
     }, 1000);
   }, [timerStarted]);
+
+  const handleBeginWorkout = useCallback(() => {
+    const sessionDate = parseISO(date);
+    if (!isToday(sessionDate)) {
+      setShowDateConfirm(true);
+    } else {
+      startTimer();
+    }
+  }, [date, startTimer]);
 
   function startRestTimer() {
     if (restTimerRef.current) clearInterval(restTimerRef.current);
@@ -853,6 +863,34 @@ export default function WorkoutSession() {
       )}
 
       {UnsavedModal}
+      {showDateConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center px-5" onClick={() => setShowDateConfirm(false)}>
+          <div className="absolute inset-0 bg-black/70" />
+          <div
+            className="relative w-full max-w-xs bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-bold text-white text-center mb-1">Different Date</h3>
+            <p className="text-wf-gray-400 text-sm text-center mb-5">
+              This workout is scheduled for {format(parseISO(date), 'MMMM d, yyyy')}. Are you sure you want to start it now?
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => { setShowDateConfirm(false); startTimer(); }}
+                className="w-full btn-gradient text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+              >
+                Start Anyway
+              </button>
+              <button
+                onClick={() => setShowDateConfirm(false)}
+                className="w-full text-wf-gray-400 font-medium py-2 text-sm active:opacity-70 transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Back button */}
       <div className="px-4 pt-6">
         <button onClick={() => guardedNavigate(() => navigate(-1))} className="flex items-center gap-1 text-wf-red text-sm font-medium mb-2 active:opacity-70">
@@ -885,7 +923,7 @@ export default function WorkoutSession() {
             </div>
             {!timerStarted ? (
               <button
-                onClick={startTimer}
+                onClick={handleBeginWorkout}
                 className="w-full bg-wf-red/90 hover:bg-wf-red text-white text-xs font-semibold px-4 py-2 rounded-lg active:scale-[0.98] transition-all mt-1"
               >
                 Begin Workout

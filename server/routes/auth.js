@@ -43,7 +43,7 @@ function normalizePhone(value) {
 }
 
 function userResponse(user) {
-  return { id: user.id, email: user.email, phone: user.phone, firstName: user.firstName, lastName: user.lastName, username: user.username, plan: user.plan || 'Free', trialEnd: user.trialEnd || null };
+  return { id: user.id, email: user.email, phone: user.phone, firstName: user.firstName, lastName: user.lastName, username: user.username, plan: user.plan || 'Free', trialEnd: user.trialEnd || null, photoUrl: user.profilePhoto || null };
 }
 
 router.post('/signup', async (req, res) => {
@@ -318,6 +318,35 @@ router.post('/upgrade', authMiddleware, async (req, res) => {
 
     const updated = await db.findUserById(req.userId);
     res.json({ user: userResponse(updated) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Upload or replace profile photo
+router.put('/profile-photo', authMiddleware, async (req, res) => {
+  try {
+    const { photo } = req.body;
+    if (!photo || !photo.startsWith('data:image/')) {
+      return res.status(400).json({ error: 'Invalid image data' });
+    }
+    if (photo.length > 500000) {
+      return res.status(400).json({ error: 'Image too large' });
+    }
+    await pool.query('UPDATE users SET profile_photo = $1 WHERE id = $2', [photo, req.userId]);
+    res.json({ photoUrl: photo });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Remove profile photo
+router.delete('/profile-photo', authMiddleware, async (req, res) => {
+  try {
+    await pool.query('UPDATE users SET profile_photo = NULL WHERE id = $1', [req.userId]);
+    res.json({ photoUrl: null });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });

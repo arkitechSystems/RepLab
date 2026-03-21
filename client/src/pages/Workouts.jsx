@@ -2045,12 +2045,14 @@ function MaxPushupsChallenge() {
                 </div>
 
                 {/* Avatar */}
-                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                  entry.userId === user?.id
+                <div className={`w-9 h-9 rounded-full overflow-hidden flex items-center justify-center text-xs font-bold shrink-0 ${
+                  entry.photoUrl ? '' : entry.userId === user?.id
                     ? 'bg-gradient-to-br from-orange-500 to-yellow-500 text-white'
                     : 'bg-white/10 text-wf-gray-300'
                 }`}>
-                  {getInitials(entry)}
+                  {entry.photoUrl ? (
+                    <img src={entry.photoUrl} alt="" className="w-full h-full object-cover" />
+                  ) : getInitials(entry)}
                 </div>
 
                 {/* Name */}
