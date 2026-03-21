@@ -722,7 +722,7 @@ export default function WorkoutSession() {
         name: template.name,
         exercises: template.exercises.map((ex) => ({
           name: ex.name,
-          setType: ex.setType || 'straight',
+          setType: entries[ex.name]?.find(e => e?.setType)?.setType || ex.setType || 'straight',
           sets: ex.sets.map((s, i) => {
             const entry = entries[ex.name]?.[i];
             return {
