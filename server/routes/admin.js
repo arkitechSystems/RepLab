@@ -332,9 +332,22 @@ function adminPage(title, body) {
     .table-wrap table { min-width: 600px; }
     .table-wrap th { position: sticky; top: 0; z-index: 1; }
     table { width: 100%; border-collapse: collapse; }
-    th { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.5); text-align: left; padding: 12px 16px; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
-    td { padding: 12px 16px; border-top: 1px solid rgba(255,255,255,0.05); font-size: 13px; color: rgba(255,255,255,0.8); }
-    tr:hover td { background: rgba(255,255,255,0.03); }
+    th { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.5); text-align: left; padding: 14px 16px; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; white-space: nowrap; }
+    th:first-child { border-radius: 8px 0 0 0; }
+    th:last-child { border-radius: 0 8px 0 0; }
+    td { padding: 14px 16px; border-top: 1px solid rgba(255,255,255,0.04); font-size: 13px; color: rgba(255,255,255,0.8); white-space: nowrap; }
+    tr:hover td { background: rgba(255,255,255,0.04); }
+    tbody tr:nth-child(even) td { background: rgba(255,255,255,0.015); }
+    tbody tr:nth-child(even):hover td { background: rgba(255,255,255,0.05); }
+
+    /* Frozen columns */
+    .sticky-col { position: sticky; z-index: 2; }
+    .sticky-col-0 { left: 0; min-width: 40px; background: rgba(10,10,10,0.97); }
+    .sticky-col-1 { left: 40px; min-width: 100px; background: rgba(10,10,10,0.97); border-right: 1px solid rgba(255,255,255,0.08); }
+    th.sticky-col { z-index: 3; background: rgba(20,20,20,0.98); }
+    tr:hover .sticky-col-0, tr:hover .sticky-col-1 { background: rgba(20,20,20,0.97); }
+    tbody tr:nth-child(even) .sticky-col-0, tbody tr:nth-child(even) .sticky-col-1 { background: rgba(14,14,14,0.97); }
+    tbody tr:nth-child(even):hover .sticky-col-0, tbody tr:nth-child(even):hover .sticky-col-1 { background: rgba(20,20,20,0.97); }
 
     /* Buttons */
     .btn {
@@ -839,21 +852,28 @@ router.get('/users', adminAuth, async (req, res) => {
     if (req.query.format === 'html') {
       // Dynamic columns from user object keys (skip id and passwordHash)
       const skipKeys = new Set(['id', 'passwordHash']);
-      const allKeys = users.length > 0
+      const rawKeys = users.length > 0
         ? Object.keys(users[0]).filter((k) => !skipKeys.has(k))
         : [];
+      // Move username to first position
+      const allKeys = rawKeys.filter(k => k !== 'username');
+      if (rawKeys.includes('username')) allKeys.unshift('username');
 
       // Pretty labels: camelCase → Title Case
       const label = (k) => k.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase());
 
-      const headerCells = `<th>#</th>` + allKeys.map((k, i) => `<th style="cursor:pointer;user-select:none;" onclick="sortTable(${i + 1})" title="Sort by ${label(k)}">${label(k)} <span style="opacity:0.3;font-size:9px;">⇅</span></th>`).join('') + `<th style="text-align:center;">Actions</th>`;
+      const headerCells = `<th class="sticky-col sticky-col-0">#</th>` + allKeys.map((k, i) => {
+        const stickyClass = i === 0 ? ' class="sticky-col sticky-col-1"' : '';
+        return `<th${stickyClass} style="cursor:pointer;user-select:none;" onclick="sortTable(${i + 1})" title="Sort by ${label(k)}">${label(k)} <span style="opacity:0.3;font-size:9px;">⇅</span></th>`;
+      }).join('') + `<th style="text-align:center;">Actions</th>`;
 
       const rows = users.map((u, i) => {
-        const cells = allKeys.map((k) => {
+        const cells = allKeys.map((k, ci) => {
+          const stickyClass = ci === 0 ? ' class="sticky-col sticky-col-1"' : '';
           const val = u[k];
-          if (val == null) return '<td>—</td>';
-          if (k === 'createdAt' || k.endsWith('At')) return `<td>${new Date(val).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', year: 'numeric' })} <span style="color:#888;">${new Date(val).toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' })} CT</span></td>`;
-          return `<td>${esc(val)}</td>`;
+          if (val == null) return `<td${stickyClass}>—</td>`;
+          if (k === 'createdAt' || k.endsWith('At')) return `<td${stickyClass}>${new Date(val).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', year: 'numeric' })} <span style="color:#888;">${new Date(val).toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' })} CT</span></td>`;
+          return `<td${stickyClass}>${esc(val)}</td>`;
         }).join('');
         const deleteBtn = `<td style="text-align:center;white-space:nowrap;">
           <button onclick="resetPassword(${u.id}, '${esc((u.email || u.phone || 'User #' + u.id)).replace(/'/g, "\\'")}')" class="reset-btn" title="Reset password">
@@ -863,7 +883,7 @@ router.get('/users', adminAuth, async (req, res) => {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
         </td>`;
-        return `<tr><td>${i + 1}</td>${cells}${deleteBtn}</tr>`;
+        return `<tr><td class="sticky-col sticky-col-0">${i + 1}</td>${cells}${deleteBtn}</tr>`;
       }).join('');
 
       return res.send(adminPage('User Sign Ups', `
@@ -1157,8 +1177,8 @@ router.get('/users', adminAuth, async (req, res) => {
       <div class="label">Revenue YTD</div>
     </div>
   </div>
-  <div class="glass table-wrap" style="border-radius:16px;width:98vw;position:relative;left:50%;transform:translateX(-50%);">
-  <table>
+  <div class="glass table-wrap" style="border-radius:16px;overflow-x:auto;">
+  <table style="min-width:800px;">
     <thead>
       <tr>${headerCells}</tr>
     </thead>
