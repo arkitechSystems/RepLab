@@ -45,6 +45,38 @@ export default async function initDb() {
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_photo TEXT`);
   await pool.query(`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS workout_data JSONB`);
   await pool.query(`ALTER TABLE session_entries ADD COLUMN IF NOT EXISTS is_completed BOOLEAN DEFAULT FALSE`);
+  await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS is_section_header BOOLEAN DEFAULT FALSE`);
+  await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS section_notes TEXT DEFAULT ''`);
+
+  // Add WARM UP section header to "Leg 1 (anterior chain)" before Leg Press (one-time migration)
+  const { rows: leg1Templates } = await pool.query(
+    `SELECT t.id FROM templates t JOIN programs p ON t.program_id = p.id WHERE t.name ILIKE '%Leg 1%' AND p.name ILIKE '%Upper/Lower/PPL%' LIMIT 1`
+  );
+  if (leg1Templates.length > 0) {
+    const tplId = leg1Templates[0].id;
+    const { rows: existing } = await pool.query(
+      `SELECT id FROM template_exercises WHERE template_id = $1 AND is_section_header = true AND name = 'WARM UP'`, [tplId]
+    );
+    if (existing.length === 0) {
+      // Find the sort_order of Leg Press
+      const { rows: lpRows } = await pool.query(
+        `SELECT DISTINCT sort_order FROM template_exercises WHERE template_id = $1 AND name ILIKE '%Leg Press%' ORDER BY sort_order LIMIT 1`, [tplId]
+      );
+      if (lpRows.length > 0) {
+        const lpOrder = lpRows[0].sort_order;
+        // Shift all exercises at or after this sort_order up by 1
+        await pool.query(
+          `UPDATE template_exercises SET sort_order = sort_order + 1 WHERE template_id = $1 AND sort_order >= $2`, [tplId, lpOrder]
+        );
+        // Insert WARM UP section header at the Leg Press's old position
+        await pool.query(
+          `INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes) VALUES ($1, 'WARM UP', 'straight', 1, 0, 0, $2, true, '5 min light cardio, dynamic stretches')`,
+          [tplId, lpOrder]
+        );
+        console.log('Added WARM UP section header to Leg 1 template');
+      }
+    }
+  }
 
   await pool.query(`CREATE TABLE IF NOT EXISTS trainer_login_history (
     id SERIAL PRIMARY KEY,
@@ -186,11 +218,8 @@ export default async function initDb() {
     await seedDefaults();
   }
 
-  // Seed Upper/Lower program if not already present
-  const { rows: ulRows } = await pool.query("SELECT id FROM programs WHERE name = 'Upper/Lower' AND user_id IS NULL");
-  if (ulRows.length === 0) {
-    await seedUpperLower();
-  }
+  // Remove Upper/Lower program from library (deprecated)
+  await pool.query("DELETE FROM programs WHERE name = 'Upper/Lower' AND user_id IS NULL");
 
   // Seed Bro Split program if not already present
   const { rows: bsRows } = await pool.query("SELECT id FROM programs WHERE name = 'Bro Split Workout' AND user_id IS NULL");
@@ -402,99 +431,6 @@ async function seedDefaults() {
 
     await client.query('COMMIT');
     console.log('Seeded default workout templates');
-  } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
-  }
-}
-
-async function seedUpperLower() {
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-
-    const { rows: [program] } = await client.query(
-      "INSERT INTO programs (user_id, name, description) VALUES (NULL, 'Upper/Lower', '4-day upper/lower strength split') RETURNING id"
-    );
-    const programId = program.id;
-
-    const workouts = [
-      {
-        name: 'Upper A',
-        description: 'Bench, Pull-ups, OHP, Row, Curls, Triceps',
-        sortOrder: 0,
-        exercises: [
-          { name: 'Bench Press', sets: 4, repRange: '6-8', description: 'Barbell press performed lying on a bench. Primary chest compound movement focusing on pressing strength. Keep shoulder blades retracted and drive through the chest.' },
-          { name: 'Pull Ups', sets: 4, repRange: '6-10', description: 'Vertical pulling movement targeting the lats and upper back. Pull chest toward the bar and control the descent.' },
-          { name: 'Overhead Press', sets: 3, repRange: '8-10', description: 'Standing barbell or dumbbell press targeting shoulders and triceps. Core should remain tight and avoid arching the lower back.' },
-          { name: 'Dumbbell Row', sets: 3, repRange: '8-12', description: 'Single-arm horizontal pulling movement for the upper back. Pull elbow toward the hip while keeping the torso stable.' },
-          { name: 'Bicep Curls', sets: 3, repRange: '10-12', description: 'Isolation movement targeting the biceps. Keep elbows close to the body and avoid swinging the weight.' },
-          { name: 'Tricep Extensions', sets: 3, repRange: '10-12', description: 'Isolation movement for the triceps. Fully extend arms and control the lowering phase.' },
-        ],
-      },
-      {
-        name: 'Lower A',
-        description: 'Squat, RDL, Split Squats, Hamstring Curl, Core',
-        sortOrder: 1,
-        exercises: [
-          { name: 'Jump Squats', sets: 3, repRange: '5', description: 'Explosive plyometric exercise performed before heavy lifts. Squat down and explode upward to develop lower-body power.' },
-          { name: 'Back Squat', sets: 4, repRange: '6-8', description: 'Primary lower body compound movement targeting quads, glutes, and core. Maintain a neutral spine and push knees outward.' },
-          { name: 'Romanian Deadlift', sets: 3, repRange: '8-10', description: 'Hip hinge movement targeting hamstrings and glutes. Lower the bar by pushing hips back while keeping the back flat.' },
-          { name: 'Bulgarian Split Squats', sets: 3, repRange: '8-10', description: 'Single-leg strength exercise improving balance and glute activation. Rear foot elevated on bench.' },
-          { name: 'Hamstring Curl', sets: 3, repRange: '10-12', description: 'Isolation movement for hamstrings performed on a machine or stability ball.' },
-          { name: 'Planks', sets: 3, repRange: '30-45s', description: 'Core stabilization exercise maintaining a straight line from head to heels.' },
-        ],
-      },
-      {
-        name: 'Upper B',
-        description: 'Incline Press, Lat Pulldown, Shoulder Press, Cable Row',
-        sortOrder: 2,
-        exercises: [
-          { name: 'Incline Bench Press', sets: 4, repRange: '8-10', description: 'Chest press performed on an incline bench emphasizing the upper chest.' },
-          { name: 'Lat Pulldown', sets: 4, repRange: '8-12', description: 'Machine-based vertical pulling movement targeting the lats.' },
-          { name: 'Dumbbell Shoulder Press', sets: 3, repRange: '8-10', description: 'Seated or standing shoulder press targeting deltoids.' },
-          { name: 'Seated Cable Row', sets: 3, repRange: '8-12', description: 'Horizontal pulling movement targeting mid-back and rhomboids.' },
-          { name: 'Hammer Curls', sets: 3, repRange: '10-12', description: 'Neutral grip curl targeting the brachialis and forearms.' },
-          { name: 'Tricep Dips', sets: 3, repRange: '8-12', description: 'Bodyweight pressing movement targeting chest and triceps.' },
-        ],
-      },
-      {
-        name: 'Lower B',
-        description: 'Front Squat, Hip Thrust, Lunges, Leg Curl, Core',
-        sortOrder: 3,
-        exercises: [
-          { name: 'Box Jumps', sets: 3, repRange: '5', description: 'Explosive jumping movement improving lower-body power.' },
-          { name: 'Front Squat', sets: 4, repRange: '6-8', description: 'Squat variation emphasizing quadriceps and core stability.' },
-          { name: 'Hip Thrust', sets: 3, repRange: '8-10', description: 'Glute-focused compound lift performed with shoulders on a bench.' },
-          { name: 'Walking Lunges', sets: 3, repRange: '10', description: 'Dynamic single-leg movement improving balance and leg strength.' },
-          { name: 'Leg Curl', sets: 3, repRange: '10-12', description: 'Hamstring isolation movement.' },
-          { name: 'Hanging Leg Raises', sets: 3, repRange: '10-15', description: 'Core exercise targeting lower abdominals.' },
-        ],
-      },
-    ];
-
-    for (const w of workouts) {
-      const { rows: [tmpl] } = await client.query(
-        'INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES (NULL, $1, $2, $3, FALSE, $4) RETURNING id',
-        [programId, w.name, w.description, w.sortOrder]
-      );
-
-      let sortOrder = 0;
-      for (const ex of w.exercises) {
-        for (let i = 0; i < ex.sets; i++) {
-          await client.query(
-            'INSERT INTO template_exercises (template_id, name, set_number, planned_reps, suggested_weight, sort_order, rep_range, exercise_description) VALUES ($1, $2, $3, $4, 0, $5, $6, $7)',
-            [tmpl.id, ex.name, i + 1, parseInt(ex.repRange) || 10, sortOrder, ex.repRange, ex.description]
-          );
-        }
-        sortOrder++;
-      }
-    }
-
-    await client.query('COMMIT');
-    console.log('Seeded Upper/Lower program');
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;

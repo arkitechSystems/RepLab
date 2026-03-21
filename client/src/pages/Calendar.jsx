@@ -27,6 +27,7 @@ export default function Calendar() {
   const [copyStep, setCopyStep] = useState(null); // 'pick-day' | 'confirm-overwrite' | 'use-reps'
   const [copyTarget, setCopyTarget] = useState(null); // Date object
   const [copying, setCopying] = useState(false);
+  const [copyWeekOffset, setCopyWeekOffset] = useState(0);
   const navigate = useNavigate();
 
   const [today, setToday] = useState(() => new Date());
@@ -148,6 +149,7 @@ export default function Calendar() {
     });
     setCopyStep('pick-day');
     setCopyTarget(null);
+    setCopyWeekOffset(0);
     setEditingDay(null);
   }
 
@@ -677,9 +679,36 @@ export default function Calendar() {
 
             <div className="overflow-y-auto flex-1 px-5 py-4">
               {/* Step: Pick a day */}
-              {copyStep === 'pick-day' && (
-                <div className="space-y-2">
-                  {weekDays.map((date) => {
+              {copyStep === 'pick-day' && (() => {
+                const copyWeekStart = addDays(startOfWeek(today, { weekStartsOn: 1 }), copyWeekOffset * 7);
+                const copyWeekDays = Array.from({ length: 7 }, (_, i) => addDays(copyWeekStart, i));
+                return (
+                <div>
+                  {/* Week navigation */}
+                  <div className="flex items-center justify-between mb-3">
+                    <button
+                      onClick={() => setCopyWeekOffset(prev => prev - 1)}
+                      className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center active:bg-white/20 transition-colors"
+                    >
+                      <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                      </svg>
+                    </button>
+                    <span className="text-sm font-medium text-wf-gray-300">
+                      {format(copyWeekStart, 'MMM d')} — {format(addDays(copyWeekStart, 6), 'MMM d')}
+                    </span>
+                    <button
+                      onClick={() => setCopyWeekOffset(prev => prev + 1)}
+                      className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center active:bg-white/20 transition-colors"
+                    >
+                      <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  <div className="space-y-2">
+                  {copyWeekDays.map((date) => {
                     const dateStr = format(date, 'yyyy-MM-dd');
                     const isSourceDay = dateStr === copySource.date;
                     const workout = getWorkoutForDay(date);
@@ -734,8 +763,10 @@ export default function Calendar() {
                       </button>
                     );
                   })}
+                  </div>
                 </div>
-              )}
+                );
+              })()}
 
               {/* Step: Confirm overwrite */}
               {copyStep === 'confirm-overwrite' && (

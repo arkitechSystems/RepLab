@@ -272,7 +272,11 @@ export default function Workouts() {
   }
 
   const enrichedPrograms = getEnrichedPrograms();
-  const browsePrograms = enrichedPrograms.filter((p) => p.userId === null);
+  const browsePrograms = enrichedPrograms.filter((p) => p.userId === null).sort((a, b) => {
+    if (a.name === "Will's Upper/Lower/PPL") return -1;
+    if (b.name === "Will's Upper/Lower/PPL") return 1;
+    return 0;
+  });
   const myPrograms = enrichedPrograms.filter((p) => p.userId !== null);
 
   function enterEditMode(program) {

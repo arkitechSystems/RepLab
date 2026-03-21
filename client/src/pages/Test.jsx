@@ -49,6 +49,14 @@ export default function Test() {
             </div>
           </div>
           <div
+            onClick={() => navigate('/test/section-header')}
+            className="glass-card rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
+          >
+            <div className="p-5">
+              <h2 className="text-xl font-black text-white tracking-tight">Workout Section Header Test</h2>
+            </div>
+          </div>
+          <div
             onClick={() => navigate('/test/cards')}
             className="glass-card rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
           >
