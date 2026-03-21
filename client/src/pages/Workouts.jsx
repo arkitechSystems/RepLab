@@ -91,6 +91,7 @@ export default function Workouts() {
   const [previewWorkout, setPreviewWorkout] = useState(null); // template object for detail view
   const [bioExpanded, setBioExpanded] = useState(false);
   const [expandedWorkoutCard, setExpandedWorkoutCard] = useState(null);
+  const [expandedExercises, setExpandedExercises] = useState(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [browseSearch, setBrowseSearch] = useState('');
   const [showSearch, setShowSearch] = useState(false);
@@ -761,22 +762,59 @@ export default function Workouts() {
                     ) : null}
                   </div>
 
-                  {/* Exercise list with sets × reps (hidden in edit mode) */}
+                  {/* Exercise accordion cards (hidden in edit mode) */}
                   {!editMode && !t.isRest && t.exercises.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-white/10 space-y-1.5">
-                      {/* Column headers */}
-                      <div className="flex items-center gap-2 px-1 mb-2">
-                        <span className="flex-1 text-[10px] uppercase tracking-widest text-wf-gray-600">Exercise</span>
-                        <span className="w-10 text-[10px] uppercase tracking-widest text-wf-gray-600 text-center">Sets</span>
-                        <span className="w-14 text-[10px] uppercase tracking-widest text-wf-gray-600 text-center">Reps</span>
-                      </div>
+                    <div className="mt-3 pt-3 border-t border-white/10 space-y-2">
                       {t.exercises.map((ex) => {
+                        const exKey = `${t.id}-${ex.name}`;
+                        const isExpanded = expandedExercises.has(exKey);
+                        const topWeight = Math.max(...ex.sets.map(s => s.suggestedWeight || 0));
                         const reps = ex.repRange || ex.sets[0]?.plannedReps || '—';
                         return (
-                          <div key={ex.name} className="flex items-center gap-2 px-1">
-                            <span className="flex-1 text-sm text-white/80 truncate">{ex.name}</span>
-                            <span className="w-10 text-sm font-mono-stat text-wf-gray-400 text-center">{ex.sets.length}</span>
-                            <span className="w-14 text-sm font-mono-stat text-wf-gray-400 text-center">{reps}</span>
+                          <div key={ex.name} className="rounded-xl overflow-hidden bg-white/[0.03] border border-white/5">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpandedExercises(prev => {
+                                  const next = new Set(prev);
+                                  if (next.has(exKey)) next.delete(exKey);
+                                  else next.add(exKey);
+                                  return next;
+                                });
+                              }}
+                              className="w-full px-3.5 py-2.5 flex items-center justify-between active:bg-white/5 transition-colors"
+                            >
+                              <div className="text-left min-w-0">
+                                <h4 className="text-sm font-semibold text-white truncate">{ex.name}</h4>
+                                <p className="text-xs text-wf-gray-500 mt-0.5">
+                                  {ex.sets.length} sets{topWeight > 0 ? ` · ${topWeight} lbs` : ''}{reps !== '—' ? ` · ${reps} reps` : ''}
+                                </p>
+                              </div>
+                              <svg
+                                className={`w-4 h-4 text-wf-gray-400 transition-transform duration-200 shrink-0 ml-2 ${isExpanded ? 'rotate-180' : ''}`}
+                                fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                              </svg>
+                            </button>
+                            {isExpanded && (
+                              <div className="border-t border-white/5 px-3.5 py-2.5 space-y-1.5 bg-white/[0.02]">
+                                {ex.sets.map((set, sIdx) => (
+                                  <div key={sIdx} className="flex items-center justify-between py-1.5">
+                                    <span className="text-xs text-wf-gray-500 font-bold">Set {sIdx + 1}</span>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-bold text-white">
+                                        {set.suggestedWeight ? `${set.suggestedWeight} lbs` : '—'}
+                                      </span>
+                                      <span className="text-xs text-wf-gray-600">&times;</span>
+                                      <span className="text-sm font-bold text-wf-red">
+                                        {set.plannedReps || '—'} reps
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         );
                       })}
