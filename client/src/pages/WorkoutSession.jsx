@@ -236,6 +236,14 @@ export default function WorkoutSession() {
         if (session.completed) setIsCompleted(true);
         if (session.entries?.some(e => e.weight > 0 || e.reps > 0)) {
           setPersisted(true);
+          setTimerStarted(true);
+          // Start the live timer only for in-progress (not completed) sessions
+          if (!session.completed) {
+            startTimeRef.current = Date.now();
+            timerRef.current = setInterval(() => {
+              setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000));
+            }, 1000);
+          }
         }
       } catch (err) {
         console.error('Failed to load session:', err);
@@ -776,6 +784,7 @@ export default function WorkoutSession() {
     exEntries.some((e) => (e.weight !== '' && e.weight !== undefined) || (e.reps !== '' && e.reps !== undefined))
   );
   const sessionDirty = hasEntryData && !persisted;
+  const inputsLocked = !timerStarted || isCompleted;
   const { guardedNavigate, UnsavedModal } = useUnsavedGuard({
     isDirty: sessionDirty,
     onSave: handleSave,
@@ -989,7 +998,17 @@ export default function WorkoutSession() {
         }
       />
 
-      {/* Completed Banner */}
+      {/* Status Banner */}
+      {!timerStarted && !isCompleted && (
+        <div className="px-4 mb-3">
+          <div className="rounded-xl bg-wf-gray-800/50 border border-white/10 px-4 py-3 flex items-center gap-2">
+            <svg className="w-5 h-5 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+            </svg>
+            <span className="text-sm text-wf-gray-400 font-semibold">Tap "Begin Workout" to start logging</span>
+          </div>
+        </div>
+      )}
       {isCompleted && (
         <div className="px-4 mb-3">
           <div className="rounded-xl bg-green-500/10 border border-green-500/20 px-4 py-3 flex items-center gap-2">
@@ -1010,23 +1029,23 @@ export default function WorkoutSession() {
               exercise={exercise}
               entries={entries[exercise.name]}
               pbs={pbs}
-              readOnly={isCompleted}
-              onChange={isCompleted ? undefined : handleChange}
-              onBlur={isCompleted ? undefined : handleBlur}
+              readOnly={inputsLocked}
+              onChange={inputsLocked ? undefined : handleChange}
+              onBlur={inputsLocked ? undefined : handleBlur}
               completedSets={completedSets}
               autoFilled={autoFilled}
-              onToggleComplete={isCompleted ? undefined : handleToggleComplete}
-              onAddSet={isCompleted ? undefined : handleAddSet}
-              onDeleteSet={isCompleted ? undefined : handleDeleteSet}
-              onSwapExercise={isCompleted ? undefined : handleSwapExercise}
-              onAddExercise={isCompleted ? undefined : (name) => handleAddExercise(name, idx)}
-              onDeleteExercise={isCompleted ? undefined : () => handleDeleteExercise(exercise.name)}
-              onMoveUp={isCompleted ? undefined : (idx > 0 ? () => handleMoveExercise(idx, idx - 1) : undefined)}
-              onMoveDown={isCompleted ? undefined : (idx < template.exercises.length - 1 ? () => handleMoveExercise(idx, idx + 1) : undefined)}
+              onToggleComplete={inputsLocked ? undefined : handleToggleComplete}
+              onAddSet={inputsLocked ? undefined : handleAddSet}
+              onDeleteSet={inputsLocked ? undefined : handleDeleteSet}
+              onSwapExercise={inputsLocked ? undefined : handleSwapExercise}
+              onAddExercise={inputsLocked ? undefined : (name) => handleAddExercise(name, idx)}
+              onDeleteExercise={inputsLocked ? undefined : () => handleDeleteExercise(exercise.name)}
+              onMoveUp={inputsLocked ? undefined : (idx > 0 ? () => handleMoveExercise(idx, idx - 1) : undefined)}
+              onMoveDown={inputsLocked ? undefined : (idx < template.exercises.length - 1 ? () => handleMoveExercise(idx, idx + 1) : undefined)}
               note={notes[exercise.name] || ''}
-              onNoteChange={isCompleted ? undefined : handleNoteChange}
-              weightSuggestion={isCompleted ? undefined : weightSuggestions[exercise.name]}
-              onApplySuggestion={isCompleted ? undefined : (exName, weight) => {
+              onNoteChange={inputsLocked ? undefined : handleNoteChange}
+              weightSuggestion={inputsLocked ? undefined : weightSuggestions[exercise.name]}
+              onApplySuggestion={inputsLocked ? undefined : (exName, weight) => {
                 setEntries(prev => {
                   const updated = { ...prev };
                   updated[exName] = (updated[exName] || []).map(e => ({ ...e, weight }));
@@ -1040,7 +1059,7 @@ export default function WorkoutSession() {
         ))}
 
         {/* Add Exercise Button */}
-        {!isCompleted && (
+        {!inputsLocked && (
           <button
             onClick={() => { setShowAddExercise(true); setAddExerciseSearch(''); }}
             className="w-full border border-dashed border-white/15 rounded-xl py-3.5 text-wf-gray-400 text-sm font-medium active:border-wf-red active:text-wf-red transition-colors flex items-center justify-center gap-2 mb-3"
@@ -1053,7 +1072,7 @@ export default function WorkoutSession() {
         )}
 
         {/* Quick Add Buttons */}
-        {!isCompleted && <div className="flex gap-2 mb-3">
+        {!inputsLocked && <div className="flex gap-2 mb-3">
           <button className="flex-1 glass-card rounded-xl py-3 text-wf-gray-400 text-xs font-semibold active:text-wf-red active:border-wf-red/30 transition-colors flex items-center justify-center gap-1.5">
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
@@ -1186,25 +1205,27 @@ export default function WorkoutSession() {
       )}
 
       {/* Mark Complete */}
-      <div className="px-4 mb-24">
-        <button
-          onClick={handleMarkComplete}
-          className={`w-full font-semibold py-3.5 rounded-xl text-sm transition-all active:scale-[0.98] ${
-            isCompleted
-              ? 'glass-card !border-wf-gray-500 text-wf-gray-400'
-              : 'bg-wf-red/90 hover:bg-wf-red text-white'
-          }`}
-        >
-          {isCompleted ? 'Undo Completion' : 'Mark Complete'}
-        </button>
-      </div>
+      {timerStarted && (
+        <div className="px-4 mb-24">
+          <button
+            onClick={handleMarkComplete}
+            className={`w-full font-semibold py-3.5 rounded-xl text-sm transition-all active:scale-[0.98] ${
+              isCompleted
+                ? 'glass-card !border-wf-gray-500 text-wf-gray-400'
+                : 'bg-wf-red/90 hover:bg-wf-red text-white'
+            }`}
+          >
+            {isCompleted ? 'Undo Completion' : 'Mark Complete'}
+          </button>
+        </div>
+      )}
 
       {/* Save & Share Buttons - Fixed at bottom */}
       <div className="fixed bottom-16 left-0 right-0 p-4 bg-gradient-to-t from-black via-black/95 to-transparent safe-bottom z-40">
         <div className="flex gap-2">
           <button
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || !timerStarted}
             className={`flex-1 font-semibold py-4 rounded-xl text-base transition-all active:scale-[0.98] ${
               saved
                 ? 'bg-green-600 text-white shadow-[0_4px_20px_rgba(22,163,74,0.3)]'

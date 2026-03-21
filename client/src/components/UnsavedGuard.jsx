@@ -78,6 +78,7 @@ export function useUnsavedGuard({ isDirty, onSave, saveLabel = 'Save' }) {
       await onSave();
       // Save succeeded — now navigate away
       isDirtyRef.current = false;
+      setSaving(false);
       setShowModal(false);
       if (pendingPath === '__back__') {
         window.history.go(-(pushCountRef.current + 1));
@@ -118,6 +119,7 @@ export function useUnsavedGuard({ isDirty, onSave, saveLabel = 'Save' }) {
     setShowModal(false);
     setPendingPath(null);
     setSaveError('');
+    setSaving(false);
   }
 
   const UnsavedModal = showModal ? (
