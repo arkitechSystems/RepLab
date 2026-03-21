@@ -424,8 +424,8 @@ const db = {
 
       for (const entry of entries) {
         await client.query(
-          'INSERT INTO session_entries (session_id, exercise_name, set_number, weight, reps) VALUES ($1, $2, $3, $4, $5)',
-          [sessionId, entry.exerciseName, entry.setNumber, entry.weight || 0, entry.reps || 0]
+          'INSERT INTO session_entries (session_id, exercise_name, set_number, weight, reps, is_completed) VALUES ($1, $2, $3, $4, $5, $6)',
+          [sessionId, entry.exerciseName, entry.setNumber, entry.weight || 0, entry.reps || 0, entry.isCompleted || false]
         );
 
         const w = entry.weight || 0;
@@ -522,6 +522,7 @@ const db = {
         setNumber: e.set_number,
         weight: Number(e.weight),
         reps: e.reps,
+        isCompleted: e.is_completed || false,
       })),
     };
   },
@@ -552,6 +553,7 @@ const db = {
         setNumber: e.set_number,
         weight: Number(e.weight),
         reps: e.reps,
+        isCompleted: e.is_completed || false,
       })),
     };
   },

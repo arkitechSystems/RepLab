@@ -44,6 +44,7 @@ export default async function initDb() {
 
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_photo TEXT`);
   await pool.query(`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS workout_data JSONB`);
+  await pool.query(`ALTER TABLE session_entries ADD COLUMN IF NOT EXISTS is_completed BOOLEAN DEFAULT FALSE`);
 
   await pool.query(`CREATE TABLE IF NOT EXISTS trainer_login_history (
     id SERIAL PRIMARY KEY,

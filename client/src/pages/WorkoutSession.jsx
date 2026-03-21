@@ -39,6 +39,7 @@ export default function WorkoutSession() {
   const [restFloatPos, setRestFloatPos] = useState({ x: 16, y: 140 });
   const [showSummary, setShowSummary] = useState(false);
   const [showDateConfirm, setShowDateConfirm] = useState(false);
+  const [pendingSwap, setPendingSwap] = useState(null); // { oldName, newName }
   const dragRef = useRef(null);
   const [elapsed, setElapsed] = useState(0);
   const startTimeRef = useRef(null);
@@ -198,6 +199,7 @@ export default function WorkoutSession() {
               initial[ex.name] = ex.sets.map((s) => ({
                 weight: s.suggestedWeight || '',
                 reps: '',
+                setType: s.setType || ex.setType || 'straight',
               }));
             }
             setEntries(initial);
@@ -229,13 +231,17 @@ export default function WorkoutSession() {
           if (savedSets) {
             savedSets.sort((a, b) => a.setNumber - b.setNumber);
             saved[ex.name] = savedSets.map((s, i) => {
-              if (s.weight > 0 || s.reps > 0) restoredCompleted.add(`${ex.name}-${i}`);
-              return { weight: s.weight || '', reps: s.reps || '' };
+              if (s.isCompleted) restoredCompleted.add(`${ex.name}-${i}`);
+              // Restore per-set setType from workoutData sets (falls back to exercise-level)
+              const wdSet = ex.sets?.[i];
+              const setType = wdSet?.setType || ex.setType || 'straight';
+              return { weight: s.weight || '', reps: s.reps || '', setType };
             });
           } else {
             saved[ex.name] = ex.sets.map((s) => ({
               weight: s.suggestedWeight || '',
               reps: '',
+              setType: s.setType || ex.setType || 'straight',
             }));
           }
         }
@@ -534,41 +540,74 @@ export default function WorkoutSession() {
     setNotes((prev) => ({ ...prev, [exerciseName]: value }));
   }
 
-  function handleSwapExercise(oldName, newName) {
-    // Update template exercise name
+  function performSwap(oldName, newName) {
+    // Get the number of sets from the old exercise
+    const oldExercise = template.exercises.find((ex) => ex.name === oldName);
+    const numSets = oldExercise?.sets?.length || 0;
+
+    // Update template: replace name and clear plannedReps/suggestedWeight
     setTemplate((prev) => ({
       ...prev,
       exercises: prev.exercises.map((ex) =>
-        ex.name === oldName ? { ...ex, name: newName } : ex
+        ex.name === oldName
+          ? {
+              ...ex,
+              name: newName,
+              sets: ex.sets.map((s) => ({ ...s, plannedReps: '', suggestedWeight: 0 })),
+            }
+          : ex
       ),
     }));
-    // Move entries to new name
+
+    // Set blank entries for the new exercise
     setEntries((prev) => {
       const updated = { ...prev };
-      updated[newName] = updated[oldName] || [];
+      delete updated[oldName];
+      updated[newName] = Array.from({ length: numSets }, () => ({ weight: '', reps: '' }));
+      return updated;
+    });
+
+    // Clear notes for old exercise
+    setNotes((prev) => {
+      const updated = { ...prev };
       delete updated[oldName];
       return updated;
     });
-    // Move notes
-    setNotes((prev) => {
-      const updated = { ...prev };
-      if (updated[oldName]) {
-        updated[newName] = updated[oldName];
-        delete updated[oldName];
-      }
-      return updated;
-    });
-    // Remap completedSets and autoFilled keys
-    const remapSet = (prev) => {
+
+    // Remove completedSets for old exercise (don't remap)
+    setCompletedSets((prev) => {
       const next = new Set();
       for (const key of prev) {
-        const [name, idxStr] = key.split(/-(?=\d+$)/);
-        next.add(name === oldName ? `${newName}-${idxStr}` : key);
+        if (!key.startsWith(oldName + '-')) next.add(key);
       }
       return next;
-    };
-    setCompletedSets(remapSet);
-    setAutoFilled(remapSet);
+    });
+
+    // Remove autoFilled for old exercise
+    setAutoFilled((prev) => {
+      const next = new Set();
+      for (const key of prev) {
+        if (!key.startsWith(oldName + '-')) next.add(key);
+      }
+      return next;
+    });
+  }
+
+  function handleSwapExercise(oldName, newName) {
+    // Check if old exercise has any data worth preserving
+    const oldEntries = entries[oldName] || [];
+    const hasEntryData = oldEntries.some(
+      (e) => (e.weight && Number(e.weight) > 0) || (e.reps && Number(e.reps) > 0)
+    );
+    const hasCompletedSets = [...completedSets].some((key) => key.startsWith(oldName + '-'));
+
+    if (hasEntryData || hasCompletedSets) {
+      // Show confirmation modal
+      setPendingSwap({ oldName, newName });
+    } else {
+      // No data to lose, swap directly
+      performSwap(oldName, newName);
+    }
   }
 
   async function handleMarkComplete() {
@@ -713,6 +752,7 @@ export default function WorkoutSession() {
             setNumber: set.setNumber,
             weight: isAutoOnly ? 0 : (exEntries[idx]?.weight || 0),
             reps: isAutoOnly ? 0 : (exEntries[idx]?.reps || 0),
+            isCompleted: completedSets.has(key),
           });
         });
       }
@@ -729,6 +769,7 @@ export default function WorkoutSession() {
               setNumber: s.setNumber,
               plannedReps: s.plannedReps ?? 10,
               suggestedWeight: entry?.weight || s.suggestedWeight || 0,
+              setType: entry?.setType || s.setType || ex.setType || 'straight',
             };
           }),
         })),
@@ -883,6 +924,35 @@ export default function WorkoutSession() {
               </button>
               <button
                 onClick={() => setShowDateConfirm(false)}
+                className="w-full text-wf-gray-400 font-medium py-2 text-sm active:opacity-70 transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingSwap && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center px-5" onClick={() => setPendingSwap(null)}>
+          <div className="absolute inset-0 bg-black/70" />
+          <div
+            className="relative w-full max-w-xs bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-bold text-white text-center mb-1">Substitute Exercise</h3>
+            <p className="text-wf-gray-400 text-sm text-center mb-5">
+              Substituting this exercise will remove your saved sets for {pendingSwap.oldName}. This cannot be undone.
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => { performSwap(pendingSwap.oldName, pendingSwap.newName); setPendingSwap(null); }}
+                className="w-full btn-gradient text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+              >
+                Substitute
+              </button>
+              <button
+                onClick={() => setPendingSwap(null)}
                 className="w-full text-wf-gray-400 font-medium py-2 text-sm active:opacity-70 transition-all"
               >
                 Cancel
