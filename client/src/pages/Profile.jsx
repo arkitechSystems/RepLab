@@ -648,7 +648,7 @@ export default function Profile() {
 
       {/* Photo Menu Modal */}
       {showPhotoMenu && (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center px-4 pb-8" onClick={() => setShowPhotoMenu(false)}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4" onClick={() => setShowPhotoMenu(false)}>
           <div className="absolute inset-0 bg-black/70" />
           <div
             className="relative w-full max-w-xs bg-wf-gray-900 border border-white/10 rounded-2xl overflow-hidden shadow-2xl"

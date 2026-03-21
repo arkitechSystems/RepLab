@@ -41,9 +41,9 @@ export default function Calendar() {
     }, msUntilMidnight + 100);
     return () => clearTimeout(timeout);
   }, [today]);
-  const weekStart = addDays(startOfWeek(today, { weekStartsOn: 1 }), weekOffset * 7);
+  const weekStart = addDays(startOfWeek(today, { weekStartsOn: 0 }), weekOffset * 7);
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-  const isCurrentWeek = isSameWeek(weekStart, today, { weekStartsOn: 1 });
+  const isCurrentWeek = isSameWeek(weekStart, today, { weekStartsOn: 0 });
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
@@ -702,7 +702,7 @@ export default function Calendar() {
             <div className="overflow-y-auto flex-1 px-5 py-4">
               {/* Step: Pick a day */}
               {copyStep === 'pick-day' && (() => {
-                const copyWeekStart = addDays(startOfWeek(today, { weekStartsOn: 1 }), copyWeekOffset * 7);
+                const copyWeekStart = addDays(startOfWeek(today, { weekStartsOn: 0 }), copyWeekOffset * 7);
                 const copyWeekDays = Array.from({ length: 7 }, (_, i) => addDays(copyWeekStart, i));
                 return (
                 <div>

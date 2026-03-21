@@ -1063,7 +1063,7 @@ export default function WorkoutSession() {
                 <div className={`rounded-t-lg overflow-hidden transition-all duration-300 ${collapsed && !pinWorkoutTimer ? 'hidden' : ''} bg-black`}>
                   <div className="px-3 py-2.5 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-semibold">Time</span>
+                      <span className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-semibold">Workout Time</span>
                       <span className="bg-black/60 rounded-md px-2.5 py-1">
                         <span className="text-xl font-mono-stat font-bold text-white tracking-wider" style={{ letterSpacing: '2px' }}>{formatTime(elapsed)}</span>
                       </span>
@@ -1454,7 +1454,7 @@ export default function WorkoutSession() {
           onTouchEnd={handleFloatTouchEnd}
         >
           <div className="bg-wf-gray-900/95 rounded-2xl px-4 py-2.5 shadow-2xl backdrop-blur-sm flex items-center gap-3">
-            <span className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-semibold">Time</span>
+            <span className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-semibold">Workout Time</span>
             <span className="text-lg font-black text-white tabular-nums font-mono-stat">{formatTime(elapsed)}</span>
             <button
               onClick={() => setTimerFloating(false)}

@@ -99,7 +99,8 @@ export default function Signup() {
 
       // Clear UTM after successful signup
       try { localStorage.removeItem('willfit_utm'); } catch {};
-      navigate('/welcome');
+      // Use window.location since PublicRoute would redirect to / before navigate fires
+      window.location.href = '/welcome';
     } catch (err) {
       setError(err.message);
     } finally {

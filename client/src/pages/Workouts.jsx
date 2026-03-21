@@ -1572,6 +1572,20 @@ export default function Workouts() {
           >
             + Create
           </button>
+          <button
+            onClick={() => navigate('/profile')}
+            className="w-10 h-10 rounded-full overflow-hidden shrink-0 active:scale-90 transition-all"
+          >
+            {user?.photoUrl ? (
+              <img src={user.photoUrl} alt="Profile" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-wf-red/20 flex items-center justify-center">
+                <span className="text-sm font-bold text-wf-red">
+                  {(user?.firstName || user?.email || user?.phone || 'W')[0].toUpperCase()}
+                </span>
+              </div>
+            )}
+          </button>
         </div>
       </StickyHeader>
 

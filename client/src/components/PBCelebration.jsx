@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 
 const CONFETTI_COLORS = ['#EF4444', '#3B82F6', '#22C55E', '#F59E0B', '#A855F7', '#F97316'];
 const PARTICLE_COUNT = 30;
@@ -20,14 +20,16 @@ function generateParticles() {
 export default function PBCelebration({ prs, onDismiss }) {
   const [dismissing, setDismissing] = useState(false);
   const particles = useMemo(() => generateParticles(), []);
+  const onDismissRef = useRef(onDismiss);
+  onDismissRef.current = onDismiss;
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setDismissing(true);
-      setTimeout(onDismiss, 300);
+      setTimeout(() => onDismissRef.current(), 300);
     }, 4500);
     return () => clearTimeout(timer);
-  }, [onDismiss]);
+  }, []);
 
   return (
     <>

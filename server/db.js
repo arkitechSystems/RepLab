@@ -117,14 +117,18 @@ const db = {
 
   async deleteUser(id) {
     // Delete in order to respect foreign key constraints
-    await pool.query('DELETE FROM schedule WHERE user_id = $1', [id]);
+    await pool.query('DELETE FROM feedback WHERE user_id = $1', [id]);
+    await pool.query('DELETE FROM trainer_login_history WHERE user_id = $1', [id]);
+    await pool.query('DELETE FROM challenge_entries WHERE user_id = $1', [id]);
+    await pool.query('DELETE FROM schedule_days WHERE user_id = $1', [id]);
     await pool.query('DELETE FROM personal_bests WHERE user_id = $1', [id]);
     await pool.query('DELETE FROM session_entries WHERE session_id IN (SELECT id FROM sessions WHERE user_id = $1)', [id]);
     await pool.query('DELETE FROM sessions WHERE user_id = $1', [id]);
     await pool.query('DELETE FROM template_exercises WHERE template_id IN (SELECT id FROM templates WHERE user_id = $1)', [id]);
     await pool.query('DELETE FROM templates WHERE user_id = $1', [id]);
     await pool.query('DELETE FROM programs WHERE user_id = $1', [id]);
-    await pool.query('DELETE FROM metrics WHERE user_id = $1', [id]);
+    await pool.query('DELETE FROM user_metrics WHERE user_id = $1', [id]);
+    await pool.query('DELETE FROM ai_usage WHERE user_id = $1', [id]);
     await pool.query('DELETE FROM users WHERE id = $1', [id]);
   },
 

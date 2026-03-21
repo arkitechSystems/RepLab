@@ -103,9 +103,18 @@ export function beepComplete() {
 }
 
 /**
- * Initialize audio context on user gesture (required for iOS).
- * Call this on any button click before sounds are needed.
+ * Initialize audio context on user gesture (required for iOS Safari).
+ * Must be called directly from a tap/click handler — plays a silent buffer
+ * to fully unlock the context so future programmatic plays (setInterval, etc.) work.
  */
 export function initAudio() {
-  getCtx();
+  const ctx = getCtx();
+  if (!ctx) return;
+  // Playing a silent buffer inside the user gesture unlocks audio on iOS Safari.
+  // Just calling resume() is not always sufficient — Safari needs an actual sound scheduled.
+  const buf = ctx.createBuffer(1, 1, ctx.sampleRate);
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.connect(ctx.destination);
+  src.start(0);
 }
