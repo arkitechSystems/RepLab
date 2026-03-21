@@ -327,7 +327,8 @@ export default function WorkoutSession() {
   // Fetch exercise history for smart weight suggestions after template loads
   useEffect(() => {
     if (!template || template.isRest) return;
-    const exerciseNames = template.exercises.map(e => e.name);
+    const realExercises = template.exercises.filter(e => !e.isSectionHeader);
+    const exerciseNames = realExercises.map(e => e.name);
     if (exerciseNames.length === 0) return;
 
     api('/sessions/exercise-history', {
@@ -336,7 +337,7 @@ export default function WorkoutSession() {
     })
       .then(history => {
         const suggestions = {};
-        for (const ex of template.exercises) {
+        for (const ex of realExercises) {
           const exHistory = history[ex.name];
           if (exHistory) {
             const goalReps = ex.sets[0]?.plannedReps || 10;
@@ -752,6 +753,7 @@ export default function WorkoutSession() {
     const lines = [`${template.name} — ${format(parseISO(date), 'EEEE, MMM d')}\n`];
 
     for (const ex of template.exercises) {
+      if (ex.isSectionHeader) continue;
       const exEntries = entries[ex.name] || [];
       const setLines = [];
       ex.sets.forEach((set, idx) => {
@@ -769,7 +771,7 @@ export default function WorkoutSession() {
       }
     }
 
-    lines.push(`${completedSets.size}/${template.exercises.reduce((s, e) => s + e.sets.length, 0)} sets completed`);
+    lines.push(`${completedSets.size}/${template.exercises.filter(e => !e.isSectionHeader).reduce((s, e) => s + e.sets.length, 0)} sets completed`);
 
     const text = lines.join('\n');
 
@@ -796,6 +798,7 @@ export default function WorkoutSession() {
 
       const allEntries = [];
       for (const ex of template.exercises) {
+        if (ex.isSectionHeader) continue;
         const exEntries = entries[ex.name] || [];
         ex.sets.forEach((set, idx) => {
           const key = `${ex.name}-${idx}`;
@@ -813,19 +816,22 @@ export default function WorkoutSession() {
       // Save the full workout structure as an independent copy
       const workoutData = {
         name: template.name,
-        exercises: template.exercises.map((ex) => ({
-          name: ex.name,
-          setType: entries[ex.name]?.find(e => e?.setType)?.setType || ex.setType || 'straight',
-          sets: ex.sets.map((s, i) => {
-            const entry = entries[ex.name]?.[i];
-            return {
-              setNumber: s.setNumber,
-              plannedReps: s.plannedReps ?? 10,
-              suggestedWeight: entry?.weight || s.suggestedWeight || 0,
-              setType: entry?.setType || s.setType || ex.setType || 'straight',
-            };
-          }),
-        })),
+        exercises: template.exercises.map((ex) => {
+          if (ex.isSectionHeader) return { name: ex.name, isSectionHeader: true, sectionNotes: ex.sectionNotes || '', sets: [] };
+          return {
+            name: ex.name,
+            setType: entries[ex.name]?.find(e => e?.setType)?.setType || ex.setType || 'straight',
+            sets: ex.sets.map((s, i) => {
+              const entry = entries[ex.name]?.[i];
+              return {
+                setNumber: s.setNumber,
+                plannedReps: s.plannedReps ?? 10,
+                suggestedWeight: entry?.weight || s.suggestedWeight || 0,
+                setType: entry?.setType || s.setType || ex.setType || 'straight',
+              };
+            }),
+          };
+        }),
       };
 
       await api('/sessions', {
@@ -868,6 +874,7 @@ export default function WorkoutSession() {
       // Auto-save any custom exercises not in the library
       const knownNames = new Set(allExercisesFromDB.map(e => e.name.toLowerCase()));
       for (const ex of template.exercises) {
+        if (ex.isSectionHeader) continue;
         if (!knownNames.has(ex.name.toLowerCase())) {
           createCustom(ex.name, 'Other').catch(() => {});
         }
@@ -933,11 +940,11 @@ export default function WorkoutSession() {
     );
   }
 
-  const totalSets = template.exercises.reduce((sum, ex) => sum + ex.sets.length, 0);
+  const totalSets = template.exercises.filter(ex => !ex.isSectionHeader).reduce((sum, ex) => sum + ex.sets.length, 0);
   const completedCount = completedSets.size;
   const progressPct = totalSets > 0 ? Math.round((completedCount / totalSets) * 100) : 0;
 
-  const totalVolume = template.exercises.reduce((vol, ex) => {
+  const totalVolume = template.exercises.filter(ex => !ex.isSectionHeader).reduce((vol, ex) => {
     const exEntries = entries[ex.name] || [];
     return vol + exEntries.reduce((sum, e) => {
       const w = Number(e.weight) || 0;
@@ -1185,6 +1192,24 @@ export default function WorkoutSession() {
       {/* Exercise Cards */}
       <div className="px-4">
         {template.exercises.map((exercise, idx) => (
+          exercise.isSectionHeader ? (
+            <div key={`section-${idx}`} className="fade-slide-up mb-3" style={{ animationDelay: `${idx * 60}ms` }}>
+              <div className="rounded-xl overflow-hidden border border-white/10 bg-gradient-to-r from-wf-red/10 via-transparent to-transparent">
+                <div className="px-4 py-3 flex items-center gap-3">
+                  <div className="w-1 h-6 rounded-full bg-wf-red shrink-0" />
+                  <span className="text-[9px] text-wf-red uppercase tracking-widest font-bold shrink-0">Section</span>
+                  <span className="text-sm font-black text-white uppercase tracking-wide">{exercise.name}</span>
+                </div>
+                {exercise.sectionNotes && (
+                  <div className="px-4 pb-3 pl-8">
+                    <div className="ml-0.5 pl-3 border-l border-white/10">
+                      <p className="text-xs text-wf-gray-400 leading-relaxed">{exercise.sectionNotes}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) :
           <div key={exercise.name} ref={(el) => { exerciseRefs.current[exercise.name] = el; }} className="fade-slide-up" style={{ animationDelay: `${idx * 60}ms` }}>
             <ExerciseCard
               exercise={exercise}
@@ -1544,8 +1569,9 @@ function WorkoutSummary({ template, entries, completedSets, elapsed, formatTime,
   }, []);
 
   // Stats
-  const totalSets = template.exercises.reduce((s, ex) => s + ex.sets.length, 0);
-  const totalVolume = template.exercises.reduce((vol, ex) => {
+  const realExercises = template.exercises.filter(ex => !ex.isSectionHeader);
+  const totalSets = realExercises.reduce((s, ex) => s + ex.sets.length, 0);
+  const totalVolume = realExercises.reduce((vol, ex) => {
     const exEntries = entries[ex.name] || [];
     return vol + exEntries.reduce((sum, e) => {
       const w = Number(e.weight) || 0;
@@ -1555,7 +1581,7 @@ function WorkoutSummary({ template, entries, completedSets, elapsed, formatTime,
   }, 0);
 
   // Per-exercise data with per-set breakdown
-  const exerciseStats = template.exercises.map((ex) => {
+  const exerciseStats = realExercises.map((ex) => {
     const exEntries = entries[ex.name] || [];
     const setStats = ex.sets.map((set, idx) => {
       const goal = set.plannedReps || 0;

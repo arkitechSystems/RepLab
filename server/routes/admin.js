@@ -2537,7 +2537,6 @@ router.get('/workout-manager/create', adminAuth, async (req, res) => {
       <div id="exercises-container"></div>
       <div style="display:flex;gap:8px;margin-bottom:20px;">
         <button type="button" onclick="addExercise()" class="btn-ghost" style="flex:1;text-align:center;padding:14px;margin:0;">+ Add Exercise</button>
-        <button type="button" onclick="addGroupTitle()" class="btn-ghost" style="flex:1;text-align:center;padding:14px;margin:0;border-color:rgba(239,68,68,0.2);color:rgba(239,68,68,0.7);">+ Group Title</button>
       </div>
       <button type="submit" class="btn" style="width:100%;padding:14px;font-size:15px;margin:0;">Save Workout</button>
     </form>
@@ -2677,25 +2676,6 @@ router.get('/workout-manager/create', adminAuth, async (req, res) => {
       var exerciseCount = 0, groupCount = 0, searchTimeout = null, activeSearchIdx = null, setCounts = {};
       var inputCSS = 'flex:1;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);color:#fff;font-size:14px;font-family:inherit;outline:none;text-align:center;box-sizing:border-box;';
       var SET_SHORT = { warm_up: 'WU', straight: 'REG', drop: 'DS', rest_pause: 'RP', superset: 'SS', alternating: 'Alt', giant: 'Gia', pre_exhaust: 'PrEx' };
-
-      function addGroupTitle() {
-        var gIdx = groupCount++;
-        var container = document.getElementById('exercises-container');
-        var card = mk('div', 'border-radius:12px;margin-bottom:16px;border:1px solid rgba(239,68,68,0.15);background:rgba(239,68,68,0.03);padding:16px;');
-        card.id = 'group-' + gIdx;
-        var hdr = mk('div', 'display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;');
-        var badge = mk('span', 'font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:#ef4444;font-weight:700;'); badge.textContent = 'GROUP TITLE';
-        var rmBtn = mk('button', 'background:none;border:none;color:rgba(255,255,255,0.25);cursor:pointer;padding:4px;border-radius:6px;display:flex;align-items:center;', { type: 'button' });
-        rmBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>';
-        rmBtn.onmouseover = function() { this.style.color = '#ef4444'; }; rmBtn.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.25)'; };
-        rmBtn.onclick = function() { var e = document.getElementById('group-' + gIdx); if (e) e.remove(); };
-        hdr.appendChild(badge); hdr.appendChild(rmBtn); card.appendChild(hdr);
-        var ti = mk('input', 'width:100%;padding:10px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#fff;font-size:15px;font-weight:700;font-family:inherit;outline:none;box-sizing:border-box;margin-bottom:8px;');
-        ti.type = 'text'; ti.name = 'groups[' + gIdx + '][title]'; ti.placeholder = 'e.g. Warm Up, Superset, Circuit...'; ti.required = true;
-        var di = mk('input', 'width:100%;padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:rgba(255,255,255,0.6);font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;');
-        di.type = 'text'; di.name = 'groups[' + gIdx + '][description]'; di.placeholder = 'Description (optional)';
-        card.appendChild(ti); card.appendChild(di); container.appendChild(card); ti.focus();
-      }
 
       function addExercise() {
         var idx = exerciseCount++; var container = document.getElementById('exercises-container');
@@ -3020,7 +3000,6 @@ router.get('/workout-manager/edit/:id', adminAuth, async (req, res) => {
         <div id="exercises-container"></div>
         <div style="display:flex;gap:8px;margin-bottom:20px;">
           <button type="button" onclick="addExercise()" class="btn-ghost" style="flex:1;text-align:center;padding:14px;margin:0;">+ Add Exercise</button>
-          <button type="button" onclick="addGroupTitle()" class="btn-ghost" style="flex:1;text-align:center;padding:14px;margin:0;border-color:rgba(239,68,68,0.2);color:rgba(239,68,68,0.7);">+ Group Title</button>
         </div>
         <div style="display:flex;gap:8px;">
           <button type="submit" class="btn" style="flex:1;padding:14px;font-size:15px;margin:0;">Save Changes</button>
@@ -3119,25 +3098,6 @@ router.get('/workout-manager/edit/:id', adminAuth, async (req, res) => {
           container.appendChild(card);
           if (prefill && prefill.sets.length > 0) prefill.sets.forEach(function(s) { addSet(idx, s.reps, s.weight); });
           else { addSet(idx); addSet(idx); addSet(idx); }
-        }
-        var groupCount = 0;
-        function addGroupTitle() {
-          var gIdx = groupCount++;
-          var container = document.getElementById('exercises-container');
-          var card = mk('div', 'border-radius:12px;margin-bottom:16px;border:1px solid rgba(239,68,68,0.15);background:rgba(239,68,68,0.03);padding:16px;');
-          card.id = 'group-' + gIdx;
-          var hdr = mk('div', 'display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;');
-          var badge = mk('span', 'font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:#ef4444;font-weight:700;'); badge.textContent = 'GROUP TITLE';
-          var rmBtn = mk('button', 'background:none;border:none;color:rgba(255,255,255,0.25);cursor:pointer;padding:4px;border-radius:6px;display:flex;align-items:center;', { type: 'button' });
-          rmBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>';
-          rmBtn.onmouseover = function() { this.style.color = '#ef4444'; }; rmBtn.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.25)'; };
-          rmBtn.onclick = function() { var e = document.getElementById('group-' + gIdx); if (e) e.remove(); };
-          hdr.appendChild(badge); hdr.appendChild(rmBtn); card.appendChild(hdr);
-          var ti = mk('input', 'width:100%;padding:10px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#fff;font-size:15px;font-weight:700;font-family:inherit;outline:none;box-sizing:border-box;margin-bottom:8px;');
-          ti.type = 'text'; ti.name = 'groups[' + gIdx + '][title]'; ti.placeholder = 'e.g. Warm Up, Superset, Circuit...'; ti.required = true;
-          var di = mk('input', 'width:100%;padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:rgba(255,255,255,0.6);font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;');
-          di.type = 'text'; di.name = 'groups[' + gIdx + '][description]'; di.placeholder = 'Description (optional)';
-          card.appendChild(ti); card.appendChild(di); container.appendChild(card); ti.focus();
         }
         function addSet(exIdx, pr, pw) {
           if (!setCounts[exIdx]) setCounts[exIdx] = 0; var si = setCounts[exIdx]++;

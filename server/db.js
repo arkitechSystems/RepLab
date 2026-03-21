@@ -246,6 +246,10 @@ const db = {
       const grouped = [];
       const seen = new Map();
       for (const ex of tExercises) {
+        if (ex.is_section_header) {
+          grouped.push({ name: ex.name, isSectionHeader: true, sectionNotes: ex.section_notes || '', sortOrder: ex.sort_order, sets: [] });
+          continue;
+        }
         if (!seen.has(ex.name)) {
           seen.set(ex.name, grouped.length);
           grouped.push({ name: ex.name, setType: ex.set_type || 'straight', sortOrder: ex.sort_order, repRange: ex.rep_range || '', sets: [] });
@@ -290,6 +294,13 @@ const db = {
       if (exercises) {
         for (let sortOrder = 0; sortOrder < exercises.length; sortOrder++) {
           const ex = exercises[sortOrder];
+          if (ex.isSectionHeader) {
+            await client.query(
+              'INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+              [templateId, ex.name, 'straight', 1, 0, 0, sortOrder, true, ex.sectionNotes || '']
+            );
+            continue;
+          }
           const sets = ex.sets || [{ reps: 10, weight: 0 }];
           const setType = ex.setType || 'straight';
           for (let i = 0; i < sets.length; i++) {
@@ -332,6 +343,13 @@ const db = {
       if (exercises) {
         for (let exSortOrder = 0; exSortOrder < exercises.length; exSortOrder++) {
           const ex = exercises[exSortOrder];
+          if (ex.isSectionHeader) {
+            await client.query(
+              'INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+              [templateId, ex.name, 'straight', 1, 0, 0, exSortOrder, true, ex.sectionNotes || '']
+            );
+            continue;
+          }
           const sets = ex.sets || [{ reps: 10, weight: 0 }];
           const setType = ex.setType || 'straight';
           for (let i = 0; i < sets.length; i++) {

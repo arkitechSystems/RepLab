@@ -481,7 +481,7 @@ router.get('/guide', (req, res) => {
       <li>Click <strong>Create a Workout</strong>.</li>
       <li>Enter a workout name, select or create a program, and add a description.</li>
       <li>Add exercises by searching the exercise library. Each exercise has a set type selector, weight, and reps fields.</li>
-      <li>You can add notes to each exercise and group titles (like "Warm Up" or "Superset") to organize your workout.</li>
+      <li>You can add notes to each exercise to provide guidance or tips.</li>
       <li>Click <strong>Save Workout</strong>. The workout immediately appears in your app under My Workouts.</li>
     </ol>
 
@@ -715,9 +715,6 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
         <button type="button" onclick="addExercise()" class="btn-ghost" style="flex:1;text-align:center;padding:14px;margin:0;">
           + Add Exercise
         </button>
-        <button type="button" onclick="addGroupTitle()" class="btn-ghost" style="flex:1;text-align:center;padding:14px;margin:0;border-color:rgba(239,68,68,0.2);color:rgba(239,68,68,0.7);">
-          + Group Title
-        </button>
       </div>
 
       <button type="submit" class="btn" style="width:100%;padding:14px;font-size:15px;margin:0;">
@@ -875,37 +872,7 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
         return e;
       }
 
-      var groupCount = 0;
-      function addGroupTitle() {
-        var gIdx = groupCount++;
-        var container = document.getElementById('exercises-container');
-        var card = el('div', 'border-radius:12px;margin-bottom:16px;border:1px solid rgba(239,68,68,0.15);background:rgba(239,68,68,0.03);padding:16px;position:relative;');
-        card.id = 'group-' + gIdx;
 
-        var header = el('div', 'display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;');
-        var badge = el('span', 'font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:#ef4444;font-weight:700;');
-        badge.textContent = 'GROUP TITLE';
-        var removeBtn = el('button', 'background:none;border:none;color:rgba(255,255,255,0.25);cursor:pointer;padding:4px;border-radius:6px;display:flex;align-items:center;', { type: 'button' });
-        removeBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>';
-        removeBtn.onmouseover = function() { this.style.color = '#ef4444'; };
-        removeBtn.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.25)'; };
-        removeBtn.onclick = function() { var e = document.getElementById('group-' + gIdx); if (e) e.remove(); };
-        header.appendChild(badge); header.appendChild(removeBtn);
-        card.appendChild(header);
-
-        var titleInput = el('input', 'width:100%;padding:10px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#fff;font-size:15px;font-weight:700;font-family:inherit;outline:none;box-sizing:border-box;margin-bottom:8px;');
-        titleInput.type = 'text'; titleInput.name = 'groups[' + gIdx + '][title]';
-        titleInput.placeholder = 'e.g. Warm Up, Superset With, Circuit...'; titleInput.required = true;
-        card.appendChild(titleInput);
-
-        var descInput = el('input', 'width:100%;padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:rgba(255,255,255,0.6);font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;');
-        descInput.type = 'text'; descInput.name = 'groups[' + gIdx + '][description]';
-        descInput.placeholder = 'Description (optional)';
-        card.appendChild(descInput);
-
-        container.appendChild(card);
-        titleInput.focus();
-      }
 
       function updateSetCount(idx) {
         var setsDiv = document.getElementById('sets-' + idx);
