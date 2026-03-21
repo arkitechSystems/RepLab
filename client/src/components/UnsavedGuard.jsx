@@ -15,13 +15,19 @@ export function useUnsavedGuard({ isDirty, onSave, saveLabel = 'Save' }) {
   const isDirtyRef = useRef(isDirty);
   const pushedStateRef = useRef(false);
   const pushCountRef = useRef(0); // track how many extra history entries we've added
+  const showModalRef = useRef(false);
 
-  // Keep ref in sync
+  // Keep refs in sync
   useEffect(() => { isDirtyRef.current = isDirty; }, [isDirty]);
+  useEffect(() => { showModalRef.current = showModal; }, [showModal]);
 
   // Intercept browser back/forward and refresh
   useEffect(() => {
     if (!isDirty) {
+      // Pop any extra history entries we pushed while dirty
+      if (pushedStateRef.current && pushCountRef.current > 0) {
+        window.history.go(-pushCountRef.current);
+      }
       pushedStateRef.current = false;
       pushCountRef.current = 0;
       return;
@@ -34,6 +40,11 @@ export function useUnsavedGuard({ isDirty, onSave, saveLabel = 'Save' }) {
 
     const handlePopState = () => {
       if (isDirtyRef.current) {
+        if (showModalRef.current) {
+          // Modal already open, just prevent navigation
+          window.history.pushState(null, '', location.pathname);
+          return;
+        }
         // Re-push so we stay on the page
         window.history.pushState(null, '', location.pathname);
         pushCountRef.current++;

@@ -445,6 +445,10 @@ function adminPage(title, body) {
 <body>
 <nav style="position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:12px 32px;background:linear-gradient(135deg,rgba(20,0,0,0.92),rgba(30,5,5,0.92),rgba(20,0,0,0.92));backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(239,68,68,0.2);box-shadow:0 2px 20px rgba(239,68,68,0.08),inset 0 -1px 0 rgba(239,68,68,0.1);">
   <a href="/admin" style="text-decoration:none;"><div class="logo" style="margin:0;color:#fff;">WILL<span style="color:#ef4444;">FIT</span></div></a>
+  <div style="flex:1;max-width:360px;margin:0 24px;position:relative;">
+    <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3" stroke-linecap="round"/></svg>
+    <input id="admin-search" type="text" placeholder="Search dashboard..." style="width:100%;padding:8px 12px 8px 36px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:13px;font-family:inherit;outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor='rgba(239,68,68,0.6)';this.style.boxShadow='0 0 0 2px rgba(239,68,68,0.15)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)';this.style.boxShadow='none'" />
+  </div>
   <div style="display:flex;align-items:center;gap:8px;">
     <a href="/admin" style="color:rgba(255,255,255,0.5);font-size:12px;font-weight:600;text-decoration:none;padding:8px 14px;border-radius:8px;transition:all 0.2s;" onmouseover="this.style.color='#fff';this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.color='rgba(255,255,255,0.5)';this.style.background='none'">Home</a>
     <div style="position:relative;">
@@ -461,6 +465,35 @@ function adminPage(title, body) {
   </div>
 </nav>
 <script>document.addEventListener('click',function(e){var d=document.getElementById('settings-dropdown');if(d&&d.style.display==='block'&&!e.target.closest('[onclick*="settings-dropdown"]')&&!d.contains(e.target))d.style.display='none';});</script>
+<script>
+(function(){
+  var input = document.getElementById('admin-search');
+  if (!input) return;
+  input.addEventListener('input', function() {
+    var q = this.value.toLowerCase().trim();
+    // Filter cards in card-grid
+    var cards = document.querySelectorAll('.card-grid .card');
+    cards.forEach(function(card) {
+      var title = (card.querySelector('.card-title') || {}).textContent || '';
+      var desc = (card.querySelector('.card-desc') || {}).textContent || '';
+      var match = !q || title.toLowerCase().includes(q) || desc.toLowerCase().includes(q);
+      card.style.display = match ? '' : 'none';
+    });
+    // Filter table rows if present
+    var rows = document.querySelectorAll('table tbody tr');
+    rows.forEach(function(row) {
+      var text = row.textContent.toLowerCase();
+      row.style.display = (!q || text.includes(q)) ? '' : 'none';
+    });
+    // Filter sidebar links
+    var links = document.querySelectorAll('.sidebar a:not(.sidebar-toggle button)');
+    links.forEach(function(link) {
+      var text = link.textContent.toLowerCase();
+      link.style.display = (!q || text.includes(q)) ? '' : 'none';
+    });
+  });
+})();
+</script>
 <div style="height:56px;"></div>
 <!-- Sidebar -->
 <div class="sidebar" id="admin-sidebar">

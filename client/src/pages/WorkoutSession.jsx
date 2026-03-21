@@ -370,6 +370,7 @@ export default function WorkoutSession() {
   }
 
   function handleAddSet(exerciseName, afterIdx) {
+    setPersisted(false);
     setTemplate((prev) => {
       const updated = { ...prev, exercises: prev.exercises.map((ex) => {
         if (ex.name !== exerciseName) return ex;
@@ -419,6 +420,7 @@ export default function WorkoutSession() {
   }
 
   function handleDeleteSet(exerciseName, setIdx) {
+    setPersisted(false);
     setTemplate((prev) => ({
       ...prev,
       exercises: prev.exercises.map((ex) => {
@@ -469,6 +471,7 @@ export default function WorkoutSession() {
 
   function handleAddExercise(name, afterIndex) {
     if (!name?.trim()) return;
+    setPersisted(false);
     const exerciseName = name.trim();
     // Don't add if exercise already exists
     if (template.exercises.some((ex) => ex.name === exerciseName)) return;
@@ -496,6 +499,7 @@ export default function WorkoutSession() {
 
   function handleDeleteExercise(exerciseName) {
     if (!confirm(`Remove "${exerciseName}" from this workout?`)) return;
+    setPersisted(false);
     setTemplate((prev) => ({
       ...prev,
       exercises: prev.exercises.filter((ex) => ex.name !== exerciseName),
@@ -522,6 +526,7 @@ export default function WorkoutSession() {
   }
 
   function handleMoveExercise(fromIdx, toIdx) {
+    setPersisted(false);
     const movingName = template.exercises[fromIdx]?.name;
     setTemplate((prev) => {
       const exercises = [...prev.exercises];
@@ -537,10 +542,12 @@ export default function WorkoutSession() {
   }
 
   function handleNoteChange(exerciseName, value) {
+    setPersisted(false);
     setNotes((prev) => ({ ...prev, [exerciseName]: value }));
   }
 
   function performSwap(oldName, newName) {
+    setPersisted(false);
     // Get the number of sets from the old exercise
     const oldExercise = template.exercises.find((ex) => ex.name === oldName);
     const numSets = oldExercise?.sets?.length || 0;
@@ -637,6 +644,7 @@ export default function WorkoutSession() {
   }
 
   function handleToggleComplete(exerciseName, setIdx) {
+    setPersisted(false);
     const key = `${exerciseName}-${setIdx}`;
     setCompletedSets((prev) => {
       const next = new Set(prev);
@@ -734,7 +742,8 @@ export default function WorkoutSession() {
   }
 
   async function handleSave() {
-    if (!template || template.isRest || saving) return;
+    if (!template || template.isRest) return;
+    if (saving) throw new Error('Save already in progress');
 
     setSaving(true);
     try {
