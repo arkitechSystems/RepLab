@@ -198,10 +198,14 @@ export default function Calendar() {
       // Fetch source session to copy weights (and optionally reps as goals)
       const sourceSession = await api(`/sessions/by-template/${copySource.templateId}/${copySource.date}`).catch(() => null);
 
+      // Build workout data: use source session if available, otherwise fetch template
+      let workoutDataForCopy = null;
+
       if (sourceSession && sourceSession.workoutData) {
-        const modifiedWorkoutData = { ...sourceSession.workoutData };
-        if (modifiedWorkoutData.exercises && sourceSession.entries) {
-          modifiedWorkoutData.exercises = modifiedWorkoutData.exercises.map((ex) => {
+        workoutDataForCopy = { ...sourceSession.workoutData };
+        if (workoutDataForCopy.exercises && sourceSession.entries) {
+          workoutDataForCopy.exercises = workoutDataForCopy.exercises.map((ex) => {
+            if (ex.isSectionHeader) return ex;
             const exEntries = sourceSession.entries.filter((e) => e.exerciseName === ex.name);
             return {
               ...ex,
@@ -216,10 +220,30 @@ export default function Calendar() {
             };
           });
         }
+      } else {
+        // No session exists — fetch the template directly to get suggestedWeight values
+        const templates = await api('/templates');
+        const tpl = templates.find((t) => t.id === copySource.templateId);
+        if (tpl) {
+          workoutDataForCopy = {
+            name: tpl.name,
+            exercises: tpl.exercises.map((ex) => ({
+              ...ex,
+              sets: ex.sets.map((s, i) => ({
+                setNumber: s.setNumber || i + 1,
+                plannedReps: s.plannedReps || 10,
+                suggestedWeight: s.suggestedWeight || 0,
+              })),
+            })),
+          };
+        }
+      }
 
+      if (workoutDataForCopy) {
         // Build blank entries (user starts fresh, weights show as suggestions)
         const entries = [];
-        for (const ex of modifiedWorkoutData.exercises) {
+        for (const ex of workoutDataForCopy.exercises) {
+          if (ex.isSectionHeader) continue;
           for (const s of ex.sets) {
             entries.push({ exerciseName: ex.name, setNumber: s.setNumber, weight: 0, reps: 0 });
           }
@@ -233,7 +257,7 @@ export default function Calendar() {
             date: targetDateStr,
             entries,
             notes: {},
-            workoutData: modifiedWorkoutData,
+            workoutData: workoutDataForCopy,
           }),
         });
       }
