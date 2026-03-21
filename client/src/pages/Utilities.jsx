@@ -945,7 +945,7 @@ export default function Utilities() {
         </div>
 
         {/* Plate Calculator card */}
-        <div className="w-full glass-card rounded-xl p-5 fade-slide-up text-left opacity-60">
+        <a href="/platecalc/" className="w-full glass-card rounded-xl p-5 fade-slide-up text-left block active:scale-[0.98] transition-transform">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-full bg-rose-500/15 flex items-center justify-center shrink-0">
               <svg className="w-6 h-6 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -956,9 +956,11 @@ export default function Utilities() {
               <h3 className="text-base font-semibold text-white">Plate Calculator</h3>
               <p className="text-wf-gray-400 text-sm mt-0.5">See which plates to load on each side of the bar</p>
             </div>
-            <span className="px-2 py-0.5 rounded-full bg-yellow-500/20 border border-yellow-500/40 text-[10px] font-bold text-yellow-400 uppercase tracking-wider shrink-0">Pro</span>
+            <svg className="w-5 h-5 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            </svg>
           </div>
-        </div>
+        </a>
 
         {/* Ideal Body Proportions card */}
         <div className="w-full glass-card rounded-xl p-5 fade-slide-up text-left opacity-60">
