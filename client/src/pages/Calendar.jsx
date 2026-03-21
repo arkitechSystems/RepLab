@@ -2,12 +2,16 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { startOfWeek, addDays, format, isToday, isSameWeek } from 'date-fns';
 import { api } from '../api';
+import { useAuth } from '../context/AuthContext';
 import { getWorkoutColor } from '../utils/workoutColors';
 import StickyHeader from '../components/StickyHeader';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const FULL_DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export default function Calendar() {
+  const { user } = useAuth();
+  const isPremium = user?.plan && user.plan !== 'Free';
   const [schedule, setSchedule] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [programs, setPrograms] = useState([]);
@@ -19,6 +23,10 @@ export default function Calendar() {
   const [pickerSearch, setPickerSearch] = useState('');
   const [editError, setEditError] = useState('');
   const [scheduleSaving, setScheduleSaving] = useState(false);
+  const [copySource, setCopySource] = useState(null); // { templateId, templateName, date, dayOfWeek }
+  const [copyStep, setCopyStep] = useState(null); // 'pick-day' | 'confirm-overwrite' | 'use-reps'
+  const [copyTarget, setCopyTarget] = useState(null); // Date object
+  const [copying, setCopying] = useState(false);
   const navigate = useNavigate();
 
   const [today, setToday] = useState(() => new Date());
@@ -129,6 +137,119 @@ export default function Calendar() {
 
   function toggleProgram(programId) {
     setExpandedProgram(expandedProgram === programId ? null : programId);
+  }
+
+  function startCopy(currentWorkout, date) {
+    setCopySource({
+      templateId: currentWorkout.templateId,
+      templateName: currentWorkout.templateName,
+      date: format(date, 'yyyy-MM-dd'),
+      dayOfWeek: date.getDay(),
+    });
+    setCopyStep('pick-day');
+    setCopyTarget(null);
+    setEditingDay(null);
+  }
+
+  function cancelCopy() {
+    setCopySource(null);
+    setCopyStep(null);
+    setCopyTarget(null);
+    setCopying(false);
+  }
+
+  function handlePickCopyDay(targetDate) {
+    const targetWorkout = getWorkoutForDay(targetDate);
+    const hasTargetWorkout = targetWorkout && !targetWorkout.isRest && targetWorkout.templateId;
+    setCopyTarget(targetDate);
+
+    if (hasTargetWorkout) {
+      setCopyStep('confirm-overwrite');
+    } else {
+      checkIfSourceCompleted(targetDate);
+    }
+  }
+
+  function checkIfSourceCompleted(targetDate) {
+    const isCompleted = completedSessions.some(
+      (c) => c.templateId === copySource.templateId && c.date === copySource.date
+    );
+    if (isCompleted) {
+      setCopyTarget(targetDate || copyTarget);
+      setCopyStep('use-reps');
+    } else {
+      executeCopy(targetDate || copyTarget, false);
+    }
+  }
+
+  async function executeCopy(targetDate, useReps) {
+    setCopying(true);
+    try {
+      const targetDow = targetDate.getDay();
+
+      // Step 1: Assign the templateId to the target day's schedule
+      await api('/schedule', {
+        method: 'PUT',
+        body: JSON.stringify({ schedule: [{ dayOfWeek: targetDow, templateId: copySource.templateId }] }),
+      });
+
+      if (useReps) {
+        // Fetch source session to get actual reps
+        const sourceSession = await api(`/sessions/by-template/${copySource.templateId}/${copySource.date}`);
+
+        if (sourceSession && sourceSession.workoutData) {
+          // Build modified workoutData with plannedReps from actual reps
+          const modifiedWorkoutData = { ...sourceSession.workoutData };
+          if (modifiedWorkoutData.exercises && sourceSession.entries) {
+            modifiedWorkoutData.exercises = modifiedWorkoutData.exercises.map((ex) => {
+              const exEntries = sourceSession.entries.filter((e) => e.exerciseName === ex.name);
+              return {
+                ...ex,
+                sets: ex.sets.map((s) => {
+                  const matchingEntry = exEntries.find((e) => e.setNumber === s.setNumber);
+                  return {
+                    ...s,
+                    plannedReps: matchingEntry && matchingEntry.reps > 0 ? matchingEntry.reps : s.plannedReps,
+                  };
+                }),
+              };
+            });
+          }
+
+          // Build blank entries
+          const entries = [];
+          for (const ex of modifiedWorkoutData.exercises) {
+            for (const s of ex.sets) {
+              entries.push({ exerciseName: ex.name, setNumber: s.setNumber, weight: 0, reps: 0 });
+            }
+          }
+
+          const targetDateStr = format(targetDate, 'yyyy-MM-dd');
+          await api('/sessions', {
+            method: 'POST',
+            body: JSON.stringify({
+              templateId: copySource.templateId,
+              date: targetDateStr,
+              entries,
+              notes: {},
+              workoutData: modifiedWorkoutData,
+            }),
+          });
+        }
+      }
+
+      // Refresh schedule and completed sessions
+      const [updatedSchedule, updatedCompleted] = await Promise.all([
+        api('/schedule'),
+        api('/sessions/completed'),
+      ]);
+      setSchedule(updatedSchedule);
+      setCompletedSessions(updatedCompleted);
+      cancelCopy();
+    } catch (err) {
+      console.error('Copy failed:', err);
+      cancelCopy();
+    }
   }
 
   const enrichedPrograms = getEnrichedPrograms();
@@ -392,6 +513,31 @@ export default function Calendar() {
                 {/* Quick actions */}
                 {!pickerSearch && (
                   <div className="mb-4 space-y-1.5">
+                    {hasWorkout && (
+                      isPremium ? (
+                        <button
+                          onClick={() => startCopy(currentWorkout, editingDay)}
+                          className="w-full text-left rounded-xl px-4 py-3 flex items-center gap-3 bg-white/5 active:bg-white/10 active:scale-[0.98] transition-all"
+                        >
+                          <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+                            <svg className="w-4 h-4 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75" />
+                            </svg>
+                          </div>
+                          <span className="text-sm font-medium text-wf-gray-300">Copy Workout</span>
+                        </button>
+                      ) : (
+                        <div className="w-full text-left rounded-xl px-4 py-3 flex items-center gap-3 bg-white/5 opacity-50 cursor-not-allowed">
+                          <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+                            <svg className="w-4 h-4 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75" />
+                            </svg>
+                          </div>
+                          <span className="text-sm font-medium text-wf-gray-300">Copy Workout</span>
+                          <span className="ml-auto px-2 py-0.5 rounded-full bg-yellow-500/20 border border-yellow-500/40 text-[10px] font-bold text-yellow-400 uppercase tracking-wider">Pro</span>
+                        </div>
+                      )
+                    )}
                     {(hasWorkout || isCurrentRest) && (
                       <button
                         onClick={handleClearDay}
@@ -487,6 +633,161 @@ export default function Calendar() {
           </div>
         );
       })()}
+
+      {/* Copy Workout Modal */}
+      {copySource && copyStep && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4" onClick={cancelCopy}>
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <div
+            className="relative w-full max-w-lg bg-wf-gray-900 border border-white/10 rounded-2xl shadow-2xl max-h-[75vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <div className="px-5 pt-4 pb-3 border-b border-white/10 shrink-0">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-white">
+                    {copyStep === 'pick-day' && 'Copy Workout'}
+                    {copyStep === 'confirm-overwrite' && 'Overwrite Workout?'}
+                    {copyStep === 'use-reps' && 'Use Previous Reps?'}
+                  </h3>
+                  <p className="text-sm text-wf-gray-400 mt-0.5">
+                    {copyStep === 'pick-day' && (
+                      <>Copying <span className="text-white/70">{copySource.templateName}</span> — pick a target day</>
+                    )}
+                    {copyStep === 'confirm-overwrite' && copyTarget && (() => {
+                      const targetWorkout = getWorkoutForDay(copyTarget);
+                      return (
+                        <><span className="text-white/70">{targetWorkout?.templateName}</span> is already scheduled for {FULL_DAY_NAMES[copyTarget.getDay()]}</>
+                      );
+                    })()}
+                    {copyStep === 'use-reps' && 'Your source workout is completed. Use those reps as goals?'}
+                  </p>
+                </div>
+                <button
+                  onClick={cancelCopy}
+                  className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"
+                >
+                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-y-auto flex-1 px-5 py-4">
+              {/* Step: Pick a day */}
+              {copyStep === 'pick-day' && (
+                <div className="space-y-2">
+                  {weekDays.map((date) => {
+                    const dateStr = format(date, 'yyyy-MM-dd');
+                    const isSourceDay = dateStr === copySource.date;
+                    const workout = getWorkoutForDay(date);
+                    const hasWorkout = workout && !workout.isRest && workout.templateId;
+                    const dayCompleted = isDayCompleted(date);
+                    const dayIsToday = isToday(date);
+                    const color = hasWorkout ? getWorkoutColor(workout.templateName) : null;
+
+                    return (
+                      <button
+                        key={dateStr}
+                        disabled={isSourceDay}
+                        onClick={() => handlePickCopyDay(date)}
+                        className={`w-full text-left rounded-xl px-4 py-3 flex items-center gap-3 transition-all ${
+                          isSourceDay
+                            ? 'bg-white/5 opacity-40 cursor-not-allowed'
+                            : 'bg-white/5 active:bg-white/10 active:scale-[0.98]'
+                        }`}
+                      >
+                        <div
+                          className={`w-10 h-10 rounded-full flex flex-col items-center justify-center shrink-0 ${
+                            dayIsToday ? 'btn-gradient text-white' : dayCompleted ? 'bg-green-500/15 text-green-400' : 'bg-white/5 text-wf-gray-400'
+                          }`}
+                        >
+                          <span className="text-[9px] font-medium uppercase leading-none">
+                            {DAY_NAMES[date.getDay()]}
+                          </span>
+                          <span className="text-sm font-bold leading-none mt-0.5">
+                            {format(date, 'd')}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          {hasWorkout ? (
+                            <>
+                              <div className="flex items-center gap-2">
+                                <div className={`w-2 h-2 rounded-full shrink-0 ${color?.dot}`} />
+                                <span className="text-sm font-medium text-white truncate">{workout.templateName}</span>
+                              </div>
+                              {dayCompleted && <span className="text-[10px] text-green-400">Complete</span>}
+                            </>
+                          ) : (
+                            <span className="text-sm text-wf-gray-500">No workout</span>
+                          )}
+                        </div>
+                        {isSourceDay ? (
+                          <span className="text-[10px] text-wf-gray-500 font-medium uppercase">Source</span>
+                        ) : (
+                          <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                          </svg>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Step: Confirm overwrite */}
+              {copyStep === 'confirm-overwrite' && (
+                <div className="space-y-4">
+                  <p className="text-sm text-wf-gray-300 text-center">
+                    This will replace the existing workout on {copyTarget && FULL_DAY_NAMES[copyTarget.getDay()]} with <span className="text-white font-medium">{copySource.templateName}</span>.
+                  </p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setCopyStep('pick-day')}
+                      className="flex-1 px-4 py-3 rounded-xl bg-white/10 text-sm font-medium text-white active:bg-white/20 transition-all"
+                    >
+                      Back
+                    </button>
+                    <button
+                      onClick={() => checkIfSourceCompleted(copyTarget)}
+                      className="flex-1 px-4 py-3 rounded-xl btn-gradient text-sm font-semibold text-white active:scale-[0.97] transition-transform"
+                    >
+                      Overwrite
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Step: Use previous reps */}
+              {copyStep === 'use-reps' && (
+                <div className="space-y-4">
+                  <p className="text-sm text-wf-gray-300 text-center">
+                    Would you like to use your previous reps as goal reps for the new workout?
+                  </p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => executeCopy(copyTarget, false)}
+                      disabled={copying}
+                      className={`flex-1 px-4 py-3 rounded-xl bg-white/10 text-sm font-medium text-white active:bg-white/20 transition-all ${copying ? 'opacity-50 pointer-events-none' : ''}`}
+                    >
+                      No
+                    </button>
+                    <button
+                      onClick={() => executeCopy(copyTarget, true)}
+                      disabled={copying}
+                      className={`flex-1 px-4 py-3 rounded-xl btn-gradient text-sm font-semibold text-white active:scale-[0.97] transition-transform ${copying ? 'opacity-50 pointer-events-none' : ''}`}
+                    >
+                      {copying ? 'Copying...' : 'Yes, Use Reps'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
