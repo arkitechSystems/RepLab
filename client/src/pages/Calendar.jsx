@@ -17,9 +17,21 @@ export default function Calendar() {
   const [editingDay, setEditingDay] = useState(null); // date object of day being edited
   const [expandedProgram, setExpandedProgram] = useState(null);
   const [pickerSearch, setPickerSearch] = useState('');
+  const [editError, setEditError] = useState('');
+  const [scheduleSaving, setScheduleSaving] = useState(false);
   const navigate = useNavigate();
 
-  const today = new Date();
+  const [today, setToday] = useState(() => new Date());
+
+  useEffect(() => {
+    // Update "today" at midnight
+    const now = new Date();
+    const msUntilMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime() - now.getTime();
+    const timeout = setTimeout(() => {
+      setToday(new Date());
+    }, msUntilMidnight + 100);
+    return () => clearTimeout(timeout);
+  }, [today]);
   const weekStart = addDays(startOfWeek(today, { weekStartsOn: 1 }), weekOffset * 7);
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const isCurrentWeek = isSameWeek(weekStart, today, { weekStartsOn: 1 });
@@ -56,7 +68,7 @@ export default function Calendar() {
 
   function handleDayTap(date) {
     const workout = getWorkoutForDay(date);
-    if (!workout || workout.isRest) return;
+    if (!workout || workout.isRest || !workout.templateId) return;
     const dateStr = format(date, 'yyyy-MM-dd');
     navigate(`/session/${workout.templateId}/${dateStr}`);
   }
@@ -65,38 +77,54 @@ export default function Calendar() {
     if (e) e.stopPropagation();
     setExpandedProgram(null);
     setPickerSearch('');
+    setEditError('');
     setEditingDay(date);
   }
 
   async function handleSwap(templateId) {
     const dow = editingDay.getDay();
+    setScheduleSaving(true);
     try {
       await api('/schedule', {
         method: 'PUT',
         body: JSON.stringify({ schedule: [{ dayOfWeek: dow, templateId }] }),
       });
-      // Refetch schedule
-      const updated = await api('/schedule');
+      const [updated, completed] = await Promise.all([
+        api('/schedule'),
+        api('/sessions/completed'),
+      ]);
       setSchedule(updated);
+      setCompletedSessions(completed);
+      setEditingDay(null);
     } catch (err) {
       console.error(err);
+      setEditError('Failed to save. Please try again.');
+    } finally {
+      setScheduleSaving(false);
     }
-    setEditingDay(null);
   }
 
   async function handleClearDay() {
     const dow = editingDay.getDay();
+    setScheduleSaving(true);
     try {
       await api('/schedule', {
         method: 'PUT',
         body: JSON.stringify({ schedule: [{ dayOfWeek: dow, templateId: null }] }),
       });
-      const updated = await api('/schedule');
+      const [updated, completed] = await Promise.all([
+        api('/schedule'),
+        api('/sessions/completed'),
+      ]);
       setSchedule(updated);
+      setCompletedSessions(completed);
+      setEditingDay(null);
     } catch (err) {
       console.error(err);
+      setEditError('Failed to save. Please try again.');
+    } finally {
+      setScheduleSaving(false);
     }
-    setEditingDay(null);
   }
 
   function toggleProgram(programId) {
@@ -211,7 +239,7 @@ export default function Calendar() {
               const dayCompleted = isDayCompleted(date);
               const color = getWorkoutColor(workout?.templateName);
 
-              const hasWorkout = workout && !isRest;
+              const hasWorkout = workout && !isRest && workout.templateId;
 
               return (
                 <div
@@ -291,7 +319,8 @@ export default function Calendar() {
       {/* Workout Picker Modal */}
       {editingDay && (() => {
         const currentWorkout = getWorkoutForDay(editingDay);
-        const hasWorkout = currentWorkout && !currentWorkout.isRest;
+        const isCurrentRest = currentWorkout?.isRest;
+        const hasWorkout = currentWorkout && !isCurrentRest && currentWorkout.templateId;
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4" onClick={() => setEditingDay(null)}>
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
@@ -351,15 +380,23 @@ export default function Calendar() {
                 </div>
               </div>
 
+              {/* Error feedback */}
+              {editError && (
+                <div className="px-5 pb-2 shrink-0">
+                  <p className="text-sm text-red-400 text-center">{editError}</p>
+                </div>
+              )}
+
               {/* Workout list — flat, grouped by program */}
               <div className="overflow-y-auto flex-1 px-5 py-3">
                 {/* Quick actions */}
                 {!pickerSearch && (
                   <div className="mb-4 space-y-1.5">
-                    {hasWorkout && (
+                    {(hasWorkout || isCurrentRest) && (
                       <button
                         onClick={handleClearDay}
-                        className="w-full text-left rounded-xl px-4 py-3 flex items-center gap-3 bg-white/5 active:bg-white/10 active:scale-[0.98] transition-all"
+                        disabled={scheduleSaving}
+                        className={`w-full text-left rounded-xl px-4 py-3 flex items-center gap-3 bg-white/5 active:bg-white/10 active:scale-[0.98] transition-all ${scheduleSaving ? 'opacity-50 pointer-events-none' : ''}`}
                       >
                         <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
                           <svg className="w-4 h-4 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -403,11 +440,8 @@ export default function Calendar() {
                             <button
                               key={t.id}
                               onClick={() => handleSwap(t.id)}
-                              className={`w-full text-left rounded-xl px-4 py-3 flex items-center gap-3 transition-all active:scale-[0.98] ${
-                                isCurrentChoice
-                                  ? 'bg-wf-red/15 border border-wf-red/30'
-                                  : 'bg-white/5 active:bg-white/10'
-                              }`}
+                              disabled={scheduleSaving}
+                              className={`w-full text-left rounded-xl px-4 py-3 flex items-center gap-3 transition-all active:scale-[0.98] ${isCurrentChoice ? 'bg-wf-red/15 border border-wf-red/30' : 'bg-white/5 active:bg-white/10'} ${scheduleSaving ? 'opacity-50 pointer-events-none' : ''}`}
                             >
                               <div className={`w-3 h-3 rounded-full shrink-0 ${color.dot}`} />
                               <div className="flex-1 min-w-0">
