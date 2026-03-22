@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 export default function CardsTest() {
@@ -6,6 +6,18 @@ export default function CardsTest() {
   const [toggleOn, setToggleOn] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const [hoverCard, setHoverCard] = useState(null);
+  const [breathPhase, setBreathPhase] = useState(0);
+  const [activeTab, setActiveTab] = useState('week');
+  const [sliderVal, setSliderVal] = useState(65);
+
+  // Breathing animation timer
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setBreathPhase(p => (p + 1) % 100);
+    }, 80);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="min-h-screen bg-black px-4 pt-6 pb-24">
@@ -220,6 +232,372 @@ export default function CardsTest() {
           <button className="w-full py-3 bg-white text-black font-bold text-sm rounded-xl active:scale-[0.98] transition-transform">
             Start Free Trial
           </button>
+        </div>
+
+        {/* ──── NEW EXPERIMENTAL CARDS ──── */}
+        <div className="border-t border-white/10 pt-6 mt-4">
+          <p className="text-wf-gray-400 text-xs uppercase tracking-widest font-semibold mb-5">Experimental Styles</p>
+        </div>
+
+        {/* 11. Brutalist / Newsprint Card */}
+        <div style={{
+          background: '#f5f0e8',
+          border: '3px solid #1a1a1a',
+          borderRadius: '0',
+          padding: '0',
+          fontFamily: '"Courier New", monospace',
+          position: 'relative',
+          overflow: 'hidden',
+        }}>
+          <div style={{
+            background: '#1a1a1a',
+            padding: '8px 16px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}>
+            <span style={{ color: '#f5f0e8', fontSize: '10px', fontWeight: 900, letterSpacing: '4px', textTransform: 'uppercase' }}>11. Brutalist</span>
+            <span style={{ color: '#f5f0e8', fontSize: '10px', fontFamily: 'monospace' }}>03.22.26</span>
+          </div>
+          <div style={{ padding: '20px', borderBottom: '2px dashed #1a1a1a' }}>
+            <h2 style={{ color: '#1a1a1a', fontSize: '32px', fontWeight: 900, lineHeight: 1, margin: 0, textTransform: 'uppercase', letterSpacing: '-1px' }}>
+              DEADLIFT<br/>
+              <span style={{ fontSize: '64px', lineHeight: 0.9 }}>315</span>
+              <span style={{ fontSize: '16px', verticalAlign: 'super' }}>LBS</span>
+            </h2>
+          </div>
+          <div style={{ display: 'flex', borderTop: '0' }}>
+            {['SETS: 5', 'REPS: 3', 'RPE: 9'].map((stat, i) => (
+              <div key={i} style={{
+                flex: 1,
+                padding: '12px',
+                textAlign: 'center',
+                borderRight: i < 2 ? '2px solid #1a1a1a' : 'none',
+                color: '#1a1a1a',
+                fontSize: '11px',
+                fontWeight: 700,
+                letterSpacing: '1px',
+              }}>{stat}</div>
+            ))}
+          </div>
+          <div style={{
+            background: '#ff3b3b',
+            color: '#fff',
+            padding: '10px 16px',
+            fontSize: '11px',
+            fontWeight: 900,
+            textAlign: 'center',
+            letterSpacing: '3px',
+            textTransform: 'uppercase',
+            cursor: 'pointer',
+          }}>
+            ► LOG THIS SET ◄
+          </div>
+        </div>
+
+        {/* 12. Organic / Breathing Blob Card */}
+        <div style={{
+          background: 'linear-gradient(135deg, #0a0a0a 0%, #1a0a2e 50%, #0a1628 100%)',
+          borderRadius: '24px',
+          padding: '32px 24px',
+          position: 'relative',
+          overflow: 'hidden',
+          minHeight: '200px',
+        }}>
+          {/* Animated blob background */}
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            width: '180px',
+            height: '180px',
+            transform: `translate(-50%, -50%) scale(${0.8 + Math.sin(breathPhase * 0.063) * 0.2})`,
+            borderRadius: `${40 + Math.sin(breathPhase * 0.04) * 15}% ${60 - Math.sin(breathPhase * 0.04) * 15}% ${50 + Math.cos(breathPhase * 0.05) * 10}% ${50 - Math.cos(breathPhase * 0.05) * 10}%`,
+            background: `radial-gradient(circle, rgba(139,92,246,0.4) 0%, rgba(59,130,246,0.2) 50%, transparent 70%)`,
+            filter: 'blur(20px)',
+            transition: 'all 0.08s linear',
+          }} />
+          <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
+            <p style={{ fontSize: '10px', color: 'rgba(167,139,250,0.6)', letterSpacing: '4px', textTransform: 'uppercase', fontWeight: 600, marginBottom: '16px' }}>12. Organic Blob</p>
+            <div style={{
+              fontSize: '48px',
+              fontWeight: 200,
+              color: 'white',
+              letterSpacing: '-2px',
+              lineHeight: 1,
+              fontFamily: 'system-ui',
+            }}>
+              {Math.round(60 + Math.sin(breathPhase * 0.063) * 8)}
+            </div>
+            <div style={{ fontSize: '12px', color: 'rgba(167,139,250,0.5)', marginTop: '4px', letterSpacing: '2px' }}>BPM</div>
+            <div style={{
+              marginTop: '20px',
+              display: 'flex',
+              justifyContent: 'center',
+              gap: '3px',
+            }}>
+              {Array.from({ length: 30 }, (_, i) => {
+                const h = 8 + Math.sin((breathPhase + i * 3) * 0.1) * 16;
+                return (
+                  <div key={i} style={{
+                    width: '3px',
+                    height: `${h}px`,
+                    borderRadius: '2px',
+                    background: `linear-gradient(to top, rgba(139,92,246,${0.3 + (h / 40)}), rgba(59,130,246,${0.3 + (h / 40)}))`,
+                    transition: 'height 0.08s linear',
+                  }} />
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* 13. Retro Terminal / Hacker Card */}
+        <div style={{
+          background: '#0c0c0c',
+          border: '1px solid #00ff4130',
+          borderRadius: '8px',
+          fontFamily: '"Courier New", "Lucida Console", monospace',
+          overflow: 'hidden',
+          boxShadow: '0 0 30px rgba(0,255,65,0.05), inset 0 0 60px rgba(0,255,65,0.03)',
+        }}>
+          {/* Terminal header */}
+          <div style={{
+            background: '#151515',
+            padding: '8px 12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            borderBottom: '1px solid #00ff4115',
+          }}>
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#ff5f56' }} />
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#ffbd2e' }} />
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#27c93f' }} />
+            <span style={{ color: '#00ff4160', fontSize: '10px', marginLeft: '8px' }}>willfit@gym:~</span>
+          </div>
+          <div style={{ padding: '16px', lineHeight: 1.8 }}>
+            <p style={{ fontSize: '10px', color: '#00ff4140', letterSpacing: '4px', textTransform: 'uppercase', fontWeight: 600, marginBottom: '8px' }}>13. Terminal Card</p>
+            <div style={{ color: '#00ff41', fontSize: '12px' }}>
+              <span style={{ color: '#00ff4180' }}>$</span> query --user=will --type=workout_summary<br />
+              <br />
+              <span style={{ color: '#888' }}>{'// '}loading workout data...</span><br />
+              <br />
+              <span style={{ color: '#ffbd2e' }}>WORKOUT_LOG</span> = {'{'}<br />
+              &nbsp;&nbsp;<span style={{ color: '#ff6b6b' }}>"exercise"</span>: <span style={{ color: '#98c379' }}>"Squat"</span>,<br />
+              &nbsp;&nbsp;<span style={{ color: '#ff6b6b' }}>"weight"</span>:&nbsp;&nbsp; <span style={{ color: '#d19a66' }}>275</span>,<br />
+              &nbsp;&nbsp;<span style={{ color: '#ff6b6b' }}>"sets"</span>:&nbsp;&nbsp;&nbsp;&nbsp; <span style={{ color: '#d19a66' }}>4</span>,<br />
+              &nbsp;&nbsp;<span style={{ color: '#ff6b6b' }}>"reps"</span>:&nbsp;&nbsp;&nbsp;&nbsp; <span style={{ color: '#d19a66' }}>6</span>,<br />
+              &nbsp;&nbsp;<span style={{ color: '#ff6b6b' }}>"status"</span>:&nbsp;&nbsp; <span style={{ color: '#27c93f' }}>"PR_ACHIEVED"</span><br />
+              {'}'}<br />
+              <br />
+              <span style={{ color: '#00ff4180' }}>$</span> <span style={{
+                borderRight: '2px solid #00ff41',
+                paddingRight: '2px',
+                animation: 'none',
+              }}>█</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 14. Neumorphic / Soft UI Card */}
+        <div style={{
+          background: '#e0e5ec',
+          borderRadius: '20px',
+          padding: '24px',
+          boxShadow: '8px 8px 16px #b8bec7, -8px -8px 16px #ffffff',
+        }}>
+          <p style={{ fontSize: '10px', color: '#8a95a5', letterSpacing: '4px', textTransform: 'uppercase', fontWeight: 600, marginBottom: '16px' }}>14. Neumorphic</p>
+
+          {/* Segmented control */}
+          <div style={{
+            display: 'flex',
+            background: '#e0e5ec',
+            borderRadius: '12px',
+            padding: '4px',
+            boxShadow: 'inset 3px 3px 6px #b8bec7, inset -3px -3px 6px #ffffff',
+            marginBottom: '20px',
+          }}>
+            {['week', 'month', 'year'].map(tab => (
+              <button key={tab} onClick={() => setActiveTab(tab)} style={{
+                flex: 1,
+                padding: '8px',
+                borderRadius: '10px',
+                border: 'none',
+                fontSize: '12px',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '1px',
+                cursor: 'pointer',
+                color: activeTab === tab ? '#5b6abf' : '#8a95a5',
+                background: activeTab === tab ? '#e0e5ec' : 'transparent',
+                boxShadow: activeTab === tab ? '4px 4px 8px #b8bec7, -4px -4px 8px #ffffff' : 'none',
+                transition: 'all 0.2s',
+              }}>{tab}</button>
+            ))}
+          </div>
+
+          {/* Stat blocks */}
+          <div style={{ display: 'flex', gap: '12px' }}>
+            {[
+              { label: 'Volume', value: '24,500', unit: 'lbs' },
+              { label: 'Sessions', value: '5', unit: 'days' },
+            ].map((s, i) => (
+              <div key={i} style={{
+                flex: 1,
+                background: '#e0e5ec',
+                borderRadius: '16px',
+                padding: '16px',
+                boxShadow: '6px 6px 12px #b8bec7, -6px -6px 12px #ffffff',
+                textAlign: 'center',
+              }}>
+                <div style={{ fontSize: '24px', fontWeight: 800, color: '#3a4255', lineHeight: 1 }}>{s.value}</div>
+                <div style={{ fontSize: '10px', color: '#8a95a5', marginTop: '4px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px' }}>{s.unit}</div>
+                <div style={{ fontSize: '11px', color: '#5b6abf', marginTop: '8px', fontWeight: 600 }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Neumorphic slider */}
+          <div style={{ marginTop: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span style={{ fontSize: '11px', color: '#8a95a5', fontWeight: 600 }}>Intensity</span>
+              <span style={{ fontSize: '11px', color: '#5b6abf', fontWeight: 700 }}>{sliderVal}%</span>
+            </div>
+            <div style={{
+              height: '8px',
+              borderRadius: '4px',
+              background: '#e0e5ec',
+              boxShadow: 'inset 2px 2px 4px #b8bec7, inset -2px -2px 4px #ffffff',
+              position: 'relative',
+              cursor: 'pointer',
+            }} onClick={e => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              setSliderVal(Math.round(((e.clientX - rect.left) / rect.width) * 100));
+            }}>
+              <div style={{
+                height: '100%',
+                width: `${sliderVal}%`,
+                borderRadius: '4px',
+                background: 'linear-gradient(90deg, #667eea, #764ba2)',
+              }} />
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: `${sliderVal}%`,
+                transform: 'translate(-50%, -50%)',
+                width: '20px',
+                height: '20px',
+                borderRadius: '50%',
+                background: '#e0e5ec',
+                boxShadow: '3px 3px 6px #b8bec7, -3px -3px 6px #ffffff',
+              }} />
+            </div>
+          </div>
+        </div>
+
+        {/* 15. Glassmorphic Layered / Stacked Card */}
+        <div style={{
+          position: 'relative',
+          minHeight: '240px',
+          perspective: '1000px',
+        }}>
+          {/* Background decorative layers */}
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            borderRadius: '24px',
+            background: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 25%, #48dbfb 50%, #ff9ff3 75%, #54a0ff 100%)',
+            filter: 'blur(24px)',
+            opacity: 0.3,
+            transform: 'scale(0.95) translateY(8px)',
+          }} />
+          <div style={{
+            position: 'relative',
+            borderRadius: '24px',
+            background: 'rgba(255,255,255,0.08)',
+            backdropFilter: 'blur(40px)',
+            WebkitBackdropFilter: 'blur(40px)',
+            border: '1px solid rgba(255,255,255,0.15)',
+            padding: '28px 24px',
+            overflow: 'hidden',
+          }}>
+            {/* Decorative circles */}
+            <div style={{
+              position: 'absolute', top: -30, right: -30,
+              width: 120, height: 120, borderRadius: '50%',
+              background: 'linear-gradient(135deg, rgba(255,107,107,0.3), rgba(254,202,87,0.1))',
+              filter: 'blur(10px)',
+            }} />
+            <div style={{
+              position: 'absolute', bottom: -20, left: -20,
+              width: 80, height: 80, borderRadius: '50%',
+              background: 'linear-gradient(135deg, rgba(72,219,251,0.3), rgba(84,160,255,0.1))',
+              filter: 'blur(10px)',
+            }} />
+
+            <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.35)', letterSpacing: '4px', textTransform: 'uppercase', fontWeight: 600, marginBottom: '16px', position: 'relative', zIndex: 1 }}>15. Glass Layers</p>
+
+            {/* Floating mini cards */}
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', position: 'relative', zIndex: 1 }}>
+              {[
+                { emoji: '🔥', val: '847', label: 'cal' },
+                { emoji: '⏱', val: '52m', label: 'time' },
+                { emoji: '💪', val: '12k', label: 'lbs' },
+              ].map((item, i) => (
+                <div key={i}
+                  onPointerEnter={() => setHoverCard(i)}
+                  onPointerLeave={() => setHoverCard(null)}
+                  style={{
+                    flex: 1,
+                    background: hoverCard === i
+                      ? 'rgba(255,255,255,0.18)'
+                      : 'rgba(255,255,255,0.06)',
+                    borderRadius: '16px',
+                    padding: '14px 8px',
+                    textAlign: 'center',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    transform: hoverCard === i ? 'translateY(-4px) scale(1.03)' : 'none',
+                    transition: 'all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                    cursor: 'pointer',
+                  }}>
+                  <div style={{ fontSize: '20px', marginBottom: '4px' }}>{item.emoji}</div>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: 'white' }}>{item.val}</div>
+                  <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '2px', marginTop: '2px' }}>{item.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Tag pills */}
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', position: 'relative', zIndex: 1 }}>
+              {['Upper Body', 'Strength', 'PR Day', 'Progressive'].map((tag, i) => (
+                <span key={i} style={{
+                  padding: '5px 12px',
+                  borderRadius: '100px',
+                  fontSize: '10px',
+                  fontWeight: 600,
+                  letterSpacing: '0.5px',
+                  background: [
+                    'rgba(255,107,107,0.15)',
+                    'rgba(254,202,87,0.15)',
+                    'rgba(72,219,251,0.15)',
+                    'rgba(255,159,243,0.15)',
+                  ][i],
+                  color: [
+                    '#ff6b6b',
+                    '#feca57',
+                    '#48dbfb',
+                    '#ff9ff3',
+                  ][i],
+                  border: `1px solid ${[
+                    'rgba(255,107,107,0.2)',
+                    'rgba(254,202,87,0.2)',
+                    'rgba(72,219,251,0.2)',
+                    'rgba(255,159,243,0.2)',
+                  ][i]}`,
+                }}>{tag}</span>
+              ))}
+            </div>
+          </div>
         </div>
 
       </div>
