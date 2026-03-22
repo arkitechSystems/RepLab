@@ -560,6 +560,7 @@ function adminPage(title, body) {
     <a href="/admin/subscriptions"${title === 'Subscriptions' ? ' class="active"' : ''}>Subscriptions</a>
     <a href="/admin/workout-manager"${title === 'Workout Manager' || title === 'Create a Workout' || title === 'View Current Workouts' ? ' class="active"' : ''}>Workout Manager</a>
     <a href="/admin/trainer-logins"${title === 'Trainer Login History' ? ' class="active"' : ''}>Trainer Logins</a>
+    <a href="/admin/react-native"${title === 'React Native Conversion' ? ' class="active"' : ''}>React Native</a>
   </div>
 </div>
 <script>
@@ -835,6 +836,11 @@ router.get('/', adminAuth, async (req, res) => {
       <div class="card-icon">🔐</div>
       <div class="card-title">Trainer Login History</div>
       <div class="card-desc">View login activity on the trainer dashboard.</div>
+    </a>
+    <a class="card glass" href="/admin/react-native" style="border-color:rgba(59,130,246,0.25);">
+      <div class="card-icon">📱</div>
+      <div class="card-title">React Native Conversion</div>
+      <div class="card-desc">Architecture plan for converting WillFit to a native iOS app.</div>
     </a>
   </div>
 
@@ -3413,6 +3419,253 @@ router.get('/custom-exercises', adminAuth, async (req, res) => {
     console.error(err);
     res.status(500).send(adminPage('Error', '<p style="color:#f87171;">Failed to load custom exercises.</p>'));
   }
+});
+
+// GET /admin/react-native — React Native conversion plan & architecture diagram
+router.get('/react-native', adminAuth, async (req, res) => {
+  res.send(adminPage('React Native Conversion', `
+    <div class="breadcrumb"><a href="/admin">Dashboard</a> / React Native Conversion</div>
+    <div class="header">
+      <h1>React Native Conversion</h1>
+      <p style="color:#9ca3af;margin-top:4px;">Architecture plan for converting WillFit to a native iOS app</p>
+    </div>
+
+    <!-- Overview -->
+    <div class="glass" style="border-radius:16px;padding:24px;margin-bottom:24px;">
+      <h2 style="font-size:18px;font-weight:800;margin-bottom:12px;">What Is This?</h2>
+      <p style="color:#d1d5db;line-height:1.7;font-size:14px;">
+        WillFit is being converted from a web app (React + Vite) to a <strong style="color:#60a5fa;">React Native</strong> iOS app
+        using <strong style="color:#60a5fa;">Expo</strong>. This gives us truly native UI components, 60fps animations,
+        and full App Store distribution — while keeping the exact same Express + PostgreSQL backend on Render.
+      </p>
+      <div style="margin-top:16px;padding:14px 18px;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:12px;">
+        <p style="color:#93c5fd;font-size:13px;font-weight:600;">Key Principle</p>
+        <p style="color:#d1d5db;font-size:13px;margin-top:4px;">
+          The iOS app is just a new frontend. It talks to the <strong>same API</strong> and <strong>same database</strong>
+          as the web app. Admin dashboard changes (workouts, announcements, feature flags, users) are reflected
+          in the iOS app immediately — no app update needed.
+        </p>
+      </div>
+    </div>
+
+    <!-- Architecture Diagram -->
+    <div class="glass" style="border-radius:16px;padding:24px;margin-bottom:24px;">
+      <h2 style="font-size:18px;font-weight:800;margin-bottom:16px;">Architecture Diagram</h2>
+      <div style="background:#0a0a0a;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:24px;overflow-x:auto;">
+        <pre style="font-family:'SF Mono',Monaco,Consolas,monospace;font-size:12px;line-height:1.8;color:#d1d5db;margin:0;white-space:pre;">
+<span style="color:#60a5fa;font-weight:700;">YOUR PC (Development)</span>
+┌─────────────────────────────────────────────────────┐
+│                                                     │
+│  <span style="color:#f59e0b;">WorkoutApp/</span>  (current web app)                     │
+│  ├── client/          React + Vite + Tailwind       │
+│  └── server/          Express + PostgreSQL           │
+│                                                     │
+│  <span style="color:#a78bfa;">WorkoutAppMobile/</span>  (new React Native app)           │
+│  ├── app/             Expo Router screens            │
+│  ├── components/      Native UI components           │
+│  └── utils/api.js     API calls → will-fit.shop      │
+│                                                     │
+└──────────────┬──────────────────┬────────────────────┘
+               │                  │
+          <span style="color:#6b7280;">git push</span>           <span style="color:#6b7280;">eas build / git push</span>
+               │                  │
+               ▼                  ▼
+<span style="color:#f472b6;font-weight:700;">GITHUB</span>
+┌──────────────────────┐  ┌───────────────────────────┐
+│  <span style="color:#f59e0b;">WillFit</span> repo         │  │  <span style="color:#a78bfa;">WillFitMobile</span> repo       │
+│  (web app + server)  │  │  (React Native / Expo)     │
+└──────────┬───────────┘  └─────────────┬─────────────┘
+           │                            │
+      <span style="color:#6b7280;">auto deploy</span>                  <span style="color:#6b7280;">Expo EAS Build</span>
+           │                            │
+           ▼                            ▼
+<span style="color:#4ade80;font-weight:700;">RENDER</span>                       <span style="color:#4ade80;font-weight:700;">APPLE APP STORE</span>
+┌──────────────────────┐  ┌───────────────────────────┐
+│  <span style="color:#f59e0b;">will-fit.shop</span>        │  │  <span style="color:#a78bfa;">WillFit iOS App</span>           │
+│  ├── Express API     │  │  Downloaded to user's      │
+│  ├── Web App (static)│  │  iPhone from App Store      │
+│  └── Admin Dashboard │  │                             │
+└──────────┬───────────┘  └─────────────┬─────────────┘
+           │                            │
+           └──────────┐  ┌──────────────┘
+                      │  │
+                      ▼  ▼
+            <span style="color:#ef4444;font-weight:700;">RENDER PostgreSQL</span>
+           ┌────────────────────┐
+           │  <span style="color:#fbbf24;">WillFit Database</span>    │
+           │                    │
+           │  users             │
+           │  programs          │
+           │  templates         │
+           │  sessions          │
+           │  personal_bests    │
+           │  announcements     │
+           │  feature_flags     │
+           │  ...               │
+           └────────────────────┘</pre>
+      </div>
+    </div>
+
+    <!-- Data Flow -->
+    <div class="glass" style="border-radius:16px;padding:24px;margin-bottom:24px;">
+      <h2 style="font-size:18px;font-weight:800;margin-bottom:16px;">API &amp; Data Flow</h2>
+      <div style="background:#0a0a0a;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:24px;overflow-x:auto;">
+        <pre style="font-family:'SF Mono',Monaco,Consolas,monospace;font-size:12px;line-height:1.8;color:#d1d5db;margin:0;white-space:pre;">
+<span style="color:#60a5fa;font-weight:700;">HOW DATA FLOWS</span>
+
+<span style="color:#fbbf24;">1. Admin changes a workout in the dashboard</span>
+   Admin Browser → <span style="color:#4ade80;">PUT /admin/workout-manager</span> → Render Express → PostgreSQL
+                                                                    │
+                                                              data updated
+                                                                    │
+   iOS App → <span style="color:#4ade80;">GET /templates</span> → Render Express → PostgreSQL ─────────┘
+   <span style="color:#6b7280;">Next time the app fetches, it gets the updated data</span>
+
+<span style="color:#fbbf24;">2. User logs a workout on the iOS app</span>
+   iPhone App → <span style="color:#4ade80;">POST /sessions</span> → Render Express → PostgreSQL
+                                                       │
+                                                 session saved
+                                                       │
+   Admin Dashboard → <span style="color:#4ade80;">GET /admin/analytics</span> → sees it ───┘
+
+<span style="color:#fbbf24;">3. Admin sends an announcement</span>
+   Admin Browser → <span style="color:#4ade80;">POST /admin/announcements</span> → PostgreSQL
+                                                        │
+   iOS App → <span style="color:#4ade80;">GET /announcements</span> → shows banner ──────────┘
+   Web App → <span style="color:#4ade80;">GET /announcements</span> → shows banner ──────────┘
+
+<span style="color:#fbbf24;">4. Code deployment flow</span>
+   Your PC → <span style="color:#f472b6;">git push</span> → GitHub (WillFit) → Render auto-deploys
+                                              ↓
+                                    Web app + API updated
+                                    iOS app uses same API
+                                    <span style="color:#6b7280;">(no App Store update needed
+                                     unless native code changes)</span>
+
+   Your PC → <span style="color:#f472b6;">eas build</span> → Expo Cloud → App Store (when native changes needed)</pre>
+      </div>
+    </div>
+
+    <!-- What Stays / What Changes -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
+      <div class="glass" style="border-radius:16px;padding:24px;">
+        <h2 style="font-size:16px;font-weight:800;margin-bottom:12px;color:#4ade80;">Stays the Same</h2>
+        <ul style="color:#d1d5db;font-size:13px;line-height:2;list-style:none;padding:0;">
+          <li>&#10003; Express server on Render</li>
+          <li>&#10003; PostgreSQL database</li>
+          <li>&#10003; All API routes (/auth, /sessions, etc.)</li>
+          <li>&#10003; Admin dashboard (web)</li>
+          <li>&#10003; Trainer dashboard (web)</li>
+          <li>&#10003; Web app (stays live at will-fit.shop)</li>
+          <li>&#10003; JWT authentication flow</li>
+          <li>&#10003; All business logic on the server</li>
+        </ul>
+      </div>
+      <div class="glass" style="border-radius:16px;padding:24px;">
+        <h2 style="font-size:16px;font-weight:800;margin-bottom:12px;color:#60a5fa;">New for iOS</h2>
+        <ul style="color:#d1d5db;font-size:13px;line-height:2;list-style:none;padding:0;">
+          <li>&#9679; React Native UI components (View, Text, etc.)</li>
+          <li>&#9679; React Navigation (stack/tab navigators)</li>
+          <li>&#9679; Expo for builds &amp; App Store submission</li>
+          <li>&#9679; Native animations &amp; gestures</li>
+          <li>&#9679; Push notifications via Expo</li>
+          <li>&#9679; Secure token storage (expo-secure-store)</li>
+          <li>&#9679; Apple Developer Account ($99/year)</li>
+          <li>&#9679; Separate GitHub repo (WillFitMobile)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Project Structure -->
+    <div class="glass" style="border-radius:16px;padding:24px;margin-bottom:24px;">
+      <h2 style="font-size:18px;font-weight:800;margin-bottom:16px;">React Native Project Structure</h2>
+      <div style="background:#0a0a0a;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px;overflow-x:auto;">
+        <pre style="font-family:'SF Mono',Monaco,Consolas,monospace;font-size:12px;line-height:1.8;color:#d1d5db;margin:0;">
+<span style="color:#a78bfa;font-weight:700;">WorkoutAppMobile/</span>
+├── app/                      <span style="color:#6b7280;">Expo Router file-based routing</span>
+│   ├── (tabs)/               <span style="color:#6b7280;">Tab navigator layout</span>
+│   │   ├── _layout.jsx       <span style="color:#6b7280;">Tab bar config (Workouts, Calendar, Profile, etc.)</span>
+│   │   ├── index.jsx         <span style="color:#6b7280;">Workouts screen</span>
+│   │   ├── calendar.jsx      <span style="color:#6b7280;">Calendar screen</span>
+│   │   ├── profile.jsx       <span style="color:#6b7280;">Profile screen</span>
+│   │   └── utilities.jsx     <span style="color:#6b7280;">Utilities screen</span>
+│   ├── session/[id].jsx      <span style="color:#6b7280;">Workout session screen</span>
+│   ├── login.jsx             <span style="color:#6b7280;">Login screen</span>
+│   ├── signup.jsx            <span style="color:#6b7280;">Signup screen</span>
+│   └── _layout.jsx           <span style="color:#6b7280;">Root layout (auth guard)</span>
+├── components/               <span style="color:#6b7280;">Shared native components</span>
+│   ├── ExerciseCard.jsx
+│   ├── ProgramCard.jsx
+│   ├── StickyHeader.jsx
+│   └── PBCelebration.jsx
+├── context/
+│   └── AuthContext.jsx        <span style="color:#6b7280;">Same auth pattern, uses SecureStore</span>
+├── utils/
+│   ├── api.js                <span style="color:#6b7280;">fetch wrapper → will-fit.shop</span>
+│   └── sounds.js             <span style="color:#6b7280;">expo-av for native sounds</span>
+├── app.json                  <span style="color:#6b7280;">Expo config (app name, icons, splash)</span>
+└── package.json</pre>
+      </div>
+    </div>
+
+    <!-- Conversion Phases -->
+    <div class="glass" style="border-radius:16px;padding:24px;margin-bottom:24px;">
+      <h2 style="font-size:18px;font-weight:800;margin-bottom:16px;">Conversion Phases</h2>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="padding:16px 20px;background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);border-radius:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+            <span style="background:rgba(239,68,68,0.2);color:#f87171;padding:2px 10px;border-radius:8px;font-size:11px;font-weight:700;">Phase 1</span>
+            <span style="color:#fff;font-weight:700;font-size:14px;">Project Setup &amp; Auth</span>
+          </div>
+          <p style="color:#9ca3af;font-size:13px;">Initialize Expo project, configure navigation, build Login/Signup screens, set up API util pointing to will-fit.shop, implement SecureStore for JWT tokens.</p>
+        </div>
+        <div style="padding:16px 20px;background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.15);border-radius:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+            <span style="background:rgba(59,130,246,0.2);color:#60a5fa;padding:2px 10px;border-radius:8px;font-size:11px;font-weight:700;">Phase 2</span>
+            <span style="color:#fff;font-weight:700;font-size:14px;">Core Screens</span>
+          </div>
+          <p style="color:#9ca3af;font-size:13px;">Workouts tab (programs, templates), Calendar tab (schedule, week view), Workout Session screen (timer, sets, rest timer, PR detection).</p>
+        </div>
+        <div style="padding:16px 20px;background:rgba(168,85,247,0.06);border:1px solid rgba(168,85,247,0.15);border-radius:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+            <span style="background:rgba(168,85,247,0.2);color:#c084fc;padding:2px 10px;border-radius:8px;font-size:11px;font-weight:700;">Phase 3</span>
+            <span style="color:#fff;font-weight:700;font-size:14px;">Profile &amp; Utilities</span>
+          </div>
+          <p style="color:#9ca3af;font-size:13px;">Profile screen (photo upload, metrics, settings), Utilities tab (plate calculator, etc.), announcements banner, feedback form.</p>
+        </div>
+        <div style="padding:16px 20px;background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.15);border-radius:12px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+            <span style="background:rgba(34,197,94,0.2);color:#4ade80;padding:2px 10px;border-radius:8px;font-size:11px;font-weight:700;">Phase 4</span>
+            <span style="color:#fff;font-weight:700;font-size:14px;">Polish &amp; Ship</span>
+          </div>
+          <p style="color:#9ca3af;font-size:13px;">Push notifications, app icon &amp; splash screen, TestFlight beta testing, App Store screenshots &amp; listing, submit for review.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- FAQ -->
+    <div class="glass" style="border-radius:16px;padding:24px;">
+      <h2 style="font-size:18px;font-weight:800;margin-bottom:16px;">FAQ</h2>
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <div>
+          <p style="color:#fff;font-weight:700;font-size:14px;">Do I need a Mac?</p>
+          <p style="color:#9ca3af;font-size:13px;margin-top:4px;">Not for development. Expo Go lets you test on your iPhone during development. For final App Store builds, Expo's EAS Build service compiles in the cloud — no Mac required.</p>
+        </div>
+        <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:16px;">
+          <p style="color:#fff;font-weight:700;font-size:14px;">Will admin dashboard changes show up in the iOS app?</p>
+          <p style="color:#9ca3af;font-size:13px;margin-top:4px;">Yes. The iOS app calls the same API. When you add a workout, send an announcement, toggle a feature flag, or manage users from this dashboard — the iOS app reflects those changes immediately.</p>
+        </div>
+        <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:16px;">
+          <p style="color:#fff;font-weight:700;font-size:14px;">What happens to the web app?</p>
+          <p style="color:#9ca3af;font-size:13px;margin-top:4px;">Nothing. The web app stays live at will-fit.shop. Users can continue using it in the browser. Both the web app and the iOS app coexist, sharing the same backend.</p>
+        </div>
+        <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:16px;">
+          <p style="color:#fff;font-weight:700;font-size:14px;">Do I need to update the App Store every time I change the API?</p>
+          <p style="color:#9ca3af;font-size:13px;margin-top:4px;">No. API changes deploy to Render instantly via git push. You only submit an App Store update when the native app code itself changes (new screens, new native features, UI changes).</p>
+        </div>
+      </div>
+    </div>
+  `));
 });
 
 export default router;
