@@ -9,12 +9,15 @@ export default function SessionDetail() {
   const navigate = useNavigate();
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
 
   useEffect(() => {
-    api(`/sessions/${id}`)
+    const controller = new AbortController();
+    api(`/sessions/${id}`, { signal: controller.signal })
       .then(setSession)
-      .catch(console.error)
+      .catch((err) => { if (err.name !== 'AbortError') setLoadError('Failed to load session'); })
       .finally(() => setLoading(false));
+    return () => controller.abort();
   }, [id]);
 
   if (loading) {
@@ -24,6 +27,15 @@ export default function SessionDetail() {
         {[...Array(4)].map((_, i) => (
           <div key={i} className="glass-skeleton rounded-xl h-32 mb-3" />
         ))}
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="px-4 pt-6 text-center">
+        <p className="text-red-400 mb-3">{loadError}</p>
+        <button onClick={() => window.location.reload()} className="text-wf-cyan text-sm">Tap to retry</button>
       </div>
     );
   }

@@ -46,8 +46,10 @@ export async function api(path, options = {}) {
     res = await fetch(`${API_BASE}${path}`, {
       ...options,
       headers,
+      signal: options.signal,
     });
   } catch (err) {
+    if (err.name === 'AbortError') throw err;
     // Network error (offline, timeout, connection refused)
     throw new Error('Network error — check your connection and try again');
   }

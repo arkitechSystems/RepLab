@@ -17,6 +17,7 @@ export default function Calendar() {
   const [programs, setPrograms] = useState([]);
   const [completedSessions, setCompletedSessions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [weekOffset, setWeekOffset] = useState(0);
   const [editingDay, setEditingDay] = useState(null); // date object of day being edited
   const [expandedProgram, setExpandedProgram] = useState(null);
@@ -48,10 +49,13 @@ export default function Calendar() {
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
   useEffect(() => {
-    Promise.all([api('/schedule'), api('/templates'), api('/programs'), api('/sessions/completed')])
+    const controller = new AbortController();
+    const opts = { signal: controller.signal };
+    Promise.all([api('/schedule', opts), api('/templates', opts), api('/programs', opts), api('/sessions/completed', opts)])
       .then(([s, t, p, c]) => { setSchedule(s); setTemplates(t); setPrograms(p); setCompletedSessions(c); })
-      .catch(console.error)
+      .catch((err) => { if (err.name !== 'AbortError') setLoadError('Failed to load calendar data'); })
       .finally(() => setLoading(false));
+    return () => controller.abort();
   }, []);
 
   function getEnrichedPrograms() {
@@ -318,6 +322,11 @@ export default function Calendar() {
             {[...Array(7)].map((_, i) => (
               <div key={i} className="glass-skeleton rounded-xl h-20" />
             ))}
+          </div>
+        ) : loadError ? (
+          <div className="text-center py-16 fade-slide-up">
+            <p className="text-red-400 mb-3">{loadError}</p>
+            <button onClick={() => window.location.reload()} className="text-wf-cyan text-sm">Tap to retry</button>
           </div>
         ) : schedule.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 px-6 fade-slide-up">

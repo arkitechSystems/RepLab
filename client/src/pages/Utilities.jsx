@@ -38,15 +38,18 @@ function PRsSection() {
   const isPremium = user?.plan && user.plan !== 'Free';
   const [pbs, setPbs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [expandedGroup, setExpandedGroup] = useState(null);
   const [expandedExercise, setExpandedExercise] = useState(null);
   const [prSearch, setPrSearch] = useState('');
 
   useEffect(() => {
-    api('/pbs')
+    const controller = new AbortController();
+    api('/pbs', { signal: controller.signal })
       .then(setPbs)
-      .catch(console.error)
+      .catch((err) => { if (err.name !== 'AbortError') setLoadError('Failed to load personal bests'); })
       .finally(() => setLoading(false));
+    return () => controller.abort();
   }, []);
 
   // Group PBs: muscleGroup -> exerciseName -> [{ weight, reps }]
@@ -71,6 +74,15 @@ function PRsSection() {
         {[...Array(3)].map((_, i) => (
           <div key={i} className="glass-skeleton rounded-xl h-16" />
         ))}
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-red-400 mb-3">{loadError}</p>
+        <button onClick={() => window.location.reload()} className="text-wf-cyan text-sm">Tap to retry</button>
       </div>
     );
   }

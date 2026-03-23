@@ -9,16 +9,19 @@ import useCountUp from '../hooks/useCountUp';
 export default function History() {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const navigate = useNavigate();
 
   const sessionCount = useCountUp(sessions.length);
   const uniqueWorkouts = useCountUp([...new Set(sessions.map((s) => s.templateName))].length);
 
   useEffect(() => {
-    api('/sessions')
+    const controller = new AbortController();
+    api('/sessions', { signal: controller.signal })
       .then(setSessions)
-      .catch(console.error)
+      .catch((err) => { if (err.name !== 'AbortError') setLoadError('Failed to load session history'); })
       .finally(() => setLoading(false));
+    return () => controller.abort();
   }, []);
 
   return (
@@ -45,6 +48,11 @@ export default function History() {
             {[...Array(5)].map((_, i) => (
               <div key={i} className="glass-skeleton rounded-xl h-20" />
             ))}
+          </div>
+        ) : loadError ? (
+          <div className="text-center py-16">
+            <p className="text-red-400 mb-3">{loadError}</p>
+            <button onClick={() => window.location.reload()} className="text-wf-cyan text-sm">Tap to retry</button>
           </div>
         ) : sessions.length === 0 ? (
           <div className="text-center py-16">

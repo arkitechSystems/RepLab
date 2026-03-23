@@ -85,6 +85,7 @@ export default function Workouts() {
   const [programs, setPrograms] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [selectedGroup, setSelectedGroup] = useState(null); // 'browse' | 'my' | 'partners' | null
   const [selectedProgram, setSelectedProgram] = useState(null);
   const [selectedTrainer, setSelectedTrainer] = useState(null);
@@ -116,7 +117,9 @@ export default function Workouts() {
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
   useEffect(() => {
-    Promise.all([api('/programs'), api('/templates'), api('/sessions')])
+    const controller = new AbortController();
+    const opts = { signal: controller.signal };
+    Promise.all([api('/programs', opts), api('/templates', opts), api('/sessions', opts)])
       .then(([progs, tmpls, sessions]) => {
         setPrograms(progs);
         setTemplates(tmpls);
@@ -142,8 +145,9 @@ export default function Workouts() {
         }
         setStreak(count);
       })
-      .catch(console.error)
+      .catch((err) => { if (err.name !== 'AbortError') setLoadError('Failed to load workouts'); })
       .finally(() => setLoading(false));
+    return () => controller.abort();
   }, []);
 
   async function openBeginProgram(e, program) {
@@ -1684,6 +1688,11 @@ export default function Workouts() {
               <div key={i} className="glass-skeleton rounded-xl h-40" />
             ))}
           </div>
+        ) : loadError ? (
+          <div className="text-center py-16 fade-slide-up">
+            <p className="text-red-400 mb-3">{loadError}</p>
+            <button onClick={() => window.location.reload()} className="text-wf-cyan text-sm">Tap to retry</button>
+          </div>
         ) : (
           <div className="space-y-4 pb-4">
             {/* Streak Card */}
@@ -1961,7 +1970,7 @@ function MaxPushupsChallenge() {
         setEntries(leaderboard);
         if (myEntry?.value) setMyCurrentValue(myEntry.value);
       })
-      .catch(console.error)
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 

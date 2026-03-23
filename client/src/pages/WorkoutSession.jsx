@@ -20,6 +20,7 @@ export default function WorkoutSession() {
   const [pbs, setPbs] = useState({});
   const [entries, setEntries] = useState({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [persisted, setPersisted] = useState(false);
@@ -305,7 +306,7 @@ export default function WorkoutSession() {
           }
         }
       } catch (err) {
-        console.error('Failed to load session:', err);
+        if (err.name !== 'AbortError') setLoadError('Failed to load workout — check your connection');
       } finally {
         setLoading(false);
       }
@@ -909,6 +910,15 @@ export default function WorkoutSession() {
         {[...Array(4)].map((_, i) => (
           <div key={i} className="glass-skeleton rounded-xl h-40 mb-3" />
         ))}
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="px-4 pt-6 text-center">
+        <p className="text-red-400 mb-3">{loadError}</p>
+        <button onClick={() => window.location.reload()} className="text-wf-cyan text-sm">Tap to retry</button>
       </div>
     );
   }

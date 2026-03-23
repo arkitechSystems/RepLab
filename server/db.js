@@ -1,5 +1,33 @@
 import pool from './dbPool.js';
 
+async function batchInsertTemplateExercises(client, templateId, exercises) {
+  const values = [];
+  const params = [];
+  let paramIdx = 1;
+  for (let sortOrder = 0; sortOrder < exercises.length; sortOrder++) {
+    const ex = exercises[sortOrder];
+    if (ex.isSectionHeader) {
+      values.push(`($${paramIdx}, $${paramIdx + 1}, $${paramIdx + 2}, $${paramIdx + 3}, $${paramIdx + 4}, $${paramIdx + 5}, $${paramIdx + 6}, $${paramIdx + 7}, $${paramIdx + 8})`);
+      params.push(templateId, ex.name, 'straight', 1, 0, 0, sortOrder, true, ex.sectionNotes || '');
+      paramIdx += 9;
+      continue;
+    }
+    const sets = ex.sets || [{ reps: 10, weight: 0 }];
+    const setType = ex.setType || 'straight';
+    for (let i = 0; i < sets.length; i++) {
+      values.push(`($${paramIdx}, $${paramIdx + 1}, $${paramIdx + 2}, $${paramIdx + 3}, $${paramIdx + 4}, $${paramIdx + 5}, $${paramIdx + 6}, $${paramIdx + 7}, $${paramIdx + 8})`);
+      params.push(templateId, ex.name, setType, i + 1, sets[i].reps || 10, sets[i].weight || 0, sortOrder, false, '');
+      paramIdx += 9;
+    }
+  }
+  if (values.length > 0) {
+    await client.query(
+      `INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes) VALUES ${values.join(', ')}`,
+      params
+    );
+  }
+}
+
 const db = {
   // Admin settings
   async getAdminSetting(key) {
@@ -116,20 +144,30 @@ const db = {
   },
 
   async deleteUser(id) {
-    // Delete in order to respect foreign key constraints
-    await pool.query('DELETE FROM feedback WHERE user_id = $1', [id]);
-    await pool.query('DELETE FROM trainer_login_history WHERE user_id = $1', [id]);
-    await pool.query('DELETE FROM challenge_entries WHERE user_id = $1', [id]);
-    await pool.query('DELETE FROM schedule_days WHERE user_id = $1', [id]);
-    await pool.query('DELETE FROM personal_bests WHERE user_id = $1', [id]);
-    await pool.query('DELETE FROM session_entries WHERE session_id IN (SELECT id FROM sessions WHERE user_id = $1)', [id]);
-    await pool.query('DELETE FROM sessions WHERE user_id = $1', [id]);
-    await pool.query('DELETE FROM template_exercises WHERE template_id IN (SELECT id FROM templates WHERE user_id = $1)', [id]);
-    await pool.query('DELETE FROM templates WHERE user_id = $1', [id]);
-    await pool.query('DELETE FROM programs WHERE user_id = $1', [id]);
-    await pool.query('DELETE FROM user_metrics WHERE user_id = $1', [id]);
-    await pool.query('DELETE FROM ai_usage WHERE user_id = $1', [id]);
-    await pool.query('DELETE FROM users WHERE id = $1', [id]);
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      // Delete in order to respect foreign key constraints
+      await client.query('DELETE FROM feedback WHERE user_id = $1', [id]);
+      await client.query('DELETE FROM trainer_login_history WHERE user_id = $1', [id]);
+      await client.query('DELETE FROM challenge_entries WHERE user_id = $1', [id]);
+      await client.query('DELETE FROM schedule_days WHERE user_id = $1', [id]);
+      await client.query('DELETE FROM personal_bests WHERE user_id = $1', [id]);
+      await client.query('DELETE FROM session_entries WHERE session_id IN (SELECT id FROM sessions WHERE user_id = $1)', [id]);
+      await client.query('DELETE FROM sessions WHERE user_id = $1', [id]);
+      await client.query('DELETE FROM template_exercises WHERE template_id IN (SELECT id FROM templates WHERE user_id = $1)', [id]);
+      await client.query('DELETE FROM templates WHERE user_id = $1', [id]);
+      await client.query('DELETE FROM programs WHERE user_id = $1', [id]);
+      await client.query('DELETE FROM user_metrics WHERE user_id = $1', [id]);
+      await client.query('DELETE FROM ai_usage WHERE user_id = $1', [id]);
+      await client.query('DELETE FROM users WHERE id = $1', [id]);
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   },
 
   async findUserById(id) {
@@ -182,30 +220,36 @@ const db = {
     return { id: p.id, userId: p.user_id, name: p.name, description: p.description || '', createdAt: p.created_at };
   },
 
-  async updateProgram(programId, name) {
+  async updateProgram(userId, programId, name) {
     const { rows } = await pool.query(
-      'UPDATE programs SET name = $1 WHERE id = $2 RETURNING *',
-      [name, programId]
+      'UPDATE programs SET name = $1 WHERE id = $2 AND user_id = $3 RETURNING *',
+      [name, programId, userId]
     );
     if (!rows[0]) return null;
     const p = rows[0];
     return { id: p.id, userId: p.user_id, name: p.name, description: p.description || '', createdAt: p.created_at };
   },
 
-  async deleteProgram(programId) {
-    const { rowCount } = await pool.query('DELETE FROM programs WHERE id = $1', [programId]);
+  async deleteProgram(userId, programId) {
+    const { rowCount } = await pool.query('DELETE FROM programs WHERE id = $1 AND user_id = $2', [programId, userId]);
     return rowCount > 0;
   },
 
-  async deleteTemplate(templateId) {
-    const { rowCount } = await pool.query('DELETE FROM templates WHERE id = $1', [templateId]);
+  async deleteTemplate(userId, templateId) {
+    const { rowCount } = await pool.query('DELETE FROM templates WHERE id = $1 AND user_id = $2', [templateId, userId]);
     return rowCount > 0;
   },
 
-  async reorderTemplates(programId, orderedIds) {
+  async reorderTemplates(userId, programId, orderedIds) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
+      // Verify program ownership
+      const { rows: progRows } = await client.query('SELECT id FROM programs WHERE id = $1 AND user_id = $2', [programId, userId]);
+      if (progRows.length === 0) {
+        await client.query('ROLLBACK');
+        return false;
+      }
       for (let i = 0; i < orderedIds.length; i++) {
         await client.query(
           'UPDATE templates SET sort_order = $1 WHERE id = $2 AND program_id = $3',
@@ -213,6 +257,7 @@ const db = {
         );
       }
       await client.query('COMMIT');
+      return true;
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;
@@ -277,43 +322,24 @@ const db = {
     });
   },
 
-  async updateTemplate(templateId, name, description, exercises) {
+  async updateTemplate(userId, templateId, name, description, exercises) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
 
       const { rows } = await client.query(
-        'UPDATE templates SET name = $1, description = $2 WHERE id = $3 RETURNING *',
-        [name, description, templateId]
+        'UPDATE templates SET name = $1, description = $2 WHERE id = $3 AND user_id = $4 RETURNING *',
+        [name, description, templateId, userId]
       );
       if (!rows[0]) {
         await client.query('ROLLBACK');
         return null;
       }
 
-      // Remove old exercises
+      // Remove old exercises and batch insert new ones
       await client.query('DELETE FROM template_exercises WHERE template_id = $1', [templateId]);
-
-      // Insert new exercises
       if (exercises) {
-        for (let sortOrder = 0; sortOrder < exercises.length; sortOrder++) {
-          const ex = exercises[sortOrder];
-          if (ex.isSectionHeader) {
-            await client.query(
-              'INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
-              [templateId, ex.name, 'straight', 1, 0, 0, sortOrder, true, ex.sectionNotes || '']
-            );
-            continue;
-          }
-          const sets = ex.sets || [{ reps: 10, weight: 0 }];
-          const setType = ex.setType || 'straight';
-          for (let i = 0; i < sets.length; i++) {
-            await client.query(
-              'INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-              [templateId, ex.name, setType, i + 1, sets[i].reps || 10, sets[i].weight || 0, sortOrder]
-            );
-          }
-        }
+        await batchInsertTemplateExercises(client, templateId, exercises);
       }
 
       await client.query('COMMIT');
@@ -345,24 +371,7 @@ const db = {
       const templateId = rows[0].id;
 
       if (exercises) {
-        for (let exSortOrder = 0; exSortOrder < exercises.length; exSortOrder++) {
-          const ex = exercises[exSortOrder];
-          if (ex.isSectionHeader) {
-            await client.query(
-              'INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
-              [templateId, ex.name, 'straight', 1, 0, 0, exSortOrder, true, ex.sectionNotes || '']
-            );
-            continue;
-          }
-          const sets = ex.sets || [{ reps: 10, weight: 0 }];
-          const setType = ex.setType || 'straight';
-          for (let i = 0; i < sets.length; i++) {
-            await client.query(
-              'INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-              [templateId, ex.name, setType, i + 1, sets[i].reps || 10, sets[i].weight || 0, exSortOrder]
-            );
-          }
-        }
+        await batchInsertTemplateExercises(client, templateId, exercises);
       }
 
       await client.query('COMMIT');
@@ -398,18 +407,23 @@ const db = {
   },
 
   async updateSchedule(userId, schedule) {
-    for (const day of schedule) {
-      // Try to update existing, insert if not found
-      const { rowCount } = await pool.query(
-        'UPDATE schedule_days SET template_id = $1 WHERE user_id = $2 AND day_of_week = $3',
-        [day.templateId, userId, day.dayOfWeek]
-      );
-      if (rowCount === 0) {
-        await pool.query(
-          'INSERT INTO schedule_days (user_id, day_of_week, template_id) VALUES ($1, $2, $3)',
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      for (const day of schedule) {
+        await client.query(
+          `INSERT INTO schedule_days (user_id, day_of_week, template_id)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (user_id, day_of_week) DO UPDATE SET template_id = $3`,
           [userId, day.dayOfWeek, day.templateId]
         );
       }
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
     }
   },
 
@@ -441,15 +455,25 @@ const db = {
         sessionId = sessionRows[0].id;
       }
 
-      // Track best reps per exercise per weight
-      const bestRepsAtWeight = new Map();
-
-      for (const entry of entries) {
+      // Batch insert session entries
+      if (entries.length > 0) {
+        const values = [];
+        const params = [];
+        for (let i = 0; i < entries.length; i++) {
+          const entry = entries[i];
+          const off = i * 6;
+          values.push(`($${off + 1}, $${off + 2}, $${off + 3}, $${off + 4}, $${off + 5}, $${off + 6})`);
+          params.push(sessionId, entry.exerciseName, entry.setNumber, entry.weight || 0, entry.reps || 0, entry.isCompleted || false);
+        }
         await client.query(
-          'INSERT INTO session_entries (session_id, exercise_name, set_number, weight, reps, is_completed) VALUES ($1, $2, $3, $4, $5, $6)',
-          [sessionId, entry.exerciseName, entry.setNumber, entry.weight || 0, entry.reps || 0, entry.isCompleted || false]
+          `INSERT INTO session_entries (session_id, exercise_name, set_number, weight, reps, is_completed) VALUES ${values.join(', ')}`,
+          params
         );
+      }
 
+      // Track best reps per exercise per weight for PB updates
+      const bestRepsAtWeight = new Map();
+      for (const entry of entries) {
         const w = entry.weight || 0;
         const r = entry.reps || 0;
         if (w > 0 && r > 0) {
@@ -461,27 +485,15 @@ const db = {
         }
       }
 
-      // Update PBs — one record per exercise per weight
+      // Update PBs using upsert — one record per exercise per weight
       for (const [, best] of bestRepsAtWeight) {
-        const { rows: existingPBs } = await client.query(
-          'SELECT * FROM personal_bests WHERE user_id = $1 AND template_id = $2 AND exercise_name = $3 AND best_weight = $4',
-          [userId, templateId, best.exerciseName, best.weight]
+        await client.query(
+          `INSERT INTO personal_bests (user_id, template_id, exercise_name, best_weight, best_reps)
+           VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT (user_id, template_id, exercise_name, best_weight)
+           DO UPDATE SET best_reps = GREATEST(personal_bests.best_reps, $5), achieved_at = CASE WHEN $5 > personal_bests.best_reps THEN NOW() ELSE personal_bests.achieved_at END`,
+          [userId, templateId, best.exerciseName, best.weight, best.reps]
         );
-
-        if (existingPBs.length > 0) {
-          const existing = existingPBs[0];
-          if (best.reps > existing.best_reps) {
-            await client.query(
-              'UPDATE personal_bests SET best_reps = $1, achieved_at = NOW() WHERE id = $2',
-              [best.reps, existing.id]
-            );
-          }
-        } else {
-          await client.query(
-            'INSERT INTO personal_bests (user_id, template_id, exercise_name, best_weight, best_reps) VALUES ($1, $2, $3, $4, $5)',
-            [userId, templateId, best.exerciseName, best.weight, best.reps]
-          );
-        }
       }
 
       await client.query('COMMIT');

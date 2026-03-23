@@ -48,6 +48,28 @@ export default async function initDb() {
   await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS is_section_header BOOLEAN DEFAULT FALSE`);
   await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS section_notes TEXT DEFAULT ''`);
 
+  // Indexes for common queries
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_programs_user_id ON programs(user_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_templates_user_id ON templates(user_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_templates_program_id ON templates(program_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_template_exercises_template_id ON template_exercises(template_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_sessions_user_template_date ON sessions(user_id, template_id, date)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_session_entries_session_id ON session_entries(session_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_personal_bests_user_template ON personal_bests(user_id, template_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_personal_bests_lookup ON personal_bests(user_id, template_id, exercise_name, best_weight)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_schedule_days_user_id ON schedule_days(user_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_reset_token ON users(reset_token) WHERE reset_token IS NOT NULL`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_exercises_created_by ON exercises(created_by)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_feedback_user_id ON feedback(user_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_challenge_entries_user_challenge ON challenge_entries(user_id, challenge)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_ai_usage_user_id ON ai_usage(user_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON sessions(created_at)`);
+
+  // Unique constraints for upserts
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_schedule_days_user_day ON schedule_days(user_id, day_of_week)`);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_personal_bests_upsert ON personal_bests(user_id, template_id, exercise_name, best_weight)`);
+
   // Add WARM UP section header to "Leg 1 (anterior chain)" before Leg Press (one-time migration)
   const { rows: leg1Templates } = await pool.query(
     `SELECT t.id FROM templates t JOIN programs p ON t.program_id = p.id WHERE t.name ILIKE '%Leg 1%' AND p.name ILIKE '%Upper/Lower/PPL%' LIMIT 1`

@@ -35,7 +35,8 @@ router.put('/reorder', authMiddleware, async (req, res) => {
     if (!programId || !Array.isArray(templateIds)) {
       return res.status(400).json({ error: 'programId and templateIds array are required' });
     }
-    await db.reorderTemplates(programId, templateIds);
+    const ok = await db.reorderTemplates(req.userId, programId, templateIds);
+    if (!ok) return res.status(404).json({ error: 'Program not found' });
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -50,7 +51,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
     if (!name) {
       return res.status(400).json({ error: 'Template name is required' });
     }
-    const result = await db.updateTemplate(templateId, name, description || '', exercises);
+    const result = await db.updateTemplate(req.userId, templateId, name, description || '', exercises);
     if (!result) {
       return res.status(404).json({ error: 'Template not found' });
     }
@@ -64,7 +65,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const templateId = Number(req.params.id);
-    const result = await db.deleteTemplate(templateId);
+    const result = await db.deleteTemplate(req.userId, templateId);
     if (!result) {
       return res.status(404).json({ error: 'Template not found' });
     }

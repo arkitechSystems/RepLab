@@ -35,7 +35,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
     if (!name) {
       return res.status(400).json({ error: 'Program name is required' });
     }
-    const result = await db.updateProgram(programId, name);
+    const result = await db.updateProgram(req.userId, programId, name);
     if (!result) {
       return res.status(404).json({ error: 'Program not found' });
     }
@@ -49,7 +49,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const programId = Number(req.params.id);
-    const result = await db.deleteProgram(programId);
+    const result = await db.deleteProgram(req.userId, programId);
     if (!result) {
       return res.status(404).json({ error: 'Program not found' });
     }

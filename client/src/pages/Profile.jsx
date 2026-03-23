@@ -68,13 +68,16 @@ export default function Profile() {
   }, [theme]);
 
   useEffect(() => {
-    api('/metrics')
+    const controller = new AbortController();
+    const opts = { signal: controller.signal };
+    api('/metrics', opts)
       .then(setMetrics)
-      .catch(console.error);
-    api('/sessions')
+      .catch((err) => { if (err.name !== 'AbortError') console.error(err); });
+    api('/sessions', opts)
       .then(setSessions)
-      .catch(console.error)
+      .catch((err) => { if (err.name !== 'AbortError') console.error(err); })
       .finally(() => setSessionsLoading(false));
+    return () => controller.abort();
   }, []);
 
   function updateMetric(field, value) {
