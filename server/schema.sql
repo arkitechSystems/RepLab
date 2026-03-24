@@ -149,3 +149,18 @@ CREATE TABLE IF NOT EXISTS exercises (
   created_by INT REFERENCES users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  stripe_subscription_id TEXT UNIQUE,
+  stripe_customer_id TEXT,
+  source TEXT NOT NULL DEFAULT 'stripe',
+  plan TEXT NOT NULL,
+  billing_interval TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'active',
+  current_period_end TIMESTAMPTZ,
+  cancel_at_period_end BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);

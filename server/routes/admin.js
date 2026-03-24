@@ -533,6 +533,7 @@ function adminPage(title, body) {
     <svg class="chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
   </div>
   <div class="sidebar-links" id="section-users">
+    <a href="/admin/correspondence"${title === 'User Correspondence' ? ' class="active"' : ''}>Correspondence</a>
     <a href="/admin/feedback"${title === 'Feedback' ? ' class="active"' : ''}>Feedback</a>
     <a href="/admin/retention"${title === 'Retention' ? ' class="active"' : ''}>Retention</a>
     <a href="/admin/active"${title === 'Active Users' ? ' class="active"' : ''}>Active Users</a>
@@ -547,7 +548,6 @@ function adminPage(title, body) {
     <a href="/admin/workouts"${title === 'Workouts' ? ' class="active"' : ''}>Workout Library</a>
     <a href="/admin/announcements"${title === 'Announcements' ? ' class="active"' : ''}>Announcements</a>
     <a href="/admin/flags"${title === 'Feature Flags' ? ' class="active"' : ''}>Feature Flags</a>
-    <a href="/admin/correspondence"${title === 'User Correspondence' ? ' class="active"' : ''}>Correspondence</a>
     <a href="/admin/custom-exercises"${title === 'Custom Exercises' ? ' class="active"' : ''}>Custom Exercises</a>
   </div>
   <div class="sidebar-section" onclick="toggleSection('system')">

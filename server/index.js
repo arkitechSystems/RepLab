@@ -19,6 +19,7 @@ import aiRoutes from './routes/ai.js';
 import exerciseRoutes from './routes/exercises.js';
 import challengeRoutes from './routes/challenges.js';
 import trainerRoutes from './routes/trainer.js';
+import billingRoutes from './routes/billing.js';
 import db from './db.js';
 import { sendDailySummaryEmail } from './email.js';
 
@@ -38,7 +39,13 @@ const corsOptions = process.env.NODE_ENV === 'production'
   ? {}
   : { origin: ['http://localhost:5173', 'http://127.0.0.1:5173'] };
 app.use(cors(corsOptions));
-app.use(express.json({ limit: '1mb' }));
+app.use((req, res, next) => {
+  if (req.originalUrl === '/billing/webhook') {
+    express.raw({ type: 'application/json', limit: '1mb' })(req, res, next);
+  } else {
+    express.json({ limit: '1mb' })(req, res, next);
+  }
+});
 app.use(cookieParser());
 app.use(sanitize); // Strip XSS from all request inputs
 
@@ -102,9 +109,14 @@ app.use('/feedback', feedbackRoutes);
 app.use('/ai', aiRoutes);
 app.use('/exercises', exerciseRoutes);
 app.use('/challenges', challengeRoutes);
+app.use('/billing', billingRoutes);
 
-// Health check
-app.get('/health', (req, res) => res.json({ status: 'ok' }));
+// Health check — pinged by UptimeRobot to prevent Render free-tier sleep
+app.get('/health', (req, res) => res.json({
+  status: 'ok',
+  uptime: process.uptime(),
+  timestamp: new Date().toISOString(),
+}));
 
 // Serve built client in production
 const clientDist = path.join(__dirname, '..', 'client', 'dist');

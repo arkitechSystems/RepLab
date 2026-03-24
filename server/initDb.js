@@ -48,6 +48,8 @@ export default async function initDb() {
   await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS is_section_header BOOLEAN DEFAULT FALSE`);
   await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS section_notes TEXT DEFAULT ''`);
 
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT`);
+
   // Indexes for common queries
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_programs_user_id ON programs(user_id)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_templates_user_id ON templates(user_id)`);

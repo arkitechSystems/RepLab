@@ -263,12 +263,19 @@ export default function Profile() {
                   user?.plan === 'Pro' ? 'text-wf-blue' :
                   'text-green-400'
                 }`}>{user?.plan || 'Free'}</span>
-                {(!user?.plan || user?.plan === 'Free') && (
+                {(!user?.plan || user?.plan === 'Free') ? (
                   <button
                     onClick={() => navigate('/upgrade')}
                     className="text-[10px] font-bold text-yellow-400 bg-yellow-500/10 px-2 py-0.5 rounded-full active:bg-yellow-500/20 transition-colors"
                   >
                     Upgrade
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => navigate('/upgrade')}
+                    className="text-[10px] font-bold text-wf-cyan bg-wf-cyan/10 px-2 py-0.5 rounded-full active:bg-wf-cyan/20 transition-colors"
+                  >
+                    Manage
                   </button>
                 )}
               </div>

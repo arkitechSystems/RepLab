@@ -971,6 +971,56 @@ const db = {
     return rows[0] || null;
   },
 
+  // ── Subscription methods ──
+  async getSubscriptionByUserId(userId) {
+    const { rows } = await pool.query(
+      'SELECT * FROM subscriptions WHERE user_id = $1 AND status IN ($2, $3) ORDER BY created_at DESC LIMIT 1',
+      [userId, 'active', 'past_due']
+    );
+    return rows[0] || null;
+  },
+
+  async createSubscription({ userId, stripeSubscriptionId, stripeCustomerId, plan, billingInterval, status, currentPeriodEnd }) {
+    const { rows } = await pool.query(
+      `INSERT INTO subscriptions (user_id, stripe_subscription_id, stripe_customer_id, source, plan, billing_interval, status, current_period_end)
+       VALUES ($1, $2, $3, 'stripe', $4, $5, $6, $7)
+       ON CONFLICT (stripe_subscription_id) DO UPDATE SET status = $6, current_period_end = $7, updated_at = NOW()
+       RETURNING *`,
+      [userId, stripeSubscriptionId, stripeCustomerId, plan, billingInterval, status, currentPeriodEnd]
+    );
+    return rows[0];
+  },
+
+  async updateSubscriptionByStripeId(stripeSubscriptionId, updates) {
+    const fields = [];
+    const params = [stripeSubscriptionId];
+    let idx = 2;
+    for (const [key, value] of Object.entries(updates)) {
+      const col = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+      fields.push(`${col} = $${idx}`);
+      params.push(value);
+      idx++;
+    }
+    fields.push('updated_at = NOW()');
+    await pool.query(
+      `UPDATE subscriptions SET ${fields.join(', ')} WHERE stripe_subscription_id = $1`,
+      params
+    );
+  },
+
+  async updateUserPlan(userId, plan) {
+    await pool.query('UPDATE users SET plan = $1 WHERE id = $2', [plan, userId]);
+  },
+
+  async setUserStripeCustomerId(userId, customerId) {
+    await pool.query('UPDATE users SET stripe_customer_id = $1 WHERE id = $2', [customerId, userId]);
+  },
+
+  async getUserByStripeCustomerId(customerId) {
+    const { rows } = await pool.query('SELECT * FROM users WHERE stripe_customer_id = $1', [customerId]);
+    return rows[0] || null;
+  },
+
   async postChallengeEntry(userId, challenge, value) {
     // Upsert: one entry per user per challenge
     const { rows: existing } = await pool.query(
