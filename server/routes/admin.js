@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import db from '../db.js';
 import { Resend } from 'resend';
+import { sendDailySummaryEmail } from '../email.js';
 import pool from '../dbPool.js';
 import { syncFromWger } from '../syncExercises.js';
 
@@ -4412,6 +4413,18 @@ router.get('/daily-summary', adminAuth, async (req, res) => {
         <p style="color:#ef4444;">Failed to load daily summary: ${err.message}</p>
       </div>
     `));
+  }
+});
+
+// POST /admin/test-daily-summary — send the daily summary email now
+router.post('/test-daily-summary', adminAuth, async (req, res) => {
+  try {
+    const stats = await db.getDailyStats();
+    await sendDailySummaryEmail(stats);
+    res.json({ ok: true, message: 'Daily summary email sent' });
+  } catch (err) {
+    console.error('Test daily summary error:', err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 

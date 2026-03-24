@@ -1,15 +1,23 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import { useTutorial } from '../context/TutorialContext';
 import { getStepsForPhase } from '../data/tutorialSteps';
 
 export default function Tutorial() {
   const { tutorial, startTutorial, advanceTutorial, skipTutorial } = useTutorial();
+  const navigate = useNavigate();
   const [targetRect, setTargetRect] = useState(null);
+  const [extraRects, setExtraRects] = useState([]);
   const overlayRef = useRef(null);
 
   const steps = tutorial.phase ? getStepsForPhase(tutorial.phase) : [];
   const current = steps[tutorial.stepIndex] || null;
+
+  const handleSkip = useCallback(() => {
+    skipTutorial();
+    navigate('/workouts');
+  }, [skipTutorial, navigate]);
 
   // If no phase yet, show choice screen
   const showChoice = tutorial.active && !tutorial.phase;
@@ -19,6 +27,7 @@ export default function Tutorial() {
   const measureTarget = useCallback(() => {
     if (!current || !current.target) {
       setTargetRect(null);
+      setExtraRects([]);
       return;
     }
     const el = document.querySelector(current.target);
@@ -28,9 +37,16 @@ export default function Tutorial() {
       requestAnimationFrame(() => {
         const rect = el.getBoundingClientRect();
         setTargetRect(rect);
+        // Measure extra targets
+        const extras = (current.extraTargets || [])
+          .map((sel) => document.querySelector(sel))
+          .filter(Boolean)
+          .map((e) => e.getBoundingClientRect());
+        setExtraRects(extras);
       });
     } else {
       setTargetRect(null);
+      setExtraRects([]);
     }
   }, [current]);
 
@@ -52,8 +68,9 @@ export default function Tutorial() {
   // Listen for tutorial action completions
   useEffect(() => {
     if (!current || !current.waitFor) return;
+    const waitForList = Array.isArray(current.waitFor) ? current.waitFor : [current.waitFor];
     const handler = (e) => {
-      if (e.detail === current.waitFor) {
+      if (waitForList.includes(e.detail)) {
         // Small delay so the UI can update before we advance
         setTimeout(advanceTutorial, 300);
       }
@@ -75,7 +92,7 @@ export default function Tutorial() {
   if (showChoice) {
     return createPortal(
       <div className="fixed inset-0 z-[100] flex items-center justify-center px-6" style={{ pointerEvents: 'auto' }}>
-        <div className="absolute inset-0 bg-black/90" onClick={skipTutorial} />
+        <div className="absolute inset-0 bg-black/90" onClick={handleSkip} />
         <div className="relative w-full max-w-sm">
           <div className="flex justify-center mb-5">
             <div className="w-14 h-14 rounded-2xl bg-wf-cyan/10 border border-wf-cyan/20 flex items-center justify-center">
@@ -130,7 +147,7 @@ export default function Tutorial() {
           </div>
 
           <div className="flex justify-center mt-6">
-            <button onClick={skipTutorial} className="text-sm text-wf-gray-500 active:text-white transition-colors py-2 px-4">
+            <button onClick={handleSkip} className="text-sm font-semibold text-white/70 bg-white/10 hover:bg-white/15 active:bg-white/20 transition-colors py-2.5 px-6 rounded-xl border border-white/10">
               Skip tutorial
             </button>
           </div>
@@ -177,12 +194,33 @@ export default function Tutorial() {
   // For action steps with allowInteraction, we let clicks through to the target
   const cutoutClickable = current.allowInteraction && targetRect;
 
+  // Build clip-path for the click blocker: covers everything EXCEPT interactive cutouts
+  const clickableRects = cutoutClickable
+    ? [targetRect, ...extraRects].filter(Boolean)
+    : [];
+
+  // evenodd clip-path: outer rect covers viewport, inner rects punch holes
+  let blockerClipPath = undefined;
+  if (clickableRects.length > 0) {
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    // Outer boundary (clockwise)
+    let path = `M 0 0 L ${W} 0 L ${W} ${H} L 0 ${H} Z`;
+    // Each hole (counter-clockwise for evenodd subtraction)
+    clickableRects.forEach((r) => {
+      const x1 = r.left - padding, y1 = r.top - padding;
+      const x2 = r.left + r.width + padding, y2 = r.top + r.height + padding;
+      path += ` M ${x1} ${y1} L ${x1} ${y2} L ${x2} ${y2} L ${x2} ${y1} Z`;
+    });
+    blockerClipPath = `path(evenodd, '${path}')`;
+  }
+
   return createPortal(
-    <div ref={overlayRef} className="fixed inset-0 z-[100]" style={{ pointerEvents: cutoutClickable ? 'none' : 'auto' }}>
-      {/* SVG overlay with cutout */}
+    <div ref={overlayRef} className="fixed inset-0 z-[100]" style={{ pointerEvents: 'none' }}>
+      {/* Visual dark overlay with cutout (SVG) — pointer-events: none, purely visual */}
       <svg className="absolute inset-0 w-full h-full" style={{ pointerEvents: 'none' }}>
         <defs>
-          <mask id="tutorial-mask">
+          <mask id="tutorial-visual-mask">
             <rect x="0" y="0" width="100%" height="100%" fill="white" />
             {targetRect && (
               <rect
@@ -194,15 +232,33 @@ export default function Tutorial() {
                 fill="black"
               />
             )}
+            {extraRects.map((r, i) => (
+              <rect
+                key={i}
+                x={r.left - padding}
+                y={r.top - padding}
+                width={r.width + padding * 2}
+                height={r.height + padding * 2}
+                rx="16"
+                fill="black"
+              />
+            ))}
           </mask>
         </defs>
         <rect
           x="0" y="0" width="100%" height="100%" fill="rgba(0,0,0,0.85)"
-          mask="url(#tutorial-mask)"
-          style={{ pointerEvents: cutoutClickable ? 'none' : 'auto' }}
-          onClick={cutoutClickable ? undefined : skipTutorial}
+          mask="url(#tutorial-visual-mask)"
         />
       </svg>
+
+      {/* Full-screen click blocker with holes punched for interactive targets */}
+      <div
+        className="absolute inset-0"
+        style={{
+          pointerEvents: 'auto',
+          clipPath: blockerClipPath,
+        }}
+      />
 
       {/* Spotlight border glow */}
       {targetRect && (
@@ -218,6 +274,21 @@ export default function Tutorial() {
           }}
         />
       )}
+      {/* Extra target glow borders */}
+      {extraRects.map((r, i) => (
+        <div
+          key={i}
+          className="absolute rounded-2xl border-2 border-wf-cyan/60 shadow-[0_0_20px_rgba(0,200,255,0.15)]"
+          style={{
+            top: r.top - padding,
+            left: r.left - padding,
+            width: r.width + padding * 2,
+            height: r.height + padding * 2,
+            pointerEvents: 'none',
+            transition: 'all 0.3s ease',
+          }}
+        />
+      ))}
 
       {/* Arrow */}
       {targetRect && (
@@ -256,11 +327,19 @@ export default function Tutorial() {
           <h3 className="text-base font-bold text-white mb-1">{current.title}</h3>
           <p className="text-sm text-wf-gray-400 leading-relaxed">{current.description}</p>
 
-          {/* Skip button */}
-          <div className="flex items-center justify-center mt-4">
+          {/* Action buttons */}
+          <div className="flex items-center justify-center gap-3 mt-4">
+            {!current.waitFor && (
+              <button
+                onClick={advanceTutorial}
+                className="text-sm font-semibold text-white btn-gradient py-2 px-5 rounded-xl active:scale-[0.97] transition-transform"
+              >
+                Got it
+              </button>
+            )}
             <button
-              onClick={skipTutorial}
-              className="text-xs text-wf-gray-500 active:text-white transition-colors"
+              onClick={handleSkip}
+              className="text-sm font-semibold text-white/70 bg-white/10 hover:bg-white/15 active:bg-white/20 transition-colors py-2 px-5 rounded-xl border border-white/10"
             >
               Skip tutorial
             </button>
@@ -279,7 +358,7 @@ export default function Tutorial() {
               </svg>
               <p className="text-sm text-wf-gray-400">Loading next step...</p>
             </div>
-            <button onClick={skipTutorial} className="text-xs text-wf-gray-500 active:text-white transition-colors">
+            <button onClick={handleSkip} className="text-sm font-semibold text-white/70 bg-white/10 hover:bg-white/15 active:bg-white/20 transition-colors py-2 px-5 rounded-xl border border-white/10">
               Skip tutorial
             </button>
           </div>

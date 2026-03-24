@@ -82,7 +82,7 @@ function ProgramCard({ program, idx, onSelect, onBegin, onDelete, dataTutorial }
 
 export default function Workouts() {
   const { user } = useAuth();
-  const { tutorial, startTutorial, completeTutorialAction } = useTutorial();
+  const { tutorial, startTutorial, completeTutorialAction, skipTutorial } = useTutorial();
   const isPremium = user?.plan && user.plan !== 'Free';
   const [showPremiumGate, setShowPremiumGate] = useState(false);
   const [selectedChallenge, setSelectedChallenge] = useState(null);
@@ -574,7 +574,8 @@ export default function Workouts() {
                 return (
                   <div
                     key={wIdx}
-                    onClick={() => setSelectedWeek(weekNum)}
+                    data-tutorial={wIdx === 0 ? 'week-card' : undefined}
+                    onClick={() => { setSelectedWeek(weekNum); if (tutorial.active) skipTutorial(); }}
                     style={{ animationDelay: `${wIdx * 60}ms` }}
                     className="w-full text-left glass-card rounded-2xl overflow-hidden active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
                   >
@@ -964,6 +965,7 @@ export default function Workouts() {
           <div className="fixed inset-0 z-50 flex items-center justify-center px-5" onClick={closeBeginModal}>
             <div className="absolute inset-0 bg-black/70" />
             <div
+              data-tutorial="begin-modal"
               className="relative w-full max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >

@@ -94,7 +94,7 @@ export async function sendWelcomeEmail(email) {
 
   try {
     await resend.emails.send({
-      from: 'WillFit <noreply@will-fit.shop>',
+      from: 'WillFit <noreply@email.will-fit.shop>',
       to: email,
       subject: custom?.subject || defaultSubject,
       html: custom?.html || defaultHtml,
@@ -116,7 +116,7 @@ export async function sendPasswordResetEmail(email, token) {
 
   try {
     await resend.emails.send({
-      from: 'WillFit <noreply@will-fit.shop>',
+      from: 'WillFit <noreply@email.will-fit.shop>',
       to: email,
       subject: 'Reset your WillFit password',
       html: `
@@ -153,7 +153,7 @@ export async function sendNewSignupNotification(user, totalUsers) {
 
   try {
     await resend.emails.send({
-      from: 'WillFit <noreply@will-fit.shop>',
+      from: 'WillFit <noreply@email.will-fit.shop>',
       to: process.env.ADMIN_EMAIL,
       subject: `New WillFit Signup — ${name} (#${totalUsers})`,
       html: `
@@ -217,7 +217,7 @@ export async function sendDailySummaryEmail(stats) {
 
   try {
     await resend.emails.send({
-      from: 'WillFit <noreply@will-fit.shop>',
+      from: 'WillFit <noreply@email.will-fit.shop>',
       to: process.env.ADMIN_EMAIL,
       subject: `WillFit Daily Summary — ${stats.totalUsers} users`,
       html: `
