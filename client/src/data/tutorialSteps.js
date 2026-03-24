@@ -1,0 +1,58 @@
+// Phase 1A: Pre-Built Program Flow
+export const PHASE_1A = [
+  {
+    type: 'spotlight',
+    target: '[data-tutorial="browse-library"]',
+    title: 'Browse Workout Library',
+    description: 'Tap here to browse pre-built programs designed by trainers. Choose from Push Pull Legs, Upper/Lower, Bro Split, and more.',
+    position: 'top',
+    waitFor: 'browse-library-tap',
+    allowInteraction: true,
+  },
+  {
+    type: 'spotlight',
+    target: '[data-tutorial="program-card"]',
+    title: 'Pick a Program',
+    description: 'Tap a program to preview its workouts and see what each day looks like.',
+    position: 'top',
+    waitFor: 'program-selected',
+    allowInteraction: true,
+  },
+  {
+    type: 'spotlight',
+    target: '[data-tutorial="begin-program-btn"]',
+    title: 'Begin Program',
+    description: 'Tap Begin Program to add these workouts to your calendar.',
+    position: 'bottom',
+    waitFor: 'begin-program-tapped',
+    allowInteraction: true,
+  },
+  {
+    type: 'spotlight',
+    target: '[data-tutorial="start-today-btn"]',
+    title: 'Start Today',
+    description: 'Tap Start Today to schedule your workouts beginning today. You can also choose a custom start date.',
+    position: 'top',
+    waitFor: 'begin-confirmed',
+    allowInteraction: true,
+  },
+];
+
+// Phase 1B: Create Workout Flow (future)
+export const PHASE_1B = [];
+
+// Phase 2: Shared Calendar Flow (future)
+export const PHASE_2 = [];
+
+// Phase 3: Shared Workout Session Flow (future)
+export const PHASE_3 = [];
+
+export function getStepsForPhase(phase) {
+  switch (phase) {
+    case '1a': return PHASE_1A;
+    case '1b': return PHASE_1B;
+    case '2': return PHASE_2;
+    case '3': return PHASE_3;
+    default: return [];
+  }
+}

@@ -73,6 +73,7 @@ export default function BottomNav() {
             key={tab.to}
             to={tab.to}
             end={tab.to === '/'}
+            data-tutorial={`nav-${tab.label.toLowerCase()}`}
             className={({ isActive }) =>
               `flex flex-col items-center justify-center w-16 h-14 rounded-lg transition-all overflow-visible ${
                 isActive ? 'text-wf-red nav-glow' : 'text-wf-gray-400 active:text-white'

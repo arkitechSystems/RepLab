@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import SplashScreen from './components/SplashScreen';
+import { TutorialProvider } from './context/TutorialContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -65,7 +66,7 @@ export default function App() {
   }, []);
 
   return (
-    <>
+    <TutorialProvider>
       {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
     <Routes>
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
@@ -105,6 +106,6 @@ export default function App() {
 
       <Route path="*" element={<CatchAllRedirect />} />
     </Routes>
-    </>
+    </TutorialProvider>
   );
 }

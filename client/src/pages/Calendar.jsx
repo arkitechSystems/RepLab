@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { startOfWeek, addDays, format, isToday, isSameWeek } from 'date-fns';
 import { api } from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -30,6 +30,16 @@ export default function Calendar() {
   const [copying, setCopying] = useState(false);
   const [copyWeekOffset, setCopyWeekOffset] = useState(0);
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [tutorialDone, setTutorialDone] = useState(() => searchParams.get('tutorialDone') === '1');
+
+  // Clear the query param without a full reload
+  useEffect(() => {
+    if (searchParams.has('tutorialDone')) {
+      searchParams.delete('tutorialDone');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, []);
 
   const [today, setToday] = useState(() => new Date());
 
@@ -317,6 +327,37 @@ export default function Calendar() {
       </StickyHeader>
 
       <div className="px-4">
+        {tutorialDone && (
+          <div className="mb-5 rounded-2xl bg-gradient-to-br from-wf-red/20 to-wf-cyan/10 border border-wf-red/30 p-5 fade-slide-up">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-wf-red/20 flex items-center justify-center shrink-0 mt-0.5">
+                <svg className="w-5 h-5 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-white font-bold text-base mb-1">Tutorial Complete!</h3>
+                <p className="text-sm text-wf-gray-300 leading-relaxed">
+                  Nothing was added to your calendar during the walkthrough. You can now browse the library for a program you like and either start an entire program or add one specific workout for a day.
+                </p>
+                <div className="flex gap-3 mt-4">
+                  <button
+                    onClick={() => { setTutorialDone(false); navigate('/workouts'); }}
+                    className="flex-1 btn-gradient text-white text-sm font-semibold py-2.5 px-4 rounded-xl active:scale-[0.97] transition-transform"
+                  >
+                    Browse Library
+                  </button>
+                  <button
+                    onClick={() => setTutorialDone(false)}
+                    className="text-sm text-wf-gray-400 py-2.5 px-4 rounded-xl bg-white/5 active:bg-white/10 transition-colors"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         {loading ? (
           <div className="space-y-3">
             {[...Array(7)].map((_, i) => (

@@ -1,8 +1,12 @@
 import { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import BottomNav from './BottomNav';
+import Tutorial from './Tutorial';
+import { useTutorial } from '../context/TutorialContext';
 
 export default function Layout() {
+  const { tutorial } = useTutorial();
+
   useEffect(() => {
     const theme = localStorage.getItem('wf-theme') || 'dark';
     document.documentElement.setAttribute('data-theme', theme);
@@ -21,6 +25,7 @@ export default function Layout() {
         <Outlet />
       </main>
       <BottomNav />
+      {tutorial.active && <Tutorial />}
     </div>
   );
 }

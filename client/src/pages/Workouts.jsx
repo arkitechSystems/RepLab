@@ -7,12 +7,14 @@ import { iosFocusRef } from '../utils/iosFocus';
 import TrainerProfile from '../components/TrainerProfile';
 import { getTrainers, getTrainerById } from '../data/trainers';
 import { useAuth } from '../context/AuthContext';
+import { useTutorial } from '../context/TutorialContext';
 
 const DAY_NAMES_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-function ProgramCard({ program, idx, onSelect, onBegin, onDelete }) {
+function ProgramCard({ program, idx, onSelect, onBegin, onDelete, dataTutorial }) {
   return (
     <div
+      data-tutorial={dataTutorial}
       onClick={() => onSelect(program.id)}
       style={{ animationDelay: `${idx * 80}ms` }}
       className="w-full text-left glass-card rounded-2xl overflow-hidden active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
@@ -35,6 +37,7 @@ function ProgramCard({ program, idx, onSelect, onBegin, onDelete }) {
           <div className="flex items-center gap-2 shrink-0">
             {program.workoutCount > 0 && (
               <button
+                data-tutorial="begin-program-btn"
                 onClick={(e) => onBegin(e, program)}
                 className="btn-gradient text-white font-semibold text-xs px-3 py-2 rounded-xl active:scale-[0.97] transition-all"
               >
@@ -79,6 +82,7 @@ function ProgramCard({ program, idx, onSelect, onBegin, onDelete }) {
 
 export default function Workouts() {
   const { user } = useAuth();
+  const { tutorial, startTutorial, completeTutorialAction } = useTutorial();
   const isPremium = user?.plan && user.plan !== 'Free';
   const [showPremiumGate, setShowPremiumGate] = useState(false);
   const [selectedChallenge, setSelectedChallenge] = useState(null);
@@ -155,6 +159,7 @@ export default function Workouts() {
     setBeginModal(program);
     setBeginDateInput('');
     setConflictInfo(null);
+    completeTutorialAction('begin-program-tapped');
   }
 
   function closeBeginModal() {
@@ -173,8 +178,12 @@ export default function Workouts() {
   }
 
   async function tryApply(program, startDate) {
-    const schedule = await api('/schedule');
     const entries = buildEntries(program, startDate);
+    if (tutorial.active) {
+      await applyEntries(entries);
+      return;
+    }
+    const schedule = await api('/schedule');
     const conflicts = entries
       .filter((e) => schedule.some((s) => s.dayOfWeek === e.dayOfWeek && s.templateId))
       .map((e) => {
@@ -190,12 +199,15 @@ export default function Workouts() {
   }
 
   async function applyEntries(entries) {
-    await api('/schedule', {
-      method: 'PUT',
-      body: JSON.stringify({ schedule: entries.map(({ dayOfWeek, templateId }) => ({ dayOfWeek, templateId })) }),
-    });
+    if (!tutorial.active) {
+      await api('/schedule', {
+        method: 'PUT',
+        body: JSON.stringify({ schedule: entries.map(({ dayOfWeek, templateId }) => ({ dayOfWeek, templateId })) }),
+      });
+    }
+    completeTutorialAction('begin-confirmed');
     closeBeginModal();
-    navigate('/calendar');
+    navigate(tutorial.active ? '/calendar?tutorialDone=1' : '/calendar');
   }
 
   async function handleStartToday() {
@@ -277,8 +289,12 @@ export default function Workouts() {
 
   const enrichedPrograms = getEnrichedPrograms();
   const browsePrograms = enrichedPrograms.filter((p) => p.userId === null).sort((a, b) => {
-    if (a.name === "Will's Upper/Lower/PPL") return -1;
-    if (b.name === "Will's Upper/Lower/PPL") return 1;
+    const pinOrder = ["ZJ's Workout", "Will's Upper/Lower/PPL"];
+    const aIdx = pinOrder.indexOf(a.name);
+    const bIdx = pinOrder.indexOf(b.name);
+    if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+    if (aIdx !== -1) return -1;
+    if (bIdx !== -1) return 1;
     return 0;
   });
   const myPrograms = enrichedPrograms.filter((p) => p.userId !== null);
@@ -517,6 +533,7 @@ export default function Workouts() {
           <StickyHeader title={program.name}>
             {program.workoutCount > 0 && (
               <button
+                data-tutorial="begin-program-btn"
                 onClick={(e) => openBeginProgram(e, program)}
                 className="btn-gradient shrink-0 text-white font-semibold text-xs px-3 py-2 rounded-xl active:scale-[0.97] transition-all"
               >
@@ -653,6 +670,7 @@ export default function Workouts() {
               </button>
               {program.workoutCount > 0 && (
                 <button
+                  data-tutorial="begin-program-btn"
                   onClick={(e) => openBeginProgram(e, program)}
                   className="btn-gradient shrink-0 text-white font-semibold text-xs px-3 py-2 rounded-xl active:scale-[0.97] transition-all"
                 >
@@ -956,6 +974,7 @@ export default function Workouts() {
               {!showDatePicker ? (
                 <div className="flex gap-3">
                   <button
+                    data-tutorial="start-today-btn"
                     onClick={handleStartToday}
                     className="flex-1 btn-gradient text-white font-semibold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-all"
                   >
@@ -1544,7 +1563,7 @@ export default function Workouts() {
             return (
               <div className="space-y-4 pb-4">
                 {filtered.map((program, idx) => (
-                  <ProgramCard key={program.id} program={program} idx={idx} onSelect={(id) => { setSelectedProgram(id); setBrowseSearch(''); }} onBegin={openBeginProgram} onDelete={!isBrowse ? handleDeleteProgram : undefined} />
+                  <ProgramCard key={program.id} program={program} idx={idx} dataTutorial={idx === 0 ? 'program-card' : undefined} onSelect={(id) => { setSelectedProgram(id); setBrowseSearch(''); completeTutorialAction('program-selected'); }} onBegin={openBeginProgram} onDelete={!isBrowse ? handleDeleteProgram : undefined} />
                 ))}
               </div>
             );
@@ -1571,6 +1590,7 @@ export default function Workouts() {
             </svg>
           </button>
           <button
+            data-tutorial="create-btn"
             onClick={() => setShowCreateMenu(true)}
             className="btn-gradient active:scale-[0.98] text-white font-medium px-4 py-2.5 rounded-xl text-sm transition-all shrink-0"
           >
@@ -1803,6 +1823,7 @@ export default function Workouts() {
 
             {/* My Workouts card */}
             <div
+              data-tutorial="my-workouts"
               onClick={() => setSelectedGroup('my')}
               className="w-full text-left glass-card rounded-2xl overflow-hidden active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
               style={{ animationDelay: '0ms' }}
@@ -1826,7 +1847,8 @@ export default function Workouts() {
 
             {/* Browse Workout Library card */}
             <div
-              onClick={() => setSelectedGroup('browse')}
+              data-tutorial="browse-library"
+              onClick={() => { setSelectedGroup('browse'); completeTutorialAction('browse-library-tap'); }}
               className="w-full text-left glass-card rounded-2xl overflow-hidden active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
               style={{ animationDelay: '0ms' }}
             >
@@ -1895,25 +1917,28 @@ export default function Workouts() {
               </div>
             </div>
 
-            {/* App Tour card */}
+            {/* Tutorial card */}
             <div
-              onClick={() => navigate('/welcome')}
-              className="w-full text-left glass-card rounded-2xl overflow-hidden active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
+              onClick={() => startTutorial(null)}
+              className="w-full text-left glass-card rounded-2xl overflow-hidden fade-slide-up cursor-pointer active:scale-[0.98] transition-transform"
               style={{ animationDelay: '240ms' }}
             >
-              <div className="p-5 flex items-center justify-between">
+              <div className="h-1.5 bg-gradient-to-r from-wf-cyan to-wf-blue" />
+              <div className="p-5">
                 <div className="flex items-center gap-3">
-                  <svg className="w-5 h-5 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
-                  </svg>
-                  <div>
-                    <h3 className="text-sm font-semibold text-white">New here?</h3>
-                    <p className="text-xs text-wf-gray-500">Take a quick tour of the app</p>
+                  <div className="w-10 h-10 rounded-xl bg-wf-cyan/10 flex items-center justify-center shrink-0">
+                    <svg className="w-5 h-5 text-wf-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.042 21.672L13.684 16.6m0 0l-2.51 2.225.569-9.47 5.227 7.917-3.286-.672zM12 2.25V4.5m5.834.166l-1.591 1.591M20.25 10.5H18M7.757 14.743l-1.59 1.59M6 10.5H3.75m4.007-4.243l-1.59-1.59" />
+                    </svg>
                   </div>
+                  <div className="flex-1">
+                    <h3 className="text-base font-bold text-white">Tutorial</h3>
+                    <p className="text-xs text-wf-gray-400 mt-1">Step-by-step walkthrough to pick your first program, schedule workouts, and track your progress.</p>
+                  </div>
+                  <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
                 </div>
-                <svg className="w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                </svg>
               </div>
             </div>
 
