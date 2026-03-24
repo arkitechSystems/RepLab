@@ -232,11 +232,11 @@ export async function sendDailySummaryEmail(stats) {
                 <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #999; margin-top: 4px;">Total Users</div>
               </td>
               <td style="padding: 16px; background: #111; color: #fff; text-align: center; width: 33%;">
-                <div style="font-size: 28px; font-weight: 900;">${stats.workoutsToday}</div>
+                <div style="font-size: 28px; font-weight: 900;">${stats.workoutsCurrent}</div>
                 <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #999; margin-top: 4px;">Workouts Today</div>
               </td>
               <td style="padding: 16px; background: #111; color: #fff; border-radius: 0 12px 0 0; text-align: center; width: 33%;">
-                <div style="font-size: 28px; font-weight: 900;">${stats.activeUsersToday}</div>
+                <div style="font-size: 28px; font-weight: 900;">${stats.activeUsersCurrent}</div>
                 <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #999; margin-top: 4px;">Active Users</div>
               </td>
             </tr>
@@ -251,21 +251,21 @@ export async function sendDailySummaryEmail(stats) {
             </tr>
             <tr>
               <td style="padding: 10px 16px; font-size: 14px; font-weight: 600;">New Signups</td>
-              <td style="padding: 10px 16px; font-size: 14px; text-align: right;">${stats.newUsersToday}</td>
-              <td style="padding: 10px 16px; font-size: 14px; text-align: right; color: #888;">${stats.newUsersYesterday}</td>
-              <td style="padding: 10px 16px; font-size: 14px; text-align: right;">${delta(stats.newUsersToday, stats.newUsersYesterday)}</td>
+              <td style="padding: 10px 16px; font-size: 14px; text-align: right;">${stats.newUsersCurrent}</td>
+              <td style="padding: 10px 16px; font-size: 14px; text-align: right; color: #888;">${stats.newUsersPrev}</td>
+              <td style="padding: 10px 16px; font-size: 14px; text-align: right;">${delta(stats.newUsersCurrent, stats.newUsersPrev)}</td>
             </tr>
             <tr>
               <td style="padding: 10px 16px; font-size: 14px; font-weight: 600; border-top: 1px solid #eee;">Workouts Logged</td>
-              <td style="padding: 10px 16px; font-size: 14px; text-align: right; border-top: 1px solid #eee;">${stats.workoutsToday}</td>
-              <td style="padding: 10px 16px; font-size: 14px; text-align: right; color: #888; border-top: 1px solid #eee;">${stats.workoutsYesterday}</td>
-              <td style="padding: 10px 16px; font-size: 14px; text-align: right; border-top: 1px solid #eee;">${delta(stats.workoutsToday, stats.workoutsYesterday)}</td>
+              <td style="padding: 10px 16px; font-size: 14px; text-align: right; border-top: 1px solid #eee;">${stats.workoutsCurrent}</td>
+              <td style="padding: 10px 16px; font-size: 14px; text-align: right; color: #888; border-top: 1px solid #eee;">${stats.workoutsPrev}</td>
+              <td style="padding: 10px 16px; font-size: 14px; text-align: right; border-top: 1px solid #eee;">${delta(stats.workoutsCurrent, stats.workoutsPrev)}</td>
             </tr>
             <tr>
               <td style="padding: 10px 16px; font-size: 14px; font-weight: 600; border-top: 1px solid #eee;">Active Users</td>
-              <td style="padding: 10px 16px; font-size: 14px; text-align: right; border-top: 1px solid #eee;">${stats.activeUsersToday}</td>
-              <td style="padding: 10px 16px; font-size: 14px; text-align: right; color: #888; border-top: 1px solid #eee;">${stats.activeUsersYesterday}</td>
-              <td style="padding: 10px 16px; font-size: 14px; text-align: right; border-top: 1px solid #eee;">${delta(stats.activeUsersToday, stats.activeUsersYesterday)}</td>
+              <td style="padding: 10px 16px; font-size: 14px; text-align: right; border-top: 1px solid #eee;">${stats.activeUsersCurrent}</td>
+              <td style="padding: 10px 16px; font-size: 14px; text-align: right; color: #888; border-top: 1px solid #eee;">${stats.activeUsersPrev}</td>
+              <td style="padding: 10px 16px; font-size: 14px; text-align: right; border-top: 1px solid #eee;">${delta(stats.activeUsersCurrent, stats.activeUsersPrev)}</td>
             </tr>
           </table>
 

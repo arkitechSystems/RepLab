@@ -3789,52 +3789,126 @@ router.get('/react-native', adminAuth, async (req, res) => {
   `));
 });
 
-// GET /admin/daily-summary — Daily Summary page
+// GET /admin/daily-summary — Daily Summary page (supports ?start=&end= for range, or ?date= for single day)
 router.get('/daily-summary', adminAuth, async (req, res) => {
   try {
-    const stats = await db.getDailyStats();
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+    // Support both ?date=X (single day) and ?start=X&end=Y (range)
+    let startDate, endDate;
+    if (req.query.start && dateRe.test(req.query.start)) {
+      startDate = req.query.start;
+      endDate = (req.query.end && dateRe.test(req.query.end)) ? req.query.end : startDate;
+    } else if (req.query.date && dateRe.test(req.query.date)) {
+      startDate = req.query.date;
+      endDate = startDate;
+    } else {
+      startDate = todayStr;
+      endDate = todayStr;
+    }
+    // Clamp end to today
+    if (endDate > todayStr) endDate = todayStr;
+    if (startDate > endDate) startDate = endDate;
+    const isRange = startDate !== endDate;
+    const isSingleToday = !isRange && startDate === todayStr;
 
-    // Get custom exercises created today
-    let customExercisesToday = [];
+    const stats = await db.getDailyStats(startDate, endDate);
+
+    // Arrow navigation (shift by range length)
+    const rangeMs = new Date(endDate + 'T00:00:00Z').getTime() - new Date(startDate + 'T00:00:00Z').getTime() + 86400000;
+    const prevEnd = new Date(new Date(startDate + 'T00:00:00Z').getTime() - 86400000).toISOString().slice(0, 10);
+    const prevStart = new Date(new Date(startDate + 'T00:00:00Z').getTime() - rangeMs).toISOString().slice(0, 10);
+    const nextStart = new Date(new Date(endDate + 'T00:00:00Z').getTime() + 86400000).toISOString().slice(0, 10);
+    const nextEndMs = new Date(endDate + 'T00:00:00Z').getTime() + rangeMs;
+    const nextEndClamped = new Date(Math.min(nextEndMs, new Date(todayStr + 'T00:00:00Z').getTime())).toISOString().slice(0, 10);
+    const canGoNext = endDate < todayStr;
+
+    // Build nav URLs
+    const prevUrl = isRange ? `/admin/daily-summary?start=${prevStart}&end=${prevEnd}` : `/admin/daily-summary?date=${prevStart}`;
+    const nextUrl = isRange ? `/admin/daily-summary?start=${nextStart}&end=${nextEndClamped}` : `/admin/daily-summary?date=${nextStart}`;
+
+    // Custom exercises in range
+    let customExercises = [];
     try {
       const { rows } = await pool.query(`
         SELECT e.name, e.muscle_group AS muscle, u.email, u.first_name, u.last_name, e.created_at
-        FROM exercises e
-        JOIN users u ON e.created_by = u.id
-        WHERE e.created_at::date = CURRENT_DATE
+        FROM exercises e JOIN users u ON e.created_by = u.id
+        WHERE e.created_at::date BETWEEN $1 AND $2
         ORDER BY e.created_at DESC
-      `);
-      customExercisesToday = rows;
+      `, [startDate, endDate]);
+      customExercises = rows;
     } catch {}
 
-    // Get custom exercises from yesterday for comparison
-    let customExercisesYesterday = 0;
+    // Custom exercises in previous period for comparison
+    let customExPrev = 0;
     try {
-      const { rows: [row] } = await pool.query(`
-        SELECT COUNT(*) FROM exercises WHERE created_by IS NOT NULL AND created_at::date = CURRENT_DATE - INTERVAL '1 day'
-      `);
-      customExercisesYesterday = parseInt(row.count);
+      const { rows: [row] } = await pool.query(
+        `SELECT COUNT(*) FROM exercises WHERE created_by IS NOT NULL AND created_at::date BETWEEN $1 AND $2`,
+        [stats.prevStart, stats.prevEnd]
+      );
+      customExPrev = parseInt(row.count);
     } catch {}
 
-    // Get error log from memory
-    let errorLog = [];
+    // Workouts detail (sessions with user + template info)
+    let workoutDetails = [];
     try {
-      const { errorLog: log } = await import('../index.js');
-      errorLog = log || [];
+      const { rows } = await pool.query(`
+        SELECT s.created_at, t.name AS template_name, u.first_name, u.last_name, u.email
+        FROM sessions s
+        JOIN users u ON s.user_id = u.id
+        LEFT JOIN templates t ON s.template_id = t.id
+        WHERE (u.email NOT LIKE '%@willfit.demo' OR u.email IS NULL)
+          AND s.created_at::date BETWEEN $1 AND $2
+        ORDER BY s.created_at DESC
+      `, [startDate, endDate]);
+      workoutDetails = rows;
     } catch {}
-    const errorsToday = errorLog.filter(e => e.timestamp?.startsWith(new Date().toISOString().slice(0, 10)));
 
-    // Get feedback submitted today
-    let feedbackToday = [];
+    // Active users detail (distinct users with session counts)
+    let activeUserDetails = [];
+    try {
+      const { rows } = await pool.query(`
+        SELECT u.first_name, u.last_name, u.email, COUNT(s.id) AS session_count,
+               MAX(s.created_at) AS last_session
+        FROM sessions s
+        JOIN users u ON s.user_id = u.id
+        WHERE (u.email NOT LIKE '%@willfit.demo' OR u.email IS NULL)
+          AND s.created_at::date BETWEEN $1 AND $2
+        GROUP BY u.id, u.first_name, u.last_name, u.email
+        ORDER BY session_count DESC
+      `, [startDate, endDate]);
+      activeUserDetails = rows;
+    } catch {}
+
+    // Error log (only for today)
+    let errorsInRange = [];
+    if (isSingleToday) {
+      try {
+        const { errorLog: log } = await import('../index.js');
+        errorsInRange = (log || []).filter(e => e.timestamp?.startsWith(todayStr));
+      } catch {}
+    }
+
+    // Feedback in range
+    let feedbackInRange = [];
     try {
       const { rows } = await pool.query(`
         SELECT f.type, f.message, f.created_at, u.email, u.first_name, u.last_name
-        FROM feedback f
-        JOIN users u ON f.user_id = u.id
-        WHERE f.created_at::date = CURRENT_DATE
+        FROM feedback f JOIN users u ON f.user_id = u.id
+        WHERE f.created_at::date BETWEEN $1 AND $2
         ORDER BY f.created_at DESC
-      `);
-      feedbackToday = rows;
+      `, [startDate, endDate]);
+      feedbackInRange = rows;
+    } catch {}
+
+    // Feedback in previous period for comparison
+    let feedbackPrev = 0;
+    try {
+      const { rows: [row] } = await pool.query(
+        `SELECT COUNT(*) FROM feedback WHERE created_at::date BETWEEN $1 AND $2`,
+        [stats.prevStart, stats.prevEnd]
+      );
+      feedbackPrev = parseInt(row.count);
     } catch {}
 
     function delta(current, previous) {
@@ -3844,59 +3918,207 @@ router.get('/daily-summary', adminAuth, async (req, res) => {
       return `<span style="color:#888;">0 &#8212;</span>`;
     }
 
-    const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    const fmtDate = d => new Date(d + 'T00:00:00Z').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+    const displayLabel = isRange ? `${fmtDate(startDate)} — ${fmtDate(endDate)}` : fmtDate(startDate);
+    const compLabel = isRange ? `${fmtDate(stats.prevStart)} — ${fmtDate(stats.prevEnd)}` : fmtDate(stats.prevEnd);
+
+    // Preset URLs
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const last7Start = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
+    const last30Start = new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10);
+    const monthStart = todayStr.slice(0, 8) + '01';
+
+    // Build detail table row helpers
+    const td = (text, extra = '') => `<td style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;${extra}">${text}</td>`;
+    const tdFade = (text) => td(text, 'color:rgba(255,255,255,0.5);');
+    const tdDim = (text) => td(text, 'color:rgba(255,255,255,0.4);');
+    const fmtTime = (dt) => new Date(dt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    const fmtDayTime = (dt) => { const d = new Date(dt); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }); };
+    const timeCol = (dt) => isRange ? fmtDayTime(dt) : fmtTime(dt);
 
     const signupRows = stats.recentSignups.map(u => {
       const name = [u.first_name, u.last_name].filter(Boolean).join(' ') || '—';
       const loc = [u.signup_city, u.signup_state].filter(Boolean).join(', ') || '—';
-      const time = new Date(u.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-      return `<tr>
-        <td style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;">${name}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;color:rgba(255,255,255,0.5);">${u.email || u.phone || '—'}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;color:rgba(255,255,255,0.5);">${loc}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;color:rgba(255,255,255,0.4);">${time}</td>
-      </tr>`;
+      return `<tr>${td(name)}${tdFade(u.email || u.phone || '—')}${tdFade(loc)}${tdDim(timeCol(u.created_at))}</tr>`;
     }).join('');
 
-    const customExRows = customExercisesToday.map(e => {
+    const workoutRows = workoutDetails.map(w => {
+      const name = [w.first_name, w.last_name].filter(Boolean).join(' ') || '—';
+      return `<tr>${td(name)}${tdFade(w.email || '—')}${tdFade(w.template_name || '—')}${tdDim(timeCol(w.created_at))}</tr>`;
+    }).join('');
+
+    const activeUserRows = activeUserDetails.map(u => {
+      const name = [u.first_name, u.last_name].filter(Boolean).join(' ') || '—';
+      return `<tr>${td(name)}${tdFade(u.email || '—')}${td(u.session_count, 'text-align:center;')}${tdDim(timeCol(u.last_session))}</tr>`;
+    }).join('');
+
+    const customExRows = customExercises.map(e => {
       const name = [e.first_name, e.last_name].filter(Boolean).join(' ') || '—';
-      const time = new Date(e.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-      return `<tr>
-        <td style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;">${e.name}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;color:rgba(255,255,255,0.5);">${e.muscle || '—'}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;color:rgba(255,255,255,0.5);">${name}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;color:rgba(255,255,255,0.4);">${time}</td>
-      </tr>`;
+      return `<tr>${td(e.name)}${tdFade(e.muscle || '—')}${tdFade(name)}${tdDim(timeCol(e.created_at))}</tr>`;
     }).join('');
 
-    const feedbackRows = feedbackToday.map(f => {
+    const feedbackRows = feedbackInRange.map(f => {
       const name = [f.first_name, f.last_name].filter(Boolean).join(' ') || '—';
-      const time = new Date(f.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
       const typeColor = f.type === 'bug' ? '#ef4444' : '#3b82f6';
       const typeLabel = f.type === 'bug' ? 'Bug' : 'Idea';
-      return `<tr>
-        <td style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;"><span style="color:${typeColor};font-weight:600;">${typeLabel}</span></td>
-        <td style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;">${f.message}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;color:rgba(255,255,255,0.5);">${name}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;color:rgba(255,255,255,0.4);">${time}</td>
-      </tr>`;
+      return `<tr>${td(`<span style="color:${typeColor};font-weight:600;">${typeLabel}</span>`)}${td(f.message)}${tdFade(name)}${tdDim(timeCol(f.created_at))}</tr>`;
     }).join('');
 
-    const errorRows = errorsToday.slice(0, 20).map(e => {
-      const time = new Date(e.timestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-      return `<tr>
-        <td style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;color:#ef4444;font-weight:600;">${e.method} ${e.url}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;">${e.message}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;color:rgba(255,255,255,0.4);">${time}</td>
-      </tr>`;
+    const errorRows = errorsInRange.slice(0, 20).map(e => {
+      const time = fmtTime(e.timestamp);
+      return `<tr>${td(`${e.method} ${e.url}`, 'color:#ef4444;font-weight:600;')}${td(e.message)}${tdDim(time)}</tr>`;
     }).join('');
+
+    // Clickable number helper — wraps a count as a link that scrolls to + toggles a detail section
+    const clickNum = (count, sectionId) => count > 0
+      ? `<a href="#${sectionId}" onclick="event.preventDefault();var s=document.getElementById('${sectionId}');s.style.display=s.style.display==='none'?'block':'block';s.scrollIntoView({behavior:'smooth',block:'start'});" style="color:#60a5fa;text-decoration:underline;cursor:pointer;">${count}</a>`
+      : `${count}`;
+
+    // Detail section header
+    const thStyle = 'text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);border-bottom:1px solid rgba(255,255,255,0.08);';
+
+    // Preset button style helper
+    const presetBtn = (label, url, active) => `<a href="${url}" style="padding:4px 10px;border-radius:6px;font-size:12px;text-decoration:none;color:${active ? '#fff' : 'rgba(255,255,255,0.4)'};background:${active ? 'rgba(96,165,250,0.25)' : 'rgba(255,255,255,0.05)'};border:1px solid ${active ? 'rgba(96,165,250,0.4)' : 'transparent'};">${label}</a>`;
+
+    // Determine which preset is active
+    const isPresetToday = startDate === todayStr && endDate === todayStr;
+    const isPresetYesterday = startDate === yesterday && endDate === yesterday;
+    const isPresetLast7 = startDate === last7Start && endDate === todayStr;
+    const isPresetLast30 = startDate === last30Start && endDate === todayStr;
+    const isPresetMonth = startDate === monthStart && endDate === todayStr;
+
+    // Build export data JSON (embedded in page for client-side export)
+    const exportData = {
+      title: 'WillFit Daily Summary',
+      period: displayLabel,
+      summary: {
+        'Total Users': stats.totalUsers,
+        'New Signups': stats.newUsersCurrent,
+        'New Signups (Prev)': stats.newUsersPrev,
+        'Workouts': stats.workoutsCurrent,
+        'Workouts (Prev)': stats.workoutsPrev,
+        'Active Users': stats.activeUsersCurrent,
+        'Active Users (Prev)': stats.activeUsersPrev,
+        'Custom Exercises': customExercises.length,
+        'Custom Exercises (Prev)': customExPrev,
+        'Feedback': feedbackInRange.length,
+        'Feedback (Prev)': feedbackPrev,
+        'Errors': errorsInRange.length,
+      },
+      signups: stats.recentSignups.map(u => ({
+        Name: [u.first_name, u.last_name].filter(Boolean).join(' ') || '—',
+        Contact: u.email || u.phone || '—',
+        Location: [u.signup_city, u.signup_state].filter(Boolean).join(', ') || '—',
+        Time: timeCol(u.created_at),
+      })),
+      workouts: workoutDetails.map(w => ({
+        User: [w.first_name, w.last_name].filter(Boolean).join(' ') || '—',
+        Contact: w.email || '—',
+        Template: w.template_name || '—',
+        Time: timeCol(w.created_at),
+      })),
+      activeUsers: activeUserDetails.map(u => ({
+        User: [u.first_name, u.last_name].filter(Boolean).join(' ') || '—',
+        Contact: u.email || '—',
+        Sessions: parseInt(u.session_count),
+        'Last Active': timeCol(u.last_session),
+      })),
+      exercises: customExercises.map(e => ({
+        Exercise: e.name,
+        Muscle: e.muscle || '—',
+        'Created By': [e.first_name, e.last_name].filter(Boolean).join(' ') || '—',
+        Time: timeCol(e.created_at),
+      })),
+      feedback: feedbackInRange.map(f => ({
+        Type: f.type === 'bug' ? 'Bug' : 'Idea',
+        Message: f.message,
+        From: [f.first_name, f.last_name].filter(Boolean).join(' ') || '—',
+        Time: timeCol(f.created_at),
+      })),
+      errors: errorsInRange.map(e => ({
+        Endpoint: `${e.method} ${e.url}`,
+        Error: e.message,
+        Time: fmtTime(e.timestamp),
+      })),
+    };
 
     res.send(adminPage('Daily Summary', `
-    <div class="breadcrumb"><a href="/admin">← Dashboard</a></div>
+    <style>
+      .detail-section { margin-bottom:24px; }
+      .detail-section .detail-body { display:block; }
+      .clickable-count { color:#60a5fa; text-decoration:underline; cursor:pointer; }
+      .clickable-count:hover { color:#93bbfc; }
+      .date-controls { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:10px; }
+      .preset-bar { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+      .export-bar { display:flex; gap:8px; margin-bottom:16px; }
+      .export-btn { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; border:1px solid rgba(255,255,255,0.12); text-decoration:none; transition:all 0.15s; }
+      .export-btn:hover { transform:translateY(-1px); }
+      .export-btn.pdf { background:rgba(239,68,68,0.15); color:#ef4444; border-color:rgba(239,68,68,0.3); }
+      .export-btn.pdf:hover { background:rgba(239,68,68,0.25); }
+      .export-btn.excel { background:rgba(34,197,94,0.15); color:#22c55e; border-color:rgba(34,197,94,0.3); }
+      .export-btn.excel:hover { background:rgba(34,197,94,0.25); }
+    </style>
+    <script id="exportData" type="application/json">${JSON.stringify(exportData).replace(/<\//g, '<\\/')}</script>
+    <div class="breadcrumb" style="display:flex;justify-content:space-between;align-items:center;">
+      <a href="/admin">← Dashboard</a>
+      <div class="export-bar">
+        <button onclick="exportPDF()" class="export-btn pdf">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          PDF
+        </button>
+        <button onclick="exportExcel()" class="export-btn excel">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="8" y1="9" x2="16" y2="9"/></svg>
+          Excel
+        </button>
+      </div>
+    </div>
     <div class="header">
       <h1>Daily Summary</h1>
-      <p>${today}</p>
+      <p style="color:rgba(255,255,255,0.5);margin-top:4px;">${displayLabel}</p>
+
+      <!-- Date controls -->
+      <div class="date-controls">
+        <a href="${prevUrl}" style="color:rgba(255,255,255,0.5);text-decoration:none;font-size:20px;padding:4px 8px;border-radius:6px;background:rgba(255,255,255,0.05);">&#8592;</a>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <input type="date" id="startDate" value="${startDate}" max="${todayStr}"
+            style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);color:#fff;padding:6px 10px;border-radius:6px;font-size:13px;cursor:pointer;" />
+          <span style="color:rgba(255,255,255,0.3);">to</span>
+          <input type="date" id="endDate" value="${endDate}" max="${todayStr}"
+            style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);color:#fff;padding:6px 10px;border-radius:6px;font-size:13px;cursor:pointer;" />
+          <button onclick="applyRange()" style="background:rgba(96,165,250,0.2);border:1px solid rgba(96,165,250,0.4);color:#60a5fa;padding:6px 14px;border-radius:6px;font-size:13px;cursor:pointer;font-weight:600;">Go</button>
+        </div>
+        ${canGoNext ? `<a href="${nextUrl}" style="color:rgba(255,255,255,0.5);text-decoration:none;font-size:20px;padding:4px 8px;border-radius:6px;background:rgba(255,255,255,0.05);">&#8594;</a>` : `<span style="color:rgba(255,255,255,0.15);font-size:20px;padding:4px 8px;">&#8594;</span>`}
+      </div>
+
+      <!-- Presets -->
+      <div class="preset-bar">
+        ${presetBtn('Today', '/admin/daily-summary', isPresetToday)}
+        ${presetBtn('Yesterday', `/admin/daily-summary?date=${yesterday}`, isPresetYesterday)}
+        ${presetBtn('Last 7 Days', `/admin/daily-summary?start=${last7Start}&end=${todayStr}`, isPresetLast7)}
+        ${presetBtn('Last 30 Days', `/admin/daily-summary?start=${last30Start}&end=${todayStr}`, isPresetLast30)}
+        ${presetBtn('This Month', `/admin/daily-summary?start=${monthStart}&end=${todayStr}`, isPresetMonth)}
+      </div>
     </div>
+
+    <script>
+    function applyRange() {
+      var s = document.getElementById('startDate').value;
+      var e = document.getElementById('endDate').value;
+      if (!s) return;
+      if (!e || e < s) e = s;
+      if (s === e) {
+        window.location.href = '/admin/daily-summary?date=' + s;
+      } else {
+        window.location.href = '/admin/daily-summary?start=' + s + '&end=' + e;
+      }
+    }
+    function toggleDetail(id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.style.display = el.style.display === 'none' ? 'block' : 'none';
+      el.scrollIntoView({behavior:'smooth', block:'nearest'});
+    }
+    </script>
 
     <!-- Top-level stats -->
     <div class="stats">
@@ -3905,134 +4127,275 @@ router.get('/daily-summary', adminAuth, async (req, res) => {
         <div class="label">Total Users</div>
       </div>
       <div class="stat glass">
-        <div class="value">${stats.workoutsToday}</div>
-        <div class="label">Workouts Today</div>
+        <div class="value">${clickNum(stats.workoutsCurrent, 'detail-workouts')}</div>
+        <div class="label">Workouts</div>
       </div>
       <div class="stat glass">
-        <div class="value">${stats.activeUsersToday}</div>
+        <div class="value">${clickNum(stats.activeUsersCurrent, 'detail-active')}</div>
         <div class="label">Active Users</div>
       </div>
     </div>
 
-    <!-- Day-over-day comparison -->
+    <!-- Comparison table -->
     <div class="glass" style="padding:20px;margin-bottom:24px;">
-      <h3 style="font-size:14px;font-weight:700;margin-bottom:16px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:1px;">Day-over-Day</h3>
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:16px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:1px;">${isRange ? 'Period Comparison' : 'Day-over-Day'}</h3>
       <table style="width:100%;border-collapse:collapse;">
         <tr>
           <th style="text-align:left;padding:8px 12px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);border-bottom:1px solid rgba(255,255,255,0.08);">Metric</th>
-          <th style="text-align:right;padding:8px 12px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);border-bottom:1px solid rgba(255,255,255,0.08);">Today</th>
-          <th style="text-align:right;padding:8px 12px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);border-bottom:1px solid rgba(255,255,255,0.08);">Yesterday</th>
+          <th style="text-align:right;padding:8px 12px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);border-bottom:1px solid rgba(255,255,255,0.08);">${isSingleToday ? 'Today' : isRange ? 'Selected' : startDate}</th>
+          <th style="text-align:right;padding:8px 12px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);border-bottom:1px solid rgba(255,255,255,0.08);">${isSingleToday ? 'Yesterday' : 'Previous'}</th>
           <th style="text-align:right;padding:8px 12px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);border-bottom:1px solid rgba(255,255,255,0.08);">Change</th>
         </tr>
         <tr>
           <td style="padding:10px 12px;font-size:14px;font-weight:600;">New Signups</td>
-          <td style="padding:10px 12px;font-size:14px;text-align:right;">${stats.newUsersToday}</td>
-          <td style="padding:10px 12px;font-size:14px;text-align:right;color:rgba(255,255,255,0.4);">${stats.newUsersYesterday}</td>
-          <td style="padding:10px 12px;font-size:14px;text-align:right;">${delta(stats.newUsersToday, stats.newUsersYesterday)}</td>
+          <td style="padding:10px 12px;font-size:14px;text-align:right;">${clickNum(stats.newUsersCurrent, 'detail-signups')}</td>
+          <td style="padding:10px 12px;font-size:14px;text-align:right;color:rgba(255,255,255,0.4);">${stats.newUsersPrev}</td>
+          <td style="padding:10px 12px;font-size:14px;text-align:right;">${delta(stats.newUsersCurrent, stats.newUsersPrev)}</td>
         </tr>
         <tr>
           <td style="padding:10px 12px;font-size:14px;font-weight:600;border-top:1px solid rgba(255,255,255,0.06);">Workouts Logged</td>
-          <td style="padding:10px 12px;font-size:14px;text-align:right;border-top:1px solid rgba(255,255,255,0.06);">${stats.workoutsToday}</td>
-          <td style="padding:10px 12px;font-size:14px;text-align:right;color:rgba(255,255,255,0.4);border-top:1px solid rgba(255,255,255,0.06);">${stats.workoutsYesterday}</td>
-          <td style="padding:10px 12px;font-size:14px;text-align:right;border-top:1px solid rgba(255,255,255,0.06);">${delta(stats.workoutsToday, stats.workoutsYesterday)}</td>
+          <td style="padding:10px 12px;font-size:14px;text-align:right;border-top:1px solid rgba(255,255,255,0.06);">${clickNum(stats.workoutsCurrent, 'detail-workouts')}</td>
+          <td style="padding:10px 12px;font-size:14px;text-align:right;color:rgba(255,255,255,0.4);border-top:1px solid rgba(255,255,255,0.06);">${stats.workoutsPrev}</td>
+          <td style="padding:10px 12px;font-size:14px;text-align:right;border-top:1px solid rgba(255,255,255,0.06);">${delta(stats.workoutsCurrent, stats.workoutsPrev)}</td>
         </tr>
         <tr>
           <td style="padding:10px 12px;font-size:14px;font-weight:600;border-top:1px solid rgba(255,255,255,0.06);">Active Users</td>
-          <td style="padding:10px 12px;font-size:14px;text-align:right;border-top:1px solid rgba(255,255,255,0.06);">${stats.activeUsersToday}</td>
-          <td style="padding:10px 12px;font-size:14px;text-align:right;color:rgba(255,255,255,0.4);border-top:1px solid rgba(255,255,255,0.06);">${stats.activeUsersYesterday}</td>
-          <td style="padding:10px 12px;font-size:14px;text-align:right;border-top:1px solid rgba(255,255,255,0.06);">${delta(stats.activeUsersToday, stats.activeUsersYesterday)}</td>
+          <td style="padding:10px 12px;font-size:14px;text-align:right;border-top:1px solid rgba(255,255,255,0.06);">${clickNum(stats.activeUsersCurrent, 'detail-active')}</td>
+          <td style="padding:10px 12px;font-size:14px;text-align:right;color:rgba(255,255,255,0.4);border-top:1px solid rgba(255,255,255,0.06);">${stats.activeUsersPrev}</td>
+          <td style="padding:10px 12px;font-size:14px;text-align:right;border-top:1px solid rgba(255,255,255,0.06);">${delta(stats.activeUsersCurrent, stats.activeUsersPrev)}</td>
         </tr>
         <tr>
           <td style="padding:10px 12px;font-size:14px;font-weight:600;border-top:1px solid rgba(255,255,255,0.06);">Custom Exercises</td>
-          <td style="padding:10px 12px;font-size:14px;text-align:right;border-top:1px solid rgba(255,255,255,0.06);">${customExercisesToday.length}</td>
-          <td style="padding:10px 12px;font-size:14px;text-align:right;color:rgba(255,255,255,0.4);border-top:1px solid rgba(255,255,255,0.06);">${customExercisesYesterday}</td>
-          <td style="padding:10px 12px;font-size:14px;text-align:right;border-top:1px solid rgba(255,255,255,0.06);">${delta(customExercisesToday.length, customExercisesYesterday)}</td>
+          <td style="padding:10px 12px;font-size:14px;text-align:right;border-top:1px solid rgba(255,255,255,0.06);">${clickNum(customExercises.length, 'detail-exercises')}</td>
+          <td style="padding:10px 12px;font-size:14px;text-align:right;color:rgba(255,255,255,0.4);border-top:1px solid rgba(255,255,255,0.06);">${customExPrev}</td>
+          <td style="padding:10px 12px;font-size:14px;text-align:right;border-top:1px solid rgba(255,255,255,0.06);">${delta(customExercises.length, customExPrev)}</td>
         </tr>
         <tr>
           <td style="padding:10px 12px;font-size:14px;font-weight:600;border-top:1px solid rgba(255,255,255,0.06);">Errors</td>
-          <td style="padding:10px 12px;font-size:14px;text-align:right;border-top:1px solid rgba(255,255,255,0.06);${errorsToday.length > 0 ? 'color:#ef4444;' : ''}">${errorsToday.length}</td>
+          <td style="padding:10px 12px;font-size:14px;text-align:right;border-top:1px solid rgba(255,255,255,0.06);${errorsInRange.length > 0 ? 'color:#ef4444;' : ''}">${clickNum(errorsInRange.length, 'detail-errors')}</td>
           <td style="padding:10px 12px;font-size:14px;text-align:right;color:rgba(255,255,255,0.4);border-top:1px solid rgba(255,255,255,0.06);">—</td>
           <td style="padding:10px 12px;font-size:14px;text-align:right;border-top:1px solid rgba(255,255,255,0.06);">—</td>
         </tr>
         <tr>
           <td style="padding:10px 12px;font-size:14px;font-weight:600;border-top:1px solid rgba(255,255,255,0.06);">Feedback</td>
-          <td style="padding:10px 12px;font-size:14px;text-align:right;border-top:1px solid rgba(255,255,255,0.06);">${feedbackToday.length}</td>
-          <td style="padding:10px 12px;font-size:14px;text-align:right;color:rgba(255,255,255,0.4);border-top:1px solid rgba(255,255,255,0.06);">—</td>
-          <td style="padding:10px 12px;font-size:14px;text-align:right;border-top:1px solid rgba(255,255,255,0.06);">—</td>
+          <td style="padding:10px 12px;font-size:14px;text-align:right;border-top:1px solid rgba(255,255,255,0.06);">${clickNum(feedbackInRange.length, 'detail-feedback')}</td>
+          <td style="padding:10px 12px;font-size:14px;text-align:right;color:rgba(255,255,255,0.4);border-top:1px solid rgba(255,255,255,0.06);">${feedbackPrev}</td>
+          <td style="padding:10px 12px;font-size:14px;text-align:right;border-top:1px solid rgba(255,255,255,0.06);">${delta(feedbackInRange.length, feedbackPrev)}</td>
         </tr>
       </table>
+      ${isRange ? `<p style="color:rgba(255,255,255,0.25);font-size:11px;margin-top:12px;">Compared to previous period: ${compLabel}</p>` : ''}
     </div>
 
-    <!-- Recent Signups -->
-    <div class="glass" style="padding:20px;margin-bottom:24px;">
-      <h3 style="font-size:14px;font-weight:700;margin-bottom:16px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:1px;">New Signups (Last 24h)</h3>
+    <!-- Detail: New Signups -->
+    <div id="detail-signups" class="glass detail-section" style="padding:20px;display:none;">
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:16px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:1px;">New Signups (${stats.recentSignups.length})</h3>
       ${stats.recentSignups.length > 0 ? `
       <div style="overflow-x:auto;">
         <table style="width:100%;border-collapse:collapse;">
-          <tr>
-            <th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);border-bottom:1px solid rgba(255,255,255,0.08);">Name</th>
-            <th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);border-bottom:1px solid rgba(255,255,255,0.08);">Contact</th>
-            <th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);border-bottom:1px solid rgba(255,255,255,0.08);">Location</th>
-            <th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);border-bottom:1px solid rgba(255,255,255,0.08);">Time</th>
-          </tr>
+          <tr><th style="${thStyle}">Name</th><th style="${thStyle}">Contact</th><th style="${thStyle}">Location</th><th style="${thStyle}">Time</th></tr>
           ${signupRows}
         </table>
-      </div>
-      ` : '<p style="color:rgba(255,255,255,0.3);font-size:13px;">No new signups in the last 24 hours.</p>'}
+      </div>` : `<p style="color:rgba(255,255,255,0.3);font-size:13px;">No new signups in this period.</p>`}
     </div>
 
-    <!-- Custom Exercises -->
-    <div class="glass" style="padding:20px;margin-bottom:24px;">
-      <h3 style="font-size:14px;font-weight:700;margin-bottom:16px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:1px;">Custom Exercises Today</h3>
-      ${customExercisesToday.length > 0 ? `
+    <!-- Detail: Workouts -->
+    <div id="detail-workouts" class="glass detail-section" style="padding:20px;display:none;">
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:16px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:1px;">Workouts Logged (${workoutDetails.length})</h3>
+      ${workoutDetails.length > 0 ? `
       <div style="overflow-x:auto;">
         <table style="width:100%;border-collapse:collapse;">
-          <tr>
-            <th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);border-bottom:1px solid rgba(255,255,255,0.08);">Exercise</th>
-            <th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);border-bottom:1px solid rgba(255,255,255,0.08);">Muscle</th>
-            <th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);border-bottom:1px solid rgba(255,255,255,0.08);">Created By</th>
-            <th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);border-bottom:1px solid rgba(255,255,255,0.08);">Time</th>
-          </tr>
+          <tr><th style="${thStyle}">User</th><th style="${thStyle}">Contact</th><th style="${thStyle}">Template</th><th style="${thStyle}">Time</th></tr>
+          ${workoutRows}
+        </table>
+      </div>` : `<p style="color:rgba(255,255,255,0.3);font-size:13px;">No workouts logged in this period.</p>`}
+    </div>
+
+    <!-- Detail: Active Users -->
+    <div id="detail-active" class="glass detail-section" style="padding:20px;display:none;">
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:16px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:1px;">Active Users (${activeUserDetails.length})</h3>
+      ${activeUserDetails.length > 0 ? `
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;">
+          <tr><th style="${thStyle}">User</th><th style="${thStyle}">Contact</th><th style="${thStyle}text-align:center;">Sessions</th><th style="${thStyle}">Last Active</th></tr>
+          ${activeUserRows}
+        </table>
+      </div>` : `<p style="color:rgba(255,255,255,0.3);font-size:13px;">No active users in this period.</p>`}
+    </div>
+
+    <!-- Detail: Custom Exercises -->
+    <div id="detail-exercises" class="glass detail-section" style="padding:20px;display:none;">
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:16px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:1px;">Custom Exercises (${customExercises.length})</h3>
+      ${customExercises.length > 0 ? `
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;">
+          <tr><th style="${thStyle}">Exercise</th><th style="${thStyle}">Muscle</th><th style="${thStyle}">Created By</th><th style="${thStyle}">Time</th></tr>
           ${customExRows}
         </table>
-      </div>
-      ` : '<p style="color:rgba(255,255,255,0.3);font-size:13px;">No custom exercises created today.</p>'}
+      </div>` : `<p style="color:rgba(255,255,255,0.3);font-size:13px;">No custom exercises in this period.</p>`}
     </div>
 
-    <!-- Feedback -->
-    <div class="glass" style="padding:20px;margin-bottom:24px;">
-      <h3 style="font-size:14px;font-weight:700;margin-bottom:16px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:1px;">Feedback Today</h3>
-      ${feedbackToday.length > 0 ? `
+    <!-- Detail: Feedback -->
+    <div id="detail-feedback" class="glass detail-section" style="padding:20px;display:none;">
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:16px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:1px;">Feedback (${feedbackInRange.length})</h3>
+      ${feedbackInRange.length > 0 ? `
       <div style="overflow-x:auto;">
         <table style="width:100%;border-collapse:collapse;">
-          <tr>
-            <th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);border-bottom:1px solid rgba(255,255,255,0.08);">Type</th>
-            <th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);border-bottom:1px solid rgba(255,255,255,0.08);">Message</th>
-            <th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);border-bottom:1px solid rgba(255,255,255,0.08);">From</th>
-            <th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);border-bottom:1px solid rgba(255,255,255,0.08);">Time</th>
-          </tr>
+          <tr><th style="${thStyle}">Type</th><th style="${thStyle}">Message</th><th style="${thStyle}">From</th><th style="${thStyle}">Time</th></tr>
           ${feedbackRows}
         </table>
-      </div>
-      ` : '<p style="color:rgba(255,255,255,0.3);font-size:13px;">No feedback submitted today.</p>'}
+      </div>` : `<p style="color:rgba(255,255,255,0.3);font-size:13px;">No feedback in this period.</p>`}
     </div>
 
-    <!-- Errors -->
-    <div class="glass" style="padding:20px;margin-bottom:24px;">
-      <h3 style="font-size:14px;font-weight:700;margin-bottom:16px;color:${errorsToday.length > 0 ? '#ef4444' : 'rgba(255,255,255,0.6)'};text-transform:uppercase;letter-spacing:1px;">Errors Today ${errorsToday.length > 0 ? '(' + errorsToday.length + ')' : ''}</h3>
-      ${errorsToday.length > 0 ? `
+    <!-- Detail: Errors -->
+    <div id="detail-errors" class="glass detail-section" style="padding:20px;display:none;">
+      <h3 style="font-size:14px;font-weight:700;margin-bottom:16px;color:${errorsInRange.length > 0 ? '#ef4444' : 'rgba(255,255,255,0.6)'};text-transform:uppercase;letter-spacing:1px;">Errors (${errorsInRange.length})</h3>
+      ${errorsInRange.length > 0 ? `
       <div style="overflow-x:auto;">
         <table style="width:100%;border-collapse:collapse;">
-          <tr>
-            <th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);border-bottom:1px solid rgba(255,255,255,0.08);">Endpoint</th>
-            <th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);border-bottom:1px solid rgba(255,255,255,0.08);">Error</th>
-            <th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);border-bottom:1px solid rgba(255,255,255,0.08);">Time</th>
-          </tr>
+          <tr><th style="${thStyle}">Endpoint</th><th style="${thStyle}">Error</th><th style="${thStyle}">Time</th></tr>
           ${errorRows}
         </table>
-      </div>
-      ` : '<p style="color:#4ade80;font-size:13px;">No errors today.</p>'}
+      </div>` : `<p style="color:#4ade80;font-size:13px;">No errors in this period.</p>${!isSingleToday ? '<p style="color:rgba(255,255,255,0.25);font-size:11px;margin-top:8px;">Note: Error logs are only available in real-time for the current day.</p>' : ''}`}
     </div>
+
+    <!-- Export libraries (loaded async, only when needed) -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js"></script>
+    <script>
+    function getExportData() {
+      return JSON.parse(document.getElementById('exportData').textContent);
+    }
+
+    function exportExcel() {
+      try {
+        var d = getExportData();
+        var wb = XLSX.utils.book_new();
+
+        // Summary sheet
+        var summaryRows = Object.entries(d.summary).map(function(e) { return { Metric: e[0], Value: e[1] }; });
+        var ws = XLSX.utils.json_to_sheet(summaryRows);
+        ws['!cols'] = [{ wch: 24 }, { wch: 12 }];
+        XLSX.utils.book_append_sheet(wb, ws, 'Summary');
+
+        // Detail sheets
+        var sheets = [
+          ['New Signups', d.signups],
+          ['Workouts', d.workouts],
+          ['Active Users', d.activeUsers],
+          ['Custom Exercises', d.exercises],
+          ['Feedback', d.feedback],
+          ['Errors', d.errors],
+        ];
+        sheets.forEach(function(s) {
+          if (s[1] && s[1].length > 0) {
+            var sheet = XLSX.utils.json_to_sheet(s[1]);
+            sheet['!cols'] = Object.keys(s[1][0]).map(function() { return { wch: 20 }; });
+            XLSX.utils.book_append_sheet(wb, sheet, s[0]);
+          }
+        });
+
+        var filename = 'WillFit_Summary_' + document.getElementById('startDate').value + '.xlsx';
+        XLSX.writeFile(wb, filename);
+      } catch (err) {
+        alert('Excel export failed: ' + err.message);
+      }
+    }
+
+    function exportPDF() {
+      try {
+        var d = getExportData();
+        var jsPDF = window.jspdf.jsPDF;
+        var doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        var pageW = doc.internal.pageSize.getWidth();
+        var y = 16;
+
+        // Title
+        doc.setFontSize(18);
+        doc.setFont(undefined, 'bold');
+        doc.text('WillFit Daily Summary', 14, y);
+        y += 8;
+        doc.setFontSize(11);
+        doc.setFont(undefined, 'normal');
+        doc.setTextColor(120);
+        doc.text(d.period, 14, y);
+        y += 10;
+
+        // Summary table
+        doc.setTextColor(0);
+        var summaryBody = [];
+        var keys = Object.keys(d.summary);
+        for (var i = 0; i < keys.length; i += 2) {
+          var row = [keys[i], String(d.summary[keys[i]])];
+          if (keys[i + 1]) {
+            row.push(keys[i + 1], String(d.summary[keys[i + 1]]));
+          } else {
+            row.push('', '');
+          }
+          summaryBody.push(row);
+        }
+        doc.autoTable({
+          startY: y,
+          head: [['Metric', 'Value', 'Metric', 'Value']],
+          body: summaryBody,
+          theme: 'grid',
+          headStyles: { fillColor: [30, 30, 30], textColor: 255, fontStyle: 'bold', fontSize: 9 },
+          bodyStyles: { fontSize: 9 },
+          alternateRowStyles: { fillColor: [245, 245, 245] },
+          columnStyles: { 0: { fontStyle: 'bold', cellWidth: 40 }, 1: { cellWidth: 25 }, 2: { fontStyle: 'bold', cellWidth: 40 }, 3: { cellWidth: 25 } },
+          margin: { left: 14, right: 14 },
+        });
+        y = doc.lastAutoTable.finalY + 10;
+
+        // Detail sections
+        var sections = [
+          ['New Signups (' + d.signups.length + ')', d.signups],
+          ['Workouts (' + d.workouts.length + ')', d.workouts],
+          ['Active Users (' + d.activeUsers.length + ')', d.activeUsers],
+          ['Custom Exercises (' + d.exercises.length + ')', d.exercises],
+          ['Feedback (' + d.feedback.length + ')', d.feedback],
+          ['Errors (' + d.errors.length + ')', d.errors],
+        ];
+
+        sections.forEach(function(sec) {
+          if (!sec[1] || sec[1].length === 0) return;
+          if (y > 260) { doc.addPage(); y = 16; }
+          doc.setFontSize(12);
+          doc.setFont(undefined, 'bold');
+          doc.setTextColor(0);
+          doc.text(sec[0], 14, y);
+          y += 2;
+          var heads = Object.keys(sec[1][0]);
+          var body = sec[1].map(function(row) { return heads.map(function(h) { return String(row[h]); }); });
+          doc.autoTable({
+            startY: y,
+            head: [heads],
+            body: body,
+            theme: 'striped',
+            headStyles: { fillColor: [30, 30, 30], textColor: 255, fontStyle: 'bold', fontSize: 8 },
+            bodyStyles: { fontSize: 8 },
+            margin: { left: 14, right: 14 },
+          });
+          y = doc.lastAutoTable.finalY + 10;
+        });
+
+        // Footer
+        var pages = doc.internal.getNumberOfPages();
+        for (var p = 1; p <= pages; p++) {
+          doc.setPage(p);
+          doc.setFontSize(8);
+          doc.setTextColor(160);
+          doc.text('WillFit Admin — Generated ' + new Date().toLocaleString(), 14, doc.internal.pageSize.getHeight() - 8);
+          doc.text('Page ' + p + ' of ' + pages, pageW - 14, doc.internal.pageSize.getHeight() - 8, { align: 'right' });
+        }
+
+        var filename = 'WillFit_Summary_' + document.getElementById('startDate').value + '.pdf';
+        doc.save(filename);
+      } catch (err) {
+        alert('PDF export failed: ' + err.message);
+      }
+    }
+    </script>
     `));
   } catch (err) {
     res.status(500).send(adminPage('Daily Summary', `

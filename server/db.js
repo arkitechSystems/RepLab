@@ -53,52 +53,52 @@ const db = {
     return rows.map((u) => ({ id: u.id, email: u.email, phone: u.phone, firstName: u.first_name, lastName: u.last_name, gender: u.gender, username: u.username, plan: u.plan || 'Free', referralSource: u.referral_source, referralCode: u.referral_code, zipCode: u.zip_code, signupCity: u.signup_city, signupState: u.signup_state, signupDevice: u.signup_device, utmSource: u.utm_source, utmMedium: u.utm_medium, utmCampaign: u.utm_campaign, utmContent: u.utm_content, utmTerm: u.utm_term, createdAt: u.created_at }));
   },
 
-  async getDailyStats() {
-    const today = new Date().toISOString().slice(0, 10);
-    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  async getDailyStats(startDate, endDate) {
+    const start = startDate || new Date().toISOString().slice(0, 10);
+    const end = endDate || start;
+    // Comparison period: same length range immediately before
+    const rangeMs = new Date(end + 'T00:00:00Z').getTime() - new Date(start + 'T00:00:00Z').getTime() + 86400000;
+    const prevEnd = new Date(new Date(start + 'T00:00:00Z').getTime() - 86400000).toISOString().slice(0, 10);
+    const prevStart = new Date(new Date(start + 'T00:00:00Z').getTime() - rangeMs).toISOString().slice(0, 10);
 
-    // Total users (excluding demo)
+    const notDemo = `(email NOT LIKE '%@willfit.demo' OR email IS NULL)`;
+    const notDemoU = `(u.email NOT LIKE '%@willfit.demo' OR u.email IS NULL)`;
+
     const { rows: [totalRow] } = await pool.query(
-      `SELECT COUNT(*) FROM users WHERE email NOT LIKE '%@willfit.demo' OR email IS NULL`
+      `SELECT COUNT(*) FROM users WHERE ${notDemo}`
     );
-    // New users today
-    const { rows: [todayUsersRow] } = await pool.query(
-      `SELECT COUNT(*) FROM users WHERE (email NOT LIKE '%@willfit.demo' OR email IS NULL) AND created_at::date = $1`, [today]
+    const { rows: [currentUsers] } = await pool.query(
+      `SELECT COUNT(*) FROM users WHERE ${notDemo} AND created_at::date BETWEEN $1 AND $2`, [start, end]
     );
-    // New users yesterday
-    const { rows: [yesterdayUsersRow] } = await pool.query(
-      `SELECT COUNT(*) FROM users WHERE (email NOT LIKE '%@willfit.demo' OR email IS NULL) AND created_at::date = $1`, [yesterday]
+    const { rows: [prevUsers] } = await pool.query(
+      `SELECT COUNT(*) FROM users WHERE ${notDemo} AND created_at::date BETWEEN $1 AND $2`, [prevStart, prevEnd]
     );
-    // Workouts completed today
-    const { rows: [todaySessionsRow] } = await pool.query(
-      `SELECT COUNT(*) FROM sessions s JOIN users u ON s.user_id = u.id WHERE (u.email NOT LIKE '%@willfit.demo' OR u.email IS NULL) AND s.created_at::date = $1`, [today]
+    const { rows: [currentSessions] } = await pool.query(
+      `SELECT COUNT(*) FROM sessions s JOIN users u ON s.user_id = u.id WHERE ${notDemoU} AND s.created_at::date BETWEEN $1 AND $2`, [start, end]
     );
-    // Workouts completed yesterday
-    const { rows: [yesterdaySessionsRow] } = await pool.query(
-      `SELECT COUNT(*) FROM sessions s JOIN users u ON s.user_id = u.id WHERE (u.email NOT LIKE '%@willfit.demo' OR u.email IS NULL) AND s.created_at::date = $1`, [yesterday]
+    const { rows: [prevSessions] } = await pool.query(
+      `SELECT COUNT(*) FROM sessions s JOIN users u ON s.user_id = u.id WHERE ${notDemoU} AND s.created_at::date BETWEEN $1 AND $2`, [prevStart, prevEnd]
     );
-    // Active users today (distinct users who logged a session)
     const { rows: [activeRow] } = await pool.query(
-      `SELECT COUNT(DISTINCT s.user_id) FROM sessions s JOIN users u ON s.user_id = u.id WHERE (u.email NOT LIKE '%@willfit.demo' OR u.email IS NULL) AND s.created_at::date = $1`, [today]
+      `SELECT COUNT(DISTINCT s.user_id) FROM sessions s JOIN users u ON s.user_id = u.id WHERE ${notDemoU} AND s.created_at::date BETWEEN $1 AND $2`, [start, end]
     );
-    // Active users yesterday
-    const { rows: [activeYesterdayRow] } = await pool.query(
-      `SELECT COUNT(DISTINCT s.user_id) FROM sessions s JOIN users u ON s.user_id = u.id WHERE (u.email NOT LIKE '%@willfit.demo' OR u.email IS NULL) AND s.created_at::date = $1`, [yesterday]
+    const { rows: [activePrevRow] } = await pool.query(
+      `SELECT COUNT(DISTINCT s.user_id) FROM sessions s JOIN users u ON s.user_id = u.id WHERE ${notDemoU} AND s.created_at::date BETWEEN $1 AND $2`, [prevStart, prevEnd]
     );
-    // Recent signups (last 24h with details)
     const { rows: recentSignups } = await pool.query(
-      `SELECT first_name, last_name, email, phone, signup_city, signup_state, created_at FROM users WHERE (email NOT LIKE '%@willfit.demo' OR email IS NULL) AND created_at >= NOW() - INTERVAL '24 hours' ORDER BY created_at DESC`
+      `SELECT first_name, last_name, email, phone, signup_city, signup_state, created_at FROM users WHERE ${notDemo} AND created_at::date BETWEEN $1 AND $2 ORDER BY created_at DESC`, [start, end]
     );
 
     return {
       totalUsers: parseInt(totalRow.count),
-      newUsersToday: parseInt(todayUsersRow.count),
-      newUsersYesterday: parseInt(yesterdayUsersRow.count),
-      workoutsToday: parseInt(todaySessionsRow.count),
-      workoutsYesterday: parseInt(yesterdaySessionsRow.count),
-      activeUsersToday: parseInt(activeRow.count),
-      activeUsersYesterday: parseInt(activeYesterdayRow.count),
+      newUsersCurrent: parseInt(currentUsers.count),
+      newUsersPrev: parseInt(prevUsers.count),
+      workoutsCurrent: parseInt(currentSessions.count),
+      workoutsPrev: parseInt(prevSessions.count),
+      activeUsersCurrent: parseInt(activeRow.count),
+      activeUsersPrev: parseInt(activePrevRow.count),
       recentSignups,
+      prevStart, prevEnd,
     };
   },
 
