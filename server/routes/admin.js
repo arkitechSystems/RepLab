@@ -4258,10 +4258,10 @@ router.get('/daily-summary', adminAuth, async (req, res) => {
       </div>` : `<p style="color:#4ade80;font-size:13px;">No errors in this period.</p>${!isSingleToday ? '<p style="color:rgba(255,255,255,0.25);font-size:11px;margin-top:8px;">Note: Error logs are only available in real-time for the current day.</p>' : ''}`}
     </div>
 
-    <!-- Export libraries (loaded async, only when needed) -->
+    <!-- Export libraries -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://unpkg.com/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+    <script src="https://unpkg.com/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js"></script>
     <script>
     function getExportData() {
       return JSON.parse(document.getElementById('exportData').textContent);
@@ -4269,6 +4269,10 @@ router.get('/daily-summary', adminAuth, async (req, res) => {
 
     function exportExcel() {
       try {
+        if (typeof XLSX === 'undefined') {
+          alert('Excel library is still loading. Please wait a moment and try again.');
+          return;
+        }
         var d = getExportData();
         var wb = XLSX.utils.book_new();
 
@@ -4304,6 +4308,10 @@ router.get('/daily-summary', adminAuth, async (req, res) => {
 
     function exportPDF() {
       try {
+        if (!window.jspdf || !window.jspdf.jsPDF) {
+          alert('PDF library is still loading. Please wait a moment and try again.');
+          return;
+        }
         var d = getExportData();
         var jsPDF = window.jspdf.jsPDF;
         var doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
