@@ -53,9 +53,24 @@ export default function WorkoutSession() {
   const REST_OPTIONS = [15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180];
   const [pinWorkoutTimer, setPinWorkoutTimer] = useState(true);
   const [pinRestTimer, setPinRestTimer] = useState(true);
+  const autoSaveRef = useRef(null);
+  const autoSaveNeeded = useRef(false);
 
   // Keep ref in sync with state
   useEffect(() => { restDurationRef.current = restDuration; }, [restDuration]);
+
+  // Auto-save after checkmark toggle (debounced 1.5s)
+  useEffect(() => {
+    if (!autoSaveNeeded.current) return;
+    autoSaveNeeded.current = false;
+    if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
+    autoSaveRef.current = setTimeout(() => {
+      if (!saving && template && !template.isRest) {
+        handleSave().catch(console.error);
+      }
+    }, 1500);
+    return () => { if (autoSaveRef.current) clearTimeout(autoSaveRef.current); };
+  }, [completedSets]);
 
   const MAX_TIMER_SECS = 14400; // 4 hours
   const timerStorageKey = `wf-timer-${templateId}-${date}`;
@@ -704,6 +719,9 @@ export default function WorkoutSession() {
       }
       return next;
     });
+
+    // Trigger debounced auto-save
+    autoSaveNeeded.current = true;
 
     // When completing a set, auto-fill subsequent uncompleted sets for this exercise
     const isCompleting = !completedSets.has(key);
