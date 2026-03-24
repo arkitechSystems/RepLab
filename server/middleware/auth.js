@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import pool from '../dbPool.js';
 
 if (!process.env.JWT_SECRET) {
   throw new Error('JWT_SECRET environment variable is required');
@@ -9,7 +10,7 @@ export function generateToken(user) {
   return jwt.sign({ userId: user.id, email: user.email, phone: user.phone }, JWT_SECRET, { expiresIn: '7d' });
 }
 
-export function authMiddleware(req, res, next) {
+export async function authMiddleware(req, res, next) {
   const header = req.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'No token provided' });
@@ -18,10 +19,17 @@ export function authMiddleware(req, res, next) {
   try {
     const token = header.split(' ')[1];
     const decoded = jwt.verify(token, JWT_SECRET);
+
+    // Verify user still exists in the database
+    const { rows } = await pool.query('SELECT id FROM users WHERE id = $1', [decoded.userId]);
+    if (rows.length === 0) {
+      return res.status(401).json({ error: 'Account no longer exists' });
+    }
+
     req.userId = decoded.userId;
     req.userEmail = decoded.email;
     next();
-  } catch {
+  } catch (err) {
     return res.status(401).json({ error: 'Invalid token' });
   }
 }

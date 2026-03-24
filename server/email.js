@@ -25,66 +25,59 @@ export async function sendWelcomeEmail(email) {
             <h1 style="font-size: 32px; font-weight: 900; letter-spacing: 2px; margin: 0; color: #111;">WILL<span style="color: #EF4444;">FIT</span></h1>
           </div>
 
-          <h2 style="color: #111; font-size: 24px; font-weight: 800; margin: 0 0 8px 0;">Welcome to the Alpha!</h2>
+          <h2 style="color: #111; font-size: 24px; font-weight: 800; margin: 0 0 8px 0;">Welcome to WillFit!</h2>
           <p style="font-size: 16px; line-height: 1.7; margin: 0 0 24px 0; color: #444;">
-            Thanks for signing up. The alpha version of WillFit is ready to use — you can start tracking workouts right now. Here's how to get going.
+            Thanks for signing up! You're now part of the <strong>alpha version</strong> of WillFit. The app is fully functional and ready for you to start tracking your workouts, but we're still actively building and improving it. Your experience and feedback will help shape the final product.
           </p>
 
-          <!-- Quick Start -->
-          <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">Quick Start Guide</h3>
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
-            <tr>
-              <td style="padding: 10px 12px; vertical-align: top; width: 28px; font-size: 18px; font-weight: 900; color: #EF4444;">1</td>
-              <td style="padding: 10px 12px; font-size: 14px; line-height: 1.6; color: #444;">
-                <strong style="color: #111;">Pick a Workout</strong><br/>
-                Open the app and head to the <strong>Workout Library</strong>. Browse pre-built programs like Push Pull Legs, Upper/Lower, Bro Split, and more. Find one you like and tap <strong>Begin Program</strong> to add it to your calendar.
-              </td>
-            </tr>
-            <tr>
-              <td style="padding: 10px 12px; vertical-align: top; width: 28px; font-size: 18px; font-weight: 900; color: #EF4444;">2</td>
-              <td style="padding: 10px 12px; font-size: 14px; line-height: 1.6; color: #444;">
-                <strong style="color: #111;">Start Your Session</strong><br/>
-                Go to the <strong>Calendar</strong> tab, tap today's workout, and start logging. Enter your weight and reps for each set — the app saves everything and tracks your personal records automatically.
-              </td>
-            </tr>
-            <tr>
-              <td style="padding: 10px 12px; vertical-align: top; width: 28px; font-size: 18px; font-weight: 900; color: #EF4444;">3</td>
-              <td style="padding: 10px 12px; font-size: 14px; line-height: 1.6; color: #444;">
-                <strong style="color: #111;">Create Your Own</strong><br/>
-                Want something custom? You can build your own workouts directly in the app under <strong>My Workouts</strong>. You can also create and manage workouts from a computer at <a href="https://will-fit.shop/trainer" style="color: #EF4444; text-decoration: none; font-weight: 600;">will-fit.shop/trainer</a> — just log in with the same account.
-              </td>
-            </tr>
-            <tr>
-              <td style="padding: 10px 12px; vertical-align: top; width: 28px; font-size: 18px; font-weight: 900; color: #EF4444;">4</td>
-              <td style="padding: 10px 12px; font-size: 14px; line-height: 1.6; color: #444;">
-                <strong style="color: #111;">Track Your Progress</strong><br/>
-                Check the <strong>Utilities</strong> tab to view personal records, estimate your one-rep max, and use the rest timer between sets. Your PRs update automatically every time you log a session.
-              </td>
-            </tr>
-          </table>
+          <!-- Getting Started -->
+          <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">Getting Started</h3>
+          <div style="background: #f0f7ff; border-left: 4px solid #3b82f6; border-radius: 8px; padding: 16px 20px; margin-bottom: 16px;">
+            <p style="color: #333; font-size: 14px; line-height: 1.7; margin: 0;">
+              <strong>New here? Take the tutorial.</strong> When you open the app, tap the <strong>Tutorial</strong> card on the Workouts page. It'll walk you step by step through picking a program, scheduling it to your calendar, and logging your first workout.
+            </p>
+          </div>
+
+          <!-- Trainer Dashboard -->
+          <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">Trainer Dashboard</h3>
+          <div style="background: #f8f8f8; border-radius: 8px; padding: 16px 20px; margin-bottom: 16px;">
+            <p style="color: #333; font-size: 14px; line-height: 1.7; margin: 0;">
+              <strong>Prefer a bigger screen?</strong> You can create and manage your workouts from a computer using the <a href="https://will-fit.shop/trainer" style="color: #EF4444; text-decoration: none; font-weight: 600;">Trainer Dashboard</a>. Just log in with the same credentials you used to sign up. Everything stays in sync with the app.
+            </p>
+          </div>
+
+          <!-- AI-Powered Features -->
+          <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">AI-Powered Features</h3>
+          <div style="background: #f0f0ff; border-left: 4px solid #8b5cf6; border-radius: 8px; padding: 16px 20px; margin-bottom: 16px;">
+            <p style="color: #333; font-size: 14px; line-height: 1.7; margin: 0;">
+              We're working on <strong>AI-powered features</strong> for WillFit. Soon you'll be able to generate custom workouts tailored to your goals, experience level, and available equipment — powered by an <strong>AI trainer</strong> built right into the app. Stay tuned.
+            </p>
+          </div>
+
+          <!-- Alpha Version -->
+          <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">Alpha Version</h3>
+          <div style="padding: 16px 20px; background: #f8f4e8; border-left: 4px solid #e6a817; border-radius: 8px; margin-bottom: 16px;">
+            <p style="color: #333; font-size: 13px; line-height: 1.7; margin: 0;">
+              <strong>This is an alpha release.</strong> You may encounter occasional bugs or rough edges as we continue to develop the app. New features are being added regularly. If you run into anything or have ideas for improvement, head to <strong>Profile > Send Feedback</strong> — it goes directly to the dev team.
+            </p>
+          </div>
+
+          <!-- User Guide -->
+          <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">User Guide</h3>
+          <div style="background: #f0f0f0; border-radius: 8px; padding: 16px 20px; margin-bottom: 24px;">
+            <p style="color: #333; font-size: 14px; line-height: 1.7; margin: 0;">
+              For a deeper look at every feature, check out the <a href="https://will-fit.shop/trainer/guide" style="color: #EF4444; text-decoration: none; font-weight: 600;">WillFit User Guide</a>. It covers the workout library, calendar, logging sessions, personal records, creating custom workouts, and more.
+            </p>
+          </div>
+
+          <p style="color: #666; font-size: 13px; line-height: 1.6;">
+            Thanks for being an early adopter. We're glad to have you.
+          </p>
 
           <a href="https://will-fit.shop"
-             style="display: inline-block; padding: 14px 32px; background: #111; color: #fff; text-decoration: none; border-radius: 10px; font-size: 15px; font-weight: 700; letter-spacing: 0.5px;">
+             style="display: inline-block; margin-top: 24px; padding: 14px 32px; background: #111; color: #fff; text-decoration: none; border-radius: 10px; font-size: 15px; font-weight: 700; letter-spacing: 0.5px;">
             Open WillFit
           </a>
-
-          <!-- FAQ Link -->
-          <div style="margin-top: 24px; padding: 14px 20px; background: #f0f0f0; border-radius: 8px; text-align: center;">
-            <p style="color: #444; font-size: 13px; line-height: 1.6; margin: 0;">
-              Need help? Check out the <a href="https://will-fit.shop/trainer/guide" style="color: #EF4444; text-decoration: none; font-weight: 600;">WillFit User Guide</a> for detailed instructions on every feature.
-            </p>
-          </div>
-
-          <!-- Early Access -->
-          <div style="margin-top: 16px; padding: 16px 20px; background: #f8f4e8; border-left: 4px solid #e6a817; border-radius: 8px;">
-            <p style="color: #333; font-size: 13px; line-height: 1.7; margin: 0;">
-              <strong>You're part of the alpha.</strong> This app is actively being built and improved. More features are on the way. Your feedback directly shapes what gets built next — head to <strong>Profile > Send Feedback</strong> anytime.
-            </p>
-          </div>
-
-          <p style="color: #666; font-size: 13px; margin-top: 24px; line-height: 1.6;">
-            Thanks for downloading the app. We're excited to have you.
-          </p>
 
           <p style="color: #999; font-size: 12px; margin-top: 24px; line-height: 1.6;">
             If you didn't create a WillFit account, you can safely ignore this email.

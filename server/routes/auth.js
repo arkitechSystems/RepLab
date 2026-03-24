@@ -80,9 +80,17 @@ router.post('/signup', async (req, res) => {
       return res.status(409).json({ error: phone ? 'Phone number already registered' : 'Email already registered' });
     }
 
-    // Check username uniqueness if provided
-    const finalUsername = username?.trim() || `user${Date.now().toString(36)}`;
-    if (username?.trim()) {
+    // Generate username: first initial + last name, with number suffix if taken
+    let finalUsername = username?.trim();
+    if (!finalUsername) {
+      const base = (firstName.trim()[0] + lastName.trim()).toLowerCase().replace(/[^a-z0-9]/g, '');
+      finalUsername = base;
+      let suffix = 1;
+      while (await db.findUserByUsername(finalUsername)) {
+        finalUsername = base + suffix;
+        suffix++;
+      }
+    } else {
       const existingUsername = await db.findUserByUsername(finalUsername);
       if (existingUsername) {
         return res.status(409).json({ error: 'Username already taken' });

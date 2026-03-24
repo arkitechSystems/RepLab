@@ -1869,25 +1869,27 @@ export default function Workouts() {
               </div>
             </div>
 
-            {/* Featured Trainers card */}
-            <div
-              onClick={() => setSelectedGroup('partners')}
-              className="w-full text-left glass-card rounded-2xl overflow-hidden active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
-              style={{ animationDelay: '80ms' }}
-            >
-              <div className="h-1.5 bg-wf-blue" />
-              <div className="p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <h2 className="text-xl font-black text-white tracking-tight">Featured Trainers</h2>
-                    <p className="text-wf-gray-400 text-sm mt-1">Expert-led workouts from certified trainers</p>
+            {/* Featured Trainers card — Pro only */}
+            {isPremium && (
+              <div
+                onClick={() => setSelectedGroup('partners')}
+                className="w-full text-left glass-card rounded-2xl overflow-hidden active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
+                style={{ animationDelay: '80ms' }}
+              >
+                <div className="h-1.5 bg-wf-blue" />
+                <div className="p-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <h2 className="text-xl font-black text-white tracking-tight">Featured Trainers</h2>
+                      <p className="text-wf-gray-400 text-sm mt-1">Expert-led workouts from certified trainers</p>
+                    </div>
+                    <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                    </svg>
                   </div>
-                  <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Challenges card */}
             <div
