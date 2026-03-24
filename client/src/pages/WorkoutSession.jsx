@@ -68,7 +68,7 @@ export default function WorkoutSession() {
       if (!saving && template && !template.isRest) {
         handleSave().catch(console.error);
       }
-    }, 1500);
+    }, 500);
     return () => { if (autoSaveRef.current) clearTimeout(autoSaveRef.current); };
   }, [completedSets]);
 
