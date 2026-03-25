@@ -471,9 +471,10 @@ const db = {
         );
       }
 
-      // Track best reps per exercise per weight for PB updates
+      // Track best reps per exercise per weight for PB updates (regular sets only)
       const bestRepsAtWeight = new Map();
       for (const entry of entries) {
+        if (entry.setType && entry.setType !== 'straight') continue;
         const w = entry.weight || 0;
         const r = entry.reps || 0;
         if (w > 0 && r > 0) {

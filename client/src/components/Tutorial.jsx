@@ -32,7 +32,7 @@ export default function Tutorial() {
     }
     const el = document.querySelector(current.target);
     if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.scrollIntoView({ behavior: 'instant', block: 'center' });
       // Measure after scroll settles
       requestAnimationFrame(() => {
         const rect = el.getBoundingClientRect();
@@ -53,7 +53,7 @@ export default function Tutorial() {
   useEffect(() => {
     if (!showSpotlight) return;
     // Scroll to top and delay measure to let DOM settle after navigation
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'instant' });
     const timer = setTimeout(measureTarget, 400);
     const handler = () => requestAnimationFrame(measureTarget);
     window.addEventListener('resize', handler);

@@ -692,6 +692,22 @@ function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelec
 
         {/* Exercise List */}
         <div className="flex-1 overflow-y-auto px-4 pb-6">
+          {/* Custom exercise option when search doesn't match any existing exercise */}
+          {search.trim() && !allExercises.some((ex) => ex.name.toLowerCase() === search.trim().toLowerCase()) && (
+            <>
+              <button
+                onClick={() => onSelect(search.trim())}
+                className="w-full text-left rounded-xl px-3 py-3 flex items-center gap-3 bg-wf-red/10 active:bg-wf-red/20 active:scale-[0.98] transition-all mb-2 mt-3"
+              >
+                <svg className="w-5 h-5 text-wf-red shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                <span className="text-sm text-white">Add "<span className="font-semibold">{search.trim()}</span>"</span>
+              </button>
+              {filtered.length > 0 && <div className="border-t border-white/5 my-2" />}
+            </>
+          )}
+
           {/* AI Suggestions */}
           {aiSuggestions && aiSuggestions.length > 0 && (
             <>
@@ -740,7 +756,7 @@ function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelec
             </>
           )}
 
-          {filtered.length === 0 && !aiSuggestions && (
+          {filtered.length === 0 && !aiSuggestions && !search.trim() && (
             <div className="text-center py-12">
               <p className="text-wf-gray-500 text-sm">No exercises found</p>
             </div>

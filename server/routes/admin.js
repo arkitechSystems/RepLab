@@ -1169,16 +1169,6 @@ router.get('/users', adminAuth, async (req, res) => {
       </div>
     </div>
     <div class="stat glass">
-      <div class="value">${users.filter(u => u.email).length}</div>
-      <div class="label">Email Signups</div>
-    </div>
-    <div class="stat glass">
-      <div class="value">${users.filter(u => u.phone).length}</div>
-      <div class="label">Phone Signups</div>
-    </div>
-  </div>
-  <div class="stats">
-    <div class="stat glass">
       <div class="value" style="-webkit-text-fill-color:#4ade80;">$0.00</div>
       <div class="label">Revenue Today</div>
     </div>

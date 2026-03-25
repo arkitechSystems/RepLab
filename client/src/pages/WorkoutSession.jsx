@@ -828,6 +828,7 @@ export default function WorkoutSession() {
             weight: isAutoOnly ? 0 : (exEntries[idx]?.weight || 0),
             reps: isAutoOnly ? 0 : (exEntries[idx]?.reps || 0),
             isCompleted: completedSets.has(key),
+            setType: exEntries[idx]?.setType || set.setType || ex.setType || 'straight',
           });
         });
       }
@@ -878,8 +879,8 @@ export default function WorkoutSession() {
       for (const [exerciseName, newWeights] of Object.entries(pbMap)) {
         const oldWeights = oldPbs[exerciseName] || {};
         for (const [weight, newReps] of Object.entries(newWeights)) {
-          const oldReps = oldWeights[weight];
-          if (oldReps === undefined || newReps > oldReps) {
+          const oldReps = oldWeights[weight] || 0;
+          if (newReps > oldReps) {
             improved.push({ name: exerciseName, weight: Number(weight), reps: newReps });
           }
         }
@@ -1437,6 +1438,7 @@ export default function WorkoutSession() {
       {/* Save & Share Buttons - Fixed at bottom */}
       <div className="fixed bottom-16 left-0 right-0 p-4 bg-gradient-to-t from-black via-black/95 to-transparent safe-bottom z-40">
         <div className="flex gap-2">
+          {/* Save button hidden — auto-save on check mark is fast enough
           <button
             onClick={handleSave}
             disabled={saving || !timerStarted}
@@ -1448,9 +1450,10 @@ export default function WorkoutSession() {
           >
             {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Session'}
           </button>
+          */}
           <button
             onClick={handleShare}
-            className="w-14 glass-card rounded-xl flex items-center justify-center text-wf-gray-400 hover:text-white transition-colors active:scale-[0.98]"
+            className="flex-1 glass-card rounded-xl flex items-center justify-center py-4 text-wf-gray-400 hover:text-white transition-colors active:scale-[0.98]"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />

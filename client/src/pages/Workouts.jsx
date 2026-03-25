@@ -962,7 +962,7 @@ export default function Workouts() {
     return (
       <>
         {beginModal && !conflictInfo && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center px-5" onClick={closeBeginModal}>
+          <div className={`fixed inset-0 flex items-center justify-center px-5 ${tutorial.active ? 'z-[200]' : 'z-50'}`} onClick={closeBeginModal}>
             <div className="absolute inset-0 bg-black/70" />
             <div
               data-tutorial="begin-modal"
