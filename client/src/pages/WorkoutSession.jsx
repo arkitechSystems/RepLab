@@ -1476,7 +1476,7 @@ export default function WorkoutSession() {
 
       {/* Mark Complete */}
       {timerStarted && (
-        <div className="px-4 mb-24">
+        <div className="px-4 mb-24" data-tutorial="mark-complete">
           <button
             onClick={handleMarkComplete}
             className={`w-full font-semibold py-3.5 rounded-xl text-sm transition-all active:scale-[0.98] ${
@@ -1632,8 +1632,16 @@ export default function WorkoutSession() {
             target: '[data-tutorial="exercise-notes"]',
             title: 'Exercise Notes',
             description: <>Tap here to add notes for this exercise — things like form cues, how the set felt, or adjustments for next time.</>,
-            next: null,
+            next: 'mark-complete',
             position: 'below',
+          },
+          'mark-complete': {
+            target: '[data-tutorial="mark-complete"]',
+            title: 'Complete Your Workout',
+            description: <>When you're done, tap <span className="text-white font-semibold">Mark Complete</span> to finish your workout. You'll see a summary of everything you logged — exercises, sets, reps, and total workout time. Tap it now to see an example!</>,
+            next: null,
+            position: 'above',
+            action: 'autofill-and-complete',
           },
         };
         const tip = tips[tutorialTip];
@@ -1676,10 +1684,36 @@ export default function WorkoutSession() {
               <p className="text-sm text-wf-gray-400 leading-relaxed">{tip.description}</p>
               <div className="flex justify-center mt-4">
                 <button
-                  onClick={() => setTutorialTip(tip.next)}
+                  onClick={() => {
+                    if (tip.action === 'autofill-and-complete') {
+                      // Autofill all entries with the suggested weights and reps
+                      setEntries((prev) => {
+                        const filled = {};
+                        for (const ex of template.exercises) {
+                          filled[ex.name] = ex.sets.map((s) => ({
+                            weight: s.suggestedWeight || '',
+                            reps: s.plannedReps || '',
+                            setType: s.setType || ex.setType || 'straight',
+                          }));
+                        }
+                        return filled;
+                      });
+                      // Mark all sets as completed
+                      const allKeys = new Set();
+                      template.exercises.forEach((ex) => {
+                        ex.sets.forEach((_, i) => allKeys.add(`${ex.name}-${i}`));
+                      });
+                      setCompletedSets(allKeys);
+                      setTutorialTip(null);
+                      // Trigger mark complete after a short delay
+                      setTimeout(() => handleMarkComplete(), 300);
+                    } else {
+                      setTutorialTip(tip.next);
+                    }
+                  }}
                   className="text-sm font-semibold text-white btn-gradient py-2 px-5 rounded-xl active:scale-[0.97] transition-transform"
                 >
-                  {tip.next ? 'Next' : 'Got it'}
+                  {tip.action === 'autofill-and-complete' ? 'Mark Complete' : tip.next ? 'Next' : 'Got it'}
                 </button>
               </div>
             </div>
