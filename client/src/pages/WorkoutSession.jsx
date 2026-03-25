@@ -111,13 +111,17 @@ export default function WorkoutSession() {
   }, [timerStarted, timerStorageKey, runTimerInterval]);
 
   const handleBeginWorkout = useCallback(() => {
+    if (tutorialMode) {
+      startTimer();
+      return;
+    }
     const sessionDate = parseISO(date);
     if (!isToday(sessionDate)) {
       setShowDateConfirm(true);
     } else {
       startTimer();
     }
-  }, [date, startTimer]);
+  }, [date, startTimer, tutorialMode]);
 
   function startRestTimer() {
     if (restTimerRef.current) clearInterval(restTimerRef.current);
