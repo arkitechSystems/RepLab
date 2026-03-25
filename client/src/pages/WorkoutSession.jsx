@@ -43,6 +43,7 @@ export default function WorkoutSession() {
   const [restFloatPos, setRestFloatPos] = useState({ x: 16, y: 140 });
   const [showSummary, setShowSummary] = useState(false);
   const [showDateConfirm, setShowDateConfirm] = useState(false);
+  const [tutorialTip, setTutorialTip] = useState(null); // 'timer' | null — tutorial workout tooltips
   const [pendingSwap, setPendingSwap] = useState(null); // { oldName, newName }
   const dragRef = useRef(null);
   const [elapsed, setElapsed] = useState(0);
@@ -113,6 +114,7 @@ export default function WorkoutSession() {
   const handleBeginWorkout = useCallback(() => {
     if (tutorialMode) {
       startTimer();
+      setTimeout(() => setTutorialTip('timer'), 500);
       return;
     }
     const sessionDate = parseISO(date);
@@ -1130,7 +1132,7 @@ export default function WorkoutSession() {
               </button>
             ) : (
               <div className="mt-2">
-                <div className={`rounded-t-lg overflow-hidden transition-all duration-300 ${collapsed && !pinWorkoutTimer ? 'hidden' : ''} bg-black`}>
+                <div data-tutorial="workout-timer" className={`rounded-t-lg overflow-hidden transition-all duration-300 ${collapsed && !pinWorkoutTimer ? 'hidden' : ''} bg-black`}>
                   <div className="px-3 py-2.5 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-semibold">Workout Time</span>
@@ -1586,6 +1588,51 @@ export default function WorkoutSession() {
           </div>
         </div>
       )}
+
+      {/* Tutorial workout tip overlay */}
+      {tutorialTip === 'timer' && (() => {
+        const el = document.querySelector('[data-tutorial="workout-timer"]');
+        if (!el) return null;
+        const rect = el.getBoundingClientRect();
+        const pad = 8;
+        return (
+          <div className="fixed inset-0 z-[100]" style={{ pointerEvents: 'none' }}>
+            {/* Dark overlay with cutout */}
+            <svg className="absolute inset-0 w-full h-full" style={{ pointerEvents: 'none' }}>
+              <defs>
+                <mask id="tutorial-tip-mask">
+                  <rect x="0" y="0" width="100%" height="100%" fill="white" />
+                  <rect x={rect.left - pad} y={rect.top - pad} width={rect.width + pad * 2} height={rect.height + pad * 2} rx="12" fill="black" />
+                </mask>
+              </defs>
+              <rect x="0" y="0" width="100%" height="100%" fill="rgba(0,0,0,0.85)" mask="url(#tutorial-tip-mask)" />
+            </svg>
+            {/* Glow border */}
+            <div
+              className="absolute rounded-xl border-2 border-wf-cyan/60 shadow-[0_0_20px_rgba(0,200,255,0.15)]"
+              style={{ top: rect.top - pad, left: rect.left - pad, width: rect.width + pad * 2, height: rect.height + pad * 2, pointerEvents: 'none' }}
+            />
+            {/* Tooltip */}
+            <div
+              className="absolute w-[calc(100%-48px)] max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
+              style={{ top: rect.bottom + pad + 16, left: '50%', transform: 'translateX(-50%)', pointerEvents: 'auto' }}
+            >
+              <h3 className="text-base font-bold text-white mb-1">Workout Timer</h3>
+              <p className="text-sm text-wf-gray-400 leading-relaxed">
+                This timer tracks your total workout time. Use the <span className="text-white font-semibold">pop-out</span> button to float the timer on screen as you scroll, or the <span className="text-white font-semibold">lock toggle</span> to keep it visible even when the header collapses.
+              </p>
+              <div className="flex justify-center mt-4">
+                <button
+                  onClick={() => setTutorialTip(null)}
+                  className="text-sm font-semibold text-white btn-gradient py-2 px-5 rounded-xl active:scale-[0.97] transition-transform"
+                >
+                  Got it
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
