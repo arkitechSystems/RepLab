@@ -192,7 +192,7 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
 
       {/* Set Controls Subheader */}
       {!readOnly && onAddSet && (
-        <div className="px-4 py-2 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
+        <div data-tutorial={dataTutorial ? 'set-controls' : undefined} className="px-4 py-2 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
           <span className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-medium">
             {exercise.sets.length} set{exercise.sets.length !== 1 ? 's' : ''}
           </span>
@@ -259,6 +259,7 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
           return (
             <div
               key={idx}
+              data-tutorial={dataTutorial && idx === 0 ? 'set-row' : undefined}
               className={`px-3 py-2.5 flex items-center gap-1.5 transition-colors duration-200 ${
                 isCompleted ? 'bg-green-500/10' : ''
               }`}
@@ -403,7 +404,7 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
 
       {/* Notes */}
       {!readOnly && onNoteChange && (
-        <div className="px-3 py-2 border-t border-white/5">
+        <div data-tutorial={dataTutorial ? 'exercise-notes' : undefined} className="px-3 py-2 border-t border-white/5">
           {note ? (
             <textarea
               value={note}
