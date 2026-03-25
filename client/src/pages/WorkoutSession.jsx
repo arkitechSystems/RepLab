@@ -104,12 +104,19 @@ export default function WorkoutSession() {
         if (attempts < 15) { attempts++; setTimeout(tryFind, 100); }
         return;
       }
-      // Scroll to top of element instantly
-      el.scrollIntoView({ behavior: 'instant', block: 'start' });
-      // Measure after paint
+      // Temporarily unlock scroll so scrollIntoView works
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+      // Scroll to element — use window.scrollTo for sticky elements
+      const elRect = el.getBoundingClientRect();
+      const scrollTarget = window.scrollY + elRect.top - 20;
+      window.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'instant' });
+      // Measure after paint, then re-lock scroll
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           tutorialRectRef.current = el.getBoundingClientRect();
+          document.body.style.overflow = 'hidden';
+          document.body.style.touchAction = 'none';
           setTutorialReady(true);
         });
       });
