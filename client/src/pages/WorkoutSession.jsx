@@ -1614,6 +1614,13 @@ export default function WorkoutSession() {
             target: '[data-tutorial="rest-timer"]',
             title: 'Rest Timer',
             description: <>Tap <span className="text-white font-semibold">Start Rest</span> between sets to begin a countdown. Use the <span className="text-white font-semibold">dropdown</span> to set your rest duration (15s to 3 min). The <span className="text-white font-semibold">pop-out</span> button floats the timer as you scroll, and the <span className="text-white font-semibold">lock toggle</span> keeps it pinned when the header collapses. You'll hear an audio cue when rest is over.</>,
+            next: 'exercise-card',
+            position: 'below',
+          },
+          'exercise-card': {
+            target: '[data-tutorial="exercise-card"]',
+            title: 'Exercise Card',
+            description: <>Each exercise in your workout has its own card. The card contains everything you need — the exercise name, set controls, your logged sets, and notes. Let's walk through each part.</>,
             next: 'exercise-header',
             position: 'below',
           },

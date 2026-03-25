@@ -80,7 +80,7 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
 
   return (
     <>
-    <div className="glass-card rounded-xl overflow-hidden mb-3">
+    <div data-tutorial={dataTutorial ? 'exercise-card' : undefined} className="glass-card rounded-xl overflow-hidden mb-3">
       {/* Exercise Header */}
       <div data-tutorial={dataTutorial} className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
         <button
