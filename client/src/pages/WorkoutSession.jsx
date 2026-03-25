@@ -44,7 +44,8 @@ export default function WorkoutSession() {
   const [showSummary, setShowSummary] = useState(false);
   const [showDateConfirm, setShowDateConfirm] = useState(false);
   const [tutorialTip, setTutorialTip] = useState(null); // tutorial workout tooltips
-  const [tutorialRetry, setTutorialRetry] = useState(0); // force re-render to find DOM element
+  const [tutorialReady, setTutorialReady] = useState(false); // true once element is scrolled + measured
+  const tutorialRectRef = useRef(null); // cached rect for current tip target
   const [pendingSwap, setPendingSwap] = useState(null); // { oldName, newName }
   const dragRef = useRef(null);
   const [elapsed, setElapsed] = useState(0);
@@ -60,6 +61,61 @@ export default function WorkoutSession() {
   const [pinRestTimer, setPinRestTimer] = useState(true);
   const autoSaveRef = useRef(null);
   const autoSaveNeeded = useRef(false);
+
+  // Lock body scroll when tutorial tip is active
+  useEffect(() => {
+    if (tutorialTip) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.touchAction = 'none';
+    } else {
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+    }
+    return () => { document.body.style.overflow = ''; document.body.style.touchAction = ''; };
+  }, [tutorialTip]);
+
+  // Pre-scroll and measure tutorial tip target
+  useEffect(() => {
+    if (!tutorialTip) { setTutorialReady(false); tutorialRectRef.current = null; return; }
+    setTutorialReady(false);
+    tutorialRectRef.current = null;
+
+    // Lookup target from tips config inline (must match the tips object below)
+    const targetMap = {
+      'begin-workout': '[data-tutorial="begin-workout-btn"]',
+      timer: '[data-tutorial="workout-timer"]',
+      rest: '[data-tutorial="rest-timer"]',
+      'exercise-card': '[data-tutorial="exercise-card"]',
+      'exercise-header': '[data-tutorial="move-buttons"]',
+      'swap-exercise': '[data-tutorial="swap-button"]',
+      'add-delete-exercise': '[data-tutorial="add-delete-buttons"]',
+      'set-controls': '[data-tutorial="set-controls"]',
+      'set-row': '[data-tutorial="set-row"]',
+      'exercise-notes': '[data-tutorial="exercise-notes"]',
+      'mark-complete': '[data-tutorial="mark-complete"]',
+    };
+    const selector = targetMap[tutorialTip];
+    if (!selector) return;
+
+    let attempts = 0;
+    function tryFind() {
+      const el = document.querySelector(selector);
+      if (!el) {
+        if (attempts < 15) { attempts++; setTimeout(tryFind, 100); }
+        return;
+      }
+      // Scroll to top of element instantly
+      el.scrollIntoView({ behavior: 'instant', block: 'start' });
+      // Measure after paint
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          tutorialRectRef.current = el.getBoundingClientRect();
+          setTutorialReady(true);
+        });
+      });
+    }
+    tryFind();
+  }, [tutorialTip]);
 
   // Keep ref in sync with state
   useEffect(() => { restDurationRef.current = restDuration; }, [restDuration]);
@@ -1677,21 +1733,9 @@ export default function WorkoutSession() {
           },
         };
         const tip = tips[tutorialTip];
-        if (!tip) return null;
-        const el = document.querySelector(tip.target);
-        if (!el) {
-          // Retry after a short delay if element isn't in DOM yet
-          setTimeout(() => setTutorialRetry((r) => r + 1), 200);
-          return null;
-        }
-        // Scroll element to top of screen
-        const rect = el.getBoundingClientRect();
-        if (rect.top < 0 || rect.top > 150) {
-          el.scrollIntoView({ behavior: 'instant', block: 'start' });
-          return null; // re-render after scroll
-        }
+        if (!tip || !tutorialReady || !tutorialRectRef.current) return null;
+        const r = tutorialRectRef.current;
         const pad = 8;
-        const updatedRect = el.getBoundingClientRect();
         return (
           <div className="fixed inset-0 z-[100]" style={{ pointerEvents: 'auto', touchAction: 'none', overscrollBehavior: 'none' }}
             onTouchMove={(e) => e.preventDefault()}
@@ -1701,18 +1745,18 @@ export default function WorkoutSession() {
               <defs>
                 <mask id="tutorial-tip-mask">
                   <rect x="0" y="0" width="100%" height="100%" fill="white" />
-                  <rect x={updatedRect.left - pad} y={updatedRect.top - pad} width={updatedRect.width + pad * 2} height={updatedRect.height + pad * 2} rx="12" fill="black" />
+                  <rect x={r.left - pad} y={r.top - pad} width={r.width + pad * 2} height={r.height + pad * 2} rx="12" fill="black" />
                 </mask>
               </defs>
               <rect x="0" y="0" width="100%" height="100%" fill="rgba(0,0,0,0.85)" mask="url(#tutorial-tip-mask)" />
             </svg>
             <div
               className="absolute rounded-xl border-2 border-wf-cyan/60 shadow-[0_0_20px_rgba(0,200,255,0.15)]"
-              style={{ top: updatedRect.top - pad, left: updatedRect.left - pad, width: updatedRect.width + pad * 2, height: updatedRect.height + pad * 2, pointerEvents: 'none' }}
+              style={{ top: r.top - pad, left: r.left - pad, width: r.width + pad * 2, height: r.height + pad * 2, pointerEvents: 'none' }}
             />
             <div
               className="absolute w-[calc(100%-48px)] max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
-              style={{ top: updatedRect.bottom + pad + 16, left: '50%', transform: 'translateX(-50%)', pointerEvents: 'auto' }}
+              style={{ top: r.bottom + pad + 16, left: '50%', transform: 'translateX(-50%)', pointerEvents: 'auto' }}
             >
               <h3 className="text-base font-bold text-white mb-1">{tip.title}</h3>
               <p className="text-sm text-wf-gray-400 leading-relaxed">{tip.description}</p>
@@ -1723,7 +1767,7 @@ export default function WorkoutSession() {
                       setTutorialTip(null);
                       handleBeginWorkout();
                     } else if (tip.action === 'autofill-and-complete') {
-                      setEntries((prev) => {
+                      setEntries(() => {
                         const filled = {};
                         for (const ex of template.exercises) {
                           filled[ex.name] = ex.sets.map((s) => ({
@@ -1750,7 +1794,7 @@ export default function WorkoutSession() {
                   {tip.action === 'begin-workout' ? 'Begin Workout' : tip.action === 'autofill-and-complete' ? 'Mark Complete' : tip.next ? 'Next' : 'Got it'}
                 </button>
                 <button
-                  onClick={() => setTutorialTip(null)}
+                  onClick={() => { setTutorialTip(null); navigate('/workouts'); }}
                   className="text-sm font-semibold text-white/70 bg-white/10 hover:bg-white/15 active:bg-white/20 transition-colors py-2 px-5 rounded-xl border border-white/10"
                 >
                   Skip tutorial
