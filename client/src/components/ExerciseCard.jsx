@@ -23,7 +23,7 @@ function getSetTypeShort(value) {
 
 export { SET_TYPES };
 
-export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, note, onNoteChange, weightSuggestion, onApplySuggestion, allWorkoutExercises, mode = 'session' }) {
+export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, note, onNoteChange, weightSuggestion, onApplySuggestion, allWorkoutExercises, mode = 'session', dataTutorial }) {
   const isTemplate = mode === 'template';
   const exercisePbs = pbs?.[exercise.name] || {};
   const videoId = getExerciseVideoId(exercise.name);
@@ -82,7 +82,7 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
     <>
     <div className="glass-card rounded-xl overflow-hidden mb-3">
       {/* Exercise Header */}
-      <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
+      <div data-tutorial={dataTutorial} className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
         <button
           type="button"
           onClick={handleVideoClick}

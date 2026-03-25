@@ -1166,7 +1166,7 @@ export default function WorkoutSession() {
                     </div>
                   </div>
                 </div>
-                <div className={`rounded-b-lg overflow-hidden transition-all duration-300 ${collapsed && !pinRestTimer ? 'hidden' : ''} ${restRemaining !== null && restRemaining <= 0 ? 'border border-green-500/50' : ''} bg-black`}>
+                <div data-tutorial="rest-timer" className={`rounded-b-lg overflow-hidden transition-all duration-300 ${collapsed && !pinRestTimer ? 'hidden' : ''} ${restRemaining !== null && restRemaining <= 0 ? 'border border-green-500/50' : ''} bg-black`}>
                   {restRemaining !== null && restRemaining > 0 && (
                     <div className="h-1 bg-white/5">
                       <div className="h-full bg-wf-red transition-all duration-1000 ease-linear" style={{ width: `${(restRemaining / restDuration) * 100}%` }} />
@@ -1323,6 +1323,7 @@ export default function WorkoutSession() {
                 setWeightSuggestions(prev => { const next = { ...prev }; delete next[exName]; return next; });
               }}
               allWorkoutExercises={template.exercises.map(e => e.name)}
+              dataTutorial={tutorialMode && idx === 1 ? 'exercise-header' : undefined}
             />
           </div>
         ))}
@@ -1589,15 +1590,45 @@ export default function WorkoutSession() {
         </div>
       )}
 
-      {/* Tutorial workout tip overlay */}
-      {tutorialTip === 'timer' && (() => {
-        const el = document.querySelector('[data-tutorial="workout-timer"]');
+      {/* Tutorial workout tip overlays */}
+      {tutorialTip && (() => {
+        const tips = {
+          timer: {
+            target: '[data-tutorial="workout-timer"]',
+            title: 'Workout Timer',
+            description: <>This timer tracks your total workout time. Use the <span className="text-white font-semibold">pop-out</span> button to float the timer on screen as you scroll, or the <span className="text-white font-semibold">lock toggle</span> to keep it visible even when the header collapses.</>,
+            next: 'rest',
+            position: 'below',
+          },
+          rest: {
+            target: '[data-tutorial="rest-timer"]',
+            title: 'Rest Timer',
+            description: <>Tap <span className="text-white font-semibold">Start Rest</span> between sets to begin a countdown. Use the <span className="text-white font-semibold">dropdown</span> to set your rest duration (15s to 3 min). The <span className="text-white font-semibold">pop-out</span> button floats the timer as you scroll, and the <span className="text-white font-semibold">lock toggle</span> keeps it pinned when the header collapses. You'll hear an audio cue when rest is over.</>,
+            next: 'exercise-header',
+            position: 'below',
+          },
+          'exercise-header': {
+            target: '[data-tutorial="exercise-header"]',
+            title: 'Exercise Controls',
+            description: <>From left to right: <span className="text-white font-semibold">Up/Down arrows</span> reorder this exercise in the workout. <span className="text-white font-semibold">Swap</span> (arrows icon) substitutes it with a different exercise. <span className="text-white font-semibold">Plus</span> adds a new exercise below this one. <span className="text-white font-semibold">X</span> removes this exercise entirely. Tap the exercise name to view a demo video.</>,
+            next: null,
+            position: 'below',
+          },
+        };
+        const tip = tips[tutorialTip];
+        if (!tip) return null;
+        const el = document.querySelector(tip.target);
         if (!el) return null;
         const rect = el.getBoundingClientRect();
         const pad = 8;
+        // Scroll element into view if needed
+        if (rect.top < 0 || rect.bottom > window.innerHeight) {
+          el.scrollIntoView({ behavior: 'instant', block: 'center' });
+          return null; // re-render after scroll
+        }
+        const tooltipAbove = tip.position === 'above' || rect.bottom + pad + 200 > window.innerHeight;
         return (
           <div className="fixed inset-0 z-[100]" style={{ pointerEvents: 'none' }}>
-            {/* Dark overlay with cutout */}
             <svg className="absolute inset-0 w-full h-full" style={{ pointerEvents: 'none' }}>
               <defs>
                 <mask id="tutorial-tip-mask">
@@ -1607,26 +1638,27 @@ export default function WorkoutSession() {
               </defs>
               <rect x="0" y="0" width="100%" height="100%" fill="rgba(0,0,0,0.85)" mask="url(#tutorial-tip-mask)" />
             </svg>
-            {/* Glow border */}
             <div
               className="absolute rounded-xl border-2 border-wf-cyan/60 shadow-[0_0_20px_rgba(0,200,255,0.15)]"
               style={{ top: rect.top - pad, left: rect.left - pad, width: rect.width + pad * 2, height: rect.height + pad * 2, pointerEvents: 'none' }}
             />
-            {/* Tooltip */}
             <div
               className="absolute w-[calc(100%-48px)] max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
-              style={{ top: rect.bottom + pad + 16, left: '50%', transform: 'translateX(-50%)', pointerEvents: 'auto' }}
+              style={{
+                ...(tooltipAbove
+                  ? { bottom: window.innerHeight - rect.top + pad + 16, left: '50%', transform: 'translateX(-50%)' }
+                  : { top: rect.bottom + pad + 16, left: '50%', transform: 'translateX(-50%)' }),
+                pointerEvents: 'auto',
+              }}
             >
-              <h3 className="text-base font-bold text-white mb-1">Workout Timer</h3>
-              <p className="text-sm text-wf-gray-400 leading-relaxed">
-                This timer tracks your total workout time. Use the <span className="text-white font-semibold">pop-out</span> button to float the timer on screen as you scroll, or the <span className="text-white font-semibold">lock toggle</span> to keep it visible even when the header collapses.
-              </p>
+              <h3 className="text-base font-bold text-white mb-1">{tip.title}</h3>
+              <p className="text-sm text-wf-gray-400 leading-relaxed">{tip.description}</p>
               <div className="flex justify-center mt-4">
                 <button
-                  onClick={() => setTutorialTip(null)}
+                  onClick={() => setTutorialTip(tip.next)}
                   className="text-sm font-semibold text-white btn-gradient py-2 px-5 rounded-xl active:scale-[0.97] transition-transform"
                 >
-                  Got it
+                  {tip.next ? 'Next' : 'Got it'}
                 </button>
               </div>
             </div>
