@@ -1664,7 +1664,7 @@ export default function WorkoutSession() {
             title: 'Complete Your Workout',
             description: <>When you're done, tap <span className="text-white font-semibold">Mark Complete</span> to finish your workout. You'll see a summary of everything you logged — exercises, sets, reps, and total workout time. Tap it now to see an example!</>,
             next: null,
-            position: 'above',
+            position: 'below',
             action: 'autofill-and-complete',
           },
         };
@@ -1672,37 +1672,35 @@ export default function WorkoutSession() {
         if (!tip) return null;
         const el = document.querySelector(tip.target);
         if (!el) return null;
+        // Scroll element to top of screen
         const rect = el.getBoundingClientRect();
-        const pad = 8;
-        // Scroll element into view if needed
-        if (rect.top < 0 || rect.bottom > window.innerHeight) {
-          el.scrollIntoView({ behavior: 'instant', block: 'center' });
+        if (rect.top < 0 || rect.top > 150) {
+          el.scrollIntoView({ behavior: 'instant', block: 'start' });
           return null; // re-render after scroll
         }
-        const tooltipAbove = tip.position === 'above' || rect.bottom + pad + 200 > window.innerHeight;
+        const pad = 8;
+        const updatedRect = el.getBoundingClientRect();
         return (
-          <div className="fixed inset-0 z-[100]" style={{ pointerEvents: 'none' }}>
+          <div className="fixed inset-0 z-[100]" style={{ pointerEvents: 'auto', touchAction: 'none', overscrollBehavior: 'none' }}
+            onTouchMove={(e) => e.preventDefault()}
+            onWheel={(e) => e.preventDefault()}
+          >
             <svg className="absolute inset-0 w-full h-full" style={{ pointerEvents: 'none' }}>
               <defs>
                 <mask id="tutorial-tip-mask">
                   <rect x="0" y="0" width="100%" height="100%" fill="white" />
-                  <rect x={rect.left - pad} y={rect.top - pad} width={rect.width + pad * 2} height={rect.height + pad * 2} rx="12" fill="black" />
+                  <rect x={updatedRect.left - pad} y={updatedRect.top - pad} width={updatedRect.width + pad * 2} height={updatedRect.height + pad * 2} rx="12" fill="black" />
                 </mask>
               </defs>
               <rect x="0" y="0" width="100%" height="100%" fill="rgba(0,0,0,0.85)" mask="url(#tutorial-tip-mask)" />
             </svg>
             <div
               className="absolute rounded-xl border-2 border-wf-cyan/60 shadow-[0_0_20px_rgba(0,200,255,0.15)]"
-              style={{ top: rect.top - pad, left: rect.left - pad, width: rect.width + pad * 2, height: rect.height + pad * 2, pointerEvents: 'none' }}
+              style={{ top: updatedRect.top - pad, left: updatedRect.left - pad, width: updatedRect.width + pad * 2, height: updatedRect.height + pad * 2, pointerEvents: 'none' }}
             />
             <div
               className="absolute w-[calc(100%-48px)] max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
-              style={{
-                ...(tooltipAbove
-                  ? { bottom: window.innerHeight - rect.top + pad + 16, left: '50%', transform: 'translateX(-50%)' }
-                  : { top: rect.bottom + pad + 16, left: '50%', transform: 'translateX(-50%)' }),
-                pointerEvents: 'auto',
-              }}
+              style={{ top: updatedRect.bottom + pad + 16, left: '50%', transform: 'translateX(-50%)', pointerEvents: 'auto' }}
             >
               <h3 className="text-base font-bold text-white mb-1">{tip.title}</h3>
               <p className="text-sm text-wf-gray-400 leading-relaxed">{tip.description}</p>
