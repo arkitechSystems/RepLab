@@ -95,6 +95,7 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
         </button>
         {!readOnly && (
           <div className="flex items-center gap-1.5">
+            <span data-tutorial={dataTutorial ? 'move-buttons' : undefined} className="flex items-center gap-1.5">
             {onMoveUp && (
               <button
                 type="button"
@@ -117,9 +118,11 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
                 </svg>
               </button>
             )}
+            </span>
             {onSwapExercise && (
               <button
                 type="button"
+                data-tutorial={dataTutorial ? 'swap-button' : undefined}
                 onClick={() => { setShowSwap(true); setSwapSearch(''); }}
                 className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-blue-400 hover:bg-blue-500/20 active:scale-90 transition-all"
               >
@@ -128,6 +131,7 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
                 </svg>
               </button>
             )}
+            <span data-tutorial={dataTutorial ? 'add-delete-buttons' : undefined} className="flex items-center gap-1.5">
             {onAddExercise && (
               <button
                 type="button"
@@ -150,6 +154,7 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
                 </svg>
               </button>
             )}
+            </span>
           </div>
         )}
       </div>
