@@ -38,7 +38,7 @@ export const PHASE_1A = [
     target: '[data-tutorial="week-add-btn"]',
     title: 'Add a Workout',
     description: 'Tap the Add button to schedule this workout on a specific day of the week.',
-    position: 'top',
+    position: 'bottom',
     waitFor: 'add-workout-opened',
     allowInteraction: true,
   },

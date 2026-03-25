@@ -5,7 +5,7 @@ import { useTutorial } from '../context/TutorialContext';
 import { getStepsForPhase } from '../data/tutorialSteps';
 
 export default function Tutorial() {
-  const { tutorial, startTutorial, advanceTutorial, goToStepIndex, skipTutorial } = useTutorial();
+  const { tutorial, startTutorial, advanceTutorial, goToStepIndex, skipTutorial, updateTutorial } = useTutorial();
   const navigate = useNavigate();
   const [targetRect, setTargetRect] = useState(null);
   const [extraRects, setExtraRects] = useState([]);
@@ -19,8 +19,9 @@ export default function Tutorial() {
     navigate('/workouts');
   }, [skipTutorial, navigate]);
 
-  // If no phase yet, show choice screen
-  const showChoice = tutorial.active && !tutorial.phase;
+  // Intro screen → choice screen → spotlight steps
+  const showIntro = tutorial.active && tutorial.screen === 'intro';
+  const showChoice = tutorial.active && tutorial.screen === 'choice';
   // If phase is set, show spotlight steps
   const showSpotlight = tutorial.active && tutorial.phase && current;
 
@@ -96,6 +97,73 @@ export default function Tutorial() {
   }, [tutorial, steps, skipTutorial]);
 
   if (!tutorial.active) return null;
+
+  // ─── Intro Screen ───
+  if (showIntro) {
+    return createPortal(
+      <div className="fixed inset-0 z-[100] flex items-center justify-center px-6" style={{ pointerEvents: 'auto' }}>
+        <div className="absolute inset-0 bg-black/90" onClick={handleSkip} />
+        <div className="relative w-full max-w-sm">
+          <div className="flex justify-center mb-5">
+            <div className="w-14 h-14 rounded-2xl bg-wf-cyan/10 border border-wf-cyan/20 flex items-center justify-center">
+              <svg className="w-7 h-7 text-wf-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.042 21.672L13.684 16.6m0 0l-2.51 2.225.569-9.47 5.227 7.917-3.286-.672zM12 2.25V4.5m5.834.166l-1.591 1.591M20.25 10.5H18M7.757 14.743l-1.59 1.59M6 10.5H3.75m4.007-4.243l-1.59-1.59" />
+              </svg>
+            </div>
+          </div>
+
+          <h2 className="text-xl font-black text-white text-center mb-2">How can we help you get started?</h2>
+          <p className="text-sm text-wf-gray-400 text-center leading-relaxed mb-6">
+            Let us know what you're looking for so we can walk you through it.
+          </p>
+
+          <div className="space-y-3">
+            <button
+              onClick={() => updateTutorial({ screen: 'choice' })}
+              className="w-full glass-card rounded-2xl p-4 flex items-center gap-4 active:scale-[0.98] transition-transform cursor-pointer border border-wf-cyan/20"
+            >
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-wf-cyan/10">
+                <svg className="w-5 h-5 text-wf-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+              </div>
+              <div className="flex-1 text-left">
+                <span className="text-sm font-semibold text-white">Find/Create a Workout</span>
+                <p className="text-[11px] text-wf-gray-500 mt-0.5">Browse programs and find the right plan for you</p>
+              </div>
+              <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              </svg>
+            </button>
+
+            <button
+              className="w-full glass-card rounded-2xl p-4 flex items-center gap-4 opacity-40 cursor-default"
+            >
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-wf-orange/10">
+                <svg className="w-5 h-5 text-wf-orange" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15a2.25 2.25 0 012.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
+                </svg>
+              </div>
+              <div className="flex-1 text-left">
+                <span className="text-sm font-semibold text-white">How to Track Your Workouts</span>
+                <p className="text-[11px] text-wf-gray-500 mt-0.5">Tutorial Coming Soon</p>
+              </div>
+              <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="flex justify-center mt-6">
+            <button onClick={handleSkip} className="text-sm font-semibold text-white/70 bg-white/10 hover:bg-white/15 active:bg-white/20 transition-colors py-2.5 px-6 rounded-xl border border-white/10">
+              Skip tutorial
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body
+    );
+  }
 
   // ─── Choice Screen ───
   if (showChoice) {

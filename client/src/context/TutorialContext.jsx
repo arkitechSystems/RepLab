@@ -21,6 +21,7 @@ function saveState(state) {
 
 const initialState = {
   active: false,
+  screen: null,     // 'intro' | 'choice' | null (when in phase)
   path: null,       // 'browse' | 'create'
   phase: null,      // '1a' | '1b' | '2' | '3'
   stepIndex: 0,
@@ -41,6 +42,7 @@ export function TutorialProvider({ children }) {
   const startTutorial = useCallback((path) => {
     const next = {
       active: true,
+      screen: path ? null : 'intro',
       path,
       phase: path === 'browse' ? '1a' : path === 'create' ? '1b' : null,
       stepIndex: 0,

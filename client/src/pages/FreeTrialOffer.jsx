@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../context/AuthContext';
+import { useTutorial } from '../context/TutorialContext';
 
 const PLANS = [
   {
@@ -35,6 +36,7 @@ export default function FreeTrialOffer() {
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const { updateUser } = useAuth();
+  const { startTutorial } = useTutorial();
 
   async function handleStartTrial() {
     setLoading(true);
@@ -45,7 +47,8 @@ export default function FreeTrialOffer() {
         body: JSON.stringify({ plan: selectedPlan }),
       });
       updateUser(data.user);
-      navigate('/');
+      startTutorial(null);
+      navigate('/workouts');
     } catch (err) {
       setError(err.message || 'Something went wrong');
     } finally {
@@ -54,7 +57,8 @@ export default function FreeTrialOffer() {
   }
 
   function handleSkip() {
-    navigate('/');
+    startTutorial(null);
+    navigate('/workouts');
   }
 
   return (
