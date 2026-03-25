@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { format, parseISO, isToday } from 'date-fns';
 import { api } from '../api';
 import ExerciseCard from '../components/ExerciseCard';
@@ -15,6 +15,9 @@ import { beepCountdown, beepComplete, initAudio } from '../utils/sounds';
 export default function WorkoutSession() {
   const { templateId, date } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const tutorialMode = templateId === 'tutorial';
+  const tutorialTemplate = location.state?.tutorialTemplate || null;
   const { exercises: allExercisesFromDB, createCustom } = useExercises();
   const [template, setTemplate] = useState(null);
   const [pbs, setPbs] = useState({});
@@ -59,8 +62,9 @@ export default function WorkoutSession() {
   // Keep ref in sync with state
   useEffect(() => { restDurationRef.current = restDuration; }, [restDuration]);
 
-  // Auto-save after checkmark toggle (debounced 1.5s)
+  // Auto-save after checkmark toggle (debounced 1.5s) — skip in tutorial mode
   useEffect(() => {
+    if (tutorialMode) return;
     if (!autoSaveNeeded.current) return;
     autoSaveNeeded.current = false;
     if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
@@ -203,6 +207,27 @@ export default function WorkoutSession() {
   }
 
   useEffect(() => {
+    // Tutorial mode: load from hardcoded template, no API calls
+    if (tutorialMode) {
+      if (!tutorialTemplate) {
+        setLoadError('Tutorial template not found');
+        setLoading(false);
+        return;
+      }
+      setTemplate(tutorialTemplate);
+      const initial = {};
+      for (const ex of tutorialTemplate.exercises) {
+        initial[ex.name] = ex.sets.map((s) => ({
+          weight: s.suggestedWeight || '',
+          reps: '',
+          setType: s.setType || ex.setType || 'straight',
+        }));
+      }
+      setEntries(initial);
+      setLoading(false);
+      return;
+    }
+
     // Step 1: Ensure a session copy exists (creates one from template if needed)
     // Step 2: Load everything from the session — never from the template directly
     async function loadSession() {
@@ -342,6 +367,7 @@ export default function WorkoutSession() {
 
   // Fetch exercise history for smart weight suggestions after template loads
   useEffect(() => {
+    if (tutorialMode) return;
     if (!template || template.isRest) return;
     const realExercises = template.exercises.filter(e => !e.isSectionHeader);
     const exerciseNames = realExercises.map(e => e.name);
@@ -680,6 +706,16 @@ export default function WorkoutSession() {
   async function handleMarkComplete() {
     const newCompleted = !isCompleted;
     try {
+      if (tutorialMode) {
+        setIsCompleted(newCompleted);
+        if (newCompleted) {
+          if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+          clearTimerStorage();
+          navigator.vibrate?.([40, 30, 80]);
+          setShowSummary(true);
+        }
+        return;
+      }
       // Save the session first so users don't have to click save separately
       if (newCompleted) {
         await handleSave();
@@ -807,6 +843,7 @@ export default function WorkoutSession() {
   }
 
   async function handleSave() {
+    if (tutorialMode) { setPersisted(true); setSaved(true); setTimeout(() => setSaved(false), 2000); return; }
     if (!template || template.isRest) return;
     if (saving) throw new Error('Save already in progress');
 
@@ -1052,11 +1089,11 @@ export default function WorkoutSession() {
       )}
       {/* Back button */}
       <div className="px-4 pt-6">
-        <button onClick={() => guardedNavigate(() => navigate(-1))} className="flex items-center gap-1 text-wf-red text-sm font-medium mb-2 active:opacity-70">
+        <button onClick={() => tutorialMode ? navigate('/workouts') : guardedNavigate(() => navigate(-1))} className="flex items-center gap-1 text-wf-red text-sm font-medium mb-2 active:opacity-70">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>
-          Back
+          {tutorialMode ? 'Exit Tutorial' : 'Back'}
         </button>
       </div>
 
@@ -1214,6 +1251,17 @@ export default function WorkoutSession() {
             </svg>
             <span className="text-sm text-green-400 font-semibold">Workout Complete</span>
             <span className="text-xs text-green-400/60 ml-auto">Tap "Undo Completion" to edit</span>
+          </div>
+        </div>
+      )}
+
+      {/* Tutorial banner */}
+      {tutorialMode && (
+        <div className="px-4 mb-3">
+          <div className="glass-card rounded-xl p-3 border border-wf-cyan/20 bg-wf-cyan/5">
+            <p className="text-xs text-wf-cyan leading-relaxed">
+              This is a sample workout for the tutorial. Try tapping the checkmarks, entering weights and reps, and exploring the exercise cards. Nothing will be saved.
+            </p>
           </div>
         </div>
       )}
@@ -1470,7 +1518,7 @@ export default function WorkoutSession() {
           completedSets={completedSets}
           elapsed={elapsed}
           formatTime={formatTime}
-          onClose={() => { setShowSummary(false); navigate('/calendar'); }}
+          onClose={() => { setShowSummary(false); navigate(tutorialMode ? '/workouts' : '/calendar'); }}
         />
       )}
 

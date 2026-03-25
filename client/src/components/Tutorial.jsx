@@ -137,7 +137,8 @@ export default function Tutorial() {
             </button>
 
             <button
-              className="w-full glass-card rounded-2xl p-4 flex items-center gap-4 opacity-40 cursor-default"
+              onClick={() => { skipTutorial(); navigate('/tutorial/workout'); }}
+              className="w-full glass-card rounded-2xl p-4 flex items-center gap-4 active:scale-[0.98] transition-transform cursor-pointer border border-wf-orange/20"
             >
               <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-wf-orange/10">
                 <svg className="w-5 h-5 text-wf-orange" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -146,7 +147,7 @@ export default function Tutorial() {
               </div>
               <div className="flex-1 text-left">
                 <span className="text-sm font-semibold text-white">How to Track Your Workouts</span>
-                <p className="text-[11px] text-wf-gray-500 mt-0.5">Tutorial Coming Soon</p>
+                <p className="text-[11px] text-wf-gray-500 mt-0.5">Try a sample workout and learn the basics</p>
               </div>
               <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
