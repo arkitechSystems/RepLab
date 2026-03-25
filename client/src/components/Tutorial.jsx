@@ -146,7 +146,7 @@ export default function Tutorial() {
                 </svg>
               </div>
               <div className="flex-1 text-left">
-                <span className="text-sm font-semibold text-white">How to Track Your Workouts</span>
+                <span className="text-sm font-semibold text-white">How to Log Your Workouts</span>
                 <p className="text-[11px] text-wf-gray-500 mt-0.5">Try a sample workout and learn the basics</p>
               </div>
               <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

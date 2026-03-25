@@ -43,7 +43,8 @@ export default function WorkoutSession() {
   const [restFloatPos, setRestFloatPos] = useState({ x: 16, y: 140 });
   const [showSummary, setShowSummary] = useState(false);
   const [showDateConfirm, setShowDateConfirm] = useState(false);
-  const [tutorialTip, setTutorialTip] = useState(null); // 'timer' | null — tutorial workout tooltips
+  const [tutorialTip, setTutorialTip] = useState(null); // tutorial workout tooltips
+  const [tutorialRetry, setTutorialRetry] = useState(0); // force re-render to find DOM element
   const [pendingSwap, setPendingSwap] = useState(null); // { oldName, newName }
   const dragRef = useRef(null);
   const [elapsed, setElapsed] = useState(0);
@@ -1678,7 +1679,11 @@ export default function WorkoutSession() {
         const tip = tips[tutorialTip];
         if (!tip) return null;
         const el = document.querySelector(tip.target);
-        if (!el) return null;
+        if (!el) {
+          // Retry after a short delay if element isn't in DOM yet
+          setTimeout(() => setTutorialRetry((r) => r + 1), 200);
+          return null;
+        }
         // Scroll element to top of screen
         const rect = el.getBoundingClientRect();
         if (rect.top < 0 || rect.top > 150) {
