@@ -250,10 +250,15 @@ input[type="number"] {
 
 /* Sticky collapsing header */
 .sticky-header {
+  position: -webkit-sticky; /* Safari fallback */
   position: sticky;
   top: 0;
   z-index: 30;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Avoid 'transition: all' — Safari breaks sticky when top/position are transitioned */
+  transition: padding 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              background 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              backdrop-filter 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .sticky-header.collapsed {
   backdrop-filter: blur(20px);

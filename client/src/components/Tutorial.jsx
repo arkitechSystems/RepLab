@@ -119,7 +119,7 @@ export default function Tutorial() {
 
           <div className="space-y-3">
             <button
-              onClick={() => { skipTutorial(); navigate('/?tutorialPointer=create'); }}
+              onClick={() => updateTutorial({ screen: 'choice' })}
               className="w-full glass-card rounded-2xl p-4 flex items-center gap-4 active:scale-[0.98] transition-transform cursor-pointer border border-wf-cyan/20"
             >
               <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-wf-cyan/10">
@@ -205,9 +205,10 @@ export default function Tutorial() {
               </svg>
             </button>
 
-            {/* Create My Own Workout — disabled for now */}
+            {/* Create My Own Workout */}
             <button
-              className="w-full glass-card rounded-2xl p-4 flex items-center gap-4 opacity-40 cursor-default"
+              onClick={() => { skipTutorial(); navigate('/?tutorialPointer=create'); }}
+              className="w-full glass-card rounded-2xl p-4 flex items-center gap-4 active:scale-[0.98] transition-transform cursor-pointer border border-wf-red/20"
             >
               <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-wf-red/10">
                 <svg className="w-5 h-5 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -216,7 +217,7 @@ export default function Tutorial() {
               </div>
               <div className="flex-1 text-left">
                 <span className="text-sm font-semibold text-white">Create My Own Workout</span>
-                <p className="text-[11px] text-wf-gray-500 mt-0.5">Tutorial coming soon</p>
+                <p className="text-[11px] text-wf-gray-500 mt-0.5">Build a workout tailored to your goals</p>
               </div>
               <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
@@ -407,6 +408,14 @@ export default function Tutorial() {
 
           {/* Action buttons */}
           <div className="flex items-center justify-center gap-3 mt-4">
+            {tutorial.stepIndex > 0 && (
+              <button
+                onClick={() => goToStepIndex(tutorial.stepIndex - 1)}
+                className="text-sm font-semibold text-white/70 bg-white/10 hover:bg-white/15 active:bg-white/20 transition-colors py-2 px-5 rounded-xl border border-white/10"
+              >
+                Back
+              </button>
+            )}
             {!current.waitFor && (
               <button
                 onClick={advanceTutorial}

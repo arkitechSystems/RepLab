@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { startOfWeek, addDays, format, isToday, isSameWeek } from 'date-fns';
+import { startOfWeek, startOfMonth, endOfMonth, addDays, format, isToday, isSameWeek, isSameMonth, isSameDay } from 'date-fns';
 import { api } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { getWorkoutColor } from '../utils/workoutColors';
@@ -18,7 +18,9 @@ export default function Calendar() {
   const [completedSessions, setCompletedSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
+  const [viewMode, setViewMode] = useState('week'); // 'week' | 'month'
   const [weekOffset, setWeekOffset] = useState(0);
+  const [monthOffset, setMonthOffset] = useState(0);
   const [editingDay, setEditingDay] = useState(null); // date object of day being edited
   const [expandedProgram, setExpandedProgram] = useState(null);
   const [pickerSearch, setPickerSearch] = useState('');
@@ -55,6 +57,15 @@ export default function Calendar() {
   const weekStart = addDays(startOfWeek(today, { weekStartsOn: 0 }), weekOffset * 7);
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const isCurrentWeek = isSameWeek(weekStart, today, { weekStartsOn: 0 });
+
+  // Month view calculations
+  const monthDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
+  const monthStart = startOfMonth(monthDate);
+  const monthEnd = endOfMonth(monthDate);
+  const monthGridStart = startOfWeek(monthStart, { weekStartsOn: 0 });
+  const isCurrentMonth = isSameMonth(monthDate, today);
+  // Build 6-week grid (42 days) to cover any month layout
+  const monthGridDays = Array.from({ length: 42 }, (_, i) => addDays(monthGridStart, i));
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
@@ -296,27 +307,30 @@ export default function Calendar() {
     <div>
       <StickyHeader
         title="Schedule"
-        subtitle={`Week of ${format(weekStart, 'MMM d')} — ${format(addDays(weekStart, 6), 'MMM d, yyyy')}`}
+        subtitle={viewMode === 'week'
+          ? `Week of ${format(weekStart, 'MMM d')} — ${format(addDays(weekStart, 6), 'MMM d, yyyy')}`
+          : format(monthDate, 'MMMM yyyy')
+        }
       >
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setWeekOffset(w => w - 1)}
+            onClick={() => viewMode === 'week' ? setWeekOffset(w => w - 1) : setMonthOffset(m => m - 1)}
             className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center active:scale-90 transition-transform"
           >
             <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
             </svg>
           </button>
-          {!isCurrentWeek && (
+          {((viewMode === 'week' && !isCurrentWeek) || (viewMode === 'month' && !isCurrentMonth)) && (
             <button
-              onClick={() => setWeekOffset(0)}
+              onClick={() => viewMode === 'week' ? setWeekOffset(0) : setMonthOffset(0)}
               className="px-3 h-9 rounded-full bg-white/10 text-xs font-semibold text-white active:scale-90 transition-transform"
             >
               Today
             </button>
           )}
           <button
-            onClick={() => setWeekOffset(w => w + 1)}
+            onClick={() => viewMode === 'week' ? setWeekOffset(w => w + 1) : setMonthOffset(m => m + 1)}
             className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center active:scale-90 transition-transform"
           >
             <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -326,7 +340,96 @@ export default function Calendar() {
         </div>
       </StickyHeader>
 
-      <div className="px-4">
+      {/* View Mode Toggle */}
+      <div className="px-4 mb-3">
+        <div className="flex rounded-xl bg-white/5 p-1">
+          <button
+            onClick={() => setViewMode('week')}
+            className={`flex-1 text-xs font-semibold py-2 rounded-lg transition-all ${
+              viewMode === 'week' ? 'bg-wf-red text-white' : 'text-wf-gray-400'
+            }`}
+          >
+            Weekly
+          </button>
+          <button
+            onClick={() => setViewMode('month')}
+            className={`flex-1 text-xs font-semibold py-2 rounded-lg transition-all ${
+              viewMode === 'month' ? 'bg-wf-red text-white' : 'text-wf-gray-400'
+            }`}
+          >
+            Monthly
+          </button>
+        </div>
+      </div>
+
+      {/* Monthly View */}
+      {viewMode === 'month' && !loading && !loadError && (
+        <div className="px-4 pb-4">
+          {/* Day name headers */}
+          <div className="grid grid-cols-7 gap-px mb-1">
+            {DAY_NAMES.map((d) => (
+              <div key={d} className="text-center text-[10px] text-wf-gray-500 uppercase tracking-wider font-medium py-1">{d}</div>
+            ))}
+          </div>
+          {/* Calendar grid */}
+          <div className="grid grid-cols-7 gap-px">
+            {monthGridDays.map((date) => {
+              const inMonth = isSameMonth(date, monthDate);
+              const dayIsToday = isToday(date);
+              const workout = getWorkoutForDay(date);
+              const dayCompleted = isDayCompleted(date);
+              const hasWorkout = workout && !workout.isRest && workout.templateId;
+              const color = getWorkoutColor(workout?.templateName);
+              const dateStr = format(date, 'yyyy-MM-dd');
+
+              return (
+                <div
+                  key={dateStr}
+                  onClick={() => {
+                    if (hasWorkout) {
+                      navigate(`/session/${workout.templateId}/${dateStr}`);
+                    }
+                  }}
+                  className={`relative min-h-[72px] rounded-lg p-1 transition-all ${
+                    !inMonth ? 'opacity-20' : ''
+                  } ${hasWorkout ? 'cursor-pointer active:scale-[0.97]' : ''} ${
+                    dayIsToday ? 'ring-2 ring-wf-red' : ''
+                  } ${dayCompleted ? 'bg-green-500/10' : 'bg-white/[0.02]'}`}
+                >
+                  {/* Date number */}
+                  <div className={`text-center text-xs font-bold mb-0.5 ${
+                    dayIsToday ? 'text-wf-red' : dayCompleted ? 'text-green-400' : inMonth ? 'text-white' : 'text-wf-gray-600'
+                  }`}>
+                    {format(date, 'd')}
+                  </div>
+                  {/* Workout name */}
+                  {hasWorkout && inMonth && (
+                    <div className={`text-[8px] leading-tight font-medium text-center truncate px-0.5 ${
+                      dayCompleted ? 'text-green-400' : color.text || 'text-wf-gray-400'
+                    }`}>
+                      {workout.templateName}
+                    </div>
+                  )}
+                  {workout?.isRest && inMonth && (
+                    <div className="text-[8px] leading-tight font-medium text-center text-wf-gray-500 px-0.5">
+                      Rest
+                    </div>
+                  )}
+                  {/* Color dot indicator */}
+                  {hasWorkout && inMonth && (
+                    <div className="flex justify-center mt-0.5">
+                      <div className={`w-1.5 h-1.5 rounded-full ${dayCompleted ? 'bg-green-500' : color.dot}`} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Weekly View */}
+      <div className={`px-4 ${viewMode === 'month' ? 'hidden' : ''}`}>
         {tutorialDone && (
           <div className="mb-5 rounded-2xl bg-gradient-to-br from-wf-red/20 to-wf-cyan/10 border border-wf-red/30 p-5 fade-slide-up">
             <div className="flex items-start gap-3">

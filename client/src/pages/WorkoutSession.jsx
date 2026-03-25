@@ -61,6 +61,8 @@ export default function WorkoutSession() {
   const [pinRestTimer, setPinRestTimer] = useState(true);
   const autoSaveRef = useRef(null);
   const autoSaveNeeded = useRef(false);
+  const structureSaveRef = useRef(null);
+  const structureSaveNeeded = useRef(false);
 
   // Block scrolling when tutorial tip is active (native listener for non-passive)
   const tutorialOverlayRef = useRef(null);
@@ -109,11 +111,24 @@ export default function WorkoutSession() {
         return;
       }
       console.log('[Tutorial] Found element:', selector, 'rect:', el.getBoundingClientRect());
-      // Scroll page so element is near top — use scrollTo for reliability
-      const elRect = el.getBoundingClientRect();
-      const scrollTarget = window.scrollY + elRect.top - 40;
-      if (Math.abs(elRect.top - 40) > 10) {
-        window.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'instant' });
+      // If the element is inside a sticky header, scroll to page top so the header
+      // is in its expanded (non-collapsed) state — otherwise the measured rect drifts.
+      const isInStickyHeader = !!el.closest('.sticky-header');
+      if (isInStickyHeader) {
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      } else {
+        // For tall elements (like exercise cards), scroll so the top is visible
+        // just below the sticky header rather than centering (which hides the top).
+        // For small elements, centering works fine.
+        const elRect = el.getBoundingClientRect();
+        if (elRect.height > window.innerHeight * 0.3) {
+          const stickyHeader = document.querySelector('.sticky-header');
+          const headerHeight = stickyHeader ? stickyHeader.getBoundingClientRect().height : 0;
+          const scrollTarget = window.scrollY + elRect.top - headerHeight - 16;
+          window.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'instant' });
+        } else {
+          el.scrollIntoView({ behavior: 'instant', block: 'center' });
+        }
       }
       // Measure after scroll + two animation frames
       requestAnimationFrame(() => {
@@ -154,6 +169,20 @@ export default function WorkoutSession() {
     return () => { if (autoSaveRef.current) clearTimeout(autoSaveRef.current); };
   }, [completedSets]);
 
+  // Auto-save after structural changes (exercise/set add/delete/swap/move) — debounced 1.5s
+  useEffect(() => {
+    if (tutorialMode) return;
+    if (!structureSaveNeeded.current) return;
+    structureSaveNeeded.current = false;
+    if (structureSaveRef.current) clearTimeout(structureSaveRef.current);
+    structureSaveRef.current = setTimeout(() => {
+      if (!saving && template && !template.isRest) {
+        handleSave().catch(console.error);
+      }
+    }, 1500);
+    return () => { if (structureSaveRef.current) clearTimeout(structureSaveRef.current); };
+  }, [template]);
+
   const MAX_TIMER_SECS = 14400; // 4 hours
   const timerStorageKey = `wf-timer-${templateId}-${date}`;
 
@@ -190,8 +219,9 @@ export default function WorkoutSession() {
 
   const handleBeginWorkout = useCallback(() => {
     if (tutorialMode) {
+      setTutorialTip(null);
       startTimer();
-      setTimeout(() => setTutorialTip('timer'), 500);
+      setTimeout(() => setTutorialTip('timer'), 600);
       return;
     }
     const sessionDate = parseISO(date);
@@ -541,6 +571,7 @@ export default function WorkoutSession() {
 
   function handleAddSet(exerciseName, afterIdx) {
     setPersisted(false);
+    structureSaveNeeded.current = true;
     setTemplate((prev) => {
       const updated = { ...prev, exercises: prev.exercises.map((ex) => {
         if (ex.name !== exerciseName) return ex;
@@ -591,6 +622,7 @@ export default function WorkoutSession() {
 
   function handleDeleteSet(exerciseName, setIdx) {
     setPersisted(false);
+    structureSaveNeeded.current = true;
     setTemplate((prev) => ({
       ...prev,
       exercises: prev.exercises.map((ex) => {
@@ -642,6 +674,7 @@ export default function WorkoutSession() {
   function handleAddExercise(name, afterIndex) {
     if (!name?.trim()) return;
     setPersisted(false);
+    structureSaveNeeded.current = true;
     const exerciseName = name.trim();
     // Don't add if exercise already exists
     if (template.exercises.some((ex) => ex.name === exerciseName)) return;
@@ -670,6 +703,7 @@ export default function WorkoutSession() {
   function handleDeleteExercise(exerciseName) {
     if (!confirm(`Remove "${exerciseName}" from this workout?`)) return;
     setPersisted(false);
+    structureSaveNeeded.current = true;
     setTemplate((prev) => ({
       ...prev,
       exercises: prev.exercises.filter((ex) => ex.name !== exerciseName),
@@ -697,6 +731,7 @@ export default function WorkoutSession() {
 
   function handleMoveExercise(fromIdx, toIdx) {
     setPersisted(false);
+    structureSaveNeeded.current = true;
     const movingName = template.exercises[fromIdx]?.name;
     setTemplate((prev) => {
       const exercises = [...prev.exercises];
@@ -718,6 +753,7 @@ export default function WorkoutSession() {
 
   function performSwap(oldName, newName) {
     setPersisted(false);
+    structureSaveNeeded.current = true;
     // Get the number of sets from the old exercise
     const oldExercise = template.exercises.find((ex) => ex.name === oldName);
     const numSets = oldExercise?.sets?.length || 0;
@@ -1037,6 +1073,7 @@ export default function WorkoutSession() {
   );
   const sessionDirty = hasEntryData && !persisted;
   const inputsLocked = !timerStarted || isCompleted;
+  const structureLocked = isCompleted; // exercise/set editing allowed before Begin Workout
   const { guardedNavigate, UnsavedModal } = useUnsavedGuard({
     isDirty: sessionDirty,
     onSave: handleSave,
@@ -1322,9 +1359,12 @@ export default function WorkoutSession() {
         <div className="px-4 mb-3">
           <div className="rounded-xl bg-wf-gray-800/50 border border-white/10 px-4 py-3 flex items-center gap-2">
             <svg className="w-5 h-5 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
             </svg>
-            <span className="text-sm text-wf-gray-400 font-semibold">Tap "Begin Workout" to start logging</span>
+            <div className="min-w-0">
+              <span className="text-sm text-wf-gray-400 font-semibold block">Edit your workout, then tap "Begin Workout" to start logging</span>
+              <span className="text-xs text-wf-gray-500">Swap exercises, add/remove sets, reorder — then begin when ready</span>
+            </div>
           </div>
         </div>
       )}
@@ -1377,19 +1417,19 @@ export default function WorkoutSession() {
               exercise={exercise}
               entries={entries[exercise.name]}
               pbs={pbs}
-              readOnly={inputsLocked}
+              readOnly={structureLocked}
               onChange={inputsLocked ? undefined : handleChange}
               onBlur={inputsLocked ? undefined : handleBlur}
               completedSets={completedSets}
               autoFilled={autoFilled}
               onToggleComplete={inputsLocked ? undefined : handleToggleComplete}
-              onAddSet={inputsLocked ? undefined : handleAddSet}
-              onDeleteSet={inputsLocked ? undefined : handleDeleteSet}
-              onSwapExercise={inputsLocked ? undefined : handleSwapExercise}
-              onAddExercise={inputsLocked ? undefined : (name) => handleAddExercise(name, idx)}
-              onDeleteExercise={inputsLocked ? undefined : () => handleDeleteExercise(exercise.name)}
-              onMoveUp={inputsLocked ? undefined : (idx > 0 ? () => handleMoveExercise(idx, idx - 1) : undefined)}
-              onMoveDown={inputsLocked ? undefined : (idx < template.exercises.length - 1 ? () => handleMoveExercise(idx, idx + 1) : undefined)}
+              onAddSet={structureLocked ? undefined : handleAddSet}
+              onDeleteSet={structureLocked ? undefined : handleDeleteSet}
+              onSwapExercise={structureLocked ? undefined : handleSwapExercise}
+              onAddExercise={structureLocked ? undefined : (name) => handleAddExercise(name, idx)}
+              onDeleteExercise={structureLocked ? undefined : () => handleDeleteExercise(exercise.name)}
+              onMoveUp={structureLocked ? undefined : (idx > 0 ? () => handleMoveExercise(idx, idx - 1) : undefined)}
+              onMoveDown={structureLocked ? undefined : (idx < template.exercises.length - 1 ? () => handleMoveExercise(idx, idx + 1) : undefined)}
               note={notes[exercise.name] || ''}
               onNoteChange={inputsLocked ? undefined : handleNoteChange}
               weightSuggestion={inputsLocked ? undefined : weightSuggestions[exercise.name]}
@@ -1408,7 +1448,7 @@ export default function WorkoutSession() {
         ))}
 
         {/* Add Exercise Button */}
-        {!inputsLocked && (
+        {!structureLocked && (
           <button
             onClick={() => { setShowAddExercise(true); setAddExerciseSearch(''); }}
             className="w-full border border-dashed border-white/15 rounded-xl py-3.5 text-wf-gray-400 text-sm font-medium active:border-wf-red active:text-wf-red transition-colors flex items-center justify-center gap-2 mb-3"
@@ -1421,7 +1461,7 @@ export default function WorkoutSession() {
         )}
 
         {/* Quick Add Buttons */}
-        {!inputsLocked && <div className="flex gap-2 mb-3">
+        {!structureLocked && <div className="flex gap-2 mb-3">
           <button className="flex-1 glass-card rounded-xl py-3 text-wf-gray-400 text-xs font-semibold active:text-wf-red active:border-wf-red/30 transition-colors flex items-center justify-center gap-1.5">
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
@@ -1675,15 +1715,17 @@ export default function WorkoutSession() {
           'begin-workout': {
             target: '[data-tutorial="begin-workout-btn"]',
             title: 'Begin Your Workout',
-            description: <>Tap <span className="text-white font-semibold">Begin Workout</span> to start your session. This kicks off the workout timer and unlocks all the exercise controls so you can log your sets.</>,
+            description: <>Tap <span className="text-white font-semibold">Begin Workout</span> above to start your session. This kicks off the workout timer and unlocks all the exercise controls so you can log your sets.</>,
+            prev: null,
             next: null,
             position: 'below',
-            action: 'begin-workout',
+            interactive: true, // allow clicking the actual button
           },
           timer: {
             target: '[data-tutorial="workout-timer"]',
             title: 'Workout Timer',
             description: <>This timer tracks your total workout time. To the far right, use the <span className="text-white font-semibold">pop-out</span> button to float the timer on screen as you scroll, or the <span className="text-white font-semibold">lock toggle</span> to keep the timer visible as you scroll down.</>,
+            prev: null, // can't go back to begin-workout (already tapped)
             next: 'rest',
             position: 'below',
           },
@@ -1691,6 +1733,7 @@ export default function WorkoutSession() {
             target: '[data-tutorial="rest-timer"]',
             title: 'Rest Timer',
             description: <>Tap <span className="text-white font-semibold">Start Rest</span> between sets to begin a countdown. Use the <span className="text-white font-semibold">dropdown</span> to set your rest duration (15s to 3 min). The <span className="text-white font-semibold">pop-out</span> button floats the timer as you scroll, and the <span className="text-white font-semibold">lock toggle</span> keeps it pinned when the header collapses. You'll hear an audio cue when rest is over.</>,
+            prev: 'timer',
             next: 'exercise-card',
             position: 'below',
           },
@@ -1698,6 +1741,7 @@ export default function WorkoutSession() {
             target: '[data-tutorial="exercise-card"]',
             title: 'Exercise Card',
             description: <>Each exercise in your workout has its own card. The card contains everything you need — the exercise name, set controls, your logged sets, and notes. Let's walk through each part.</>,
+            prev: 'rest',
             next: 'exercise-header',
             position: 'below',
           },
@@ -1705,6 +1749,7 @@ export default function WorkoutSession() {
             target: '[data-tutorial="move-buttons"]',
             title: 'Reorder Exercises',
             description: <>Use the <span className="text-white font-semibold">up</span> and <span className="text-white font-semibold">down arrows</span> to move this exercise higher or lower in your workout order.</>,
+            prev: 'exercise-card',
             next: 'swap-exercise',
             position: 'below',
           },
@@ -1712,6 +1757,7 @@ export default function WorkoutSession() {
             target: '[data-tutorial="swap-button"]',
             title: 'Swap Exercise',
             description: <>Tap this button to <span className="text-white font-semibold">substitute</span> the current exercise with a different one. You can search the exercise library or type a custom exercise name.</>,
+            prev: 'exercise-header',
             next: 'add-delete-exercise',
             position: 'below',
           },
@@ -1719,6 +1765,7 @@ export default function WorkoutSession() {
             target: '[data-tutorial="add-delete-buttons"]',
             title: 'Add & Remove Exercises',
             description: <>The <span className="text-white font-semibold">plus button</span> adds a new exercise below this one. The <span className="text-white font-semibold">X button</span> removes this exercise from the workout entirely. Tap the exercise name to view a demo video.</>,
+            prev: 'swap-exercise',
             next: 'set-controls',
             position: 'below',
           },
@@ -1726,6 +1773,7 @@ export default function WorkoutSession() {
             target: '[data-tutorial="set-controls"]',
             title: 'Add & Remove Sets',
             description: <>Tap <span className="text-white font-semibold">Add Set</span> to add another set to this exercise. Tap <span className="text-white font-semibold">Remove</span> to delete the last set. Long-press any set row to delete a specific set.</>,
+            prev: 'add-delete-exercise',
             next: 'set-row',
             position: 'below',
           },
@@ -1733,6 +1781,7 @@ export default function WorkoutSession() {
             target: '[data-tutorial="set-row"]',
             title: 'Tracking a Set',
             description: <>Each row is one set. The <span className="text-white font-semibold">circle on the left</span> marks the set as complete. <span className="text-white font-semibold">Type</span> shows the set type (warm-up, regular, drop set, etc.) — tap to change it. <span className="text-white font-semibold">Weight</span> is where you enter the weight used. <span className="text-white font-semibold">Goal</span> shows the target reps. <span className="text-white font-semibold">Actual</span> is where you enter the reps you completed.</>,
+            prev: 'set-controls',
             next: 'exercise-notes',
             position: 'below',
           },
@@ -1740,6 +1789,7 @@ export default function WorkoutSession() {
             target: '[data-tutorial="exercise-notes"]',
             title: 'Exercise Notes',
             description: <>Tap here to add notes for this exercise — things like form cues, how the set felt, or adjustments for next time.</>,
+            prev: 'set-row',
             next: 'mark-complete',
             position: 'below',
           },
@@ -1747,6 +1797,7 @@ export default function WorkoutSession() {
             target: '[data-tutorial="mark-complete"]',
             title: 'Complete Your Workout',
             description: <>When you're done, tap <span className="text-white font-semibold">Mark Complete</span> to finish your workout. You'll see a summary of everything you logged — exercises, sets, reps, and total workout time. Tap it now to see an example!</>,
+            prev: 'exercise-notes',
             next: null,
             position: 'below',
             action: 'autofill-and-complete',
@@ -1757,7 +1808,15 @@ export default function WorkoutSession() {
         const r = tutorialRectRef.current;
         const pad = 8;
         return (
-          <div ref={tutorialOverlayRef} className="fixed inset-0 z-[100]" style={{ pointerEvents: 'auto', touchAction: 'none', overscrollBehavior: 'none' }}>
+          <div ref={tutorialOverlayRef} className="fixed inset-0 z-[100]" style={{ pointerEvents: 'none' }}>
+            {/* Click blocker with hole punched for interactive tips */}
+            <div className="absolute inset-0" style={{
+              pointerEvents: 'auto',
+              touchAction: 'none',
+              ...(tip.interactive ? {
+                clipPath: `path(evenodd, 'M 0 0 L ${window.innerWidth} 0 L ${window.innerWidth} ${window.innerHeight} L 0 ${window.innerHeight} Z M ${r.left - pad} ${r.top - pad} L ${r.left - pad} ${r.top + r.height + pad} L ${r.left + r.width + pad} ${r.top + r.height + pad} L ${r.left + r.width + pad} ${r.top - pad} Z')`
+              } : {}),
+            }} />
             <svg className="absolute inset-0 w-full h-full" style={{ pointerEvents: 'none' }}>
               <defs>
                 <mask id="tutorial-tip-mask">
@@ -1773,17 +1832,22 @@ export default function WorkoutSession() {
             />
             <div
               className="absolute w-[calc(100%-48px)] max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
-              style={{ top: r.bottom + pad + 16, left: '50%', transform: 'translateX(-50%)', pointerEvents: 'auto' }}
+              style={{ top: Math.min(r.bottom + pad + 16, window.innerHeight * 0.45), left: '50%', transform: 'translateX(-50%)', pointerEvents: 'auto' }}
             >
               <h3 className="text-base font-bold text-white mb-1">{tip.title}</h3>
               <p className="text-sm text-wf-gray-400 leading-relaxed">{tip.description}</p>
               <div className="flex items-center justify-center gap-3 mt-4">
-                <button
+                {tip.prev && (
+                  <button
+                    onClick={() => setTutorialTip(tip.prev)}
+                    className="text-sm font-semibold text-white/70 bg-white/10 hover:bg-white/15 active:bg-white/20 transition-colors py-2 px-5 rounded-xl border border-white/10"
+                  >
+                    Back
+                  </button>
+                )}
+                {!tip.interactive && <button
                   onClick={() => {
-                    if (tip.action === 'begin-workout') {
-                      setTutorialTip(null);
-                      handleBeginWorkout();
-                    } else if (tip.action === 'autofill-and-complete') {
+                    if (tip.action === 'autofill-and-complete') {
                       setEntries(() => {
                         const filled = {};
                         for (const ex of template.exercises) {
@@ -1808,8 +1872,8 @@ export default function WorkoutSession() {
                   }}
                   className="text-sm font-semibold text-white btn-gradient py-2 px-5 rounded-xl active:scale-[0.97] transition-transform"
                 >
-                  {tip.action === 'begin-workout' ? 'Begin Workout' : tip.action === 'autofill-and-complete' ? 'Mark Complete' : tip.next ? 'Next' : 'Got it'}
-                </button>
+                  {tip.action === 'autofill-and-complete' ? 'Mark Complete' : tip.next ? 'Next' : 'Got it'}
+                </button>}
                 <button
                   onClick={() => { setTutorialTip(null); navigate('/workouts'); }}
                   className="text-sm font-semibold text-white/70 bg-white/10 hover:bg-white/15 active:bg-white/20 transition-colors py-2 px-5 rounded-xl border border-white/10"

@@ -21,7 +21,7 @@ export default function Layout() {
           W<span className="text-wf-red">F</span>
         </span>
       </div>
-      <main className="flex-1 pb-20 relative z-10">
+      <main className="grow shrink-0 basis-auto pb-20 relative z-10">
         <Outlet />
       </main>
       <BottomNav />

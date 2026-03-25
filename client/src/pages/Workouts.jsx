@@ -920,12 +920,12 @@ export default function Workouts() {
               >
                 <div className="w-10 h-10 rounded-xl btn-gradient flex items-center justify-center shrink-0">
                   <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L10.5 21.75 12 13.5H3.75z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 6v1.5m0 9V18m0-10.5h-.75a2.25 2.25 0 00-2.25 2.25v3a2.25 2.25 0 002.25 2.25h.75m0-7.5h.75a2.25 2.25 0 012.25 2.25v3a2.25 2.25 0 01-2.25 2.25H6.75m10.5-7.5v-1.5m0 10.5V18m0-7.5h.75a2.25 2.25 0 012.25 2.25v3a2.25 2.25 0 01-2.25 2.25h-.75m0-7.5h-.75a2.25 2.25 0 00-2.25 2.25v3a2.25 2.25 0 002.25 2.25h.75M3 12h18" />
                   </svg>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-semibold text-white">Quick Create</h4>
-                  <p className="text-xs text-wf-gray-400 mt-0.5">Build a standalone workout fast</p>
+                  <h4 className="text-sm font-semibold text-white">Create a Workout</h4>
+                  <p className="text-xs text-wf-gray-400 mt-0.5">Build a standalone workout</p>
                 </div>
                 <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
@@ -944,24 +944,6 @@ export default function Workouts() {
                 <div className="flex-1 min-w-0">
                   <h4 className="text-sm font-semibold text-white">New Program</h4>
                   <p className="text-xs text-wf-gray-400 mt-0.5">Create a group of workouts</p>
-                </div>
-                <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                </svg>
-              </button>
-              <div className="border-t border-white/5 mx-2" />
-              <button
-                onClick={() => { setShowCreateMenu(false); navigate('/workouts/create'); }}
-                className="w-full text-left rounded-xl p-3.5 flex items-center gap-3.5 active:scale-[0.98] transition-all hover:bg-white/5 active:bg-white/10"
-              >
-                <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center shrink-0">
-                  <svg className="w-5 h-5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                  </svg>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-semibold text-white">Add to Program</h4>
-                  <p className="text-xs text-wf-gray-400 mt-0.5">Add a workout to an existing program</p>
                 </div>
                 <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
