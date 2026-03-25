@@ -15,8 +15,11 @@ export const PHASE_1A = [
     title: 'Pick a Program',
     description: 'Tap a program to preview its workouts and see what each day looks like.',
     position: 'top',
-    waitFor: 'program-selected',
+    waitFor: ['program-selected', 'begin-program-tapped'],
     allowInteraction: true,
+    branch: {
+      'begin-program-tapped': 'begin-modal',
+    },
   },
   {
     type: 'spotlight',

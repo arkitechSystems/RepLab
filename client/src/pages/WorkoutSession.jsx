@@ -827,11 +827,36 @@ export default function WorkoutSession() {
     const newCompleted = !isCompleted;
     try {
       if (tutorialMode) {
-        setIsCompleted(newCompleted);
         if (newCompleted) {
+          // Autofill entries with varied reps so summary shows green/red progress
+          const repVariations = [0, 1, 2, -1, -2, 0, 1, -1, 2, -2, 0, 1];
+          let variIdx = 0;
+          const filled = {};
+          for (const ex of template.exercises) {
+            filled[ex.name] = ex.sets.map((s) => {
+              const planned = s.plannedReps || 0;
+              const delta = repVariations[variIdx++ % repVariations.length];
+              const actual = Math.max(0, planned + delta);
+              return {
+                weight: s.suggestedWeight || '',
+                reps: actual,
+                setType: s.setType || ex.setType || 'straight',
+              };
+            });
+          }
+          setEntries(filled);
+          const allKeys = new Set();
+          template.exercises.forEach((ex) => {
+            ex.sets.forEach((_, i) => allKeys.add(`${ex.name}-${i}`));
+          });
+          setCompletedSets(allKeys);
           if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
           clearTimerStorage();
           navigator.vibrate?.([40, 30, 80]);
+          setTutorialTip(null);
+        }
+        setIsCompleted(newCompleted);
+        if (newCompleted) {
           setShowSummary(true);
         }
         return;
@@ -1642,7 +1667,7 @@ export default function WorkoutSession() {
           template={template}
           entries={entries}
           completedSets={completedSets}
-          elapsed={elapsed}
+          elapsed={tutorialMode ? 2717 : elapsed}
           formatTime={formatTime}
           onClose={() => { setShowSummary(false); navigate(tutorialMode ? '/workouts' : '/calendar'); }}
         />
@@ -1796,11 +1821,11 @@ export default function WorkoutSession() {
           'mark-complete': {
             target: '[data-tutorial="mark-complete"]',
             title: 'Complete Your Workout',
-            description: <>When you're done, tap <span className="text-white font-semibold">Mark Complete</span> to finish your workout. You'll see a summary of everything you logged — exercises, sets, reps, and total workout time. Tap it now to see an example!</>,
+            description: <>When you're done, tap the <span className="text-white font-semibold">Mark Complete</span> button below to finish your workout. You'll see a summary of everything you logged — exercises, sets, reps, and total workout time.</>,
             prev: 'exercise-notes',
             next: null,
-            position: 'below',
-            action: 'autofill-and-complete',
+            position: 'above',
+            interactive: true,
           },
         };
         const tip = tips[tutorialTip];
@@ -1832,7 +1857,13 @@ export default function WorkoutSession() {
             />
             <div
               className="absolute w-[calc(100%-48px)] max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
-              style={{ top: Math.min(r.bottom + pad + 16, window.innerHeight * 0.45), left: '50%', transform: 'translateX(-50%)', pointerEvents: 'auto' }}
+              style={{
+                ...(tip.position === 'above'
+                  ? { bottom: window.innerHeight - r.top + pad + 16, left: '50%', transform: 'translateX(-50%)' }
+                  : { top: Math.min(r.bottom + pad + 16, window.innerHeight * 0.45), left: '50%', transform: 'translateX(-50%)' }
+                ),
+                pointerEvents: 'auto',
+              }}
             >
               <h3 className="text-base font-bold text-white mb-1">{tip.title}</h3>
               <p className="text-sm text-wf-gray-400 leading-relaxed">{tip.description}</p>
@@ -1846,33 +1877,10 @@ export default function WorkoutSession() {
                   </button>
                 )}
                 {!tip.interactive && <button
-                  onClick={() => {
-                    if (tip.action === 'autofill-and-complete') {
-                      setEntries(() => {
-                        const filled = {};
-                        for (const ex of template.exercises) {
-                          filled[ex.name] = ex.sets.map((s) => ({
-                            weight: s.suggestedWeight || '',
-                            reps: s.plannedReps || '',
-                            setType: s.setType || ex.setType || 'straight',
-                          }));
-                        }
-                        return filled;
-                      });
-                      const allKeys = new Set();
-                      template.exercises.forEach((ex) => {
-                        ex.sets.forEach((_, i) => allKeys.add(`${ex.name}-${i}`));
-                      });
-                      setCompletedSets(allKeys);
-                      setTutorialTip(null);
-                      setTimeout(() => handleMarkComplete(), 300);
-                    } else {
-                      setTutorialTip(tip.next);
-                    }
-                  }}
+                  onClick={() => setTutorialTip(tip.next)}
                   className="text-sm font-semibold text-white btn-gradient py-2 px-5 rounded-xl active:scale-[0.97] transition-transform"
                 >
-                  {tip.action === 'autofill-and-complete' ? 'Mark Complete' : tip.next ? 'Next' : 'Got it'}
+                  {tip.next ? 'Next' : 'Got it'}
                 </button>}
                 <button
                   onClick={() => { setTutorialTip(null); navigate('/workouts'); }}
