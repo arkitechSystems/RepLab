@@ -121,7 +121,7 @@ export default function Workouts() {
   const [tutorialPointer, setTutorialPointer] = useState(null); // 'create' | null
   const [pointerRect, setPointerRect] = useState(null);
 
-  // Check for tutorial pointer in URL on mount
+  // Check for tutorial pointer in URL
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get('tutorialPointer') === 'create') {
@@ -129,7 +129,7 @@ export default function Workouts() {
       // Clean up URL
       navigate('/workouts', { replace: true });
     }
-  }, []);
+  }, [location.search]);
 
   // Measure pointer target after loading completes
   useEffect(() => {
