@@ -231,6 +231,7 @@ export default function WorkoutSession() {
       }
       setEntries(initial);
       setLoading(false);
+      setTimeout(() => setTutorialTip('begin-workout'), 500);
       return;
     }
 
@@ -1125,6 +1126,7 @@ export default function WorkoutSession() {
             </div>
             {!timerStarted ? (
               <button
+                data-tutorial="begin-workout-btn"
                 onClick={handleBeginWorkout}
                 className="w-full bg-wf-red/90 hover:bg-wf-red text-white text-xs font-semibold px-4 py-2 rounded-lg active:scale-[0.98] transition-all mt-1"
               >
@@ -1593,6 +1595,14 @@ export default function WorkoutSession() {
       {/* Tutorial workout tip overlays */}
       {tutorialTip && (() => {
         const tips = {
+          'begin-workout': {
+            target: '[data-tutorial="begin-workout-btn"]',
+            title: 'Begin Your Workout',
+            description: <>Tap <span className="text-white font-semibold">Begin Workout</span> to start your session. This kicks off the workout timer and unlocks all the exercise controls so you can log your sets.</>,
+            next: null,
+            position: 'below',
+            action: 'begin-workout',
+          },
           timer: {
             target: '[data-tutorial="workout-timer"]',
             title: 'Workout Timer',
@@ -1685,7 +1695,10 @@ export default function WorkoutSession() {
               <div className="flex justify-center mt-4">
                 <button
                   onClick={() => {
-                    if (tip.action === 'autofill-and-complete') {
+                    if (tip.action === 'begin-workout') {
+                      setTutorialTip(null);
+                      handleBeginWorkout();
+                    } else if (tip.action === 'autofill-and-complete') {
                       // Autofill all entries with the suggested weights and reps
                       setEntries((prev) => {
                         const filled = {};
@@ -1713,7 +1726,7 @@ export default function WorkoutSession() {
                   }}
                   className="text-sm font-semibold text-white btn-gradient py-2 px-5 rounded-xl active:scale-[0.97] transition-transform"
                 >
-                  {tip.action === 'autofill-and-complete' ? 'Mark Complete' : tip.next ? 'Next' : 'Got it'}
+                  {tip.action === 'begin-workout' ? 'Begin Workout' : tip.action === 'autofill-and-complete' ? 'Mark Complete' : tip.next ? 'Next' : 'Got it'}
                 </button>
               </div>
             </div>
