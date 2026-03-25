@@ -919,8 +919,24 @@ export default function Workouts() {
                 className="w-full text-left rounded-xl p-3.5 flex items-center gap-3.5 active:scale-[0.98] transition-all hover:bg-white/5 active:bg-white/10"
               >
                 <div className="w-10 h-10 rounded-xl btn-gradient flex items-center justify-center shrink-0">
-                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 6v1.5m0 9V18m0-10.5h-.75a2.25 2.25 0 00-2.25 2.25v3a2.25 2.25 0 002.25 2.25h.75m0-7.5h.75a2.25 2.25 0 012.25 2.25v3a2.25 2.25 0 01-2.25 2.25H6.75m10.5-7.5v-1.5m0 10.5V18m0-7.5h.75a2.25 2.25 0 012.25 2.25v3a2.25 2.25 0 01-2.25 2.25h-.75m0-7.5h-.75a2.25 2.25 0 00-2.25 2.25v3a2.25 2.25 0 002.25 2.25h.75M3 12h18" />
+                  <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                    {/* A-frame rack legs */}
+                    <path d="M8 20L11 4h2l3 16" />
+                    {/* Rack shelves */}
+                    <line x1="9.5" y1="12" x2="14.5" y2="12" />
+                    <line x1="8.8" y1="16" x2="15.2" y2="16" />
+                    {/* Top dumbbell */}
+                    <circle cx="12" cy="8" r="1.8" />
+                    {/* Middle dumbbells */}
+                    <circle cx="10" cy="12" r="1.8" />
+                    <circle cx="14" cy="12" r="1.8" />
+                    {/* Bottom dumbbells */}
+                    <circle cx="8.8" cy="16.5" r="2" />
+                    <circle cx="15.2" cy="16.5" r="2" />
+                    {/* Base barbell */}
+                    <line x1="3" y1="21" x2="21" y2="21" />
+                    <circle cx="3" cy="21" r="1" fill="currentColor" />
+                    <circle cx="21" cy="21" r="1" fill="currentColor" />
                   </svg>
                 </div>
                 <div className="flex-1 min-w-0">
@@ -1969,19 +1985,36 @@ export default function Workouts() {
       {renderBeginModals()}
       {renderCreateMenu()}
 
-      {/* Tutorial pointer — glowing pulse ring with dimmed background */}
-      {tutorialPointer === 'create' && pointerRect && (
+      {/* Tutorial pointer — spotlight cutout with glowing pulse ring */}
+      {tutorialPointer === 'create' && pointerRect && (() => {
+        const pad = 8;
+        return (
         <div className="fixed inset-0 z-[90]" onClick={() => setTutorialPointer(null)}>
-          {/* Dimmed overlay — not a hard spotlight, just increased opacity */}
-          <div className="absolute inset-0 bg-black/50" />
+          {/* Dark overlay with spotlight cutout */}
+          <svg className="absolute inset-0 w-full h-full" style={{ pointerEvents: 'none' }}>
+            <defs>
+              <mask id="create-pointer-mask">
+                <rect x="0" y="0" width="100%" height="100%" fill="white" />
+                <rect
+                  x={pointerRect.left - pad}
+                  y={pointerRect.top - pad}
+                  width={pointerRect.width + pad * 2}
+                  height={pointerRect.height + pad * 2}
+                  rx="16"
+                  fill="black"
+                />
+              </mask>
+            </defs>
+            <rect x="0" y="0" width="100%" height="100%" fill="rgba(0,0,0,0.85)" mask="url(#create-pointer-mask)" />
+          </svg>
           {/* Glowing pulse ring */}
           <div
             className="absolute rounded-2xl border-2 border-wf-cyan/60 shadow-[0_0_20px_rgba(0,200,255,0.3),0_0_40px_rgba(0,200,255,0.1)] animate-pulse"
             style={{
-              top: pointerRect.top - 8,
-              left: pointerRect.left - 8,
-              width: pointerRect.width + 16,
-              height: pointerRect.height + 16,
+              top: pointerRect.top - pad,
+              left: pointerRect.left - pad,
+              width: pointerRect.width + pad * 2,
+              height: pointerRect.height + pad * 2,
               pointerEvents: 'none',
             }}
           />
@@ -2027,7 +2060,8 @@ export default function Workouts() {
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

@@ -78,11 +78,11 @@ export default function Tutorial() {
           const targetId = current.branch[e.detail];
           const targetIndex = steps.findIndex((s) => s.id === targetId);
           if (targetIndex >= 0) {
-            setTimeout(() => goToStepIndex(targetIndex), 300);
+            setTimeout(() => goToStepIndex(targetIndex), 50);
             return;
           }
         }
-        setTimeout(advanceTutorial, 300);
+        setTimeout(advanceTutorial, 50);
       }
     };
     window.addEventListener('tutorial-action', handler);
@@ -349,7 +349,7 @@ export default function Tutorial() {
             width: targetRect.width + padding * 2,
             height: targetRect.height + padding * 2,
             pointerEvents: 'none',
-            transition: 'all 0.3s ease',
+            transition: 'none',
           }}
         />
       )}
@@ -364,7 +364,7 @@ export default function Tutorial() {
             width: r.width + padding * 2,
             height: r.height + padding * 2,
             pointerEvents: 'none',
-            transition: 'all 0.3s ease',
+            transition: 'none',
           }}
         />
       ))}
@@ -389,7 +389,7 @@ export default function Tutorial() {
       {targetRect && (
         <div
           className="absolute w-[calc(100%-48px)] max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
-          style={{ ...tooltipStyle, transition: 'all 0.3s ease', pointerEvents: 'auto' }}
+          style={{ ...tooltipStyle, transition: 'none', pointerEvents: 'auto' }}
         >
           {/* Step indicator */}
           <div className="flex items-center gap-1.5 mb-3">
