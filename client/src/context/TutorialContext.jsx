@@ -58,6 +58,14 @@ export function TutorialProvider({ children }) {
     });
   }, []);
 
+  const goToStepIndex = useCallback((index) => {
+    setState((prev) => {
+      const next = { ...prev, stepIndex: index };
+      saveState(next);
+      return next;
+    });
+  }, []);
+
   const skipTutorial = useCallback(() => {
     const next = { ...initialState, completed: true };
     saveState(next);
@@ -80,6 +88,7 @@ export function TutorialProvider({ children }) {
       tutorial: state,
       startTutorial,
       advanceTutorial,
+      goToStepIndex,
       skipTutorial,
       completeTutorialAction,
       resetTutorial,

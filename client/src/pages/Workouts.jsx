@@ -225,6 +225,7 @@ export default function Workouts() {
     setAddDateInput('');
     setShowAddDatePicker(false);
     setAddConflictInfo(null);
+    if (tutorial.active) skipTutorial();
   }
 
   function closeAddWorkoutModal() {
@@ -575,7 +576,7 @@ export default function Workouts() {
                   <div
                     key={wIdx}
                     data-tutorial={wIdx === 0 ? 'week-card' : undefined}
-                    onClick={() => { setSelectedWeek(weekNum); if (tutorial.active) skipTutorial(); }}
+                    onClick={() => { setSelectedWeek(weekNum); if (tutorial.active) completeTutorialAction('week-selected'); }}
                     style={{ animationDelay: `${wIdx * 60}ms` }}
                     className="w-full text-left glass-card rounded-2xl overflow-hidden active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
                   >
@@ -769,6 +770,7 @@ export default function Workouts() {
                     ) : !t.isRest ? (
                       <div className="flex items-center gap-1.5">
                         <button
+                          data-tutorial={idx === weekTemplates.findIndex(w => !w.isRest) ? 'week-add-btn' : undefined}
                           onClick={() => openAddWorkout(t)}
                           className="h-9 px-3 rounded-lg bg-green-500/20 flex items-center justify-center shrink-0 active:bg-green-500/40 transition-colors"
                         >

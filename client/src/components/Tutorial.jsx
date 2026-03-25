@@ -5,7 +5,7 @@ import { useTutorial } from '../context/TutorialContext';
 import { getStepsForPhase } from '../data/tutorialSteps';
 
 export default function Tutorial() {
-  const { tutorial, startTutorial, advanceTutorial, skipTutorial } = useTutorial();
+  const { tutorial, startTutorial, advanceTutorial, goToStepIndex, skipTutorial } = useTutorial();
   const navigate = useNavigate();
   const [targetRect, setTargetRect] = useState(null);
   const [extraRects, setExtraRects] = useState([]);
@@ -72,6 +72,15 @@ export default function Tutorial() {
     const handler = (e) => {
       if (waitForList.includes(e.detail)) {
         // Small delay so the UI can update before we advance
+        if (current.branch && current.branch[e.detail]) {
+          // Jump to the step with the matching id
+          const targetId = current.branch[e.detail];
+          const targetIndex = steps.findIndex((s) => s.id === targetId);
+          if (targetIndex >= 0) {
+            setTimeout(() => goToStepIndex(targetIndex), 300);
+            return;
+          }
+        }
         setTimeout(advanceTutorial, 300);
       }
     };
@@ -138,7 +147,7 @@ export default function Tutorial() {
               </div>
               <div className="flex-1 text-left">
                 <span className="text-sm font-semibold text-white">Create My Own Workout</span>
-                <p className="text-[11px] text-wf-gray-500 mt-0.5">Build a workout tailored to your goals</p>
+                <p className="text-[11px] text-wf-gray-500 mt-0.5">Tutorial coming soon</p>
               </div>
               <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
