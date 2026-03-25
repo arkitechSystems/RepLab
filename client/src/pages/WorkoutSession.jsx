@@ -62,17 +62,20 @@ export default function WorkoutSession() {
   const autoSaveRef = useRef(null);
   const autoSaveNeeded = useRef(false);
 
-  // Lock body scroll when tutorial tip is active
+  // Block scrolling when tutorial tip is active (native listener for non-passive)
+  const tutorialOverlayRef = useRef(null);
   useEffect(() => {
-    if (tutorialTip) {
-      document.body.style.overflow = 'hidden';
-      document.body.style.touchAction = 'none';
-    } else {
-      document.body.style.overflow = '';
-      document.body.style.touchAction = '';
-    }
-    return () => { document.body.style.overflow = ''; document.body.style.touchAction = ''; };
-  }, [tutorialTip]);
+    if (!tutorialReady) return;
+    const el = tutorialOverlayRef.current;
+    if (!el) return;
+    const prevent = (e) => e.preventDefault();
+    el.addEventListener('wheel', prevent, { passive: false });
+    el.addEventListener('touchmove', prevent, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', prevent);
+      el.removeEventListener('touchmove', prevent);
+    };
+  }, [tutorialReady, tutorialTip]);
 
   // Pre-scroll and measure tutorial tip target
   useEffect(() => {
@@ -80,7 +83,6 @@ export default function WorkoutSession() {
     setTutorialReady(false);
     tutorialRectRef.current = null;
 
-    // Lookup target from tips config inline (must match the tips object below)
     const targetMap = {
       'begin-workout': '[data-tutorial="begin-workout-btn"]',
       timer: '[data-tutorial="workout-timer"]',
@@ -101,25 +103,27 @@ export default function WorkoutSession() {
     function tryFind() {
       const el = document.querySelector(selector);
       if (!el) {
-        if (attempts < 15) { attempts++; setTimeout(tryFind, 100); }
+        if (attempts < 20) { attempts++; setTimeout(tryFind, 150); }
         return;
       }
-      // Temporarily unlock scroll so scrollIntoView works
-      document.body.style.overflow = '';
-      document.body.style.touchAction = '';
-      // Scroll to element — use window.scrollTo for sticky elements
+      // Scroll page so element is near top
       const elRect = el.getBoundingClientRect();
       const scrollTarget = window.scrollY + elRect.top - 20;
       window.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'instant' });
-      // Measure after paint, then re-lock scroll
-      requestAnimationFrame(() => {
+      // Wait for scroll + paint to settle, then measure
+      setTimeout(() => {
         requestAnimationFrame(() => {
-          tutorialRectRef.current = el.getBoundingClientRect();
-          document.body.style.overflow = 'hidden';
-          document.body.style.touchAction = 'none';
+          const measured = el.getBoundingClientRect();
+          // Retry if element has no dimensions (not yet painted)
+          if (measured.width === 0 && measured.height === 0 && attempts < 20) {
+            attempts++;
+            setTimeout(tryFind, 150);
+            return;
+          }
+          tutorialRectRef.current = measured;
           setTutorialReady(true);
         });
-      });
+      }, 50);
     }
     tryFind();
   }, [tutorialTip]);
@@ -1744,10 +1748,7 @@ export default function WorkoutSession() {
         const r = tutorialRectRef.current;
         const pad = 8;
         return (
-          <div className="fixed inset-0 z-[100]" style={{ pointerEvents: 'auto', touchAction: 'none', overscrollBehavior: 'none' }}
-            onTouchMove={(e) => e.preventDefault()}
-            onWheel={(e) => e.preventDefault()}
-          >
+          <div ref={tutorialOverlayRef} className="fixed inset-0 z-[100]" style={{ pointerEvents: 'auto', touchAction: 'none', overscrollBehavior: 'none' }}>
             <svg className="absolute inset-0 w-full h-full" style={{ pointerEvents: 'none' }}>
               <defs>
                 <mask id="tutorial-tip-mask">
