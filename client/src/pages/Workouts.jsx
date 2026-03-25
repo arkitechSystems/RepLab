@@ -127,7 +127,7 @@ export default function Workouts() {
     if (params.get('tutorialPointer') === 'create') {
       setTutorialPointer('create');
       // Clean up URL
-      navigate('/workouts', { replace: true });
+      navigate('/', { replace: true });
     }
   }, [location.search]);
 
@@ -1987,39 +1987,39 @@ export default function Workouts() {
       {renderBeginModals()}
       {renderCreateMenu()}
 
-      {/* Tutorial pointer tooltip */}
+      {/* Tutorial pointer — glowing pulse ring with dimmed background */}
       {tutorialPointer === 'create' && pointerRect && (
         <div className="fixed inset-0 z-[90]" onClick={() => setTutorialPointer(null)}>
-          {/* Pulsing ring around the Create button */}
+          {/* Dimmed overlay — not a hard spotlight, just increased opacity */}
+          <div className="absolute inset-0 bg-black/50" />
+          {/* Glowing pulse ring */}
           <div
-            className="absolute rounded-xl border-2 border-wf-cyan animate-pulse"
+            className="absolute rounded-2xl border-2 border-wf-cyan/60 shadow-[0_0_20px_rgba(0,200,255,0.3),0_0_40px_rgba(0,200,255,0.1)] animate-pulse"
             style={{
-              top: pointerRect.top - 6,
-              left: pointerRect.left - 6,
-              width: pointerRect.width + 12,
-              height: pointerRect.height + 12,
+              top: pointerRect.top - 8,
+              left: pointerRect.left - 8,
+              width: pointerRect.width + 16,
+              height: pointerRect.height + 16,
               pointerEvents: 'none',
             }}
           />
-          {/* Arrow pointing up at button */}
+          {/* Second ring for depth */}
           <div
-            className="absolute"
+            className="absolute rounded-2xl border border-wf-cyan/20"
             style={{
-              top: pointerRect.bottom + 8,
-              left: pointerRect.left + pointerRect.width / 2,
-              transform: 'translateX(-50%)',
+              top: pointerRect.top - 12,
+              left: pointerRect.left - 12,
+              width: pointerRect.width + 24,
+              height: pointerRect.height + 24,
               pointerEvents: 'none',
+              animation: 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite',
             }}
-          >
-            <svg width="20" height="12" viewBox="0 0 20 12">
-              <path d="M10 0L20 12H0z" fill="rgb(23,23,23)" />
-            </svg>
-          </div>
+          />
           {/* Tooltip */}
           <div
             className="absolute w-[calc(100%-32px)] max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl p-4 shadow-2xl"
             style={{
-              top: pointerRect.bottom + 20,
+              top: pointerRect.bottom + 24,
               left: '50%',
               transform: 'translateX(-50%)',
             }}

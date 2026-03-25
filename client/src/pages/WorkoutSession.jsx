@@ -65,7 +65,7 @@ export default function WorkoutSession() {
   // Block scrolling when tutorial tip is active (native listener for non-passive)
   const tutorialOverlayRef = useRef(null);
   useEffect(() => {
-    if (!tutorialReady) return;
+    if (!tutorialTip) return;
     const el = tutorialOverlayRef.current;
     if (!el) return;
     const prevent = (e) => e.preventDefault();
@@ -75,7 +75,7 @@ export default function WorkoutSession() {
       el.removeEventListener('wheel', prevent);
       el.removeEventListener('touchmove', prevent);
     };
-  }, [tutorialReady, tutorialTip]);
+  }, [tutorialTip, tutorialReady]);
 
   // Pre-scroll and measure tutorial tip target
   useEffect(() => {
@@ -100,32 +100,41 @@ export default function WorkoutSession() {
     if (!selector) return;
 
     let attempts = 0;
+    let cancelled = false;
     function tryFind() {
+      if (cancelled) return;
       const el = document.querySelector(selector);
-      if (!el) {
-        if (attempts < 20) { attempts++; setTimeout(tryFind, 150); }
+      if (!el || el.offsetWidth === 0) {
+        if (attempts < 30) { attempts++; console.log('[Tutorial] Attempt', attempts, '- element not found or zero width for:', selector); setTimeout(tryFind, 200); }
         return;
       }
-      // Scroll page so element is near top
+      console.log('[Tutorial] Found element:', selector, 'rect:', el.getBoundingClientRect());
+      // Scroll page so element is near top — use scrollTo for reliability
       const elRect = el.getBoundingClientRect();
-      const scrollTarget = window.scrollY + elRect.top - 20;
-      window.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'instant' });
-      // Wait for scroll + paint to settle, then measure
-      setTimeout(() => {
+      const scrollTarget = window.scrollY + elRect.top - 40;
+      if (Math.abs(elRect.top - 40) > 10) {
+        window.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'instant' });
+      }
+      // Measure after scroll + two animation frames
+      requestAnimationFrame(() => {
+        if (cancelled) return;
         requestAnimationFrame(() => {
+          if (cancelled) return;
           const measured = el.getBoundingClientRect();
-          // Retry if element has no dimensions (not yet painted)
-          if (measured.width === 0 && measured.height === 0 && attempts < 20) {
-            attempts++;
-            setTimeout(tryFind, 150);
+          if (measured.width === 0 || measured.height === 0) {
+            if (attempts < 30) { attempts++; setTimeout(tryFind, 200); }
             return;
           }
+          console.log('[Tutorial] Measured rect:', measured);
           tutorialRectRef.current = measured;
           setTutorialReady(true);
         });
-      }, 50);
+      });
     }
-    tryFind();
+    // Delay initial attempt to let React paint
+    console.log('[Tutorial] Looking for:', selector, 'tip:', tutorialTip);
+    setTimeout(tryFind, 100);
+    return () => { cancelled = true; };
   }, [tutorialTip]);
 
   // Keep ref in sync with state

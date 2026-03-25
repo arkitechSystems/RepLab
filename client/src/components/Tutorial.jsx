@@ -119,7 +119,7 @@ export default function Tutorial() {
 
           <div className="space-y-3">
             <button
-              onClick={() => { skipTutorial(); navigate('/workouts?tutorialPointer=create'); }}
+              onClick={() => { skipTutorial(); navigate('/?tutorialPointer=create'); }}
               className="w-full glass-card rounded-2xl p-4 flex items-center gap-4 active:scale-[0.98] transition-transform cursor-pointer border border-wf-cyan/20"
             >
               <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-wf-cyan/10">

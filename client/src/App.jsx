@@ -30,6 +30,7 @@ import WorkoutSessionTest from './pages/WorkoutSessionTest';
 import WorkoutSessionCardTest from './pages/WorkoutSessionCardTest';
 import SectionHeaderTest from './pages/SectionHeaderTest';
 import TutorialWorkout from './pages/TutorialWorkout';
+import TutorialTest from './pages/TutorialTest';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -104,6 +105,7 @@ export default function App() {
         <Route path="/test/workout-session" element={<WorkoutSessionTest />} />
         <Route path="/test/workout-session-card" element={<WorkoutSessionCardTest />} />
         <Route path="/test/section-header" element={<SectionHeaderTest />} />
+        <Route path="/test/tutorial" element={<TutorialTest />} />
       </Route>
 
       <Route path="*" element={<CatchAllRedirect />} />
