@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../api';
 import { buildProgramColorMap, getColorFromMap } from '../utils/workoutColors';
 import StickyHeader from '../components/StickyHeader';
@@ -116,7 +116,33 @@ export default function Workouts() {
   const [showAddDatePicker, setShowAddDatePicker] = useState(false);
   const [addConflictInfo, setAddConflictInfo] = useState(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const beginDateRef = useRef(null);
+  const [tutorialPointer, setTutorialPointer] = useState(null); // 'create' | null
+  const [pointerRect, setPointerRect] = useState(null);
+
+  // Check for tutorial pointer in URL on mount
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('tutorialPointer') === 'create') {
+      setTutorialPointer('create');
+      // Clean up URL
+      navigate('/workouts', { replace: true });
+    }
+  }, []);
+
+  // Measure pointer target after loading completes
+  useEffect(() => {
+    if (!tutorialPointer || loading) return;
+    const tryMeasure = () => {
+      const el = document.querySelector('[data-tutorial="create-btn"]');
+      if (!el) return;
+      requestAnimationFrame(() => {
+        setPointerRect(el.getBoundingClientRect());
+      });
+    };
+    setTimeout(tryMeasure, 300);
+  }, [tutorialPointer, loading]);
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
@@ -1960,6 +1986,66 @@ export default function Workouts() {
 
       {renderBeginModals()}
       {renderCreateMenu()}
+
+      {/* Tutorial pointer tooltip */}
+      {tutorialPointer === 'create' && pointerRect && (
+        <div className="fixed inset-0 z-[90]" onClick={() => setTutorialPointer(null)}>
+          {/* Pulsing ring around the Create button */}
+          <div
+            className="absolute rounded-xl border-2 border-wf-cyan animate-pulse"
+            style={{
+              top: pointerRect.top - 6,
+              left: pointerRect.left - 6,
+              width: pointerRect.width + 12,
+              height: pointerRect.height + 12,
+              pointerEvents: 'none',
+            }}
+          />
+          {/* Arrow pointing up at button */}
+          <div
+            className="absolute"
+            style={{
+              top: pointerRect.bottom + 8,
+              left: pointerRect.left + pointerRect.width / 2,
+              transform: 'translateX(-50%)',
+              pointerEvents: 'none',
+            }}
+          >
+            <svg width="20" height="12" viewBox="0 0 20 12">
+              <path d="M10 0L20 12H0z" fill="rgb(23,23,23)" />
+            </svg>
+          </div>
+          {/* Tooltip */}
+          <div
+            className="absolute w-[calc(100%-32px)] max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl p-4 shadow-2xl"
+            style={{
+              top: pointerRect.bottom + 20,
+              left: '50%',
+              transform: 'translateX(-50%)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-bold text-white mb-1">Create a Workout</h3>
+            <p className="text-sm text-wf-gray-400 leading-relaxed">
+              Tap the <span className="text-white font-semibold">+ Create</span> button to build your own workout, create a new program, or add a workout to an existing program.
+            </p>
+            <div className="flex items-center justify-center gap-3 mt-3">
+              <button
+                onClick={() => { setTutorialPointer(null); setShowCreateMenu(true); }}
+                className="text-sm font-semibold text-white btn-gradient py-2 px-5 rounded-xl active:scale-[0.97] transition-transform"
+              >
+                Got it
+              </button>
+              <button
+                onClick={() => setTutorialPointer(null)}
+                className="text-sm font-semibold text-white/70 bg-white/10 hover:bg-white/15 active:bg-white/20 transition-colors py-2 px-5 rounded-xl border border-white/10"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
