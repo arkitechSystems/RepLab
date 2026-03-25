@@ -1606,7 +1606,7 @@ export default function WorkoutSession() {
           timer: {
             target: '[data-tutorial="workout-timer"]',
             title: 'Workout Timer',
-            description: <>This timer tracks your total workout time. Use the <span className="text-white font-semibold">pop-out</span> button to float the timer on screen as you scroll, or the <span className="text-white font-semibold">lock toggle</span> to keep it visible even when the header collapses.</>,
+            description: <>This timer tracks your total workout time. To the far right, use the <span className="text-white font-semibold">pop-out</span> button to float the timer on screen as you scroll, or the <span className="text-white font-semibold">lock toggle</span> to keep the timer visible as you scroll down.</>,
             next: 'rest',
             position: 'below',
           },
@@ -1692,14 +1692,13 @@ export default function WorkoutSession() {
             >
               <h3 className="text-base font-bold text-white mb-1">{tip.title}</h3>
               <p className="text-sm text-wf-gray-400 leading-relaxed">{tip.description}</p>
-              <div className="flex justify-center mt-4">
+              <div className="flex items-center justify-center gap-3 mt-4">
                 <button
                   onClick={() => {
                     if (tip.action === 'begin-workout') {
                       setTutorialTip(null);
                       handleBeginWorkout();
                     } else if (tip.action === 'autofill-and-complete') {
-                      // Autofill all entries with the suggested weights and reps
                       setEntries((prev) => {
                         const filled = {};
                         for (const ex of template.exercises) {
@@ -1711,14 +1710,12 @@ export default function WorkoutSession() {
                         }
                         return filled;
                       });
-                      // Mark all sets as completed
                       const allKeys = new Set();
                       template.exercises.forEach((ex) => {
                         ex.sets.forEach((_, i) => allKeys.add(`${ex.name}-${i}`));
                       });
                       setCompletedSets(allKeys);
                       setTutorialTip(null);
-                      // Trigger mark complete after a short delay
                       setTimeout(() => handleMarkComplete(), 300);
                     } else {
                       setTutorialTip(tip.next);
@@ -1727,6 +1724,12 @@ export default function WorkoutSession() {
                   className="text-sm font-semibold text-white btn-gradient py-2 px-5 rounded-xl active:scale-[0.97] transition-transform"
                 >
                   {tip.action === 'begin-workout' ? 'Begin Workout' : tip.action === 'autofill-and-complete' ? 'Mark Complete' : tip.next ? 'Next' : 'Got it'}
+                </button>
+                <button
+                  onClick={() => setTutorialTip(null)}
+                  className="text-sm font-semibold text-white/70 bg-white/10 hover:bg-white/15 active:bg-white/20 transition-colors py-2 px-5 rounded-xl border border-white/10"
+                >
+                  Skip tutorial
                 </button>
               </div>
             </div>
