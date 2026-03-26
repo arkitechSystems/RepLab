@@ -874,7 +874,7 @@ export default function Workouts() {
                         <p className="text-wf-gray-400 text-sm mt-0.5 ml-4">{t.description}</p>
                       )}
                       <p className="text-wf-gray-500 text-xs mt-1 ml-4">
-                        {t.isRest ? 'Rest day' : `${t.exercises.length} exercises · Tap to view`}
+                        {t.isRest ? 'Rest day' : `${(t.exercises || []).length} exercises · Tap to view`}
                       </p>
                     </div>
 
@@ -915,7 +915,7 @@ export default function Workouts() {
                   </div>
 
                   {/* Exercise accordion cards (hidden in edit mode) */}
-                  {!editMode && !t.isRest && t.exercises.length > 0 && (
+                  {!editMode && !t.isRest && (t.exercises || []).length > 0 && (
                     <div className="mt-3 pt-3 border-t border-white/10 space-y-2">
                       {t.exercises.map((ex, exIdx) => {
                         if (ex.isSectionHeader) {
