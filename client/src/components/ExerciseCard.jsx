@@ -248,8 +248,8 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
         {!isTemplate && !readOnly && onToggleComplete && <div className="w-5 shrink-0" />}
         <div className="w-[1.3rem] shrink-0 text-center">Set</div>
         <div className="w-[2.8rem] shrink-0 text-center">Type</div>
-        {!isTemplate && <div className="w-14 shrink-0 text-center">Goal Wt</div>}
-        <div className="w-14 shrink-0 text-center">Weight</div>
+        {!isTemplate && <div className="w-[3.15rem] shrink-0 text-center">Goal Wt</div>}
+        <div className="w-[3.15rem] shrink-0 text-center">Weight</div>
         {isTemplate ? (
           <div className="flex-1 text-center">Reps</div>
         ) : (
@@ -329,7 +329,7 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
 
               {/* Goal Weight (read-only, from template) — session mode only */}
               {!isTemplate && (
-                <div className="w-14 shrink-0">
+                <div className="w-[3.15rem] shrink-0">
                   <div className="w-full rounded-lg px-1 py-2.5 text-center text-sm font-mono-stat text-wf-gray-500 bg-black/40 border border-white/5">
                     {set.suggestedWeight ?? '—'}
                   </div>
@@ -337,7 +337,7 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
               )}
 
               {/* Weight input */}
-              <div className="w-14 shrink-0">
+              <div className="w-[3.15rem] shrink-0">
                 <input
                   type="number"
                   inputMode="decimal"
