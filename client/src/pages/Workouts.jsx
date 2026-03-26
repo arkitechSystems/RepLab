@@ -186,7 +186,7 @@ export default function Workouts() {
       .then(([progs, tmpls, sessions, shares]) => {
         setPrograms(progs);
         setTemplates(tmpls);
-        setPendingShares(shares);
+        setPendingShares(shares || []);
 
         // Calculate streak — consecutive days with a session going back from today
         const sessionDates = new Set(sessions.map((s) => s.date));
