@@ -118,11 +118,13 @@ export default function WorkoutSession() {
       if (isInStickyHeader) {
         window.scrollTo({ top: 0, behavior: 'instant' });
       } else {
-        // For tall elements (like exercise cards), scroll so the top is visible
-        // just below the sticky header rather than centering (which hides the top).
-        // For small elements, centering works fine.
+        // For tall elements (like exercise cards) or exercise-card sub-elements,
+        // scroll so the top is visible just below the sticky header rather than
+        // centering (which can cause the tooltip to overlap the spotlight).
         const elRect = el.getBoundingClientRect();
-        if (elRect.height > window.innerHeight * 0.3) {
+        const exerciseCardSteps = ['exercise-card', 'exercise-header', 'swap-exercise', 'add-delete-exercise', 'set-controls', 'set-row', 'exercise-notes'];
+        const isExerciseCardStep = exerciseCardSteps.includes(tutorialTip);
+        if (elRect.height > window.innerHeight * 0.3 || isExerciseCardStep) {
           const stickyHeader = document.querySelector('.sticky-header');
           const headerHeight = stickyHeader ? stickyHeader.getBoundingClientRect().height : 0;
           const scrollTarget = window.scrollY + elRect.top - headerHeight - 16;
@@ -1901,7 +1903,7 @@ export default function WorkoutSession() {
               style={{
                 ...(tip.position === 'above'
                   ? { bottom: window.innerHeight - r.top + pad + 16, left: '50%', transform: 'translateX(-50%)' }
-                  : { top: Math.min(r.bottom + pad + 16, window.innerHeight * 0.45), left: '50%', transform: 'translateX(-50%)' }
+                  : { top: r.bottom + pad + 16, left: '50%', transform: 'translateX(-50%)' }
                 ),
                 pointerEvents: 'auto',
               }}
