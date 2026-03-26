@@ -43,17 +43,26 @@ router.post('/initialize', authMiddleware, async (req, res) => {
     const tmpl = templates.find(t => t.id === Number(templateId));
     if (!tmpl || tmpl.isRest) return res.status(404).json({ error: 'Template not found' });
 
-    // Build workout_data — the independent copy
+    // Look up best previous performance per exercise/set from completed sessions.
+    // This enables progressive overload: the goal becomes what the user achieved last time.
+    const previousBests = await db.getBestPerformanceByTemplate(req.userId, Number(templateId));
+
+    // Build workout_data — the independent copy, with previous bests as goals
     const workoutData = {
       name: tmpl.name,
       exercises: tmpl.exercises.map(ex => ({
         name: ex.name,
         setType: ex.setType || 'straight',
-        sets: ex.sets.map(s => ({
-          setNumber: s.setNumber,
-          plannedReps: s.plannedReps ?? 10,
-          suggestedWeight: s.suggestedWeight ?? 0,
-        })),
+        ...(ex.exerciseDescription ? { exerciseDescription: ex.exerciseDescription } : {}),
+        ...(ex.isSectionHeader ? { isSectionHeader: true, sectionNotes: ex.sectionNotes || '' } : {}),
+        sets: ex.sets.map(s => {
+          const best = previousBests[ex.name]?.[s.setNumber];
+          return {
+            setNumber: s.setNumber,
+            plannedReps: best ? best.reps : (s.plannedReps ?? 10),
+            suggestedWeight: best ? best.weight : (s.suggestedWeight ?? 0),
+          };
+        }),
       })),
     };
 

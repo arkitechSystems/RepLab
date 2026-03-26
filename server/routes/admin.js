@@ -744,6 +744,11 @@ router.get('/', adminAuth, async (req, res) => {
       <div class="card-title">User Sign Ups</div>
       <div class="card-desc">View all registered users, contact info, referral sources, and export data.</div>
     </a>
+    <a class="card glass" href="/admin/daily-summary" style="border-color:rgba(34,197,94,0.25);">
+      <div class="card-icon">📋</div>
+      <div class="card-title">Daily Summary</div>
+      <div class="card-desc">Today's stats, signups, workouts, active users, and day-over-day comparisons.</div>
+    </a>
     <a class="card glass" href="/admin/trainers" style="border-color:rgba(168,85,247,0.25);">
       <div class="card-icon">🏋️‍♀️</div>
       <div class="card-title">Trainer Central</div>
@@ -843,11 +848,6 @@ router.get('/', adminAuth, async (req, res) => {
       <div class="card-icon">🔐</div>
       <div class="card-title">Trainer Login History</div>
       <div class="card-desc">View login activity on the trainer dashboard.</div>
-    </a>
-    <a class="card glass" href="/admin/daily-summary" style="border-color:rgba(34,197,94,0.25);">
-      <div class="card-icon">📋</div>
-      <div class="card-title">Daily Summary</div>
-      <div class="card-desc">Today's stats, signups, workouts, active users, and day-over-day comparisons.</div>
     </a>
     <a class="card glass" href="/admin/react-native" style="border-color:rgba(59,130,246,0.25);">
       <div class="card-icon">📱</div>

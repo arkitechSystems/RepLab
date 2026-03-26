@@ -159,6 +159,13 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
         )}
       </div>
 
+      {/* Exercise Description (from template) */}
+      {exercise.exerciseDescription && (
+        <div className="px-4 py-2 border-b border-white/5 bg-white/[0.02]">
+          <p className="text-xs text-wf-gray-400 leading-relaxed">{exercise.exerciseDescription}</p>
+        </div>
+      )}
+
       {/* Smart Weight Suggestion Banner */}
       {!isTemplate && !readOnly && weightSuggestion && (
         <div className={`px-4 py-2 border-b border-white/5 flex items-center justify-between ${
@@ -241,6 +248,7 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
         {!isTemplate && !readOnly && onToggleComplete && <div className="w-7 shrink-0" />}
         <div className="w-8 shrink-0 text-center">Set</div>
         <div className="w-14 shrink-0 text-center">Type</div>
+        {!isTemplate && <div className="w-14 shrink-0 text-center">Goal Wt</div>}
         <div className="flex-1 text-center">Weight</div>
         {isTemplate ? (
           <div className="flex-1 text-center">Reps</div>
@@ -318,6 +326,15 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
                   <div className="h-10" />
                 )}
               </div>
+
+              {/* Goal Weight (read-only, from template) — session mode only */}
+              {!isTemplate && (
+                <div className="w-14 shrink-0">
+                  <div className="w-full rounded-lg px-1 py-2.5 text-center text-sm font-mono-stat text-wf-gray-500 bg-black/40 border border-white/5">
+                    {set.suggestedWeight ?? '—'}
+                  </div>
+                </div>
+              )}
 
               {/* Weight input */}
               <div className="flex-1">

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { format, parseISO, isToday } from 'date-fns';
+import { format, parseISO, isToday, addDays, subDays } from 'date-fns';
 import { api } from '../api';
 import ExerciseCard from '../components/ExerciseCard';
 import { useExercises } from '../hooks/useExercises';
@@ -47,6 +47,7 @@ export default function WorkoutSession() {
   const [tutorialReady, setTutorialReady] = useState(false); // true once element is scrolled + measured
   const tutorialRectRef = useRef(null); // cached rect for current tip target
   const [pendingSwap, setPendingSwap] = useState(null); // { oldName, newName }
+  const [schedule, setSchedule] = useState(null); // day-of-week → templateId map for nav arrows
   const dragRef = useRef(null);
   const [elapsed, setElapsed] = useState(0);
   const startTimeRef = useRef(null);
@@ -346,14 +347,18 @@ export default function WorkoutSession() {
     // Step 2: Load everything from the session — never from the template directly
     async function loadSession() {
       try {
-        // Fetch PBs in parallel
-        const pbList = await api(`/pbs?templateId=${templateId}`);
+        // Fetch PBs and schedule in parallel
+        const [pbList, scheduleData] = await Promise.all([
+          api(`/pbs?templateId=${templateId}`),
+          api('/schedule'),
+        ]);
         const pbMap = {};
         for (const pb of pbList) {
           if (!pbMap[pb.exerciseName]) pbMap[pb.exerciseName] = {};
           pbMap[pb.exerciseName][pb.bestWeight] = pb.bestReps;
         }
         setPbs(pbMap);
+        setSchedule(scheduleData);
 
         // Check for existing session
         let session = await api(`/sessions/by-template/${templateId}/${date}`);
@@ -463,6 +468,7 @@ export default function WorkoutSession() {
         if (err.name !== 'AbortError') setLoadError('Failed to load workout — check your connection');
       } finally {
         setLoading(false);
+        setDayNavDisabled(false);
       }
     }
 
@@ -828,18 +834,21 @@ export default function WorkoutSession() {
     try {
       if (tutorialMode) {
         if (newCompleted) {
-          // Autofill entries with varied reps so summary shows green/red progress
+          // Autofill entries with varied reps and weights so summary shows volume variance
           const repVariations = [0, 1, 2, -1, -2, 0, 1, -1, 2, -2, 0, 1];
+          const weightVariations = [0, 5, 10, 0, -5, 5, 0, -10, 10, 0, 5, -5];
           let variIdx = 0;
           const filled = {};
           for (const ex of template.exercises) {
             filled[ex.name] = ex.sets.map((s) => {
               const planned = s.plannedReps || 0;
-              const delta = repVariations[variIdx++ % repVariations.length];
-              const actual = Math.max(0, planned + delta);
+              const goalWt = Number(s.suggestedWeight) || 0;
+              const idx = variIdx++ % repVariations.length;
+              const actualReps = Math.max(0, planned + repVariations[idx]);
+              const actualWeight = Math.max(0, goalWt + weightVariations[idx]);
               return {
-                weight: s.suggestedWeight || '',
-                reps: actual,
+                weight: actualWeight || '',
+                reps: actualReps,
                 setType: s.setType || ex.setType || 'straight',
               };
             });
@@ -851,6 +860,7 @@ export default function WorkoutSession() {
           });
           setCompletedSets(allKeys);
           if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+          stopRestTimer();
           clearTimerStorage();
           navigator.vibrate?.([40, 30, 80]);
           setTutorialTip(null);
@@ -876,6 +886,7 @@ export default function WorkoutSession() {
       setIsCompleted(newCompleted);
       if (newCompleted) {
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+        stopRestTimer();
         clearTimerStorage();
         navigator.vibrate?.([40, 30, 80]);
         setShowSummary(true);
@@ -1105,6 +1116,19 @@ export default function WorkoutSession() {
     saveLabel: 'Save Workout',
   });
 
+  // Navigate to adjacent day's workout (uses schedule to find templateId for that day)
+  const [dayNavDisabled, setDayNavDisabled] = useState(false);
+  const navigateToDay = useCallback((targetDate) => {
+    if (!schedule || dayNavDisabled) return;
+    const dow = targetDate.getDay();
+    const entry = schedule.find(s => s.dayOfWeek === dow);
+    if (entry && entry.templateId) {
+      setDayNavDisabled(true);
+      const dateStr = format(targetDate, 'yyyy-MM-dd');
+      navigate(`/session/${entry.templateId}/${dateStr}`, { replace: true });
+    }
+  }, [schedule, navigate, dayNavDisabled]);
+
   if (loading) {
     return (
       <div className="px-4 pt-6">
@@ -1134,6 +1158,13 @@ export default function WorkoutSession() {
   }
 
   const displayDate = date ? format(parseISO(date), 'EEEE, MMM d') : '';
+
+  const prevDate = date ? subDays(parseISO(date), 1) : null;
+  const nextDate = date ? addDays(parseISO(date), 1) : null;
+  const prevScheduled = prevDate && schedule ? schedule.find(s => s.dayOfWeek === prevDate.getDay()) : null;
+  const nextScheduled = nextDate && schedule ? schedule.find(s => s.dayOfWeek === nextDate.getDay()) : null;
+  const hasPrev = prevScheduled && prevScheduled.templateId;
+  const hasNext = nextScheduled && nextScheduled.templateId;
 
   if (template.isRest) {
     return (
@@ -1233,14 +1264,37 @@ export default function WorkoutSession() {
           </div>
         </div>
       )}
-      {/* Back button */}
-      <div className="px-4 pt-6">
+      {/* Back button + Day navigation arrows */}
+      <div className="px-4 pt-6 flex items-center justify-between">
         <button onClick={() => tutorialMode ? navigate('/') : guardedNavigate(() => navigate(-1))} className="flex items-center gap-1 text-wf-red text-sm font-medium mb-2 active:opacity-70">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>
           {tutorialMode ? 'Exit Tutorial' : 'Back'}
         </button>
+        {!timerStarted && !tutorialMode && schedule && (
+          <div className="flex items-center gap-2 mb-2">
+            <button
+              onClick={() => hasPrev && !dayNavDisabled && navigateToDay(prevDate)}
+              disabled={!hasPrev || dayNavDisabled}
+              className={`w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-90 ${hasPrev && !dayNavDisabled ? 'bg-white/10 text-white' : 'bg-white/5 text-wf-gray-600 cursor-default opacity-50'}`}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+              </svg>
+            </button>
+            <span className="text-xs text-wf-gray-400 font-medium min-w-[60px] text-center">{displayDate.split(',')[0]}</span>
+            <button
+              onClick={() => hasNext && !dayNavDisabled && navigateToDay(nextDate)}
+              disabled={!hasNext || dayNavDisabled}
+              className={`w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-90 ${hasNext && !dayNavDisabled ? 'bg-white/10 text-white' : 'bg-white/5 text-wf-gray-600 cursor-default opacity-50'}`}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              </svg>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Sticky Header with Progress Bar */}
@@ -1957,19 +2011,24 @@ function WorkoutSummary({ template, entries, completedSets, elapsed, formatTime,
     }, 0);
   }, 0);
 
-  // Per-exercise data with per-set breakdown
+  // Per-exercise data with per-set volume breakdown (goal volume vs actual volume)
   const exerciseStats = realExercises.map((ex) => {
     const exEntries = entries[ex.name] || [];
     const setStats = ex.sets.map((set, idx) => {
-      const goal = set.plannedReps || 0;
-      const actual = Number(exEntries[idx]?.reps) || 0;
-      const weight = Number(exEntries[idx]?.weight) || 0;
-      return { setNumber: set.setNumber, goal, actual, weight };
+      const goalWeight = Number(set.suggestedWeight) || 0;
+      const goalReps = set.plannedReps || 0;
+      const goalVolume = goalWeight * goalReps;
+      const actualWeight = Number(exEntries[idx]?.weight) || 0;
+      const actualReps = Number(exEntries[idx]?.reps) || 0;
+      const actualVolume = actualWeight * actualReps;
+      return { setNumber: set.setNumber, goalVolume, actualVolume, goalReps, actualReps, goalWeight, actualWeight };
     });
-    const totalGoal = setStats.reduce((s, ss) => s + ss.goal, 0);
-    const totalActual = setStats.reduce((s, ss) => s + ss.actual, 0);
-    return { name: ex.name, setStats, totalGoal, totalActual };
+    const totalGoalVol = setStats.reduce((s, ss) => s + ss.goalVolume, 0);
+    const totalActualVol = setStats.reduce((s, ss) => s + ss.actualVolume, 0);
+    return { name: ex.name, setStats, totalGoalVol, totalActualVol };
   });
+
+  const totalGoalVolume = exerciseStats.reduce((s, ex) => s + ex.totalGoalVol, 0);
 
   return (
     <div className="fixed inset-0 z-[60] flex flex-col">
@@ -2004,36 +2063,46 @@ function WorkoutSummary({ template, entries, completedSets, elapsed, formatTime,
           </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-3 gap-3 mb-6">
+          <div className="grid grid-cols-2 gap-3 mb-3">
             <div className="glass-card rounded-xl p-3 text-center">
               <p className="text-xs text-wf-gray-500 uppercase tracking-wider mb-1">Time</p>
               <p className="text-lg font-black text-white tabular-nums">{formatTime(elapsed)}</p>
-            </div>
-            <div className="glass-card rounded-xl p-3 text-center">
-              <p className="text-xs text-wf-gray-500 uppercase tracking-wider mb-1">Volume</p>
-              <p className="text-lg font-black text-white tabular-nums">{totalVolume.toLocaleString()}<span className="text-xs font-medium text-wf-gray-500"> lbs</span></p>
             </div>
             <div className="glass-card rounded-xl p-3 text-center">
               <p className="text-xs text-wf-gray-500 uppercase tracking-wider mb-1">Sets</p>
               <p className="text-lg font-black text-white tabular-nums">{completedSets.size}<span className="text-xs font-medium text-wf-gray-500">/{totalSets}</span></p>
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            <div className="glass-card rounded-xl p-3 text-center">
+              <p className="text-xs text-wf-gray-500 uppercase tracking-wider mb-1">Actual Vol</p>
+              <p className="text-lg font-black text-white tabular-nums">{totalVolume.toLocaleString()}<span className="text-xs font-medium text-wf-gray-500"> lbs</span></p>
+            </div>
+            <div className="glass-card rounded-xl p-3 text-center">
+              <p className="text-xs text-wf-gray-500 uppercase tracking-wider mb-1">Goal Vol</p>
+              <p className="text-lg font-black text-white tabular-nums">{totalGoalVolume.toLocaleString()}<span className="text-xs font-medium text-wf-gray-500"> lbs</span></p>
+            </div>
+          </div>
 
           {/* Exercise Breakdown */}
           <div className="space-y-2">
             <p className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-medium mb-1">Exercise Breakdown</p>
-            {exerciseStats.map((ex) => (
+            {exerciseStats.map((ex) => {
+              const volDiff = ex.totalActualVol - ex.totalGoalVol;
+              const volSign = volDiff > 0 ? '+' : '';
+              const volColor = volDiff > 0 ? 'text-green-400' : volDiff === 0 ? 'text-yellow-400' : 'text-red-400';
+              return (
               <div key={ex.name} className="glass-card rounded-xl px-4 py-3">
                 <div className="flex items-center justify-between mb-2.5">
                   <span className="text-sm font-medium text-white truncate mr-2">{ex.name}</span>
-                  <span className="text-xs text-wf-gray-400 tabular-nums shrink-0">
-                    {ex.totalActual}/{ex.totalGoal} reps
+                  <span className={`text-xs tabular-nums shrink-0 font-semibold ${volColor}`}>
+                    {volSign}{volDiff.toLocaleString()} lbs
                   </span>
                 </div>
                 <div className="space-y-1.5">
                   {ex.setStats.map((ss) => {
                     const maxRatio = 1.25;
-                    const ratio = ss.goal > 0 ? ss.actual / ss.goal : 0;
+                    const ratio = ss.goalVolume > 0 ? ss.actualVolume / ss.goalVolume : 0;
                     const barPct = Math.min(100, (ratio / maxRatio) * 100);
                     const tickPos = (1 / maxRatio) * 100; // 80%
                     const barColor = ratio > 1 ? 'bg-green-500' : ratio === 1 ? 'bg-yellow-500' : 'bg-red-500';
@@ -2051,15 +2120,16 @@ function WorkoutSummary({ template, entries, completedSets, elapsed, formatTime,
                             style={{ left: `${tickPos}%` }}
                           />
                         </div>
-                        <span className="text-[10px] text-wf-gray-400 w-14 shrink-0 text-right tabular-nums">
-                          {ss.actual}/{ss.goal}
+                        <span className="text-[10px] text-wf-gray-400 w-20 shrink-0 text-right tabular-nums">
+                          {ss.actualVolume.toLocaleString()}/{ss.goalVolume.toLocaleString()}
                         </span>
                       </div>
                     );
                   })}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

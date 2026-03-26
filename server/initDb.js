@@ -86,6 +86,7 @@ export default async function initDb() {
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_trainer_clients_client ON trainer_clients(client_id)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_trainer_applications_user ON trainer_applications(user_id)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_trainer_applications_status ON trainer_applications(status)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_sessions_completed_lookup ON sessions(user_id, template_id) WHERE completed = TRUE`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_schedule_days_user_id ON schedule_days(user_id)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_reset_token ON users(reset_token) WHERE reset_token IS NOT NULL`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_exercises_created_by ON exercises(created_by)`);

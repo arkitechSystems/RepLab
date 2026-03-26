@@ -46,11 +46,17 @@ const db = {
   // Users
   async getAllUsers() {
     const { rows } = await pool.query(
-      `SELECT id, email, phone, first_name, last_name, gender, username, role, plan, referral_source, referral_code, zip_code, signup_city, signup_state, signup_device, utm_source, utm_medium, utm_campaign, utm_content, utm_term, created_at FROM users
+      `SELECT id, email, phone, first_name, last_name, gender, username, role, plan, trial_end, referral_source, referral_code, zip_code, signup_city, signup_state, signup_device, utm_source, utm_medium, utm_campaign, utm_content, utm_term, created_at FROM users
        WHERE email NOT LIKE '%@willfit.demo' OR email IS NULL
        ORDER BY created_at DESC`
     );
-    return rows.map((u) => ({ id: u.id, email: u.email, phone: u.phone, firstName: u.first_name, lastName: u.last_name, gender: u.gender, username: u.username, role: u.role || 'client', plan: u.plan || 'Free', referralSource: u.referral_source, referralCode: u.referral_code, zipCode: u.zip_code, signupCity: u.signup_city, signupState: u.signup_state, signupDevice: u.signup_device, utmSource: u.utm_source, utmMedium: u.utm_medium, utmCampaign: u.utm_campaign, utmContent: u.utm_content, utmTerm: u.utm_term, createdAt: u.created_at }));
+    const now = new Date();
+    return rows.map((u) => {
+      const trialEnd = u.trial_end ? new Date(u.trial_end) : null;
+      const inTrial = trialEnd && trialEnd > now;
+      const daysLeft = inTrial ? Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24)) : null;
+      return { id: u.id, email: u.email, phone: u.phone, firstName: u.first_name, lastName: u.last_name, gender: u.gender, username: u.username, role: u.role || 'client', plan: u.plan || 'Free', freeTrial: inTrial ? 'Active' : 'No', trialDaysLeft: daysLeft != null ? `${daysLeft} day${daysLeft !== 1 ? 's' : ''}` : '—', referralSource: u.referral_source, referralCode: u.referral_code, zipCode: u.zip_code, signupCity: u.signup_city, signupState: u.signup_state, signupDevice: u.signup_device, utmSource: u.utm_source, utmMedium: u.utm_medium, utmCampaign: u.utm_campaign, utmContent: u.utm_content, utmTerm: u.utm_term, createdAt: u.created_at };
+    });
   },
 
   async getTrainersWithStatus() {
@@ -326,7 +332,7 @@ const db = {
         }
         if (!seen.has(ex.name)) {
           seen.set(ex.name, grouped.length);
-          grouped.push({ name: ex.name, setType: ex.set_type || 'straight', sortOrder: ex.sort_order, repRange: ex.rep_range || '', sets: [] });
+          grouped.push({ name: ex.name, setType: ex.set_type || 'straight', sortOrder: ex.sort_order, repRange: ex.rep_range || '', exerciseDescription: ex.exercise_description || '', sets: [] });
         }
         grouped[seen.get(ex.name)].sets.push({
           setNumber: ex.set_number,
@@ -616,6 +622,35 @@ const db = {
         isCompleted: e.is_completed || false,
       })),
     };
+  },
+
+  // Get the best weight/reps per exercise+set from completed sessions for a template.
+  // "Best" = highest weight wins; if tied, highest reps wins.
+  // Returns: { "Exercise Name": { 1: { weight, reps }, 2: { weight, reps } } }
+  async getBestPerformanceByTemplate(userId, templateId) {
+    const { rows } = await pool.query(
+      `SELECT DISTINCT ON (se.exercise_name, se.set_number)
+         se.exercise_name, se.set_number, se.weight, se.reps
+       FROM session_entries se
+       JOIN sessions s ON se.session_id = s.id
+       WHERE s.user_id = $1
+         AND s.template_id = $2
+         AND s.completed = TRUE
+         AND se.weight > 0
+         AND se.reps > 0
+       ORDER BY se.exercise_name, se.set_number,
+                se.weight DESC, se.reps DESC`,
+      [userId, templateId]
+    );
+    const result = {};
+    for (const r of rows) {
+      if (!result[r.exercise_name]) result[r.exercise_name] = {};
+      result[r.exercise_name][r.set_number] = {
+        weight: Number(r.weight),
+        reps: r.reps,
+      };
+    }
+    return result;
   },
 
   async toggleSessionComplete(userId, templateId, date, completed) {

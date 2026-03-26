@@ -322,7 +322,7 @@ export default function Workouts() {
 
   const enrichedPrograms = getEnrichedPrograms();
   const browsePrograms = enrichedPrograms.filter((p) => p.userId === null).sort((a, b) => {
-    const pinOrder = ["ZJ's Workout", "Will's Upper/Lower/PPL"];
+    const pinOrder = ["Will's Hypertrophy Program", "ZJ's Workout", "Will's Upper/Lower/PPL"];
     const aIdx = pinOrder.indexOf(a.name);
     const bIdx = pinOrder.indexOf(b.name);
     if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
@@ -799,7 +799,7 @@ export default function Workouts() {
                           <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                       </button>
-                    ) : !t.isRest ? (
+                    ) : !t.isRest && program.userId !== null ? (
                       <div className="flex items-center gap-1.5">
                         <button
                           data-tutorial={idx === weekTemplates.findIndex(w => !w.isRest) ? 'week-add-btn' : undefined}
