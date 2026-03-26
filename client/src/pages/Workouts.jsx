@@ -596,7 +596,7 @@ export default function Workouts() {
                   <span className="flex-1 text-[10px] uppercase tracking-widest text-wf-gray-600 text-center">Reps</span>
                 </div>
 
-                {ex.sets.map((set, setIdx) => (
+                {(ex.sets || []).map((set, setIdx) => (
                     <div
                       key={setIdx}
                       className="flex items-center gap-2 py-2 border-t border-white/5"
@@ -938,8 +938,9 @@ export default function Workouts() {
                         }
                         const exKey = `${t.id}-${ex.name}`;
                         const isExpanded = expandedExercises.has(exKey);
-                        const topWeight = Math.max(...ex.sets.map(s => s.suggestedWeight || 0));
-                        const reps = ex.repRange || ex.sets[0]?.plannedReps || '—';
+                        const sets = ex.sets || [];
+                        const topWeight = Math.max(...sets.map(s => s.suggestedWeight || 0), 0);
+                        const reps = ex.repRange || sets[0]?.plannedReps || '—';
                         return (
                           <div key={ex.name} className="rounded-xl overflow-hidden bg-white/[0.03] border border-white/5">
                             <button
@@ -957,7 +958,7 @@ export default function Workouts() {
                               <div className="text-left min-w-0">
                                 <h4 className="text-sm font-semibold text-white truncate">{ex.name}</h4>
                                 <p className="text-xs text-wf-gray-500 mt-0.5">
-                                  {ex.sets.length} sets{topWeight > 0 ? ` · ${topWeight} lbs` : ''}{reps !== '—' ? ` · ${reps} reps` : ''}
+                                  {sets.length} sets{topWeight > 0 ? ` · ${topWeight} lbs` : ''}{reps !== '—' ? ` · ${reps} reps` : ''}
                                 </p>
                               </div>
                               <svg
@@ -969,7 +970,7 @@ export default function Workouts() {
                             </button>
                             {isExpanded && (
                               <div className="border-t border-white/5 px-3.5 py-2.5 space-y-1.5 bg-white/[0.02]">
-                                {ex.sets.map((set, sIdx) => (
+                                {sets.map((set, sIdx) => (
                                   <div key={sIdx} className="flex items-center justify-between py-1.5">
                                     <span className="text-xs text-wf-gray-500 font-bold">Set {sIdx + 1}</span>
                                     <div className="flex items-center gap-2">
