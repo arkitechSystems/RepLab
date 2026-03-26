@@ -1,11 +1,13 @@
 import { useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useSearchParams } from 'react-router-dom';
 import BottomNav from './BottomNav';
 import Tutorial from './Tutorial';
 import { useTutorial } from '../context/TutorialContext';
 
 export default function Layout() {
   const { tutorial } = useTutorial();
+  const [searchParams] = useSearchParams();
+  const isDashboardEmbed = searchParams.get('from') === 'trainer' || searchParams.get('from') === 'admin';
 
   useEffect(() => {
     const theme = localStorage.getItem('wf-theme') || 'dark';
@@ -15,16 +17,18 @@ export default function Layout() {
   return (
     <div className="min-h-screen bg-black text-white flex flex-col relative">
       <div className="ambient-bg" />
-      {/* Top bar with logo */}
-      <div className="safe-top relative z-20 px-4 pt-3 pb-1">
-        <span className="text-lg font-black tracking-wide text-white logo-glow">
-          W<span className="text-wf-red">F</span>
-        </span>
-      </div>
-      <main className="grow shrink-0 basis-auto pb-20 relative z-10">
+      {/* Top bar with logo — hidden when embedded from dashboard */}
+      {!isDashboardEmbed && (
+        <div className="safe-top relative z-20 px-4 pt-3 pb-1">
+          <span className="text-lg font-black tracking-wide text-white logo-glow">
+            W<span className="text-wf-red">F</span>
+          </span>
+        </div>
+      )}
+      <main className={`grow shrink-0 basis-auto relative z-10 ${isDashboardEmbed ? 'pb-4' : 'pb-20'}`}>
         <Outlet />
       </main>
-      <BottomNav />
+      {!isDashboardEmbed && <BottomNav />}
       {tutorial.active && <Tutorial />}
     </div>
   );
