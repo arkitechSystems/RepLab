@@ -712,7 +712,7 @@ export default function Workouts() {
                 </button>
               )}
               <button
-                onClick={() => navigate(`/workouts/create?programId=${program.id}`)}
+                onClick={() => navigate(`/clientworkouts/create?programId=${program.id}`)}
                 className="btn-gradient active:scale-[0.98] text-white font-medium px-4 py-2.5 rounded-xl text-sm transition-all shrink-0"
               >
                 + Workout
@@ -812,7 +812,7 @@ export default function Workouts() {
                           <span className="text-xs font-semibold text-green-400">Add</span>
                         </button>
                         <button
-                          onClick={() => navigate(`/workouts/edit/${t.id}`)}
+                          onClick={() => navigate(`/clientworkouts/edit/${t.id}`)}
                           className="w-9 h-9 rounded-lg bg-wf-red/20 flex items-center justify-center shrink-0 active:bg-wf-red/40 transition-colors"
                         >
                           <svg className="w-4 h-4 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -915,7 +915,7 @@ export default function Workouts() {
           <div className="bg-wf-gray-900 border border-white/10 rounded-2xl shadow-2xl shadow-black/60 overflow-hidden">
             <div className="p-3 space-y-1.5">
               <button
-                onClick={() => { setShowCreateMenu(false); navigate('/workouts/create?quick=1'); }}
+                onClick={() => { setShowCreateMenu(false); navigate('/clientworkouts/create?quick=1'); }}
                 className="w-full text-left rounded-xl p-3.5 flex items-center gap-3.5 active:scale-[0.98] transition-all hover:bg-white/5 active:bg-white/10"
               >
                 <div className="w-10 h-10 rounded-xl btn-gradient flex items-center justify-center shrink-0">
@@ -967,7 +967,7 @@ export default function Workouts() {
               </button>
               <div className="border-t border-white/5 mx-2" />
               <button
-                onClick={() => { setShowCreateMenu(false); navigate('/workouts/ai'); }}
+                onClick={() => { setShowCreateMenu(false); navigate('/clientworkouts/ai'); }}
                 className="w-full text-left rounded-xl p-3.5 flex items-center gap-3.5 active:scale-[0.98] transition-all hover:bg-white/5 active:bg-white/10"
               >
                 <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center shrink-0">

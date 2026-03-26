@@ -19,6 +19,7 @@ export default defineConfig({
       '/exercises': 'http://localhost:3024',
       '/challenges': 'http://localhost:3024',
       '/trainer': 'http://localhost:3024',
+      '/workouts': 'http://localhost:3024',
     },
   },
 });

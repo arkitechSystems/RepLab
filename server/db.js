@@ -46,11 +46,36 @@ const db = {
   // Users
   async getAllUsers() {
     const { rows } = await pool.query(
-      `SELECT id, email, phone, first_name, last_name, gender, username, plan, referral_source, referral_code, zip_code, signup_city, signup_state, signup_device, utm_source, utm_medium, utm_campaign, utm_content, utm_term, created_at FROM users
+      `SELECT id, email, phone, first_name, last_name, gender, username, role, plan, referral_source, referral_code, zip_code, signup_city, signup_state, signup_device, utm_source, utm_medium, utm_campaign, utm_content, utm_term, created_at FROM users
        WHERE email NOT LIKE '%@willfit.demo' OR email IS NULL
        ORDER BY created_at DESC`
     );
-    return rows.map((u) => ({ id: u.id, email: u.email, phone: u.phone, firstName: u.first_name, lastName: u.last_name, gender: u.gender, username: u.username, plan: u.plan || 'Free', referralSource: u.referral_source, referralCode: u.referral_code, zipCode: u.zip_code, signupCity: u.signup_city, signupState: u.signup_state, signupDevice: u.signup_device, utmSource: u.utm_source, utmMedium: u.utm_medium, utmCampaign: u.utm_campaign, utmContent: u.utm_content, utmTerm: u.utm_term, createdAt: u.created_at }));
+    return rows.map((u) => ({ id: u.id, email: u.email, phone: u.phone, firstName: u.first_name, lastName: u.last_name, gender: u.gender, username: u.username, role: u.role || 'client', plan: u.plan || 'Free', referralSource: u.referral_source, referralCode: u.referral_code, zipCode: u.zip_code, signupCity: u.signup_city, signupState: u.signup_state, signupDevice: u.signup_device, utmSource: u.utm_source, utmMedium: u.utm_medium, utmCampaign: u.utm_campaign, utmContent: u.utm_content, utmTerm: u.utm_term, createdAt: u.created_at }));
+  },
+
+  async getTrainersWithStatus() {
+    const { rows } = await pool.query(
+      `SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.username, u.plan, u.role, u.created_at,
+              ta.status AS application_status, ta.created_at AS applied_at
+       FROM users u
+       LEFT JOIN trainer_applications ta ON ta.user_id = u.id
+       WHERE u.role = 'trainer' OR ta.id IS NOT NULL
+       ORDER BY COALESCE(ta.created_at, u.created_at) DESC`
+    );
+    return rows.map((u) => ({
+      id: u.id,
+      firstName: u.first_name,
+      lastName: u.last_name,
+      email: u.email,
+      phone: u.phone,
+      username: u.username,
+      plan: u.plan || 'Free',
+      role: u.role || 'client',
+      trainerStatus: u.role === 'trainer' && !u.application_status ? 'approved'
+        : u.application_status || 'pending',
+      appliedAt: u.applied_at,
+      createdAt: u.created_at,
+    }));
   },
 
   async getDailyStats(startDate, endDate) {
@@ -174,7 +199,7 @@ const db = {
     const { rows } = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
     if (!rows[0]) return null;
     const u = rows[0];
-    return { id: u.id, email: u.email, phone: u.phone, passwordHash: u.password_hash, firstName: u.first_name, lastName: u.last_name, username: u.username, plan: u.plan || 'Free', trialEnd: u.trial_end || null, profilePhoto: u.profile_photo || null };
+    return { id: u.id, email: u.email, phone: u.phone, passwordHash: u.password_hash, firstName: u.first_name, lastName: u.last_name, username: u.username, role: u.role || 'client', plan: u.plan || 'Free', trialEnd: u.trial_end || null, profilePhoto: u.profile_photo || null };
   },
 
   async findUserByUsername(username) {
@@ -189,7 +214,7 @@ const db = {
     );
     if (!rows[0]) return null;
     const u = rows[0];
-    return { id: u.id, email: u.email, phone: u.phone, passwordHash: u.password_hash, firstName: u.first_name, lastName: u.last_name, username: u.username, plan: u.plan || 'Free', trialEnd: u.trial_end || null, profilePhoto: u.profile_photo || null, createdAt: u.created_at };
+    return { id: u.id, email: u.email, phone: u.phone, passwordHash: u.password_hash, firstName: u.first_name, lastName: u.last_name, username: u.username, role: u.role || 'client', plan: u.plan || 'Free', trialEnd: u.trial_end || null, profilePhoto: u.profile_photo || null, createdAt: u.created_at };
   },
 
   async createUser({ email, phone, passwordHash, firstName, lastName, gender, username, referralSource, referralCode, zipCode, signupCity, signupState, signupDevice, utmSource, utmMedium, utmCampaign, utmContent, utmTerm }) {
@@ -199,7 +224,7 @@ const db = {
       [email || null, phone || null, passwordHash, firstName || null, lastName || null, gender || null, username || null, referralSource || null, referralCode || null, zipCode || null, signupCity || null, signupState || null, signupDevice || null, utmSource || null, utmMedium || null, utmCampaign || null, utmContent || null, utmTerm || null]
     );
     const u = rows[0];
-    return { id: u.id, email: u.email, phone: u.phone, passwordHash: u.password_hash, firstName: u.first_name, lastName: u.last_name, gender: u.gender, username: u.username, referralSource: u.referral_source, referralCode: u.referral_code, zipCode: u.zip_code, signupCity: u.signup_city, signupState: u.signup_state, signupDevice: u.signup_device, utmSource: u.utm_source, utmMedium: u.utm_medium, utmCampaign: u.utm_campaign, utmContent: u.utm_content, utmTerm: u.utm_term, createdAt: u.created_at };
+    return { id: u.id, email: u.email, phone: u.phone, passwordHash: u.password_hash, firstName: u.first_name, lastName: u.last_name, gender: u.gender, username: u.username, role: u.role || 'client', referralSource: u.referral_source, referralCode: u.referral_code, zipCode: u.zip_code, signupCity: u.signup_city, signupState: u.signup_state, signupDevice: u.signup_device, utmSource: u.utm_source, utmMedium: u.utm_medium, utmCampaign: u.utm_campaign, utmContent: u.utm_content, utmTerm: u.utm_term, createdAt: u.created_at };
   },
 
   // Programs

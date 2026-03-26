@@ -20,6 +20,8 @@ import exerciseRoutes from './routes/exercises.js';
 import challengeRoutes from './routes/challenges.js';
 import trainerRoutes from './routes/trainer.js';
 import billingRoutes from './routes/billing.js';
+import shopRoutes from './routes/shop.js';
+import workoutDashboardRoutes from './routes/workoutDashboard.js';
 import db from './db.js';
 import { sendDailySummaryEmail } from './email.js';
 
@@ -110,6 +112,8 @@ app.use('/ai', aiRoutes);
 app.use('/exercises', exerciseRoutes);
 app.use('/challenges', challengeRoutes);
 app.use('/billing', billingRoutes);
+app.use('/shop', shopRoutes);
+app.use('/workouts', workoutDashboardRoutes);
 
 // Health check — pinged by UptimeRobot to prevent Render free-tier sleep
 app.get('/health', (req, res) => res.json({
@@ -123,7 +127,7 @@ const clientDist = path.join(__dirname, '..', 'client', 'dist');
 app.use(express.static(clientDist));
 // Catch-all for React SPA — skip server-rendered pages (/admin, /trainer)
 app.get('*', (req, res, next) => {
-  if (req.path.startsWith('/admin') || req.path.startsWith('/trainer')) {
+  if (req.path.startsWith('/admin') || req.path.startsWith('/trainer') || req.path.startsWith('/workouts')) {
     return next();
   }
   res.sendFile(path.join(clientDist, 'index.html'));

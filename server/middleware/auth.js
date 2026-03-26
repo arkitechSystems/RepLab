@@ -7,7 +7,7 @@ if (!process.env.JWT_SECRET) {
 const JWT_SECRET = process.env.JWT_SECRET;
 
 export function generateToken(user) {
-  return jwt.sign({ userId: user.id, email: user.email, phone: user.phone }, JWT_SECRET, { expiresIn: '7d' });
+  return jwt.sign({ userId: user.id, email: user.email, phone: user.phone, role: user.role || 'client' }, JWT_SECRET, { expiresIn: '7d' });
 }
 
 export async function authMiddleware(req, res, next) {
@@ -28,6 +28,7 @@ export async function authMiddleware(req, res, next) {
 
     req.userId = decoded.userId;
     req.userEmail = decoded.email;
+    req.userRole = decoded.role || 'client';
     next();
   } catch (err) {
     return res.status(401).json({ error: 'Invalid token' });

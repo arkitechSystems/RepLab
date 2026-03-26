@@ -48,7 +48,7 @@ export default function FreeTrialOffer() {
       });
       updateUser(data.user);
       startTutorial(null);
-      navigate('/workouts');
+      navigate('/');
     } catch (err) {
       setError(err.message || 'Something went wrong');
     } finally {
@@ -58,7 +58,7 @@ export default function FreeTrialOffer() {
 
   function handleSkip() {
     startTutorial(null);
-    navigate('/workouts');
+    navigate('/');
   }
 
   return (

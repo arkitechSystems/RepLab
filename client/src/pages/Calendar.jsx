@@ -445,7 +445,7 @@ export default function Calendar() {
                 </p>
                 <div className="flex gap-3 mt-4">
                   <button
-                    onClick={() => { setTutorialDone(false); navigate('/workouts'); }}
+                    onClick={() => { setTutorialDone(false); navigate('/'); }}
                     className="flex-1 btn-gradient text-white text-sm font-semibold py-2.5 px-4 rounded-xl active:scale-[0.97] transition-transform"
                   >
                     Browse Library
@@ -795,7 +795,7 @@ export default function Calendar() {
 
                 {/* Create new workout */}
                 <button
-                  onClick={() => { setEditingDay(null); navigate('/workouts/create?quick=1'); }}
+                  onClick={() => { setEditingDay(null); navigate('/clientworkouts/create?quick=1'); }}
                   className="w-full text-left rounded-xl px-4 py-3.5 flex items-center gap-3 bg-white/5 active:bg-white/10 active:scale-[0.98] transition-all mt-1 mb-2"
                 >
                   <div className="w-8 h-8 rounded-full btn-gradient flex items-center justify-center shrink-0">

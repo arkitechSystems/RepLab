@@ -16,7 +16,7 @@ export default function Tutorial() {
 
   const handleSkip = useCallback(() => {
     skipTutorial();
-    navigate('/workouts');
+    navigate('/');
   }, [skipTutorial, navigate]);
 
   // Intro screen → choice screen → spotlight steps

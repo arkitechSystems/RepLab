@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
   last_name TEXT,
   gender TEXT,
   username TEXT UNIQUE,
+  role TEXT DEFAULT 'client',
   referral_source TEXT,
   referral_code TEXT,
   plan TEXT DEFAULT 'Free',
@@ -163,4 +164,21 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   cancel_at_period_end BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS trainer_clients (
+  id SERIAL PRIMARY KEY,
+  trainer_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  client_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(trainer_id, client_id)
+);
+
+CREATE TABLE IF NOT EXISTS trainer_applications (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  message TEXT DEFAULT '',
+  status TEXT DEFAULT 'pending',
+  reviewed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );

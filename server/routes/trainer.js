@@ -108,6 +108,13 @@ function trainerPage(title, body, trainer) {
     <a href="/trainer/create-workout"${title === 'Create a Workout' ? ' class="active"' : ''}>Create Workout</a>
     <a href="/trainer/workouts"${title === 'View Current Workouts' ? ' class="active"' : ''}>View Workouts</a>
   </div>
+  <div class="sidebar-section" onclick="toggleSection('clients')">
+    <span>Clients</span>
+    <svg class="chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+  </div>
+  <div class="sidebar-links" id="section-clients">
+    <a href="/trainer/clients"${title === 'My Clients' ? ' class="active"' : ''}>My Clients</a>
+  </div>
   <div class="sidebar-section" onclick="toggleSection('resources')">
     <span>Resources</span>
     <svg class="chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
@@ -142,7 +149,7 @@ router.post('/login', express.urlencoded({ extended: false }), async (req, res) 
 
   try {
     const { rows } = await pool.query(
-      'SELECT id, email, phone, password_hash, first_name, last_name FROM users WHERE email = $1 OR phone = $1',
+      'SELECT id, email, phone, password_hash, first_name, last_name, role, plan FROM users WHERE email = $1 OR phone = $1',
       [identifier.toLowerCase().trim()]
     );
 
@@ -154,6 +161,11 @@ router.post('/login', express.urlencoded({ extended: false }), async (req, res) 
     const valid = bcrypt.compareSync(password, user.password_hash);
     if (!valid) {
       return res.redirect('/trainer/login?error=Invalid+credentials');
+    }
+
+    // Only users with trainer role can access the trainer dashboard
+    if (user.role !== 'trainer') {
+      return res.redirect('/trainer/login?error=Trainer+access+required.+Apply+in+the+app+to+become+a+trainer.');
     }
 
     // Log login with geo lookup
@@ -179,6 +191,8 @@ router.post('/login', express.urlencoded({ extended: false }), async (req, res) 
       email: user.email,
       firstName: user.first_name,
       lastName: user.last_name,
+      role: user.role || 'client',
+      plan: user.plan || 'Free',
     });
 
     res.cookie('trainer_session', token, {
@@ -583,6 +597,11 @@ router.get('/', trainerAuth, (req, res) => {
         <div class="card-title">View Current Workouts</div>
         <div class="card-desc">Browse and manage your existing programs and workouts.</div>
       </a>
+      <a class="card glass" href="/trainer/clients">
+        <div class="card-icon">👥</div>
+        <div class="card-title">My Clients</div>
+        <div class="card-desc">View your client list, check their workout history, and assign programs.</div>
+      </a>
       <a class="card glass" href="/trainer/guide">
         <div class="card-icon">📖</div>
         <div class="card-title">User Guide</div>
@@ -596,6 +615,194 @@ function esc(str) {
   if (!str) return '';
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
+
+// ─── Clients Page ───
+router.get('/clients', trainerAuth, async (req, res) => {
+  const isPro = req.trainer.plan === 'Pro' || req.trainer.plan === 'Elite';
+  try {
+    const { rows: clients } = await pool.query(
+      `SELECT u.id, u.email, u.phone, u.first_name, u.last_name, u.username, u.plan, u.created_at,
+              tc.created_at as assigned_at,
+              (SELECT COUNT(*) FROM sessions WHERE user_id = u.id AND completed = true) as completed_sessions,
+              (SELECT MAX(date) FROM sessions WHERE user_id = u.id AND completed = true) as last_workout
+       FROM trainer_clients tc
+       JOIN users u ON tc.client_id = u.id
+       WHERE tc.trainer_id = $1
+       ORDER BY u.first_name, u.last_name`,
+      [req.trainer.userId]
+    );
+
+    const clientRows = clients.map(c => `
+      <tr>
+        <td><strong>${esc(c.first_name || '')} ${esc(c.last_name || '')}</strong><br><span style="color:rgba(255,255,255,0.4);font-size:11px">${esc(c.username || c.email || c.phone)}</span></td>
+        <td>${c.plan}</td>
+        <td>${c.completed_sessions || 0}</td>
+        <td>${c.last_workout || '—'}</td>
+        <td>${new Date(c.assigned_at).toLocaleDateString()}</td>
+        <td>
+          <a href="/trainer/clients/${c.id}/history" style="color:#ef4444;text-decoration:none;font-weight:600;font-size:12px">View History</a>
+          ${isPro ? `<span style="margin:0 4px;color:rgba(255,255,255,0.2)">|</span><a href="/trainer/clients/${c.id}/create-program" style="color:#3b82f6;text-decoration:none;font-weight:600;font-size:12px">Create Program</a>` : ''}
+          <span style="margin:0 4px;color:rgba(255,255,255,0.2)">|</span>
+          <form method="POST" action="/trainer/clients/${c.id}/remove" style="display:inline"><button type="submit" style="background:none;border:none;color:rgba(255,255,255,0.3);cursor:pointer;font-size:12px;font-weight:600" onclick="return confirm('Remove this client?')">Remove</button></form>
+        </td>
+      </tr>
+    `).join('');
+
+    res.send(trainerPage('My Clients', `
+      <div class="header">
+        <h1>My Clients</h1>
+        <p>Manage your assigned clients, view their workout history${isPro ? ', and create programs for them' : ''}.</p>
+        ${!isPro ? '<p style="color:#f59e0b;font-size:12px;margin-top:8px">⭐ Upgrade to Pro to create and assign workout programs to clients.</p>' : ''}
+      </div>
+
+      <div class="glass" style="padding:20px;margin-bottom:24px">
+        <h3 style="font-size:14px;font-weight:700;margin-bottom:12px">Add a Client</h3>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="client-search" placeholder="Search by name, email, or username..." style="flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px 14px;color:#fff;font-size:13px;outline:none" oninput="searchClients(this.value)">
+        </div>
+        <div id="search-results" style="margin-top:8px"></div>
+      </div>
+
+      <div class="glass" style="padding:0;overflow:hidden">
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
+              <th style="padding:12px 16px;text-align:left;font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.5px">Client</th>
+              <th style="padding:12px 16px;text-align:left;font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.5px">Plan</th>
+              <th style="padding:12px 16px;text-align:left;font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.5px">Workouts</th>
+              <th style="padding:12px 16px;text-align:left;font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.5px">Last Workout</th>
+              <th style="padding:12px 16px;text-align:left;font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.5px">Assigned</th>
+              <th style="padding:12px 16px;text-align:left;font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.5px">Actions</th>
+            </tr>
+          </thead>
+          <tbody style="font-size:13px">
+            ${clientRows || '<tr><td colspan="6" style="text-align:center;padding:32px;color:rgba(255,255,255,0.3)">No clients yet. Search above to add one.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+
+      <script>
+      let searchTimer;
+      function searchClients(q) {
+        clearTimeout(searchTimer);
+        if (q.length < 2) { document.getElementById('search-results').innerHTML = ''; return; }
+        searchTimer = setTimeout(async () => {
+          try {
+            const res = await fetch('/trainer/api/clients/search?q=' + encodeURIComponent(q));
+            const data = await res.json();
+            const el = document.getElementById('search-results');
+            if (!data.users || data.users.length === 0) {
+              el.innerHTML = '<p style="color:rgba(255,255,255,0.3);font-size:12px;padding:4px">No users found</p>';
+              return;
+            }
+            el.innerHTML = data.users.map(u => \`
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-radius:8px;background:rgba(255,255,255,0.03);margin-bottom:4px">
+                <div>
+                  <span style="color:#fff;font-weight:600;font-size:13px">\${u.firstName || ''} \${u.lastName || ''}</span>
+                  <span style="color:rgba(255,255,255,0.4);font-size:11px;margin-left:8px">\${u.email || u.username || ''}</span>
+                </div>
+                <button onclick="addClient(\${u.id})" style="background:rgba(239,68,68,0.15);color:#ef4444;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600">Add</button>
+              </div>
+            \`).join('');
+          } catch (err) { console.error(err); }
+        }, 300);
+      }
+      async function addClient(id) {
+        try {
+          const res = await fetch('/trainer/api/clients', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId: id }),
+          });
+          if (res.ok) { location.reload(); }
+          else { const d = await res.json(); alert(d.error || 'Failed'); }
+        } catch (err) { alert('Failed to add client'); }
+      }
+      </script>
+    `, req.trainer));
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Internal server error');
+  }
+});
+
+// Remove a client (form POST from clients page)
+router.post('/clients/:clientId/remove', trainerAuth, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM trainer_clients WHERE trainer_id = $1 AND client_id = $2', [req.trainer.userId, req.params.clientId]);
+    res.redirect('/trainer/clients');
+  } catch (err) {
+    console.error(err);
+    res.redirect('/trainer/clients');
+  }
+});
+
+// Client workout history page
+router.get('/clients/:clientId/history', trainerAuth, async (req, res) => {
+  const { clientId } = req.params;
+  try {
+    // Verify ownership
+    const { rows: check } = await pool.query(
+      'SELECT id FROM trainer_clients WHERE trainer_id = $1 AND client_id = $2',
+      [req.trainer.userId, clientId]
+    );
+    if (check.length === 0) return res.redirect('/trainer/clients');
+
+    const { rows: [client] } = await pool.query(
+      'SELECT first_name, last_name, email, username FROM users WHERE id = $1', [clientId]
+    );
+    if (!client) return res.redirect('/trainer/clients');
+
+    const clientName = `${client.first_name || ''} ${client.last_name || ''}`.trim() || client.email || client.username;
+
+    const { rows: sessions } = await pool.query(
+      `SELECT s.id, s.date, s.completed, s.created_at, t.name as template_name,
+              (SELECT COUNT(*) FROM session_entries WHERE session_id = s.id) as total_sets
+       FROM sessions s
+       LEFT JOIN templates t ON s.template_id = t.id
+       WHERE s.user_id = $1
+       ORDER BY s.date DESC
+       LIMIT 100`,
+      [clientId]
+    );
+
+    const sessionRows = sessions.map(s => `
+      <tr>
+        <td>${s.date}</td>
+        <td>${esc(s.template_name || 'Unknown')}</td>
+        <td>${s.total_sets} sets</td>
+        <td><span style="color:${s.completed ? '#22c55e' : '#f59e0b'};font-weight:600">${s.completed ? 'Completed' : 'In Progress'}</span></td>
+      </tr>
+    `).join('');
+
+    res.send(trainerPage('My Clients', `
+      <div class="header">
+        <p style="margin-bottom:8px"><a href="/trainer/clients" style="color:#ef4444;text-decoration:none;font-size:13px">&larr; Back to Clients</a></p>
+        <h1>${esc(clientName)}'s Workout History</h1>
+        <p>${sessions.length} recorded sessions</p>
+      </div>
+
+      <div class="glass" style="padding:0;overflow:hidden">
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
+              <th style="padding:12px 16px;text-align:left;font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.5px">Date</th>
+              <th style="padding:12px 16px;text-align:left;font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.5px">Workout</th>
+              <th style="padding:12px 16px;text-align:left;font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.5px">Volume</th>
+              <th style="padding:12px 16px;text-align:left;font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.5px">Status</th>
+            </tr>
+          </thead>
+          <tbody style="font-size:13px">
+            ${sessionRows || '<tr><td colspan="4" style="text-align:center;padding:32px;color:rgba(255,255,255,0.3)">No workout sessions yet</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    `, req.trainer));
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Internal server error');
+  }
+});
 
 // JSON API: search exercises for autocomplete
 router.get('/api/exercises', trainerAuth, async (req, res) => {
@@ -1736,6 +1943,222 @@ router.get('/copy-workout/:id', trainerAuth, async (req, res) => {
     }
     res.redirect('/trainer/workouts');
   } catch (err) { console.error(err); res.redirect('/trainer/workouts'); }
+});
+
+// ─── Trainer Client Management API ───
+
+// Helper: check if trainer has Pro+ plan (required for creating/assigning programs)
+function requireProPlan(session) {
+  return session.plan === 'Pro' || session.plan === 'Elite';
+}
+
+// List trainer's assigned clients
+router.get('/api/clients', trainerAuth, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT u.id, u.email, u.phone, u.first_name, u.last_name, u.username, u.plan, u.created_at,
+              tc.created_at as assigned_at
+       FROM trainer_clients tc
+       JOIN users u ON tc.client_id = u.id
+       WHERE tc.trainer_id = $1
+       ORDER BY u.first_name, u.last_name`,
+      [req.trainer.userId]
+    );
+    res.json({ clients: rows.map(u => ({
+      id: u.id, email: u.email, phone: u.phone, firstName: u.first_name, lastName: u.last_name,
+      username: u.username, plan: u.plan, createdAt: u.created_at, assignedAt: u.assigned_at,
+    })) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Search users to add as clients
+router.get('/api/clients/search', trainerAuth, async (req, res) => {
+  try {
+    const q = (req.query.q || '').trim().toLowerCase();
+    if (!q || q.length < 2) return res.json({ users: [] });
+    const { rows } = await pool.query(
+      `SELECT id, email, phone, first_name, last_name, username FROM users
+       WHERE role = 'client' AND (
+         LOWER(email) LIKE $1 OR LOWER(username) LIKE $1
+         OR LOWER(first_name || ' ' || last_name) LIKE $1
+       )
+       AND id NOT IN (SELECT client_id FROM trainer_clients WHERE trainer_id = $2)
+       LIMIT 20`,
+      [`%${q}%`, req.trainer.userId]
+    );
+    res.json({ users: rows.map(u => ({
+      id: u.id, email: u.email, phone: u.phone, firstName: u.first_name, lastName: u.last_name, username: u.username,
+    })) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Assign a client to this trainer
+router.post('/api/clients', trainerAuth, express.json(), async (req, res) => {
+  try {
+    const { clientId } = req.body;
+    if (!clientId) return res.status(400).json({ error: 'clientId required' });
+
+    // Verify client exists and is not already a trainer
+    const { rows: userRows } = await pool.query("SELECT id, role FROM users WHERE id = $1", [clientId]);
+    if (userRows.length === 0) return res.status(404).json({ error: 'User not found' });
+    if (userRows[0].role === 'trainer') return res.status(400).json({ error: 'Cannot assign a trainer as a client' });
+
+    await pool.query(
+      'INSERT INTO trainer_clients (trainer_id, client_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+      [req.trainer.userId, clientId]
+    );
+    res.status(201).json({ message: 'Client assigned' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Remove a client from this trainer
+router.delete('/api/clients/:clientId', trainerAuth, async (req, res) => {
+  try {
+    await pool.query(
+      'DELETE FROM trainer_clients WHERE trainer_id = $1 AND client_id = $2',
+      [req.trainer.userId, req.params.clientId]
+    );
+    res.json({ message: 'Client removed' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// View a client's workout history (all trainers can do this)
+router.get('/api/clients/:clientId/history', trainerAuth, async (req, res) => {
+  try {
+    const { clientId } = req.params;
+    // Verify this client is assigned to this trainer
+    const { rows: check } = await pool.query(
+      'SELECT id FROM trainer_clients WHERE trainer_id = $1 AND client_id = $2',
+      [req.trainer.userId, clientId]
+    );
+    if (check.length === 0) return res.status(403).json({ error: 'Not your client' });
+
+    const { rows: sessions } = await pool.query(
+      `SELECT s.id, s.date, s.completed, s.created_at, t.name as template_name
+       FROM sessions s
+       LEFT JOIN templates t ON s.template_id = t.id
+       WHERE s.user_id = $1
+       ORDER BY s.date DESC
+       LIMIT 50`,
+      [clientId]
+    );
+
+    res.json({ sessions });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// View a client's specific session details
+router.get('/api/clients/:clientId/sessions/:sessionId', trainerAuth, async (req, res) => {
+  try {
+    const { clientId, sessionId } = req.params;
+    // Verify this client is assigned to this trainer
+    const { rows: check } = await pool.query(
+      'SELECT id FROM trainer_clients WHERE trainer_id = $1 AND client_id = $2',
+      [req.trainer.userId, clientId]
+    );
+    if (check.length === 0) return res.status(403).json({ error: 'Not your client' });
+
+    const { rows: session } = await pool.query(
+      `SELECT s.*, t.name as template_name FROM sessions s
+       LEFT JOIN templates t ON s.template_id = t.id
+       WHERE s.id = $1 AND s.user_id = $2`,
+      [sessionId, clientId]
+    );
+    if (session.length === 0) return res.status(404).json({ error: 'Session not found' });
+
+    const { rows: entries } = await pool.query(
+      'SELECT * FROM session_entries WHERE session_id = $1 ORDER BY exercise_name, set_number',
+      [sessionId]
+    );
+
+    res.json({ session: session[0], entries });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Create a program and assign it to a client (Pro+ only)
+router.post('/api/clients/:clientId/programs', trainerAuth, express.json(), async (req, res) => {
+  try {
+    if (!requireProPlan(req.trainer)) {
+      return res.status(403).json({ error: 'Pro or Elite plan required to create programs for clients' });
+    }
+
+    const { clientId } = req.params;
+    // Verify this client is assigned to this trainer
+    const { rows: check } = await pool.query(
+      'SELECT id FROM trainer_clients WHERE trainer_id = $1 AND client_id = $2',
+      [req.trainer.userId, clientId]
+    );
+    if (check.length === 0) return res.status(403).json({ error: 'Not your client' });
+
+    const { name, description, workouts } = req.body;
+    if (!name) return res.status(400).json({ error: 'Program name required' });
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Create program for the client
+      const { rows: [program] } = await client.query(
+        'INSERT INTO programs (user_id, name, description) VALUES ($1, $2, $3) RETURNING *',
+        [clientId, name, description || '']
+      );
+
+      // Create workouts/templates within the program
+      if (workouts && Array.isArray(workouts)) {
+        for (let wi = 0; wi < workouts.length; wi++) {
+          const w = workouts[wi];
+          const { rows: [tmpl] } = await client.query(
+            'INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+            [clientId, program.id, w.name, w.description || '', w.isRest || false, wi]
+          );
+
+          if (w.exercises && Array.isArray(w.exercises)) {
+            for (let ei = 0; ei < w.exercises.length; ei++) {
+              const ex = w.exercises[ei];
+              const sets = ex.sets || [];
+              for (let si = 0; si < sets.length; si++) {
+                const s = sets[si];
+                await client.query(
+                  `INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                  [tmpl.id, ex.name, s.setType || 'straight', s.setNumber || si + 1, s.plannedReps || 10, s.suggestedWeight || 0, ei]
+                );
+              }
+            }
+          }
+        }
+      }
+
+      await client.query('COMMIT');
+      res.status(201).json({ program: { id: program.id, name: program.name } });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 export { trainerSessions };

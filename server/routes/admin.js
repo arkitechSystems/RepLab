@@ -533,6 +533,7 @@ function adminPage(title, body) {
     <svg class="chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
   </div>
   <div class="sidebar-links" id="section-users">
+    <a href="/admin/trainers"${title === 'Trainer Central' ? ' class="active"' : ''}>Trainer Central</a>
     <a href="/admin/correspondence"${title === 'User Correspondence' ? ' class="active"' : ''}>Correspondence</a>
     <a href="/admin/feedback"${title === 'Feedback' ? ' class="active"' : ''}>Feedback</a>
     <a href="/admin/retention"${title === 'Retention' ? ' class="active"' : ''}>Retention</a>
@@ -743,6 +744,11 @@ router.get('/', adminAuth, async (req, res) => {
       <div class="card-title">User Sign Ups</div>
       <div class="card-desc">View all registered users, contact info, referral sources, and export data.</div>
     </a>
+    <a class="card glass" href="/admin/trainers" style="border-color:rgba(168,85,247,0.25);">
+      <div class="card-icon">🏋️‍♀️</div>
+      <div class="card-title">Trainer Central</div>
+      <div class="card-desc">Manage trainers, review applications, and view trainer details.</div>
+    </a>
     <a class="card glass" href="/admin/analytics">
       <div class="card-icon">📊</div>
       <div class="card-title">Session Analytics</div>
@@ -868,10 +874,15 @@ router.get('/users', adminAuth, async (req, res) => {
       const rawKeys = users.length > 0
         ? Object.keys(users[0]).filter((k) => !skipKeys.has(k))
         : [];
-      // Move username to first position, email to second
-      const allKeys = rawKeys.filter(k => k !== 'username' && k !== 'email');
+      // Move username to first position, email to second, role after username
+      const allKeys = rawKeys.filter(k => k !== 'username' && k !== 'email' && k !== 'role');
       if (rawKeys.includes('email')) allKeys.unshift('email');
       if (rawKeys.includes('username')) allKeys.unshift('username');
+      // Insert role right after username (index 1)
+      if (rawKeys.includes('role')) {
+        const insertIdx = allKeys.indexOf('username') + 1;
+        allKeys.splice(insertIdx, 0, 'role');
+      }
 
       // Pretty labels: camelCase → Title Case
       const label = (k) => k.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase());
@@ -3308,6 +3319,101 @@ router.get('/workout-manager/move/:id', adminAuth, async (req, res) => {
   } catch (err) { console.error(err); res.redirect('/admin/workout-manager/program/' + programId); }
 });
 
+// GET /admin/trainers — Trainer Central
+router.get('/trainers', adminAuth, async (req, res) => {
+  try {
+    const trainers = await db.getTrainersWithStatus();
+
+    const statusBadge = (status) => {
+      const colors = {
+        approved: 'background:rgba(34,197,94,0.15);color:#4ade80;border:1px solid rgba(34,197,94,0.25);',
+        pending: 'background:rgba(234,179,8,0.15);color:#facc15;border:1px solid rgba(234,179,8,0.25);',
+        rejected: 'background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.25);',
+      };
+      const labels = { approved: 'Approved', pending: 'Application Pending', rejected: 'Denied' };
+      const style = colors[status] || colors.pending;
+      const label = labels[status] || status;
+      return `<span style="${style}padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap;">${label}</span>`;
+    };
+
+    const thStyle = 'padding:12px 16px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);font-weight:700;background:rgba(255,255,255,0.04);border-bottom:2px solid rgba(255,255,255,0.08);';
+
+    const tableRows = trainers.map((t, i) => {
+      const date = t.appliedAt || t.createdAt;
+      const dateStr = date
+        ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' })
+        : '—';
+      const rowBg = i % 2 === 0 ? 'background:rgba(255,255,255,0.02);' : '';
+      const tdStyle = 'padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);';
+      return `<tr style="${rowBg}">
+        <td style="${tdStyle}font-weight:600;color:#fff;">${esc(t.firstName || '—')}</td>
+        <td style="${tdStyle}font-weight:600;color:#fff;">${esc(t.lastName || '—')}</td>
+        <td style="${tdStyle}color:rgba(255,255,255,0.5);font-size:13px;">${esc(t.email || '—')}</td>
+        <td style="${tdStyle}color:rgba(255,255,255,0.5);font-size:13px;">${esc(t.phone || '—')}</td>
+        <td style="${tdStyle}color:rgba(255,255,255,0.5);font-size:13px;">${esc(t.username || '—')}</td>
+        <td style="${tdStyle}font-size:13px;">${statusBadge(t.trainerStatus)}</td>
+        <td style="${tdStyle}color:rgba(255,255,255,0.5);font-size:13px;">${esc(t.plan)}</td>
+        <td style="${tdStyle}color:rgba(255,255,255,0.4);font-size:13px;">${dateStr}</td>
+      </tr>`;
+    }).join('');
+
+    const approvedCount = trainers.filter(t => t.trainerStatus === 'approved').length;
+    const pendingCount = trainers.filter(t => t.trainerStatus === 'pending').length;
+    const deniedCount = trainers.filter(t => t.trainerStatus === 'rejected').length;
+
+    res.send(adminPage('Trainer Central', `
+      <div class="breadcrumb"><a href="/admin">Dashboard</a> / Trainer Central</div>
+      <div class="header">
+        <h1>Trainer Central</h1>
+        <p>Manage trainers and review applications</p>
+      </div>
+      <div class="stats-row" style="margin-bottom:24px;">
+        <div class="stat glass">
+          <div class="value">${trainers.length}</div>
+          <div class="label">Total</div>
+        </div>
+        <div class="stat glass">
+          <div class="value" style="color:#4ade80;">${approvedCount}</div>
+          <div class="label">Approved</div>
+        </div>
+        <div class="stat glass">
+          <div class="value" style="color:#facc15;">${pendingCount}</div>
+          <div class="label">Pending</div>
+        </div>
+        <div class="stat glass">
+          <div class="value" style="color:#f87171;">${deniedCount}</div>
+          <div class="label">Denied</div>
+        </div>
+      </div>
+      ${trainers.length === 0
+        ? '<div class="glass" style="padding:40px;text-align:center;border-radius:16px;"><p style="color:rgba(255,255,255,0.4);">No trainers or applications yet.</p></div>'
+        : `<div class="glass" style="border-radius:16px;overflow:hidden;">
+            <div class="table-wrap">
+              <table style="width:100%;border-collapse:collapse;">
+                <thead>
+                  <tr>
+                    <th style="${thStyle}">First Name</th>
+                    <th style="${thStyle}">Last Name</th>
+                    <th style="${thStyle}">Email</th>
+                    <th style="${thStyle}">Phone</th>
+                    <th style="${thStyle}">Username</th>
+                    <th style="${thStyle}">Trainer Status</th>
+                    <th style="${thStyle}">Plan</th>
+                    <th style="${thStyle}">Date</th>
+                  </tr>
+                </thead>
+                <tbody>${tableRows}</tbody>
+              </table>
+            </div>
+          </div>`
+      }
+    `));
+  } catch (err) {
+    console.error(err);
+    res.status(500).send(adminPage('Error', '<p style="color:#f87171;">Failed to load Trainer Central.</p>'));
+  }
+});
+
 // GET /admin/trainer-logins — Trainer login history
 router.get('/trainer-logins', adminAuth, async (req, res) => {
   try {
@@ -4415,6 +4521,116 @@ router.post('/test-daily-summary', adminAuth, async (req, res) => {
   } catch (err) {
     console.error('Test daily summary error:', err.message);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Trainer Application Management ───
+
+// List trainer applications
+router.get('/trainer-applications', adminAuth, async (req, res) => {
+  try {
+    const status = req.query.status || 'pending';
+    const { rows } = await pool.query(
+      `SELECT ta.id, ta.user_id, ta.message, ta.status, ta.created_at, ta.reviewed_at,
+              u.email, u.phone, u.first_name, u.last_name, u.username, u.plan, u.role
+       FROM trainer_applications ta
+       JOIN users u ON ta.user_id = u.id
+       WHERE ta.status = $1
+       ORDER BY ta.created_at DESC`,
+      [status]
+    );
+    if (req.headers.accept?.includes('application/json')) {
+      return res.json({ applications: rows });
+    }
+    // HTML response for admin dashboard
+    const appRows = rows.map(a => `
+      <tr>
+        <td>${a.first_name || ''} ${a.last_name || ''}</td>
+        <td>${a.email || a.phone}</td>
+        <td>${a.username || '—'}</td>
+        <td>${a.plan}</td>
+        <td>${a.message || '—'}</td>
+        <td>${new Date(a.created_at).toLocaleDateString()}</td>
+        <td>
+          ${a.status === 'pending' ? `
+            <form method="POST" action="/admin/trainer-applications/${a.id}/approve" style="display:inline">
+              <button type="submit" class="btn btn-sm" style="background:#22c55e;color:#fff;padding:4px 12px;border-radius:6px;border:none;cursor:pointer">Approve</button>
+            </form>
+            <form method="POST" action="/admin/trainer-applications/${a.id}/deny" style="display:inline;margin-left:4px">
+              <button type="submit" class="btn btn-sm" style="background:#ef4444;color:#fff;padding:4px 12px;border-radius:6px;border:none;cursor:pointer">Deny</button>
+            </form>
+          ` : a.status}
+        </td>
+      </tr>
+    `).join('');
+    res.send(`<!DOCTYPE html><html><head><title>Trainer Applications</title>
+      <style>body{font-family:system-ui;background:#0a0a0a;color:#fff;padding:20px}table{width:100%;border-collapse:collapse}th,td{padding:8px 12px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.1)}th{color:#888;font-size:12px;text-transform:uppercase}a{color:#ef4444;text-decoration:none}.tabs{display:flex;gap:8px;margin-bottom:16px}.tab{padding:6px 16px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);color:#999;text-decoration:none;font-size:13px}.tab.active{background:rgba(239,68,68,0.1);color:#ef4444;border-color:rgba(239,68,68,0.3)}</style>
+    </head><body>
+      <p><a href="/admin">&larr; Back to Admin</a></p>
+      <h2>Trainer Applications</h2>
+      <div class="tabs">
+        <a class="tab ${status === 'pending' ? 'active' : ''}" href="?status=pending">Pending</a>
+        <a class="tab ${status === 'approved' ? 'active' : ''}" href="?status=approved">Approved</a>
+        <a class="tab ${status === 'denied' ? 'active' : ''}" href="?status=denied">Denied</a>
+      </div>
+      <table><thead><tr><th>Name</th><th>Email/Phone</th><th>Username</th><th>Plan</th><th>Message</th><th>Applied</th><th>Action</th></tr></thead>
+      <tbody>${appRows || '<tr><td colspan="7" style="text-align:center;padding:20px;color:#666">No applications</td></tr>'}</tbody></table>
+    </body></html>`);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Approve trainer application
+router.post('/trainer-applications/:id/approve', adminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await pool.query('SELECT user_id FROM trainer_applications WHERE id = $1', [id]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Application not found' });
+
+    const userId = rows[0].user_id;
+    await pool.query("UPDATE trainer_applications SET status = 'approved', reviewed_at = NOW() WHERE id = $1", [id]);
+    await pool.query("UPDATE users SET role = 'trainer' WHERE id = $1", [userId]);
+
+    if (req.headers.accept?.includes('application/json')) {
+      return res.json({ message: 'Application approved' });
+    }
+    res.redirect('/admin/trainer-applications?status=pending');
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Deny trainer application
+router.post('/trainer-applications/:id/deny', adminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query("UPDATE trainer_applications SET status = 'denied', reviewed_at = NOW() WHERE id = $1", [id]);
+
+    if (req.headers.accept?.includes('application/json')) {
+      return res.json({ message: 'Application denied' });
+    }
+    res.redirect('/admin/trainer-applications?status=pending');
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Revoke trainer role (set back to client)
+router.post('/users/:id/revoke-trainer', adminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query("UPDATE users SET role = 'client' WHERE id = $1", [id]);
+    if (req.headers.accept?.includes('application/json')) {
+      return res.json({ message: 'Trainer role revoked' });
+    }
+    res.redirect('/admin/trainer-applications?status=approved');
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

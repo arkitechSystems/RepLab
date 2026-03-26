@@ -43,7 +43,7 @@ function normalizePhone(value) {
 }
 
 function userResponse(user) {
-  return { id: user.id, email: user.email, phone: user.phone, firstName: user.firstName, lastName: user.lastName, username: user.username, plan: user.plan || 'Free', trialEnd: user.trialEnd || null, photoUrl: user.profilePhoto || null };
+  return { id: user.id, email: user.email, phone: user.phone, firstName: user.firstName, lastName: user.lastName, username: user.username, role: user.role || 'client', plan: user.plan || 'Free', trialEnd: user.trialEnd || null, photoUrl: user.profilePhoto || null };
 }
 
 router.post('/signup', async (req, res) => {
@@ -355,6 +355,48 @@ router.delete('/profile-photo', authMiddleware, async (req, res) => {
   try {
     await pool.query('UPDATE users SET profile_photo = NULL WHERE id = $1', [req.userId]);
     res.json({ photoUrl: null });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Apply to become a trainer
+router.post('/apply-trainer', authMiddleware, async (req, res) => {
+  try {
+    const { message } = req.body;
+    // Check if already a trainer
+    const { rows: userRows } = await pool.query('SELECT role FROM users WHERE id = $1', [req.userId]);
+    if (userRows[0]?.role === 'trainer') {
+      return res.status(400).json({ error: 'You are already a trainer' });
+    }
+    // Check for existing pending application
+    const { rows: existing } = await pool.query(
+      "SELECT id FROM trainer_applications WHERE user_id = $1 AND status = 'pending'",
+      [req.userId]
+    );
+    if (existing.length > 0) {
+      return res.status(400).json({ error: 'You already have a pending application' });
+    }
+    await pool.query(
+      'INSERT INTO trainer_applications (user_id, message) VALUES ($1, $2)',
+      [req.userId, message || '']
+    );
+    res.status(201).json({ message: 'Application submitted. You will be notified when reviewed.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get current user's trainer application status
+router.get('/trainer-application', authMiddleware, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT id, status, message, created_at FROM trainer_applications WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1',
+      [req.userId]
+    );
+    res.json({ application: rows[0] || null });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });

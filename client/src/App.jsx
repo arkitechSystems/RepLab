@@ -88,12 +88,12 @@ export default function App() {
         <Route path="/" element={<Workouts />} />
         <Route path="/calendar" element={<Calendar />} />
         <Route path="/session/:templateId/:date" element={<WorkoutSession />} />
-        <Route path="/workouts/create" element={<CreateWorkout />} />
-        <Route path="/workouts/ai" element={<AIWorkoutGenerator />} />
+        <Route path="/clientworkouts/create" element={<CreateWorkout />} />
+        <Route path="/clientworkouts/ai" element={<AIWorkoutGenerator />} />
         <Route path="/exercises" element={<ExerciseLibrary />} />
         <Route path="/exercises/:slug" element={<ExerciseDetail />} />
         <Route path="/programs/create" element={<CreateProgram />} />
-        <Route path="/workouts/edit/:id" element={<EditWorkout />} />
+        <Route path="/clientworkouts/edit/:id" element={<EditWorkout />} />
         <Route path="/history" element={<History />} />
         <Route path="/history/:id" element={<SessionDetail />} />
         <Route path="/utilities" element={<Utilities />} />

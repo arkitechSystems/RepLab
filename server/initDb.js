@@ -50,6 +50,28 @@ export default async function initDb() {
 
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT`);
 
+  // Role column for trainer/client designation (admin-set)
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'client'`);
+
+  // Trainer-client relationship table
+  await pool.query(`CREATE TABLE IF NOT EXISTS trainer_clients (
+    id SERIAL PRIMARY KEY,
+    trainer_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    client_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(trainer_id, client_id)
+  )`);
+
+  // Trainer application table
+  await pool.query(`CREATE TABLE IF NOT EXISTS trainer_applications (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    message TEXT DEFAULT '',
+    status TEXT DEFAULT 'pending',
+    reviewed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  )`);
+
   // Indexes for common queries
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_programs_user_id ON programs(user_id)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_templates_user_id ON templates(user_id)`);
@@ -60,6 +82,10 @@ export default async function initDb() {
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_session_entries_session_id ON session_entries(session_id)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_personal_bests_user_template ON personal_bests(user_id, template_id)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_personal_bests_lookup ON personal_bests(user_id, template_id, exercise_name, best_weight)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_trainer_clients_trainer ON trainer_clients(trainer_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_trainer_clients_client ON trainer_clients(client_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_trainer_applications_user ON trainer_applications(user_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_trainer_applications_status ON trainer_applications(status)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_schedule_days_user_id ON schedule_days(user_id)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_reset_token ON users(reset_token) WHERE reset_token IS NOT NULL`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_exercises_created_by ON exercises(created_by)`);

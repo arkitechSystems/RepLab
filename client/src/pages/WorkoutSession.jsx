@@ -1235,7 +1235,7 @@ export default function WorkoutSession() {
       )}
       {/* Back button */}
       <div className="px-4 pt-6">
-        <button onClick={() => tutorialMode ? navigate('/workouts') : guardedNavigate(() => navigate(-1))} className="flex items-center gap-1 text-wf-red text-sm font-medium mb-2 active:opacity-70">
+        <button onClick={() => tutorialMode ? navigate('/') : guardedNavigate(() => navigate(-1))} className="flex items-center gap-1 text-wf-red text-sm font-medium mb-2 active:opacity-70">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>
@@ -1380,19 +1380,6 @@ export default function WorkoutSession() {
       />
 
       {/* Status Banner */}
-      {!timerStarted && !isCompleted && (
-        <div className="px-4 mb-3">
-          <div className="rounded-xl bg-wf-gray-800/50 border border-white/10 px-4 py-3 flex items-center gap-2">
-            <svg className="w-5 h-5 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
-            </svg>
-            <div className="min-w-0">
-              <span className="text-sm text-wf-gray-400 font-semibold block">Edit your workout, then tap "Begin Workout" to start logging</span>
-              <span className="text-xs text-wf-gray-500">Swap exercises, add/remove sets, reorder — then begin when ready</span>
-            </div>
-          </div>
-        </div>
-      )}
       {isCompleted && (
         <div className="px-4 mb-3">
           <div className="rounded-xl bg-green-500/10 border border-green-500/20 px-4 py-3 flex items-center gap-2">
@@ -1669,7 +1656,7 @@ export default function WorkoutSession() {
           completedSets={completedSets}
           elapsed={tutorialMode ? 2717 : elapsed}
           formatTime={formatTime}
-          onClose={() => { setShowSummary(false); navigate(tutorialMode ? '/workouts' : '/calendar'); }}
+          onClose={() => { setShowSummary(false); navigate(tutorialMode ? '/' : '/calendar'); }}
         />
       )}
 
@@ -1883,7 +1870,7 @@ export default function WorkoutSession() {
                   {tip.next ? 'Next' : 'Got it'}
                 </button>}
                 <button
-                  onClick={() => { setTutorialTip(null); navigate('/workouts'); }}
+                  onClick={() => { setTutorialTip(null); navigate('/'); }}
                   className="text-sm font-semibold text-white/70 bg-white/10 hover:bg-white/15 active:bg-white/20 transition-colors py-2 px-5 rounded-xl border border-white/10"
                 >
                   Skip tutorial
