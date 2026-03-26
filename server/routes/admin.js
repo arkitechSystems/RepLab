@@ -6,6 +6,7 @@ import { Resend } from 'resend';
 import { sendDailySummaryEmail } from '../email.js';
 import pool from '../dbPool.js';
 import { syncFromWger } from '../syncExercises.js';
+import { exerciseCardScript } from '../exerciseCardBuilder.js';
 
 const router = Router();
 
@@ -562,6 +563,7 @@ function adminPage(title, body) {
     <a href="/admin/subscriptions"${title === 'Subscriptions' ? ' class="active"' : ''}>Subscriptions</a>
     <a href="/admin/workout-manager"${title === 'Workout Manager' || title === 'Create a Workout' || title === 'View Current Workouts' ? ' class="active"' : ''}>Workout Manager</a>
     <a href="/admin/trainer-logins"${title === 'Trainer Login History' ? ' class="active"' : ''}>Trainer Logins</a>
+    <a href="/admin/user-logins"${title === 'User Login History' ? ' class="active"' : ''}>User Logins</a>
     <a href="/admin/react-native"${title === 'React Native Conversion' ? ' class="active"' : ''}>React Native</a>
   </div>
 </div>
@@ -848,6 +850,11 @@ router.get('/', adminAuth, async (req, res) => {
       <div class="card-icon">🔐</div>
       <div class="card-title">Trainer Login History</div>
       <div class="card-desc">View login activity on the trainer dashboard.</div>
+    </a>
+    <a class="card glass" href="/admin/user-logins">
+      <div class="card-icon">👤</div>
+      <div class="card-title">User Login History</div>
+      <div class="card-desc">View user login activity with date range filtering.</div>
     </a>
     <a class="card glass" href="/admin/react-native" style="border-color:rgba(59,130,246,0.25);">
       <div class="card-icon">📱</div>
@@ -2572,6 +2579,7 @@ router.get('/workout-manager/create', adminAuth, async (req, res) => {
       <div id="exercises-container"></div>
       <div style="display:flex;gap:8px;margin-bottom:20px;">
         <button type="button" onclick="addExercise()" class="btn-ghost" style="flex:1;text-align:center;padding:14px;margin:0;">+ Add Exercise</button>
+        <button type="button" onclick="addSectionHeader()" class="btn-ghost" style="flex:1;text-align:center;padding:14px;margin:0;border-color:rgba(255,255,255,0.15);">+ Add Section Header</button>
       </div>
       <button type="submit" class="btn" style="width:100%;padding:14px;font-size:15px;margin:0;">Save Workout</button>
     </form>
@@ -2632,14 +2640,8 @@ router.get('/workout-manager/create', adminAuth, async (req, res) => {
     </div>
 
     <script>
-      var API = '${apiBase}';
-
       function toggleProgramDropdown() { document.getElementById('program-dropdown').style.display = 'flex'; }
       function selectProgram(id, name) { document.getElementById('program-value').value = id; document.getElementById('program-label').textContent = name; document.getElementById('program-btn').style.color = id ? '#fff' : 'rgba(255,255,255,0.5)'; document.getElementById('program-dropdown').style.display = 'none'; }
-      document.addEventListener('click', function(e) {
-        if (!e.target.closest('[id^="ex-search-"]') && !e.target.closest('[id^="ex-results-"]')) document.querySelectorAll('[id^="ex-results-"]').forEach(function(d) { d.style.display = 'none'; });
-        if (!e.target.closest('[id^="st-btn-"]') && !e.target.closest('[id^="st-dd-"]')) document.querySelectorAll('[id^="st-dd-"]').forEach(function(d) { d.style.display = 'none'; });
-      });
 
       function openNewProgramModal() { document.getElementById('new-program-name').value = ''; document.getElementById('new-program-desc').value = ''; document.getElementById('new-program-error').style.display = 'none'; document.getElementById('new-program-modal').style.display = 'flex'; }
       async function saveNewProgram() {
@@ -2649,7 +2651,7 @@ router.get('/workout-manager/create', adminAuth, async (req, res) => {
         if (!name) { errDiv.textContent = 'Program name is required'; errDiv.style.display = 'block'; return; }
         errDiv.style.display = 'none';
         try {
-          var resp = await fetch(API + '/programs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name, description: desc }) });
+          var resp = await fetch('${apiBase}/programs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name, description: desc }) });
           var data = await resp.json();
           if (!resp.ok) { errDiv.textContent = data.error || 'Failed'; errDiv.style.display = 'block'; return; }
           var scrollDiv = document.getElementById('program-dropdown').querySelector('[style*="overflow-y"]');
@@ -2663,154 +2665,8 @@ router.get('/workout-manager/create', adminAuth, async (req, res) => {
         } catch (e) { errDiv.textContent = 'Something went wrong'; errDiv.style.display = 'block'; }
       }
 
-      var SET_TYPES = [
-        { value: 'warm_up', label: 'Warm Up' }, { value: 'straight', label: 'Regular' }, { value: 'drop', label: 'Drop Set' },
-        { value: 'rest_pause', label: 'Rest-Pause' }, { value: 'superset', label: 'Super Set' }, { value: 'alternating', label: 'Alternating' },
-        { value: 'giant', label: 'Giant Set' }, { value: 'pre_exhaust', label: 'Pre-Exhaust' },
-      ];
-      var SET_SHORT = { warm_up: 'WU', straight: 'REG', drop: 'DS', rest_pause: 'RP', superset: 'SS', alternating: 'Alt', giant: 'Gia', pre_exhaust: 'PrEx' };
-      var activeSetTypeBtn = null;
-      var activeSetTypeExIdx = null;
+      ${exerciseCardScript(apiBase)}
 
-      function openSetTypePicker(exIdx, btnEl) {
-        activeSetTypeBtn = btnEl;
-        activeSetTypeExIdx = exIdx;
-        var opts = document.getElementById('settype-options');
-        opts.innerHTML = '';
-        SET_TYPES.forEach(function(t) {
-          var b = document.createElement('button'); b.type = 'button'; b.textContent = t.label;
-          b.style.cssText = 'width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#fff;font-size:14px;cursor:pointer;font-family:inherit;border-radius:8px;border-bottom:1px solid rgba(255,255,255,0.05);';
-          b.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.08)'; };
-          b.onmouseout = function() { this.style.background = 'none'; };
-          b.onclick = function() {
-            activeSetTypeBtn.textContent = SET_SHORT[t.value] || 'REG';
-            activeSetTypeBtn.style.color = t.value === 'straight' ? 'rgba(255,255,255,0.6)' : '#ef4444';
-            document.getElementById('settype-val-' + activeSetTypeExIdx).value = t.value;
-            document.getElementById('settype-modal').style.display = 'none';
-          };
-          opts.appendChild(b);
-        });
-        document.getElementById('settype-modal').style.display = 'flex';
-      }
-
-      // Keep old functions for compatibility but unused
-      function buildSetTypeButtons(exIdx) {
-        return SET_TYPES.map(function(t) {
-          var b = document.createElement('button'); b.type = 'button'; b.textContent = t.label;
-          b.style.cssText = 'width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:#fff;font-size:12px;cursor:pointer;font-family:inherit;border-radius:6px;';
-          b.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.08)'; }; b.onmouseout = function() { this.style.background = 'none'; };
-          b.onclick = function() { selectSetType(exIdx, t.value, t.label); };
-          return b;
-        });
-      }
-      function toggleSetTypeDD(i) { var d = document.getElementById('settype-dd-' + i); d.style.display = d.style.display === 'none' ? 'block' : 'none'; }
-      function selectSetType(i, v, l) { document.getElementById('settype-val-' + i).value = v; document.getElementById('settype-label-' + i).textContent = l; document.getElementById('settype-dd-' + i).style.display = 'none'; }
-
-      function mk(tag, css, attrs) { var e = document.createElement(tag); if (css) e.style.cssText = css; if (attrs) Object.keys(attrs).forEach(function(k) { e[k] = attrs[k]; }); return e; }
-
-      var exerciseCount = 0, groupCount = 0, searchTimeout = null, activeSearchIdx = null, setCounts = {};
-      var inputCSS = 'flex:1;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);color:#fff;font-size:14px;font-family:inherit;outline:none;text-align:center;box-sizing:border-box;';
-      var SET_SHORT = { warm_up: 'WU', straight: 'REG', drop: 'DS', rest_pause: 'RP', superset: 'SS', alternating: 'Alt', giant: 'Gia', pre_exhaust: 'PrEx' };
-
-      function addExercise() {
-        var idx = exerciseCount++; var container = document.getElementById('exercises-container');
-        var card = mk('div', 'border-radius:16px;margin-bottom:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);'); card.className = 'glass'; card.id = 'exercise-' + idx;
-        // Header
-        var hdr = mk('div', 'padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between;');
-        var sw = mk('div', 'flex:1;position:relative;min-width:0;');
-        var si = mk('input', 'width:100%;padding:0;border:none;background:none;color:#fff;font-size:15px;font-weight:600;font-family:inherit;outline:none;');
-        si.type = 'text'; si.id = 'ex-search-' + idx; si.name = 'exercises[' + idx + '][name]'; si.placeholder = 'Search exercises...'; si.required = true; si.autocomplete = 'off';
-        si.oninput = function() { searchExercises(idx, this.value); }; si.onfocus = function() { searchExercises(idx, this.value); };
-        var rd = mk('div', 'display:none;position:absolute;top:calc(100% + 8px);left:-16px;right:-16px;z-index:50;max-height:220px;overflow-y:auto;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.12);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.5);');
-        rd.id = 'ex-results-' + idx; sw.appendChild(si); sw.appendChild(rd);
-        var rmBtn = mk('button', 'background:none;border:none;color:rgba(255,255,255,0.25);cursor:pointer;padding:6px;border-radius:6px;display:flex;', { type: 'button' });
-        rmBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>';
-        rmBtn.onmouseover = function() { this.style.color = '#ef4444'; }; rmBtn.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.25)'; };
-        rmBtn.onclick = function() { var e = document.getElementById('exercise-' + idx); if (e) e.remove(); };
-        hdr.appendChild(sw); hdr.appendChild(rmBtn); card.appendChild(hdr);
-        // Hidden set type
-        var sth = mk('input'); sth.type = 'hidden'; sth.name = 'exercises[' + idx + '][setType]'; sth.id = 'settype-val-' + idx; sth.value = 'straight'; card.appendChild(sth);
-        // Column headers
-        var ch = mk('div', 'display:flex;align-items:center;padding:8px 16px;border-bottom:1px solid rgba(255,255,255,0.04);');
-        [{ t: 'Set', w: '36px' }, { t: 'Type', w: '72px' }, { t: 'Weight', f: '1' }, { t: 'Reps', f: '1' }, { t: '', w: '28px' }].forEach(function(c) {
-          var sp = mk('span', 'font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.25);font-weight:600;text-align:center;' + (c.f ? 'flex:' + c.f + ';' : 'width:' + c.w + ';'));
-          sp.textContent = c.t; ch.appendChild(sp);
-        }); card.appendChild(ch);
-        // Sets container
-        var sd = mk('div'); sd.id = 'sets-' + idx; card.appendChild(sd);
-        // Add set button
-        var asb = mk('button', 'width:100%;padding:10px;background:none;border:none;border-top:1px solid rgba(255,255,255,0.05);color:rgba(255,255,255,0.4);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;', { type: 'button' });
-        asb.textContent = '+ Add Set'; asb.onmouseover = function() { this.style.color = '#fff'; }; asb.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.4)'; };
-        asb.onclick = function() { addSet(idx); }; card.appendChild(asb);
-        // Notes section
-        var nw = mk('div', 'padding:10px 16px;border-top:1px solid rgba(255,255,255,0.05);');
-        var nl = mk('div', 'display:flex;align-items:center;gap:4px;margin-bottom:6px;');
-        nl.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/></svg>';
-        var nt = mk('span', 'font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:1px;font-weight:600;'); nt.textContent = 'Notes'; nl.appendChild(nt);
-        var ni = mk('textarea', 'width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:rgba(255,255,255,0.5);font-size:12px;font-family:inherit;outline:none;resize:vertical;box-sizing:border-box;min-height:36px;');
-        ni.name = 'exercises[' + idx + '][notes]'; ni.placeholder = 'Add notes for this exercise...'; ni.rows = 2;
-        nw.appendChild(nl); nw.appendChild(ni); card.appendChild(nw);
-        container.appendChild(card); addSet(idx); addSet(idx); addSet(idx);
-      }
-      function addSet(exIdx) {
-        if (!setCounts[exIdx]) setCounts[exIdx] = 0; var si = setCounts[exIdx]++;
-        var sd = document.getElementById('sets-' + exIdx);
-        var r = mk('div', 'display:flex;align-items:center;padding:6px 16px;border-bottom:1px solid rgba(255,255,255,0.04);' + (si % 2 === 0 ? 'background:rgba(255,255,255,0.02);' : ''));
-        r.id = 'set-' + exIdx + '-' + si;
-        var n = mk('span', 'width:36px;text-align:center;font-size:13px;color:rgba(255,255,255,0.4);font-weight:700;'); n.textContent = si + 1;
-        // Per-set type button — opens shared modal
-        var tw = mk('div', 'width:72px;');
-        var tb = mk('button', 'width:100%;padding:6px 4px;border-radius:6px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.6);font-size:10px;font-weight:700;font-family:inherit;cursor:pointer;text-align:center;outline:none;', { type: 'button' });
-        tb.textContent = 'REG';
-        tb.onclick = function() { openSetTypePicker(exIdx, tb); };
-        tw.appendChild(tb);
-        var wi = mk('input', inputCSS); wi.type = 'number'; wi.name = 'exercises[' + exIdx + '][sets][' + si + '][weight]'; wi.placeholder = '—'; wi.value = '0';
-        wi.onfocus = function() { if (this.value === '0') this.value = ''; }; wi.onblur = function() { if (!this.value) this.value = '0'; };
-        var ri = mk('input', inputCSS); ri.type = 'number'; ri.name = 'exercises[' + exIdx + '][sets][' + si + '][reps]'; ri.placeholder = '10'; ri.value = '10';
-        var db = mk('button', 'background:none;border:none;color:rgba(255,255,255,0.15);cursor:pointer;padding:4px;width:28px;display:flex;align-items:center;justify-content:center;border-radius:4px;', { type: 'button' });
-        db.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>';
-        db.onmouseover = function() { this.style.color = '#ef4444'; }; db.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.15)'; };
-        db.onclick = function() { var e = document.getElementById('set-' + exIdx + '-' + si); if (e) e.remove(); };
-        r.appendChild(n); r.appendChild(tw); r.appendChild(wi); r.appendChild(ri); r.appendChild(db); sd.appendChild(r);
-      }
-      function searchExercises(exIdx, query) {
-        activeSearchIdx = exIdx; clearTimeout(searchTimeout);
-        var rd = document.getElementById('ex-results-' + exIdx);
-        if (!query || query.length < 1) { rd.style.display = 'none'; return; }
-        searchTimeout = setTimeout(async function() {
-          try {
-            var resp = await fetch(API + '/exercises?q=' + encodeURIComponent(query));
-            var exercises = await resp.json(); rd.innerHTML = '';
-            exercises.forEach(function(ex) {
-              var b = document.createElement('button'); b.type = 'button';
-              b.style.cssText = 'width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#fff;font-size:13px;cursor:pointer;font-family:inherit;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.05);';
-              b.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.08)'; }; b.onmouseout = function() { this.style.background = 'none'; };
-              b.onclick = function() { document.getElementById('ex-search-' + exIdx).value = ex.name; rd.style.display = 'none'; };
-              var ns = document.createElement('span'); ns.textContent = ex.name;
-              var ms = document.createElement('span'); ms.textContent = ex.muscle || ''; ms.style.cssText = 'font-size:10px;color:rgba(255,255,255,0.3);';
-              b.appendChild(ns); b.appendChild(ms); rd.appendChild(b);
-            });
-            var exactMatch = exercises.some(function(ex) { return ex.name.toLowerCase() === query.toLowerCase(); });
-            if (!exactMatch) {
-              var sep = document.createElement('div'); sep.style.cssText = 'border-top:1px solid rgba(255,255,255,0.06);margin:4px 0;'; rd.appendChild(sep);
-              var cb = document.createElement('button'); cb.type = 'button';
-              cb.style.cssText = 'width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#ef4444;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600;';
-              cb.onmouseover = function() { this.style.background = 'rgba(239,68,68,0.08)'; }; cb.onmouseout = function() { this.style.background = 'none'; };
-              cb.onclick = function() { rd.style.display = 'none'; document.getElementById('custom-ex-name').value = ''; activeSearchIdx = exIdx; document.getElementById('custom-ex-modal').style.display = 'flex'; };
-              cb.textContent = '+ Add to Library'; rd.appendChild(cb);
-            }
-            rd.style.display = 'block';
-          } catch (e) { console.error(e); }
-        }, 200);
-      }
-      async function saveCustomExercise() {
-        var name = document.getElementById('custom-ex-name').value.trim();
-        var muscle = document.getElementById('custom-ex-muscle').value;
-        if (!name) return;
-        try { await fetch(API + '/exercises', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name, muscleGroup: muscle }) }); } catch (e) {}
-        if (activeSearchIdx !== null) document.getElementById('ex-search-' + activeSearchIdx).value = name;
-        document.getElementById('custom-ex-modal').style.display = 'none';
-      }
       addExercise();
 
       // AJAX form submit — stay on page after save
@@ -2863,6 +2719,14 @@ router.post('/workout-manager/create', adminAuth, express.urlencoded({ extended:
       var exArray = Array.isArray(exercises) ? exercises : Object.values(exercises); var exSort = 0;
       for (const ex of exArray) {
         if (!ex?.name?.trim()) continue;
+        if (ex.isSectionHeader === '1') {
+          await pool.query(
+            'INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+            [tmpl.id, ex.name.trim(), 'straight', 1, 0, 0, exSort, true, ex.sectionNotes?.trim() || '']
+          );
+          exSort++;
+          continue;
+        }
         var setType = ex.setType || 'straight';
         var sets = ex.sets ? (Array.isArray(ex.sets) ? ex.sets : Object.values(ex.sets)) : []; var setNum = 1;
         for (const set of sets) { if (!set) continue; await pool.query('INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7)', [tmpl.id, ex.name.trim(), setType, setNum++, parseInt(set.reps) || 10, parseInt(set.weight) || 0, exSort]); }
@@ -2992,9 +2856,13 @@ router.get('/workout-manager/edit/:id', adminAuth, async (req, res) => {
     const { rows: tmplRows } = await pool.query('SELECT t.*, p.name AS program_name FROM templates t LEFT JOIN programs p ON p.id = t.program_id WHERE t.id = $1', [templateId]);
     if (!tmplRows[0]) return res.redirect('/admin/workout-manager/workouts');
     const tmpl = tmplRows[0];
-    const { rows: exercises } = await pool.query('SELECT name, set_type, set_number, planned_reps, suggested_weight, sort_order FROM template_exercises WHERE template_id = $1 ORDER BY sort_order, set_number', [templateId]);
+    const { rows: exercises } = await pool.query('SELECT name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes FROM template_exercises WHERE template_id = $1 ORDER BY sort_order, set_number', [templateId]);
     const exerciseMap = new Map();
     for (const ex of exercises) {
+      if (ex.is_section_header) {
+        exerciseMap.set(ex.sort_order, { name: ex.name, isSectionHeader: true, sectionNotes: ex.section_notes || '' });
+        continue;
+      }
       if (!exerciseMap.has(ex.sort_order)) exerciseMap.set(ex.sort_order, { name: ex.name, setType: ex.set_type || 'straight', sets: [] });
       exerciseMap.get(ex.sort_order).sets.push({ reps: ex.planned_reps, weight: Number(ex.suggested_weight) });
     }
@@ -3035,6 +2903,7 @@ router.get('/workout-manager/edit/:id', adminAuth, async (req, res) => {
         <div id="exercises-container"></div>
         <div style="display:flex;gap:8px;margin-bottom:20px;">
           <button type="button" onclick="addExercise()" class="btn-ghost" style="flex:1;text-align:center;padding:14px;margin:0;">+ Add Exercise</button>
+          <button type="button" onclick="addSectionHeader()" class="btn-ghost" style="flex:1;text-align:center;padding:14px;margin:0;border-color:rgba(255,255,255,0.15);">+ Add Section Header</button>
         </div>
         <div style="display:flex;gap:8px;">
           <button type="submit" class="btn" style="flex:1;padding:14px;font-size:15px;margin:0;">Save Changes</button>
@@ -3059,119 +2928,34 @@ router.get('/workout-manager/edit/:id', adminAuth, async (req, res) => {
           <div id="settype-options"></div>
         </div>
       </div>
+
+      <!-- Custom Exercise Modal for Edit page -->
+      <div id="custom-ex-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);" onclick="if(event.target===this)this.style.display='none'">
+        <div class="glass" style="padding:24px;max-width:400px;width:90%;border-radius:16px;">
+          <h3 style="font-size:16px;font-weight:700;color:#fff;margin-bottom:16px;">Add Custom Exercise</h3>
+          <div style="margin-bottom:12px;"><label>Exercise Name</label>
+            <input type="text" id="custom-ex-name" placeholder="e.g. Cable Lateral Raise" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;" />
+          </div>
+          <div style="margin-bottom:16px;"><label>Muscle Group</label>
+            <select id="custom-ex-muscle" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;">
+              ${muscleGroups.map(g => '<option value="' + esc(g) + '">' + esc(g) + '</option>').join('')}
+            </select>
+          </div>
+          <button type="button" onclick="saveCustomExercise()" class="btn" style="margin:0;width:100%;padding:12px;font-size:14px;">Add Exercise</button>
+        </div>
+      </div>
       <script>
-        var API = '${apiBase}';
         var EXISTING = ${JSON.stringify(exerciseList)};
 
         function toggleProgramDropdown() { document.getElementById('program-dropdown').style.display = 'flex'; }
         function selectProgram(id, name) { document.getElementById('program-value').value = id; document.getElementById('program-label').textContent = name; document.getElementById('program-btn').style.color = id ? '#fff' : 'rgba(255,255,255,0.5)'; document.getElementById('program-dropdown').style.display = 'none'; }
 
-        var SET_TYPES = [
-          { value: 'warm_up', label: 'Warm Up' }, { value: 'straight', label: 'Regular' }, { value: 'drop', label: 'Drop Set' },
-          { value: 'rest_pause', label: 'Rest-Pause' }, { value: 'superset', label: 'Super Set' }, { value: 'alternating', label: 'Alternating' },
-          { value: 'giant', label: 'Giant Set' }, { value: 'pre_exhaust', label: 'Pre-Exhaust' },
-        ];
-        var SET_SHORT = { warm_up: 'WU', straight: 'REG', drop: 'DS', rest_pause: 'RP', superset: 'SS', alternating: 'Alt', giant: 'Gia', pre_exhaust: 'PrEx' };
-        var activeSetTypeBtn = null, activeSetTypeExIdx = null;
-        function openSetTypePicker(exIdx, btnEl) {
-          activeSetTypeBtn = btnEl; activeSetTypeExIdx = exIdx;
-          var opts = document.getElementById('settype-options'); opts.innerHTML = '';
-          SET_TYPES.forEach(function(t) {
-            var b = document.createElement('button'); b.type = 'button'; b.textContent = t.label;
-            b.style.cssText = 'width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#fff;font-size:14px;cursor:pointer;font-family:inherit;border-radius:8px;border-bottom:1px solid rgba(255,255,255,0.05);';
-            b.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.08)'; };
-            b.onmouseout = function() { this.style.background = 'none'; };
-            b.onclick = function() { activeSetTypeBtn.textContent = SET_SHORT[t.value] || 'REG'; activeSetTypeBtn.style.color = t.value === 'straight' ? 'rgba(255,255,255,0.6)' : '#ef4444'; document.getElementById('settype-val-' + activeSetTypeExIdx).value = t.value; document.getElementById('settype-modal').style.display = 'none'; };
-            opts.appendChild(b);
-          });
-          document.getElementById('settype-modal').style.display = 'flex';
-        }
-        function getSetTypeLabel(v) { var t = SET_TYPES.find(function(x) { return x.value === v; }); return t ? t.label : 'Regular'; }
-        function mk(tag, css, attrs) { var e = document.createElement(tag); if (css) e.style.cssText = css; if (attrs) Object.keys(attrs).forEach(function(k) { e[k] = attrs[k]; }); return e; }
-        var exerciseCount = 0, searchTimeout = null, activeSearchIdx = null, setCounts = {};
-        var inputCSS = 'flex:1;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);color:#fff;font-size:14px;font-family:inherit;outline:none;text-align:center;box-sizing:border-box;';
-        document.addEventListener('click', function(e) {
-          if (!e.target.closest('[id^="ex-search-"]') && !e.target.closest('[id^="ex-results-"]')) document.querySelectorAll('[id^="ex-results-"]').forEach(function(d) { d.style.display = 'none'; });
-          if (!e.target.closest('[id^="st-btn-"]') && !e.target.closest('[id^="st-dd-"]')) document.querySelectorAll('[id^="st-dd-"]').forEach(function(d) { d.style.display = 'none'; });
+        ${exerciseCardScript(apiBase)}
+
+        EXISTING.forEach(function(ex) {
+          if (ex.isSectionHeader) { addSectionHeader(ex); }
+          else { addExercise(ex); }
         });
-        function addExercise(prefill) {
-          var idx = exerciseCount++; var container = document.getElementById('exercises-container');
-          var card = mk('div', 'border-radius:12px;margin-bottom:12px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);');
-          card.id = 'exercise-' + idx;
-          var hdr = mk('div', 'padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:8px;');
-          var si = mk('input', 'flex:1;padding:0;border:none;background:none;color:#fff;font-size:14px;font-weight:600;font-family:inherit;outline:none;');
-          si.type = 'text'; si.id = 'ex-search-' + idx; si.name = 'exercises[' + idx + '][name]'; si.placeholder = 'Search exercises...'; si.required = true; si.autocomplete = 'off';
-          if (prefill) si.value = prefill.name;
-          si.oninput = function() { searchExercises(idx, this.value); }; si.onfocus = function() { searchExercises(idx, this.value); };
-          var rd = mk('div', 'display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:50;max-height:200px;overflow-y:auto;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.12);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.5);');
-          rd.id = 'ex-results-' + idx;
-          var sw = mk('div', 'flex:1;position:relative;'); sw.appendChild(si); sw.appendChild(rd);
-          var rmBtn = mk('button', 'background:none;border:none;color:rgba(255,255,255,0.25);cursor:pointer;padding:4px;border-radius:6px;display:flex;', { type: 'button' });
-          rmBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>';
-          rmBtn.onmouseover = function() { this.style.color = '#ef4444'; }; rmBtn.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.25)'; };
-          rmBtn.onclick = function() { var e = document.getElementById('exercise-' + idx); if (e) e.remove(); };
-          hdr.appendChild(sw); hdr.appendChild(rmBtn); card.appendChild(hdr);
-          var stH = mk('input'); stH.type = 'hidden'; stH.name = 'exercises[' + idx + '][setType]'; stH.id = 'settype-val-' + idx; stH.value = prefill ? prefill.setType : 'straight';
-          card.appendChild(stH);
-          var ch = mk('div', 'display:flex;padding:8px 16px;border-bottom:1px solid rgba(255,255,255,0.04);');
-          [{ t: 'Set', w: '36px' }, { t: 'Type', w: '72px' }, { t: 'Weight', f: '1' }, { t: 'Reps', f: '1' }, { t: '', w: '28px' }].forEach(function(c) {
-            var sp = mk('span', 'font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.25);font-weight:600;text-align:center;' + (c.f ? 'flex:' + c.f + ';' : 'width:' + c.w + ';'));
-            sp.textContent = c.t; ch.appendChild(sp);
-          }); card.appendChild(ch);
-          var sd = mk('div'); sd.id = 'sets-' + idx; card.appendChild(sd);
-          var asb = mk('button', 'width:100%;padding:8px;background:none;border:none;border-top:1px solid rgba(255,255,255,0.04);color:rgba(255,255,255,0.3);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;', { type: 'button' });
-          asb.textContent = '+ Add Set'; asb.onmouseover = function() { this.style.color = '#fff'; }; asb.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.3)'; };
-          asb.onclick = function() { addSet(idx); }; card.appendChild(asb);
-          // Notes section
-          var nw = mk('div', 'padding:10px 16px;border-top:1px solid rgba(255,255,255,0.05);');
-          var nl = mk('div', 'display:flex;align-items:center;gap:4px;margin-bottom:6px;');
-          nl.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/></svg>';
-          var nt = mk('span', 'font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:1px;font-weight:600;'); nt.textContent = 'Notes'; nl.appendChild(nt);
-          var ni = mk('textarea', 'width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:rgba(255,255,255,0.5);font-size:12px;font-family:inherit;outline:none;resize:vertical;box-sizing:border-box;min-height:36px;');
-          ni.name = 'exercises[' + idx + '][notes]'; ni.placeholder = 'Add notes for this exercise...'; ni.rows = 2;
-          nw.appendChild(nl); nw.appendChild(ni); card.appendChild(nw);
-          container.appendChild(card);
-          if (prefill && prefill.sets.length > 0) prefill.sets.forEach(function(s) { addSet(idx, s.reps, s.weight); });
-          else { addSet(idx); addSet(idx); addSet(idx); }
-        }
-        function addSet(exIdx, pr, pw) {
-          if (!setCounts[exIdx]) setCounts[exIdx] = 0; var si = setCounts[exIdx]++;
-          var sd = document.getElementById('sets-' + exIdx); var r = mk('div', 'display:flex;align-items:center;padding:6px 16px;border-bottom:1px solid rgba(255,255,255,0.03);' + (si % 2 === 0 ? 'background:rgba(255,255,255,0.015);' : ''));
-          r.id = 'set-' + exIdx + '-' + si;
-          var n = mk('span', 'width:36px;text-align:center;font-size:13px;color:rgba(255,255,255,0.4);font-weight:700;'); n.textContent = si + 1;
-          var tw = mk('div', 'width:72px;');
-          var tb = mk('button', 'width:100%;padding:5px 4px;border-radius:6px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.6);font-size:10px;font-weight:700;font-family:inherit;cursor:pointer;text-align:center;outline:none;', { type: 'button' });
-          tb.textContent = 'REG';
-          tb.onclick = function() { openSetTypePicker(exIdx, tb); };
-          tw.appendChild(tb);
-          var wi = mk('input', inputCSS); wi.type = 'number'; wi.name = 'exercises[' + exIdx + '][sets][' + si + '][weight]'; wi.placeholder = '0'; wi.value = pw !== undefined ? pw : '0';
-          var ri = mk('input', inputCSS); ri.type = 'number'; ri.name = 'exercises[' + exIdx + '][sets][' + si + '][reps]'; ri.placeholder = '10'; ri.value = pr !== undefined ? pr : '10';
-          var db = mk('button', 'background:none;border:none;color:rgba(255,255,255,0.15);cursor:pointer;padding:4px;width:28px;display:flex;align-items:center;justify-content:center;border-radius:4px;', { type: 'button' });
-          db.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>';
-          db.onmouseover = function() { this.style.color = '#ef4444'; }; db.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.15)'; };
-          db.onclick = function() { var e = document.getElementById('set-' + exIdx + '-' + si); if (e) e.remove(); };
-          r.appendChild(n); r.appendChild(tw); r.appendChild(wi); r.appendChild(ri); r.appendChild(db); sd.appendChild(r);
-        }
-        function searchExercises(exIdx, query) {
-          activeSearchIdx = exIdx; clearTimeout(searchTimeout);
-          var rd = document.getElementById('ex-results-' + exIdx);
-          if (!query || query.length < 1) { rd.style.display = 'none'; return; }
-          searchTimeout = setTimeout(async function() {
-            try {
-              var resp = await fetch(API + '/exercises?q=' + encodeURIComponent(query));
-              var exs = await resp.json(); rd.innerHTML = '';
-              exs.forEach(function(ex) {
-                var b = document.createElement('button'); b.type = 'button';
-                b.style.cssText = 'width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#fff;font-size:13px;cursor:pointer;font-family:inherit;display:flex;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.05);';
-                b.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.08)'; }; b.onmouseout = function() { this.style.background = 'none'; };
-                b.onclick = function() { document.getElementById('ex-search-' + exIdx).value = ex.name; rd.style.display = 'none'; };
-                b.textContent = ex.name; rd.appendChild(b);
-              });
-              rd.style.display = 'block';
-            } catch (e) { console.error(e); }
-          }, 200);
-        }
-        EXISTING.forEach(function(ex) { addExercise(ex); });
         if (EXISTING.length === 0) addExercise();
 
         // AJAX form submit — stay on page after save
@@ -3216,6 +3000,14 @@ router.post('/workout-manager/edit/:id', adminAuth, express.urlencoded({ extende
       let exSort = 0;
       for (const ex of exArray) {
         if (!ex?.name?.trim()) continue;
+        if (ex.isSectionHeader === '1') {
+          await pool.query(
+            'INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+            [templateId, ex.name.trim(), 'straight', 1, 0, 0, exSort, true, ex.sectionNotes?.trim() || '']
+          );
+          exSort++;
+          continue;
+        }
         const setType = ex.setType || 'straight';
         const sets = ex.sets ? (Array.isArray(ex.sets) ? ex.sets : Object.values(ex.sets)) : [];
         let setNum = 1;
@@ -3345,6 +3137,10 @@ router.get('/trainers', adminAuth, async (req, res) => {
         : '—';
       const rowBg = i % 2 === 0 ? 'background:rgba(255,255,255,0.02);' : '';
       const tdStyle = 'padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);';
+      const actions = t.trainerStatus === 'pending' && t.applicationId
+        ? `<form method="POST" action="/admin/trainer-applications/${t.applicationId}/approve" style="display:inline;"><button type="submit" style="padding:4px 12px;border-radius:6px;border:1px solid rgba(34,197,94,0.4);background:rgba(34,197,94,0.15);color:#4ade80;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Approve</button></form>
+           <form method="POST" action="/admin/trainer-applications/${t.applicationId}/deny" style="display:inline;margin-left:4px;"><button type="submit" style="padding:4px 12px;border-radius:6px;border:1px solid rgba(239,68,68,0.4);background:rgba(239,68,68,0.15);color:#f87171;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Deny</button></form>`
+        : '<span style="color:rgba(255,255,255,0.2);font-size:11px;">—</span>';
       return `<tr style="${rowBg}">
         <td style="${tdStyle}font-weight:600;color:#fff;">${esc(t.firstName || '—')}</td>
         <td style="${tdStyle}font-weight:600;color:#fff;">${esc(t.lastName || '—')}</td>
@@ -3354,6 +3150,7 @@ router.get('/trainers', adminAuth, async (req, res) => {
         <td style="${tdStyle}font-size:13px;">${statusBadge(t.trainerStatus)}</td>
         <td style="${tdStyle}color:rgba(255,255,255,0.5);font-size:13px;">${esc(t.plan)}</td>
         <td style="${tdStyle}color:rgba(255,255,255,0.4);font-size:13px;">${dateStr}</td>
+        <td style="${tdStyle}white-space:nowrap;">${actions}</td>
       </tr>`;
     }).join('');
 
@@ -3400,6 +3197,7 @@ router.get('/trainers', adminAuth, async (req, res) => {
                     <th style="${thStyle}">Trainer Status</th>
                     <th style="${thStyle}">Plan</th>
                     <th style="${thStyle}">Date</th>
+                    <th style="${thStyle}">Actions</th>
                   </tr>
                 </thead>
                 <tbody>${tableRows}</tbody>
@@ -3460,6 +3258,123 @@ router.get('/trainer-logins', adminAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).send(adminPage('Error', '<p style="color:#f87171;">Failed to load trainer login history.</p>'));
+  }
+});
+
+// GET /admin/user-logins — User login history with date range
+router.get('/user-logins', adminAuth, async (req, res) => {
+  try {
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    const todayStr = new Date().toISOString().slice(0, 10);
+
+    // Parse date range
+    let startDate = req.query.start || todayStr;
+    let endDate = req.query.end || todayStr;
+    if (!dateRegex.test(startDate)) startDate = todayStr;
+    if (!dateRegex.test(endDate)) endDate = todayStr;
+    if (startDate > todayStr) startDate = todayStr;
+    if (endDate > todayStr) endDate = todayStr;
+    if (startDate > endDate) startDate = endDate;
+
+    // Calculate range length for navigation
+    const startMs = new Date(startDate + 'T00:00:00Z').getTime();
+    const endMs = new Date(endDate + 'T00:00:00Z').getTime();
+    const rangeDays = Math.round((endMs - startMs) / 86400000) + 1;
+
+    // Previous/next period links
+    const prevStart = new Date(startMs - rangeDays * 86400000).toISOString().slice(0, 10);
+    const prevEnd = new Date(startMs - 86400000).toISOString().slice(0, 10);
+    const nextStart = new Date(endMs + 86400000).toISOString().slice(0, 10);
+    const nextEnd = new Date(endMs + rangeDays * 86400000).toISOString().slice(0, 10);
+    const canGoNext = nextStart <= todayStr;
+
+    // Fetch logins in range
+    const { rows } = await pool.query(
+      `SELECT ulh.id, ulh.email, ulh.ip, ulh.user_agent, ulh.created_at, ulh.city, ulh.state,
+              u.first_name, u.last_name, u.username
+       FROM user_login_history ulh
+       LEFT JOIN users u ON ulh.user_id = u.id
+       WHERE ulh.created_at >= $1::date AND ulh.created_at < ($2::date + interval '1 day')
+       ORDER BY ulh.created_at DESC`,
+      [startDate, endDate]
+    );
+
+    // Count unique users
+    const uniqueUsers = new Set(rows.map(r => r.email)).size;
+
+    const tableRows = rows.map((r, i) => {
+      const name = r.first_name && r.last_name
+        ? esc(r.first_name + ' ' + r.last_name)
+        : esc(r.username || r.email || 'Unknown');
+      const location = [r.city, r.state].filter(Boolean).join(', ') || '—';
+      const date = r.created_at
+        ? new Date(r.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Chicago' })
+        : '—';
+      const rowBg = i % 2 === 0 ? 'background:rgba(255,255,255,0.02);' : '';
+      return '<tr style="' + rowBg + '">' +
+        '<td style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);font-weight:600;color:#fff;">' + name + '</td>' +
+        '<td style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);font-size:13px;">' + esc(r.email || '—') + '</td>' +
+        '<td style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);font-size:13px;">' + esc(location) + '</td>' +
+        '<td style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);font-size:12px;font-family:monospace;">' + esc(r.ip || '—') + '</td>' +
+        '<td style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);font-size:13px;white-space:nowrap;">' + date + '</td>' +
+      '</tr>';
+    }).join('');
+
+    const thStyle = 'padding:12px 16px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);font-weight:700;background:rgba(255,255,255,0.04);border-bottom:2px solid rgba(255,255,255,0.08);';
+    const presetBtnStyle = 'padding:6px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.6);font-size:12px;cursor:pointer;font-family:inherit;transition:all 0.15s;';
+    const activeBtnStyle = 'padding:6px 14px;border-radius:8px;border:1px solid rgba(239,68,68,0.4);background:rgba(239,68,68,0.15);color:#ef4444;font-size:12px;cursor:pointer;font-family:inherit;font-weight:600;';
+
+    // Preset detection
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const last7Start = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
+    const last30Start = new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10);
+    const monthStart = todayStr.slice(0, 8) + '01';
+    const isToday = startDate === todayStr && endDate === todayStr;
+    const isYesterday = startDate === yesterday && endDate === yesterday;
+    const isLast7 = startDate === last7Start && endDate === todayStr;
+    const isLast30 = startDate === last30Start && endDate === todayStr;
+    const isThisMonth = startDate === monthStart && endDate === todayStr;
+
+    function presetBtn(label, s, e, active) {
+      return '<a href="/admin/user-logins?start=' + s + '&end=' + e + '" style="' + (active ? activeBtnStyle : presetBtnStyle) + 'text-decoration:none;">' + label + '</a>';
+    }
+
+    res.send(adminPage('User Login History', `
+      <div class="breadcrumb"><a href="/admin">Dashboard</a> / User Login History</div>
+      <div class="header">
+        <h1>User Login History</h1>
+        <p>${rows.length} login${rows.length !== 1 ? 's' : ''} &middot; ${uniqueUsers} unique user${uniqueUsers !== 1 ? 's' : ''}</p>
+      </div>
+
+      <!-- Date Range Controls -->
+      <div class="glass" style="padding:16px 20px;border-radius:16px;margin-bottom:20px;">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <a href="/admin/user-logins?start=${prevStart}&end=${prevEnd}" style="color:rgba(255,255,255,0.5);text-decoration:none;font-size:18px;padding:4px 8px;">&larr;</a>
+          <form method="GET" action="/admin/user-logins" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <input type="date" name="start" value="${startDate}" max="${todayStr}" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:13px;font-family:inherit;outline:none;" />
+            <span style="color:rgba(255,255,255,0.3);">to</span>
+            <input type="date" name="end" value="${endDate}" max="${todayStr}" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:13px;font-family:inherit;outline:none;" />
+            <button type="submit" style="padding:8px 16px;border-radius:8px;border:none;background:#ef4444;color:#fff;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600;">Go</button>
+          </form>
+          ${canGoNext ? '<a href="/admin/user-logins?start=' + nextStart + '&end=' + (nextEnd > todayStr ? todayStr : nextEnd) + '" style="color:rgba(255,255,255,0.5);text-decoration:none;font-size:18px;padding:4px 8px;">&rarr;</a>' : '<span style="color:rgba(255,255,255,0.15);font-size:18px;padding:4px 8px;">&rarr;</span>'}
+        </div>
+        <div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap;">
+          ${presetBtn('Today', todayStr, todayStr, isToday)}
+          ${presetBtn('Yesterday', yesterday, yesterday, isYesterday)}
+          ${presetBtn('Last 7 Days', last7Start, todayStr, isLast7)}
+          ${presetBtn('Last 30 Days', last30Start, todayStr, isLast30)}
+          ${presetBtn('This Month', monthStart, todayStr, isThisMonth)}
+        </div>
+      </div>
+
+      ${rows.length === 0
+        ? '<div class="glass" style="padding:40px;text-align:center;border-radius:16px;"><p style="color:rgba(255,255,255,0.4);">No user logins recorded for this period.</p></div>'
+        : '<div class="glass" style="border-radius:16px;overflow:hidden;"><div class="table-wrap"><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="' + thStyle + '">User</th><th style="' + thStyle + '">Email</th><th style="' + thStyle + '">Location</th><th style="' + thStyle + '">IP</th><th style="' + thStyle + '">Date</th></tr></thead><tbody>' + tableRows + '</tbody></table></div></div>'
+      }
+    `));
+  } catch (err) {
+    console.error(err);
+    res.status(500).send(adminPage('Error', '<p style="color:#f87171;">Failed to load user login history.</p>'));
   }
 });
 
@@ -4596,7 +4511,7 @@ router.post('/trainer-applications/:id/approve', adminAuth, async (req, res) => 
     if (req.headers.accept?.includes('application/json')) {
       return res.json({ message: 'Application approved' });
     }
-    res.redirect('/admin/trainer-applications?status=pending');
+    res.redirect('/admin/trainers');
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
@@ -4612,7 +4527,7 @@ router.post('/trainer-applications/:id/deny', adminAuth, async (req, res) => {
     if (req.headers.accept?.includes('application/json')) {
       return res.json({ message: 'Application denied' });
     }
-    res.redirect('/admin/trainer-applications?status=pending');
+    res.redirect('/admin/trainers');
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });

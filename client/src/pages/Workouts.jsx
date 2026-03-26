@@ -1834,10 +1834,10 @@ export default function Workouts() {
 
         {/* Share Program Modal */}
         {shareModal && (
-          <div className="fixed inset-0 z-50 flex items-end" onClick={() => setShareModal(null)}>
+          <div className="fixed inset-0 z-50 flex items-start justify-center pt-20" onClick={() => setShareModal(null)}>
             <div className="absolute inset-0 bg-black/70" />
             <div
-              className="relative w-full bg-wf-gray-900 border-t border-white/10 rounded-t-2xl p-5 shadow-2xl"
+              className="relative w-[calc(100%-2rem)] max-w-md bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
               <h3 className="text-lg font-black text-white mb-1">Share Program</h3>
