@@ -245,11 +245,11 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
 
       {/* Column Headers */}
       <div className="px-3 pt-2 pb-1 flex items-center gap-1.5 text-[9px] text-wf-gray-500 uppercase tracking-wider">
-        {!isTemplate && !readOnly && onToggleComplete && <div className="w-7 shrink-0" />}
-        <div className="w-8 shrink-0 text-center">Set</div>
-        <div className="w-14 shrink-0 text-center">Type</div>
+        {!isTemplate && !readOnly && onToggleComplete && <div className="w-5 shrink-0" />}
+        <div className="w-[1.3rem] shrink-0 text-center">Set</div>
+        <div className="w-[2.8rem] shrink-0 text-center">Type</div>
         {!isTemplate && <div className="w-14 shrink-0 text-center">Goal Wt</div>}
-        <div className="flex-1 text-center">Weight</div>
+        <div className="w-14 shrink-0 text-center">Weight</div>
         {isTemplate ? (
           <div className="flex-1 text-center">Reps</div>
         ) : (
@@ -286,14 +286,14 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
                 <button
                   type="button"
                   onClick={() => onToggleComplete(exercise.name, idx)}
-                  className={`w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-200 ${
+                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-200 ${
                     isCompleted
                       ? 'bg-green-500 border-green-500'
                       : 'border-wf-gray-500 bg-transparent'
                   }`}
                 >
                   {isCompleted && (
-                    <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                     </svg>
                   )}
@@ -301,12 +301,12 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
               )}
 
               {/* Set label */}
-              <span className="text-wf-gray-400 text-xs font-medium w-8 shrink-0 text-center">
+              <span className="text-wf-gray-400 text-xs font-medium w-[1.3rem] shrink-0 text-center">
                 {isTemplate ? idx + 1 : set.setNumber}
               </span>
 
               {/* Set type dropdown — shows shorthand, dropdown lists full names */}
-              <div className="w-14 shrink-0 relative">
+              <div className="w-[2.8rem] shrink-0 relative">
                 <span className="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-wf-gray-400 uppercase pointer-events-none">
                   {getSetTypeShort(entry.setType || exercise.setType || 'straight')}
                 </span>
@@ -337,7 +337,7 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
               )}
 
               {/* Weight input */}
-              <div className="flex-1">
+              <div className="w-14 shrink-0">
                 <input
                   type="number"
                   inputMode="decimal"
