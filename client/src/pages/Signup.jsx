@@ -41,6 +41,15 @@ export default function Signup() {
     e.preventDefault();
     setError('');
 
+    if (!identifier.trim()) {
+      setError('Email or phone number is required');
+      return;
+    }
+    if (!isPhoneIdentifier && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier.trim())) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
     // Password strength validation
     const pwErrors = [];
     if (password.length < 8) pwErrors.push('at least 8 characters');
@@ -131,7 +140,7 @@ export default function Signup() {
           <p className="text-wf-gray-400 text-sm mt-2">Create your account</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
           {error && (
             <div className="bg-red-900/30 border border-red-800 rounded-lg px-4 py-3 text-red-300 text-sm">
               {error}

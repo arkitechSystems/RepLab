@@ -42,7 +42,7 @@ export default function Login() {
           <p className="text-wf-gray-400 text-sm mt-2">Track your gains</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
           {error && (
             <div className="bg-red-900/30 border border-red-800 rounded-lg px-4 py-3 text-red-300 text-sm">
               {error}
