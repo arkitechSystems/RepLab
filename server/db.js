@@ -62,7 +62,7 @@ const db = {
   async getTrainersWithStatus() {
     const { rows } = await pool.query(
       `SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.username, u.plan, u.role, u.created_at,
-              ta.status AS application_status, ta.created_at AS applied_at
+              ta.id AS application_id, ta.status AS application_status, ta.created_at AS applied_at
        FROM users u
        LEFT JOIN trainer_applications ta ON ta.user_id = u.id
        WHERE u.role = 'trainer' OR ta.id IS NOT NULL
@@ -77,6 +77,7 @@ const db = {
       username: u.username,
       plan: u.plan || 'Free',
       role: u.role || 'client',
+      applicationId: u.application_id || null,
       trainerStatus: u.role === 'trainer' && !u.application_status ? 'approved'
         : u.application_status || 'pending',
       appliedAt: u.applied_at,
@@ -343,6 +344,7 @@ const db = {
 
       return {
         id: t.id,
+        userId: t.user_id,
         programId: t.program_id,
         name: t.name,
         description: t.description,
@@ -1099,6 +1101,125 @@ const db = {
         [userId, challenge, value]
       );
     }
+  },
+
+  // ── Sharing ──────────────────────────────────────────
+
+  async findUserByUsernameOrEmail(identifier) {
+    const { rows } = await pool.query(
+      'SELECT id, username, first_name, last_name FROM users WHERE username = $1 OR email = $1 LIMIT 1',
+      [identifier.trim().toLowerCase()]
+    );
+    return rows[0] || null;
+  },
+
+  async createShare(senderId, recipientId, programId) {
+    const { rows } = await pool.query(
+      'INSERT INTO shared_programs (source_program_id, sender_id, recipient_id) VALUES ($1, $2, $3) RETURNING *',
+      [programId, senderId, recipientId]
+    );
+    return rows[0];
+  },
+
+  async getPendingShares(userId) {
+    const { rows } = await pool.query(
+      `SELECT sp.id, sp.source_program_id, sp.status, sp.created_at,
+              u.username AS sender_username, u.first_name AS sender_first_name,
+              p.name AS program_name
+       FROM shared_programs sp
+       JOIN users u ON u.id = sp.sender_id
+       LEFT JOIN programs p ON p.id = sp.source_program_id
+       WHERE sp.recipient_id = $1 AND sp.status = 'pending'
+       ORDER BY sp.created_at DESC`,
+      [userId]
+    );
+    return rows.map(r => ({
+      id: r.id,
+      sourceProgramId: r.source_program_id,
+      senderUsername: r.sender_username,
+      senderName: r.sender_first_name || r.sender_username,
+      programName: r.program_name || 'Deleted Program',
+      createdAt: r.created_at,
+    }));
+  },
+
+  async acceptShare(shareId, userId) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      // Verify share
+      const { rows: shares } = await client.query(
+        "SELECT * FROM shared_programs WHERE id = $1 AND recipient_id = $2 AND status = 'pending'",
+        [shareId, userId]
+      );
+      if (shares.length === 0) throw new Error('Share not found or already processed');
+      const share = shares[0];
+
+      // Get source program
+      const { rows: progRows } = await client.query('SELECT * FROM programs WHERE id = $1', [share.source_program_id]);
+      if (progRows.length === 0) throw new Error('Source program no longer exists');
+      const srcProg = progRows[0];
+
+      // Copy program
+      const { rows: newProgRows } = await client.query(
+        'INSERT INTO programs (user_id, name, description) VALUES ($1, $2, $3) RETURNING *',
+        [userId, srcProg.name, srcProg.description || '']
+      );
+      const newProgId = newProgRows[0].id;
+
+      // Copy templates
+      const { rows: srcTemplates } = await client.query(
+        'SELECT * FROM templates WHERE program_id = $1 ORDER BY sort_order', [share.source_program_id]
+      );
+      for (const tmpl of srcTemplates) {
+        const { rows: newTmplRows } = await client.query(
+          'INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+          [userId, newProgId, tmpl.name, tmpl.description || '', tmpl.is_rest, tmpl.sort_order]
+        );
+        const newTmplId = newTmplRows[0].id;
+
+        // Copy exercises
+        const { rows: srcExercises } = await client.query(
+          'SELECT * FROM template_exercises WHERE template_id = $1 ORDER BY sort_order, set_number', [tmpl.id]
+        );
+        if (srcExercises.length > 0) {
+          const values = [];
+          const params = [];
+          let pi = 1;
+          for (const ex of srcExercises) {
+            values.push(`($${pi}, $${pi+1}, $${pi+2}, $${pi+3}, $${pi+4}, $${pi+5}, $${pi+6}, $${pi+7}, $${pi+8})`);
+            params.push(newTmplId, ex.name, ex.set_type, ex.set_number, ex.planned_reps, ex.suggested_weight, ex.sort_order, ex.is_section_header || false, ex.section_notes || '');
+            pi += 9;
+          }
+          await client.query(
+            `INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes) VALUES ${values.join(', ')}`,
+            params
+          );
+        }
+      }
+
+      // Update share status
+      await client.query(
+        "UPDATE shared_programs SET status = 'accepted', copied_program_id = $1 WHERE id = $2",
+        [newProgId, shareId]
+      );
+
+      await client.query('COMMIT');
+      return { id: newProgId, name: srcProg.name };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  },
+
+  async declineShare(shareId, userId) {
+    const { rowCount } = await pool.query(
+      "UPDATE shared_programs SET status = 'declined' WHERE id = $1 AND recipient_id = $2 AND status = 'pending'",
+      [shareId, userId]
+    );
+    return rowCount > 0;
   },
 };
 

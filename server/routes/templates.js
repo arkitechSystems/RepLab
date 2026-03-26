@@ -17,7 +17,7 @@ router.get('/', authMiddleware, async (req, res) => {
 router.post('/', authMiddleware, async (req, res) => {
   try {
     const { name, description, exercises, programId, isRest } = req.body;
-    if (!name) {
+    if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Template name is required' });
     }
     const result = await db.createTemplate(req.userId, name, description || '', exercises, programId, isRest);
@@ -48,7 +48,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
   try {
     const { name, description, exercises } = req.body;
     const templateId = Number(req.params.id);
-    if (!name) {
+    if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Template name is required' });
     }
     const result = await db.updateTemplate(req.userId, templateId, name, description || '', exercises);

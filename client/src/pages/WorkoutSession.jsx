@@ -64,6 +64,7 @@ export default function WorkoutSession() {
   const autoSaveNeeded = useRef(false);
   const structureSaveRef = useRef(null);
   const structureSaveNeeded = useRef(false);
+  const savingRef = useRef(false);
 
   // Block scrolling when tutorial tip is active (native listener for non-passive)
   const tutorialOverlayRef = useRef(null);
@@ -165,7 +166,7 @@ export default function WorkoutSession() {
     autoSaveNeeded.current = false;
     if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
     autoSaveRef.current = setTimeout(() => {
-      if (!saving && template && !template.isRest) {
+      if (!savingRef.current && template && !template.isRest) {
         handleSave().catch(console.error);
       }
     }, 500);
@@ -179,7 +180,7 @@ export default function WorkoutSession() {
     structureSaveNeeded.current = false;
     if (structureSaveRef.current) clearTimeout(structureSaveRef.current);
     structureSaveRef.current = setTimeout(() => {
-      if (!saving && template && !template.isRest) {
+      if (!savingRef.current && template && !template.isRest) {
         handleSave().catch(console.error);
       }
     }, 1500);
@@ -521,7 +522,7 @@ export default function WorkoutSession() {
       updated[exerciseName] = [...(updated[exerciseName] || [])];
       updated[exerciseName][setIdx] = {
         ...updated[exerciseName][setIdx],
-        [field]: field === 'setType' ? value : (value === '' ? '' : Number(value)),
+        [field]: field === 'setType' ? value : (value === '' ? '' : Math.max(0, Number(value))),
       };
       return updated;
     });
@@ -873,6 +874,16 @@ export default function WorkoutSession() {
         }
         return;
       }
+      // Require at least one set with weight > 0 or reps > 0
+      if (newCompleted) {
+        const hasData = Object.values(entries).some((sets) =>
+          sets.some((s) => (Number(s.weight) > 0) || (Number(s.reps) > 0))
+        );
+        if (!hasData) {
+          alert('Log at least one set before completing your workout');
+          return;
+        }
+      }
       // Save the session first so users don't have to click save separately
       if (newCompleted) {
         await handleSave();
@@ -1006,6 +1017,7 @@ export default function WorkoutSession() {
     if (saving) throw new Error('Save already in progress');
 
     setSaving(true);
+    savingRef.current = true;
     try {
       // Snapshot current PBs before saving (deep copy since nested)
       const oldPbs = JSON.parse(JSON.stringify(pbs));
@@ -1102,6 +1114,7 @@ export default function WorkoutSession() {
       alert('Failed to save: ' + err.message);
     } finally {
       setSaving(false);
+      savingRef.current = false;
     }
   }
 

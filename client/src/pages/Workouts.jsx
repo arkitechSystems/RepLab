@@ -1786,7 +1786,7 @@ export default function Workouts() {
             return (
               <div className="space-y-4 pb-4">
                 {filtered.map((program, idx) => (
-                  <ProgramCard key={program.id} program={program} idx={idx} dataTutorial={idx === 0 ? 'program-card' : undefined} onSelect={(id) => { setSelectedProgram(id); setBrowseSearch(''); completeTutorialAction('program-selected'); }} onBegin={openBeginProgram} onDelete={!isBrowse ? handleDeleteProgram : undefined} onShare={!isBrowse ? (p) => { setShareModal(p); setShareResult(null); setShareInput(''); } : undefined} />
+                  <ProgramCard key={program.id} program={program} idx={idx} dataTutorial={idx === 0 ? 'program-card' : undefined} onSelect={(id) => { setSelectedProgram(id); setSelectedWeek(null); setBrowseSearch(''); completeTutorialAction('program-selected'); }} onBegin={openBeginProgram} onDelete={!isBrowse ? handleDeleteProgram : undefined} onShare={!isBrowse ? (p) => { setShareResult(null); setShareInput(''); setShareModal(p); } : undefined} />
                 ))}
               </div>
             );
@@ -1961,7 +1961,7 @@ export default function Workouts() {
                     {matchedPrograms.map((p) => (
                       <button
                         key={p.id}
-                        onClick={() => { setShowSearch(false); setSearchQuery(''); setSelectedGroup(p.userId ? 'my' : 'browse'); setSelectedProgram(p.id); }}
+                        onClick={() => { setShowSearch(false); setSearchQuery(''); setSelectedGroup(p.userId ? 'my' : 'browse'); setSelectedProgram(p.id); setSelectedWeek(null); }}
                         className="w-full text-left glass-card rounded-xl px-4 py-3 flex items-center justify-between active:scale-[0.98] transition-all"
                       >
                         <div>
@@ -1983,7 +1983,7 @@ export default function Workouts() {
                       return (
                         <button
                           key={t.id}
-                          onClick={() => { setShowSearch(false); setSearchQuery(''); setSelectedGroup(program?.userId ? 'my' : 'browse'); setSelectedProgram(t.programId); }}
+                          onClick={() => { setShowSearch(false); setSearchQuery(''); setSelectedGroup(program?.userId ? 'my' : 'browse'); setSelectedProgram(t.programId); setSelectedWeek(null); }}
                           className="w-full text-left glass-card rounded-xl px-4 py-3 flex items-center justify-between active:scale-[0.98] transition-all"
                         >
                           <div>

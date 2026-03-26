@@ -341,6 +341,8 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
                 <input
                   type="number"
                   inputMode="decimal"
+                  min="0"
+                  max="9999"
                   value={entry.weight ?? (isTemplate ? '' : set.suggestedWeight ?? '')}
                   placeholder={readOnly ? '—' : '0'}
                   onChange={(e) => onChange?.(exercise.name, idx, 'weight', e.target.value)}
@@ -359,6 +361,8 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
                     type="number"
                     inputMode="numeric"
                     pattern="[0-9]*"
+                    min="0"
+                    max="9999"
                     value={entry.reps ?? ''}
                     onChange={(e) => onChange?.(exercise.name, idx, 'reps', e.target.value)}
                     onFocus={(e) => e.target.select()}
@@ -381,6 +385,8 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
                       type="number"
                       inputMode="numeric"
                       pattern="[0-9]*"
+                      min="0"
+                      max="9999"
                       value={entry.reps ?? ''}
                       onChange={(e) => onChange?.(exercise.name, idx, 'reps', e.target.value)}
                       onFocus={(e) => e.target.select()}

@@ -182,3 +182,24 @@ CREATE TABLE IF NOT EXISTS trainer_applications (
   reviewed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS user_login_history (
+  id SERIAL PRIMARY KEY,
+  user_id INT REFERENCES users(id) ON DELETE CASCADE,
+  email TEXT,
+  ip TEXT,
+  user_agent TEXT,
+  city TEXT,
+  state TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS shared_programs (
+  id SERIAL PRIMARY KEY,
+  source_program_id INT REFERENCES programs(id) ON DELETE SET NULL,
+  sender_id INT NOT NULL REFERENCES users(id),
+  recipient_id INT NOT NULL REFERENCES users(id),
+  copied_program_id INT REFERENCES programs(id) ON DELETE SET NULL,
+  status TEXT DEFAULT 'pending',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);

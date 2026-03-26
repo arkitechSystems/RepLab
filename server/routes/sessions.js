@@ -42,6 +42,7 @@ router.post('/initialize', authMiddleware, async (req, res) => {
     const templates = await db.getTemplates(req.userId);
     const tmpl = templates.find(t => t.id === Number(templateId));
     if (!tmpl || tmpl.isRest) return res.status(404).json({ error: 'Template not found' });
+    if (tmpl.userId && tmpl.userId !== req.userId) return res.status(403).json({ error: 'Template does not belong to you' });
 
     // Look up best previous performance per exercise/set from completed sessions.
     // This enables progressive overload: the goal becomes what the user achieved last time.
@@ -88,9 +89,11 @@ router.post('/initialize', authMiddleware, async (req, res) => {
 
 router.get('/by-template/:templateId/:date', authMiddleware, async (req, res) => {
   try {
+    const templateId = Number(req.params.templateId);
+    if (!Number.isInteger(templateId) || templateId <= 0) return res.status(400).json({ error: 'Invalid ID' });
     const session = await db.getSessionByTemplateAndDate(
       req.userId,
-      Number(req.params.templateId),
+      templateId,
       req.params.date
     );
     res.json(session);
@@ -139,7 +142,9 @@ router.post('/exercise-history', authMiddleware, async (req, res) => {
 
 router.get('/:id', authMiddleware, async (req, res) => {
   try {
-    const session = await db.getSession(req.userId, Number(req.params.id));
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Invalid ID' });
+    const session = await db.getSession(req.userId, id);
     if (!session) {
       return res.status(404).json({ error: 'Session not found' });
     }

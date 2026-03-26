@@ -86,6 +86,30 @@ export default async function initDb() {
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_trainer_clients_client ON trainer_clients(client_id)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_trainer_applications_user ON trainer_applications(user_id)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_trainer_applications_status ON trainer_applications(status)`);
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS user_login_history (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    email TEXT,
+    ip TEXT,
+    user_agent TEXT,
+    city TEXT,
+    state TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  )`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_user_login_history_user ON user_login_history(user_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_user_login_history_created ON user_login_history(created_at)`);
+
+  await pool.query(`CREATE TABLE IF NOT EXISTS shared_programs (
+    id SERIAL PRIMARY KEY,
+    source_program_id INT REFERENCES programs(id) ON DELETE SET NULL,
+    sender_id INT NOT NULL REFERENCES users(id),
+    recipient_id INT NOT NULL REFERENCES users(id),
+    copied_program_id INT REFERENCES programs(id) ON DELETE SET NULL,
+    status TEXT DEFAULT 'pending',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  )`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_shared_programs_recipient ON shared_programs(recipient_id, status)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_sessions_completed_lookup ON sessions(user_id, template_id) WHERE completed = TRUE`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_schedule_days_user_id ON schedule_days(user_id)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_reset_token ON users(reset_token) WHERE reset_token IS NOT NULL`);

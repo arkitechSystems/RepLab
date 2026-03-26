@@ -22,6 +22,7 @@ import trainerRoutes from './routes/trainer.js';
 import billingRoutes from './routes/billing.js';
 import shopRoutes from './routes/shop.js';
 import workoutDashboardRoutes from './routes/workoutDashboard.js';
+import sharingRoutes from './routes/sharing.js';
 import db from './db.js';
 import { sendDailySummaryEmail } from './email.js';
 
@@ -96,6 +97,7 @@ app.use('/pbs', apiLimiter);
 app.use('/metrics', apiLimiter);
 app.use('/feedback', apiLimiter);
 app.use('/exercises', apiLimiter);
+app.use('/challenges', apiLimiter);
 
 // API Routes
 app.use('/auth', authRoutes);
@@ -114,6 +116,7 @@ app.use('/challenges', challengeRoutes);
 app.use('/billing', billingRoutes);
 app.use('/shop', shopRoutes);
 app.use('/workouts', workoutDashboardRoutes);
+app.use('/sharing', apiLimiter, sharingRoutes);
 
 // Health check — pinged by UptimeRobot to prevent Render free-tier sleep
 app.get('/health', (req, res) => res.json({

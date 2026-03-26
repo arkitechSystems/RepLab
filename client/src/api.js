@@ -56,6 +56,8 @@ export async function api(path, options = {}) {
 
   if (res.status === 401) {
     // Skip 401 handling for auth endpoints (login/signup/demo)
+    // TODO: Token refresh could be added here once a refresh token endpoint exists.
+    // Currently we log the user out immediately on any 401 from a non-auth endpoint.
     if (!path.startsWith('/auth/')) {
       setApiToken(null);
       try { localStorage.removeItem('willfit_user'); } catch {}
@@ -74,7 +76,9 @@ export async function api(path, options = {}) {
     if (!res.ok) {
       throw new Error(`Server error (${res.status})`);
     }
-    return null;
+    // Response was 2xx but body wasn't JSON (e.g. empty 204) — return empty object
+    // so callers can safely destructure without null checks
+    return {};
   }
 
   if (!res.ok) {
