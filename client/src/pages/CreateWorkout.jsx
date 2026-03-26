@@ -59,6 +59,10 @@ export default function CreateWorkout() {
     setExercises([...exercises, { name: '', setType: 'straight', sets: [{ reps: 10, weight: 0 }] }]);
   }
 
+  function addSectionHeader() {
+    setExercises([...exercises, { name: '', isSectionHeader: true, sectionNotes: '', sets: [] }]);
+  }
+
   function removeExercise(idx) {
     setExercises(exercises.filter((_, i) => i !== idx));
   }
@@ -173,8 +177,9 @@ export default function CreateWorkout() {
       setError('Workout name is required');
       return;
     }
-    const validExercises = exercises.filter((e) => e.name.trim());
-    if (validExercises.length === 0) {
+    const validExercises = exercises.filter((e) => e.isSectionHeader ? e.name.trim() : e.name.trim());
+    const hasRealExercise = validExercises.some(e => !e.isSectionHeader);
+    if (!hasRealExercise) {
       setError('Add at least one exercise');
       return;
     }
@@ -193,6 +198,7 @@ export default function CreateWorkout() {
       // Auto-save any custom exercises not in the library
       const knownNames = new Set(allExercises.map(e => e.name.toLowerCase()));
       for (const ex of validExercises) {
+        if (ex.isSectionHeader) continue;
         if (!knownNames.has(ex.name.toLowerCase())) {
           createCustom(ex.name, 'Other').catch(() => {});
         }
@@ -297,12 +303,20 @@ export default function CreateWorkout() {
           />
         ))}
 
-        <button
-          onClick={addExercise}
-          className="w-full border border-dashed border-white/15 rounded-xl py-3 text-wf-gray-400 text-sm font-medium active:border-wf-red active:text-wf-red transition-colors"
-        >
-          + Add Exercise
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={addExercise}
+            className="flex-1 border border-dashed border-white/15 rounded-xl py-3 text-wf-gray-400 text-sm font-medium active:border-wf-red active:text-wf-red transition-colors"
+          >
+            + Add Exercise
+          </button>
+          <button
+            onClick={addSectionHeader}
+            className="flex-1 border border-dashed border-wf-red/30 rounded-xl py-3 text-wf-red/60 text-sm font-medium active:border-wf-red active:text-wf-red transition-colors"
+          >
+            + Add Section
+          </button>
+        </div>
       </div>
 
       {/* Save Button */}
@@ -348,6 +362,56 @@ function TemplateExerciseWrapper({
         return aStarts - bStarts || a.name.localeCompare(b.name);
       })
       .slice(0, 8);
+  }
+
+  // Section header — editable card
+  if (ex.isSectionHeader) {
+    return (
+      <div className="rounded-xl overflow-hidden border border-white/10 bg-gradient-to-r from-wf-red/10 via-transparent to-transparent mb-3">
+        <div className="px-4 py-3 flex items-center gap-3">
+          <div className="w-1 h-6 rounded-full bg-wf-red shrink-0" />
+          <span className="text-[9px] text-wf-red uppercase tracking-widest font-bold shrink-0">Section</span>
+          <input
+            type="text"
+            value={ex.name}
+            onChange={(e) => updateExercise(exIdx, 'name', e.target.value)}
+            placeholder="Section name"
+            className="flex-1 bg-transparent text-sm font-black text-white uppercase tracking-wide placeholder:text-wf-gray-500 placeholder:font-medium placeholder:normal-case placeholder:tracking-normal focus:outline-none"
+          />
+          <div className="flex items-center gap-1 shrink-0">
+            {handleMoveUp(exIdx) && (
+              <button onClick={handleMoveUp(exIdx)} className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90 transition-all">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>
+              </button>
+            )}
+            {handleMoveDown(exIdx) && (
+              <button onClick={handleMoveDown(exIdx)} className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90 transition-all">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+              </button>
+            )}
+            <button
+              onClick={() => removeExercise(exIdx)}
+              className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-red-400 hover:bg-red-500/20 active:scale-90 transition-all"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div className="px-4 pb-3 pl-8">
+          <div className="ml-0.5 pl-3 border-l border-white/10">
+            <input
+              type="text"
+              value={ex.sectionNotes || ''}
+              onChange={(e) => updateExercise(exIdx, 'sectionNotes', e.target.value)}
+              placeholder="Section notes (optional)"
+              className="w-full bg-transparent text-xs text-wf-gray-400 leading-relaxed placeholder:text-wf-gray-600 focus:outline-none"
+            />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // If no name yet, show the name input card instead of ExerciseCard

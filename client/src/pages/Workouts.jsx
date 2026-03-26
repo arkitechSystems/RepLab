@@ -11,7 +11,7 @@ import { useTutorial } from '../context/TutorialContext';
 
 const DAY_NAMES_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-function ProgramCard({ program, idx, onSelect, onBegin, onDelete, dataTutorial }) {
+function ProgramCard({ program, idx, onSelect, onBegin, onDelete, onShare, dataTutorial }) {
   return (
     <div
       data-tutorial={dataTutorial}
@@ -42,6 +42,17 @@ function ProgramCard({ program, idx, onSelect, onBegin, onDelete, dataTutorial }
                 className="btn-gradient text-white font-semibold text-xs px-3 py-2 rounded-xl active:scale-[0.97] transition-all"
               >
                 Begin Program
+              </button>
+            )}
+            {onShare && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onShare(program); }}
+                className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center active:bg-blue-500/25 transition-colors"
+                title="Share program"
+              >
+                <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
+                </svg>
               </button>
             )}
             {onDelete && (
@@ -115,6 +126,18 @@ export default function Workouts() {
   const [addDateInput, setAddDateInput] = useState('');
   const [showAddDatePicker, setShowAddDatePicker] = useState(false);
   const [addConflictInfo, setAddConflictInfo] = useState(null);
+  // Share program state
+  const [shareModal, setShareModal] = useState(null); // program object
+  const [shareInput, setShareInput] = useState('');
+  const [shareLoading, setShareLoading] = useState(false);
+  const [shareResult, setShareResult] = useState(null); // { success, message }
+  const [pendingShares, setPendingShares] = useState([]);
+  // Trainer application state
+  const [trainerApp, setTrainerApp] = useState(null); // { status, message, created_at } | null
+  const [trainerAppLoading, setTrainerAppLoading] = useState(false);
+  const [trainerAppMsg, setTrainerAppMsg] = useState('');
+  const [showTrainerForm, setShowTrainerForm] = useState(false);
+  const [trainerAppSubmitting, setTrainerAppSubmitting] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const beginDateRef = useRef(null);
@@ -146,13 +169,24 @@ export default function Workouts() {
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
+  // Fetch trainer application status when viewing partners page
+  useEffect(() => {
+    if (selectedGroup !== 'partners' || user?.role === 'trainer') return;
+    setTrainerAppLoading(true);
+    api('/auth/trainer-application')
+      .then(data => { setTrainerApp(data.application); })
+      .catch(() => {})
+      .finally(() => setTrainerAppLoading(false));
+  }, [selectedGroup, user?.role]);
+
   useEffect(() => {
     const controller = new AbortController();
     const opts = { signal: controller.signal };
-    Promise.all([api('/programs', opts), api('/templates', opts), api('/sessions', opts)])
-      .then(([progs, tmpls, sessions]) => {
+    Promise.all([api('/programs', opts), api('/templates', opts), api('/sessions', opts), api('/sharing/pending', opts).catch(() => [])])
+      .then(([progs, tmpls, sessions, shares]) => {
         setPrograms(progs);
         setTemplates(tmpls);
+        setPendingShares(shares);
 
         // Calculate streak — consecutive days with a session going back from today
         const sessionDates = new Set(sessions.map((s) => s.date));
@@ -246,6 +280,57 @@ export default function Workouts() {
   }
 
   // Add single workout to calendar
+  async function handleShareProgram() {
+    if (!shareInput.trim() || !shareModal) return;
+    setShareLoading(true);
+    setShareResult(null);
+    try {
+      const data = await api('/sharing/send', { method: 'POST', body: JSON.stringify({ programId: shareModal.id, recipientIdentifier: shareInput.trim() }) });
+      setShareResult({ success: true, message: `Shared with ${data.recipientName}!` });
+      setShareInput('');
+    } catch (err) {
+      setShareResult({ success: false, message: err.message || 'Failed to share' });
+    } finally {
+      setShareLoading(false);
+    }
+  }
+
+  async function handleAcceptShare(shareId) {
+    try {
+      await api(`/sharing/${shareId}/accept`, { method: 'POST' });
+      setPendingShares(prev => prev.filter(s => s.id !== shareId));
+      // Refresh programs and templates
+      const [progs, tmpls] = await Promise.all([api('/programs'), api('/templates')]);
+      setPrograms(progs);
+      setTemplates(tmpls);
+    } catch (err) {
+      alert(err.message || 'Failed to accept');
+    }
+  }
+
+  async function handleDeclineShare(shareId) {
+    try {
+      await api(`/sharing/${shareId}/decline`, { method: 'POST' });
+      setPendingShares(prev => prev.filter(s => s.id !== shareId));
+    } catch (err) {
+      alert(err.message || 'Failed to decline');
+    }
+  }
+
+  async function submitTrainerApplication() {
+    setTrainerAppSubmitting(true);
+    try {
+      await api('/auth/apply-trainer', { method: 'POST', body: JSON.stringify({ message: trainerAppMsg }) });
+      setTrainerApp({ status: 'pending', message: trainerAppMsg, created_at: new Date().toISOString() });
+      setShowTrainerForm(false);
+      setTrainerAppMsg('');
+    } catch (err) {
+      alert(err.message || 'Failed to submit application');
+    } finally {
+      setTrainerAppSubmitting(false);
+    }
+  }
+
   function openAddWorkout(template) {
     setAddWorkoutModal(template);
     setAddDateInput('');
@@ -832,7 +917,25 @@ export default function Workouts() {
                   {/* Exercise accordion cards (hidden in edit mode) */}
                   {!editMode && !t.isRest && t.exercises.length > 0 && (
                     <div className="mt-3 pt-3 border-t border-white/10 space-y-2">
-                      {t.exercises.map((ex) => {
+                      {t.exercises.map((ex, exIdx) => {
+                        if (ex.isSectionHeader) {
+                          return (
+                            <div key={`section-${exIdx}`} className="rounded-xl overflow-hidden border border-white/10 bg-gradient-to-r from-wf-red/10 via-transparent to-transparent">
+                              <div className="px-4 py-3 flex items-center gap-3">
+                                <div className="w-1 h-6 rounded-full bg-wf-red shrink-0" />
+                                <span className="text-[9px] text-wf-red uppercase tracking-widest font-bold shrink-0">Section</span>
+                                <span className="text-sm font-black text-white uppercase tracking-wide">{ex.name}</span>
+                              </div>
+                              {ex.sectionNotes && (
+                                <div className="px-4 pb-3 pl-8">
+                                  <div className="ml-0.5 pl-3 border-l border-white/10">
+                                    <p className="text-xs text-wf-gray-400 leading-relaxed">{ex.sectionNotes}</p>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }
                         const exKey = `${t.id}-${ex.name}`;
                         const isExpanded = expandedExercises.has(exKey);
                         const topWeight = Math.max(...ex.sets.map(s => s.suggestedWeight || 0));
@@ -1492,6 +1595,85 @@ export default function Workouts() {
               </div>
             </div>
           ))}
+
+          {/* Become a Trainer */}
+          {user?.role !== 'trainer' && (
+            <div className="glass-card rounded-xl overflow-hidden fade-slide-up" style={{ animationDelay: `${getTrainers().length * 80}ms` }}>
+              <div className="h-1.5 bg-gradient-to-r from-wf-cyan to-purple-500" />
+              <div className="p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full bg-wf-cyan/15 flex items-center justify-center shrink-0">
+                    <svg className="w-5 h-5 text-wf-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white">Become a Trainer</h3>
+                    <p className="text-xs text-wf-gray-500">Share your workouts with the community</p>
+                  </div>
+                </div>
+
+                {trainerAppLoading ? (
+                  <p className="text-sm text-wf-gray-500">Loading...</p>
+                ) : trainerApp?.status === 'pending' ? (
+                  <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
+                      <span className="text-sm font-semibold text-yellow-400">Application Pending</span>
+                    </div>
+                    <p className="text-xs text-wf-gray-400">Your application is being reviewed. We'll notify you once a decision is made.</p>
+                  </div>
+                ) : trainerApp?.status === 'rejected' ? (
+                  <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-2 h-2 rounded-full bg-red-400" />
+                      <span className="text-sm font-semibold text-red-400">Application Not Approved</span>
+                    </div>
+                    <p className="text-xs text-wf-gray-400 mb-3">Your previous application was not approved. You can submit a new one.</p>
+                    <button
+                      onClick={() => { setShowTrainerForm(true); setTrainerApp(null); }}
+                      className="text-sm font-semibold text-wf-cyan active:opacity-70 transition-opacity"
+                    >
+                      Apply Again
+                    </button>
+                  </div>
+                ) : showTrainerForm ? (
+                  <div className="space-y-3">
+                    <p className="text-sm text-wf-gray-400">Tell us about your fitness experience and why you'd like to be a trainer on WillFit.</p>
+                    <textarea
+                      value={trainerAppMsg}
+                      onChange={(e) => setTrainerAppMsg(e.target.value)}
+                      placeholder="Your experience, certifications, specialties..."
+                      rows={4}
+                      className="w-full glass-input rounded-xl px-4 py-3 text-sm text-white placeholder:text-wf-gray-600 focus:outline-none resize-none"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => { setShowTrainerForm(false); setTrainerAppMsg(''); }}
+                        className="flex-1 glass-card text-wf-gray-400 font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={submitTrainerApplication}
+                        disabled={trainerAppSubmitting}
+                        className="flex-1 btn-gradient text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all disabled:opacity-50"
+                      >
+                        {trainerAppSubmitting ? 'Submitting...' : 'Submit Application'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowTrainerForm(true)}
+                    className="w-full btn-gradient text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+                  >
+                    Apply Now
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -1603,15 +1785,95 @@ export default function Workouts() {
             return (
               <div className="space-y-4 pb-4">
                 {filtered.map((program, idx) => (
-                  <ProgramCard key={program.id} program={program} idx={idx} dataTutorial={idx === 0 ? 'program-card' : undefined} onSelect={(id) => { setSelectedProgram(id); setBrowseSearch(''); completeTutorialAction('program-selected'); }} onBegin={openBeginProgram} onDelete={!isBrowse ? handleDeleteProgram : undefined} />
+                  <ProgramCard key={program.id} program={program} idx={idx} dataTutorial={idx === 0 ? 'program-card' : undefined} onSelect={(id) => { setSelectedProgram(id); setBrowseSearch(''); completeTutorialAction('program-selected'); }} onBegin={openBeginProgram} onDelete={!isBrowse ? handleDeleteProgram : undefined} onShare={!isBrowse ? (p) => { setShareModal(p); setShareResult(null); setShareInput(''); } : undefined} />
                 ))}
               </div>
             );
           })()}
         </div>
 
+        {/* Shared with me section — My Workouts only */}
+        {!isBrowse && pendingShares.length > 0 && (
+          <div className="px-4 mt-6 pb-4">
+            <h3 className="text-sm font-semibold text-wf-gray-400 uppercase tracking-wider mb-3">Shared with me</h3>
+            <div className="space-y-3">
+              {pendingShares.map((share) => (
+                <div key={share.id} className="glass-card rounded-2xl overflow-hidden fade-slide-up">
+                  <div className="h-1 bg-gradient-to-r from-blue-500 to-purple-500" />
+                  <div className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h4 className="text-base font-bold text-white">{share.programName}</h4>
+                        <p className="text-xs text-wf-gray-500 mt-0.5">From <span className="text-blue-400 font-semibold">@{share.senderUsername}</span></p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => handleAcceptShare(share.id)}
+                          className="btn-gradient text-white font-semibold text-xs px-3 py-2 rounded-xl active:scale-[0.97] transition-all"
+                        >
+                          Accept
+                        </button>
+                        <button
+                          onClick={() => handleDeclineShare(share.id)}
+                          className="text-wf-gray-400 font-semibold text-xs px-3 py-2 rounded-xl bg-white/5 active:bg-white/10 transition-colors"
+                        >
+                          Decline
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {renderBeginModals()}
         {showCreateMenu && renderCreateMenu()}
+
+        {/* Share Program Modal */}
+        {shareModal && (
+          <div className="fixed inset-0 z-50 flex items-end" onClick={() => setShareModal(null)}>
+            <div className="absolute inset-0 bg-black/70" />
+            <div
+              className="relative w-full bg-wf-gray-900 border-t border-white/10 rounded-t-2xl p-5 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-black text-white mb-1">Share Program</h3>
+              <p className="text-sm text-wf-gray-400 mb-4">
+                Share <span className="text-white font-semibold">{shareModal.name}</span> with another user.
+              </p>
+              <input
+                type="text"
+                value={shareInput}
+                onChange={(e) => { setShareInput(e.target.value); setShareResult(null); }}
+                placeholder="Enter username or email"
+                className="w-full glass-input rounded-xl px-4 py-3 text-sm text-white placeholder:text-wf-gray-600 focus:outline-none mb-3"
+                autoFocus
+              />
+              {shareResult && (
+                <p className={`text-sm mb-3 ${shareResult.success ? 'text-green-400' : 'text-red-400'}`}>
+                  {shareResult.message}
+                </p>
+              )}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShareModal(null)}
+                  className="flex-1 glass-card text-wf-gray-400 font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleShareProgram}
+                  disabled={shareLoading || !shareInput.trim()}
+                  className="flex-1 btn-gradient text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all disabled:opacity-50"
+                >
+                  {shareLoading ? 'Sharing...' : 'Share'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -1892,7 +2154,12 @@ export default function Workouts() {
             >
               <div className="h-1.5 bg-wf-red" />
               <div className="p-5">
-                <h2 className="text-xl font-black text-white tracking-tight">My Workouts</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-black text-white tracking-tight">My Workouts</h2>
+                  {pendingShares.length > 0 && (
+                    <span className="bg-blue-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{pendingShares.length}</span>
+                  )}
+                </div>
                 <p className="text-wf-gray-400 text-sm mt-1">
                   {myPrograms.length === 0
                     ? 'Your created workouts will appear here'
