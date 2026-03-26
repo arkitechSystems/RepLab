@@ -254,7 +254,7 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
           <div className="flex-1 text-center">Reps</div>
         ) : (
           <>
-            <div className="w-14 shrink-0 text-center">Goal</div>
+            <div className="flex-1 text-center">Goal</div>
             <div className="flex-1 text-center">Actual</div>
           </>
         )}
@@ -369,7 +369,7 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
               ) : (
                 <>
                   {/* Goal reps (read-only, from template) */}
-                  <div className="w-14 shrink-0">
+                  <div className="flex-1">
                     <div className="w-full rounded-lg px-2 py-2.5 text-center text-base font-mono-stat text-wf-gray-500 bg-black/40 border border-white/5">
                       {set.plannedReps ?? '—'}
                     </div>
