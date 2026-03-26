@@ -1855,6 +1855,28 @@ export default function Workouts() {
               </div>
             )}
 
+            {/* Browse Workout Library card */}
+            <div
+              data-tutorial="browse-library"
+              onClick={() => { setSelectedGroup('browse'); completeTutorialAction('browse-library-tap'); }}
+              className="w-full text-left glass-card rounded-2xl overflow-hidden active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
+              style={{ animationDelay: '0ms' }}
+            >
+              <div className="h-1.5 bg-wf-green" />
+              <div className="p-5">
+                <h2 className="text-xl font-black text-white tracking-tight">Browse Workout Library</h2>
+                <p className="text-wf-gray-400 text-sm mt-1">
+                  Pre-built workout plans &middot; {browsePrograms.length} programs
+                </p>
+                <div className="flex items-center justify-end mt-3">
+                  <span className="text-xs text-wf-gray-500 mr-1">View programs</span>
+                  <svg className="w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
             {/* My Workouts card */}
             <div
               data-tutorial="my-workouts"
@@ -1872,28 +1894,6 @@ export default function Workouts() {
                 </p>
                 <div className="flex items-center justify-end mt-3">
                   <span className="text-xs text-wf-gray-500 mr-1">{myPrograms.length === 0 ? 'Get started' : 'View programs'}</span>
-                  <svg className="w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            {/* Browse Workout Library card */}
-            <div
-              data-tutorial="browse-library"
-              onClick={() => { setSelectedGroup('browse'); completeTutorialAction('browse-library-tap'); }}
-              className="w-full text-left glass-card rounded-2xl overflow-hidden active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
-              style={{ animationDelay: '0ms' }}
-            >
-              <div className="h-1.5 bg-wf-green" />
-              <div className="p-5">
-                <h2 className="text-xl font-black text-white tracking-tight">Browse Workout Library</h2>
-                <p className="text-wf-gray-400 text-sm mt-1">
-                  Pre-built workout plans &middot; {browsePrograms.length} programs
-                </p>
-                <div className="flex items-center justify-end mt-3">
-                  <span className="text-xs text-wf-gray-500 mr-1">View programs</span>
                   <svg className="w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                   </svg>
