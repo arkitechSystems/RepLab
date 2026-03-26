@@ -28,6 +28,35 @@ export function AuthProvider({ children }) {
     return () => setOnUnauthorized(null);
   }, [logout]);
 
+  // JWT bridge — pick up token from URL when redirected from trainer/admin dashboard
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const bridgeToken = params.get('authToken');
+    const redirectPath = params.get('redirect');
+    if (!bridgeToken) return;
+
+    // Store the JWT and clean URL immediately
+    setApiToken(bridgeToken);
+    setToken(bridgeToken);
+    window.history.replaceState({}, '', '/');
+
+    // Fetch user data with the bridge token
+    fetch('/auth/me', { headers: { 'Authorization': 'Bearer ' + bridgeToken } })
+      .then(r => r.json())
+      .then(data => {
+        if (data.user) {
+          try { localStorage.setItem('willfit_user', JSON.stringify(data.user)); } catch {}
+          setUser(data.user);
+        }
+      })
+      .catch(() => {});
+
+    // Navigate to target after a tick so React Router can mount
+    if (redirectPath) {
+      setTimeout(() => { window.location.replace(redirectPath); }, 50);
+    }
+  }, []);
+
   // Helper to set all auth state atomically, cleaning up on failure
   function applyAuth(data) {
     try {

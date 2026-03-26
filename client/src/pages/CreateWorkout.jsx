@@ -203,7 +203,10 @@ export default function CreateWorkout() {
           createCustom(ex.name, 'Other').catch(() => {});
         }
       }
-      navigate('/');
+      const from = searchParams.get('from');
+      if (from === 'trainer') { window.location.href = '/trainer/workouts'; }
+      else if (from === 'admin') { window.location.href = '/admin/workout-manager/workouts'; }
+      else { navigate('/'); }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -214,11 +217,16 @@ export default function CreateWorkout() {
   return (
     <div className="px-4 pt-6 pb-24">
       {UnsavedModal}
-      <button onClick={() => guardedNavigate(() => navigate(-1))} className="flex items-center gap-1 text-wf-red text-sm font-medium mb-4 active:opacity-70">
+      <button onClick={() => guardedNavigate(() => {
+        const from = searchParams.get('from');
+        if (from === 'trainer') { window.location.href = '/trainer/workouts'; }
+        else if (from === 'admin') { window.location.href = '/admin/workout-manager/workouts'; }
+        else { navigate(-1); }
+      })} className="flex items-center gap-1 text-wf-red text-sm font-medium mb-4 active:opacity-70">
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
         </svg>
-        Back
+        {searchParams.get('from') === 'trainer' ? 'Back to Dashboard' : searchParams.get('from') === 'admin' ? 'Back to Admin' : 'Back'}
       </button>
 
       <h1 className="text-3xl font-black text-white tracking-tight mb-1">

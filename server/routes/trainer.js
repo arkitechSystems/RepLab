@@ -4,6 +4,8 @@ import bcrypt from 'bcryptjs';
 import pool from '../dbPool.js';
 import db from '../db.js';
 import { DASHBOARD_CSS, SIDEBAR_JS } from '../dashboardCSS.js';
+import { exerciseCardScript } from '../exerciseCardBuilder.js';
+import { generateToken } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -854,8 +856,24 @@ router.post('/api/programs', trainerAuth, express.json(), async (req, res) => {
   }
 });
 
-// GET /trainer/create-workout — Workout builder form
+// GET /trainer/create-workout — Redirect to React app with JWT bridge
 router.get('/create-workout', trainerAuth, async (req, res) => {
+  try {
+    const user = await db.findUserById(req.trainer.userId);
+    if (!user) return res.redirect('/trainer?error=User+not+found');
+    const jwt = generateToken(user);
+    const programId = req.query.programId;
+    let target = '/clientworkouts/create?from=trainer';
+    if (programId) target += '&programId=' + programId;
+    return res.redirect('/?authToken=' + encodeURIComponent(jwt) + '&redirect=' + encodeURIComponent(target));
+  } catch (err) {
+    console.error('Bridge error:', err);
+    return res.redirect('/trainer?error=Failed+to+open+workout+builder');
+  }
+});
+
+// OLD create-workout form (kept for reference, unreachable)
+router.get('/create-workout-legacy', trainerAuth, async (req, res) => {
   const isAdmin = req.trainer.isAdmin || false;
   const msg = req.query.msg || '';
   const error = req.query.error || '';
@@ -921,6 +939,9 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
       <div style="display:flex;gap:8px;margin-bottom:20px;">
         <button type="button" onclick="addExercise()" class="btn-ghost" style="flex:1;text-align:center;padding:14px;margin:0;">
           + Add Exercise
+        </button>
+        <button type="button" onclick="addSectionHeader()" class="btn-ghost" style="flex:1;text-align:center;padding:14px;margin:0;border-color:rgba(255,255,255,0.15);">
+          + Add Section Header
         </button>
       </div>
 
@@ -989,7 +1010,6 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
         document.getElementById('program-btn').style.color = id ? '#fff' : 'rgba(255,255,255,0.5)';
         document.getElementById('program-dropdown').style.display = 'none';
       }
-      // Close program dropdown on outside click
       document.addEventListener('click', function(e) {
         if (!e.target.closest('#program-btn') && !e.target.closest('#program-dropdown')) {
           document.getElementById('program-dropdown').style.display = 'none';
@@ -1045,343 +1065,7 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
         }
       }
 
-      const SET_TYPES = [
-        { value: 'warm_up', label: 'Warm Up' },
-        { value: 'straight', label: 'Regular' },
-        { value: 'drop', label: 'Drop Set' },
-        { value: 'rest_pause', label: 'Rest-Pause' },
-        { value: 'superset', label: 'Super Set' },
-        { value: 'alternating', label: 'Alternating' },
-        { value: 'giant', label: 'Giant Set' },
-        { value: 'pre_exhaust', label: 'Pre-Exhaust' },
-      ];
-      function buildSetTypeButtons(exIdx) {
-        return SET_TYPES.map(function(t) {
-          var btn = document.createElement('button');
-          btn.type = 'button';
-          btn.textContent = t.label;
-          btn.style.cssText = 'width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:#fff;font-size:12px;cursor:pointer;font-family:inherit;border-radius:6px;transition:background 0.1s;';
-          btn.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.08)'; };
-          btn.onmouseout = function() { this.style.background = 'none'; };
-          btn.onclick = function() { selectSetType(exIdx, t.value, t.label); };
-          return btn;
-        });
-      }
-
-      let exerciseCount = 0;
-      let searchTimeout = null;
-      let activeSearchIdx = null;
-
-      function el(tag, styles, attrs) {
-        var e = document.createElement(tag);
-        if (styles) e.style.cssText = styles;
-        if (attrs) Object.keys(attrs).forEach(function(k) { e[k] = attrs[k]; });
-        return e;
-      }
-
-
-
-      function updateSetCount(idx) {
-        var setsDiv = document.getElementById('sets-' + idx);
-        var count = setsDiv ? setsDiv.children.length : 0;
-        var label = document.getElementById('set-count-' + idx);
-        if (label) label.textContent = count + ' set' + (count !== 1 ? 's' : '');
-      }
-
-      function moveExercise(idx, direction) {
-        var card = document.getElementById('exercise-' + idx);
-        if (!card) return;
-        var sibling = direction === -1 ? card.previousElementSibling : card.nextElementSibling;
-        if (!sibling) return;
-        var container = document.getElementById('exercises-container');
-        if (direction === -1) container.insertBefore(card, sibling);
-        else container.insertBefore(sibling, card);
-      }
-
-      function addExercise() {
-        var idx = exerciseCount++;
-        var container = document.getElementById('exercises-container');
-        var card = el('div', 'border-radius:16px;margin-bottom:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);');
-        card.className = 'glass';
-        card.id = 'exercise-' + idx;
-
-        // === HEADER: Exercise name + move up/down + remove ===
-        var header = el('div', 'padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between;');
-        var searchWrap = el('div', 'flex:1;position:relative;min-width:0;');
-        var searchInput = el('input', 'width:100%;padding:0;border:none;background:none;color:#fff;font-size:15px;font-weight:600;font-family:inherit;outline:none;');
-        searchInput.type = 'text'; searchInput.id = 'ex-search-' + idx; searchInput.name = 'exercises[' + idx + '][name]';
-        searchInput.placeholder = 'Search exercises...'; searchInput.required = true; searchInput.autocomplete = 'off';
-        searchInput.oninput = function() { searchExercises(idx, this.value); };
-        searchInput.onfocus = function() { searchExercises(idx, this.value); };
-        var resultsDiv = el('div', 'display:none;position:absolute;top:calc(100% + 8px);left:-16px;right:-16px;z-index:50;max-height:220px;overflow-y:auto;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.12);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.5);');
-        resultsDiv.id = 'ex-results-' + idx;
-        var validBadge = el('span', 'display:none;align-items:center;margin-left:6px;');
-        validBadge.id = 'ex-valid-' + idx;
-        searchWrap.appendChild(searchInput); searchWrap.appendChild(validBadge); searchWrap.appendChild(resultsDiv);
-        var headerBtns = el('div', 'display:flex;align-items:center;gap:4px;shrink:0;');
-        function mkCircleBtn(svg, hoverColor, hoverBg) {
-          var b = el('button', 'width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.06);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,0.4);transition:all 0.15s;', { type: 'button' });
-          b.innerHTML = svg;
-          b.onmouseover = function() { this.style.color = hoverColor; this.style.background = hoverBg; };
-          b.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.4)'; this.style.background = 'rgba(255,255,255,0.06)'; };
-          return b;
-        }
-        var upBtn = mkCircleBtn('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5"/></svg>', '#fff', 'rgba(255,255,255,0.15)');
-        upBtn.onclick = function() { moveExercise(idx, -1); };
-        var downBtn = mkCircleBtn('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>', '#fff', 'rgba(255,255,255,0.15)');
-        downBtn.onclick = function() { moveExercise(idx, 1); };
-        var removeBtn = mkCircleBtn('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>', '#ef4444', 'rgba(239,68,68,0.15)');
-        removeBtn.onclick = function() { removeExercise(idx); };
-        headerBtns.appendChild(upBtn); headerBtns.appendChild(downBtn); headerBtns.appendChild(removeBtn);
-        header.appendChild(searchWrap); header.appendChild(headerBtns);
-        card.appendChild(header);
-
-        // Hidden set type
-        var stHidden = el('input'); stHidden.type = 'hidden'; stHidden.name = 'exercises[' + idx + '][setType]'; stHidden.id = 'settype-val-' + idx; stHidden.value = 'straight';
-        card.appendChild(stHidden);
-
-        // === SET CONTROLS SUBHEADER: count + add/remove set buttons ===
-        var setControls = el('div', 'padding:8px 16px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.015);');
-        var setCountLabel = el('span', 'font-size:10px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1.5px;font-weight:600;');
-        setCountLabel.id = 'set-count-' + idx;
-        setCountLabel.textContent = '3 sets';
-        var setBtns = el('div', 'display:flex;align-items:center;gap:6px;');
-        var addSetPill = el('button', 'height:26px;padding:0 10px;border-radius:13px;background:rgba(255,255,255,0.06);border:none;display:flex;align-items:center;gap:4px;cursor:pointer;color:rgba(255,255,255,0.4);font-family:inherit;transition:all 0.15s;', { type: 'button' });
-        addSetPill.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>';
-        var addSetText = el('span', 'font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;'); addSetText.textContent = 'Add Set';
-        addSetPill.appendChild(addSetText);
-        addSetPill.onmouseover = function() { this.style.color = '#fff'; this.style.background = 'rgba(255,255,255,0.12)'; };
-        addSetPill.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.4)'; this.style.background = 'rgba(255,255,255,0.06)'; };
-        addSetPill.onclick = function() { addSet(idx); updateSetCount(idx); };
-        var rmSetPill = el('button', 'height:26px;padding:0 10px;border-radius:13px;background:rgba(255,255,255,0.06);border:none;display:flex;align-items:center;gap:4px;cursor:pointer;color:rgba(255,255,255,0.4);font-family:inherit;transition:all 0.15s;', { type: 'button' });
-        rmSetPill.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12h-15"/></svg>';
-        var rmSetText = el('span', 'font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;'); rmSetText.textContent = 'Remove';
-        rmSetPill.appendChild(rmSetText);
-        rmSetPill.onmouseover = function() { this.style.color = '#ef4444'; this.style.background = 'rgba(239,68,68,0.12)'; };
-        rmSetPill.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.4)'; this.style.background = 'rgba(255,255,255,0.06)'; };
-        rmSetPill.onclick = function() { var sd = document.getElementById('sets-' + idx); if (sd && sd.lastChild) { sd.lastChild.remove(); updateSetCount(idx); } };
-        setBtns.appendChild(addSetPill); setBtns.appendChild(rmSetPill);
-        setControls.appendChild(setCountLabel); setControls.appendChild(setBtns);
-        card.appendChild(setControls);
-
-        // === COLUMN HEADERS ===
-        var colHeaders = el('div', 'display:flex;align-items:center;padding:8px 16px;border-bottom:1px solid rgba(255,255,255,0.04);');
-        [{ t: 'Set', w: '36px' }, { t: 'Type', w: '72px' }, { t: 'Weight', f: '1' }, { t: 'Reps', f: '1' }, { t: '', w: '28px' }].forEach(function(c) {
-          var sp = el('span', 'font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.25);font-weight:600;text-align:center;' + (c.f ? 'flex:' + c.f + ';' : 'width:' + c.w + ';'));
-          sp.textContent = c.t; colHeaders.appendChild(sp);
-        });
-        card.appendChild(colHeaders);
-
-        // === SETS CONTAINER ===
-        var setsDiv = el('div'); setsDiv.id = 'sets-' + idx; card.appendChild(setsDiv);
-
-        // === NOTES SECTION ===
-        var notesWrap = el('div', 'padding:10px 16px;border-top:1px solid rgba(255,255,255,0.05);');
-        var notesLabel = el('div', 'display:flex;align-items:center;gap:4px;margin-bottom:6px;');
-        var notesIcon = el('span'); notesIcon.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/></svg>';
-        var notesText = el('span', 'font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:1px;font-weight:600;'); notesText.textContent = 'Notes';
-        notesLabel.appendChild(notesIcon); notesLabel.appendChild(notesText);
-        var notesInput = el('textarea', 'width:100%;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:rgba(255,255,255,0.5);font-size:12px;font-family:inherit;outline:none;resize:vertical;box-sizing:border-box;min-height:36px;');
-        notesInput.name = 'exercises[' + idx + '][notes]'; notesInput.placeholder = 'Add notes for this exercise...'; notesInput.rows = 2;
-        notesWrap.appendChild(notesLabel); notesWrap.appendChild(notesInput);
-        card.appendChild(notesWrap);
-
-        container.appendChild(card);
-        addSet(idx); addSet(idx); addSet(idx);
-        updateSetCount(idx);
-      }
-
-      function searchExercises(exIdx, query) {
-        activeSearchIdx = exIdx;
-        clearTimeout(searchTimeout);
-        validatedExercises[exIdx] = false;
-        var badge = document.getElementById('ex-valid-' + exIdx);
-        if (badge) { badge.style.display = 'none'; }
-        const resultsDiv = document.getElementById('ex-results-' + exIdx);
-        if (!query || query.length < 1) { resultsDiv.style.display = 'none'; return; }
-        searchTimeout = setTimeout(async () => {
-          try {
-            var resp = await fetch('/trainer/api/exercises?q=' + encodeURIComponent(query));
-            var exercises = await resp.json();
-            resultsDiv.innerHTML = '';
-            exercises.forEach(function(ex) {
-              var btn = document.createElement('button');
-              btn.type = 'button';
-              btn.style.cssText = 'width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#fff;font-size:13px;cursor:pointer;font-family:inherit;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.05);';
-              btn.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.08)'; };
-              btn.onmouseout = function() { this.style.background = 'none'; };
-              btn.onclick = function() { selectExercise(exIdx, ex.name); };
-              var nameSpan = document.createElement('span');
-              nameSpan.textContent = ex.name;
-              if (ex.isCustom) {
-                var tag = document.createElement('span');
-                tag.textContent = ' custom';
-                tag.style.cssText = 'font-size:9px;color:#ef4444;margin-left:4px;';
-                nameSpan.appendChild(tag);
-              }
-              var muscleSpan = document.createElement('span');
-              muscleSpan.textContent = ex.muscle || '';
-              muscleSpan.style.cssText = 'font-size:10px;color:rgba(255,255,255,0.3);';
-              btn.appendChild(nameSpan);
-              btn.appendChild(muscleSpan);
-              resultsDiv.appendChild(btn);
-            });
-            // Only show "Add Custom" if no exact match found in results
-            var exactMatch = exercises.some(function(ex) { return ex.name.toLowerCase() === query.toLowerCase(); });
-            if (!exactMatch) {
-              var sep = document.createElement('div');
-              sep.style.cssText = 'border-top:1px solid rgba(255,255,255,0.06);margin:4px 0;';
-              resultsDiv.appendChild(sep);
-              var customBtn = document.createElement('button');
-              customBtn.type = 'button';
-              customBtn.style.cssText = 'width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#ef4444;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600;';
-              customBtn.onmouseover = function() { this.style.background = 'rgba(239,68,68,0.08)'; };
-              customBtn.onmouseout = function() { this.style.background = 'none'; };
-              customBtn.onclick = function() { openCustomModal(exIdx); };
-              customBtn.textContent = '+ Add Custom Exercise';
-              resultsDiv.appendChild(customBtn);
-            }
-            resultsDiv.style.display = 'block';
-          } catch (err) { console.error(err); }
-        }, 200);
-      }
-
-      function selectExercise(exIdx, name) {
-        var input = document.getElementById('ex-search-' + exIdx);
-        input.value = name;
-        input.style.color = '#fff';
-        document.getElementById('ex-results-' + exIdx).style.display = 'none';
-        validatedExercises[exIdx] = true;
-        var badge = document.getElementById('ex-valid-' + exIdx);
-        if (badge) { badge.style.display = 'inline-flex'; badge.style.color = '#22c55e'; badge.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>'; }
-      }
-
-      function openCustomModal(exIdx) {
-        document.getElementById('ex-results-' + exIdx).style.display = 'none';
-        document.getElementById('custom-ex-name').value = '';
-        activeSearchIdx = exIdx;
-        document.getElementById('custom-ex-modal').style.display = 'flex';
-      }
-
-      async function saveCustomExercise() {
-        const name = document.getElementById('custom-ex-name').value.trim();
-        const muscle = document.getElementById('custom-ex-muscle').value;
-        if (!name) return;
-        try {
-          await fetch('/trainer/api/exercises', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, muscleGroup: muscle }),
-          });
-        } catch (err) { console.error('Failed to save custom exercise:', err); }
-        if (activeSearchIdx !== null) {
-          selectExercise(activeSearchIdx, name);
-        }
-        document.getElementById('custom-ex-modal').style.display = 'none';
-      }
-
-      function getCookie(n) {
-        var m = document.cookie.match(new RegExp('(^|;)\\\\s*' + n + '\\\\s*=\\\\s*([^;]+)'));
-        return m ? m.pop() : '';
-      }
-
-      function toggleSetTypeDD(exIdx) {
-        const dd = document.getElementById('settype-dd-' + exIdx);
-        dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
-      }
-      function selectSetType(exIdx, value, label) {
-        document.getElementById('settype-val-' + exIdx).value = value;
-        document.getElementById('settype-label-' + exIdx).textContent = label;
-        document.getElementById('settype-dd-' + exIdx).style.display = 'none';
-      }
-
-      // Close all dropdowns when clicking outside
-      document.addEventListener('click', function(e) {
-        if (!e.target.closest('[id^="ex-search-"]') && !e.target.closest('[id^="ex-results-"]')) {
-          document.querySelectorAll('[id^="ex-results-"]').forEach(function(d) { d.style.display = 'none'; });
-        }
-        if (!e.target.closest('[id^="st-btn-"]') && !e.target.closest('[id^="st-dd-"]')) {
-          document.querySelectorAll('[id^="st-dd-"]').forEach(function(d) { d.style.display = 'none'; });
-        }
-      });
-
-      var setCounts = {};
-      var inputCSS = 'flex:1;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);color:#fff;font-size:14px;font-family:inherit;outline:none;text-align:center;box-sizing:border-box;';
-      var SET_SHORT = { warm_up: 'WU', straight: 'REG', drop: 'DS', rest_pause: 'RP', superset: 'SS', alternating: 'Alt', giant: 'Gia', pre_exhaust: 'PrEx' };
-      var activeSetTypeBtn = null;
-      var activeSetTypeExIdx = null;
-
-      function openSetTypePicker(exIdx, btnEl) {
-        activeSetTypeBtn = btnEl;
-        activeSetTypeExIdx = exIdx;
-        var opts = document.getElementById('settype-options');
-        opts.innerHTML = '';
-        SET_TYPES.forEach(function(t) {
-          var b = document.createElement('button'); b.type = 'button'; b.textContent = t.label;
-          b.style.cssText = 'width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#fff;font-size:14px;cursor:pointer;font-family:inherit;border-radius:8px;border-bottom:1px solid rgba(255,255,255,0.05);';
-          b.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.08)'; };
-          b.onmouseout = function() { this.style.background = 'none'; };
-          b.onclick = function() {
-            activeSetTypeBtn.textContent = SET_SHORT[t.value] || 'REG';
-            activeSetTypeBtn.style.color = t.value === 'straight' ? 'rgba(255,255,255,0.6)' : '#ef4444';
-            document.getElementById('settype-val-' + activeSetTypeExIdx).value = t.value;
-            document.getElementById('settype-modal').style.display = 'none';
-          };
-          opts.appendChild(b);
-        });
-        document.getElementById('settype-modal').style.display = 'flex';
-      }
-
-      function addSet(exIdx) {
-        if (!setCounts[exIdx]) setCounts[exIdx] = 0;
-        var setIdx = setCounts[exIdx]++;
-        var setsDiv = document.getElementById('sets-' + exIdx);
-        var row = el('div', 'display:flex;align-items:center;padding:6px 16px;border-bottom:1px solid rgba(255,255,255,0.04);' + (setIdx % 2 === 0 ? 'background:rgba(255,255,255,0.02);' : ''));
-        row.id = 'set-' + exIdx + '-' + setIdx;
-
-        // Set number
-        var num = el('span', 'width:36px;text-align:center;font-size:13px;color:rgba(255,255,255,0.4);font-weight:700;');
-        num.textContent = setIdx + 1;
-
-        // Set type button — opens shared modal
-        var typeWrap = el('div', 'width:72px;');
-        var typeBtn = el('button', 'width:100%;padding:6px 4px;border-radius:6px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.6);font-size:10px;font-weight:700;font-family:inherit;cursor:pointer;text-align:center;outline:none;', { type: 'button' });
-        typeBtn.textContent = 'REG';
-        typeBtn.onclick = function() { openSetTypePicker(exIdx, typeBtn); };
-        typeWrap.appendChild(typeBtn);
-
-        // Weight input
-        var weightInput = el('input', inputCSS);
-        weightInput.type = 'number'; weightInput.name = 'exercises[' + exIdx + '][sets][' + setIdx + '][weight]';
-        weightInput.placeholder = '—'; weightInput.value = '0';
-        weightInput.onfocus = function() { if (this.value === '0') this.value = ''; };
-        weightInput.onblur = function() { if (!this.value) this.value = '0'; };
-
-        // Reps input
-        var repsInput = el('input', inputCSS);
-        repsInput.type = 'number'; repsInput.name = 'exercises[' + exIdx + '][sets][' + setIdx + '][reps]';
-        repsInput.placeholder = '10'; repsInput.value = '10';
-
-        // Delete
-        var delBtn = el('button', 'background:none;border:none;color:rgba(255,255,255,0.15);cursor:pointer;padding:4px;width:28px;display:flex;align-items:center;justify-content:center;border-radius:4px;', { type: 'button' });
-        delBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>';
-        delBtn.onmouseover = function() { this.style.color = '#ef4444'; this.style.background = 'rgba(239,68,68,0.1)'; };
-        delBtn.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.15)'; this.style.background = 'none'; };
-        delBtn.onclick = function() { var e = document.getElementById('set-' + exIdx + '-' + setIdx); if (e) { e.remove(); updateSetCount(exIdx); } };
-
-        row.appendChild(num); row.appendChild(typeWrap); row.appendChild(weightInput); row.appendChild(repsInput); row.appendChild(delBtn);
-        setsDiv.appendChild(row);
-      }
-
-      function removeSet(exIdx, setIdx) {
-        var e = document.getElementById('set-' + exIdx + '-' + setIdx);
-        if (e) e.remove();
-      }
-
-      function removeExercise(idx) {
-        var e = document.getElementById('exercise-' + idx);
-        if (e) e.remove();
-      }
+      ${exerciseCardScript('/trainer/api')}
 
       addExercise();
 
@@ -1572,21 +1256,28 @@ router.post('/create-workout', trainerAuth, express.urlencoded({ extended: true 
       [userId, finalProgramId, workoutName.trim(), description?.trim() || '', sortOrder]
     );
 
-    // Insert exercises and sets
+    // Insert exercises and sets (including section headers)
     if (exercises && typeof exercises === 'object') {
       const exArray = Array.isArray(exercises) ? exercises : Object.values(exercises);
       let exSortOrder = 0;
       for (const ex of exArray) {
         if (!ex?.name?.trim()) continue;
-        const setType = ex.setType || 'straight';
-        const sets = ex.sets ? (Array.isArray(ex.sets) ? ex.sets : Object.values(ex.sets)) : [];
-        let setNum = 1;
-        for (const set of sets) {
-          if (!set) continue;
+        if (ex.isSectionHeader === '1') {
           await pool.query(
-            'INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-            [tmpl.id, ex.name.trim(), setType, setNum++, parseInt(set.reps) || 10, parseInt(set.weight) || 0, exSortOrder]
+            'INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+            [tmpl.id, ex.name.trim(), 'straight', 1, 0, 0, exSortOrder, true, ex.sectionNotes?.trim() || '']
           );
+        } else {
+          const setType = ex.setType || 'straight';
+          const sets = ex.sets ? (Array.isArray(ex.sets) ? ex.sets : Object.values(ex.sets)) : [];
+          let setNum = 1;
+          for (const set of sets) {
+            if (!set) continue;
+            await pool.query(
+              'INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+              [tmpl.id, ex.name.trim(), setType, setNum++, parseInt(set.reps) || 10, parseInt(set.weight) || 0, exSortOrder]
+            );
+          }
         }
         exSortOrder++;
       }
@@ -1599,8 +1290,22 @@ router.post('/create-workout', trainerAuth, express.urlencoded({ extended: true 
   }
 });
 
-// GET /trainer/edit-workout/:id — Edit workout form
+// GET /trainer/edit-workout/:id — Redirect to React app with JWT bridge
 router.get('/edit-workout/:id', trainerAuth, async (req, res) => {
+  try {
+    const user = await db.findUserById(req.trainer.userId);
+    if (!user) return res.redirect('/trainer?error=User+not+found');
+    const jwt = generateToken(user);
+    const target = '/clientworkouts/edit/' + req.params.id + '?from=trainer';
+    return res.redirect('/?authToken=' + encodeURIComponent(jwt) + '&redirect=' + encodeURIComponent(target));
+  } catch (err) {
+    console.error('Bridge error:', err);
+    return res.redirect('/trainer?error=Failed+to+open+workout+editor');
+  }
+});
+
+// OLD edit-workout form (kept for reference, unreachable)
+router.get('/edit-workout-legacy/:id', trainerAuth, async (req, res) => {
   const isAdmin = req.trainer.isAdmin || false;
   const templateId = Number(req.params.id);
   const msg = req.query.msg || '';
@@ -1618,15 +1323,19 @@ router.get('/edit-workout/:id', trainerAuth, async (req, res) => {
     // Verify ownership
     if (!isAdmin && tmpl.user_id !== req.trainer.userId) return res.redirect('/trainer/workouts');
 
-    // Load exercises
+    // Load exercises (including section headers)
     const { rows: exercises } = await pool.query(
-      'SELECT name, set_type, set_number, planned_reps, suggested_weight, sort_order FROM template_exercises WHERE template_id = $1 ORDER BY sort_order, set_number',
+      'SELECT name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes FROM template_exercises WHERE template_id = $1 ORDER BY sort_order, set_number',
       [templateId]
     );
 
     // Group by exercise
     const exerciseMap = new Map();
     for (const ex of exercises) {
+      if (ex.is_section_header) {
+        exerciseMap.set(ex.sort_order, { name: ex.name, isSectionHeader: true, sectionNotes: ex.section_notes || '' });
+        continue;
+      }
       if (!exerciseMap.has(ex.sort_order)) {
         exerciseMap.set(ex.sort_order, { name: ex.name, setType: ex.set_type || 'straight', sets: [] });
       }
@@ -1677,12 +1386,23 @@ router.get('/edit-workout/:id', trainerAuth, async (req, res) => {
         </div>
       </div>
       <div id="exercises-container"></div>
-      <button type="button" onclick="addExercise()" class="btn-ghost" style="width:100%;text-align:center;padding:14px;margin-bottom:20px;">+ Add Exercise</button>
+      <div style="display:flex;gap:8px;margin-bottom:20px;">
+        <button type="button" onclick="addExercise()" class="btn-ghost" style="flex:1;text-align:center;padding:14px;margin:0;">+ Add Exercise</button>
+        <button type="button" onclick="addSectionHeader()" class="btn-ghost" style="flex:1;text-align:center;padding:14px;margin:0;border-color:rgba(255,255,255,0.15);">+ Add Section Header</button>
+      </div>
       <div style="display:flex;gap:8px;">
         <button type="submit" class="btn" style="flex:1;padding:14px;font-size:15px;margin:0;">Save Changes</button>
         <a href="/trainer/workouts" class="btn-ghost" style="flex:none;padding:14px 24px;margin:0;text-align:center;font-size:15px;">Cancel</a>
       </div>
     </form>
+
+    <!-- Set Type Picker Modal -->
+    <div id="settype-modal" style="display:none;position:fixed;inset:0;z-index:9998;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);" onclick="if(event.target===this)this.style.display='none'">
+      <div style="padding:16px;max-width:300px;width:85%;border-radius:16px;background:rgba(25,25,25,0.98);border:1px solid rgba(255,255,255,0.1);box-shadow:0 20px 60px rgba(0,0,0,0.8);">
+        <h3 style="font-size:14px;font-weight:700;color:#fff;margin-bottom:12px;">Set Type</h3>
+        <div id="settype-options"></div>
+      </div>
+    </div>
 
     <!-- Custom Exercise Modal -->
     <div id="custom-ex-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);" onclick="if(event.target===this)this.style.display='none'">
@@ -1701,120 +1421,15 @@ router.get('/edit-workout/:id', trainerAuth, async (req, res) => {
     </div>
 
     <script>
-      var API = '${apiBase}';
       var EXISTING = ${JSON.stringify(exerciseList)};
-      var SET_TYPES = [
-        { value: 'warm_up', label: 'Warm Up' }, { value: 'straight', label: 'Regular' }, { value: 'drop', label: 'Drop Set' },
-        { value: 'rest_pause', label: 'Rest-Pause' }, { value: 'superset', label: 'Super Set' }, { value: 'alternating', label: 'Alternating' },
-        { value: 'giant', label: 'Giant Set' }, { value: 'pre_exhaust', label: 'Pre-Exhaust' },
-      ];
-      function getSetTypeLabel(v) { var t = SET_TYPES.find(function(x) { return x.value === v; }); return t ? t.label : 'Regular'; }
-      function buildSetTypeButtons(exIdx) {
-        return SET_TYPES.map(function(t) {
-          var b = document.createElement('button'); b.type = 'button'; b.textContent = t.label;
-          b.style.cssText = 'width:100%;text-align:left;padding:8px 12px;border:none;background:none;color:#fff;font-size:12px;cursor:pointer;font-family:inherit;border-radius:6px;';
-          b.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.08)'; }; b.onmouseout = function() { this.style.background = 'none'; };
-          b.onclick = function() { selectSetType(exIdx, t.value, t.label); }; return b;
-        });
-      }
-      function toggleSetTypeDD(i) { var d = document.getElementById('settype-dd-' + i); d.style.display = d.style.display === 'none' ? 'block' : 'none'; }
-      function selectSetType(i, v, l) { document.getElementById('settype-val-' + i).value = v; document.getElementById('settype-label-' + i).textContent = l; document.getElementById('settype-dd-' + i).style.display = 'none'; }
-      document.addEventListener('click', function(e) {
-        if (!e.target.closest('[id^="ex-search-"]') && !e.target.closest('[id^="ex-results-"]')) document.querySelectorAll('[id^="ex-results-"]').forEach(function(d) { d.style.display = 'none'; });
-        if (!e.target.closest('[id^="settype-btn-"]') && !e.target.closest('[id^="settype-dd-"]')) document.querySelectorAll('[id^="settype-dd-"]').forEach(function(d) { d.style.display = 'none'; });
+
+      ${exerciseCardScript(apiBase)}
+
+      // Load existing exercises (including section headers)
+      EXISTING.forEach(function(ex) {
+        if (ex.isSectionHeader) { addSectionHeader(ex); }
+        else { addExercise(ex); }
       });
-
-      function mk(tag, css, attrs) { var e = document.createElement(tag); if (css) e.style.cssText = css; if (attrs) Object.keys(attrs).forEach(function(k) { e[k] = attrs[k]; }); return e; }
-      var exerciseCount = 0, searchTimeout = null, activeSearchIdx = null, setCounts = {};
-      var validatedExercises = {}; // idx -> true if selected from library or added as custom
-      var inputCSS = 'flex:1;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;text-align:center;box-sizing:border-box;';
-
-      function addExercise(prefill) {
-        var idx = exerciseCount++; var container = document.getElementById('exercises-container');
-        var div = mk('div', 'padding:20px;border-radius:16px;margin-bottom:16px;position:relative;'); div.className = 'glass'; div.id = 'exercise-' + idx;
-        var hdr = mk('div', 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;');
-        var lbl = mk('label', 'margin:0;font-size:13px;font-weight:700;color:#fff;'); lbl.textContent = 'Exercise ' + (idx + 1);
-        var rmBtn = mk('button', 'background:none;border:none;color:rgba(255,255,255,0.3);cursor:pointer;padding:4px 8px;border-radius:6px;font-family:inherit;font-size:12px;', { type: 'button' });
-        rmBtn.textContent = 'Remove'; rmBtn.onmouseover = function() { this.style.color = '#ef4444'; }; rmBtn.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.3)'; };
-        rmBtn.onclick = function() { var e = document.getElementById('exercise-' + idx); if (e) e.remove(); };
-        hdr.appendChild(lbl); hdr.appendChild(rmBtn); div.appendChild(hdr);
-        var sw = mk('div', 'position:relative;');
-        var si = mk('input', 'width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;');
-        si.type = 'text'; si.id = 'ex-search-' + idx; si.name = 'exercises[' + idx + '][name]'; si.placeholder = 'Search exercises...'; si.required = true; si.autocomplete = 'off';
-        if (prefill) si.value = prefill.name;
-        si.oninput = function() { searchExercises(idx, this.value); }; si.onfocus = function() { searchExercises(idx, this.value); };
-        var rd = mk('div', 'display:none;position:absolute;top:100%;left:0;right:0;z-index:50;max-height:200px;overflow-y:auto;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.12);border-radius:10px;margin-top:4px;box-shadow:0 8px 32px rgba(0,0,0,0.5);');
-        rd.id = 'ex-results-' + idx; sw.appendChild(si); sw.appendChild(rd); div.appendChild(sw);
-        var str = mk('div', 'margin-top:12px;margin-bottom:12px;display:flex;gap:8px;align-items:center;position:relative;');
-        var stl = mk('label', 'margin:0;font-size:11px;color:rgba(255,255,255,0.4);white-space:nowrap;'); stl.textContent = 'Set Type';
-        var sth = mk('input'); sth.type = 'hidden'; sth.name = 'exercises[' + idx + '][setType]'; sth.id = 'settype-val-' + idx; sth.value = prefill ? prefill.setType : 'straight';
-        var stb = mk('button', 'flex:1;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:13px;font-family:inherit;outline:none;cursor:pointer;text-align:left;display:flex;justify-content:space-between;align-items:center;box-sizing:border-box;', { type: 'button' });
-        stb.id = 'settype-btn-' + idx; stb.onclick = function() { toggleSetTypeDD(idx); };
-        var sbl = mk('span'); sbl.id = 'settype-label-' + idx; sbl.textContent = prefill ? getSetTypeLabel(prefill.setType) : 'Regular'; stb.appendChild(sbl);
-        stb.insertAdjacentHTML('beforeend', '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="opacity:0.4;flex-shrink:0;"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>');
-        var sdd = mk('div', 'display:none;position:absolute;top:100%;left:0;right:0;z-index:55;margin-top:4px;background:rgba(20,20,20,0.98);border:1px solid rgba(255,255,255,0.15);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.5);padding:4px;');
-        sdd.id = 'settype-dd-' + idx; buildSetTypeButtons(idx).forEach(function(b) { sdd.appendChild(b); });
-        str.appendChild(stl); str.appendChild(sth); str.appendChild(stb); str.appendChild(sdd); div.appendChild(str);
-        var ch = mk('div', 'display:flex;gap:8px;align-items:center;margin-bottom:8px;');
-        ['Set:40px', 'Reps:1', 'Weight (lbs):1', ':28px'].forEach(function(c) { var p = c.split(':'); var s = mk('span', 'font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);' + (p[1] === '1' ? 'flex:1;text-align:center;' : 'width:' + p[1] + ';')); s.textContent = p[0]; ch.appendChild(s); });
-        div.appendChild(ch);
-        var sd = mk('div'); sd.id = 'sets-' + idx; div.appendChild(sd);
-        var asb = mk('button', 'margin-top:8px;background:none;border:1px dashed rgba(255,255,255,0.15);color:rgba(255,255,255,0.4);padding:8px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;width:100%;', { type: 'button' });
-        asb.textContent = '+ Add Set'; asb.onmouseover = function() { this.style.borderColor = 'rgba(255,255,255,0.3)'; this.style.color = '#fff'; };
-        asb.onmouseout = function() { this.style.borderColor = 'rgba(255,255,255,0.15)'; this.style.color = 'rgba(255,255,255,0.4)'; };
-        asb.onclick = function() { addSet(idx); }; div.appendChild(asb);
-        container.appendChild(div);
-        if (prefill && prefill.sets.length > 0) { prefill.sets.forEach(function(s) { addSet(idx, s.reps, s.weight); }); }
-        else { addSet(idx); addSet(idx); addSet(idx); }
-      }
-      function addSet(exIdx, prefillReps, prefillWeight) {
-        if (!setCounts[exIdx]) setCounts[exIdx] = 0; var si = setCounts[exIdx]++;
-        var sd = document.getElementById('sets-' + exIdx); var r = mk('div', 'display:flex;gap:8px;align-items:center;margin-bottom:6px;'); r.id = 'set-' + exIdx + '-' + si;
-        var n = mk('span', 'font-size:13px;color:rgba(255,255,255,0.5);width:40px;text-align:center;font-weight:600;'); n.textContent = si + 1;
-        var ri = mk('input', inputCSS); ri.type = 'number'; ri.name = 'exercises[' + exIdx + '][sets][' + si + '][reps]'; ri.placeholder = '10'; ri.value = prefillReps !== undefined ? prefillReps : '10';
-        var wi = mk('input', inputCSS); wi.type = 'number'; wi.name = 'exercises[' + exIdx + '][sets][' + si + '][weight]'; wi.placeholder = '0'; wi.value = prefillWeight !== undefined ? prefillWeight : '0';
-        var db = mk('button', 'background:none;border:none;color:rgba(255,255,255,0.2);cursor:pointer;padding:2px;width:28px;display:flex;align-items:center;justify-content:center;', { type: 'button' });
-        db.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>';
-        db.onmouseover = function() { this.style.color = '#ef4444'; }; db.onmouseout = function() { this.style.color = 'rgba(255,255,255,0.2)'; };
-        db.onclick = function() { var e = document.getElementById('set-' + exIdx + '-' + si); if (e) e.remove(); };
-        r.appendChild(n); r.appendChild(ri); r.appendChild(wi); r.appendChild(db); sd.appendChild(r);
-      }
-      function searchExercises(exIdx, query) {
-        activeSearchIdx = exIdx; clearTimeout(searchTimeout);
-        var rd = document.getElementById('ex-results-' + exIdx);
-        if (!query || query.length < 1) { rd.style.display = 'none'; return; }
-        searchTimeout = setTimeout(async function() {
-          try {
-            var resp = await fetch(API + '/exercises?q=' + encodeURIComponent(query));
-            var exercises = await resp.json(); rd.innerHTML = '';
-            exercises.forEach(function(ex) {
-              var b = document.createElement('button'); b.type = 'button';
-              b.style.cssText = 'width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#fff;font-size:13px;cursor:pointer;font-family:inherit;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.05);';
-              b.onmouseover = function() { this.style.background = 'rgba(255,255,255,0.08)'; }; b.onmouseout = function() { this.style.background = 'none'; };
-              b.onclick = function() { document.getElementById('ex-search-' + exIdx).value = ex.name; rd.style.display = 'none'; };
-              var ns = document.createElement('span'); ns.textContent = ex.name;
-              var ms = document.createElement('span'); ms.textContent = ex.muscle || ''; ms.style.cssText = 'font-size:10px;color:rgba(255,255,255,0.3);';
-              b.appendChild(ns); b.appendChild(ms); rd.appendChild(b);
-            });
-            var cb = document.createElement('button'); cb.type = 'button';
-            cb.style.cssText = 'width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#ef4444;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600;';
-            cb.onmouseover = function() { this.style.background = 'rgba(239,68,68,0.08)'; }; cb.onmouseout = function() { this.style.background = 'none'; };
-            cb.onclick = function() { rd.style.display = 'none'; document.getElementById('custom-ex-name').value = query; activeSearchIdx = exIdx; document.getElementById('custom-ex-modal').style.display = 'flex'; };
-            cb.textContent = '+ Add "' + query + '" as custom exercise'; rd.appendChild(cb);
-            rd.style.display = 'block';
-          } catch (e) { console.error(e); }
-        }, 200);
-      }
-      async function saveCustomExercise() {
-        var name = document.getElementById('custom-ex-name').value.trim();
-        var muscle = document.getElementById('custom-ex-muscle').value;
-        if (!name) return;
-        try { await fetch(API + '/exercises', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name, muscleGroup: muscle }) }); } catch (e) {}
-        if (activeSearchIdx !== null) document.getElementById('ex-search-' + activeSearchIdx).value = name;
-        document.getElementById('custom-ex-modal').style.display = 'none';
-      }
-      // Load existing exercises
-      EXISTING.forEach(function(ex) { addExercise(ex); });
       if (EXISTING.length === 0) addExercise();
 
       // AJAX form submit — stay on page after save
@@ -1870,7 +1485,7 @@ router.post('/edit-workout/:id', trainerAuth, express.urlencoded({ extended: tru
       [workoutName.trim(), description?.trim() || '', newProgramId, templateId]
     );
 
-    // Delete old exercises and insert new ones
+    // Delete old exercises and insert new ones (including section headers)
     await pool.query('DELETE FROM template_exercises WHERE template_id = $1', [templateId]);
 
     if (exercises && typeof exercises === 'object') {
@@ -1878,15 +1493,22 @@ router.post('/edit-workout/:id', trainerAuth, express.urlencoded({ extended: tru
       let exSort = 0;
       for (const ex of exArray) {
         if (!ex?.name?.trim()) continue;
-        const setType = ex.setType || 'straight';
-        const sets = ex.sets ? (Array.isArray(ex.sets) ? ex.sets : Object.values(ex.sets)) : [];
-        let setNum = 1;
-        for (const set of sets) {
-          if (!set) continue;
+        if (ex.isSectionHeader === '1') {
           await pool.query(
-            'INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-            [templateId, ex.name.trim(), setType, setNum++, parseInt(set.reps) || 10, parseInt(set.weight) || 0, exSort]
+            'INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+            [templateId, ex.name.trim(), 'straight', 1, 0, 0, exSort, true, ex.sectionNotes?.trim() || '']
           );
+        } else {
+          const setType = ex.setType || 'straight';
+          const sets = ex.sets ? (Array.isArray(ex.sets) ? ex.sets : Object.values(ex.sets)) : [];
+          let setNum = 1;
+          for (const set of sets) {
+            if (!set) continue;
+            await pool.query(
+              'INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+              [templateId, ex.name.trim(), setType, setNum++, parseInt(set.reps) || 10, parseInt(set.weight) || 0, exSort]
+            );
+          }
         }
         exSort++;
       }

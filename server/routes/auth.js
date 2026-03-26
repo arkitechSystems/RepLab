@@ -181,6 +181,35 @@ router.post('/login', async (req, res) => {
 
     const token = generateToken(user);
     res.json({ token, user: userResponse(user) });
+
+    // Log login history (fire-and-forget)
+    try {
+      const loginIp = req.ip === '::1' || req.ip === '127.0.0.1' ? '' : req.ip;
+      let city = null, state = null;
+      if (loginIp) {
+        try {
+          const geoRes = await fetch(`http://ip-api.com/json/${loginIp}?fields=city,regionName,status`);
+          const geo = await geoRes.json();
+          if (geo.status === 'success') { city = geo.city || null; state = geo.regionName || null; }
+        } catch {}
+      }
+      await pool.query(
+        'INSERT INTO user_login_history (user_id, email, ip, user_agent, city, state) VALUES ($1, $2, $3, $4, $5, $6)',
+        [user.id, user.email || user.phone, loginIp, req.headers['user-agent']?.substring(0, 200), city, state]
+      );
+    } catch {}
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /auth/me — Return current user from JWT (used by dashboard bridge)
+router.get('/me', authMiddleware, async (req, res) => {
+  try {
+    const user = await db.findUserById(req.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({ user: userResponse(user) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
