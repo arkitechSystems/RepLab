@@ -36,6 +36,7 @@ export default function WorkoutSession() {
   const [autoFilled, setAutoFilled] = useState(new Set()); // tracks predicted entries
   const [isCompleted, setIsCompleted] = useState(false);
   const [weightSuggestions, setWeightSuggestions] = useState({});
+  const [lastSession, setLastSession] = useState({});
   const [timerStarted, setTimerStarted] = useState(false);
   const [timerHidden, setTimerHidden] = useState(false);
   const [timerFloating, setTimerFloating] = useState(false);
@@ -358,11 +359,13 @@ export default function WorkoutSession() {
     // Step 2: Load everything from the session — never from the template directly
     async function loadSession() {
       try {
-        // Fetch PBs and schedule in parallel
-        const [pbList, scheduleData] = await Promise.all([
+        // Fetch PBs, schedule, and last session entries in parallel
+        const [pbList, scheduleData, lastEntries] = await Promise.all([
           api(`/pbs?templateId=${templateId}`),
           api('/schedule'),
+          api(`/sessions/last-entries/${templateId}`).catch(() => ({})),
         ]);
+        setLastSession(lastEntries || {});
         const pbMap = {};
         for (const pb of pbList) {
           if (!pbMap[pb.exerciseName]) pbMap[pb.exerciseName] = {};
@@ -1651,6 +1654,7 @@ export default function WorkoutSession() {
                 setWeightSuggestions(prev => { const next = { ...prev }; delete next[exName]; return next; });
               }}
               allWorkoutExercises={template.exercises.map(e => e.name)}
+              lastEntries={lastSession[exercise.name]}
               dataTutorial={tutorialMode && idx === 1 ? 'exercise-header' : undefined}
             />
           </div>

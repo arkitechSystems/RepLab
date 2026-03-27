@@ -136,9 +136,14 @@ function PRsSection() {
       )}
 
       {!hasAny && (
-        <div className="glass-card rounded-xl p-6 text-center">
-          <p className="text-wf-gray-400 text-sm">No PRs recorded yet</p>
-          <p className="text-wf-gray-500 text-xs mt-1">Complete workouts to start tracking</p>
+        <div className="glass-card rounded-xl p-6 flex flex-col items-center text-center">
+          <div className="w-14 h-14 rounded-2xl bg-yellow-500/10 flex items-center justify-center mb-3">
+            <svg className="w-7 h-7 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-4.5A3.375 3.375 0 0012.75 10.5h-1.5A3.375 3.375 0 007.5 14.25v4.5m9-9V6a3 3 0 00-3-3h-3a3 3 0 00-3 3v3.75" />
+            </svg>
+          </div>
+          <h3 className="text-white font-bold text-base mb-1">No Personal Records Yet</h3>
+          <p className="text-wf-gray-400 text-sm">Complete workouts to start tracking your personal bests for each exercise.</p>
         </div>
       )}
       {q && filteredGroups.length === 0 && (

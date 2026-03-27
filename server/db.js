@@ -656,6 +656,25 @@ const db = {
     return result;
   },
 
+  async getLastSessionEntries(userId, templateId) {
+    const { rows: sessions } = await pool.query(
+      `SELECT id FROM sessions WHERE user_id = $1 AND template_id = $2 AND completed = TRUE ORDER BY date DESC LIMIT 1`,
+      [userId, templateId]
+    );
+    if (sessions.length === 0) return {};
+    const sessionId = sessions[0].id;
+    const { rows: entries } = await pool.query(
+      `SELECT exercise_name, set_number, weight, reps FROM session_entries WHERE session_id = $1 ORDER BY exercise_name, set_number`,
+      [sessionId]
+    );
+    const result = {};
+    for (const e of entries) {
+      if (!result[e.exercise_name]) result[e.exercise_name] = [];
+      result[e.exercise_name].push({ setNumber: e.set_number, weight: Number(e.weight), reps: Number(e.reps) });
+    }
+    return result;
+  },
+
   async toggleSessionComplete(userId, templateId, date, completed) {
     const { rows } = await pool.query(
       'UPDATE sessions SET completed = $1 WHERE user_id = $2 AND template_id = $3 AND date = $4 RETURNING id',

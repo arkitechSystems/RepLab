@@ -4,6 +4,18 @@ import { useExercises, getSubstitutesFromList } from '../hooks/useExercises.js';
 import VideoPlayerModal from './VideoPlayerModal.jsx';
 import { iosFocusRef } from '../utils/iosFocus.js';
 
+function addToRecent(name) {
+  try {
+    const recent = JSON.parse(localStorage.getItem('willfit_recent_exercises') || '[]');
+    const updated = [name, ...recent.filter(n => n !== name)].slice(0, 20);
+    localStorage.setItem('willfit_recent_exercises', JSON.stringify(updated));
+  } catch {}
+}
+
+function getRecent() {
+  try { return JSON.parse(localStorage.getItem('willfit_recent_exercises') || '[]'); } catch { return []; }
+}
+
 const SET_TYPES = [
   { value: 'warm_up',      short: 'WU',   label: 'Warm Up' },
   { value: 'touch_up',     short: 'TU',   label: 'Touch Up' },
@@ -22,7 +34,7 @@ function getSetTypeShort(value) {
 
 export { SET_TYPES };
 
-function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, note, onNoteChange, weightSuggestion, onApplySuggestion, allWorkoutExercises, mode = 'session', dataTutorial }) {
+function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, note, onNoteChange, weightSuggestion, onApplySuggestion, allWorkoutExercises, lastEntries, mode = 'session', dataTutorial }) {
   const isTemplate = mode === 'template';
   const exercisePbs = pbs?.[exercise.name] || {};
   const videoId = getExerciseVideoId(exercise.name);
@@ -486,6 +498,15 @@ function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, comp
             </div>
           );
 
+          const lastEntry = lastEntries?.[idx];
+          const lastHint = !isTemplate && lastEntry && (lastEntry.weight > 0 || lastEntry.weight === -1 || lastEntry.reps > 0) ? (
+            <div className="px-3 pb-1 -mt-0.5">
+              <p className="text-[9px] text-wf-gray-600 text-right">
+                Last: {lastEntry.weight === -1 ? 'BW' : lastEntry.weight + ' lbs'} &times; {lastEntry.reps}
+              </p>
+            </div>
+          ) : null;
+
           // In session mode, wrap with swipe background indicators
           if (!isTemplate && !readOnly) {
             return (
@@ -507,11 +528,12 @@ function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, comp
                 </div>
                 {/* Sliding row content */}
                 {rowContent}
+                {lastHint}
               </div>
             );
           }
 
-          return <div key={idx}>{rowContent}</div>;
+          return <div key={idx}>{rowContent}{lastHint}</div>;
         })}
       </div>
 
@@ -616,6 +638,7 @@ function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, comp
         onSearchChange={setSwapSearch}
         onSelect={(newName) => {
           if (navigator.vibrate) navigator.vibrate(15);
+          addToRecent(newName);
           onSwapExercise(exercise.name, newName);
           setShowSwap(false);
         }}
@@ -675,7 +698,7 @@ function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, comp
               {q && !allEx.some((ex) => ex.name.toLowerCase() === q) && (
                 <button
                   type="button"
-                  onClick={() => { onAddExercise(addBelowSearch.trim()); setShowAddBelow(false); }}
+                  onClick={() => { addToRecent(addBelowSearch.trim()); onAddExercise(addBelowSearch.trim()); setShowAddBelow(false); }}
                   className="w-full text-left px-4 py-2.5 flex items-center gap-2 active:bg-white/10 transition-colors border-b border-white/5"
                 >
                   <svg className="w-4 h-4 text-green-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -689,7 +712,7 @@ function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, comp
                 <button
                   key={ex.name}
                   type="button"
-                  onClick={() => { onAddExercise(ex.name); setShowAddBelow(false); }}
+                  onClick={() => { addToRecent(ex.name); onAddExercise(ex.name); setShowAddBelow(false); }}
                   className="w-full text-left px-4 py-2.5 flex items-center justify-between active:bg-white/10 transition-colors"
                 >
                   <span className="text-sm text-white">{ex.name}</span>
@@ -700,9 +723,29 @@ function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, comp
               {q && filtered.length === 0 && !allEx.some((ex) => ex.name.toLowerCase() === q) && (
                 <p className="text-wf-gray-500 text-xs text-center py-4">Type to search or add a custom exercise</p>
               )}
-              {!q && (
-                <p className="text-wf-gray-500 text-xs text-center py-4">Start typing to search exercises...</p>
-              )}
+              {!q && (() => {
+                const recentNames = getRecent();
+                const recentExercises = recentNames.map(n => allEx.find(e => e.name === n)).filter(Boolean).slice(0, 5);
+                if (recentExercises.length === 0) return (
+                  <p className="text-wf-gray-500 text-xs text-center py-4">Start typing to search exercises...</p>
+                );
+                return (
+                  <>
+                    <p className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-medium mt-3 mb-2 px-4">Recently Used</p>
+                    {recentExercises.map((ex) => (
+                      <button
+                        key={ex.name}
+                        type="button"
+                        onClick={() => { addToRecent(ex.name); onAddExercise(ex.name); setShowAddBelow(false); }}
+                        className="w-full text-left px-4 py-2.5 flex items-center justify-between active:bg-white/10 transition-colors"
+                      >
+                        <span className="text-sm text-white">{ex.name}</span>
+                        <span className="text-[10px] text-wf-gray-500 uppercase tracking-wider ml-2 shrink-0">{ex.muscle}</span>
+                      </button>
+                    ))}
+                  </>
+                );
+              })()}
             </div>
           </div>
         );
@@ -779,6 +822,20 @@ function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelec
               {filtered.length > 0 && <div className="border-t border-white/5 my-2" />}
             </>
           )}
+
+          {!search.trim() && (() => {
+            const recentNames = getRecent();
+            const recentExercises = recentNames.map(n => substitutes.find(e => e.name === n) || allExercises.find(e => e.name === n)).filter(Boolean).slice(0, 5);
+            if (recentExercises.length === 0) return null;
+            return (
+              <>
+                <p className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-medium mt-3 mb-2">Recently Used</p>
+                {recentExercises.map((ex) => (
+                  <ExerciseOption key={ex.name} exercise={ex} onSelect={(name) => { addToRecent(name); onSelect(name); }} />
+                ))}
+              </>
+            );
+          })()}
 
           {suggested.length > 0 && !search.trim() && (
             <>

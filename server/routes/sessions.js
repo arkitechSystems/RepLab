@@ -140,6 +140,16 @@ router.post('/exercise-history', authMiddleware, async (req, res) => {
   }
 });
 
+router.get('/last-entries/:templateId', authMiddleware, async (req, res) => {
+  try {
+    const entries = await db.getLastSessionEntries(req.userId, Number(req.params.templateId));
+    res.json(entries);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.get('/:id', authMiddleware, async (req, res) => {
   try {
     const id = Number(req.params.id);

@@ -1870,13 +1870,21 @@ export default function Workouts() {
             if (ownPrograms.length === 0 && sharedPrograms.length === 0 && pendingShares.length === 0) {
               return (
                 <div className="glass-card rounded-2xl p-8 flex flex-col items-center text-center">
-                  <p className="text-wf-gray-400 text-sm">Your created workouts will appear here</p>
-                  <button
-                    onClick={() => setShowCreateMenu(true)}
-                    className="mt-4 btn-gradient text-white font-semibold px-6 py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
-                  >
-                    Create Your First Workout
-                  </button>
+                  <div className="w-16 h-16 rounded-2xl bg-wf-red/10 flex items-center justify-center mb-4">
+                    <svg className="w-8 h-8 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-white font-bold text-lg mb-1">No Workouts Yet</h3>
+                  <p className="text-wf-gray-400 text-sm mb-4">Create your first workout or browse the library to find a program that fits your goals.</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => setShowCreateMenu(true)} className="btn-gradient text-white font-semibold px-5 py-3 rounded-xl text-sm active:scale-[0.98] transition-all">
+                      Create Workout
+                    </button>
+                    <button onClick={() => setSelectedGroup('browse')} className="glass-card text-white font-semibold px-5 py-3 rounded-xl text-sm active:scale-[0.98] transition-all">
+                      Browse Library
+                    </button>
+                  </div>
                 </div>
               );
             }

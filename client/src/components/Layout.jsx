@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Outlet, useSearchParams } from 'react-router-dom';
+import { Outlet, useSearchParams, useLocation } from 'react-router-dom';
 import BottomNav from './BottomNav';
 import Tutorial from './Tutorial';
 import { useTutorial } from '../context/TutorialContext';
@@ -7,6 +7,7 @@ import { useTutorial } from '../context/TutorialContext';
 export default function Layout() {
   const { tutorial } = useTutorial();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const isDashboardEmbed = searchParams.get('from') === 'trainer' || searchParams.get('from') === 'admin';
 
   useEffect(() => {
@@ -26,7 +27,9 @@ export default function Layout() {
         </div>
       )}
       <main className={`grow shrink-0 basis-auto relative z-10 ${isDashboardEmbed ? 'pb-4' : 'pb-20'}`}>
-        <Outlet />
+        <div className="page-fade-in" key={location.pathname}>
+          <Outlet />
+        </div>
       </main>
       {!isDashboardEmbed && <BottomNav />}
       {tutorial.active && <Tutorial />}

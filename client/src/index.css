@@ -519,6 +519,15 @@ input[type="number"] {
   display: none;
 }
 
+/* Page fade-in transition */
+.page-fade-in {
+  animation: pageFadeIn 0.2s ease-out;
+}
+@keyframes pageFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @keyframes confettiFall {
   0% {
     transform: translate(var(--x-start), var(--y-start)) rotate(0deg) scale(0);
