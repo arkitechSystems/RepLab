@@ -336,22 +336,43 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
                 </div>
               )}
 
-              {/* Weight input */}
-              <div className="w-[3.15rem] shrink-0">
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  max="9999"
-                  value={entry.weight ?? (isTemplate ? '' : set.suggestedWeight ?? '')}
-                  placeholder={readOnly ? '—' : '0'}
-                  onChange={(e) => onChange?.(exercise.name, idx, 'weight', e.target.value)}
-                  onFocus={(e) => e.target.select()}
-                  onBlur={() => onBlur?.(exercise.name, idx, 'weight')}
-                  readOnly={readOnly}
-                  className={`w-full lcd-input rounded-lg px-2 py-2.5 text-center text-base focus:outline-none disabled:opacity-50 ${isCompleted ? 'completed text-white' : isAutoFill ? 'text-wf-gray-500 italic' : 'text-white'}`}
-                  disabled={readOnly}
-                />
+              {/* Weight input with BW toggle */}
+              <div className="w-[3.15rem] shrink-0 relative">
+                {(entry.weight === -1 || entry.weight === '-1') ? (
+                  <button
+                    type="button"
+                    onClick={() => !readOnly && onChange?.(exercise.name, idx, 'weight', '')}
+                    className={`w-full lcd-input rounded-lg px-1 py-2.5 text-center text-xs font-bold focus:outline-none ${isCompleted ? 'completed text-green-400' : 'text-wf-cyan'}`}
+                    disabled={readOnly}
+                  >
+                    BW
+                  </button>
+                ) : (
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    max="9999"
+                    value={entry.weight ?? (isTemplate ? '' : set.suggestedWeight ?? '')}
+                    placeholder={readOnly ? '—' : '0'}
+                    onChange={(e) => onChange?.(exercise.name, idx, 'weight', e.target.value)}
+                    onFocus={(e) => e.target.select()}
+                    onBlur={() => onBlur?.(exercise.name, idx, 'weight')}
+                    readOnly={readOnly}
+                    className={`w-full lcd-input rounded-lg px-2 py-2.5 text-center text-base focus:outline-none disabled:opacity-50 ${isCompleted ? 'completed text-white' : isAutoFill ? 'text-wf-gray-500 italic' : 'text-white'}`}
+                    disabled={readOnly}
+                  />
+                )}
+                {!readOnly && !isTemplate && (entry.weight !== -1 && entry.weight !== '-1') && (
+                  <button
+                    type="button"
+                    onClick={() => onChange?.(exercise.name, idx, 'weight', -1)}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-wf-cyan/20 border border-wf-cyan/40 flex items-center justify-center z-10 active:scale-90 transition-all"
+                    title="Bodyweight"
+                  >
+                    <span className="text-[7px] font-black text-wf-cyan leading-none">BW</span>
+                  </button>
+                )}
               </div>
 
               {isTemplate ? (

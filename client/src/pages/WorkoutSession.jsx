@@ -526,7 +526,7 @@ export default function WorkoutSession() {
       updated[exerciseName] = [...(updated[exerciseName] || [])];
       updated[exerciseName][setIdx] = {
         ...updated[exerciseName][setIdx],
-        [field]: field === 'setType' ? value : (value === '' ? '' : Math.max(0, Number(value))),
+        [field]: field === 'setType' ? value : (value === -1 ? -1 : value === '' ? '' : Math.max(0, Number(value))),
       };
       return updated;
     });
@@ -988,8 +988,8 @@ export default function WorkoutSession() {
         const e = exEntries[idx];
         const w = e?.weight || 0;
         const r = e?.reps || 0;
-        if (w > 0 || r > 0) {
-          setLines.push(`  Set ${set.setNumber}: ${w} lbs x ${r}`);
+        if (w > 0 || w === -1 || r > 0) {
+          setLines.push(`  Set ${set.setNumber}: ${w === -1 ? 'BW' : w + ' lbs'} x ${r}`);
         }
       });
       if (setLines.length > 0) {
@@ -1211,7 +1211,7 @@ export default function WorkoutSession() {
     return vol + exEntries.reduce((sum, e) => {
       const w = Number(e.weight) || 0;
       const r = Number(e.reps) || 0;
-      return sum + w * r;
+      return sum + (w > 0 ? w * r : 0);
     }, 0);
   }, 0);
 
@@ -2046,7 +2046,7 @@ function WorkoutSummary({ template, entries, completedSets, elapsed, formatTime,
     return vol + exEntries.reduce((sum, e) => {
       const w = Number(e.weight) || 0;
       const r = Number(e.reps) || 0;
-      return sum + w * r;
+      return sum + (w > 0 ? w * r : 0);
     }, 0);
   }, 0);
 
@@ -2056,10 +2056,10 @@ function WorkoutSummary({ template, entries, completedSets, elapsed, formatTime,
     const setStats = ex.sets.map((set, idx) => {
       const goalWeight = Number(set.suggestedWeight) || 0;
       const goalReps = set.plannedReps || 0;
-      const goalVolume = goalWeight * goalReps;
+      const goalVolume = goalWeight > 0 ? goalWeight * goalReps : 0;
       const actualWeight = Number(exEntries[idx]?.weight) || 0;
       const actualReps = Number(exEntries[idx]?.reps) || 0;
-      const actualVolume = actualWeight * actualReps;
+      const actualVolume = actualWeight > 0 ? actualWeight * actualReps : 0;
       return { setNumber: set.setNumber, goalVolume, actualVolume, goalReps, actualReps, goalWeight, actualWeight };
     });
     const totalGoalVol = setStats.reduce((s, ss) => s + ss.goalVolume, 0);
