@@ -390,6 +390,19 @@ router.delete('/profile-photo', authMiddleware, async (req, res) => {
   }
 });
 
+// Log page visit
+router.post('/page-visit', authMiddleware, async (req, res) => {
+  try {
+    const { path } = req.body;
+    if (!path || typeof path !== 'string') return res.status(400).json({ error: 'Path required' });
+    await pool.query('INSERT INTO page_visits (user_id, path) VALUES ($1, $2)', [req.userId, path.substring(0, 200)]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Apply to become a trainer
 router.post('/apply-trainer', authMiddleware, async (req, res) => {
   try {

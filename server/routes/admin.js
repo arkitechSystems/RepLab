@@ -564,6 +564,7 @@ function adminPage(title, body) {
     <a href="/admin/workout-manager"${title === 'Workout Manager' || title === 'Create a Workout' || title === 'View Current Workouts' ? ' class="active"' : ''}>Workout Manager</a>
     <a href="/admin/trainer-logins"${title === 'Trainer Login History' ? ' class="active"' : ''}>Trainer Logins</a>
     <a href="/admin/user-logins"${title === 'User Login History' ? ' class="active"' : ''}>User Logins</a>
+    <a href="/admin/page-visits"${title === 'Page Visits' ? ' class="active"' : ''}>Page Visits</a>
   </div>
 </div>
 <script>
@@ -854,6 +855,11 @@ router.get('/', adminAuth, async (req, res) => {
       <div class="card-icon">👤</div>
       <div class="card-title">User Login History</div>
       <div class="card-desc">View user login activity with date range filtering.</div>
+    </a>
+    <a class="card glass" href="/admin/page-visits">
+      <div class="card-icon">📊</div>
+      <div class="card-title">Page Visits</div>
+      <div class="card-desc">Track which pages users visit and when.</div>
     </a>
   </div>
 
@@ -3369,6 +3375,151 @@ router.get('/user-logins', adminAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).send(adminPage('Error', '<p style="color:#f87171;">Failed to load user login history.</p>'));
+  }
+});
+
+// GET /admin/page-visits — Page visit analytics with date range
+router.get('/page-visits', adminAuth, async (req, res) => {
+  try {
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    const todayStr = new Date().toISOString().slice(0, 10);
+
+    let startDate = req.query.start || todayStr;
+    let endDate = req.query.end || todayStr;
+    if (!dateRegex.test(startDate)) startDate = todayStr;
+    if (!dateRegex.test(endDate)) endDate = todayStr;
+    if (startDate > todayStr) startDate = todayStr;
+    if (endDate > todayStr) endDate = todayStr;
+    if (startDate > endDate) startDate = endDate;
+
+    const startMs = new Date(startDate + 'T00:00:00Z').getTime();
+    const endMs = new Date(endDate + 'T00:00:00Z').getTime();
+    const rangeDays = Math.round((endMs - startMs) / 86400000) + 1;
+    const prevStart = new Date(startMs - rangeDays * 86400000).toISOString().slice(0, 10);
+    const prevEnd = new Date(startMs - 86400000).toISOString().slice(0, 10);
+    const nextStart = new Date(endMs + 86400000).toISOString().slice(0, 10);
+    const nextEnd = new Date(endMs + rangeDays * 86400000).toISOString().slice(0, 10);
+    const canGoNext = nextStart <= todayStr;
+
+    // Page visit summary (grouped by path)
+    const { rows: summary } = await pool.query(
+      `SELECT pv.path, COUNT(*)::int AS visits, COUNT(DISTINCT pv.user_id)::int AS unique_users
+       FROM page_visits pv
+       WHERE pv.created_at >= $1::date AND pv.created_at < ($2::date + interval '1 day')
+       GROUP BY pv.path ORDER BY visits DESC`,
+      [startDate, endDate]
+    );
+
+    // Detailed log (most recent 200)
+    const { rows: details } = await pool.query(
+      `SELECT pv.path, pv.created_at, u.first_name, u.last_name, u.username, u.email
+       FROM page_visits pv
+       LEFT JOIN users u ON pv.user_id = u.id
+       WHERE pv.created_at >= $1::date AND pv.created_at < ($2::date + interval '1 day')
+       ORDER BY pv.created_at DESC LIMIT 200`,
+      [startDate, endDate]
+    );
+
+    const totalVisits = summary.reduce((s, r) => s + r.visits, 0);
+    const totalUnique = new Set(details.map(d => d.email)).size;
+
+    const thStyle = 'padding:12px 16px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);font-weight:700;background:rgba(255,255,255,0.04);border-bottom:2px solid rgba(255,255,255,0.08);';
+    const presetBtnStyle = 'padding:6px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.6);font-size:12px;cursor:pointer;font-family:inherit;transition:all 0.15s;';
+    const activeBtnStyle = 'padding:6px 14px;border-radius:8px;border:1px solid rgba(239,68,68,0.4);background:rgba(239,68,68,0.15);color:#ef4444;font-size:12px;cursor:pointer;font-family:inherit;font-weight:600;';
+
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const last7Start = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
+    const last30Start = new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10);
+    const monthStart = todayStr.slice(0, 8) + '01';
+    const isToday = startDate === todayStr && endDate === todayStr;
+    const isYesterday = startDate === yesterday && endDate === yesterday;
+    const isLast7 = startDate === last7Start && endDate === todayStr;
+    const isLast30 = startDate === last30Start && endDate === todayStr;
+    const isThisMonth = startDate === monthStart && endDate === todayStr;
+
+    function presetBtn(label, s, e, active) {
+      return '<a href="/admin/page-visits?start=' + s + '&end=' + e + '" style="' + (active ? activeBtnStyle : presetBtnStyle) + 'text-decoration:none;">' + label + '</a>';
+    }
+
+    // Summary table rows
+    const summaryRows = summary.map((r, i) => {
+      const rowBg = i % 2 === 0 ? 'background:rgba(255,255,255,0.02);' : '';
+      const td = 'padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);';
+      return `<tr style="${rowBg}">
+        <td style="${td}font-weight:600;color:#fff;">${esc(r.path)}</td>
+        <td style="${td}color:rgba(255,255,255,0.5);text-align:center;">${r.visits}</td>
+        <td style="${td}color:rgba(255,255,255,0.5);text-align:center;">${r.unique_users}</td>
+      </tr>`;
+    }).join('');
+
+    // Detail table rows
+    const detailRows = details.map((r, i) => {
+      const name = r.first_name && r.last_name ? esc(r.first_name + ' ' + r.last_name) : esc(r.username || r.email || 'Unknown');
+      const date = r.created_at
+        ? new Date(r.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Chicago' })
+        : '—';
+      const rowBg = i % 2 === 0 ? 'background:rgba(255,255,255,0.02);' : '';
+      const td = 'padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.06);';
+      return `<tr style="${rowBg}">
+        <td style="${td}color:#fff;font-weight:600;font-size:13px;">${name}</td>
+        <td style="${td}color:rgba(255,255,255,0.5);font-size:13px;">${esc(r.path)}</td>
+        <td style="${td}color:rgba(255,255,255,0.4);font-size:13px;white-space:nowrap;">${date}</td>
+      </tr>`;
+    }).join('');
+
+    res.send(adminPage('Page Visits', `
+      <div class="breadcrumb"><a href="/admin">Dashboard</a> / Page Visits</div>
+      <div class="header">
+        <h1>Page Visits</h1>
+        <p>${totalVisits} visit${totalVisits !== 1 ? 's' : ''} &middot; ${totalUnique} unique user${totalUnique !== 1 ? 's' : ''}</p>
+      </div>
+
+      <!-- Date Range Controls -->
+      <div class="glass" style="padding:16px 20px;border-radius:16px;margin-bottom:20px;">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <a href="/admin/page-visits?start=${prevStart}&end=${prevEnd}" style="color:rgba(255,255,255,0.5);text-decoration:none;font-size:18px;padding:4px 8px;">&larr;</a>
+          <form method="GET" action="/admin/page-visits" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <input type="date" name="start" value="${startDate}" max="${todayStr}" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:13px;font-family:inherit;outline:none;" />
+            <span style="color:rgba(255,255,255,0.3);">to</span>
+            <input type="date" name="end" value="${endDate}" max="${todayStr}" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:13px;font-family:inherit;outline:none;" />
+            <button type="submit" style="padding:8px 16px;border-radius:8px;border:none;background:#ef4444;color:#fff;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600;">Go</button>
+          </form>
+          ${canGoNext ? '<a href="/admin/page-visits?start=' + nextStart + '&end=' + (nextEnd > todayStr ? todayStr : nextEnd) + '" style="color:rgba(255,255,255,0.5);text-decoration:none;font-size:18px;padding:4px 8px;">&rarr;</a>' : '<span style="color:rgba(255,255,255,0.15);font-size:18px;padding:4px 8px;">&rarr;</span>'}
+        </div>
+        <div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap;">
+          ${presetBtn('Today', todayStr, todayStr, isToday)}
+          ${presetBtn('Yesterday', yesterday, yesterday, isYesterday)}
+          ${presetBtn('Last 7 Days', last7Start, todayStr, isLast7)}
+          ${presetBtn('Last 30 Days', last30Start, todayStr, isLast30)}
+          ${presetBtn('This Month', monthStart, todayStr, isThisMonth)}
+        </div>
+      </div>
+
+      <!-- Summary by Page -->
+      <h2 style="font-size:16px;font-weight:700;color:rgba(255,255,255,0.7);margin-bottom:12px;">Pages</h2>
+      ${summary.length === 0
+        ? '<div class="glass" style="padding:40px;text-align:center;border-radius:16px;margin-bottom:24px;"><p style="color:rgba(255,255,255,0.4);">No page visits recorded for this period.</p></div>'
+        : `<div class="glass" style="border-radius:16px;overflow:hidden;margin-bottom:24px;">
+            <div class="table-wrap"><table style="width:100%;border-collapse:collapse;">
+              <thead><tr><th style="${thStyle}">Page</th><th style="${thStyle}text-align:center;">Visits</th><th style="${thStyle}text-align:center;">Unique Users</th></tr></thead>
+              <tbody>${summaryRows}</tbody>
+            </table></div></div>`
+      }
+
+      <!-- Detail Log -->
+      <h2 style="font-size:16px;font-weight:700;color:rgba(255,255,255,0.7);margin-bottom:12px;">Recent Activity</h2>
+      ${details.length === 0
+        ? '<div class="glass" style="padding:40px;text-align:center;border-radius:16px;"><p style="color:rgba(255,255,255,0.4);">No activity for this period.</p></div>'
+        : `<div class="glass" style="border-radius:16px;overflow:hidden;">
+            <div class="table-wrap"><table style="width:100%;border-collapse:collapse;">
+              <thead><tr><th style="${thStyle}">User</th><th style="${thStyle}">Page</th><th style="${thStyle}">Time</th></tr></thead>
+              <tbody>${detailRows}</tbody>
+            </table></div></div>`
+      }
+    `));
+  } catch (err) {
+    console.error(err);
+    res.status(500).send(adminPage('Error', '<p style="color:#f87171;">Failed to load page visits.</p>'));
   }
 });
 

@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
+import { api } from './api';
 import SplashScreen from './components/SplashScreen';
 import { TutorialProvider } from './context/TutorialContext';
 import Layout from './components/Layout';
@@ -49,6 +50,20 @@ function CatchAllRedirect() {
   return <Navigate to={isAuthenticated ? '/' : '/login'} replace />;
 }
 
+function PageTracker() {
+  const location = useLocation();
+  const { isAuthenticated } = useAuth();
+  const lastPath = useRef(null);
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const path = location.pathname;
+    if (path === lastPath.current) return;
+    lastPath.current = path;
+    api('/auth/page-visit', { method: 'POST', body: JSON.stringify({ path }) }).catch(() => {});
+  }, [location.pathname, isAuthenticated]);
+  return null;
+}
+
 export default function App() {
   const [splashDone, setSplashDone] = useState(false);
 
@@ -69,6 +84,7 @@ export default function App() {
 
   return (
     <TutorialProvider>
+      <PageTracker />
       {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
     <Routes>
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />

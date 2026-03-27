@@ -87,6 +87,15 @@ export default async function initDb() {
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_trainer_applications_user ON trainer_applications(user_id)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_trainer_applications_status ON trainer_applications(status)`);
 
+  await pool.query(`CREATE TABLE IF NOT EXISTS page_visits (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    path TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  )`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_page_visits_user ON page_visits(user_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_page_visits_created ON page_visits(created_at)`);
+
   await pool.query(`CREATE TABLE IF NOT EXISTS user_login_history (
     id SERIAL PRIMARY KEY,
     user_id INT REFERENCES users(id) ON DELETE CASCADE,
