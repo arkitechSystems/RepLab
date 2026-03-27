@@ -132,6 +132,11 @@ export default function Workouts() {
   const [shareInput, setShareInput] = useState('');
   const [shareLoading, setShareLoading] = useState(false);
   const [shareResult, setShareResult] = useState(null); // { success, message }
+  // Invite (share browse workout) state
+  const [inviteModal, setInviteModal] = useState(null); // template object
+  const [inviteInput, setInviteInput] = useState('');
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteResult, setInviteResult] = useState(null);
   const [pendingShares, setPendingShares] = useState([]);
   const [acceptedSharesMap, setAcceptedSharesMap] = useState({}); // { programId: { senderName, senderUsername, senderPhoto } }
   // Trainer application state
@@ -298,14 +303,41 @@ export default function Workouts() {
     }
   }
 
+  async function handleSendInvite() {
+    if (!inviteInput.trim() || !inviteModal) return;
+    setInviteLoading(true);
+    setInviteResult(null);
+    try {
+      const data = await api('/sharing/invite', { method: 'POST', body: JSON.stringify({ templateId: inviteModal.id, recipientIdentifier: inviteInput.trim() }) });
+      setInviteResult({ success: true, message: `Invited ${data.recipientName}!` });
+      setInviteInput('');
+    } catch (err) {
+      setInviteResult({ success: false, message: err.message || 'Failed to invite' });
+    } finally {
+      setInviteLoading(false);
+    }
+  }
+
   async function handleAcceptShare(shareId) {
     try {
-      await api(`/sharing/${shareId}/accept`, { method: 'POST' });
+      const result = await api(`/sharing/${shareId}/accept`, { method: 'POST' });
+      const share = pendingShares.find(s => s.id === shareId);
       setPendingShares(prev => prev.filter(s => s.id !== shareId));
-      // Refresh programs and templates
-      const [progs, tmpls] = await Promise.all([api('/programs'), api('/templates')]);
-      setPrograms(progs);
-      setTemplates(tmpls);
+
+      if (result.type === 'invite' && share) {
+        // For workout invites, open the add-to-calendar modal with the template
+        const tmpls = await api('/templates');
+        setTemplates(tmpls);
+        const template = tmpls.find(t => t.id === share.templateId);
+        if (template) {
+          openAddWorkout(template);
+        }
+      } else {
+        // For program shares, refresh programs and templates
+        const [progs, tmpls] = await Promise.all([api('/programs'), api('/templates')]);
+        setPrograms(progs);
+        setTemplates(tmpls);
+      }
     } catch (err) {
       alert(err.message || 'Failed to accept');
     }
@@ -903,7 +935,7 @@ export default function Workouts() {
                           </svg>
                           <span className="text-xs font-semibold text-green-400">Add</span>
                         </button>
-                        {program.userId !== null && (
+                        {program.userId !== null ? (
                           <>
                             <button
                               onClick={() => { setShareResult(null); setShareInput(''); setShareModal(program); }}
@@ -923,6 +955,16 @@ export default function Workouts() {
                               </svg>
                             </button>
                           </>
+                        ) : (
+                          <button
+                            onClick={() => { setInviteResult(null); setInviteInput(''); setInviteModal(t); }}
+                            className="w-9 h-9 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0 active:bg-blue-500/40 transition-colors"
+                            title="Invite a friend"
+                          >
+                            <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
+                            </svg>
+                          </button>
                         )}
                       </div>
                     ) : null}
@@ -1858,8 +1900,12 @@ export default function Workouts() {
                                   </div>
                                 )}
                                 <div className="min-w-0">
-                                  <h4 className="text-base font-bold text-white">{share.programName}</h4>
-                                  <p className="text-xs text-wf-gray-500 mt-0.5">From <span className="text-blue-400 font-semibold">{share.senderName || 'a user'}{share.senderUsername ? ` (@${share.senderUsername})` : ''}</span></p>
+                                  <h4 className="text-base font-bold text-white">{share.type === 'invite' ? share.templateName : share.programName}</h4>
+                                  {share.type === 'invite' && share.message ? (
+                                    <p className="text-xs text-wf-gray-400 mt-0.5 leading-relaxed">{share.message}</p>
+                                  ) : (
+                                    <p className="text-xs text-wf-gray-500 mt-0.5">From <span className="text-blue-400 font-semibold">{share.senderName || 'a user'}{share.senderUsername ? ` (@${share.senderUsername})` : ''}</span></p>
+                                  )}
                                 </div>
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
@@ -1929,6 +1975,50 @@ export default function Workouts() {
                   className="flex-1 btn-gradient text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all disabled:opacity-50"
                 >
                   {shareLoading ? 'Sharing...' : 'Share'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Invite Workout Modal (browse library) */}
+        {inviteModal && (
+          <div className="fixed inset-0 z-50 flex items-start justify-center pt-20" onClick={() => setInviteModal(null)}>
+            <div className="absolute inset-0 bg-black/70" />
+            <div
+              className="relative w-[calc(100%-2rem)] max-w-md bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-black text-white mb-1">Invite to Workout</h3>
+              <p className="text-sm text-wf-gray-400 mb-4">
+                Invite someone to do <span className="text-white font-semibold">{inviteModal.name}</span> with you today.
+              </p>
+              <input
+                type="text"
+                value={inviteInput}
+                onChange={(e) => { setInviteInput(e.target.value); setInviteResult(null); }}
+                placeholder="Enter username, email, or phone"
+                className="w-full glass-input rounded-xl px-4 py-3 text-sm text-white placeholder:text-wf-gray-600 focus:outline-none mb-3"
+                autoFocus
+              />
+              {inviteResult && (
+                <p className={`text-sm mb-3 ${inviteResult.success ? 'text-green-400' : 'text-red-400'}`}>
+                  {inviteResult.message}
+                </p>
+              )}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setInviteModal(null)}
+                  className="flex-1 glass-card text-wf-gray-400 font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSendInvite}
+                  disabled={inviteLoading || !inviteInput.trim()}
+                  className="flex-1 btn-gradient text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all disabled:opacity-50"
+                >
+                  {inviteLoading ? 'Sending...' : 'Send Invite'}
                 </button>
               </div>
             </div>
@@ -2014,9 +2104,12 @@ export default function Workouts() {
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-white">
-                      <span className="font-semibold text-blue-400">{share.senderName || 'A user'}{share.senderUsername ? ` (@${share.senderUsername})` : ''}</span> shared a workout with you
+                      {share.type === 'invite' && share.message
+                        ? share.message
+                        : <><span className="font-semibold text-blue-400">{share.senderName || 'A user'}{share.senderUsername ? ` (@${share.senderUsername})` : ''}</span> shared a workout with you</>
+                      }
                     </p>
-                    <p className="text-xs text-wf-gray-500 mt-0.5">{share.programName}</p>
+                    <p className="text-xs text-wf-gray-500 mt-0.5">{share.type === 'invite' ? share.templateName : share.programName}</p>
                   </div>
                   <div className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
                 </button>

@@ -175,6 +175,11 @@ export default async function initDb() {
   await pool.query(`ALTER TABLE trainer_login_history ADD COLUMN IF NOT EXISTS city TEXT`);
   await pool.query(`ALTER TABLE trainer_login_history ADD COLUMN IF NOT EXISTS state TEXT`);
 
+  // Workout invite support on shared_programs
+  await pool.query(`ALTER TABLE shared_programs ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'program'`);
+  await pool.query(`ALTER TABLE shared_programs ADD COLUMN IF NOT EXISTS template_id INT`);
+  await pool.query(`ALTER TABLE shared_programs ADD COLUMN IF NOT EXISTS message TEXT`);
+
   await pool.query(`CREATE TABLE IF NOT EXISTS email_templates (
     id SERIAL PRIMARY KEY,
     name TEXT UNIQUE NOT NULL,

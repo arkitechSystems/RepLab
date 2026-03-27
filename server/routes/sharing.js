@@ -56,13 +56,28 @@ router.get('/pending', authMiddleware, async (req, res) => {
   }
 });
 
-// Accept a share
+// Accept a share or invite
 router.post('/:id/accept', authMiddleware, async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Invalid ID' });
-    const result = await db.acceptShare(id, req.userId);
-    res.json({ success: true, program: result });
+
+    // Check if this is an invite or a program share
+    const { rows: shareRows } = await pool.query(
+      "SELECT type, template_id FROM shared_programs WHERE id = $1 AND recipient_id = $2 AND status = 'pending'",
+      [id, req.userId]
+    );
+    if (shareRows.length === 0) return res.status(404).json({ error: 'Share not found' });
+
+    if (shareRows[0].type === 'invite') {
+      // For invites, just mark as accepted and return template info
+      await pool.query("UPDATE shared_programs SET status = 'accepted' WHERE id = $1", [id]);
+      const { rows: tmplRows } = await pool.query('SELECT id, name FROM templates WHERE id = $1', [shareRows[0].template_id]);
+      res.json({ success: true, type: 'invite', template: tmplRows[0] || null });
+    } else {
+      const result = await db.acceptShare(id, req.userId);
+      res.json({ success: true, type: 'program', program: result });
+    }
   } catch (err) {
     console.error('Accept share error:', err);
     res.status(400).json({ error: err.message || 'Failed to accept share' });
@@ -79,6 +94,59 @@ router.post('/:id/decline', authMiddleware, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('Decline share error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Send a workout invite (browse library workouts)
+router.post('/invite', authMiddleware, async (req, res) => {
+  try {
+    const { templateId, recipientIdentifier } = req.body;
+    if (!templateId || !recipientIdentifier) {
+      return res.status(400).json({ error: 'Workout and recipient are required' });
+    }
+
+    // Verify template exists
+    const { rows: tmplRows } = await pool.query('SELECT id, name FROM templates WHERE id = $1', [templateId]);
+    if (tmplRows.length === 0) {
+      return res.status(404).json({ error: 'Workout not found' });
+    }
+    const templateName = tmplRows[0].name;
+
+    // Find recipient
+    const recipient = await db.findUserByUsernameOrEmail(recipientIdentifier);
+    if (!recipient) {
+      return res.status(404).json({ error: 'User not found. Check the username, email, or phone number and try again.' });
+    }
+    if (recipient.id === req.userId) {
+      return res.status(400).json({ error: "You can't invite yourself" });
+    }
+
+    // Get sender name
+    const sender = await db.findUserById(req.userId);
+    const senderName = sender.firstName && sender.lastName
+      ? `${sender.firstName} ${sender.lastName}`
+      : sender.firstName || sender.username || 'Someone';
+
+    const message = `${senderName} is doing ${templateName} today and wants you to join. Check it out!`;
+
+    // Check for existing pending invite of same template to same user
+    const { rows: existing } = await pool.query(
+      "SELECT id FROM shared_programs WHERE template_id = $1 AND recipient_id = $2 AND status = 'pending' AND type = 'invite'",
+      [templateId, recipient.id]
+    );
+    if (existing.length > 0) {
+      return res.status(400).json({ error: 'You already invited this user to this workout' });
+    }
+
+    await pool.query(
+      "INSERT INTO shared_programs (sender_id, recipient_id, template_id, type, message) VALUES ($1, $2, $3, 'invite', $4)",
+      [req.userId, recipient.id, templateId, message]
+    );
+
+    res.status(201).json({ success: true, recipientName: recipient.first_name || recipient.username });
+  } catch (err) {
+    console.error('Invite send error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

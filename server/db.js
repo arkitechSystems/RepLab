@@ -1125,13 +1125,16 @@ const db = {
   async getPendingShares(userId) {
     const { rows } = await pool.query(
       `SELECT sp.id, sp.source_program_id, sp.status, sp.created_at,
+              sp.type, sp.template_id, sp.message,
               u.username AS sender_username, u.first_name AS sender_first_name,
               u.last_name AS sender_last_name, u.profile_photo AS sender_photo,
               u.email AS sender_email,
-              p.name AS program_name
+              p.name AS program_name,
+              t.name AS template_name
        FROM shared_programs sp
        JOIN users u ON u.id = sp.sender_id
        LEFT JOIN programs p ON p.id = sp.source_program_id
+       LEFT JOIN templates t ON t.id = sp.template_id
        WHERE sp.recipient_id = $1 AND sp.status = 'pending'
        ORDER BY sp.created_at DESC`,
       [userId]
@@ -1142,14 +1145,18 @@ const db = {
       const username = r.sender_username || '';
       const fullName = firstName && lastName ? `${firstName} ${lastName}` : firstName || username || r.sender_email || 'Unknown';
       return {
-      id: r.id,
-      sourceProgramId: r.source_program_id,
-      senderUsername: username,
-      senderName: fullName,
-      senderPhoto: r.sender_photo || null,
-      programName: r.program_name || 'Deleted Program',
-      createdAt: r.created_at,
-    };
+        id: r.id,
+        type: r.type || 'program',
+        sourceProgramId: r.source_program_id,
+        templateId: r.template_id,
+        message: r.message,
+        senderUsername: username,
+        senderName: fullName,
+        senderPhoto: r.sender_photo || null,
+        programName: r.program_name || r.template_name || 'Deleted Program',
+        templateName: r.template_name,
+        createdAt: r.created_at,
+      };
     });
   },
 
