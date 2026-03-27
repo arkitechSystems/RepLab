@@ -48,12 +48,12 @@ export default function Welcome() {
     if (step < TOUR_STEPS.length - 1) {
       setStep(step + 1);
     } else {
-      navigate('/free-trial');
+      navigate('/');
     }
   }
 
   function handleSkip() {
-    navigate('/free-trial');
+    navigate('/');
   }
 
   // Intro screen
