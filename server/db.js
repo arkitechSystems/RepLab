@@ -1126,6 +1126,7 @@ const db = {
     const { rows } = await pool.query(
       `SELECT sp.id, sp.source_program_id, sp.status, sp.created_at,
               u.username AS sender_username, u.first_name AS sender_first_name,
+              u.last_name AS sender_last_name, u.profile_photo AS sender_photo,
               p.name AS program_name
        FROM shared_programs sp
        JOIN users u ON u.id = sp.sender_id
@@ -1138,7 +1139,12 @@ const db = {
       id: r.id,
       sourceProgramId: r.source_program_id,
       senderUsername: r.sender_username,
-      senderName: r.sender_first_name || r.sender_username,
+      senderFirstName: r.sender_first_name,
+      senderLastName: r.sender_last_name,
+      senderName: r.sender_first_name && r.sender_last_name
+        ? `${r.sender_first_name} ${r.sender_last_name}`
+        : r.sender_first_name || r.sender_username,
+      senderPhoto: r.sender_photo || null,
       programName: r.program_name || 'Deleted Program',
       createdAt: r.created_at,
     }));

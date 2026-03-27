@@ -1814,9 +1814,18 @@ export default function Workouts() {
                   <div className="h-1 bg-gradient-to-r from-blue-500 to-purple-500" />
                   <div className="p-4">
                     <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <h4 className="text-base font-bold text-white">{share.programName}</h4>
-                        <p className="text-xs text-wf-gray-500 mt-0.5">From <span className="text-blue-400 font-semibold">@{share.senderUsername}</span></p>
+                      <div className="flex items-center gap-3 min-w-0">
+                        {share.senderPhoto ? (
+                          <img src={share.senderPhoto} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
+                        ) : (
+                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center shrink-0">
+                            <span className="text-white text-sm font-bold">{(share.senderFirstName || share.senderUsername || '?')[0].toUpperCase()}</span>
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <h4 className="text-base font-bold text-white">{share.programName}</h4>
+                          <p className="text-xs text-wf-gray-500 mt-0.5">From <span className="text-blue-400 font-semibold">{share.senderName}</span> <span className="text-wf-gray-600">@{share.senderUsername}</span></p>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <button
