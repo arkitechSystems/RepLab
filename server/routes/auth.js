@@ -32,7 +32,9 @@ function parseDevice(ua) {
 }
 
 function isPhone(value) {
-  return /^\+?\d[\d\s\-().]{6,}$/.test(value.trim());
+  const trimmed = value.trim();
+  if (!/^\+?\d[\d\s\-().]{6,}$/.test(trimmed)) return false;
+  return trimmed.replace(/\D/g, '').length >= 10;
 }
 
 function normalizePhone(value) {
@@ -191,13 +193,13 @@ router.post('/login', async (req, res) => {
           const geoRes = await fetch(`http://ip-api.com/json/${loginIp}?fields=city,regionName,status`);
           const geo = await geoRes.json();
           if (geo.status === 'success') { city = geo.city || null; state = geo.regionName || null; }
-        } catch {}
+        } catch (geoErr) { console.error('Login history geo error:', geoErr); }
       }
       await pool.query(
         'INSERT INTO user_login_history (user_id, email, ip, user_agent, city, state) VALUES ($1, $2, $3, $4, $5, $6)',
         [user.id, user.email || user.phone, loginIp, req.headers['user-agent']?.substring(0, 200), city, state]
       );
-    } catch {}
+    } catch (err) { console.error('Login history error:', err); }
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
@@ -367,6 +369,10 @@ router.put('/profile-photo', authMiddleware, async (req, res) => {
     const { photo } = req.body;
     if (!photo || !photo.startsWith('data:image/')) {
       return res.status(400).json({ error: 'Invalid image data' });
+    }
+    const base64Part = photo.split(',')[1];
+    if (!base64Part || !/^[A-Za-z0-9+/\n\r]+=*$/.test(base64Part)) {
+      return res.status(400).json({ error: 'Invalid base64 image data' });
     }
     if (photo.length > 500000) {
       return res.status(400).json({ error: 'Image too large' });

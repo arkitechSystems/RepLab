@@ -88,7 +88,7 @@ function trainerPage(title, body, trainer) {
 <nav style="position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:12px 32px;background:linear-gradient(135deg,rgba(20,0,0,0.92),rgba(30,5,5,0.92),rgba(20,0,0,0.92));backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(239,68,68,0.2);box-shadow:0 2px 20px rgba(239,68,68,0.08),inset 0 -1px 0 rgba(239,68,68,0.1);">
   <a href="/trainer" style="text-decoration:none;"><div class="logo" style="margin:0;color:#fff;">WILL<span style="color:#ef4444;">FIT</span></div></a>
   <div style="display:flex;align-items:center;gap:12px;">
-    <span style="color:rgba(255,255,255,0.4);font-size:12px;font-weight:600;">${trainer ? (trainer.firstName || trainer.email) : 'Trainer'}</span>
+    <span style="color:rgba(255,255,255,0.4);font-size:12px;font-weight:600;">${trainer ? esc(trainer.firstName || trainer.email) : 'Trainer'}</span>
     <a href="/trainer" style="color:rgba(255,255,255,0.5);font-size:12px;font-weight:600;text-decoration:none;padding:8px 14px;border-radius:8px;transition:all 0.2s;" onmouseover="this.style.color='#fff';this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.color='rgba(255,255,255,0.5)';this.style.background='none'">Home</a>
     <a href="/trainer/logout" style="color:#ef4444;font-size:12px;font-weight:600;text-decoration:none;padding:8px 14px;border-radius:8px;transition:all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.1)'" onmouseout="this.style.background='none'">Logout</a>
   </div>
@@ -583,7 +583,7 @@ router.get('/', trainerAuth, (req, res) => {
   res.send(trainerPage('Dashboard', `
     <div class="header">
       <h1>Trainer Dashboard${isAdmin ? ' <span style="font-size:14px;background:rgba(239,68,68,0.15);color:#ef4444;padding:4px 10px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:8px;">ADMIN</span>' : ''}</h1>
-      <p>Welcome back, ${req.trainer.firstName || req.trainer.email}. Manage your workouts and programs.</p>
+      <p>Welcome back, ${esc(req.trainer.firstName || req.trainer.email)}. Manage your workouts and programs.</p>
     </div>
     <div class="glass" style="padding:16px 20px;margin-bottom:24px;border-left:3px solid ${isAdmin ? '#ef4444' : '#3b82f6'};">
       <p style="font-size:13px;color:rgba(255,255,255,0.6);line-height:1.6;">${scopeMsg}</p>
@@ -697,13 +697,14 @@ router.get('/clients', trainerAuth, async (req, res) => {
               el.innerHTML = '<p style="color:rgba(255,255,255,0.3);font-size:12px;padding:4px">No users found</p>';
               return;
             }
+            function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
             el.innerHTML = data.users.map(u => \`
               <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-radius:8px;background:rgba(255,255,255,0.03);margin-bottom:4px">
                 <div>
-                  <span style="color:#fff;font-weight:600;font-size:13px">\${u.firstName || ''} \${u.lastName || ''}</span>
-                  <span style="color:rgba(255,255,255,0.4);font-size:11px;margin-left:8px">\${u.email || u.username || ''}</span>
+                  <span style="color:#fff;font-weight:600;font-size:13px">\${escHtml(u.firstName || '')} \${escHtml(u.lastName || '')}</span>
+                  <span style="color:rgba(255,255,255,0.4);font-size:11px;margin-left:8px">\${escHtml(u.email || u.username || '')}</span>
                 </div>
-                <button onclick="addClient(\${u.id})" style="background:rgba(239,68,68,0.15);color:#ef4444;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600">Add</button>
+                <button onclick="addClient(\${parseInt(u.id)})" style="background:rgba(239,68,68,0.15);color:#ef4444;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600">Add</button>
               </div>
             \`).join('');
           } catch (err) { console.error(err); }

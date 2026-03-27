@@ -2716,21 +2716,34 @@ router.post('/workout-manager/create', adminAuth, express.urlencoded({ extended:
     const { rows: sortRows } = await pool.query('SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_sort FROM templates WHERE program_id = $1', [finalProgramId]);
     const { rows: [tmpl] } = await pool.query('INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES (NULL, $1, $2, $3, FALSE, $4) RETURNING id', [finalProgramId, workoutName.trim(), description?.trim() || '', sortRows[0].next_sort]);
     if (exercises && typeof exercises === 'object') {
-      var exArray = Array.isArray(exercises) ? exercises : Object.values(exercises); var exSort = 0;
+      const exArray = Array.isArray(exercises) ? exercises : Object.values(exercises); let exSort = 0;
+      const batchValues = [];
+      const batchParams = [];
+      let pi = 1;
       for (const ex of exArray) {
         if (!ex?.name?.trim()) continue;
         if (ex.isSectionHeader === '1') {
-          await pool.query(
-            'INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
-            [tmpl.id, ex.name.trim(), 'straight', 1, 0, 0, exSort, true, ex.sectionNotes?.trim() || '']
-          );
+          batchValues.push(`($${pi}, $${pi+1}, $${pi+2}, $${pi+3}, $${pi+4}, $${pi+5}, $${pi+6}, $${pi+7}, $${pi+8})`);
+          batchParams.push(tmpl.id, ex.name.trim(), 'straight', 1, 0, 0, exSort, true, ex.sectionNotes?.trim() || '');
+          pi += 9;
           exSort++;
           continue;
         }
-        var setType = ex.setType || 'straight';
-        var sets = ex.sets ? (Array.isArray(ex.sets) ? ex.sets : Object.values(ex.sets)) : []; var setNum = 1;
-        for (const set of sets) { if (!set) continue; await pool.query('INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7)', [tmpl.id, ex.name.trim(), setType, setNum++, parseInt(set.reps) || 10, parseInt(set.weight) || 0, exSort]); }
+        const setType = ex.setType || 'straight';
+        const sets = ex.sets ? (Array.isArray(ex.sets) ? ex.sets : Object.values(ex.sets)) : []; let setNum = 1;
+        for (const set of sets) {
+          if (!set) continue;
+          batchValues.push(`($${pi}, $${pi+1}, $${pi+2}, $${pi+3}, $${pi+4}, $${pi+5}, $${pi+6}, $${pi+7}, $${pi+8})`);
+          batchParams.push(tmpl.id, ex.name.trim(), setType, setNum++, parseInt(set.reps) || 10, parseInt(set.weight) || 0, exSort, false, '');
+          pi += 9;
+        }
         exSort++;
+      }
+      if (batchValues.length > 0) {
+        await pool.query(
+          `INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes) VALUES ${batchValues.join(', ')}`,
+          batchParams
+        );
       }
     }
     res.redirect('/admin/workout-manager/create?msg=Workout+"' + encodeURIComponent(workoutName.trim()) + '"+created+successfully');

@@ -102,7 +102,7 @@ router.post('/:id/accept', authMiddleware, async (req, res) => {
     }
   } catch (err) {
     console.error('Accept share error:', err);
-    res.status(400).json({ error: err.message || 'Failed to accept share' });
+    res.status(400).json({ error: 'Failed to accept share' });
   }
 });
 

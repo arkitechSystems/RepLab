@@ -48,7 +48,8 @@ const db = {
     const { rows } = await pool.query(
       `SELECT id, email, phone, first_name, last_name, gender, username, role, plan, trial_end, referral_source, referral_code, zip_code, signup_city, signup_state, signup_device, utm_source, utm_medium, utm_campaign, utm_content, utm_term, created_at FROM users
        WHERE email NOT LIKE '%@willfit.demo' OR email IS NULL
-       ORDER BY created_at DESC`
+       ORDER BY created_at DESC
+       LIMIT 500`
     );
     const now = new Date();
     return rows.map((u) => {
@@ -1055,11 +1056,13 @@ const db = {
   },
 
   async updateSubscriptionByStripeId(stripeSubscriptionId, updates) {
+    const allowedColumns = ['status', 'plan', 'billing_interval', 'current_period_end', 'cancel_at_period_end', 'canceled_at'];
     const fields = [];
     const params = [stripeSubscriptionId];
     let idx = 2;
     for (const [key, value] of Object.entries(updates)) {
       const col = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+      if (!allowedColumns.includes(col)) continue;
       fields.push(`${col} = $${idx}`);
       params.push(value);
       idx++;
@@ -1176,6 +1179,8 @@ const db = {
       const { rows: progRows } = await client.query('SELECT * FROM programs WHERE id = $1', [share.source_program_id]);
       if (progRows.length === 0) throw new Error('Source program no longer exists');
       const srcProg = progRows[0];
+
+      if (srcProg.user_id !== share.sender_id) throw new Error('Sender does not own the source program');
 
       // Copy program
       const { rows: newProgRows } = await client.query(

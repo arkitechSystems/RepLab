@@ -280,7 +280,7 @@ export async function sendDailySummaryEmail(stats) {
           ` : '<p style="color: #888; font-size: 13px;">No new signups in the last 24 hours.</p>'}
 
           <p style="color: #999; font-size: 11px; margin-top: 24px; text-align: center;">
-            <a href="https://will-fit.shop/admin?key=${process.env.ADMIN_KEY || ''}" style="color: #ef4444; text-decoration: none;">Open Admin Dashboard</a>
+            <a href="https://will-fit.shop/admin" style="color: #ef4444; text-decoration: none;">Open Admin Dashboard</a>
           </p>
         </div>
       `,

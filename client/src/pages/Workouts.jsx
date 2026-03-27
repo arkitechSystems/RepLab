@@ -173,7 +173,8 @@ export default function Workouts() {
         setPointerRect(el.getBoundingClientRect());
       });
     };
-    setTimeout(tryMeasure, 300);
+    const timerId = setTimeout(tryMeasure, 300);
+    return () => clearTimeout(timerId);
   }, [tutorialPointer, loading]);
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
@@ -248,12 +249,14 @@ export default function Workouts() {
   }
 
   async function tryApply(program, startDate) {
+    const programId = program.id;
     const entries = buildEntries(program, startDate);
     if (tutorial.active) {
       await applyEntries(entries);
       return;
     }
     const schedule = await api('/schedule');
+    if (beginModal?.id !== programId) return;
     const conflicts = entries
       .filter((e) => schedule.some((s) => s.dayOfWeek === e.dayOfWeek && s.templateId))
       .map((e) => {
@@ -290,12 +293,12 @@ export default function Workouts() {
   }
 
   function openShareModal(program) {
-    setShareResult(null); setShareInput(''); setShareUserSearch(''); setShareModal(program);
+    setShareResult(null); setShareInput(''); setShareUserSearch(''); setShareUsers([]); setShareModal(program);
     api('/sharing/users').then(setShareUsers).catch(() => setShareUsers([]));
   }
 
   function openInviteModal(template) {
-    setInviteResult(null); setInviteInput(''); setShareUserSearch(''); setInviteModal(template);
+    setInviteResult(null); setInviteInput(''); setShareUserSearch(''); setShareUsers([]); setInviteModal(template);
     api('/sharing/users').then(setShareUsers).catch(() => setShareUsers([]));
   }
 
@@ -434,7 +437,7 @@ export default function Workouts() {
   // Build enriched program list by matching templates to their programId
   function getEnrichedPrograms() {
     return programs.map((p) => {
-      const programTemplates = templates
+      const programTemplates = (templates || [])
         .filter((t) => t.programId === p.id)
         .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
       const nonRest = programTemplates.filter((t) => !t.isRest);
@@ -2233,7 +2236,7 @@ export default function Workouts() {
           {searchQuery.trim() && (() => {
             const q = searchQuery.toLowerCase();
             const matchedPrograms = programs.filter((p) => p.name.toLowerCase().includes(q));
-            const matchedTemplates = templates.filter((t) => t.name.toLowerCase().includes(q));
+            const matchedTemplates = (templates || []).filter((t) => t.name.toLowerCase().includes(q));
             const hasResults = matchedPrograms.length > 0 || matchedTemplates.length > 0;
 
             return (

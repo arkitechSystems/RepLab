@@ -65,6 +65,7 @@ export default function WorkoutSession() {
   const structureSaveRef = useRef(null);
   const structureSaveNeeded = useRef(false);
   const savingRef = useRef(false);
+  const savedTimerRef = useRef(null);
 
   // Block scrolling when tutorial tip is active (native listener for non-passive)
   const tutorialOverlayRef = useRef(null);
@@ -273,6 +274,7 @@ export default function WorkoutSession() {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       if (restTimerRef.current) clearInterval(restTimerRef.current);
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
     };
   }, []);
 
@@ -933,46 +935,47 @@ export default function WorkoutSession() {
     autoSaveNeeded.current = true;
 
     // When completing a set, auto-fill subsequent uncompleted sets for this exercise
-    const isCompleting = !completedSets.has(key);
-    if (isCompleting) {
-      const exEntries = entries[exerciseName] || [];
-      const thisEntry = exEntries[setIdx];
-      const w = thisEntry?.weight;
-      const r = thisEntry?.reps;
-      if ((w !== '' && w !== undefined) || (r !== '' && r !== undefined)) {
-        const exercise = template.exercises.find((e) => e.name === exerciseName);
-        if (exercise) {
-          setEntries((prev) => {
-            const updated = { ...prev };
-            updated[exerciseName] = [...(updated[exerciseName] || [])];
-            const newAutoFilled = new Set(autoFilled);
-            for (let i = setIdx + 1; i < exercise.sets.length; i++) {
-              const laterKey = `${exerciseName}-${i}`;
-              // Only auto-fill if the set isn't already completed
-              if (!completedSets.has(laterKey)) {
-                const current = updated[exerciseName][i] || {};
-                // Only fill weight if user hasn't manually entered one
-                const currentWeight = current.weight;
-                const currentReps = current.reps;
-                const isCurrentAutoFilled = autoFilled.has(laterKey);
-                const weightEmpty = currentWeight === '' || currentWeight === undefined;
-                const repsEmpty = currentReps === '' || currentReps === undefined;
-                if (weightEmpty || repsEmpty || isCurrentAutoFilled) {
-                  updated[exerciseName][i] = {
-                    ...current,
-                    weight: w !== '' && w !== undefined ? w : current.weight,
-                    reps: r !== '' && r !== undefined ? r : current.reps,
-                  };
-                  newAutoFilled.add(laterKey);
+    setCompletedSets((latestCompleted) => {
+      const isCompleting = !latestCompleted.has(key);
+      if (isCompleting) {
+        const exEntries = entries[exerciseName] || [];
+        const thisEntry = exEntries[setIdx];
+        const w = thisEntry?.weight;
+        const r = thisEntry?.reps;
+        if ((w !== '' && w !== undefined) || (r !== '' && r !== undefined)) {
+          const exercise = template.exercises.find((e) => e.name === exerciseName);
+          if (exercise) {
+            setEntries((prev) => {
+              const updated = { ...prev };
+              updated[exerciseName] = [...(updated[exerciseName] || [])];
+              const newAutoFilled = new Set(autoFilled);
+              for (let i = setIdx + 1; i < exercise.sets.length; i++) {
+                const laterKey = `${exerciseName}-${i}`;
+                if (!latestCompleted.has(laterKey)) {
+                  const current = updated[exerciseName][i] || {};
+                  const currentWeight = current.weight;
+                  const currentReps = current.reps;
+                  const isCurrentAutoFilled = autoFilled.has(laterKey);
+                  const weightEmpty = currentWeight === '' || currentWeight === undefined;
+                  const repsEmpty = currentReps === '' || currentReps === undefined;
+                  if (weightEmpty || repsEmpty || isCurrentAutoFilled) {
+                    updated[exerciseName][i] = {
+                      ...current,
+                      weight: w !== '' && w !== undefined ? w : current.weight,
+                      reps: r !== '' && r !== undefined ? r : current.reps,
+                    };
+                    newAutoFilled.add(laterKey);
+                  }
                 }
               }
-            }
-            setAutoFilled(newAutoFilled);
-            return updated;
-          });
+              setAutoFilled(newAutoFilled);
+              return updated;
+            });
+          }
         }
       }
-    }
+      return latestCompleted;
+    });
   }
 
   async function handleShare() {
@@ -1113,7 +1116,8 @@ export default function WorkoutSession() {
 
       setPersisted(true);
       setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+      savedTimerRef.current = setTimeout(() => setSaved(false), 2000);
     } catch (err) {
       alert('Failed to save: ' + err.message);
     } finally {
