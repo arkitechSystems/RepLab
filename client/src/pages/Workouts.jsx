@@ -1825,7 +1825,7 @@ export default function Workouts() {
                         )}
                         <div className="min-w-0">
                           <h4 className="text-base font-bold text-white">{share.programName}</h4>
-                          <p className="text-xs text-wf-gray-500 mt-0.5">From <span className="text-blue-400 font-semibold">{share.senderUsername ? `@${share.senderUsername}` : share.senderName}</span></p>
+                          <p className="text-xs text-wf-gray-500 mt-0.5">From <span className="text-blue-400 font-semibold">{share.senderName || 'a user'}{share.senderUsername ? ` (@${share.senderUsername})` : ''}</span></p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
@@ -1976,7 +1976,7 @@ export default function Workouts() {
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-white">
-                      <span className="font-semibold text-blue-400">{share.senderUsername ? `@${share.senderUsername}` : share.senderName}</span> shared a workout with you
+                      <span className="font-semibold text-blue-400">{share.senderName || 'A user'}{share.senderUsername ? ` (@${share.senderUsername})` : ''}</span> shared a workout with you
                     </p>
                     <p className="text-xs text-wf-gray-500 mt-0.5">{share.programName}</p>
                   </div>
