@@ -1414,7 +1414,14 @@ export default function WorkoutSession() {
                     <div className="flex items-center gap-2">
                       <select
                         value={restDuration}
-                        onChange={(e) => setRestDuration(Number(e.target.value))}
+                        onChange={(e) => {
+                          const newDuration = Number(e.target.value);
+                          setRestDuration(newDuration);
+                          if (restRemaining !== null && restRemaining > 0) {
+                            restDurationRef.current = newDuration;
+                            startRestTimer();
+                          }
+                        }}
                         className="text-xs font-semibold text-wf-gray-400 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 outline-none cursor-pointer"
                       >
                         {REST_OPTIONS.map((s) => (
