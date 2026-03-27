@@ -3,7 +3,6 @@ import { getExerciseVideoId, getExerciseSearchUrl } from '../utils/exerciseVideo
 import { useExercises, getSubstitutesFromList } from '../hooks/useExercises.js';
 import VideoPlayerModal from './VideoPlayerModal.jsx';
 import { iosFocusRef } from '../utils/iosFocus.js';
-import { api } from '../api.js';
 
 const SET_TYPES = [
   { value: 'warm_up',      short: 'WU',   label: 'Warm Up' },
@@ -342,7 +341,7 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
                   <button
                     type="button"
                     onClick={() => !readOnly && onChange?.(exercise.name, idx, 'weight', '')}
-                    className={`w-full lcd-input rounded-lg px-1 py-2.5 text-center text-xs font-bold focus:outline-none ${isCompleted ? 'completed text-green-400' : 'text-wf-cyan'}`}
+                    className={`w-full lcd-input rounded-lg px-1 py-2.5 text-center text-xs font-bold focus:outline-none ${isCompleted ? 'completed text-green-400' : 'text-wf-red'}`}
                     disabled={readOnly}
                   >
                     BW
@@ -367,10 +366,10 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
                   <button
                     type="button"
                     onClick={() => onChange?.(exercise.name, idx, 'weight', -1)}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-wf-cyan/20 border border-wf-cyan/40 flex items-center justify-center z-10 active:scale-90 transition-all"
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-wf-red/20 border border-wf-red/40 flex items-center justify-center z-10 active:scale-90 transition-all"
                     title="Bodyweight"
                   >
-                    <span className="text-[7px] font-black text-wf-cyan leading-none">BW</span>
+                    <span className="text-[7px] font-black text-wf-red leading-none">BW</span>
                   </button>
                 )}
               </div>
@@ -648,9 +647,6 @@ export default function ExerciseCard({ exercise, entries, pbs, onChange, onBlur,
 
 function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelect, onClose, allWorkoutExercises }) {
   const substitutes = useMemo(() => getSubstitutesFromList(exerciseName, allExercises), [exerciseName, allExercises]);
-  const [aiSuggestions, setAiSuggestions] = useState(null);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiError, setAiError] = useState(null);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return substitutes;
@@ -659,26 +655,6 @@ function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelec
       e.name.toLowerCase().includes(q) || e.muscle.toLowerCase().includes(q)
     );
   }, [substitutes, search]);
-
-  const handleAISuggest = async () => {
-    setAiLoading(true);
-    setAiError(null);
-    try {
-      const result = await api('/ai/suggest-swap', {
-        method: 'POST',
-        body: JSON.stringify({
-          exerciseName,
-          reason: 'equipment_taken',
-          currentWorkoutExercises: allWorkoutExercises || [],
-        }),
-      });
-      setAiSuggestions(result.suggestions);
-    } catch (err) {
-      setAiError(err.message || 'Failed to get AI suggestions');
-    } finally {
-      setAiLoading(false);
-    }
-  };
 
   // Group into suggested (high score, same muscle) and the rest
   const suggested = filtered.filter((e) => e.score >= 12);
@@ -704,39 +680,19 @@ function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelec
           <p className="text-wf-gray-500 text-xs mb-3">
             Replacing <span className="text-white font-semibold">{exerciseName}</span>
           </p>
-          {/* Search + AI Button */}
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-              </svg>
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => onSearchChange(e.target.value)}
-                placeholder="Search exercises..."
-                ref={iosFocusRef}
-                className="w-full glass-input rounded-xl pl-10 pr-4 py-3 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={handleAISuggest}
-              disabled={aiLoading}
-              className="shrink-0 h-[46px] px-3 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center gap-1.5 text-purple-300 text-xs font-semibold active:scale-95 transition-all disabled:opacity-50"
-            >
-              {aiLoading ? (
-                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-              ) : (
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
-                </svg>
-              )}
-              AI
-            </button>
+          {/* Search */}
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+            </svg>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder="Search exercises..."
+              ref={iosFocusRef}
+              className="w-full glass-input rounded-xl pl-10 pr-4 py-3 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none"
+            />
           </div>
         </div>
 
@@ -756,34 +712,6 @@ function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelec
               </button>
               {filtered.length > 0 && <div className="border-t border-white/5 my-2" />}
             </>
-          )}
-
-          {/* AI Suggestions */}
-          {aiSuggestions && aiSuggestions.length > 0 && (
-            <>
-              <p className="text-[10px] text-purple-400 uppercase tracking-widest font-medium mt-3 mb-2 flex items-center gap-1">
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                </svg>
-                AI Suggestions
-              </p>
-              {aiSuggestions.map((s, i) => (
-                <button
-                  key={i}
-                  onClick={() => onSelect(s.name)}
-                  className="w-full text-left px-3 py-3 rounded-xl mb-1 bg-purple-500/10 border border-purple-500/20 active:scale-[0.98] transition-all"
-                >
-                  <span className="text-sm font-medium text-purple-300">{s.name}</span>
-                  <p className="text-[10px] text-wf-gray-400 mt-0.5">{s.reason}</p>
-                </button>
-              ))}
-            </>
-          )}
-
-          {aiError && (
-            <div className="mt-3 mb-2 px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20">
-              <p className="text-xs text-red-400">{aiError}</p>
-            </div>
           )}
 
           {suggested.length > 0 && !search.trim() && (
