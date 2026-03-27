@@ -1224,6 +1224,31 @@ const db = {
     }
   },
 
+  async getAcceptedShares(userId) {
+    const { rows } = await pool.query(
+      `SELECT sp.copied_program_id,
+              u.username AS sender_username, u.first_name AS sender_first_name,
+              u.last_name AS sender_last_name, u.profile_photo AS sender_photo,
+              u.email AS sender_email
+       FROM shared_programs sp
+       JOIN users u ON u.id = sp.sender_id
+       WHERE sp.recipient_id = $1 AND sp.status = 'accepted' AND sp.copied_program_id IS NOT NULL`,
+      [userId]
+    );
+    const map = {};
+    for (const r of rows) {
+      const firstName = r.sender_first_name || '';
+      const lastName = r.sender_last_name || '';
+      const username = r.sender_username || '';
+      map[r.copied_program_id] = {
+        senderUsername: username,
+        senderName: firstName && lastName ? `${firstName} ${lastName}` : firstName || username || r.sender_email || 'Unknown',
+        senderPhoto: r.sender_photo || null,
+      };
+    }
+    return map;
+  },
+
   async declineShare(shareId, userId) {
     const { rowCount } = await pool.query(
       "UPDATE shared_programs SET status = 'declined' WHERE id = $1 AND recipient_id = $2 AND status = 'pending'",

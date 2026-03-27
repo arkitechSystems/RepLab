@@ -83,4 +83,15 @@ router.post('/:id/decline', authMiddleware, async (req, res) => {
   }
 });
 
+// Get accepted shares map (programId → sender info)
+router.get('/accepted', authMiddleware, async (req, res) => {
+  try {
+    const map = await db.getAcceptedShares(req.userId);
+    res.json(map);
+  } catch (err) {
+    console.error('Accepted shares error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

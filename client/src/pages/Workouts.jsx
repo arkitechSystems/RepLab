@@ -133,6 +133,7 @@ export default function Workouts() {
   const [shareLoading, setShareLoading] = useState(false);
   const [shareResult, setShareResult] = useState(null); // { success, message }
   const [pendingShares, setPendingShares] = useState([]);
+  const [acceptedSharesMap, setAcceptedSharesMap] = useState({}); // { programId: { senderName, senderUsername, senderPhoto } }
   // Trainer application state
   const [trainerApp, setTrainerApp] = useState(null); // { status, message, created_at } | null
   const [trainerAppLoading, setTrainerAppLoading] = useState(false);
@@ -183,11 +184,12 @@ export default function Workouts() {
   useEffect(() => {
     const controller = new AbortController();
     const opts = { signal: controller.signal };
-    Promise.all([api('/programs', opts), api('/templates', opts), api('/sessions', opts), api('/sharing/pending', opts).catch(() => [])])
-      .then(([progs, tmpls, sessions, shares]) => {
+    Promise.all([api('/programs', opts), api('/templates', opts), api('/sessions', opts), api('/sharing/pending', opts).catch(() => []), api('/sharing/accepted', opts).catch(() => ({}))])
+      .then(([progs, tmpls, sessions, shares, accepted]) => {
         setPrograms(progs);
         setTemplates(tmpls);
         setPendingShares(shares || []);
+        setAcceptedSharesMap(accepted || {});
 
         // Calculate streak — consecutive days with a session going back from today
         const sessionDates = new Set(sessions.map((s) => s.date));
@@ -1775,14 +1777,19 @@ export default function Workouts() {
             const filtered = isBrowse && browseSearch.trim()
               ? groupPrograms.filter((p) => p.name.toLowerCase().includes(browseSearch.toLowerCase()))
               : groupPrograms;
-            if (filtered.length === 0 && browseSearch.trim()) {
+
+            // Split into own programs and shared programs (My Workouts only)
+            const ownPrograms = isBrowse ? filtered : filtered.filter((p) => !acceptedSharesMap[p.id]);
+            const sharedPrograms = isBrowse ? [] : filtered.filter((p) => acceptedSharesMap[p.id]);
+
+            if (ownPrograms.length === 0 && sharedPrograms.length === 0 && browseSearch.trim()) {
               return (
                 <div className="glass-card rounded-2xl p-8 text-center">
                   <p className="text-wf-gray-400 text-sm">No programs matching "{browseSearch}"</p>
                 </div>
               );
             }
-            if (filtered.length === 0) {
+            if (ownPrograms.length === 0 && sharedPrograms.length === 0 && pendingShares.length === 0) {
               return (
                 <div className="glass-card rounded-2xl p-8 flex flex-col items-center text-center">
                   <p className="text-wf-gray-400 text-sm">Your created workouts will appear here</p>
@@ -1796,59 +1803,90 @@ export default function Workouts() {
               );
             }
             return (
-              <div className="space-y-4 pb-4">
-                {filtered.map((program, idx) => (
-                  <ProgramCard key={program.id} program={program} idx={idx} dataTutorial={idx === 0 ? 'program-card' : undefined} onSelect={(id) => { setSelectedProgram(id); setSelectedWeek(null); setBrowseSearch(''); completeTutorialAction('program-selected'); }} onBegin={openBeginProgram} onDelete={!isBrowse ? handleDeleteProgram : undefined} onShare={!isBrowse ? (p) => { setShareResult(null); setShareInput(''); setShareModal(p); } : undefined} />
-                ))}
-              </div>
+              <>
+                {ownPrograms.length > 0 && (
+                  <div className="space-y-4 pb-4">
+                    {ownPrograms.map((program, idx) => (
+                      <ProgramCard key={program.id} program={program} idx={idx} dataTutorial={idx === 0 ? 'program-card' : undefined} onSelect={(id) => { setSelectedProgram(id); setSelectedWeek(null); setBrowseSearch(''); completeTutorialAction('program-selected'); }} onBegin={openBeginProgram} onDelete={!isBrowse ? handleDeleteProgram : undefined} onShare={!isBrowse ? (p) => { setShareResult(null); setShareInput(''); setShareModal(p); } : undefined} />
+                    ))}
+                  </div>
+                )}
+
+                {/* Shared With Me — accepted programs */}
+                {!isBrowse && sharedPrograms.length > 0 && (
+                  <div className="mt-6 pb-4">
+                    <h3 className="text-sm font-semibold text-wf-gray-400 uppercase tracking-wider mb-3">Shared With Me</h3>
+                    <div className="space-y-4">
+                      {sharedPrograms.map((program, idx) => {
+                        const sender = acceptedSharesMap[program.id];
+                        return (
+                          <div key={program.id} className="fade-slide-up" style={{ animationDelay: `${idx * 60}ms` }}>
+                            <div className="flex items-center gap-2 mb-2">
+                              {sender?.senderPhoto ? (
+                                <img src={sender.senderPhoto} alt="" className="w-6 h-6 rounded-full object-cover" />
+                              ) : (
+                                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
+                                  <span className="text-white text-[10px] font-bold">{(sender?.senderName || 'U')[0].toUpperCase()}</span>
+                                </div>
+                              )}
+                              <span className="text-xs text-wf-gray-500">From <span className="text-blue-400 font-semibold">{sender?.senderName || 'a user'}{sender?.senderUsername ? ` (@${sender.senderUsername})` : ''}</span></span>
+                            </div>
+                            <ProgramCard program={program} idx={idx} onSelect={(id) => { setSelectedProgram(id); setSelectedWeek(null); setBrowseSearch(''); }} onBegin={openBeginProgram} onDelete={handleDeleteProgram} onShare={(p) => { setShareResult(null); setShareInput(''); setShareModal(p); }} />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Pending shares — awaiting accept/decline */}
+                {!isBrowse && pendingShares.length > 0 && (
+                  <div className="mt-6 pb-4">
+                    <h3 className="text-sm font-semibold text-wf-gray-400 uppercase tracking-wider mb-3">Pending</h3>
+                    <div className="space-y-3">
+                      {pendingShares.map((share) => (
+                        <div key={share.id} className="glass-card rounded-2xl overflow-hidden fade-slide-up">
+                          <div className="h-1 bg-gradient-to-r from-blue-500 to-purple-500" />
+                          <div className="p-4">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex items-center gap-3 min-w-0">
+                                {share.senderPhoto ? (
+                                  <img src={share.senderPhoto} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
+                                ) : (
+                                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center shrink-0">
+                                    <span className="text-white text-sm font-bold">{(share.senderName || 'U')[0].toUpperCase()}</span>
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <h4 className="text-base font-bold text-white">{share.programName}</h4>
+                                  <p className="text-xs text-wf-gray-500 mt-0.5">From <span className="text-blue-400 font-semibold">{share.senderName || 'a user'}{share.senderUsername ? ` (@${share.senderUsername})` : ''}</span></p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                  onClick={() => handleAcceptShare(share.id)}
+                                  className="btn-gradient text-white font-semibold text-xs px-3 py-2 rounded-xl active:scale-[0.97] transition-all"
+                                >
+                                  Accept
+                                </button>
+                                <button
+                                  onClick={() => handleDeclineShare(share.id)}
+                                  className="text-wf-gray-400 font-semibold text-xs px-3 py-2 rounded-xl bg-white/5 active:bg-white/10 transition-colors"
+                                >
+                                  Decline
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
             );
           })()}
         </div>
-
-        {/* Shared with me section — My Workouts only */}
-        {!isBrowse && pendingShares.length > 0 && (
-          <div className="px-4 mt-6 pb-4">
-            <h3 className="text-sm font-semibold text-wf-gray-400 uppercase tracking-wider mb-3">Shared with me</h3>
-            <div className="space-y-3">
-              {pendingShares.map((share) => (
-                <div key={share.id} className="glass-card rounded-2xl overflow-hidden fade-slide-up">
-                  <div className="h-1 bg-gradient-to-r from-blue-500 to-purple-500" />
-                  <div className="p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        {share.senderPhoto ? (
-                          <img src={share.senderPhoto} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
-                        ) : (
-                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center shrink-0">
-                            <span className="text-white text-sm font-bold">{(share.senderName || 'U')[0].toUpperCase()}</span>
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <h4 className="text-base font-bold text-white">{share.programName}</h4>
-                          <p className="text-xs text-wf-gray-500 mt-0.5">From <span className="text-blue-400 font-semibold">{share.senderName || 'a user'}{share.senderUsername ? ` (@${share.senderUsername})` : ''}</span></p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          onClick={() => handleAcceptShare(share.id)}
-                          className="btn-gradient text-white font-semibold text-xs px-3 py-2 rounded-xl active:scale-[0.97] transition-all"
-                        >
-                          Accept
-                        </button>
-                        <button
-                          onClick={() => handleDeclineShare(share.id)}
-                          className="text-wf-gray-400 font-semibold text-xs px-3 py-2 rounded-xl bg-white/5 active:bg-white/10 transition-colors"
-                        >
-                          Decline
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {renderBeginModals()}
         {showCreateMenu && renderCreateMenu()}
