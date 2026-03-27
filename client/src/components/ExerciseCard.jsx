@@ -721,8 +721,8 @@ function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelec
 
         {/* Exercise List */}
         <div className="flex-1 overflow-y-auto px-4 pb-6">
-          {/* Custom exercise option when search doesn't match any existing exercise */}
-          {search.trim() && !allExercises.some((ex) => ex.name.toLowerCase() === search.trim().toLowerCase()) && (
+          {/* Custom exercise option — show when search doesn't match exactly, or when few results remain */}
+          {search.trim() && (!allExercises.some((ex) => ex.name.toLowerCase() === search.trim().toLowerCase()) || filtered.length < 3) && (
             <>
               <button
                 onClick={() => onSelect(search.trim())}
@@ -731,7 +731,7 @@ function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelec
                 <svg className="w-5 h-5 text-wf-red shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                 </svg>
-                <span className="text-sm text-white">Add "<span className="font-semibold">{search.trim()}</span>"</span>
+                <span className="text-sm text-white">Add "<span className="font-semibold">{search.trim()}</span>" as custom exercise</span>
               </button>
               {filtered.length > 0 && <div className="border-t border-white/5 my-2" />}
             </>
