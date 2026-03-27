@@ -8,6 +8,7 @@ import RestDayCard from '../components/RestDayCard';
 import StickyHeader from '../components/StickyHeader';
 import { useUnsavedGuard } from '../components/UnsavedGuard';
 import PBCelebration from '../components/PBCelebration';
+import UndoToast from '../components/UndoToast';
 import { iosFocusRef } from '../utils/iosFocus';
 import { getWeightSuggestion } from '../utils/weightSuggestion';
 import { beepCountdown, beepComplete, initAudio } from '../utils/sounds';
@@ -60,6 +61,7 @@ export default function WorkoutSession() {
   const REST_OPTIONS = [15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180];
   const [pinWorkoutTimer, setPinWorkoutTimer] = useState(true);
   const [pinRestTimer, setPinRestTimer] = useState(true);
+  const [undoToast, setUndoToast] = useState(null); // { message, undoFn }
   const autoSaveRef = useRef(null);
   const autoSaveNeeded = useRef(false);
   const structureSaveRef = useRef(null);
@@ -636,6 +638,14 @@ export default function WorkoutSession() {
   }
 
   function handleDeleteSet(exerciseName, setIdx) {
+    // Snapshot before deleting
+    const exercise = template.exercises.find((ex) => ex.name === exerciseName);
+    if (!exercise || exercise.sets.length <= 1) return;
+    const deletedSetData = exercise.sets[setIdx];
+    const deletedEntry = (entries[exerciseName] || [])[setIdx];
+    const wasCompleted = completedSets.has(`${exerciseName}-${setIdx}`);
+    const wasAutoFilled = autoFilled.has(`${exerciseName}-${setIdx}`);
+
     setPersisted(false);
     structureSaveNeeded.current = true;
     setTemplate((prev) => ({
@@ -684,6 +694,60 @@ export default function WorkoutSession() {
       }
       return next;
     });
+
+    setUndoToast({
+      message: `Removed set ${setIdx + 1} from ${exerciseName}`,
+      undoFn: () => {
+        setPersisted(false);
+        structureSaveNeeded.current = true;
+        setTemplate((prev) => ({
+          ...prev,
+          exercises: prev.exercises.map((ex) => {
+            if (ex.name !== exerciseName) return ex;
+            const newSets = [...ex.sets];
+            newSets.splice(setIdx, 0, { ...deletedSetData, setNumber: setIdx + 1 });
+            return { ...ex, sets: newSets.map((s, i) => ({ ...s, setNumber: i + 1 })) };
+          }),
+        }));
+        setEntries((prev) => {
+          const exEntries = [...(prev[exerciseName] || [])];
+          exEntries.splice(setIdx, 0, deletedEntry || { weight: '', reps: '' });
+          return { ...prev, [exerciseName]: exEntries };
+        });
+        setCompletedSets((prev) => {
+          const next = new Set();
+          for (const key of prev) {
+            const [name, idxStr] = key.split(/-(?=\d+$)/);
+            const i = Number(idxStr);
+            if (name !== exerciseName) {
+              next.add(key);
+            } else if (i < setIdx) {
+              next.add(key);
+            } else {
+              next.add(`${name}-${i + 1}`);
+            }
+          }
+          if (wasCompleted) next.add(`${exerciseName}-${setIdx}`);
+          return next;
+        });
+        setAutoFilled((prev) => {
+          const next = new Set();
+          for (const key of prev) {
+            const [name, idxStr] = key.split(/-(?=\d+$)/);
+            const i = Number(idxStr);
+            if (name !== exerciseName) {
+              next.add(key);
+            } else if (i < setIdx) {
+              next.add(key);
+            } else {
+              next.add(`${name}-${i + 1}`);
+            }
+          }
+          if (wasAutoFilled) next.add(`${exerciseName}-${setIdx}`);
+          return next;
+        });
+      },
+    });
   }
 
   function handleAddExercise(name, afterIndex) {
@@ -716,7 +780,13 @@ export default function WorkoutSession() {
   const exerciseRefs = useRef({});
 
   function handleDeleteExercise(exerciseName) {
-    if (!confirm(`Remove "${exerciseName}" from this workout?`)) return;
+    // Snapshot before deleting
+    const exerciseIdx = template.exercises.findIndex((ex) => ex.name === exerciseName);
+    const exerciseData = template.exercises[exerciseIdx];
+    const exerciseEntries = entries[exerciseName];
+    const exerciseCompletedKeys = [...completedSets].filter((k) => k.startsWith(exerciseName + '-'));
+    const exerciseAutoFilledKeys = [...autoFilled].filter((k) => k.startsWith(exerciseName + '-'));
+
     setPersisted(false);
     structureSaveNeeded.current = true;
     setTemplate((prev) => ({
@@ -741,6 +811,32 @@ export default function WorkoutSession() {
         if (!key.startsWith(exerciseName + '-')) next.add(key);
       }
       return next;
+    });
+
+    setUndoToast({
+      message: `Deleted ${exerciseName}`,
+      undoFn: () => {
+        setPersisted(false);
+        structureSaveNeeded.current = true;
+        setTemplate((prev) => {
+          const exercises = [...prev.exercises];
+          exercises.splice(exerciseIdx, 0, exerciseData);
+          return { ...prev, exercises };
+        });
+        if (exerciseEntries) {
+          setEntries((prev) => ({ ...prev, [exerciseName]: exerciseEntries }));
+        }
+        setCompletedSets((prev) => {
+          const next = new Set(prev);
+          exerciseCompletedKeys.forEach((k) => next.add(k));
+          return next;
+        });
+        setAutoFilled((prev) => {
+          const next = new Set(prev);
+          exerciseAutoFilledKeys.forEach((k) => next.add(k));
+          return next;
+        });
+      },
     });
   }
 
@@ -1994,6 +2090,14 @@ export default function WorkoutSession() {
           </div>
         );
       })()}
+
+      {undoToast && (
+        <UndoToast
+          message={undoToast.message}
+          onUndo={() => { undoToast.undoFn(); setUndoToast(null); }}
+          onExpire={() => setUndoToast(null)}
+        />
+      )}
     </div>
   );
 }

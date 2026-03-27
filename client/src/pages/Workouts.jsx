@@ -8,6 +8,7 @@ import TrainerProfile from '../components/TrainerProfile';
 import { getTrainers, getTrainerById } from '../data/trainers';
 import { useAuth } from '../context/AuthContext';
 import { useTutorial } from '../context/TutorialContext';
+import UndoToast from '../components/UndoToast';
 
 const DAY_NAMES_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -138,6 +139,7 @@ export default function Workouts() {
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteResult, setInviteResult] = useState(null);
   const [pendingShares, setPendingShares] = useState([]);
+  const [undoToast, setUndoToast] = useState(null); // { message, undoFn, commitFn }
   const [acceptedSharesMap, setAcceptedSharesMap] = useState({}); // { programId: { senderName, senderUsername, senderPhoto } }
   const [shareUsers, setShareUsers] = useState([]); // all users for share picker
   const [shareUserSearch, setShareUserSearch] = useState('');
@@ -367,13 +369,23 @@ export default function Workouts() {
     }
   }
 
-  async function handleDeclineShare(shareId) {
-    try {
-      await api(`/sharing/${shareId}/decline`, { method: 'POST' });
-      setPendingShares(prev => prev.filter(s => s.id !== shareId));
-    } catch (err) {
-      alert(err.message || 'Failed to decline');
-    }
+  function handleDeclineShare(shareId) {
+    const share = pendingShares.find(s => s.id === shareId);
+    setPendingShares(prev => prev.filter(s => s.id !== shareId));
+    setUndoToast({
+      message: `Declined ${share?.programName || share?.templateName || 'workout'}`,
+      undoFn: () => {
+        if (share) setPendingShares(prev => [...prev, share]);
+      },
+      commitFn: async () => {
+        try {
+          await api(`/sharing/${shareId}/decline`, { method: 'POST' });
+        } catch (err) {
+          // Restore on error
+          if (share) setPendingShares(prev => [...prev, share]);
+        }
+      },
+    });
   }
 
   async function submitTrainerApplication() {
@@ -2936,6 +2948,14 @@ function MaxPushupsChallenge() {
             </div>
           </div>
         </div>
+      )}
+
+      {undoToast && (
+        <UndoToast
+          message={undoToast.message}
+          onUndo={() => { undoToast.undoFn(); setUndoToast(null); }}
+          onExpire={() => { undoToast.commitFn?.(); setUndoToast(null); }}
+        />
       )}
     </div>
   );
