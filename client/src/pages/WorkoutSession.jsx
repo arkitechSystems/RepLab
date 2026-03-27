@@ -123,9 +123,13 @@ export default function WorkoutSession() {
         // scroll so the top is visible just below the sticky header rather than
         // centering (which can cause the tooltip to overlap the spotlight).
         const elRect = el.getBoundingClientRect();
-        const exerciseCardSteps = ['exercise-card', 'exercise-header', 'swap-exercise', 'add-delete-exercise', 'set-controls', 'set-row', 'exercise-notes'];
+        const exerciseCardSteps = ['exercise-header', 'swap-exercise', 'add-delete-exercise', 'set-controls', 'set-row', 'exercise-notes'];
         const isExerciseCardStep = exerciseCardSteps.includes(tutorialTip);
-        if (elRect.height > window.innerHeight * 0.3 || isExerciseCardStep) {
+        if (tutorialTip === 'exercise-card') {
+          // Scroll the exercise card header to the very top of the viewport
+          const scrollTarget = window.scrollY + elRect.top;
+          window.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'instant' });
+        } else if (elRect.height > window.innerHeight * 0.3 || isExerciseCardStep) {
           const stickyHeader = document.querySelector('.sticky-header');
           const headerHeight = stickyHeader ? stickyHeader.getBoundingClientRect().height : 0;
           const scrollTarget = window.scrollY + elRect.top - headerHeight - 16;
@@ -1824,7 +1828,8 @@ export default function WorkoutSession() {
             description: <>Each exercise in your workout has its own card. The card contains everything you need — the exercise name, set controls, your logged sets, and notes. Let's walk through each part.</>,
             prev: 'rest',
             next: 'exercise-header',
-            position: 'fixed-bottom',
+            position: 'below-anchor',
+            tooltipAnchor: '[data-tutorial="set-row"]',
           },
           'exercise-header': {
             target: '[data-tutorial="move-buttons"]',
@@ -1914,12 +1919,22 @@ export default function WorkoutSession() {
             <div
               className="absolute w-[calc(100%-48px)] max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
               style={{
-                ...(tip.position === 'fixed-bottom'
-                  ? { bottom: 24, left: '50%', transform: 'translateX(-50%)' }
-                  : tip.position === 'above'
-                    ? { bottom: window.innerHeight - r.top + pad + 16, left: '50%', transform: 'translateX(-50%)' }
-                    : { top: r.bottom + pad + 16, left: '50%', transform: 'translateX(-50%)' }
-                ),
+                ...(() => {
+                  if (tip.position === 'fixed-bottom') {
+                    return { bottom: 24, left: '50%', transform: 'translateX(-50%)' };
+                  }
+                  if (tip.position === 'below-anchor' && tip.tooltipAnchor) {
+                    const anchor = document.querySelector(tip.tooltipAnchor);
+                    if (anchor) {
+                      const anchorRect = anchor.getBoundingClientRect();
+                      return { top: anchorRect.bottom + 16, left: '50%', transform: 'translateX(-50%)' };
+                    }
+                  }
+                  if (tip.position === 'above') {
+                    return { bottom: window.innerHeight - r.top + pad + 16, left: '50%', transform: 'translateX(-50%)' };
+                  }
+                  return { top: r.bottom + pad + 16, left: '50%', transform: 'translateX(-50%)' };
+                })(),
                 pointerEvents: 'auto',
               }}
             >
