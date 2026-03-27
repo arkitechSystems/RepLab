@@ -507,26 +507,10 @@ function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, comp
             </div>
           ) : null;
 
-          // In session mode, wrap with swipe background indicators
+          // In session mode, wrap with swipe support
           if (!isTemplate && !readOnly) {
             return (
               <div key={idx} className="relative overflow-hidden">
-                {/* Swipe background indicators */}
-                <div className="absolute inset-0 flex items-center justify-between px-4 pointer-events-none">
-                  <div className="flex items-center gap-2 text-green-400">
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                    </svg>
-                    <span className="text-xs font-bold">Complete</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-red-400">
-                    <span className="text-xs font-bold">Delete</span>
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </div>
-                </div>
-                {/* Sliding row content */}
                 {rowContent}
                 {lastHint}
               </div>
