@@ -1824,7 +1824,7 @@ export default function WorkoutSession() {
             description: <>Each exercise in your workout has its own card. The card contains everything you need — the exercise name, set controls, your logged sets, and notes. Let's walk through each part.</>,
             prev: 'rest',
             next: 'exercise-header',
-            position: 'below',
+            position: 'fixed-bottom',
           },
           'exercise-header': {
             target: '[data-tutorial="move-buttons"]',
@@ -1914,9 +1914,11 @@ export default function WorkoutSession() {
             <div
               className="absolute w-[calc(100%-48px)] max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
               style={{
-                ...(tip.position === 'above'
-                  ? { bottom: window.innerHeight - r.top + pad + 16, left: '50%', transform: 'translateX(-50%)' }
-                  : { top: r.bottom + pad + 16, left: '50%', transform: 'translateX(-50%)' }
+                ...(tip.position === 'fixed-bottom'
+                  ? { bottom: 24, left: '50%', transform: 'translateX(-50%)' }
+                  : tip.position === 'above'
+                    ? { bottom: window.innerHeight - r.top + pad + 16, left: '50%', transform: 'translateX(-50%)' }
+                    : { top: r.bottom + pad + 16, left: '50%', transform: 'translateX(-50%)' }
                 ),
                 pointerEvents: 'auto',
               }}
