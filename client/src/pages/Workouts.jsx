@@ -153,6 +153,12 @@ export default function Workouts() {
   const [tutorialPointer, setTutorialPointer] = useState(null); // 'create' | null
   const [pointerRect, setPointerRect] = useState(null);
 
+  // Pull-to-refresh state
+  const [refreshing, setRefreshing] = useState(false);
+  const pullStartY = useRef(0);
+  const pullDist = useRef(0);
+  const [pullOffset, setPullOffset] = useState(0);
+
   // Check for tutorial pointer in URL
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -189,37 +195,41 @@ export default function Workouts() {
       .finally(() => setTrainerAppLoading(false));
   }, [selectedGroup, user?.role]);
 
+  async function fetchData(opts = {}) {
+    const [progs, tmpls, sessions, shares, accepted] = await Promise.all([
+      api('/programs', opts), api('/templates', opts), api('/sessions', opts),
+      api('/sharing/pending', opts).catch(() => []), api('/sharing/accepted', opts).catch(() => ({}))
+    ]);
+    setPrograms(progs);
+    setTemplates(tmpls);
+    setPendingShares(shares || []);
+    setAcceptedSharesMap(accepted || {});
+
+    // Calculate streak — consecutive days with a session going back from today
+    const sessionDates = new Set(sessions.map((s) => s.date));
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let count = 0;
+    // Start from today; if today has no session, start from yesterday
+    let startDay = new Date(today);
+    const todayStr = startDay.toISOString().slice(0, 10);
+    if (!sessionDates.has(todayStr)) {
+      startDay.setDate(startDay.getDate() - 1);
+    }
+    for (let d = startDay; ; d.setDate(d.getDate() - 1)) {
+      const dateStr = d.toISOString().slice(0, 10);
+      if (sessionDates.has(dateStr)) {
+        count++;
+      } else {
+        break;
+      }
+    }
+    setStreak(count);
+  }
+
   useEffect(() => {
     const controller = new AbortController();
-    const opts = { signal: controller.signal };
-    Promise.all([api('/programs', opts), api('/templates', opts), api('/sessions', opts), api('/sharing/pending', opts).catch(() => []), api('/sharing/accepted', opts).catch(() => ({}))])
-      .then(([progs, tmpls, sessions, shares, accepted]) => {
-        setPrograms(progs);
-        setTemplates(tmpls);
-        setPendingShares(shares || []);
-        setAcceptedSharesMap(accepted || {});
-
-        // Calculate streak — consecutive days with a session going back from today
-        const sessionDates = new Set(sessions.map((s) => s.date));
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        let count = 0;
-        // Start from today; if today has no session, start from yesterday
-        let startDay = new Date(today);
-        const todayStr = startDay.toISOString().slice(0, 10);
-        if (!sessionDates.has(todayStr)) {
-          startDay.setDate(startDay.getDate() - 1);
-        }
-        for (let d = startDay; ; d.setDate(d.getDate() - 1)) {
-          const dateStr = d.toISOString().slice(0, 10);
-          if (sessionDates.has(dateStr)) {
-            count++;
-          } else {
-            break;
-          }
-        }
-        setStreak(count);
-      })
+    fetchData({ signal: controller.signal })
       .catch((err) => { if (err.name !== 'AbortError') setLoadError('Failed to load workouts'); })
       .finally(() => setLoading(false));
     return () => controller.abort();
@@ -2106,9 +2116,50 @@ export default function Workouts() {
     );
   }
 
+  // Pull-to-refresh handlers
+  function handlePullStart(e) {
+    if (window.scrollY === 0) {
+      pullStartY.current = e.touches[0].clientY;
+      pullDist.current = 0;
+    } else {
+      pullStartY.current = 0;
+    }
+  }
+  function handlePullMove(e) {
+    if (!pullStartY.current) return;
+    const dist = e.touches[0].clientY - pullStartY.current;
+    if (dist > 0) {
+      pullDist.current = dist;
+      setPullOffset(Math.min(dist * 0.5, 80));
+    }
+  }
+  function handlePullEnd() {
+    if (pullOffset > 50 && !refreshing) {
+      setRefreshing(true);
+      fetchData()
+        .catch(() => {})
+        .finally(() => { setRefreshing(false); setPullOffset(0); });
+    } else {
+      setPullOffset(0);
+    }
+    pullStartY.current = 0;
+    pullDist.current = 0;
+  }
+
   // Top-level view — two group cards
   return (
-    <div>
+    <div
+      onTouchStart={handlePullStart}
+      onTouchMove={handlePullMove}
+      onTouchEnd={handlePullEnd}
+    >
+      {pullOffset > 0 && (
+        <div className="flex justify-center py-2" style={{ height: pullOffset, transition: refreshing ? 'none' : 'height 0.2s' }}>
+          <svg className={`w-5 h-5 text-wf-red ${refreshing ? 'animate-spin' : ''}`} style={{ opacity: Math.min(pullOffset / 50, 1), transform: `rotate(${pullOffset * 4}deg)` }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182" />
+          </svg>
+        </div>
+      )}
       <StickyHeader title="Workouts">
         <div className="flex items-center gap-2">
           <button
@@ -2295,9 +2346,17 @@ export default function Workouts() {
 
       <div className="px-4">
         {loading ? (
-          <div className="space-y-3">
-            {[...Array(2)].map((_, i) => (
-              <div key={i} className="glass-skeleton rounded-xl h-40" />
+          <div className="space-y-4 mt-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="glass-card rounded-2xl p-5 animate-pulse">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-white/10" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-5 w-2/3 rounded-lg bg-white/10" />
+                    <div className="h-3 w-1/2 rounded-lg bg-white/5" />
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
         ) : loadError ? (

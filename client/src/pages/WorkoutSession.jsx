@@ -907,7 +907,7 @@ export default function WorkoutSession() {
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
         stopRestTimer();
         clearTimerStorage();
-        navigator.vibrate?.([40, 30, 80]);
+        if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
         setShowSummary(true);
       }
     } catch (err) {
@@ -924,7 +924,7 @@ export default function WorkoutSession() {
         next.delete(key);
       } else {
         next.add(key);
-        navigator.vibrate?.(40);
+        if (navigator.vibrate) navigator.vibrate(15);
         startTimer();
         startRestTimer();
       }
@@ -1155,9 +1155,26 @@ export default function WorkoutSession() {
   if (loading) {
     return (
       <div className="px-4 pt-6">
-        <div className="glass-skeleton rounded-xl h-12 w-48 mb-4" />
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="glass-skeleton rounded-xl h-40 mb-3" />
+        <div className="glass-card rounded-xl h-12 w-48 mb-4 animate-pulse bg-white/5" />
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="glass-card rounded-xl overflow-hidden mb-3 animate-pulse">
+            <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
+              <div className="h-5 w-40 rounded-lg bg-white/10" />
+              <div className="flex gap-1">
+                <div className="w-7 h-7 rounded-full bg-white/5" />
+                <div className="w-7 h-7 rounded-full bg-white/5" />
+              </div>
+            </div>
+            <div className="px-4 py-2 space-y-2">
+              {[...Array(3)].map((_, j) => (
+                <div key={j} className="flex gap-2">
+                  <div className="h-8 flex-1 rounded-lg bg-white/5" />
+                  <div className="h-8 flex-1 rounded-lg bg-white/5" />
+                  <div className="h-8 flex-1 rounded-lg bg-white/5" />
+                </div>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
     );

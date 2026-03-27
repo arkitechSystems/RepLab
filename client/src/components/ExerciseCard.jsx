@@ -37,10 +37,13 @@ function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, comp
   const longPressRef = useRef(null);
 
   const touchStartPos = useRef(null);
+  const swipeRowRefs = useRef({});
+  const swipeActive = useRef(false);
 
   const handleTouchStart = useCallback((idx, e) => {
     const touch = e.touches[0];
-    touchStartPos.current = { x: touch.clientX, y: touch.clientY };
+    touchStartPos.current = { x: touch.clientX, y: touch.clientY, idx };
+    swipeActive.current = false;
     longPressRef.current = setTimeout(() => {
       navigator.vibrate?.(30);
       setDeleteIdx(idx);
@@ -49,25 +52,60 @@ function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, comp
   }, []);
 
   const handleTouchMove = useCallback((e) => {
-    // Only cancel if finger moved more than 10px (prevents natural jitter from canceling)
-    if (longPressRef.current && touchStartPos.current) {
-      const touch = e.touches[0];
-      const dx = Math.abs(touch.clientX - touchStartPos.current.x);
-      const dy = Math.abs(touch.clientY - touchStartPos.current.y);
-      if (dx > 10 || dy > 10) {
-        clearTimeout(longPressRef.current);
-        longPressRef.current = null;
+    if (!touchStartPos.current) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - touchStartPos.current.x;
+    const dy = Math.abs(touch.clientY - touchStartPos.current.y);
+    const absDx = Math.abs(dx);
+
+    // Cancel long press if finger moved
+    if (longPressRef.current && (absDx > 10 || dy > 10)) {
+      clearTimeout(longPressRef.current);
+      longPressRef.current = null;
+    }
+
+    // Activate swipe mode if horizontal movement dominates (session mode only)
+    if (!isTemplate && absDx > 15 && absDx > dy * 1.5) {
+      swipeActive.current = true;
+    }
+
+    if (swipeActive.current) {
+      const clamped = Math.max(-100, Math.min(100, dx));
+      const rowEl = swipeRowRefs.current[touchStartPos.current.idx];
+      if (rowEl) {
+        rowEl.style.transition = 'none';
+        rowEl.style.transform = `translateX(${clamped}px)`;
+        rowEl.style.background = clamped > 30 ? `rgba(34,197,94,${Math.min(clamped/100*0.25, 0.25)})` :
+                                  clamped < -30 ? `rgba(239,68,68,${Math.min(Math.abs(clamped)/100*0.25, 0.25)})` : '';
       }
     }
-  }, []);
+  }, [isTemplate]);
 
   const handleTouchEnd = useCallback(() => {
     if (longPressRef.current) {
       clearTimeout(longPressRef.current);
       longPressRef.current = null;
     }
+
+    if (swipeActive.current && touchStartPos.current) {
+      const idx = touchStartPos.current.idx;
+      const rowEl = swipeRowRefs.current[idx];
+      if (rowEl) {
+        const currentX = parseFloat(rowEl.style.transform?.replace(/[^-\d.]/g, '') || '0');
+        if (currentX > 60 && onToggleComplete) {
+          onToggleComplete(exercise.name, idx);
+        } else if (currentX < -60 && onDeleteSet) {
+          onDeleteSet(exercise.name, idx);
+        }
+        rowEl.style.transition = 'transform 0.2s ease, background 0.2s ease';
+        rowEl.style.transform = 'translateX(0)';
+        rowEl.style.background = '';
+      }
+    }
+
+    swipeActive.current = false;
     touchStartPos.current = null;
-  }, []);
+  }, [exercise.name, onToggleComplete, onDeleteSet]);
 
   const handleVideoClick = () => {
     if (videoId) {
@@ -268,16 +306,16 @@ function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, comp
           const isAutoFill = !isTemplate && autoFilled?.has(setKey) && !isCompleted;
           const rowWeight = entry.weight ?? set.suggestedWeight;
           const pbReps = (rowWeight !== undefined && rowWeight !== '' && rowWeight !== null) ? exercisePbs[rowWeight] : undefined;
-          return (
+          const rowContent = (
             <div
-              key={idx}
+              ref={!isTemplate ? (el) => { swipeRowRefs.current[idx] = el; } : undefined}
               data-tutorial={dataTutorial && idx === 0 ? 'set-row' : undefined}
               className={`px-3 py-2.5 flex items-center gap-1.5 transition-colors duration-200 ${
                 isCompleted ? 'bg-green-500/10' : ''
               }`}
-              onTouchStart={!readOnly && onDeleteSet ? (e) => handleTouchStart(idx, e) : undefined}
-              onTouchEnd={!readOnly && onDeleteSet ? handleTouchEnd : undefined}
-              onTouchMove={!readOnly && onDeleteSet ? handleTouchMove : undefined}
+              onTouchStart={!readOnly && !isTemplate ? (e) => handleTouchStart(idx, e) : undefined}
+              onTouchEnd={!readOnly && !isTemplate ? handleTouchEnd : undefined}
+              onTouchMove={!readOnly && !isTemplate ? handleTouchMove : undefined}
               onContextMenu={!readOnly && onDeleteSet ? (e) => { e.preventDefault(); setDeleteIdx(idx); } : undefined}
             >
               {/* Checkmark circle — session mode only */}
@@ -365,7 +403,7 @@ function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, comp
                 {!readOnly && !isTemplate && (entry.weight !== -1 && entry.weight !== '-1') && (
                   <button
                     type="button"
-                    onClick={() => onChange?.(exercise.name, idx, 'weight', -1)}
+                    onClick={() => { if (navigator.vibrate) navigator.vibrate(10); onChange?.(exercise.name, idx, 'weight', -1); }}
                     className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-wf-red/20 border border-wf-red/40 flex items-center justify-center z-10 active:scale-90 transition-all"
                     title="Bodyweight"
                   >
@@ -447,6 +485,33 @@ function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, comp
               )}
             </div>
           );
+
+          // In session mode, wrap with swipe background indicators
+          if (!isTemplate && !readOnly) {
+            return (
+              <div key={idx} className="relative overflow-hidden">
+                {/* Swipe background indicators */}
+                <div className="absolute inset-0 flex items-center justify-between px-4 pointer-events-none">
+                  <div className="flex items-center gap-2 text-green-400">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
+                    <span className="text-xs font-bold">Complete</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-red-400">
+                    <span className="text-xs font-bold">Delete</span>
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </div>
+                </div>
+                {/* Sliding row content */}
+                {rowContent}
+              </div>
+            );
+          }
+
+          return <div key={idx}>{rowContent}</div>;
         })}
       </div>
 
@@ -550,6 +615,7 @@ function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, comp
         search={swapSearch}
         onSearchChange={setSwapSearch}
         onSelect={(newName) => {
+          if (navigator.vibrate) navigator.vibrate(15);
           onSwapExercise(exercise.name, newName);
           setShowSwap(false);
         }}
