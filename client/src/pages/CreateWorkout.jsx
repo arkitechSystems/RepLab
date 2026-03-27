@@ -15,7 +15,7 @@ export default function CreateWorkout() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [exercises, setExercises] = useState([
-    { name: '', setType: 'straight', sets: [{ reps: 10, weight: 0 }] },
+    { name: '', nameConfirmed: false, setType: 'straight', sets: [{ reps: 10, weight: 0 }] },
   ]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -56,7 +56,7 @@ export default function CreateWorkout() {
   }, []);
 
   function addExercise() {
-    setExercises([...exercises, { name: '', setType: 'straight', sets: [{ reps: 10, weight: 0 }] }]);
+    setExercises([...exercises, { name: '', nameConfirmed: false, setType: 'straight', sets: [{ reps: 10, weight: 0 }] }]);
   }
 
   function addSectionHeader() {
@@ -140,7 +140,7 @@ export default function CreateWorkout() {
   function handleAddExerciseBelow(exIdx) {
     return (newName) => {
       const updated = [...exercises];
-      updated.splice(exIdx + 1, 0, { name: newName, setType: 'straight', sets: [{ reps: 10, weight: 0 }] });
+      updated.splice(exIdx + 1, 0, { name: newName, nameConfirmed: !!newName, setType: 'straight', sets: [{ reps: 10, weight: 0 }] });
       setExercises(updated);
     };
   }
@@ -422,9 +422,11 @@ function TemplateExerciseWrapper({
     );
   }
 
-  // If no name yet, show the name input card instead of ExerciseCard
-  // (ExerciseCard expects a named exercise for its header)
-  if (!ex.name.trim()) {
+  // If name not yet confirmed, show the search input card with autocomplete
+  // (ExerciseCard expects a confirmed exercise name for its header)
+  if (!ex.nameConfirmed) {
+    const suggestions = getSuggestions(ex.name);
+    const hasExactMatch = suggestions.some(s => s.name.toLowerCase() === ex.name.toLowerCase());
     return (
       <div className="glass-card rounded-xl overflow-hidden mb-3">
         <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
@@ -438,18 +440,27 @@ function TemplateExerciseWrapper({
               }}
               onFocus={() => { if (ex.name.length >= 1) setActiveAutocomplete(true); }}
               onBlur={() => { setTimeout(() => setActiveAutocomplete(false), 150); }}
-              placeholder="Exercise name"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && ex.name.trim()) {
+                  e.preventDefault();
+                  updateExercise(exIdx, 'nameConfirmed', true);
+                  setActiveAutocomplete(false);
+                }
+              }}
+              placeholder="Search exercises..."
+              autoFocus
               className="w-full bg-transparent text-base font-semibold text-white placeholder:text-wf-gray-500 focus:outline-none"
             />
-            {activeAutocomplete && getSuggestions(ex.name).length > 0 && (
+            {activeAutocomplete && (suggestions.length > 0 || ex.name.trim().length > 0) && (
               <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-wf-gray-900 border border-white/10 rounded-xl shadow-2xl shadow-black/60 overflow-hidden max-h-64 overflow-y-auto">
-                {getSuggestions(ex.name).map((suggestion) => (
+                {suggestions.map((suggestion) => (
                   <button
                     key={suggestion.name}
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => {
                       updateExercise(exIdx, 'name', suggestion.name);
+                      updateExercise(exIdx, 'nameConfirmed', true);
                       setActiveAutocomplete(false);
                     }}
                     className="w-full text-left px-3 py-2.5 flex items-center justify-between hover:bg-white/5 active:bg-white/10 transition-colors"
@@ -458,6 +469,22 @@ function TemplateExerciseWrapper({
                     <span className="text-[10px] text-wf-gray-500 uppercase tracking-wider ml-2 shrink-0">{suggestion.muscle}</span>
                   </button>
                 ))}
+                {!hasExactMatch && ex.name.trim() && (
+                  <>
+                    <div className="border-t border-white/5" />
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        updateExercise(exIdx, 'nameConfirmed', true);
+                        setActiveAutocomplete(false);
+                      }}
+                      className="w-full text-left px-3 py-2.5 text-wf-red font-semibold text-sm hover:bg-red-500/10 active:bg-red-500/20 transition-colors"
+                    >
+                      + Add "{ex.name.trim()}" as custom exercise
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </div>
