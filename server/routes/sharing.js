@@ -5,6 +5,28 @@ import pool from '../dbPool.js';
 
 const router = Router();
 
+// Get all users for share picker (lightweight — excludes current user and demo accounts)
+router.get('/users', authMiddleware, async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, username, first_name, last_name, profile_photo
+       FROM users
+       WHERE id != $1 AND (email NOT LIKE '%@willfit.demo' OR email IS NULL)
+       ORDER BY first_name, username`,
+      [req.userId]
+    );
+    res.json(rows.map(r => ({
+      id: r.id,
+      username: r.username || '',
+      name: r.first_name && r.last_name ? `${r.first_name} ${r.last_name}` : r.first_name || r.username || 'User',
+      photo: r.profile_photo || null,
+    })));
+  } catch (err) {
+    console.error('Users list error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Send a share
 router.post('/send', authMiddleware, async (req, res) => {
   try {

@@ -139,6 +139,8 @@ export default function Workouts() {
   const [inviteResult, setInviteResult] = useState(null);
   const [pendingShares, setPendingShares] = useState([]);
   const [acceptedSharesMap, setAcceptedSharesMap] = useState({}); // { programId: { senderName, senderUsername, senderPhoto } }
+  const [shareUsers, setShareUsers] = useState([]); // all users for share picker
+  const [shareUserSearch, setShareUserSearch] = useState('');
   // Trainer application state
   const [trainerApp, setTrainerApp] = useState(null); // { status, message, created_at } | null
   const [trainerAppLoading, setTrainerAppLoading] = useState(false);
@@ -287,7 +289,16 @@ export default function Workouts() {
     await tryApply(beginModal, new Date(beginDateInput + 'T00:00:00'));
   }
 
-  // Add single workout to calendar
+  function openShareModal(program) {
+    setShareResult(null); setShareInput(''); setShareUserSearch(''); setShareModal(program);
+    api('/sharing/users').then(setShareUsers).catch(() => setShareUsers([]));
+  }
+
+  function openInviteModal(template) {
+    setInviteResult(null); setInviteInput(''); setShareUserSearch(''); setInviteModal(template);
+    api('/sharing/users').then(setShareUsers).catch(() => setShareUsers([]));
+  }
+
   async function handleShareProgram() {
     if (!shareInput.trim() || !shareModal) return;
     setShareLoading(true);
@@ -938,7 +949,7 @@ export default function Workouts() {
                         {program.userId !== null ? (
                           <>
                             <button
-                              onClick={() => { setShareResult(null); setShareInput(''); setShareModal(program); }}
+                              onClick={() => { openShareModal(program); }}
                               className="w-9 h-9 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0 active:bg-blue-500/40 transition-colors"
                               title="Share workout"
                             >
@@ -957,7 +968,7 @@ export default function Workouts() {
                           </>
                         ) : (
                           <button
-                            onClick={() => { setInviteResult(null); setInviteInput(''); setInviteModal(t); }}
+                            onClick={() => { openInviteModal(t); }}
                             className="w-9 h-9 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0 active:bg-blue-500/40 transition-colors"
                             title="Invite a friend"
                           >
@@ -1873,7 +1884,7 @@ export default function Workouts() {
                               )}
                               <span className="text-xs text-wf-gray-500">From <span className="text-blue-400 font-semibold">{sender?.senderName || 'a user'}{sender?.senderUsername ? ` (@${sender.senderUsername})` : ''}</span></span>
                             </div>
-                            <ProgramCard program={program} idx={idx} onSelect={(id) => { setSelectedProgram(id); setSelectedWeek(null); setBrowseSearch(''); }} onBegin={openBeginProgram} onDelete={handleDeleteProgram} onShare={(p) => { setShareResult(null); setShareInput(''); setShareModal(p); }} />
+                            <ProgramCard program={program} idx={idx} onSelect={(id) => { setSelectedProgram(id); setSelectedWeek(null); setBrowseSearch(''); }} onBegin={openBeginProgram} onDelete={handleDeleteProgram} onShare={(p) => openShareModal(p)} />
                           </div>
                         );
                       })}
@@ -1939,21 +1950,22 @@ export default function Workouts() {
 
         {/* Share Program Modal */}
         {shareModal && (
-          <div className="fixed inset-0 z-50 flex items-start justify-center pt-20" onClick={() => setShareModal(null)}>
+          <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setShareModal(null)}>
             <div className="absolute inset-0 bg-black/70" />
             <div
-              className="relative w-[calc(100%-2rem)] max-w-md bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
+              className="relative w-full bg-wf-gray-900 border-t border-white/10 rounded-t-2xl p-5 pb-8 shadow-2xl animate-drop-down"
               onClick={(e) => e.stopPropagation()}
             >
+              <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4" />
               <h3 className="text-lg font-black text-white mb-1">Share Program</h3>
               <p className="text-sm text-wf-gray-400 mb-4">
-                Share <span className="text-white font-semibold">{shareModal.name}</span> with another user.
+                Share <span className="text-white font-semibold">{shareModal.name}</span> with a friend.
               </p>
               <input
                 type="text"
-                value={shareInput}
-                onChange={(e) => { setShareInput(e.target.value); setShareResult(null); }}
-                placeholder="Enter username, email, or phone"
+                value={shareUserSearch}
+                onChange={(e) => { setShareUserSearch(e.target.value); setShareResult(null); }}
+                placeholder="Search users..."
                 className="w-full glass-input rounded-xl px-4 py-3 text-sm text-white placeholder:text-wf-gray-600 focus:outline-none mb-3"
                 autoFocus
               />
@@ -1962,6 +1974,37 @@ export default function Workouts() {
                   {shareResult.message}
                 </p>
               )}
+              <div className="max-h-64 overflow-y-auto space-y-1 mb-3">
+                {shareUsers
+                  .filter(u => !shareUserSearch.trim() || u.name.toLowerCase().includes(shareUserSearch.toLowerCase()) || u.username.toLowerCase().includes(shareUserSearch.toLowerCase()))
+                  .map(u => (
+                    <button
+                      key={u.id}
+                      onClick={() => { setShareInput(u.username || u.name); setShareResult(null); }}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${shareInput === (u.username || u.name) ? 'bg-blue-500/20 border border-blue-500/40' : 'hover:bg-white/5 active:bg-white/10'}`}
+                    >
+                      {u.photo ? (
+                        <img src={u.photo} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-wf-red to-orange-500 flex items-center justify-center shrink-0">
+                          <span className="text-white text-sm font-bold">{(u.name || 'U')[0].toUpperCase()}</span>
+                        </div>
+                      )}
+                      <div className="text-left min-w-0">
+                        <p className="text-sm font-semibold text-white truncate">{u.name}</p>
+                        {u.username && <p className="text-xs text-wf-gray-500">@{u.username}</p>}
+                      </div>
+                      {shareInput === (u.username || u.name) && (
+                        <svg className="w-5 h-5 text-blue-400 shrink-0 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                        </svg>
+                      )}
+                    </button>
+                  ))}
+                {shareUsers.length === 0 && (
+                  <p className="text-center text-wf-gray-500 text-sm py-4">Loading users...</p>
+                )}
+              </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => setShareModal(null)}
@@ -1983,21 +2026,22 @@ export default function Workouts() {
 
         {/* Invite Workout Modal (browse library) */}
         {inviteModal && (
-          <div className="fixed inset-0 z-50 flex items-start justify-center pt-20" onClick={() => setInviteModal(null)}>
+          <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setInviteModal(null)}>
             <div className="absolute inset-0 bg-black/70" />
             <div
-              className="relative w-[calc(100%-2rem)] max-w-md bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
+              className="relative w-full bg-wf-gray-900 border-t border-white/10 rounded-t-2xl p-5 pb-8 shadow-2xl animate-drop-down"
               onClick={(e) => e.stopPropagation()}
             >
+              <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4" />
               <h3 className="text-lg font-black text-white mb-1">Invite to Workout</h3>
               <p className="text-sm text-wf-gray-400 mb-4">
                 Invite someone to do <span className="text-white font-semibold">{inviteModal.name}</span> with you today.
               </p>
               <input
                 type="text"
-                value={inviteInput}
-                onChange={(e) => { setInviteInput(e.target.value); setInviteResult(null); }}
-                placeholder="Enter username, email, or phone"
+                value={shareUserSearch}
+                onChange={(e) => { setShareUserSearch(e.target.value); setInviteResult(null); }}
+                placeholder="Search users..."
                 className="w-full glass-input rounded-xl px-4 py-3 text-sm text-white placeholder:text-wf-gray-600 focus:outline-none mb-3"
                 autoFocus
               />
@@ -2006,6 +2050,37 @@ export default function Workouts() {
                   {inviteResult.message}
                 </p>
               )}
+              <div className="max-h-64 overflow-y-auto space-y-1 mb-3">
+                {shareUsers
+                  .filter(u => !shareUserSearch.trim() || u.name.toLowerCase().includes(shareUserSearch.toLowerCase()) || u.username.toLowerCase().includes(shareUserSearch.toLowerCase()))
+                  .map(u => (
+                    <button
+                      key={u.id}
+                      onClick={() => { setInviteInput(u.username || u.name); setInviteResult(null); }}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${inviteInput === (u.username || u.name) ? 'bg-blue-500/20 border border-blue-500/40' : 'hover:bg-white/5 active:bg-white/10'}`}
+                    >
+                      {u.photo ? (
+                        <img src={u.photo} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-wf-red to-orange-500 flex items-center justify-center shrink-0">
+                          <span className="text-white text-sm font-bold">{(u.name || 'U')[0].toUpperCase()}</span>
+                        </div>
+                      )}
+                      <div className="text-left min-w-0">
+                        <p className="text-sm font-semibold text-white truncate">{u.name}</p>
+                        {u.username && <p className="text-xs text-wf-gray-500">@{u.username}</p>}
+                      </div>
+                      {inviteInput === (u.username || u.name) && (
+                        <svg className="w-5 h-5 text-blue-400 shrink-0 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                        </svg>
+                      )}
+                    </button>
+                  ))}
+                {shareUsers.length === 0 && (
+                  <p className="text-center text-wf-gray-500 text-sm py-4">Loading users...</p>
+                )}
+              </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => setInviteModal(null)}
