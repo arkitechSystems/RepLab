@@ -262,31 +262,6 @@ export default function Profile() {
               </div>
             )}
             <div className="flex justify-between items-center">
-              <span className="text-wf-gray-400 text-sm">Plan</span>
-              <div className="flex items-center gap-2">
-                <span className={`text-sm font-medium ${
-                  user?.plan === 'Elite' ? 'text-purple-400' :
-                  user?.plan === 'Pro' ? 'text-wf-blue' :
-                  'text-green-400'
-                }`}>{user?.plan || 'Free'}</span>
-                {(!user?.plan || user?.plan === 'Free') ? (
-                  <button
-                    onClick={() => navigate('/upgrade')}
-                    className="text-[10px] font-bold text-yellow-400 bg-yellow-500/10 px-2 py-0.5 rounded-full active:bg-yellow-500/20 transition-colors"
-                  >
-                    Upgrade
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => navigate('/upgrade')}
-                    className="text-[10px] font-bold text-wf-cyan bg-wf-cyan/10 px-2 py-0.5 rounded-full active:bg-wf-cyan/20 transition-colors"
-                  >
-                    Manage
-                  </button>
-                )}
-              </div>
-            </div>
-            <div className="flex justify-between items-center">
               <span className="text-wf-gray-400 text-sm">Account ID</span>
               <span className="text-wf-gray-500 text-sm">#{user?.id}</span>
             </div>
