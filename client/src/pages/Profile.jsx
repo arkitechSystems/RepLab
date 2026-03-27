@@ -243,6 +243,12 @@ export default function Profile() {
 
           {/* Info */}
           <div className="space-y-4 border-t border-white/10 pt-4">
+            {user?.username && (
+              <div className="flex justify-between items-center">
+                <span className="text-wf-gray-400 text-sm">Username</span>
+                <span className="text-white text-sm">@{user.username}</span>
+              </div>
+            )}
             {user?.email && (
               <div className="flex justify-between items-center">
                 <span className="text-wf-gray-400 text-sm">Email</span>
