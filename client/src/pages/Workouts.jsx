@@ -1859,7 +1859,7 @@ export default function Workouts() {
                 type="text"
                 value={shareInput}
                 onChange={(e) => { setShareInput(e.target.value); setShareResult(null); }}
-                placeholder="Enter username or email"
+                placeholder="Enter username, email, or phone"
                 className="w-full glass-input rounded-xl px-4 py-3 text-sm text-white placeholder:text-wf-gray-600 focus:outline-none mb-3"
                 autoFocus
               />

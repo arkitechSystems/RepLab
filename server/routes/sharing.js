@@ -22,7 +22,7 @@ router.post('/send', authMiddleware, async (req, res) => {
     // Find recipient
     const recipient = await db.findUserByUsernameOrEmail(recipientIdentifier);
     if (!recipient) {
-      return res.status(404).json({ error: 'User not found. Check the username or email and try again.' });
+      return res.status(404).json({ error: 'User not found. Check the username, email, or phone number and try again.' });
     }
     if (recipient.id === req.userId) {
       return res.status(400).json({ error: "You can't share a program with yourself" });

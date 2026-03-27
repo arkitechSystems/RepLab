@@ -1106,9 +1106,10 @@ const db = {
   // ── Sharing ──────────────────────────────────────────
 
   async findUserByUsernameOrEmail(identifier) {
+    const trimmed = identifier.trim().toLowerCase().replace(/^@/, '');
     const { rows } = await pool.query(
-      'SELECT id, username, first_name, last_name FROM users WHERE username = $1 OR email = $1 LIMIT 1',
-      [identifier.trim().toLowerCase()]
+      'SELECT id, username, first_name, last_name FROM users WHERE LOWER(username) = $1 OR email = $1 OR phone = $1 LIMIT 1',
+      [trimmed]
     );
     return rows[0] || null;
   },
