@@ -1820,12 +1820,12 @@ export default function Workouts() {
                           <img src={share.senderPhoto} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
                         ) : (
                           <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center shrink-0">
-                            <span className="text-white text-sm font-bold">{(share.senderFirstName || share.senderUsername || '?')[0].toUpperCase()}</span>
+                            <span className="text-white text-sm font-bold">{(share.senderName || 'U')[0].toUpperCase()}</span>
                           </div>
                         )}
                         <div className="min-w-0">
                           <h4 className="text-base font-bold text-white">{share.programName}</h4>
-                          <p className="text-xs text-wf-gray-500 mt-0.5">From <span className="text-blue-400 font-semibold">{share.senderName}</span> <span className="text-wf-gray-600">@{share.senderUsername}</span></p>
+                          <p className="text-xs text-wf-gray-500 mt-0.5">From <span className="text-blue-400 font-semibold">{share.senderUsername ? `@${share.senderUsername}` : share.senderName}</span></p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
@@ -1971,12 +1971,12 @@ export default function Workouts() {
                     <img src={share.senderPhoto} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
                   ) : (
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center shrink-0">
-                      <span className="text-white text-sm font-bold">{(share.senderFirstName || share.senderUsername || '?')[0].toUpperCase()}</span>
+                      <span className="text-white text-sm font-bold">{(share.senderName || 'U')[0].toUpperCase()}</span>
                     </div>
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-white">
-                      <span className="font-semibold">{share.senderName}</span> shared a workout with you
+                      <span className="font-semibold text-blue-400">{share.senderUsername ? `@${share.senderUsername}` : share.senderName}</span> shared a workout with you
                     </p>
                     <p className="text-xs text-wf-gray-500 mt-0.5">{share.programName}</p>
                   </div>
