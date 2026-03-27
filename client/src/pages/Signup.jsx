@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getDeviceInfo } from '../utils/deviceInfo';
@@ -34,8 +34,16 @@ export default function Signup() {
   const [loading, setLoading] = useState(false);
   const { signup } = useAuth();
   const navigate = useNavigate();
+  const errorRef = useRef(null);
 
   const isPhoneIdentifier = isPhone(identifier);
+
+  // Auto-scroll to error when it appears
+  useEffect(() => {
+    if (error && errorRef.current) {
+      errorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [error]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -142,7 +150,7 @@ export default function Signup() {
 
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
           {error && (
-            <div className="bg-red-900/30 border border-red-800 rounded-lg px-4 py-3 text-red-300 text-sm">
+            <div ref={errorRef} className="bg-red-900/30 border border-red-800 rounded-lg px-4 py-3 text-red-300 text-sm">
               {error}
             </div>
           )}
@@ -344,6 +352,12 @@ export default function Signup() {
               className={inputClass}
             />
           </div>
+
+          {error && (
+            <div className="bg-red-900/30 border border-red-800 rounded-lg px-4 py-3 text-red-300 text-sm">
+              {error}
+            </div>
+          )}
 
           <button
             type="submit"
