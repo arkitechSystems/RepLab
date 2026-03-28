@@ -2144,6 +2144,9 @@ export default function WorkoutSession() {
 
 function WorkoutSummary({ template, programName, entries, completedSets, elapsed, formatTime, onClose }) {
   const canvasRef = useRef(null);
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [shareImage, setShareImage] = useState(null);
+  const [generatingImage, setGeneratingImage] = useState(false);
 
   // Confetti
   useEffect(() => {
@@ -2238,6 +2241,350 @@ function WorkoutSummary({ template, programName, entries, completedSets, elapsed
 
   const totalGoalVolume = exerciseStats.reduce((s, ex) => s + ex.totalGoalVol, 0);
 
+  // Helper: draw rounded rectangle (fallback for browsers without ctx.roundRect)
+  function drawRoundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  // Helper: wrap text to fit within maxWidth, returns array of lines
+  function wrapText(ctx, text, maxWidth) {
+    const words = text.split(' ');
+    const lines = [];
+    let currentLine = '';
+    for (const word of words) {
+      const testLine = currentLine ? currentLine + ' ' + word : word;
+      if (ctx.measureText(testLine).width > maxWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    }
+    if (currentLine) lines.push(currentLine);
+    return lines;
+  }
+
+  // Generate shareable workout summary image using HTML Canvas
+  async function generateSummaryImage() {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const W = 1080;
+    const padding = 60;
+    const contentWidth = W - padding * 2;
+    const font = 'system-ui, -apple-system, "Segoe UI", sans-serif';
+
+    // --- Pre-calculate height ---
+    let y = 0;
+    y += padding; // top padding
+    y += 50; // logo
+    y += 20; // spacing after logo
+    if (programName) y += 36; // program name
+    y += 50; // workout name (base)
+    // Measure workout name wrap
+    ctx.canvas.width = W;
+    ctx.font = `bold 44px ${font}`;
+    const nameLines = wrapText(ctx, template.name, contentWidth);
+    if (nameLines.length > 1) y += (nameLines.length - 1) * 52;
+    y += 40; // "Workout Complete" subtitle
+    y += 50; // spacing before stats
+    y += 120; // stats boxes
+    y += 50; // spacing after stats
+
+    // Exercise section height
+    template.exercises.forEach(ex => {
+      if (ex.isSectionHeader) {
+        y += 60; // section header
+        return;
+      }
+      y += 50; // exercise name
+      const exEntries = entries[ex.name] || [];
+      y += ex.sets.length * 38; // each set row
+      y += 24; // spacing after exercise
+    });
+
+    y += 30; // spacing before footer
+    y += 60; // date line
+    y += 40; // footer text
+    y += padding; // bottom padding
+
+    canvas.width = W;
+    canvas.height = y;
+
+    // --- Background ---
+    const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    grad.addColorStop(0, '#0a0a0a');
+    grad.addColorStop(0.5, '#0f0f0f');
+    grad.addColorStop(1, '#111111');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, canvas.height);
+
+    // Subtle red glow at top
+    const glow = ctx.createRadialGradient(W / 2, 0, 0, W / 2, 0, W * 0.6);
+    glow.addColorStop(0, 'rgba(239, 68, 68, 0.08)');
+    glow.addColorStop(1, 'transparent');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, W, canvas.height / 3);
+
+    // Subtle border
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(1, 1, W - 2, canvas.height - 2);
+
+    let curY = padding;
+
+    // --- Logo: "WILL" in white, "FIT" in red ---
+    ctx.font = `900 46px ${font}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const willW = ctx.measureText('WILL').width;
+    const fitW = ctx.measureText('FIT').width;
+    const totalLogoW = willW + fitW + 4;
+    const logoStartX = W / 2 - totalLogoW / 2;
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText('WILL', logoStartX, curY + 25);
+    ctx.fillStyle = '#ef4444';
+    ctx.fillText('FIT', logoStartX + willW + 4, curY + 25);
+    curY += 50;
+
+    // Thin separator line
+    curY += 10;
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padding, curY);
+    ctx.lineTo(W - padding, curY);
+    ctx.stroke();
+    curY += 20;
+
+    // --- Program name ---
+    if (programName) {
+      ctx.font = `500 24px ${font}`;
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.textAlign = 'center';
+      ctx.fillText(programName, W / 2, curY + 14);
+      curY += 36;
+    }
+
+    // --- Workout name (wrapped) ---
+    ctx.font = `bold 44px ${font}`;
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    nameLines.forEach((line, i) => {
+      ctx.fillText(line, W / 2, curY + 30 + i * 52);
+    });
+    curY += 30 + nameLines.length * 52 - 20;
+
+    // --- "Workout Complete" subtitle ---
+    ctx.font = `600 22px ${font}`;
+    ctx.fillStyle = '#22c55e';
+    ctx.textAlign = 'center';
+    ctx.fillText('Workout Complete  \u2713', W / 2, curY + 20);
+    curY += 50;
+
+    // --- Stats boxes (3 columns) ---
+    const boxGap = 20;
+    const boxW = (contentWidth - boxGap * 2) / 3;
+    const boxH = 100;
+    const boxRadius = 16;
+    const statsData = [
+      { label: 'TIME', value: formatTime(elapsed) },
+      { label: 'SETS', value: `${completedSets.size}/${totalSets}` },
+      { label: 'VOLUME', value: `${totalVolume.toLocaleString()} lbs` },
+    ];
+    statsData.forEach((stat, i) => {
+      const bx = padding + i * (boxW + boxGap);
+      const by = curY;
+      // Box background
+      drawRoundRect(ctx, bx, by, boxW, boxH, boxRadius);
+      ctx.fillStyle = 'rgba(255,255,255,0.05)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      // Label
+      ctx.font = `600 16px ${font}`;
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.textAlign = 'center';
+      ctx.fillText(stat.label, bx + boxW / 2, by + 36);
+      // Value
+      ctx.font = `800 28px ${font}`;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(stat.value, bx + boxW / 2, by + 72);
+    });
+    curY += boxH + 50;
+
+    // --- Exercise list ---
+    ctx.textAlign = 'left';
+    template.exercises.forEach(ex => {
+      if (ex.isSectionHeader) {
+        // Section header with red left accent
+        ctx.fillStyle = '#ef4444';
+        drawRoundRect(ctx, padding, curY + 8, 4, 32, 2);
+        ctx.fill();
+        ctx.font = `700 20px ${font}`;
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.fillText(ex.name.toUpperCase(), padding + 16, curY + 30);
+        curY += 60;
+        return;
+      }
+
+      // Exercise name
+      ctx.font = `bold 28px ${font}`;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(ex.name, padding, curY + 30);
+      curY += 50;
+
+      // Set rows
+      const exEntries = entries[ex.name] || [];
+      ex.sets.forEach((set, idx) => {
+        const e = exEntries[idx];
+        const actualWeight = Number(e?.weight) || 0;
+        const actualReps = Number(e?.reps) || 0;
+        const goalReps = set.plannedReps || 0;
+        const weightStr = actualWeight === -1 ? 'BW' : actualWeight > 0 ? `${actualWeight} lbs` : '\u2014';
+        const hitGoal = goalReps > 0 ? actualReps >= goalReps : true;
+
+        // Set number
+        ctx.font = `600 22px ${font}`;
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.fillText(`${idx + 1}`, padding + 8, curY + 24);
+
+        // Weight x Reps
+        ctx.font = `500 22px ${font}`;
+        ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        ctx.fillText(`${weightStr}  \u00D7  ${actualReps} reps`, padding + 50, curY + 24);
+
+        // Goal indicator
+        if (goalReps > 0) {
+          const goalText = `${actualReps}/${goalReps}`;
+          ctx.textAlign = 'right';
+          ctx.font = `700 20px ${font}`;
+          ctx.fillStyle = hitGoal ? '#22c55e' : '#ef4444';
+          ctx.fillText(goalText + (hitGoal ? '  \u2713' : '  \u2717'), W - padding, curY + 24);
+          ctx.textAlign = 'left';
+        }
+
+        curY += 38;
+      });
+
+      curY += 24;
+    });
+
+    // --- Footer separator ---
+    curY += 10;
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padding, curY);
+    ctx.lineTo(W - padding, curY);
+    ctx.stroke();
+    curY += 30;
+
+    // --- Date ---
+    ctx.font = `500 20px ${font}`;
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.textAlign = 'center';
+    ctx.fillText(new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }), W / 2, curY + 14);
+    curY += 40;
+
+    // --- "Logged with WillFit" ---
+    ctx.font = `600 20px ${font}`;
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.fillText('Logged with WillFit', W / 2, curY + 14);
+
+    return canvas.toDataURL('image/png');
+  }
+
+  function dataURLtoBlob(dataURL) {
+    const parts = dataURL.split(',');
+    const mime = parts[0].match(/:(.*?);/)[1];
+    const binary = atob(parts[1]);
+    const array = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) array[i] = binary.charCodeAt(i);
+    return new Blob([array], { type: mime });
+  }
+
+  async function openShareMenu() {
+    setShowShareMenu(true);
+    if (!shareImage) {
+      setGeneratingImage(true);
+      try {
+        const img = await generateSummaryImage();
+        setShareImage(img);
+      } catch (err) {
+        console.error('Failed to generate share image:', err);
+      }
+      setGeneratingImage(false);
+    }
+  }
+
+  async function handleShareImage() {
+    if (!shareImage) return;
+    try {
+      const blob = dataURLtoBlob(shareImage);
+      const file = new File([blob], 'workout-summary.png', { type: 'image/png' });
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], text: 'Check out my workout!' });
+      } else {
+        // Fallback: download
+        handleSaveImage();
+      }
+    } catch {}
+  }
+
+  function handleSaveImage() {
+    if (!shareImage) return;
+    const link = document.createElement('a');
+    link.download = 'workout-summary.png';
+    link.href = shareImage;
+    link.click();
+  }
+
+  async function handleShareText() {
+    const lines = [];
+    if (programName) lines.push(programName);
+    lines.push(`${template.name} \u2014 Workout Complete!`);
+    lines.push(`Time: ${formatTime(elapsed)} | Sets: ${completedSets.size}/${totalSets} | Volume: ${totalVolume.toLocaleString()} lbs`);
+    lines.push('');
+    template.exercises.forEach(ex => {
+      if (ex.isSectionHeader) {
+        lines.push(`\u2014 ${ex.name} \u2014`);
+        if (ex.sectionNotes) lines.push(`  ${ex.sectionNotes}`);
+        return;
+      }
+      const exEntries = entries[ex.name] || [];
+      lines.push(ex.name);
+      if (ex.exerciseDescription) lines.push(`  Note: ${ex.exerciseDescription}`);
+      ex.sets.forEach((set, idx) => {
+        const e = exEntries[idx];
+        const w = Number(e?.weight) === -1 ? 'BW' : Number(e?.weight) > 0 ? `${e.weight} lbs` : '\u2014';
+        const goalReps = set.plannedReps || 0;
+        const actualReps = Number(e?.reps) || 0;
+        const hit = goalReps > 0 && actualReps >= goalReps;
+        lines.push(`  Set ${idx + 1}: ${w} \u00D7 ${actualReps} reps${goalReps ? ` (goal: ${goalReps})` : ''}${hit ? ' \u2713' : ''}`);
+      });
+      lines.push('');
+    });
+    lines.push('Logged with WillFit');
+    const text = lines.join('\n');
+    if (navigator.share) {
+      try { await navigator.share({ text }); } catch {}
+    } else {
+      try { await navigator.clipboard.writeText(text); alert('Copied to clipboard!'); } catch {}
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-[60] flex flex-col">
       {/* Confetti canvas */}
@@ -2260,39 +2607,7 @@ function WorkoutSummary({ template, programName, entries, completedSets, elapsed
               </svg>
             </button>
             <button
-              onClick={async () => {
-                const lines = [];
-                if (programName) lines.push(programName);
-                lines.push(`${template.name} — Workout Complete!`);
-                lines.push(`Time: ${formatTime(elapsed)} | Sets: ${completedSets.size}/${totalSets} | Volume: ${totalVolume.toLocaleString()} lbs`);
-                lines.push('');
-                template.exercises.forEach(ex => {
-                  if (ex.isSectionHeader) {
-                    lines.push(`— ${ex.name} —`);
-                    if (ex.sectionNotes) lines.push(`  ${ex.sectionNotes}`);
-                    return;
-                  }
-                  const exEntries = entries[ex.name] || [];
-                  lines.push(ex.name);
-                  if (ex.exerciseDescription) lines.push(`  Note: ${ex.exerciseDescription}`);
-                  ex.sets.forEach((set, idx) => {
-                    const e = exEntries[idx];
-                    const w = Number(e?.weight) === -1 ? 'BW' : Number(e?.weight) > 0 ? `${e.weight} lbs` : '—';
-                    const goalReps = set.plannedReps || 0;
-                    const actualReps = Number(e?.reps) || 0;
-                    const hit = goalReps > 0 && actualReps >= goalReps;
-                    lines.push(`  Set ${idx + 1}: ${w} × ${actualReps} reps${goalReps ? ` (goal: ${goalReps})` : ''}${hit ? ' ✓' : ''}`);
-                  });
-                  lines.push('');
-                });
-                lines.push('Logged with WillFit 💪');
-                const text = lines.join('\n');
-                if (navigator.share) {
-                  try { await navigator.share({ text }); } catch {}
-                } else {
-                  try { await navigator.clipboard.writeText(text); alert('Copied to clipboard!'); } catch {}
-                }
-              }}
+              onClick={openShareMenu}
               className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90 transition-all"
               title="Share workout summary"
             >
@@ -2448,6 +2763,71 @@ function WorkoutSummary({ template, programName, entries, completedSets, elapsed
           Done
         </button>
       </div>
+
+      {/* Share menu bottom sheet */}
+      {showShareMenu && (
+        <div className="fixed inset-0 z-[70] flex items-end justify-center" onClick={() => setShowShareMenu(false)}>
+          <div className="absolute inset-0 bg-black/60" />
+          <div className="relative w-full bg-wf-gray-900 border-t border-white/10 rounded-t-2xl p-5 pb-24 shadow-2xl animate-drop-down" onClick={e => e.stopPropagation()}>
+            <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4" />
+            <h3 className="text-lg font-black text-white mb-4">Share Workout</h3>
+
+            {/* Image preview */}
+            {generatingImage && (
+              <div className="mb-4 rounded-xl border border-white/10 p-8 flex items-center justify-center">
+                <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                <span className="text-sm text-wf-gray-400 ml-3">Generating image...</span>
+              </div>
+            )}
+            {shareImage && !generatingImage && (
+              <div className="mb-4 rounded-xl overflow-hidden border border-white/10">
+                <img src={shareImage} alt="Workout summary" className="w-full" />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              {/* Share Image */}
+              <button onClick={handleShareImage} disabled={!shareImage} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 active:bg-white/10 transition-colors disabled:opacity-40">
+                <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
+                  <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
+                  </svg>
+                </div>
+                <div className="text-left">
+                  <span className="text-sm font-semibold text-white block">Share Image</span>
+                  <span className="text-xs text-wf-gray-500">Share via Instagram, Messages, etc.</span>
+                </div>
+              </button>
+
+              {/* Save to Camera Roll */}
+              <button onClick={handleSaveImage} disabled={!shareImage} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 active:bg-white/10 transition-colors disabled:opacity-40">
+                <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
+                  <svg className="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                  </svg>
+                </div>
+                <div className="text-left">
+                  <span className="text-sm font-semibold text-white block">Save to Camera Roll</span>
+                  <span className="text-xs text-wf-gray-500">Download image to your device</span>
+                </div>
+              </button>
+
+              {/* Share as Text */}
+              <button onClick={handleShareText} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 active:bg-white/10 transition-colors">
+                <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center shrink-0">
+                  <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+                  </svg>
+                </div>
+                <div className="text-left">
+                  <span className="text-sm font-semibold text-white block">Share as Text</span>
+                  <span className="text-xs text-wf-gray-500">Copy or share text summary</span>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
