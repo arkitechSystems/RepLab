@@ -559,6 +559,7 @@ function adminPage(title, body) {
   <div class="sidebar-links" id="section-system">
     <a href="/admin/health"${title === 'Health' ? ' class="active"' : ''}>Health Check</a>
     <a href="/admin/errors"${title === 'Errors' ? ' class="active"' : ''}>Error Log</a>
+    <a href="/admin/monthly-costs"${title === 'Monthly Costs' ? ' class="active"' : ''}>Monthly Costs</a>
     <a href="/admin/revenue"${title === 'Revenue' ? ' class="active"' : ''}>Revenue</a>
     <a href="/admin/subscriptions"${title === 'Subscriptions' ? ' class="active"' : ''}>Subscriptions</a>
     <a href="/admin/workout-manager"${title === 'Workout Manager' || title === 'Create a Workout' || title === 'View Current Workouts' ? ' class="active"' : ''}>Workout Manager</a>
@@ -830,6 +831,11 @@ router.get('/', adminAuth, async (req, res) => {
       <div class="card-icon">🆕</div>
       <div class="card-title">Custom Exercises</div>
       <div class="card-desc">User-created exercises to review and add to the official library.</div>
+    </a>
+    <a class="card glass" href="/admin/monthly-costs" style="border-color:rgba(59,130,246,0.25);">
+      <div class="card-icon">📋</div>
+      <div class="card-title">Monthly Costs</div>
+      <div class="card-desc">Full breakdown of hosting, App Store, and infrastructure costs.</div>
     </a>
     <a class="card glass" href="/admin/revenue">
       <div class="card-icon">💰</div>
@@ -2022,6 +2028,180 @@ router.get('/active', adminAuth, async (req, res) => {
 });
 
 // ============================================================
+// Monthly Costs Breakdown
+// ============================================================
+router.get('/monthly-costs', adminAuth, (req, res) => {
+  res.send(adminPage('Monthly Costs', `
+  <div class="breadcrumb"><a href="/admin">Dashboard</a> / Monthly Costs</div>
+  <div class="header">
+    <h1>Admin Dashboard</h1>
+    <h2>Monthly Costs</h2>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:24px;">
+    <div class="glass" style="padding:20px;border-left:3px solid #22c55e;">
+      <div style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1.5px;font-weight:600;margin-bottom:8px;">Bare Minimum</div>
+      <div style="font-size:28px;font-weight:800;color:#22c55e;">$22<span style="font-size:14px;color:rgba(255,255,255,0.4);">/mo</span></div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px;">Hosting + Apple Developer</div>
+    </div>
+    <div class="glass" style="padding:20px;border-left:3px solid #3b82f6;">
+      <div style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1.5px;font-weight:600;margin-bottom:8px;">Comfortable Production</div>
+      <div style="font-size:28px;font-weight:800;color:#3b82f6;">$23<span style="font-size:14px;color:rgba(255,255,255,0.4);">/mo</span></div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px;">+ Email + Push Notifications (free tiers)</div>
+    </div>
+    <div class="glass" style="padding:20px;border-left:3px solid #a855f7;">
+      <div style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1.5px;font-weight:600;margin-bottom:8px;">Scaled (1,000+ Users)</div>
+      <div style="font-size:28px;font-weight:800;color:#a855f7;">$113<span style="font-size:14px;color:rgba(255,255,255,0.4);">/mo</span></div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px;">Standard hosting + all paid services</div>
+    </div>
+  </div>
+
+  <div class="glass" style="padding:24px;margin-bottom:24px;">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:#fff;">One-Time Costs</h3>
+    <table style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.1);">
+          <th style="text-align:left;padding:8px 12px;font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;">Item</th>
+          <th style="text-align:right;padding:8px 12px;font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;">Cost</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+          <td style="padding:10px 12px;font-size:13px;color:#fff;">Apple Developer Account</td>
+          <td style="padding:10px 12px;font-size:13px;color:#fff;text-align:right;">$99/year ($8.25/mo)</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 12px;font-size:13px;color:#fff;">Google Play Developer Account</td>
+          <td style="padding:10px 12px;font-size:13px;color:#fff;text-align:right;">$25 one-time</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="glass" style="padding:24px;margin-bottom:24px;">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:#fff;">Hosting &amp; Infrastructure</h3>
+    <table style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.1);">
+          <th style="text-align:left;padding:8px 12px;font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;">Item</th>
+          <th style="text-align:center;padding:8px 12px;font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;">Current</th>
+          <th style="text-align:center;padding:8px 12px;font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;">Production</th>
+          <th style="text-align:center;padding:8px 12px;font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;">Scaled</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+          <td style="padding:10px 12px;font-size:13px;color:#fff;">Render Web Service</td>
+          <td style="padding:10px 12px;font-size:13px;color:#22c55e;text-align:center;">Free (sleeps)</td>
+          <td style="padding:10px 12px;font-size:13px;color:#fff;text-align:center;">$7/mo</td>
+          <td style="padding:10px 12px;font-size:13px;color:#fff;text-align:center;">$25/mo</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+          <td style="padding:10px 12px;font-size:13px;color:#fff;">Render PostgreSQL</td>
+          <td style="padding:10px 12px;font-size:13px;color:#f59e0b;text-align:center;">Free (90-day expiry)</td>
+          <td style="padding:10px 12px;font-size:13px;color:#fff;text-align:center;">$7/mo</td>
+          <td style="padding:10px 12px;font-size:13px;color:#fff;text-align:center;">$25/mo</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+          <td style="padding:10px 12px;font-size:13px;color:#fff;">Custom Domain</td>
+          <td style="padding:10px 12px;font-size:13px;color:#fff;text-align:center;" colspan="3">~$10-15/year</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 12px;font-size:13px;color:#fff;">SSL Certificate</td>
+          <td style="padding:10px 12px;font-size:13px;color:#22c55e;text-align:center;" colspan="3">Free (included by Render)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="glass" style="padding:24px;margin-bottom:24px;">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:#fff;">Apple &amp; Google Fees</h3>
+    <table style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.1);">
+          <th style="text-align:left;padding:8px 12px;font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;">Item</th>
+          <th style="text-align:right;padding:8px 12px;font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;">Cost</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+          <td style="padding:10px 12px;font-size:13px;color:#fff;">Apple Developer Program</td>
+          <td style="padding:10px 12px;font-size:13px;color:#fff;text-align:right;">$99/year ($8.25/mo)</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+          <td style="padding:10px 12px;font-size:13px;color:#fff;">Apple In-App Purchase Cut</td>
+          <td style="padding:10px 12px;font-size:13px;color:#fff;text-align:right;">30% of revenue (15% if &lt;$1M/yr)</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 12px;font-size:13px;color:#fff;">Google Play</td>
+          <td style="padding:10px 12px;font-size:13px;color:#fff;text-align:right;">$25 one-time, then 15% of first $1M</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="glass" style="padding:24px;margin-bottom:24px;">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:#fff;">Optional Services</h3>
+    <table style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.1);">
+          <th style="text-align:left;padding:8px 12px;font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;">Service</th>
+          <th style="text-align:center;padding:8px 12px;font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;">Free Tier</th>
+          <th style="text-align:center;padding:8px 12px;font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;">Paid Tier</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+          <td style="padding:10px 12px;font-size:13px;color:#fff;">Email (Resend/SendGrid)</td>
+          <td style="padding:10px 12px;font-size:13px;color:#22c55e;text-align:center;">100/day free</td>
+          <td style="padding:10px 12px;font-size:13px;color:#fff;text-align:center;">$20/mo</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+          <td style="padding:10px 12px;font-size:13px;color:#fff;">Error Monitoring (Sentry)</td>
+          <td style="padding:10px 12px;font-size:13px;color:#22c55e;text-align:center;">Free tier</td>
+          <td style="padding:10px 12px;font-size:13px;color:#fff;text-align:center;">$26/mo</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+          <td style="padding:10px 12px;font-size:13px;color:#fff;">Push Notifications (OneSignal)</td>
+          <td style="padding:10px 12px;font-size:13px;color:#22c55e;text-align:center;">10K users free</td>
+          <td style="padding:10px 12px;font-size:13px;color:#fff;text-align:center;">$9/mo+</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+          <td style="padding:10px 12px;font-size:13px;color:#fff;">Analytics (PostHog/Mixpanel)</td>
+          <td style="padding:10px 12px;font-size:13px;color:#22c55e;text-align:center;">Free tier</td>
+          <td style="padding:10px 12px;font-size:13px;color:#fff;text-align:center;">Varies</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 12px;font-size:13px;color:#fff;">CDN/Images (Cloudflare)</td>
+          <td style="padding:10px 12px;font-size:13px;color:#22c55e;text-align:center;">Free tier</td>
+          <td style="padding:10px 12px;font-size:13px;color:#fff;text-align:center;">$5/mo+</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="glass" style="padding:24px;margin-bottom:24px;">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:#fff;">Revenue Break-Even</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;">
+      <div style="background:rgba(255,255,255,0.03);border-radius:12px;padding:16px;border:1px solid rgba(255,255,255,0.06);">
+        <div style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Pro Plan ($9.99/mo)</div>
+        <div style="font-size:13px;color:#fff;line-height:1.8;">
+          10 subscribers = <span style="color:#22c55e;font-weight:700;">$70/mo</span> after Apple cut<br>
+          25 subscribers = <span style="color:#22c55e;font-weight:700;">$175/mo</span> after Apple cut
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,0.03);border-radius:12px;padding:16px;border:1px solid rgba(255,255,255,0.06);">
+        <div style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Break-Even Point</div>
+        <div style="font-size:13px;color:#fff;line-height:1.8;">
+          <span style="color:#f59e0b;font-weight:700;">3-4 Pro subscribers</span> covers bare minimum<br>
+          <span style="color:#22c55e;font-weight:700;">12 Pro subscribers</span> covers scaled setup
+        </div>
+      </div>
+    </div>
+  </div>
+  `));
+});
+
 // 11. Revenue Dashboard (Placeholder)
 // ============================================================
 router.get('/revenue', adminAuth, (req, res) => {
