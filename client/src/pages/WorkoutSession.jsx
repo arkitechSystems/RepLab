@@ -2238,15 +2238,43 @@ function WorkoutSummary({ template, entries, completedSets, elapsed, formatTime,
       {/* Content */}
       <div className="relative z-20 flex-1 overflow-y-auto safe-top safe-bottom">
         <div className="px-5 pt-4 pb-24 max-w-lg mx-auto">
-          {/* Close button */}
-          <button
-            onClick={onClose}
-            className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90 transition-all mb-4"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          {/* Top bar: close + share */}
+          <div className="flex items-center justify-between mb-4">
+            <button
+              onClick={onClose}
+              className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90 transition-all"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <button
+              onClick={async () => {
+                const lines = [`${template.name} — Workout Complete!`, `Time: ${formatTime(elapsed)} | Sets: ${completedSets.size}/${totalSets} | Volume: ${totalVolume.toLocaleString()} lbs`, ''];
+                exerciseStats.forEach(ex => {
+                  lines.push(ex.name);
+                  ex.setStats.forEach(ss => {
+                    const w = ss.actualWeight === -1 ? 'BW' : ss.actualWeight > 0 ? `${ss.actualWeight} lbs` : '—';
+                    lines.push(`  Set ${ss.setNumber}: ${w} × ${ss.actualReps || 0} reps${ss.hitGoal ? ' ✓' : ''}`);
+                  });
+                  lines.push('');
+                });
+                lines.push('Logged with WillFit 💪');
+                const text = lines.join('\n');
+                if (navigator.share) {
+                  try { await navigator.share({ text }); } catch {}
+                } else {
+                  try { await navigator.clipboard.writeText(text); alert('Copied to clipboard!'); } catch {}
+                }
+              }}
+              className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90 transition-all"
+              title="Share workout summary"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
+              </svg>
+            </button>
+          </div>
 
           {/* Header */}
           <div className="text-center mb-8">
