@@ -22,20 +22,18 @@ export default function UndoToast({ message, onUndo, onExpire, duration = 4000 }
   }, [duration, onExpire]);
 
   return (
-    <div className="fixed bottom-20 left-4 right-4 z-[70] flex justify-center animate-slide-up">
-      <div className="w-full max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
-        <div className="px-4 py-3 flex items-center justify-between gap-3">
-          <p className="text-sm text-white flex-1 min-w-0 truncate">{message}</p>
-          <button
-            onClick={() => { cancelAnimationFrame(timerRef.current); onUndo(); }}
-            className="text-sm font-bold text-wf-red px-3 py-1.5 rounded-lg bg-wf-red/10 active:bg-wf-red/20 transition-colors shrink-0"
-          >
-            Undo
-          </button>
-        </div>
-        <div className="h-0.5 bg-white/5">
-          <div className="h-full bg-wf-red transition-none" style={{ width: `${progress}%` }} />
-        </div>
+    <div className="my-2 rounded-xl overflow-hidden border border-white/10 bg-wf-gray-900/80 shadow-lg animate-slide-up">
+      <div className="px-4 py-2.5 flex items-center justify-between gap-3">
+        <p className="text-xs text-wf-gray-400 flex-1 min-w-0 truncate">{message}</p>
+        <button
+          onClick={() => { cancelAnimationFrame(timerRef.current); onUndo(); }}
+          className="text-xs font-bold text-wf-red px-3 py-1 rounded-lg bg-wf-red/10 active:bg-wf-red/20 transition-colors shrink-0"
+        >
+          Undo
+        </button>
+      </div>
+      <div className="h-0.5 bg-white/5">
+        <div className="h-full bg-wf-red transition-none" style={{ width: `${progress}%` }} />
       </div>
     </div>
   );

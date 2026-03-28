@@ -699,6 +699,8 @@ export default function WorkoutSession() {
     });
 
     setUndoToast({
+      type: 'set',
+      exerciseName,
       message: `Removed set ${setIdx + 1} from ${exerciseName}`,
       undoFn: () => {
         setPersisted(false);
@@ -817,6 +819,9 @@ export default function WorkoutSession() {
     });
 
     setUndoToast({
+      type: 'exercise',
+      exerciseName,
+      exerciseIndex: exerciseIdx,
       message: `Deleted ${exerciseName}`,
       undoFn: () => {
         setPersisted(false);
@@ -1606,8 +1611,17 @@ export default function WorkoutSession() {
       {/* Exercise Cards */}
       <div className="px-4">
         {template.exercises.map((exercise, idx) => (
-          exercise.isSectionHeader ? (
-            <div key={`section-${idx}`} className="fade-slide-up mb-3" style={{ animationDelay: `${idx * 60}ms` }}>
+          <div key={exercise.isSectionHeader ? `section-${idx}` : exercise.name}>
+            {/* Inline undo toast for deleted exercise — show at this position */}
+            {undoToast && undoToast.type === 'exercise' && undoToast.exerciseIndex === idx && (
+              <UndoToast
+                message={undoToast.message}
+                onUndo={() => { undoToast.undoFn(); setUndoToast(null); }}
+                onExpire={() => setUndoToast(null)}
+              />
+            )}
+            {exercise.isSectionHeader ? (
+            <div className="fade-slide-up mb-3" style={{ animationDelay: `${idx * 60}ms` }}>
               <div className="rounded-xl overflow-hidden border border-white/10 bg-gradient-to-r from-wf-red/10 via-transparent to-transparent">
                 <div className="px-4 py-3 flex items-center gap-3">
                   <div className="w-1 h-6 rounded-full bg-wf-red shrink-0" />
@@ -1623,8 +1637,8 @@ export default function WorkoutSession() {
                 )}
               </div>
             </div>
-          ) :
-          <div key={exercise.name} ref={(el) => { exerciseRefs.current[exercise.name] = el; }} className="fade-slide-up" style={{ animationDelay: `${idx * 60}ms` }}>
+          ) : (
+          <div ref={(el) => { exerciseRefs.current[exercise.name] = el; }} className="fade-slide-up" style={{ animationDelay: `${idx * 60}ms` }}>
             <ExerciseCard
               exercise={exercise}
               entries={entries[exercise.name]}
@@ -1657,6 +1671,24 @@ export default function WorkoutSession() {
               lastEntries={lastSession[exercise.name]}
               dataTutorial={tutorialMode && idx === 1 ? 'exercise-header' : undefined}
             />
+            {/* Inline undo toast for deleted set — show below this exercise */}
+            {undoToast && undoToast.type === 'set' && undoToast.exerciseName === exercise.name && (
+              <UndoToast
+                message={undoToast.message}
+                onUndo={() => { undoToast.undoFn(); setUndoToast(null); }}
+                onExpire={() => setUndoToast(null)}
+              />
+            )}
+          </div>
+          )}
+          {/* Undo toast after last exercise for exercise deletion at end */}
+          {undoToast && undoToast.type === 'exercise' && undoToast.exerciseIndex >= template.exercises.length && idx === template.exercises.length - 1 && (
+            <UndoToast
+              message={undoToast.message}
+              onUndo={() => { undoToast.undoFn(); setUndoToast(null); }}
+              onExpire={() => setUndoToast(null)}
+            />
+          )}
           </div>
         ))}
 
@@ -2095,13 +2127,6 @@ export default function WorkoutSession() {
         );
       })()}
 
-      {undoToast && (
-        <UndoToast
-          message={undoToast.message}
-          onUndo={() => { undoToast.undoFn(); setUndoToast(null); }}
-          onExpire={() => setUndoToast(null)}
-        />
-      )}
     </div>
   );
 }
