@@ -1105,6 +1105,81 @@ export default function Workouts() {
 
         {renderAddWorkoutModals()}
         {renderBeginModals()}
+        {/* Invite Workout Modal (week detail view) */}
+        {inviteModal && (
+          <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setInviteModal(null)}>
+            <div className="absolute inset-0 bg-black/70" />
+            <div
+              className="relative w-full bg-wf-gray-900 border-t border-white/10 rounded-t-2xl p-5 pb-8 shadow-2xl animate-drop-down"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4" />
+              <h3 className="text-lg font-black text-white mb-1">Invite to Workout</h3>
+              <p className="text-sm text-wf-gray-400 mb-4">
+                Invite someone to do <span className="text-white font-semibold">{inviteModal.name}</span> with you today.
+              </p>
+              <input
+                type="text"
+                value={shareUserSearch}
+                onChange={(e) => { setShareUserSearch(e.target.value); setInviteResult(null); }}
+                placeholder="Search users..."
+                className="w-full glass-input rounded-xl px-4 py-3 text-sm text-white placeholder:text-wf-gray-600 focus:outline-none mb-3"
+                autoFocus
+              />
+              {inviteResult && (
+                <p className={`text-sm mb-3 ${inviteResult.success ? 'text-green-400' : 'text-red-400'}`}>
+                  {inviteResult.message}
+                </p>
+              )}
+              <div className="max-h-64 overflow-y-auto space-y-1 mb-3">
+                {shareUsers
+                  .filter(u => !shareUserSearch.trim() || u.name.toLowerCase().includes(shareUserSearch.toLowerCase()) || u.username.toLowerCase().includes(shareUserSearch.toLowerCase()))
+                  .map(u => (
+                    <button
+                      key={u.id}
+                      onClick={() => { setInviteInput(u.username || u.name); setInviteResult(null); }}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${inviteInput === (u.username || u.name) ? 'bg-blue-500/20 border border-blue-500/40' : 'hover:bg-white/5 active:bg-white/10'}`}
+                    >
+                      {u.photo ? (
+                        <img src={u.photo} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-wf-red to-orange-500 flex items-center justify-center shrink-0">
+                          <span className="text-white text-sm font-bold">{(u.name || 'U')[0].toUpperCase()}</span>
+                        </div>
+                      )}
+                      <div className="text-left min-w-0">
+                        <p className="text-sm font-semibold text-white truncate">{u.name}</p>
+                        {u.username && <p className="text-xs text-wf-gray-500">@{u.username}</p>}
+                      </div>
+                      {inviteInput === (u.username || u.name) && (
+                        <svg className="w-5 h-5 text-blue-400 shrink-0 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                        </svg>
+                      )}
+                    </button>
+                  ))}
+                {shareUsers.length === 0 && (
+                  <p className="text-center text-wf-gray-500 text-sm py-4">Loading users...</p>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setInviteModal(null)}
+                  className="flex-1 glass-card text-wf-gray-400 font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSendInvite}
+                  disabled={inviteLoading || !inviteInput.trim()}
+                  className="flex-1 btn-gradient text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all disabled:opacity-50"
+                >
+                  {inviteLoading ? 'Sending...' : 'Send Invite'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
