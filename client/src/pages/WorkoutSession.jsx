@@ -2766,11 +2766,14 @@ function WorkoutSummary({ template, programName, entries, completedSets, elapsed
 
       {/* Share menu bottom sheet */}
       {showShareMenu && (
-        <div className="fixed inset-0 z-[70] flex items-end justify-center" onClick={() => setShowShareMenu(false)}>
+        <div className="fixed inset-0 z-[70] flex flex-col" onClick={() => setShowShareMenu(false)}>
           <div className="absolute inset-0 bg-black/60" />
-          <div className="relative w-full bg-wf-gray-900 border-t border-white/10 rounded-t-2xl p-5 pb-24 shadow-2xl animate-drop-down" onClick={e => e.stopPropagation()}>
-            <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4" />
-            <h3 className="text-lg font-black text-white mb-4">Share Workout</h3>
+          <div className="relative flex-1 flex flex-col mt-12 bg-wf-gray-900 rounded-t-2xl shadow-2xl animate-drop-down overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="shrink-0 pt-3 pb-2 px-5">
+              <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-3" />
+              <h3 className="text-lg font-black text-white">Share Workout</h3>
+            </div>
+            <div className="flex-1 overflow-y-auto px-5 pb-24">
 
             {/* Image preview */}
             {generatingImage && (
@@ -2824,6 +2827,7 @@ function WorkoutSummary({ template, programName, entries, completedSets, elapsed
                   <span className="text-xs text-wf-gray-500">Copy or share text summary</span>
                 </div>
               </button>
+            </div>
             </div>
           </div>
         </div>
