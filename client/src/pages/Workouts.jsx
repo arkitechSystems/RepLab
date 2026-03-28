@@ -477,15 +477,7 @@ export default function Workouts() {
   }
 
   const enrichedPrograms = getEnrichedPrograms();
-  const browsePrograms = enrichedPrograms.filter((p) => p.userId === null).sort((a, b) => {
-    const pinOrder = ["Will's Hypertrophy Program", "ZJ's Workout", "Will's Upper/Lower/PPL"];
-    const aIdx = pinOrder.indexOf(a.name);
-    const bIdx = pinOrder.indexOf(b.name);
-    if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
-    if (aIdx !== -1) return -1;
-    if (bIdx !== -1) return 1;
-    return 0;
-  });
+  const browsePrograms = enrichedPrograms.filter((p) => p.userId === null);
   const myPrograms = enrichedPrograms.filter((p) => p.userId !== null);
 
   function enterEditMode(program) {
