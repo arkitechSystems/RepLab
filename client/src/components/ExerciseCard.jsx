@@ -215,41 +215,6 @@ function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, comp
         </div>
       )}
 
-      {/* Smart Weight Suggestion Banner */}
-      {!isTemplate && !readOnly && weightSuggestion && (
-        <div className={`px-4 py-2 border-b border-white/5 flex items-center justify-between ${
-          weightSuggestion.direction === 'up' ? 'bg-green-500/10' :
-          weightSuggestion.direction === 'hold' ? 'bg-yellow-500/10' :
-          'bg-orange-500/10'
-        }`}>
-          <div className="flex items-center gap-2 min-w-0">
-            <span className={`text-sm shrink-0 ${
-              weightSuggestion.direction === 'up' ? 'text-green-400' :
-              weightSuggestion.direction === 'hold' ? 'text-yellow-400' :
-              'text-orange-400'
-            }`}>
-              {weightSuggestion.direction === 'up' ? '\u2191' : weightSuggestion.direction === 'hold' ? '\u2192' : '\u2193'}
-            </span>
-            <div className="min-w-0">
-              <span className="text-xs text-white font-semibold">
-                {weightSuggestion.direction === 'up' ? `Try ${weightSuggestion.weight} lbs` :
-                 weightSuggestion.direction === 'hold' ? `Hold at ${weightSuggestion.weight} lbs` :
-                 `Drop to ${weightSuggestion.weight} lbs`}
-              </span>
-              <span className="text-[10px] text-wf-gray-400 ml-1.5">{weightSuggestion.reason}</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-1 shrink-0 ml-2">
-            <button
-              type="button"
-              onClick={() => onApplySuggestion(exercise.name, weightSuggestion.weight)}
-              className="h-6 px-2 rounded-full bg-white/10 text-[10px] font-semibold text-white uppercase tracking-wider hover:bg-white/20 active:scale-90 transition-all"
-            >
-              Apply
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Set Controls Subheader */}
       {!readOnly && onAddSet && (
