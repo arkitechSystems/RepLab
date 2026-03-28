@@ -21,6 +21,7 @@ export default function WorkoutSession() {
   const tutorialTemplate = location.state?.tutorialTemplate || null;
   const { exercises: allExercisesFromDB, createCustom } = useExercises();
   const [template, setTemplate] = useState(null);
+  const [programName, setProgramName] = useState('');
   const [pbs, setPbs] = useState({});
   const [entries, setEntries] = useState({});
   const [loading, setLoading] = useState(true);
@@ -359,11 +360,12 @@ export default function WorkoutSession() {
     // Step 2: Load everything from the session — never from the template directly
     async function loadSession() {
       try {
-        // Fetch PBs, schedule, and last session entries in parallel
-        const [pbList, scheduleData, lastEntries] = await Promise.all([
+        // Fetch PBs, schedule, last session entries, and programs in parallel
+        const [pbList, scheduleData, lastEntries, programs] = await Promise.all([
           api(`/pbs?templateId=${templateId}`),
           api('/schedule'),
           api(`/sessions/last-entries/${templateId}`).catch(() => ({})),
+          api('/programs').catch(() => []),
         ]);
         setLastSession(lastEntries || {});
         const pbMap = {};
@@ -415,6 +417,14 @@ export default function WorkoutSession() {
           exercises: wd.exercises,
         };
         setTemplate(sessionTemplate);
+
+        // Look up program name
+        const tmplList = await api('/templates').catch(() => []);
+        const tmplInfo = tmplList.find(t => t.id === Number(templateId));
+        if (tmplInfo?.programId && programs.length > 0) {
+          const prog = programs.find(p => p.id === tmplInfo.programId);
+          if (prog) setProgramName(prog.name);
+        }
 
         // Restore entries from session_entries
         const saved = {};
@@ -1885,6 +1895,7 @@ export default function WorkoutSession() {
       {showSummary && (
         <WorkoutSummary
           template={template}
+          programName={programName}
           entries={entries}
           completedSets={completedSets}
           elapsed={tutorialMode ? 2717 : elapsed}
@@ -2131,7 +2142,7 @@ export default function WorkoutSession() {
   );
 }
 
-function WorkoutSummary({ template, entries, completedSets, elapsed, formatTime, onClose }) {
+function WorkoutSummary({ template, programName, entries, completedSets, elapsed, formatTime, onClose }) {
   const canvasRef = useRef(null);
 
   // Confetti
@@ -2250,12 +2261,27 @@ function WorkoutSummary({ template, entries, completedSets, elapsed, formatTime,
             </button>
             <button
               onClick={async () => {
-                const lines = [`${template.name} — Workout Complete!`, `Time: ${formatTime(elapsed)} | Sets: ${completedSets.size}/${totalSets} | Volume: ${totalVolume.toLocaleString()} lbs`, ''];
-                exerciseStats.forEach(ex => {
+                const lines = [];
+                if (programName) lines.push(programName);
+                lines.push(`${template.name} — Workout Complete!`);
+                lines.push(`Time: ${formatTime(elapsed)} | Sets: ${completedSets.size}/${totalSets} | Volume: ${totalVolume.toLocaleString()} lbs`);
+                lines.push('');
+                template.exercises.forEach(ex => {
+                  if (ex.isSectionHeader) {
+                    lines.push(`— ${ex.name} —`);
+                    if (ex.sectionNotes) lines.push(`  ${ex.sectionNotes}`);
+                    return;
+                  }
+                  const exEntries = entries[ex.name] || [];
                   lines.push(ex.name);
-                  ex.setStats.forEach(ss => {
-                    const w = ss.actualWeight === -1 ? 'BW' : ss.actualWeight > 0 ? `${ss.actualWeight} lbs` : '—';
-                    lines.push(`  Set ${ss.setNumber}: ${w} × ${ss.actualReps || 0} reps${ss.hitGoal ? ' ✓' : ''}`);
+                  if (ex.exerciseDescription) lines.push(`  Note: ${ex.exerciseDescription}`);
+                  ex.sets.forEach((set, idx) => {
+                    const e = exEntries[idx];
+                    const w = Number(e?.weight) === -1 ? 'BW' : Number(e?.weight) > 0 ? `${e.weight} lbs` : '—';
+                    const goalReps = set.plannedReps || 0;
+                    const actualReps = Number(e?.reps) || 0;
+                    const hit = goalReps > 0 && actualReps >= goalReps;
+                    lines.push(`  Set ${idx + 1}: ${w} × ${actualReps} reps${goalReps ? ` (goal: ${goalReps})` : ''}${hit ? ' ✓' : ''}`);
                   });
                   lines.push('');
                 });
