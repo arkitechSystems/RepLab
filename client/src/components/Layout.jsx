@@ -26,7 +26,7 @@ export default function Layout() {
           </span>
         </div>
       )}
-      <main className={`grow shrink-0 basis-auto relative z-10 ${isDashboardEmbed ? 'pb-4' : 'pb-20'}`}>
+      <main className={`grow shrink-0 basis-auto relative z-10 ${isDashboardEmbed ? 'pb-4' : 'pb-24'}`}>
         <div className="page-fade-in" key={location.pathname}>
           <Outlet />
         </div>

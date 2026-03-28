@@ -790,7 +790,7 @@ function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelec
         </div>
 
         {/* Exercise List */}
-        <div className="flex-1 overflow-y-auto px-4 pb-6">
+        <div className="flex-1 overflow-y-auto px-4 pb-20">
           {/* Custom exercise option — show when search doesn't match exactly, or when few results remain */}
           {search.trim() && (!allExercises.some((ex) => ex.name.toLowerCase() === search.trim().toLowerCase()) || filtered.length < 3) && (
             <>

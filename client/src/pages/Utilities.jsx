@@ -387,7 +387,7 @@ function HIITTimer({ onClose }) {
 
   if (setup) {
     return (
-      <div className="fixed inset-x-0 top-[40px] bottom-0 z-50 bg-black flex flex-col">
+      <div className="fixed inset-x-0 top-[40px] bottom-0 z-50 bg-black flex flex-col safe-bottom">
         {/* Header */}
         <div className="px-4 pt-3 pb-2 flex items-center justify-between">
           <button onClick={onClose} className="text-wf-red text-sm font-medium flex items-center gap-1 active:opacity-70">
@@ -662,7 +662,7 @@ function OneRepMaxEstimator({ onClose }) {
   })).filter((cat) => cat.exercises.length > 0);
 
   return (
-    <div className="fixed inset-x-0 top-[40px] bottom-0 z-50 bg-black flex flex-col">
+    <div className="fixed inset-x-0 top-[40px] bottom-0 z-50 bg-black flex flex-col safe-bottom">
       <div className="px-4 pt-3 pb-2 flex items-center justify-between">
         <button onClick={onClose} className="text-wf-red text-sm font-medium flex items-center gap-1 active:opacity-70">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1013,7 +1013,7 @@ export default function Utilities() {
       </div>
 
       {showPRs && (
-        <div className="fixed inset-x-0 top-[40px] bottom-0 z-50 bg-black flex flex-col">
+        <div className="fixed inset-x-0 top-[40px] bottom-0 z-50 bg-black flex flex-col safe-bottom">
           <div className="px-4 pt-3 pb-2 flex items-center justify-between">
             <button onClick={() => setShowPRs(false)} className="text-wf-red text-sm font-medium flex items-center gap-1 active:opacity-70">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
