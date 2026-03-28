@@ -1110,7 +1110,7 @@ export default function Workouts() {
           <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setInviteModal(null)}>
             <div className="absolute inset-0 bg-black/70" />
             <div
-              className="relative w-full bg-wf-gray-900 border-t border-white/10 rounded-t-2xl p-5 pb-8 shadow-2xl animate-drop-down"
+              className="relative w-full bg-wf-gray-900 border-t border-white/10 rounded-t-2xl p-5 pb-24 shadow-2xl animate-drop-down"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4" />
@@ -2065,7 +2065,7 @@ export default function Workouts() {
           <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setShareModal(null)}>
             <div className="absolute inset-0 bg-black/70" />
             <div
-              className="relative w-full bg-wf-gray-900 border-t border-white/10 rounded-t-2xl p-5 pb-8 shadow-2xl animate-drop-down"
+              className="relative w-full bg-wf-gray-900 border-t border-white/10 rounded-t-2xl p-5 pb-24 shadow-2xl animate-drop-down"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4" />
@@ -2141,7 +2141,7 @@ export default function Workouts() {
           <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setInviteModal(null)}>
             <div className="absolute inset-0 bg-black/70" />
             <div
-              className="relative w-full bg-wf-gray-900 border-t border-white/10 rounded-t-2xl p-5 pb-8 shadow-2xl animate-drop-down"
+              className="relative w-full bg-wf-gray-900 border-t border-white/10 rounded-t-2xl p-5 pb-24 shadow-2xl animate-drop-down"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4" />
