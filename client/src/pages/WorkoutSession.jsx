@@ -2543,8 +2543,17 @@ function WorkoutSummary({ template, programName, entries, completedSets, elapsed
     } catch {}
   }
 
-  function handleSaveImage() {
+  async function handleSaveImage() {
     if (!shareImage) return;
+    try {
+      const blob = dataURLtoBlob(shareImage);
+      const file = new File([blob], 'workout-summary.png', { type: 'image/png' });
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file] });
+        return;
+      }
+    } catch {}
+    // Fallback: file download on desktop
     const link = document.createElement('a');
     link.download = 'workout-summary.png';
     link.href = shareImage;
