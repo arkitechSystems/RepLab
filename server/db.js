@@ -340,6 +340,7 @@ const db = {
           setNumber: ex.set_number,
           plannedReps: ex.planned_reps,
           suggestedWeight: Number(ex.suggested_weight),
+          setType: ex.set_type || 'straight',
         });
       }
 

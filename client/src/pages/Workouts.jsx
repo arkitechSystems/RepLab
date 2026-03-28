@@ -1054,20 +1054,32 @@ export default function Workouts() {
                             </button>
                             {isExpanded && (
                               <div className="border-t border-white/5 px-3.5 py-2.5 space-y-1.5 bg-white/[0.02]">
-                                {sets.map((set, sIdx) => (
-                                  <div key={sIdx} className="flex items-center justify-between py-1.5">
-                                    <span className="text-xs text-wf-gray-500 font-bold">Set {sIdx + 1}</span>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-sm font-bold text-white">
-                                        {set.suggestedWeight ? `${set.suggestedWeight} lbs` : '—'}
-                                      </span>
-                                      <span className="text-xs text-wf-gray-600">&times;</span>
-                                      <span className="text-sm font-bold text-wf-red">
-                                        {set.plannedReps || '—'} reps
-                                      </span>
+                                {sets.map((set, sIdx) => {
+                                  const typeLabel = set.setType === 'warm_up' ? 'WU' : set.setType === 'touch_up' ? 'TU' : set.setType === 'drop' ? 'DS' : set.setType === 'rest_pause' ? 'RP' : set.setType === 'superset' ? 'SS' : set.setType === 'alternating' ? 'Alt' : set.setType === 'giant' ? 'Gia' : set.setType === 'pre_exhaust' ? 'PrEx' : 'REG';
+                                  const isWarmup = set.setType === 'warm_up' || set.setType === 'touch_up';
+                                  return (
+                                    <div key={sIdx} className="flex items-center justify-between py-1.5">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs text-wf-gray-500 font-bold w-8">Set {sIdx + 1}</span>
+                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isWarmup ? 'bg-yellow-500/15 text-yellow-400' : 'bg-white/5 text-wf-gray-400'}`}>{typeLabel}</span>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-sm font-bold text-white">
+                                          {set.suggestedWeight ? `${set.suggestedWeight} lbs` : '—'}
+                                        </span>
+                                        <span className="text-xs text-wf-gray-600">&times;</span>
+                                        <span className="text-sm font-bold text-wf-red">
+                                          {set.plannedReps || '—'} reps
+                                        </span>
+                                      </div>
                                     </div>
+                                  );
+                                })}
+                                {ex.exerciseDescription && (
+                                  <div className="pt-2 mt-1 border-t border-white/5">
+                                    <p className="text-[11px] text-wf-gray-500 italic leading-relaxed">{ex.exerciseDescription}</p>
                                   </div>
-                                ))}
+                                )}
                               </div>
                             )}
                           </div>
