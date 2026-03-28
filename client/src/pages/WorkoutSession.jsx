@@ -2204,6 +2204,8 @@ function WorkoutSummary({ template, entries, completedSets, elapsed, formatTime,
     }, 0);
   }, 0);
 
+  const [expandedSummary, setExpandedSummary] = useState(new Set());
+
   // Per-exercise data with per-set volume breakdown (goal volume vs actual volume)
   const exerciseStats = realExercises.map((ex) => {
     const exEntries = entries[ex.name] || [];
@@ -2214,7 +2216,9 @@ function WorkoutSummary({ template, entries, completedSets, elapsed, formatTime,
       const actualWeight = Number(exEntries[idx]?.weight) || 0;
       const actualReps = Number(exEntries[idx]?.reps) || 0;
       const actualVolume = actualWeight > 0 ? actualWeight * actualReps : 0;
-      return { setNumber: set.setNumber, goalVolume, actualVolume, goalReps, actualReps, goalWeight, actualWeight };
+      const setType = exEntries[idx]?.setType || set.setType || ex.setType || 'straight';
+      const hitGoal = goalReps > 0 ? actualReps >= goalReps : true;
+      return { setNumber: set.setNumber, goalVolume, actualVolume, goalReps, actualReps, goalWeight, actualWeight, setType, hitGoal };
     });
     const totalGoalVol = setStats.reduce((s, ss) => s + ss.goalVolume, 0);
     const totalActualVol = setStats.reduce((s, ss) => s + ss.actualVolume, 0);
@@ -2284,42 +2288,96 @@ function WorkoutSummary({ template, entries, completedSets, elapsed, formatTime,
               const volDiff = ex.totalActualVol - ex.totalGoalVol;
               const volSign = volDiff > 0 ? '+' : '';
               const volColor = volDiff > 0 ? 'text-green-400' : volDiff === 0 ? 'text-yellow-400' : 'text-red-400';
+              const isExpanded = expandedSummary.has(ex.name);
               return (
-              <div key={ex.name} className="glass-card rounded-xl px-4 py-3">
-                <div className="flex items-center justify-between mb-2.5">
-                  <span className="text-sm font-medium text-white truncate mr-2">{ex.name}</span>
-                  <span className={`text-xs tabular-nums shrink-0 font-semibold ${volColor}`}>
-                    {volSign}{volDiff.toLocaleString()} lbs
-                  </span>
-                </div>
-                <div className="space-y-1.5">
-                  {ex.setStats.map((ss) => {
-                    const maxRatio = 1.25;
-                    const ratio = ss.goalVolume > 0 ? ss.actualVolume / ss.goalVolume : 0;
-                    const barPct = Math.min(100, (ratio / maxRatio) * 100);
-                    const tickPos = (1 / maxRatio) * 100; // 80%
-                    const barColor = ratio > 1 ? 'bg-green-500' : ratio === 1 ? 'bg-yellow-500' : 'bg-red-500';
-
-                    return (
-                      <div key={ss.setNumber} className="flex items-center gap-2">
-                        <span className="text-[10px] text-wf-gray-500 w-5 shrink-0 text-right tabular-nums">{ss.setNumber}</span>
-                        <div className="relative flex-1 h-2 rounded-full bg-white/10 overflow-hidden">
-                          <div
-                            className={`absolute inset-y-0 left-0 rounded-full transition-all duration-700 ease-out ${barColor}`}
-                            style={{ width: `${barPct}%` }}
-                          />
-                          <div
-                            className="absolute top-0 bottom-0 w-0.5 bg-white/50"
-                            style={{ left: `${tickPos}%` }}
-                          />
-                        </div>
-                        <span className="text-[10px] text-wf-gray-400 w-20 shrink-0 text-right tabular-nums">
-                          {ss.actualVolume.toLocaleString()}/{ss.goalVolume.toLocaleString()}
-                        </span>
-                      </div>
-                    );
+              <div key={ex.name} className="glass-card rounded-xl overflow-hidden">
+                <button
+                  onClick={() => setExpandedSummary(prev => {
+                    const next = new Set(prev);
+                    if (next.has(ex.name)) next.delete(ex.name); else next.add(ex.name);
+                    return next;
                   })}
-                </div>
+                  className="w-full text-left px-4 py-3 active:bg-white/5 transition-colors"
+                >
+                  <div className="flex items-center justify-between mb-2.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-sm font-medium text-white truncate">{ex.name}</span>
+                      <svg className={`w-3.5 h-3.5 text-wf-gray-500 transition-transform shrink-0 ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                      </svg>
+                    </div>
+                    <span className={`text-xs tabular-nums shrink-0 font-semibold ${volColor}`}>
+                      {volSign}{volDiff.toLocaleString()} lbs
+                    </span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {ex.setStats.map((ss) => {
+                      const maxRatio = 1.25;
+                      const ratio = ss.goalVolume > 0 ? ss.actualVolume / ss.goalVolume : 0;
+                      const barPct = Math.min(100, (ratio / maxRatio) * 100);
+                      const tickPos = (1 / maxRatio) * 100;
+                      const barColor = ratio > 1 ? 'bg-green-500' : ratio === 1 ? 'bg-yellow-500' : 'bg-red-500';
+
+                      return (
+                        <div key={ss.setNumber} className="flex items-center gap-2">
+                          <span className="text-[10px] text-wf-gray-500 w-5 shrink-0 text-right tabular-nums">{ss.setNumber}</span>
+                          <div className="relative flex-1 h-2 rounded-full bg-white/10 overflow-hidden">
+                            <div
+                              className={`absolute inset-y-0 left-0 rounded-full transition-all duration-700 ease-out ${barColor}`}
+                              style={{ width: `${barPct}%` }}
+                            />
+                            <div
+                              className="absolute top-0 bottom-0 w-0.5 bg-white/50"
+                              style={{ left: `${tickPos}%` }}
+                            />
+                          </div>
+                          <span className="text-[10px] text-wf-gray-400 w-20 shrink-0 text-right tabular-nums">
+                            {ss.actualVolume.toLocaleString()}/{ss.goalVolume.toLocaleString()}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </button>
+                {isExpanded && (
+                  <div className="border-t border-white/5 px-4 py-3 space-y-2 bg-white/[0.02]">
+                    {/* Column headers */}
+                    <div className="flex items-center text-[9px] text-wf-gray-500 uppercase tracking-widest font-semibold">
+                      <span className="w-8">Set</span>
+                      <span className="w-10">Type</span>
+                      <span className="flex-1 text-center">Weight</span>
+                      <span className="w-16 text-center">Goal</span>
+                      <span className="w-16 text-center">Actual</span>
+                      <span className="w-6" />
+                    </div>
+                    {ex.setStats.map((ss) => {
+                      const typeLabel = ss.setType === 'warm_up' ? 'WU' : ss.setType === 'touch_up' ? 'TU' : ss.setType === 'drop' ? 'DS' : ss.setType === 'rest_pause' ? 'RP' : ss.setType === 'superset' ? 'SS' : ss.setType === 'alternating' ? 'Alt' : ss.setType === 'giant' ? 'Gia' : ss.setType === 'pre_exhaust' ? 'PrEx' : 'REG';
+                      const isWarmup = ss.setType === 'warm_up' || ss.setType === 'touch_up';
+                      return (
+                        <div key={ss.setNumber} className="flex items-center py-1.5">
+                          <span className="w-8 text-xs text-wf-gray-500 font-bold tabular-nums">{ss.setNumber}</span>
+                          <span className={`w-10 text-[10px] font-bold ${isWarmup ? 'text-yellow-400' : 'text-wf-gray-400'}`}>{typeLabel}</span>
+                          <span className="flex-1 text-center text-xs text-white font-semibold tabular-nums">
+                            {ss.actualWeight === -1 ? 'BW' : ss.actualWeight > 0 ? `${ss.actualWeight}` : ss.goalWeight > 0 ? `${ss.goalWeight}` : '—'}
+                          </span>
+                          <span className="w-16 text-center text-xs text-wf-gray-500 tabular-nums">{ss.goalReps || '—'}</span>
+                          <span className={`w-16 text-center text-xs font-bold tabular-nums ${ss.hitGoal ? 'text-green-400' : 'text-red-400'}`}>{ss.actualReps || '—'}</span>
+                          <span className="w-6 text-center">
+                            {ss.hitGoal ? (
+                              <svg className="w-3.5 h-3.5 text-green-400 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                              </svg>
+                            ) : ss.actualReps > 0 ? (
+                              <svg className="w-3.5 h-3.5 text-red-400 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                              </svg>
+                            ) : null}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
               );
             })}
