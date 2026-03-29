@@ -2571,26 +2571,22 @@ export default function Workouts() {
           </div>
         ) : (
           <div className="space-y-4 pb-4">
-            {/* Streak Card */}
-            {streak > 0 && (
-              <div className="glass-card rounded-2xl p-4 fade-slide-up flex items-center gap-4 border-l-4 border-orange-500">
-                <div className="w-14 h-14 rounded-full bg-orange-500/15 flex items-center justify-center shrink-0">
-                  <span className="text-2xl">🔥</span>
+            {/* Featured Workouts card */}
+            <div
+              className="w-full text-left glass-card rounded-2xl overflow-hidden fade-slide-up"
+              style={{ animationDelay: '0ms' }}
+            >
+              <div className="h-1.5 bg-purple-500" />
+              <div className="p-5">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-black text-white tracking-tight">Featured Workouts</h2>
+                  <span className="px-2 py-0.5 rounded-full bg-purple-500/15 border border-purple-500/30 text-[10px] font-bold text-purple-400 uppercase tracking-wider">
+                    Coming Soon
+                  </span>
                 </div>
-                <div>
-                  <h3 className="text-lg font-black text-white">
-                    {streak} Day Streak{streak >= 7 ? '!' : ''}
-                  </h3>
-                  <p className="text-xs text-wf-gray-400 mt-0.5">
-                    {streak === 1 ? "You worked out today — keep it going!" :
-                     streak < 7 ? `${streak} days in a row — keep pushing!` :
-                     streak < 14 ? "A full week strong — on fire!" :
-                     streak < 30 ? `${streak} days — unstoppable!` :
-                     `${streak} days — legendary consistency!`}
-                  </p>
-                </div>
+                <p className="text-wf-gray-400 text-sm mt-1">Curated workouts from top trainers</p>
               </div>
-            )}
+            </div>
 
             {/* Browse Workout Library card */}
             <div
@@ -2643,23 +2639,26 @@ export default function Workouts() {
               </div>
             </div>
 
-
-            {/* Featured Workouts card */}
-            <div
-              className="w-full text-left glass-card rounded-2xl overflow-hidden fade-slide-up"
-              style={{ animationDelay: '0ms' }}
-            >
-              <div className="h-1.5 bg-purple-500" />
-              <div className="p-5">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-black text-white tracking-tight">Featured Workouts</h2>
-                  <span className="px-2 py-0.5 rounded-full bg-purple-500/15 border border-purple-500/30 text-[10px] font-bold text-purple-400 uppercase tracking-wider">
-                    Coming Soon
-                  </span>
+            {/* Streak Card */}
+            {streak > 0 && (
+              <div className="glass-card rounded-2xl p-4 fade-slide-up flex items-center gap-4 border-l-4 border-orange-500">
+                <div className="w-14 h-14 rounded-full bg-orange-500/15 flex items-center justify-center shrink-0">
+                  <span className="text-2xl">🔥</span>
                 </div>
-                <p className="text-wf-gray-400 text-sm mt-1">Curated workouts from top trainers</p>
+                <div>
+                  <h3 className="text-lg font-black text-white">
+                    {streak} Day Streak{streak >= 7 ? '!' : ''}
+                  </h3>
+                  <p className="text-xs text-wf-gray-400 mt-0.5">
+                    {streak === 1 ? "You worked out today — keep it going!" :
+                     streak < 7 ? `${streak} days in a row — keep pushing!` :
+                     streak < 14 ? "A full week strong — on fire!" :
+                     streak < 30 ? `${streak} days — unstoppable!` :
+                     `${streak} days — legendary consistency!`}
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Challenges card */}
             <div
