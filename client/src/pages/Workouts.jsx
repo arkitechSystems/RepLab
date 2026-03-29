@@ -1441,10 +1441,10 @@ export default function Workouts() {
     return (
       <>
         {addWorkoutModal && !addConflictInfo && (
-          <div className={`fixed inset-0 flex ${tutorial.active ? 'z-[200] items-center justify-center px-5' : 'z-50 items-end'}`} onClick={closeAddWorkoutModal}>
+          <div className={`fixed inset-0 flex ${tutorial.active ? 'z-[200] items-center justify-center px-5' : 'z-50 items-start justify-center pt-24 px-5'}`} onClick={closeAddWorkoutModal}>
             <div className="absolute inset-0 bg-black/60" />
             <div
-              className={`relative w-full bg-wf-gray-900 ${tutorial.active ? 'max-w-sm border border-white/10 rounded-2xl p-5 shadow-2xl' : 'border-t border-white/10 rounded-t-2xl p-5 pb-24 animate-drop-down'}`}
+              className={`relative w-full bg-wf-gray-900 ${tutorial.active ? 'max-w-sm border border-white/10 rounded-2xl p-5 shadow-2xl' : 'max-w-sm border border-white/10 rounded-2xl p-5 shadow-2xl animate-drop-down'}`}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-5" />
