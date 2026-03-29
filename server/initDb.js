@@ -50,6 +50,8 @@ export default async function initDb() {
 
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT`);
 
+  await pool.query(`ALTER TABLE programs ADD COLUMN IF NOT EXISTS program_type TEXT DEFAULT 'other'`);
+
   // Role column for trainer/client designation (admin-set)
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'client'`);
 

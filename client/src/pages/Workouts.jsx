@@ -111,6 +111,7 @@ export default function Workouts() {
   const [expandedExercises, setExpandedExercises] = useState(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [browseSearch, setBrowseSearch] = useState('');
+  const [browseFilter, setBrowseFilter] = useState('all');
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [streak, setStreak] = useState(0);
@@ -1974,27 +1975,37 @@ export default function Workouts() {
 
         {/* Filter toggles (browse only) */}
         {isBrowse && (
-          <div className="px-4 mb-3 flex gap-2">
-            <button className="text-xs font-medium px-3 py-1.5 rounded-full bg-white/10 text-wf-gray-400 border border-white/10 active:bg-white/20 transition-all flex items-center gap-1">
-              Strength
-              <span className="text-[9px] font-bold text-yellow-400 bg-yellow-500/15 px-1.5 py-0.5 rounded-full">PRO</span>
-            </button>
-            <button className="text-xs font-medium px-3 py-1.5 rounded-full bg-white/10 text-wf-gray-400 border border-white/10 active:bg-white/20 transition-all flex items-center gap-1">
-              Hypertrophy
-              <span className="text-[9px] font-bold text-yellow-400 bg-yellow-500/15 px-1.5 py-0.5 rounded-full">PRO</span>
-            </button>
-            <button className="text-xs font-medium px-3 py-1.5 rounded-full bg-white/10 text-wf-gray-400 border border-white/10 active:bg-white/20 transition-all flex items-center gap-1">
-              Beginner Friendly
-              <span className="text-[9px] font-bold text-yellow-400 bg-yellow-500/15 px-1.5 py-0.5 rounded-full">PRO</span>
-            </button>
+          <div className="flex gap-2 overflow-x-auto pb-2 mb-3 px-4 -mx-4 scrollbar-hide">
+            {[
+              { value: 'all', label: 'All' },
+              { value: 'strength', label: 'Strength' },
+              { value: 'hypertrophy', label: 'Hypertrophy' },
+              { value: 'hybrid', label: 'Hybrid' },
+              { value: 'conditioning', label: 'Conditioning' },
+            ].map(f => (
+              <button
+                key={f.value}
+                onClick={() => setBrowseFilter(f.value)}
+                className={`shrink-0 px-4 py-2 rounded-full text-xs font-semibold transition-all ${
+                  browseFilter === f.value
+                    ? 'bg-wf-red text-white'
+                    : 'bg-white/5 text-wf-gray-400 active:bg-white/10'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
           </div>
         )}
 
         <div className="px-4">
           {(() => {
-            const filtered = isBrowse && browseSearch.trim()
-              ? groupPrograms.filter((p) => p.name.toLowerCase().includes(browseSearch.toLowerCase()))
+            const typeFiltered = isBrowse && browseFilter !== 'all'
+              ? groupPrograms.filter((p) => p.programType === browseFilter)
               : groupPrograms;
+            const filtered = isBrowse && browseSearch.trim()
+              ? typeFiltered.filter((p) => p.name.toLowerCase().includes(browseSearch.toLowerCase()))
+              : typeFiltered;
 
             // Split into own programs and shared programs (My Workouts only)
             const ownPrograms = isBrowse ? filtered : filtered.filter((p) => !acceptedSharesMap[p.id]);
@@ -2553,91 +2564,6 @@ export default function Workouts() {
               </div>
             )}
 
-            {/* Featured Workouts video card */}
-            <div
-              onClick={() => isPremium ? setSelectedGroup('featured') : setShowPremiumGate(true)}
-              className="w-full rounded-2xl overflow-hidden fade-slide-up relative cursor-pointer active:scale-[0.98] transition-transform"
-              style={{ animationDelay: '0ms', minHeight: '140px' }}
-            >
-              {/* Background video — starts at 7s, loops back before last 6s */}
-              <video
-                ref={(el) => {
-                  if (!el) return;
-                  el.currentTime = 7;
-                  el.ontimeupdate = () => {
-                    if (el.duration && el.currentTime >= el.duration - 6) {
-                      el.currentTime = 7;
-                    }
-                  };
-                  // iOS fallback: try to play programmatically
-                  el.play().catch(() => {});
-                }}
-                className="absolute inset-0 w-full h-full object-cover"
-                autoPlay
-                loop
-                muted
-                playsInline
-                webkit-playsinline=""
-                preload="auto"
-                src="/Gym cinematic promotion video.mp4"
-              />
-              {/* Dark overlay for text readability */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
-              {/* Card content */}
-              <div className="relative z-10 p-5 flex flex-col justify-end h-full" style={{ minHeight: '140px' }}>
-                <div className="mt-auto">
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-black text-white tracking-tight drop-shadow-lg">Featured Workouts</h2>
-                    {!isPremium && (
-                      <span className="px-2 py-0.5 rounded-full bg-yellow-500/20 border border-yellow-500/40 text-[10px] font-bold text-yellow-400 uppercase tracking-wider">
-                        Pro
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-white/70 text-sm mt-1 drop-shadow">
-                    View the latest drops
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Premium Gate Modal */}
-            {showPremiumGate && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center px-5" onClick={() => setShowPremiumGate(false)}>
-                <div className="absolute inset-0 bg-black/70" />
-                <div
-                  className="relative w-full max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl p-6 shadow-2xl"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="text-center mb-4">
-                    <div className="w-12 h-12 rounded-full bg-yellow-500/20 flex items-center justify-center mx-auto mb-3">
-                      <svg className="w-6 h-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-                      </svg>
-                    </div>
-                    <h3 className="text-lg font-bold text-white">Premium Feature</h3>
-                    <p className="text-wf-gray-400 text-sm mt-2">
-                      Featured Workouts are available exclusively for Pro members. Upgrade your plan to access curated workouts from top trainers.
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setShowPremiumGate(false)}
-                      className="flex-1 glass-card text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
-                    >
-                      Maybe Later
-                    </button>
-                    <button
-                      onClick={() => { setShowPremiumGate(false); navigate('/upgrade'); }}
-                      className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
-                    >
-                      Upgrade
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Browse Workout Library card */}
             <div
               data-tutorial="browse-library"
@@ -2689,27 +2615,6 @@ export default function Workouts() {
               </div>
             </div>
 
-            {/* Featured Trainers card — Pro only */}
-            {isPremium && (
-              <div
-                onClick={() => setSelectedGroup('partners')}
-                className="w-full text-left glass-card rounded-2xl overflow-hidden active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
-                style={{ animationDelay: '80ms' }}
-              >
-                <div className="h-1.5 bg-wf-blue" />
-                <div className="p-5">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <h2 className="text-xl font-black text-white tracking-tight">Featured Trainers</h2>
-                      <p className="text-wf-gray-400 text-sm mt-1">Expert-led workouts from certified trainers</p>
-                    </div>
-                    <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Challenges card */}
             <div
