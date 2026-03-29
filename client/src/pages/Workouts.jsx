@@ -1978,8 +1978,8 @@ export default function Workouts() {
           <div className="flex gap-2 overflow-x-auto pb-2 mb-3 px-4 -mx-4 scrollbar-hide">
             {[
               { value: 'all', label: 'All' },
-              { value: 'strength', label: 'Strength' },
               { value: 'hypertrophy', label: 'Hypertrophy' },
+              { value: 'strength', label: 'Strength' },
               { value: 'hybrid', label: 'Hybrid' },
               { value: 'conditioning', label: 'Conditioning' },
             ].map(f => (
