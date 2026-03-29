@@ -73,6 +73,7 @@ body::before {
 
 /* Logo glow */
 .logo-glow {
+  font-family: 'Bebas Neue', sans-serif;
   text-shadow: 0 0 10px rgba(239, 68, 68, 0.4), 0 0 30px rgba(239, 68, 68, 0.2), 0 0 60px rgba(239, 68, 68, 0.1);
 }
 
