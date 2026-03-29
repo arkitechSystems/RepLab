@@ -32,7 +32,7 @@ export default function Layout() {
       <div className="ambient-bg" />
       {/* Top bar with logo — hidden when embedded from dashboard */}
       {!isDashboardEmbed && (
-        <div className="safe-top relative z-20 px-4 pt-3 pb-1">
+        <div className="safe-top relative z-20 px-4 pt-4 pb-1">
           <img src="/RepLabLogo3.jpg" alt="RepLab" className="h-7 rounded" />
         </div>
       )}

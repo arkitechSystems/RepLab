@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 export const TUTORIAL_TEMPLATE = {
   id: 'tutorial',
   name: 'Tutorial Workout',
-  description: 'A sample workout to learn how WillFit tracks your sets, reps, and weight.',
+  description: 'A sample workout to learn how RepLab tracks your sets, reps, and weight.',
   exercises: [
     {
       name: 'Barbell Back Squat',

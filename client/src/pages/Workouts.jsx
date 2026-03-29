@@ -334,7 +334,7 @@ export default function Workouts() {
   }
 
   function renderExternalShareButtons(workoutName) {
-    const text = `I'm doing ${workoutName || 'a workout'} today on WillFit and want you to join! 💪 Check it out at https://will-fit.shop`;
+    const text = `I'm doing ${workoutName || 'a workout'} today on RepLab and want you to join! 💪 Check it out at https://will-fit.shop`;
     return (
       <>
         <div className="flex items-center gap-3 mt-4 mb-3">
@@ -1901,7 +1901,7 @@ export default function Workouts() {
                   </div>
                 ) : showTrainerForm ? (
                   <div className="space-y-3">
-                    <p className="text-sm text-wf-gray-400">Tell us about your fitness experience and why you'd like to be a trainer on WillFit.</p>
+                    <p className="text-sm text-wf-gray-400">Tell us about your fitness experience and why you'd like to be a trainer on RepLab.</p>
                     <textarea
                       value={trainerAppMsg}
                       onChange={(e) => setTrainerAppMsg(e.target.value)}

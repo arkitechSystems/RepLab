@@ -33,7 +33,7 @@ function clientLoginPage(error) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>WillFit — Workout Dashboard Login</title>
+  <title>RepLab — Workout Dashboard Login</title>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     ${DASHBOARD_CSS}
@@ -54,7 +54,7 @@ function clientLoginPage(error) {
 </head>
 <body>
   <div class="login-card">
-    <div class="login-logo">WILL<span>FIT</span></div>
+    <div class="login-logo">REP<span>LAB</span></div>
     <p class="subtitle">Workout Dashboard</p>
     <div class="glass" style="padding:28px;">
       ${error ? `<div class="error">${error}</div>` : ''}
@@ -81,13 +81,13 @@ function clientPage(title, body, user) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>WillFit — ${title}</title>
+  <title>RepLab — ${title}</title>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>${DASHBOARD_CSS}</style>
 </head>
 <body>
 <nav style="position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:12px 32px;background:linear-gradient(135deg,rgba(20,0,0,0.92),rgba(30,5,5,0.92),rgba(20,0,0,0.92));backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(239,68,68,0.2);box-shadow:0 2px 20px rgba(239,68,68,0.08),inset 0 -1px 0 rgba(239,68,68,0.1);">
-  <a href="/workouts" style="text-decoration:none;"><div class="logo" style="margin:0;color:#fff;">WILL<span style="color:#ef4444;">FIT</span></div></a>
+  <a href="/workouts" style="text-decoration:none;"><div class="logo" style="margin:0;color:#fff;">REP<span style="color:#ef4444;">LAB</span></div></a>
   <div style="display:flex;align-items:center;gap:12px;">
     <span style="color:rgba(255,255,255,0.4);font-size:12px;font-weight:600;">${user ? (user.firstName || user.email) : 'User'}</span>
     <a href="/workouts" style="color:rgba(255,255,255,0.5);font-size:12px;font-weight:600;text-decoration:none;padding:8px 14px;border-radius:8px;transition:all 0.2s;" onmouseover="this.style.color='#fff';this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.color='rgba(255,255,255,0.5)';this.style.background='none'">Home</a>

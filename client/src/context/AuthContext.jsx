@@ -6,7 +6,7 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     try {
-      const saved = localStorage.getItem('willfit_user');
+      const saved = localStorage.getItem('replab_user');
       return saved ? JSON.parse(saved) : null;
     } catch {
       return null;
@@ -17,7 +17,7 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(() => {
     setApiToken(null);
-    try { localStorage.removeItem('willfit_user'); } catch {}
+    try { localStorage.removeItem('replab_user'); } catch {}
     setToken(null);
     setUser(null);
   }, []);
@@ -45,7 +45,7 @@ export function AuthProvider({ children }) {
       .then(r => r.json())
       .then(data => {
         if (data.user) {
-          try { localStorage.setItem('willfit_user', JSON.stringify(data.user)); } catch {}
+          try { localStorage.setItem('replab_user', JSON.stringify(data.user)); } catch {}
           setUser(data.user);
         }
       })
@@ -61,13 +61,13 @@ export function AuthProvider({ children }) {
   function applyAuth(data) {
     try {
       setApiToken(data.token);
-      try { localStorage.setItem('willfit_user', JSON.stringify(data.user)); } catch {}
+      try { localStorage.setItem('replab_user', JSON.stringify(data.user)); } catch {}
       setToken(data.token);
       setUser(data.user);
     } catch {
       // If anything fails, clear everything to avoid partial state
       setApiToken(null);
-      try { localStorage.removeItem('willfit_user'); } catch {}
+      try { localStorage.removeItem('replab_user'); } catch {}
       setToken(null);
       setUser(null);
       throw new Error('Failed to save login state');
@@ -99,7 +99,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const updateUser = useCallback((newUser) => {
-    try { localStorage.setItem('willfit_user', JSON.stringify(newUser)); } catch {}
+    try { localStorage.setItem('replab_user', JSON.stringify(newUser)); } catch {}
     setUser(newUser);
   }, []);
 

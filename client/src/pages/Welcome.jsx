@@ -63,7 +63,7 @@ export default function Welcome() {
         <div className="ambient-bg" />
         <div className="w-full max-w-sm relative z-10 flex flex-col items-center gap-8">
           <h1 className="text-4xl font-black tracking-wide text-white logo-glow">
-            WILL<span className="text-wf-red">FIT</span>
+            REP<span className="text-wf-red">LAB</span>
           </h1>
           <p className="text-wf-gray-400 text-center">Welcome! Get to know the app.</p>
 

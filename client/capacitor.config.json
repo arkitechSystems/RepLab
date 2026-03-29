@@ -1,6 +1,6 @@
 {
   "appId": "com.willfit.app",
-  "appName": "WillFit",
+  "appName": "RepLab",
   "webDir": "dist",
   "plugins": {
     "SplashScreen": {

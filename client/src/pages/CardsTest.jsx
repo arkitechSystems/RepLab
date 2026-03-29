@@ -373,7 +373,7 @@ export default function CardsTest() {
             <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#ff5f56' }} />
             <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#ffbd2e' }} />
             <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#27c93f' }} />
-            <span style={{ color: '#00ff4160', fontSize: '10px', marginLeft: '8px' }}>willfit@gym:~</span>
+            <span style={{ color: '#00ff4160', fontSize: '10px', marginLeft: '8px' }}>replab@gym:~</span>
           </div>
           <div style={{ padding: '16px', lineHeight: 1.8 }}>
             <p style={{ fontSize: '10px', color: '#00ff4140', letterSpacing: '4px', textTransform: 'uppercase', fontWeight: 600, marginBottom: '8px' }}>13. Terminal Card</p>

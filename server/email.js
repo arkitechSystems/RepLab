@@ -17,17 +17,17 @@ export async function sendWelcomeEmail(email) {
   const resend = new Resend(process.env.RESEND_API_KEY);
   const custom = await getTemplate('welcome');
 
-  const defaultSubject = 'Welcome to WillFit — You\'re In!';
+  const defaultSubject = 'Welcome to RepLab — You\'re In!';
   const defaultHtml = `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px; color: #333;">
           <!-- Logo -->
           <div style="text-align: center; margin-bottom: 32px;">
-            <h1 style="font-size: 32px; font-weight: 900; letter-spacing: 2px; margin: 0; color: #111;">WILL<span style="color: #EF4444;">FIT</span></h1>
+            <h1 style="font-size: 32px; font-weight: 900; letter-spacing: 2px; margin: 0; color: #111;">REP<span style="color: #EF4444;">LAB</span></h1>
           </div>
 
-          <h2 style="color: #111; font-size: 24px; font-weight: 800; margin: 0 0 8px 0;">Welcome to WillFit!</h2>
+          <h2 style="color: #111; font-size: 24px; font-weight: 800; margin: 0 0 8px 0;">Welcome to RepLab!</h2>
           <p style="font-size: 16px; line-height: 1.7; margin: 0 0 24px 0; color: #444;">
-            Thanks for signing up! You're now part of the <strong>alpha version</strong> of WillFit. The app is fully functional and ready for you to start tracking your workouts, but we're still actively building and improving it. Your experience and feedback will help shape the final product.
+            Thanks for signing up! You're now part of the <strong>alpha version</strong> of RepLab. The app is fully functional and ready for you to start tracking your workouts, but we're still actively building and improving it. Your experience and feedback will help shape the final product.
           </p>
 
           <!-- Getting Started -->
@@ -50,7 +50,7 @@ export async function sendWelcomeEmail(email) {
           <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">AI-Powered Features</h3>
           <div style="background: #f0f0ff; border-left: 4px solid #8b5cf6; border-radius: 8px; padding: 16px 20px; margin-bottom: 16px;">
             <p style="color: #333; font-size: 14px; line-height: 1.7; margin: 0;">
-              We're working on <strong>AI-powered features</strong> for WillFit. Soon you'll be able to generate custom workouts tailored to your goals, experience level, and available equipment — powered by an <strong>AI trainer</strong> built right into the app. Stay tuned.
+              We're working on <strong>AI-powered features</strong> for RepLab. Soon you'll be able to generate custom workouts tailored to your goals, experience level, and available equipment — powered by an <strong>AI trainer</strong> built right into the app. Stay tuned.
             </p>
           </div>
 
@@ -66,7 +66,7 @@ export async function sendWelcomeEmail(email) {
           <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">User Guide</h3>
           <div style="background: #f0f0f0; border-radius: 8px; padding: 16px 20px; margin-bottom: 24px;">
             <p style="color: #333; font-size: 14px; line-height: 1.7; margin: 0;">
-              For a deeper look at every feature, check out the <a href="https://will-fit.shop/trainer/guide" style="color: #EF4444; text-decoration: none; font-weight: 600;">WillFit User Guide</a>. It covers the workout library, calendar, logging sessions, personal records, creating custom workouts, and more.
+              For a deeper look at every feature, check out the <a href="https://will-fit.shop/trainer/guide" style="color: #EF4444; text-decoration: none; font-weight: 600;">RepLab User Guide</a>. It covers the workout library, calendar, logging sessions, personal records, creating custom workouts, and more.
             </p>
           </div>
 
@@ -76,18 +76,18 @@ export async function sendWelcomeEmail(email) {
 
           <a href="https://will-fit.shop"
              style="display: inline-block; margin-top: 24px; padding: 14px 32px; background: #111; color: #fff; text-decoration: none; border-radius: 10px; font-size: 15px; font-weight: 700; letter-spacing: 0.5px;">
-            Open WillFit
+            Open RepLab
           </a>
 
           <p style="color: #999; font-size: 12px; margin-top: 24px; line-height: 1.6;">
-            If you didn't create a WillFit account, you can safely ignore this email.
+            If you didn't create a RepLab account, you can safely ignore this email.
           </p>
         </div>
       `;
 
   try {
     await resend.emails.send({
-      from: 'WillFit <noreply@email.will-fit.shop>',
+      from: 'RepLab <noreply@email.will-fit.shop>',
       to: email,
       subject: custom?.subject || defaultSubject,
       html: custom?.html || defaultHtml,
@@ -109,14 +109,14 @@ export async function sendPasswordResetEmail(email, token) {
 
   try {
     await resend.emails.send({
-      from: 'WillFit <noreply@email.will-fit.shop>',
+      from: 'RepLab <noreply@email.will-fit.shop>',
       to: email,
-      subject: 'Reset your WillFit password',
+      subject: 'Reset your RepLab password',
       html: `
         <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 32px;">
           <h1 style="color: #111; font-size: 28px; margin-bottom: 8px;">Reset Your Password</h1>
           <p style="color: #444; font-size: 16px; line-height: 1.6;">
-            We received a request to reset your WillFit password. Click the button below to set a new one.
+            We received a request to reset your RepLab password. Click the button below to set a new one.
             This link expires in 1 hour.
           </p>
           <a href="${resetUrl}"
@@ -146,9 +146,9 @@ export async function sendNewSignupNotification(user, totalUsers) {
 
   try {
     await resend.emails.send({
-      from: 'WillFit <noreply@email.will-fit.shop>',
+      from: 'RepLab <noreply@email.will-fit.shop>',
       to: process.env.ADMIN_EMAIL,
-      subject: `New WillFit Signup — ${name} (#${totalUsers})`,
+      subject: `New RepLab Signup — ${name} (#${totalUsers})`,
       html: `
         <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 32px;">
           <h1 style="color: #111; font-size: 24px; margin-bottom: 16px;">New User Signup</h1>
@@ -210,9 +210,9 @@ export async function sendDailySummaryEmail(stats) {
 
   try {
     await resend.emails.send({
-      from: 'WillFit <noreply@email.will-fit.shop>',
+      from: 'RepLab <noreply@email.will-fit.shop>',
       to: process.env.ADMIN_EMAIL,
-      subject: `WillFit Daily Summary — ${stats.totalUsers} users`,
+      subject: `RepLab Daily Summary — ${stats.totalUsers} users`,
       html: `
         <div style="font-family: sans-serif; max-width: 520px; margin: 0 auto; padding: 32px;">
           <h1 style="color: #111; font-size: 24px; margin-bottom: 4px;">Daily Summary</h1>

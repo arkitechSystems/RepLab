@@ -29,7 +29,7 @@ router.post('/generate-workout', authMiddleware, async (req, res) => {
       }
     } catch {}
 
-    const prompt = `You are a certified personal trainer creating a workout for a user of the WillFit fitness app.
+    const prompt = `You are a certified personal trainer creating a workout for a user of the RepLab fitness app.
 
 User Profile:
 - Goal: ${goal}
@@ -127,7 +127,7 @@ router.post('/edit-workout', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Workout and instruction are required' });
     }
 
-    const prompt = `You are a certified personal trainer helping edit a workout in the WillFit fitness app.
+    const prompt = `You are a certified personal trainer helping edit a workout in the RepLab fitness app.
 
 Current workout:
 ${JSON.stringify(workout, null, 2)}
@@ -214,7 +214,7 @@ router.post('/suggest-swap', authMiddleware, async (req, res) => {
 
     const avoidList = (currentWorkoutExercises || []).filter(n => n !== exerciseName);
 
-    const prompt = `You are a certified personal trainer helping a user of the WillFit fitness app swap an exercise mid-workout.
+    const prompt = `You are a certified personal trainer helping a user of the RepLab fitness app swap an exercise mid-workout.
 
 The user wants to replace: "${exerciseName}"
 ${reason ? `Reason: ${reason}` : 'Reason: equipment unavailable'}

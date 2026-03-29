@@ -7,7 +7,7 @@ let onUnauthorized: (() => void) | null = null;
 
 export async function initializeToken(): Promise<string | null> {
   try {
-    const token = await AsyncStorage.getItem('willfit_token');
+    const token = await AsyncStorage.getItem('replab_token');
     memoryToken = token;
     return token;
   } catch {
@@ -19,9 +19,9 @@ export async function setApiToken(token: string | null): Promise<void> {
   memoryToken = token;
   try {
     if (token) {
-      await AsyncStorage.setItem('willfit_token', token);
+      await AsyncStorage.setItem('replab_token', token);
     } else {
-      await AsyncStorage.removeItem('willfit_token');
+      await AsyncStorage.removeItem('replab_token');
     }
   } catch {}
 }

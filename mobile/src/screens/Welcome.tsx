@@ -53,7 +53,7 @@ export default function Welcome() {
       <SafeAreaView style={styles.container}>
         <View style={styles.introContent}>
           <Text style={styles.logo}>
-            WILL<Text style={styles.logoAccent}>FIT</Text>
+            REP<Text style={styles.logoAccent}>LAB</Text>
           </Text>
           <Text style={styles.introSub}>Welcome! Get to know the app.</Text>
 

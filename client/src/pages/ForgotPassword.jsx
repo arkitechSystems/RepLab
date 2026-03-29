@@ -31,7 +31,7 @@ export default function ForgotPassword() {
       <div className="w-full max-w-sm relative z-10">
         <div className="text-center mb-10">
           <h1 className="text-4xl font-black tracking-wide text-white logo-glow">
-            WILL<span className="text-wf-red">FIT</span>
+            REP<span className="text-wf-red">LAB</span>
           </h1>
           <p className="text-wf-gray-400 text-sm mt-2">Reset your password</p>
         </div>

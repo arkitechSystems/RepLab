@@ -8,9 +8,9 @@ export function setApiToken(token) {
   memoryToken = token;
   try {
     if (token) {
-      localStorage.setItem('willfit_token', token);
+      localStorage.setItem('replab_token', token);
     } else {
-      localStorage.removeItem('willfit_token');
+      localStorage.removeItem('replab_token');
     }
   } catch {
     // localStorage may be unavailable in Safari private browsing
@@ -19,7 +19,7 @@ export function setApiToken(token) {
 
 export function getApiToken() {
   try {
-    return memoryToken || localStorage.getItem('willfit_token');
+    return memoryToken || localStorage.getItem('replab_token');
   } catch {
     return memoryToken;
   }
@@ -60,7 +60,7 @@ export async function api(path, options = {}) {
     // Currently we log the user out immediately on any 401 from a non-auth endpoint.
     if (!path.startsWith('/auth/')) {
       setApiToken(null);
-      try { localStorage.removeItem('willfit_user'); } catch {}
+      try { localStorage.removeItem('replab_user'); } catch {}
       if (onUnauthorized) {
         onUnauthorized();
       }

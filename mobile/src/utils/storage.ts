@@ -1,8 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const StorageKeys = {
-  TOKEN: 'willfit_token',
-  USER: 'willfit_user',
+  TOKEN: 'replab_token',
+  USER: 'replab_user',
 } as const;
 
 export async function getItem<T>(key: string): Promise<T | null> {

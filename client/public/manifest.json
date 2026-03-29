@@ -1,6 +1,6 @@
 {
-  "name": "WillFit",
-  "short_name": "WillFit",
+  "name": "RepLab",
+  "short_name": "RepLab",
   "description": "Mobile Fitness Tracker",
   "start_url": "/",
   "display": "standalone",

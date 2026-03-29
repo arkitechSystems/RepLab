@@ -25,7 +25,7 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('online', () => {
     navigator.serviceWorker.ready.then((reg) => {
       if (reg.sync) {
-        reg.sync.register('willfit-sync');
+        reg.sync.register('replab-sync');
       } else {
         // Fallback: message the SW directly
         reg.active?.postMessage('process-sync-queue');

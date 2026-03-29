@@ -6,14 +6,14 @@ import { iosFocusRef } from '../utils/iosFocus.js';
 
 function addToRecent(name) {
   try {
-    const recent = JSON.parse(localStorage.getItem('willfit_recent_exercises') || '[]');
+    const recent = JSON.parse(localStorage.getItem('replab_recent_exercises') || '[]');
     const updated = [name, ...recent.filter(n => n !== name)].slice(0, 20);
-    localStorage.setItem('willfit_recent_exercises', JSON.stringify(updated));
+    localStorage.setItem('replab_recent_exercises', JSON.stringify(updated));
   } catch {}
 }
 
 function getRecent() {
-  try { return JSON.parse(localStorage.getItem('willfit_recent_exercises') || '[]'); } catch { return []; }
+  try { return JSON.parse(localStorage.getItem('replab_recent_exercises') || '[]'); } catch { return []; }
 }
 
 const SET_TYPES = [

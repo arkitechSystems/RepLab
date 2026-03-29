@@ -154,7 +154,7 @@ app.use((err, req, res, next) => {
 initDb()
   .then(() => {
     app.listen(PORT, '0.0.0.0', () => {
-      console.log(`WillFit server running on http://localhost:${PORT}`);
+      console.log(`RepLab server running on http://localhost:${PORT}`);
 
       // Daily summary email scheduler — runs at 8am ET every day
       function scheduleDailySummary() {

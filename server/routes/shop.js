@@ -11,7 +11,7 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 function shopAuth(req, res, next) {
   // Try cookie first (set when user visits from app link)
-  const token = req.cookies?.willfit_token;
+  const token = req.cookies?.replab_token;
   // Fallback to query param (for direct links from app)
   const tokenParam = req.query.token;
   const t = token || tokenParam;
@@ -20,7 +20,7 @@ function shopAuth(req, res, next) {
     return res.send(shopPage('Login Required', `
       <div style="text-align:center;padding:60px 20px">
         <h2 style="font-size:24px;font-weight:800;margin-bottom:8px">Login Required</h2>
-        <p style="color:rgba(255,255,255,0.5);margin-bottom:24px">Open the WillFit app to access your workout dashboard.</p>
+        <p style="color:rgba(255,255,255,0.5);margin-bottom:24px">Open the RepLab app to access your workout dashboard.</p>
       </div>
     `));
   }
@@ -32,7 +32,7 @@ function shopAuth(req, res, next) {
 
     // Set cookie for subsequent page loads
     if (!token && tokenParam) {
-      res.cookie('willfit_token', tokenParam, {
+      res.cookie('replab_token', tokenParam, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
@@ -44,7 +44,7 @@ function shopAuth(req, res, next) {
     return res.send(shopPage('Session Expired', `
       <div style="text-align:center;padding:60px 20px">
         <h2 style="font-size:24px;font-weight:800;margin-bottom:8px">Session Expired</h2>
-        <p style="color:rgba(255,255,255,0.5);margin-bottom:24px">Please open the WillFit app and navigate to your dashboard again.</p>
+        <p style="color:rgba(255,255,255,0.5);margin-bottom:24px">Please open the RepLab app and navigate to your dashboard again.</p>
       </div>
     `));
   }
@@ -61,7 +61,7 @@ function shopPage(title, body) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>WillFit — ${title}</title>
+  <title>RepLab — ${title}</title>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -94,7 +94,7 @@ function shopPage(title, body) {
 </head>
 <body>
 <nav>
-  <div class="logo">WILL<span>FIT</span></div>
+  <div class="logo">REP<span>LAB</span></div>
   <span style="color:rgba(255,255,255,0.4);font-size:12px;font-weight:600">Workout Dashboard</span>
 </nav>
 <div class="container">

@@ -237,7 +237,7 @@ export default function Profile() {
               {user?.firstName && (
                 <p className="text-wf-gray-500 text-xs">{user?.email || user?.phone}</p>
               )}
-              <p className="text-wf-gray-400 text-sm">WILLFIT Member</p>
+              <p className="text-wf-gray-400 text-sm">REPLAB Member</p>
             </div>
           </div>
 
@@ -499,7 +499,7 @@ export default function Profile() {
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-wf-gray-400 text-sm">App</span>
-              <span className="text-white text-sm">WILLFIT</span>
+              <span className="text-white text-sm">REPLAB</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-wf-gray-400 text-sm">Version</span>

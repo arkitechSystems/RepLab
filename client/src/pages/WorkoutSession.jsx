@@ -2514,10 +2514,10 @@ function WorkoutSummary({ template, programName, entries, completedSets, elapsed
     ctx.fillText(new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }), W / 2, curY + 14);
     curY += 40;
 
-    // --- "Logged with WillFit" ---
+    // --- "Logged with RepLab" ---
     ctx.font = `600 20px ${font}`;
     ctx.fillStyle = 'rgba(255,255,255,0.25)';
-    ctx.fillText('Logged with WillFit', W / 2, curY + 14);
+    ctx.fillText('Logged with RepLab', W / 2, curY + 14);
 
     return canvas.toDataURL('image/png');
   }
@@ -2601,7 +2601,7 @@ function WorkoutSummary({ template, programName, entries, completedSets, elapsed
       });
       lines.push('');
     });
-    lines.push('Logged with WillFit');
+    lines.push('Logged with RepLab');
     const text = lines.join('\n');
     if (navigator.share) {
       try { await navigator.share({ text }); } catch {}

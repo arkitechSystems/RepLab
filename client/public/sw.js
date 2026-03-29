@@ -1,4 +1,4 @@
-const CACHE_NAME = 'willfit-v1';
+const CACHE_NAME = 'replab-v1';
 const SHELL_ASSETS = ['/', '/index.html'];
 
 // Install: cache app shell
@@ -98,7 +98,7 @@ self.addEventListener('fetch', (event) => {
 // IndexedDB helpers for sync queue
 function openSyncDB() {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open('willfit-sync', 1);
+    const req = indexedDB.open('replab-sync', 1);
     req.onupgradeneeded = () =>
       req.result.createObjectStore('queue', { autoIncrement: true });
     req.onsuccess = () => resolve(req.result);
@@ -157,7 +157,7 @@ async function processSyncQueue() {
 
 // Listen for sync event (Background Sync API)
 self.addEventListener('sync', (event) => {
-  if (event.tag === 'willfit-sync') {
+  if (event.tag === 'replab-sync') {
     event.waitUntil(processSyncQueue());
   }
 });

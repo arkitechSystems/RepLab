@@ -1,4 +1,4 @@
-// Migration: Add 7 popular hypertrophy/hybrid programs to the WillFit library
+// Migration: Add 7 popular hypertrophy/hybrid programs to the RepLab library
 // Run with: node --env-file=server/.env server/migrations/add-hypertrophy-programs.js
 
 import pool from '../dbPool.js';

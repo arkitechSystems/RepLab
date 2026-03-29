@@ -123,7 +123,7 @@ export default function Signup() {
           {/* Logo */}
           <View style={styles.logoContainer}>
             <Text style={styles.logo}>
-              WILL<Text style={styles.logoAccent}>FIT</Text>
+              REP<Text style={styles.logoAccent}>LAB</Text>
             </Text>
             <Text style={styles.subtitle}>Create your account</Text>
           </View>

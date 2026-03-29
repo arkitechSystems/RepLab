@@ -32,7 +32,7 @@ function trainerLoginPage(error) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>WillFit Trainer — Login</title>
+  <title>RepLab Trainer — Login</title>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     ${DASHBOARD_CSS}
@@ -53,7 +53,7 @@ function trainerLoginPage(error) {
 </head>
 <body>
   <div class="login-card">
-    <div class="login-logo">WILL<span>FIT</span></div>
+    <div class="login-logo">REP<span>LAB</span></div>
     <p class="subtitle">Trainer Dashboard</p>
     <div class="glass" style="padding:28px;">
       ${error ? `<div class="error">${error}</div>` : ''}
@@ -80,13 +80,13 @@ function trainerPage(title, body, trainer) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>WillFit Trainer — ${title}</title>
+  <title>RepLab Trainer — ${title}</title>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>${DASHBOARD_CSS}</style>
 </head>
 <body>
 <nav style="position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:12px 32px;background:linear-gradient(135deg,rgba(20,0,0,0.92),rgba(30,5,5,0.92),rgba(20,0,0,0.92));backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid rgba(239,68,68,0.2);box-shadow:0 2px 20px rgba(239,68,68,0.08),inset 0 -1px 0 rgba(239,68,68,0.1);">
-  <a href="/trainer" style="text-decoration:none;"><div class="logo" style="margin:0;color:#fff;">WILL<span style="color:#ef4444;">FIT</span></div></a>
+  <a href="/trainer" style="text-decoration:none;"><div class="logo" style="margin:0;color:#fff;">REP<span style="color:#ef4444;">LAB</span></div></a>
   <div style="display:flex;align-items:center;gap:12px;">
     <span style="color:rgba(255,255,255,0.4);font-size:12px;font-weight:600;">${trainer ? esc(trainer.firstName || trainer.email) : 'Trainer'}</span>
     <a href="/trainer" style="color:rgba(255,255,255,0.5);font-size:12px;font-weight:600;text-decoration:none;padding:8px 14px;border-radius:8px;transition:all 0.2s;" onmouseover="this.style.color='#fff';this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.color='rgba(255,255,255,0.5)';this.style.background='none'">Home</a>
@@ -217,7 +217,7 @@ router.get('/guide', (req, res) => {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>WillFit — User Guide</title>
+  <title>RepLab — User Guide</title>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -250,10 +250,10 @@ router.get('/guide', (req, res) => {
 </head>
 <body>
 <div class="container">
-  <a href="https://will-fit.shop" class="back-btn">&larr; Back to WillFit</a>
-  <div class="logo">WILL<span>FIT</span></div>
+  <a href="https://will-fit.shop" class="back-btn">&larr; Back to RepLab</a>
+  <div class="logo">REP<span>LAB</span></div>
   <h1>User Guide</h1>
-  <p class="subtitle">Everything you need to know about using WillFit</p>
+  <p class="subtitle">Everything you need to know about using RepLab</p>
 
   <!-- Table of Contents -->
   <div class="toc">
@@ -294,7 +294,7 @@ router.get('/guide', (req, res) => {
   <!-- 1. Getting Started -->
   <div class="section" id="getting-started">
     <h2>1. Getting Started</h2>
-    <p>Welcome to WillFit. Here's how to get up and running in under a minute:</p>
+    <p>Welcome to RepLab. Here's how to get up and running in under a minute:</p>
     <ol>
       <li><strong>Sign up</strong> with your email or phone number and create a password.</li>
       <li><strong>Take the tour</strong> — after signing up, you'll see a quick walkthrough of the app's main features. You can skip it, but it's worth the 30 seconds.</li>
@@ -523,7 +523,7 @@ router.get('/guide', (req, res) => {
     </ul>
 
     <h3 id="feedback">Sending Feedback</h3>
-    <p>We're actively building WillFit and your feedback matters. To send feedback:</p>
+    <p>We're actively building RepLab and your feedback matters. To send feedback:</p>
     <ol>
       <li>Go to the <strong>Profile</strong> tab.</li>
       <li>Tap <strong>Send Feedback</strong>.</li>
@@ -555,7 +555,7 @@ router.get('/guide', (req, res) => {
   </div>
 
   <div style="text-align:center;margin-top:48px;padding-top:24px;border-top:1px solid rgba(255,255,255,0.06);">
-    <div class="logo" style="margin-bottom:8px;">WILL<span>FIT</span></div>
+    <div class="logo" style="margin-bottom:8px;">REP<span>LAB</span></div>
     <p style="color:rgba(255,255,255,0.3);font-size:12px;">Alpha Version &middot; <a href="https://will-fit.shop" style="color:#ef4444;text-decoration:none;">will-fit.shop</a></p>
   </div>
 </div>
@@ -607,7 +607,7 @@ router.get('/', trainerAuth, (req, res) => {
       <a class="card glass" href="/trainer/guide">
         <div class="card-icon">📖</div>
         <div class="card-title">User Guide</div>
-        <div class="card-desc">Detailed instructions on how to use every feature in WillFit.</div>
+        <div class="card-desc">Detailed instructions on how to use every feature in RepLab.</div>
       </a>
     </div>
   `, req.trainer));

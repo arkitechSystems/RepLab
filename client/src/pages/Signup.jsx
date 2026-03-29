@@ -92,7 +92,7 @@ export default function Signup() {
         : referralSource;
       // Read stored UTM params
       let utm = {};
-      try { utm = JSON.parse(localStorage.getItem('willfit_utm') || '{}'); } catch {}
+      try { utm = JSON.parse(localStorage.getItem('replab_utm') || '{}'); } catch {}
 
       // Get native device info if running in Capacitor
       const deviceInfo = await getDeviceInfo();
@@ -115,7 +115,7 @@ export default function Signup() {
       });
 
       // Clear UTM after successful signup
-      try { localStorage.removeItem('willfit_utm'); } catch {};
+      try { localStorage.removeItem('replab_utm'); } catch {};
       // Use window.location since PublicRoute would redirect to / before navigate fires
       window.location.href = '/welcome';
     } catch (err) {
@@ -143,7 +143,7 @@ export default function Signup() {
         </button>
         <div className="text-center mb-10">
           <h1 className="text-4xl font-black tracking-wide text-white logo-glow">
-            WILL<span className="text-wf-red">FIT</span>
+            REP<span className="text-wf-red">LAB</span>
           </h1>
           <p className="text-wf-gray-400 text-sm mt-2">Create your account</p>
         </div>

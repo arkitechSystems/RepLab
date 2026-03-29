@@ -78,7 +78,7 @@ export default function App() {
         const val = params.get(k);
         if (val) utm[k] = val;
       }
-      try { localStorage.setItem('willfit_utm', JSON.stringify(utm)); } catch {}
+      try { localStorage.setItem('replab_utm', JSON.stringify(utm)); } catch {}
     }
   }, []);
 
