@@ -33,9 +33,7 @@ export default function Layout() {
       {/* Top bar with logo — hidden when embedded from dashboard */}
       {!isDashboardEmbed && (
         <div className="safe-top relative z-20 px-4 pt-3 pb-1">
-          <span className="text-lg font-black tracking-wide text-white logo-glow">
-            W<span className="text-wf-red">F</span>
-          </span>
+          <img src="/RepLabLogo3.jpg" alt="RepLab" className="h-7 rounded" />
         </div>
       )}
       {offline && (
