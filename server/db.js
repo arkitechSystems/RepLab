@@ -332,11 +332,12 @@ const db = {
           grouped.push({ name: ex.name, isSectionHeader: true, sectionNotes: ex.section_notes || '', sortOrder: ex.sort_order, sets: [] });
           continue;
         }
-        if (!seen.has(ex.name)) {
-          seen.set(ex.name, grouped.length);
+        const key = `${ex.name}::${ex.sort_order}`;
+        if (!seen.has(key)) {
+          seen.set(key, grouped.length);
           grouped.push({ name: ex.name, setType: ex.set_type || 'straight', sortOrder: ex.sort_order, repRange: ex.rep_range || '', exerciseDescription: ex.exercise_description || '', sets: [] });
         }
-        grouped[seen.get(ex.name)].sets.push({
+        grouped[seen.get(key)].sets.push({
           setNumber: ex.set_number,
           plannedReps: ex.planned_reps,
           suggestedWeight: Number(ex.suggested_weight),
