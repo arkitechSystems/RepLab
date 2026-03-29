@@ -36,7 +36,7 @@ export default function Login() {
       <div className="w-full max-w-sm relative z-10">
         {/* Logo */}
         <div className="text-center mb-10">
-          <h1 className="text-4xl font-black tracking-wide text-white logo-glow">
+          <h1 className="text-4xl font-black tracking-wide text-white logo-glow animate-logo-grow">
             REP<span className="text-wf-red">LAB</span>
           </h1>
           <p className="text-wf-gray-400 text-sm mt-2">Track Your Gains, Share Your Workouts, Level Up!</p>
