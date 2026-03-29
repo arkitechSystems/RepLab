@@ -1,9 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 export default function UndoToast({ message, onUndo, onExpire, duration = 4000 }) {
   const [progress, setProgress] = useState(100);
   const timerRef = useRef(null);
   const startRef = useRef(Date.now());
+  const onExpireRef = useRef(onExpire);
+  const onUndoRef = useRef(onUndo);
+
+  // Keep refs up to date without restarting the effect
+  onExpireRef.current = onExpire;
+  onUndoRef.current = onUndo;
 
   useEffect(() => {
     startRef.current = Date.now();
@@ -14,19 +20,24 @@ export default function UndoToast({ message, onUndo, onExpire, duration = 4000 }
       if (remaining > 0) {
         timerRef.current = requestAnimationFrame(animate);
       } else {
-        onExpire();
+        onExpireRef.current();
       }
     };
     timerRef.current = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(timerRef.current);
-  }, [duration, onExpire]);
+  }, [duration]);
+
+  const handleUndo = useCallback(() => {
+    cancelAnimationFrame(timerRef.current);
+    onUndoRef.current();
+  }, []);
 
   return (
     <div className="my-2 rounded-xl overflow-hidden border border-white/10 bg-wf-gray-900/80 shadow-lg animate-slide-up">
       <div className="px-4 py-2.5 flex items-center justify-between gap-3">
         <p className="text-xs text-wf-gray-400 flex-1 min-w-0 truncate">{message}</p>
         <button
-          onClick={() => { cancelAnimationFrame(timerRef.current); onUndo(); }}
+          onClick={handleUndo}
           className="text-xs font-bold text-wf-red px-3 py-1 rounded-lg bg-wf-red/10 active:bg-wf-red/20 transition-colors shrink-0"
         >
           Undo
