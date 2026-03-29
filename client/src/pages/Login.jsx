@@ -39,7 +39,7 @@ export default function Login() {
           <h1 className="text-4xl font-black tracking-wide text-white logo-glow">
             REP<span className="text-wf-red">LAB</span>
           </h1>
-          <p className="text-wf-gray-400 text-sm mt-2">Track your gains</p>
+          <p className="text-wf-gray-400 text-sm mt-2">Track Your Gains, Share Your Workouts, Level Up!</p>
         </div>
 
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
