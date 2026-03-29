@@ -61,7 +61,7 @@ export default function SplashScreen({ onDone, persistent }) {
         alt="RepLab"
         className="relative z-10 rounded-3xl"
         style={{
-          width: '16rem',
+          width: '20.8rem',
           animation: 'splashLogoIn 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
         }}
       />
