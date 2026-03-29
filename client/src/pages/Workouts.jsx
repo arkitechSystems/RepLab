@@ -1162,14 +1162,18 @@ export default function Workouts() {
         {renderBeginModals()}
         {/* Invite Workout Modal (week detail view) */}
         {inviteModal && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setInviteModal(null)}>
+          <div className="fixed inset-0 z-50 flex flex-col" onClick={() => setInviteModal(null)}>
             <div className="absolute inset-0 bg-black/70" />
             <div
-              className="relative w-full bg-wf-gray-900 border-t border-white/10 rounded-t-2xl p-5 pb-24 shadow-2xl animate-drop-down"
+              className="relative flex-1 flex flex-col mt-12 bg-wf-gray-900 rounded-t-2xl shadow-2xl animate-drop-down overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4" />
-              <h3 className="text-lg font-black text-white mb-1">Invite to Workout</h3>
+              <div className="shrink-0 pt-3 pb-2 px-5">
+                <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-3" />
+                <h3 className="text-lg font-black text-white">Invite to Workout</h3>
+              </div>
+              <div className="flex-1 overflow-y-auto px-5 pb-24">
+              <div className="mb-1" />
               <p className="text-sm text-wf-gray-400 mb-4">
                 Invite someone to do <span className="text-white font-semibold">{inviteModal.name}</span> with you today.
               </p>
@@ -1233,6 +1237,7 @@ export default function Workouts() {
                 </button>
               </div>
               {renderExternalShareButtons(inviteModal?.name)}
+              </div>
             </div>
           </div>
         )}
@@ -2194,14 +2199,18 @@ export default function Workouts() {
 
         {/* Invite Workout Modal (browse library) */}
         {inviteModal && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setInviteModal(null)}>
+          <div className="fixed inset-0 z-50 flex flex-col" onClick={() => setInviteModal(null)}>
             <div className="absolute inset-0 bg-black/70" />
             <div
-              className="relative w-full bg-wf-gray-900 border-t border-white/10 rounded-t-2xl p-5 pb-24 shadow-2xl animate-drop-down"
+              className="relative flex-1 flex flex-col mt-12 bg-wf-gray-900 rounded-t-2xl shadow-2xl animate-drop-down overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4" />
-              <h3 className="text-lg font-black text-white mb-1">Invite to Workout</h3>
+              <div className="shrink-0 pt-3 pb-2 px-5">
+                <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-3" />
+                <h3 className="text-lg font-black text-white">Invite to Workout</h3>
+              </div>
+              <div className="flex-1 overflow-y-auto px-5 pb-24">
+              <div className="mb-1" />
               <p className="text-sm text-wf-gray-400 mb-4">
                 Invite someone to do <span className="text-white font-semibold">{inviteModal.name}</span> with you today.
               </p>
@@ -2265,6 +2274,7 @@ export default function Workouts() {
                 </button>
               </div>
               {renderExternalShareButtons(inviteModal?.name)}
+              </div>
             </div>
           </div>
         )}
