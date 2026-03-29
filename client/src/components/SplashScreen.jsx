@@ -57,11 +57,11 @@ export default function SplashScreen({ onDone, persistent }) {
 
       {/* Logo */}
       <img
-        src="/LoadPage.png"
-        alt="WillFit"
-        className="relative z-10"
+        src="/RepLabLogo2.jpg"
+        alt="RepLab"
+        className="relative z-10 rounded-3xl"
         style={{
-          width: '24rem',
+          width: '16rem',
           animation: 'splashLogoIn 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
         }}
       />
