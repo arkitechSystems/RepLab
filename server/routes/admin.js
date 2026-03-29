@@ -208,7 +208,7 @@ function adminLoginPage(error, customContent) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>RepLab Admin — Login</title>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -225,7 +225,7 @@ function adminLoginPage(error, customContent) {
     .login-card {
       position: relative; z-index: 1; width: 100%; max-width: 380px; padding: 0 24px;
     }
-    .logo { font-family: 'Bebas Neue', sans-serif; font-size: 36px; font-weight: 900; letter-spacing: 2px; text-align: center; margin-bottom: 8px; }
+    .logo { font-size: 36px; font-weight: 900; letter-spacing: 2px; text-align: center; margin-bottom: 8px; }
     .logo span { color: #ef4444; }
     .subtitle { text-align: center; color: rgba(255,255,255,0.4); font-size: 14px; margin-bottom: 32px; }
     .glass {
@@ -287,7 +287,7 @@ function adminPage(title, body) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>RepLab Admin — ${title}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -310,7 +310,7 @@ function adminPage(title, body) {
     .container { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; }
 
     /* Logo */
-    .logo { font-family: 'Bebas Neue', sans-serif; font-size: 24px; font-weight: 900; letter-spacing: 2px; margin-bottom: 4px; }
+    .logo { font-size: 24px; font-weight: 900; letter-spacing: 2px; margin-bottom: 4px; }
     .logo span { color: #ef4444; }
 
     .header { margin-bottom: 28px; }

@@ -33,7 +33,7 @@ function trainerLoginPage(error) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>RepLab Trainer — Login</title>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     ${DASHBOARD_CSS}
     body { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 0; }
@@ -81,7 +81,7 @@ function trainerPage(title, body, trainer) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>RepLab Trainer — ${title}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>${DASHBOARD_CSS}</style>
 </head>
 <body>
@@ -218,13 +218,13 @@ router.get('/guide', (req, res) => {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>RepLab — User Guide</title>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Space Grotesk', -apple-system, sans-serif; background: #000; color: #fff; -webkit-font-smoothing: antialiased; }
     body::before { content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none; background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px); background-size: 28px 28px; }
     .container { position: relative; z-index: 1; max-width: 720px; margin: 0 auto; padding: 32px 24px 80px; }
-    .logo { font-family: 'Bebas Neue', sans-serif; font-size: 24px; font-weight: 900; letter-spacing: 2px; text-align: center; margin-bottom: 8px; }
+    .logo { font-size: 24px; font-weight: 900; letter-spacing: 2px; text-align: center; margin-bottom: 8px; }
     .logo span { color: #ef4444; }
     h1 { font-size: 28px; font-weight: 800; text-align: center; margin-bottom: 4px; }
     .subtitle { text-align: center; color: rgba(255,255,255,0.4); font-size: 14px; margin-bottom: 32px; }
