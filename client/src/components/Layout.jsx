@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet, useSearchParams, useLocation } from 'react-router-dom';
 import BottomNav from './BottomNav';
 import Tutorial from './Tutorial';
@@ -9,10 +9,22 @@ export default function Layout() {
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const isDashboardEmbed = searchParams.get('from') === 'trainer' || searchParams.get('from') === 'admin';
+  const [offline, setOffline] = useState(!navigator.onLine);
 
   useEffect(() => {
     const theme = localStorage.getItem('wf-theme') || 'dark';
     document.documentElement.setAttribute('data-theme', theme);
+  }, []);
+
+  useEffect(() => {
+    const goOnline = () => setOffline(false);
+    const goOffline = () => setOffline(true);
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    return () => {
+      window.removeEventListener('online', goOnline);
+      window.removeEventListener('offline', goOffline);
+    };
   }, []);
 
   return (
@@ -24,6 +36,12 @@ export default function Layout() {
           <span className="text-lg font-black tracking-wide text-white logo-glow">
             W<span className="text-wf-red">F</span>
           </span>
+        </div>
+      )}
+      {offline && (
+        <div className="bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-2 flex items-center justify-center gap-2 z-30 relative">
+          <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+          <span className="text-xs text-yellow-400 font-medium">You're offline — changes will sync when you reconnect</span>
         </div>
       )}
       <main className={`grow shrink-0 basis-auto relative z-10 ${isDashboardEmbed ? 'pb-4' : 'pb-24'}`}>

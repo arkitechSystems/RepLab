@@ -14,3 +14,22 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     </BrowserRouter>
   </React.StrictMode>
 );
+
+// Register service worker for offline support
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+
+  // When coming back online, trigger sync
+  window.addEventListener('online', () => {
+    navigator.serviceWorker.ready.then((reg) => {
+      if (reg.sync) {
+        reg.sync.register('willfit-sync');
+      } else {
+        // Fallback: message the SW directly
+        reg.active?.postMessage('process-sync-queue');
+      }
+    });
+  });
+}
