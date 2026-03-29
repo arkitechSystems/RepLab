@@ -30,10 +30,24 @@ function ProgramCard({ program, idx, onSelect, onBegin, onDelete, onShare, dataT
       <div className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-0.5">
+              {program.programType && program.programType !== 'other' && (
+                <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                  program.programType === 'strength' ? 'bg-orange-500/15 text-orange-400' :
+                  program.programType === 'hypertrophy' ? 'bg-blue-500/15 text-blue-400' :
+                  program.programType === 'hybrid' ? 'bg-purple-500/15 text-purple-400' :
+                  program.programType === 'conditioning' ? 'bg-green-500/15 text-green-400' :
+                  'bg-white/10 text-wf-gray-400'
+                }`}>{program.programType}</span>
+              )}
+            </div>
             <h2 className="text-xl font-black text-white tracking-tight">{program.name}</h2>
             <p className="text-wf-gray-400 text-sm mt-1">
               {program.weekCount} {program.weekCount === 1 ? 'week' : 'weeks'} &middot; {program.workoutCount} workouts
             </p>
+            {program.description && (
+              <p className="text-wf-gray-500 text-xs mt-1.5 leading-relaxed line-clamp-2">{program.description}</p>
+            )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {program.workoutCount > 0 && (
@@ -79,6 +93,20 @@ function ProgramCard({ program, idx, onSelect, onBegin, onDelete, onShare, dataT
             </div>
           ))}
         </div>
+
+        {/* Split summary */}
+        {program.templates && program.templates.length > 0 && program.templates.length <= 7 && (
+          <div className="mt-3 pt-3 border-t border-white/5">
+            <p className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-semibold mb-1.5">Weekly Split</p>
+            <div className="flex gap-1 flex-wrap">
+              {program.templates.slice(0, 7).map((t, i) => (
+                <span key={i} className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${t.isRest ? 'bg-white/5 text-wf-gray-600' : 'bg-wf-red/10 text-wf-red'}`}>
+                  {t.isRest ? 'Rest' : t.name.length > 15 ? t.name.substring(0, 15) + '…' : t.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Tap hint */}
         <div className="flex items-center justify-end mt-3">
