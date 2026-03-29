@@ -70,7 +70,7 @@ export function exerciseCardScript(apiBase) {
       function addSectionHeader(prefill) {
         var idx = exerciseCount++;
         var container = document.getElementById('exercises-container');
-        var card = el('div', 'border-radius:16px;margin-bottom:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);');
+        var card = el('div', 'border-radius:16px;margin-bottom:16px;overflow:hidden;border:1px solid rgba(239,68,68,0.3);border-left:4px solid #ef4444;background:linear-gradient(90deg,rgba(239,68,68,0.08),transparent);');
         card.className = 'glass';
         card.id = 'exercise-' + idx;
 
@@ -79,8 +79,11 @@ export function exerciseCardScript(apiBase) {
         markerInput.name = 'exercises[' + idx + '][isSectionHeader]'; markerInput.value = '1';
         card.appendChild(markerInput);
 
-        // Header row
-        var header = el('div', 'padding:12px 16px;display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.03);');
+        // Section badge + Header row
+        var header = el('div', 'padding:12px 16px;display:flex;align-items:center;justify-content:space-between;');
+        var badge = el('span', 'font-size:9px;color:#ef4444;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin-right:8px;white-space:nowrap;');
+        badge.textContent = 'SECTION';
+        header.appendChild(badge);
         var nameInput = el('input', 'flex:1;padding:0;border:none;background:none;color:#fff;font-size:15px;font-weight:800;font-family:inherit;outline:none;text-transform:uppercase;letter-spacing:1px;');
         nameInput.type = 'text'; nameInput.name = 'exercises[' + idx + '][name]';
         nameInput.placeholder = 'Section Title (e.g. WARM UP)'; nameInput.required = true;
