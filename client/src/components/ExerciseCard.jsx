@@ -40,6 +40,7 @@ function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, inpu
   const videoId = getExerciseVideoId(exercise.name);
   const { exercises: allExercises } = useExercises();
   const [showVideo, setShowVideo] = useState(false);
+  const [showDemo, setShowDemo] = useState(false);
   const [deleteIdx, setDeleteIdx] = useState(null);
   const [confirmDeleteLast, setConfirmDeleteLast] = useState(false);
   const [showSwap, setShowSwap] = useState(false);
@@ -131,17 +132,22 @@ function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, inpu
     <>
     <div data-tutorial={dataTutorial ? 'exercise-card' : undefined} className="glass-card rounded-xl overflow-hidden mb-3">
       {/* Exercise Header */}
-      <div data-tutorial={dataTutorial} className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
-        <button
-          type="button"
-          onClick={handleVideoClick}
-          className="inline-flex items-center gap-1.5 text-base font-semibold text-white hover:text-wf-red transition-colors text-left"
-        >
-          {exercise.name}
-          <svg className="w-4 h-4 text-wf-red shrink-0" viewBox="0 0 24 24" fill="currentColor">
-            <path fillRule="evenodd" d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653z" clipRule="evenodd" />
-          </svg>
-        </button>
+      <div data-tutorial={dataTutorial} className="px-4 py-3 border-b border-white/5 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-base font-semibold text-white truncate">{exercise.name}</span>
+          {!isTemplate && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setShowDemo(!showDemo); }}
+              className={`shrink-0 h-7 px-2.5 rounded-lg flex items-center gap-1.5 active:scale-95 transition-all ${showDemo ? 'bg-wf-red/20 border border-wf-red/40' : 'bg-wf-red/10 border border-wf-red/20'}`}
+            >
+              <svg className="w-3.5 h-3.5 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
+              </svg>
+              <span className="text-[10px] font-semibold text-wf-red">Demo</span>
+            </button>
+          )}
+        </div>
         {!readOnly && (
           <div className="flex items-center gap-1.5">
             <span data-tutorial={dataTutorial ? 'move-buttons' : undefined} className="flex items-center gap-1.5">
@@ -215,6 +221,40 @@ function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, inpu
         </div>
       )}
 
+      {/* Inline Demo Section */}
+      {showDemo && (
+        <div className="border-t border-white/5 bg-black/20">
+          {videoId ? (
+            <div className="p-3">
+              <div className="rounded-xl overflow-hidden bg-black aspect-video">
+                <iframe
+                  src={`https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1`}
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  title={`${exercise.name} demo`}
+                />
+              </div>
+              <p className="text-[10px] text-wf-gray-600 text-center mt-2">Tap video for full screen</p>
+            </div>
+          ) : (
+            <div className="p-4 text-center">
+              <p className="text-sm text-wf-gray-400 mb-3">No demo video mapped yet</p>
+              <a
+                href={getExerciseSearchUrl(exercise.name)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-wf-red/10 text-wf-red text-sm font-semibold active:scale-95 transition-all"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+                Search on YouTube
+              </a>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Set Controls Subheader */}
       {!readOnly && onAddSet && (
