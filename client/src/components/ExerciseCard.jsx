@@ -34,7 +34,7 @@ function getSetTypeShort(value) {
 
 export { SET_TYPES };
 
-function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, note, onNoteChange, weightSuggestion, onApplySuggestion, allWorkoutExercises, lastEntries, mode = 'session', dataTutorial }) {
+function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, note, onNoteChange, weightSuggestion, onApplySuggestion, allWorkoutExercises, lastEntries, mode = 'session', dataTutorial }) {
   const isTemplate = mode === 'template';
   const exercisePbs = pbs?.[exercise.name] || {};
   const videoId = getExerciseVideoId(exercise.name);
@@ -358,11 +358,11 @@ function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, comp
                   min="0"
                   max="9999"
                   value={entry.weight ?? (isTemplate ? '' : set.suggestedWeight ?? '')}
-                  placeholder={readOnly ? '—' : '0'}
+                  placeholder={readOnly || inputsLocked ? '—' : '0'}
                   onChange={(e) => onChange?.(exercise.name, idx, 'weight', e.target.value)}
-                  onFocus={(e) => e.target.select()}
+                  onFocus={(e) => { if (inputsLocked && onLockedTap) { e.target.blur(); onLockedTap(); return; } e.target.select(); }}
                   onBlur={() => onBlur?.(exercise.name, idx, 'weight')}
-                  readOnly={readOnly}
+                  readOnly={readOnly || inputsLocked}
                   className={`w-full lcd-input rounded-lg px-2 py-2.5 text-center text-base focus:outline-none disabled:opacity-50 ${isCompleted ? 'completed text-white' : isAutoFill ? 'text-wf-gray-500 italic' : 'text-white'}`}
                   disabled={readOnly}
                 />
@@ -403,10 +403,10 @@ function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, comp
                       max="9999"
                       value={entry.reps ?? ''}
                       onChange={(e) => onChange?.(exercise.name, idx, 'reps', e.target.value)}
-                      onFocus={(e) => e.target.select()}
+                      onFocus={(e) => { if (inputsLocked && onLockedTap) { e.target.blur(); onLockedTap(); return; } e.target.select(); }}
                       onBlur={() => onBlur?.(exercise.name, idx, 'reps')}
-                      readOnly={readOnly}
-                      placeholder={readOnly ? '—' : '0'}
+                      readOnly={readOnly || inputsLocked}
+                      placeholder={readOnly || inputsLocked ? '—' : '0'}
                       className={`w-full lcd-input rounded-lg px-2 py-2.5 text-center text-base focus:outline-none disabled:opacity-50 placeholder:text-wf-gray-700 ${isCompleted ? 'completed text-white' : isAutoFill ? 'text-wf-gray-500 italic' : 'text-white'}`}
                       disabled={readOnly}
                     />

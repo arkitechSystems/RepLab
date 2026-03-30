@@ -39,6 +39,7 @@ export default function WorkoutSession() {
   const [weightSuggestions, setWeightSuggestions] = useState({});
   const [lastSession, setLastSession] = useState({});
   const [timerStarted, setTimerStarted] = useState(false);
+  const [showBeginPrompt, setShowBeginPrompt] = useState(false);
   const [timerHidden, setTimerHidden] = useState(false);
   const [timerFloating, setTimerFloating] = useState(false);
   const [floatPos, setFloatPos] = useState({ x: 16, y: 80 });
@@ -1670,6 +1671,8 @@ export default function WorkoutSession() {
               entries={entries[exercise.name]}
               pbs={pbs}
               readOnly={structureLocked}
+              inputsLocked={inputsLocked}
+              onLockedTap={inputsLocked && !isCompleted ? () => setShowBeginPrompt(true) : undefined}
               onChange={inputsLocked ? undefined : handleChange}
               onBlur={inputsLocked ? undefined : handleBlur}
               completedSets={completedSets}
@@ -1708,7 +1711,29 @@ export default function WorkoutSession() {
           </div>
           )}
           {/* Undo toast after last exercise for exercise deletion at end */}
-          {undoToast && undoToast.type === 'exercise' && undoToast.exerciseIndex >= template.exercises.length && idx === template.exercises.length - 1 && (
+          {/* Begin Workout prompt popup */}
+      {showBeginPrompt && idx === 0 && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 px-5" onClick={() => setShowBeginPrompt(false)}>
+          <div className="absolute inset-0 bg-black/60" />
+          <div className="relative w-full max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-wf-red/15 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
+                </svg>
+              </div>
+              <h3 className="text-base font-bold text-white">Click Begin Workout to start logging sets.</h3>
+            </div>
+            <button
+              onClick={() => setShowBeginPrompt(false)}
+              className="w-full btn-gradient text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
+      {undoToast && undoToast.type === 'exercise' && undoToast.exerciseIndex >= template.exercises.length && idx === template.exercises.length - 1 && (
             <UndoToast
               message={undoToast.message}
               onUndo={() => { undoToast.undoFn(); setUndoToast(null); }}
