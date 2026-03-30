@@ -2601,11 +2601,8 @@ export default function Workouts() {
                 <div className="mt-auto">
                   <div className="flex items-center gap-2">
                     <h2 className="text-2xl font-black text-white tracking-tight drop-shadow-lg">Featured Workouts</h2>
-                    <span className="px-2 py-0.5 rounded-full bg-purple-500/20 border border-purple-500/40 text-[10px] font-bold text-purple-300 uppercase tracking-wider drop-shadow">
-                      Coming Soon
-                    </span>
                   </div>
-                  <p className="text-white/70 text-sm mt-1 drop-shadow">Curated workouts from top trainers</p>
+                  <p className="text-white/70 text-sm mt-1 drop-shadow">Coming Soon!</p>
                 </div>
               </div>
             </div>
