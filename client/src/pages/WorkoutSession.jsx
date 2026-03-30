@@ -13,6 +13,32 @@ import { iosFocusRef } from '../utils/iosFocus';
 import { getWeightSuggestion } from '../utils/weightSuggestion';
 import { beepCountdown, beepComplete, initAudio } from '../utils/sounds';
 
+// Build a unique key for each exercise card. The first occurrence of a name
+// keeps the plain name (backward-compatible with saved sessions). Subsequent
+// duplicates get "::1", "::2", etc.
+function exKey(exercises, exerciseOrName, idx) {
+  const name = typeof exerciseOrName === 'string' ? exerciseOrName : exerciseOrName.name;
+  let occurrence = 0;
+  for (let i = 0; i < idx; i++) {
+    if (!exercises[i].isSectionHeader && exercises[i].name === name) occurrence++;
+  }
+  return occurrence > 0 ? `${name}::${occurrence}` : name;
+}
+
+// Extract the original exercise name from a key (strips "::N" suffix)
+function exNameFromKey(key) {
+  const sep = key.lastIndexOf('::');
+  return sep >= 0 ? key.slice(0, sep) : key;
+}
+
+// Find the template exercise index whose computed key matches
+function findExIdx(exercises, key) {
+  for (let i = 0; i < exercises.length; i++) {
+    if (!exercises[i].isSectionHeader && exKey(exercises, exercises[i], i) === key) return i;
+  }
+  return -1;
+}
+
 export default function WorkoutSession() {
   const { templateId, date } = useParams();
   const navigate = useNavigate();
@@ -344,8 +370,11 @@ export default function WorkoutSession() {
       }
       setTemplate(tutorialTemplate);
       const initial = {};
-      for (const ex of tutorialTemplate.exercises) {
-        initial[ex.name] = ex.sets.map((s) => ({
+      for (let exIdx = 0; exIdx < tutorialTemplate.exercises.length; exIdx++) {
+        const ex = tutorialTemplate.exercises[exIdx];
+        if (ex.isSectionHeader) continue;
+        const key = exKey(tutorialTemplate.exercises, ex, exIdx);
+        initial[key] = ex.sets.map((s) => ({
           weight: s.suggestedWeight || '',
           reps: '',
           setType: s.setType || ex.setType || 'straight',
@@ -397,8 +426,11 @@ export default function WorkoutSession() {
             setTemplate(tmpl);
             if (tmpl.isRest) return;
             const initial = {};
-            for (const ex of tmpl.exercises) {
-              initial[ex.name] = ex.sets.map((s) => ({
+            for (let exIdx = 0; exIdx < tmpl.exercises.length; exIdx++) {
+              const ex = tmpl.exercises[exIdx];
+              if (ex.isSectionHeader) continue;
+              const key = exKey(tmpl.exercises, ex, exIdx);
+              initial[key] = ex.sets.map((s) => ({
                 weight: s.suggestedWeight || '',
                 reps: '',
                 setType: s.setType || ex.setType || 'straight',
@@ -436,19 +468,31 @@ export default function WorkoutSession() {
           savedByExercise.get(entry.exerciseName).push(entry);
         }
 
-        for (const ex of wd.exercises) {
-          const savedSets = savedByExercise.get(ex.name);
-          if (savedSets) {
-            savedSets.sort((a, b) => a.setNumber - b.setNumber);
-            saved[ex.name] = savedSets.map((s, i) => {
-              if (s.isCompleted) restoredCompleted.add(`${ex.name}-${i}`);
-              // Restore per-set setType from workoutData sets (falls back to exercise-level)
+        // Track how many sets we've consumed for each exercise name
+        const consumedSets = {};
+        for (let exIdx = 0; exIdx < wd.exercises.length; exIdx++) {
+          const ex = wd.exercises[exIdx];
+          if (ex.isSectionHeader) continue;
+          const key = exKey(wd.exercises, ex, exIdx);
+          const allSaved = savedByExercise.get(ex.name) || [];
+          // Sort once (only on first encounter)
+          if (!consumedSets[ex.name] && allSaved.length > 0) {
+            allSaved.sort((a, b) => a.setNumber - b.setNumber);
+          }
+          const consumed = consumedSets[ex.name] || 0;
+          const setCount = ex.sets.length;
+          const mySaved = allSaved.slice(consumed, consumed + setCount);
+          consumedSets[ex.name] = consumed + setCount;
+
+          if (mySaved.length > 0) {
+            saved[key] = mySaved.map((s, i) => {
+              if (s.isCompleted) restoredCompleted.add(`${key}-${i}`);
               const wdSet = ex.sets?.[i];
               const setType = wdSet?.setType || ex.setType || 'straight';
               return { weight: s.weight || '', reps: s.reps || '', setType };
             });
           } else {
-            saved[ex.name] = ex.sets.map((s) => ({
+            saved[key] = ex.sets.map((s) => ({
               weight: s.suggestedWeight || '',
               reps: '',
               setType: s.setType || ex.setType || 'straight',
@@ -562,7 +606,12 @@ export default function WorkoutSession() {
     // Only auto-fill if the user actually entered a value
     if (value === '' || value === undefined || value === null) return;
 
-    const exercise = template.exercises.find((e) => e.name === exerciseName);
+    // Find the exercise whose computed key matches
+    let exercise = null;
+    for (let i = 0; i < template.exercises.length; i++) {
+      const e = template.exercises[i];
+      if (!e.isSectionHeader && exKey(template.exercises, e, i) === exerciseName) { exercise = e; break; }
+    }
     if (!exercise) return;
 
     setEntries((prev) => {
@@ -600,12 +649,14 @@ export default function WorkoutSession() {
     });
   }
 
-  function handleAddSet(exerciseName, afterIdx) {
+  function handleAddSet(exerciseKey, afterIdx) {
     setPersisted(false);
     structureSaveNeeded.current = true;
     setTemplate((prev) => {
-      const updated = { ...prev, exercises: prev.exercises.map((ex) => {
-        if (ex.name !== exerciseName) return ex;
+      const tIdx = findExIdx(prev.exercises, exerciseKey);
+      if (tIdx < 0) return prev;
+      const updated = { ...prev, exercises: prev.exercises.map((ex, i) => {
+        if (i !== tIdx) return ex;
         const refSet = ex.sets[afterIdx ?? ex.sets.length - 1];
         const newSet = {
           setNumber: 0, // will be renumbered below
@@ -620,13 +671,13 @@ export default function WorkoutSession() {
       return updated;
     });
     setEntries((prev) => {
-      const exEntries = prev[exerciseName] || [];
+      const exEntries = prev[exerciseKey] || [];
       const refEntry = exEntries[afterIdx ?? exEntries.length - 1];
       const newEntry = { weight: refEntry?.weight ?? '', reps: '' };
       const insertAt = afterIdx !== undefined ? afterIdx + 1 : exEntries.length;
       return {
         ...prev,
-        [exerciseName]: [...exEntries.slice(0, insertAt), newEntry, ...exEntries.slice(insertAt)],
+        [exerciseKey]: [...exEntries.slice(0, insertAt), newEntry, ...exEntries.slice(insertAt)],
       };
     });
     // Shift completed sets and auto-filled after insertion point
@@ -636,7 +687,7 @@ export default function WorkoutSession() {
         for (const key of prevSet) {
           const [name, idxStr] = key.split(/-(?=\d+$)/);
           const i = Number(idxStr);
-          if (name !== exerciseName) {
+          if (name !== exerciseKey) {
             next.add(key);
           } else if (i <= afterIdx) {
             next.add(key);
@@ -651,31 +702,37 @@ export default function WorkoutSession() {
     }
   }
 
-  function handleDeleteSet(exerciseName, setIdx) {
+  function handleDeleteSet(exerciseKey, setIdx) {
     // Snapshot before deleting
-    const exercise = template.exercises.find((ex) => ex.name === exerciseName);
-    if (!exercise || exercise.sets.length <= 1) return;
+    const tIdx = findExIdx(template.exercises, exerciseKey);
+    if (tIdx < 0) return;
+    const exercise = template.exercises[tIdx];
+    if (exercise.sets.length <= 1) return;
     const deletedSetData = exercise.sets[setIdx];
-    const deletedEntry = (entries[exerciseName] || [])[setIdx];
-    const wasCompleted = completedSets.has(`${exerciseName}-${setIdx}`);
-    const wasAutoFilled = autoFilled.has(`${exerciseName}-${setIdx}`);
+    const deletedEntry = (entries[exerciseKey] || [])[setIdx];
+    const wasCompleted = completedSets.has(`${exerciseKey}-${setIdx}`);
+    const wasAutoFilled = autoFilled.has(`${exerciseKey}-${setIdx}`);
+    const baseName = exNameFromKey(exerciseKey);
 
     setPersisted(false);
     structureSaveNeeded.current = true;
-    setTemplate((prev) => ({
-      ...prev,
-      exercises: prev.exercises.map((ex) => {
-        if (ex.name !== exerciseName || ex.sets.length <= 1) return ex;
-        const newSets = ex.sets.filter((_, i) => i !== setIdx)
-          .map((s, i) => ({ ...s, setNumber: i + 1 }));
-        return { ...ex, sets: newSets };
-      }),
-    }));
-    setEntries((prev) => {
-      const exEntries = prev[exerciseName] || [];
+    setTemplate((prev) => {
+      const ti = findExIdx(prev.exercises, exerciseKey);
       return {
         ...prev,
-        [exerciseName]: exEntries.filter((_, i) => i !== setIdx),
+        exercises: prev.exercises.map((ex, i) => {
+          if (i !== ti || ex.sets.length <= 1) return ex;
+          const newSets = ex.sets.filter((_, j) => j !== setIdx)
+            .map((s, j) => ({ ...s, setNumber: j + 1 }));
+          return { ...ex, sets: newSets };
+        }),
+      };
+    });
+    setEntries((prev) => {
+      const exEntries = prev[exerciseKey] || [];
+      return {
+        ...prev,
+        [exerciseKey]: exEntries.filter((_, i) => i !== setIdx),
       };
     });
     setCompletedSets((prev) => {
@@ -683,7 +740,7 @@ export default function WorkoutSession() {
       for (const key of prev) {
         const [name, idxStr] = key.split(/-(?=\d+$)/);
         const i = Number(idxStr);
-        if (name !== exerciseName) {
+        if (name !== exerciseKey) {
           next.add(key);
         } else if (i < setIdx) {
           next.add(key);
@@ -698,7 +755,7 @@ export default function WorkoutSession() {
       for (const key of prev) {
         const [name, idxStr] = key.split(/-(?=\d+$)/);
         const i = Number(idxStr);
-        if (name !== exerciseName) {
+        if (name !== exerciseKey) {
           next.add(key);
         } else if (i < setIdx) {
           next.add(key);
@@ -711,31 +768,34 @@ export default function WorkoutSession() {
 
     setUndoToast({
       type: 'set',
-      exerciseName,
-      message: `Removed set ${setIdx + 1} from ${exerciseName}`,
+      exerciseName: exerciseKey,
+      message: `Removed set ${setIdx + 1} from ${baseName}`,
       undoFn: () => {
         setPersisted(false);
         structureSaveNeeded.current = true;
-        setTemplate((prev) => ({
-          ...prev,
-          exercises: prev.exercises.map((ex) => {
-            if (ex.name !== exerciseName) return ex;
-            const newSets = [...ex.sets];
-            newSets.splice(setIdx, 0, { ...deletedSetData, setNumber: setIdx + 1 });
-            return { ...ex, sets: newSets.map((s, i) => ({ ...s, setNumber: i + 1 })) };
-          }),
-        }));
+        setTemplate((prev) => {
+          const ti = findExIdx(prev.exercises, exerciseKey);
+          return {
+            ...prev,
+            exercises: prev.exercises.map((ex, i) => {
+              if (i !== ti) return ex;
+              const newSets = [...ex.sets];
+              newSets.splice(setIdx, 0, { ...deletedSetData, setNumber: setIdx + 1 });
+              return { ...ex, sets: newSets.map((s, j) => ({ ...s, setNumber: j + 1 })) };
+            }),
+          };
+        });
         setEntries((prev) => {
-          const exEntries = [...(prev[exerciseName] || [])];
+          const exEntries = [...(prev[exerciseKey] || [])];
           exEntries.splice(setIdx, 0, deletedEntry || { weight: '', reps: '' });
-          return { ...prev, [exerciseName]: exEntries };
+          return { ...prev, [exerciseKey]: exEntries };
         });
         setCompletedSets((prev) => {
           const next = new Set();
           for (const key of prev) {
             const [name, idxStr] = key.split(/-(?=\d+$)/);
             const i = Number(idxStr);
-            if (name !== exerciseName) {
+            if (name !== exerciseKey) {
               next.add(key);
             } else if (i < setIdx) {
               next.add(key);
@@ -743,7 +803,7 @@ export default function WorkoutSession() {
               next.add(`${name}-${i + 1}`);
             }
           }
-          if (wasCompleted) next.add(`${exerciseName}-${setIdx}`);
+          if (wasCompleted) next.add(`${exerciseKey}-${setIdx}`);
           return next;
         });
         setAutoFilled((prev) => {
@@ -751,7 +811,7 @@ export default function WorkoutSession() {
           for (const key of prev) {
             const [name, idxStr] = key.split(/-(?=\d+$)/);
             const i = Number(idxStr);
-            if (name !== exerciseName) {
+            if (name !== exerciseKey) {
               next.add(key);
             } else if (i < setIdx) {
               next.add(key);
@@ -759,7 +819,7 @@ export default function WorkoutSession() {
               next.add(`${name}-${i + 1}`);
             }
           }
-          if (wasAutoFilled) next.add(`${exerciseName}-${setIdx}`);
+          if (wasAutoFilled) next.add(`${exerciseKey}-${setIdx}`);
           return next;
         });
       },
@@ -777,6 +837,7 @@ export default function WorkoutSession() {
       name: exerciseName,
       sets: [{ setNumber: 1, plannedReps: 10, suggestedWeight: 0 }],
     };
+    // Since we checked no duplicate exists, key is just exerciseName
     setTemplate((prev) => {
       const exercises = [...prev.exercises];
       if (afterIndex !== undefined) {
@@ -795,45 +856,50 @@ export default function WorkoutSession() {
 
   const exerciseRefs = useRef({});
 
-  function handleDeleteExercise(exerciseName) {
+  function handleDeleteExercise(exerciseKey) {
     // Snapshot before deleting
-    const exerciseIdx = template.exercises.findIndex((ex) => ex.name === exerciseName);
+    const exerciseIdx = findExIdx(template.exercises, exerciseKey);
+    if (exerciseIdx < 0) return;
     const exerciseData = template.exercises[exerciseIdx];
-    const exerciseEntries = entries[exerciseName];
-    const exerciseCompletedKeys = [...completedSets].filter((k) => k.startsWith(exerciseName + '-'));
-    const exerciseAutoFilledKeys = [...autoFilled].filter((k) => k.startsWith(exerciseName + '-'));
+    const exerciseEntries = entries[exerciseKey];
+    const exerciseCompletedKeys = [...completedSets].filter((k) => k.startsWith(exerciseKey + '-'));
+    const exerciseAutoFilledKeys = [...autoFilled].filter((k) => k.startsWith(exerciseKey + '-'));
+    const baseName = exNameFromKey(exerciseKey);
 
     setPersisted(false);
     structureSaveNeeded.current = true;
-    setTemplate((prev) => ({
-      ...prev,
-      exercises: prev.exercises.filter((ex) => ex.name !== exerciseName),
-    }));
+    setTemplate((prev) => {
+      const ti = findExIdx(prev.exercises, exerciseKey);
+      return {
+        ...prev,
+        exercises: prev.exercises.filter((_, i) => i !== ti),
+      };
+    });
     setEntries((prev) => {
       const updated = { ...prev };
-      delete updated[exerciseName];
+      delete updated[exerciseKey];
       return updated;
     });
     setCompletedSets((prev) => {
       const next = new Set();
       for (const key of prev) {
-        if (!key.startsWith(exerciseName + '-')) next.add(key);
+        if (!key.startsWith(exerciseKey + '-')) next.add(key);
       }
       return next;
     });
     setAutoFilled((prev) => {
       const next = new Set();
       for (const key of prev) {
-        if (!key.startsWith(exerciseName + '-')) next.add(key);
+        if (!key.startsWith(exerciseKey + '-')) next.add(key);
       }
       return next;
     });
 
     setUndoToast({
       type: 'exercise',
-      exerciseName,
+      exerciseName: exerciseKey,
       exerciseIndex: exerciseIdx,
-      message: `Deleted ${exerciseName}`,
+      message: `Deleted ${baseName}`,
       undoFn: () => {
         setPersisted(false);
         structureSaveNeeded.current = true;
@@ -843,7 +909,7 @@ export default function WorkoutSession() {
           return { ...prev, exercises };
         });
         if (exerciseEntries) {
-          setEntries((prev) => ({ ...prev, [exerciseName]: exerciseEntries }));
+          setEntries((prev) => ({ ...prev, [exerciseKey]: exerciseEntries }));
         }
         setCompletedSets((prev) => {
           const next = new Set(prev);
@@ -862,7 +928,7 @@ export default function WorkoutSession() {
   function handleMoveExercise(fromIdx, toIdx) {
     setPersisted(false);
     structureSaveNeeded.current = true;
-    const movingName = template.exercises[fromIdx]?.name;
+    const movingKey = exKey(template.exercises, template.exercises[fromIdx], fromIdx);
     setTemplate((prev) => {
       const exercises = [...prev.exercises];
       const [moved] = exercises.splice(fromIdx, 1);
@@ -871,7 +937,7 @@ export default function WorkoutSession() {
     });
     // Scroll to the moved card after React re-renders
     setTimeout(() => {
-      const el = exerciseRefs.current[movingName];
+      const el = exerciseRefs.current[movingKey];
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 50);
   }
@@ -881,39 +947,51 @@ export default function WorkoutSession() {
     setNotes((prev) => ({ ...prev, [exerciseName]: value }));
   }
 
-  function performSwap(oldName, newName) {
+  function performSwap(oldKey, newName) {
     setPersisted(false);
     structureSaveNeeded.current = true;
     // Get the number of sets from the old exercise
-    const oldExercise = template.exercises.find((ex) => ex.name === oldName);
+    const tIdx = findExIdx(template.exercises, oldKey);
+    const oldExercise = tIdx >= 0 ? template.exercises[tIdx] : null;
     const numSets = oldExercise?.sets?.length || 0;
 
     // Update template: replace name and clear plannedReps/suggestedWeight
-    setTemplate((prev) => ({
-      ...prev,
-      exercises: prev.exercises.map((ex) =>
-        ex.name === oldName
-          ? {
-              ...ex,
-              name: newName,
-              sets: ex.sets.map((s) => ({ ...s, plannedReps: '', suggestedWeight: 0 })),
-            }
-          : ex
-      ),
-    }));
+    setTemplate((prev) => {
+      const ti = findExIdx(prev.exercises, oldKey);
+      return {
+        ...prev,
+        exercises: prev.exercises.map((ex, i) =>
+          i === ti
+            ? {
+                ...ex,
+                name: newName,
+                sets: ex.sets.map((s) => ({ ...s, plannedReps: '', suggestedWeight: 0 })),
+              }
+            : ex
+        ),
+      };
+    });
+
+    // Compute the new key (the exercise at tIdx now has newName; reuse same occurrence logic)
+    // Since the swap replaces the name in-place, the new key depends on other exercises.
+    // We need to compute it from the updated exercises list. For simplicity, set entries
+    // using the newName key (which will be correct since swapping keeps the position).
+    // Compute based on pre-swap template (position stays the same, name changes)
+    const newExercises = template.exercises.map((ex, i) => i === tIdx ? { ...ex, name: newName } : ex);
+    const newKey = exKey(newExercises, newName, tIdx);
 
     // Set blank entries for the new exercise
     setEntries((prev) => {
       const updated = { ...prev };
-      delete updated[oldName];
-      updated[newName] = Array.from({ length: numSets }, () => ({ weight: '', reps: '' }));
+      delete updated[oldKey];
+      updated[newKey] = Array.from({ length: numSets }, () => ({ weight: '', reps: '' }));
       return updated;
     });
 
     // Clear notes for old exercise
     setNotes((prev) => {
       const updated = { ...prev };
-      delete updated[oldName];
+      delete updated[oldKey];
       return updated;
     });
 
@@ -921,7 +999,7 @@ export default function WorkoutSession() {
     setCompletedSets((prev) => {
       const next = new Set();
       for (const key of prev) {
-        if (!key.startsWith(oldName + '-')) next.add(key);
+        if (!key.startsWith(oldKey + '-')) next.add(key);
       }
       return next;
     });
@@ -930,26 +1008,26 @@ export default function WorkoutSession() {
     setAutoFilled((prev) => {
       const next = new Set();
       for (const key of prev) {
-        if (!key.startsWith(oldName + '-')) next.add(key);
+        if (!key.startsWith(oldKey + '-')) next.add(key);
       }
       return next;
     });
   }
 
-  function handleSwapExercise(oldName, newName) {
+  function handleSwapExercise(oldKey, newName) {
     // Check if old exercise has any data worth preserving
-    const oldEntries = entries[oldName] || [];
+    const oldEntries = entries[oldKey] || [];
     const hasEntryData = oldEntries.some(
       (e) => (e.weight && Number(e.weight) > 0) || (e.reps && Number(e.reps) > 0)
     );
-    const hasCompletedSets = [...completedSets].some((key) => key.startsWith(oldName + '-'));
+    const hasCompletedSets = [...completedSets].some((key) => key.startsWith(oldKey + '-'));
 
     if (hasEntryData || hasCompletedSets) {
       // Show confirmation modal
-      setPendingSwap({ oldName, newName });
+      setPendingSwap({ oldName: oldKey, newName });
     } else {
       // No data to lose, swap directly
-      performSwap(oldName, newName);
+      performSwap(oldKey, newName);
     }
   }
 
@@ -963,8 +1041,11 @@ export default function WorkoutSession() {
           const weightVariations = [0, 5, 10, 0, -5, 5, 0, -10, 10, 0, 5, -5];
           let variIdx = 0;
           const filled = {};
-          for (const ex of template.exercises) {
-            filled[ex.name] = ex.sets.map((s) => {
+          for (let exIdx = 0; exIdx < template.exercises.length; exIdx++) {
+            const ex = template.exercises[exIdx];
+            if (ex.isSectionHeader) continue;
+            const eKey = exKey(template.exercises, ex, exIdx);
+            filled[eKey] = ex.sets.map((s) => {
               const planned = s.plannedReps || 0;
               const goalWt = Number(s.suggestedWeight) || 0;
               const idx = variIdx++ % repVariations.length;
@@ -979,8 +1060,10 @@ export default function WorkoutSession() {
           }
           setEntries(filled);
           const allKeys = new Set();
-          template.exercises.forEach((ex) => {
-            ex.sets.forEach((_, i) => allKeys.add(`${ex.name}-${i}`));
+          template.exercises.forEach((ex, exIdx) => {
+            if (ex.isSectionHeader) return;
+            const eKey = exKey(template.exercises, ex, exIdx);
+            ex.sets.forEach((_, i) => allKeys.add(`${eKey}-${i}`));
           });
           setCompletedSets(allKeys);
           if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
@@ -1030,9 +1113,9 @@ export default function WorkoutSession() {
     }
   }
 
-  function handleToggleComplete(exerciseName, setIdx) {
+  function handleToggleComplete(exerciseKey, setIdx) {
     setPersisted(false);
-    const key = `${exerciseName}-${setIdx}`;
+    const key = `${exerciseKey}-${setIdx}`;
     setCompletedSets((prev) => {
       const next = new Set(prev);
       if (next.has(key)) {
@@ -1053,28 +1136,31 @@ export default function WorkoutSession() {
     setCompletedSets((latestCompleted) => {
       const isCompleting = !latestCompleted.has(key);
       if (isCompleting) {
-        const exEntries = entries[exerciseName] || [];
+        const exEntries = entries[exerciseKey] || [];
         const thisEntry = exEntries[setIdx];
         const w = thisEntry?.weight;
         const r = thisEntry?.reps;
         if ((w !== '' && w !== undefined) || (r !== '' && r !== undefined)) {
-          const exercise = template.exercises.find((e) => e.name === exerciseName);
+          let exercise = null;
+          for (let i = 0; i < template.exercises.length; i++) {
+            if (!template.exercises[i].isSectionHeader && exKey(template.exercises, template.exercises[i], i) === exerciseKey) { exercise = template.exercises[i]; break; }
+          }
           if (exercise) {
             setEntries((prev) => {
               const updated = { ...prev };
-              updated[exerciseName] = [...(updated[exerciseName] || [])];
+              updated[exerciseKey] = [...(updated[exerciseKey] || [])];
               const newAutoFilled = new Set(autoFilled);
               for (let i = setIdx + 1; i < exercise.sets.length; i++) {
-                const laterKey = `${exerciseName}-${i}`;
+                const laterKey = `${exerciseKey}-${i}`;
                 if (!latestCompleted.has(laterKey)) {
-                  const current = updated[exerciseName][i] || {};
+                  const current = updated[exerciseKey][i] || {};
                   const currentWeight = current.weight;
                   const currentReps = current.reps;
                   const isCurrentAutoFilled = autoFilled.has(laterKey);
                   const weightEmpty = currentWeight === '' || currentWeight === undefined;
                   const repsEmpty = currentReps === '' || currentReps === undefined;
                   if (weightEmpty || repsEmpty || isCurrentAutoFilled) {
-                    updated[exerciseName][i] = {
+                    updated[exerciseKey][i] = {
                       ...current,
                       weight: w !== '' && w !== undefined ? w : current.weight,
                       reps: r !== '' && r !== undefined ? r : current.reps,
@@ -1098,9 +1184,11 @@ export default function WorkoutSession() {
 
     const lines = [`${template.name} — ${format(parseISO(date), 'EEEE, MMM d')}\n`];
 
-    for (const ex of template.exercises) {
+    for (let exIdx = 0; exIdx < template.exercises.length; exIdx++) {
+      const ex = template.exercises[exIdx];
       if (ex.isSectionHeader) continue;
-      const exEntries = entries[ex.name] || [];
+      const eKey = exKey(template.exercises, ex, exIdx);
+      const exEntries = entries[eKey] || [];
       const setLines = [];
       ex.sets.forEach((set, idx) => {
         const e = exEntries[idx];
@@ -1145,18 +1233,20 @@ export default function WorkoutSession() {
       const oldPbs = JSON.parse(JSON.stringify(pbs));
 
       const allEntries = [];
-      for (const ex of template.exercises) {
+      for (let exIdx = 0; exIdx < template.exercises.length; exIdx++) {
+        const ex = template.exercises[exIdx];
         if (ex.isSectionHeader) continue;
-        const exEntries = entries[ex.name] || [];
+        const eKey = exKey(template.exercises, ex, exIdx);
+        const exEntries = entries[eKey] || [];
         ex.sets.forEach((set, idx) => {
-          const key = `${ex.name}-${idx}`;
-          const isAutoOnly = autoFilled.has(key) && !completedSets.has(key);
+          const k = `${eKey}-${idx}`;
+          const isAutoOnly = autoFilled.has(k) && !completedSets.has(k);
           allEntries.push({
-            exerciseName: ex.name,
+            exerciseName: ex.name, // use original name for server
             setNumber: set.setNumber,
             weight: isAutoOnly ? 0 : (exEntries[idx]?.weight || 0),
             reps: isAutoOnly ? 0 : (exEntries[idx]?.reps || 0),
-            isCompleted: completedSets.has(key),
+            isCompleted: completedSets.has(k),
             setType: exEntries[idx]?.setType || set.setType || ex.setType || 'straight',
           });
         });
@@ -1165,13 +1255,14 @@ export default function WorkoutSession() {
       // Save the full workout structure as an independent copy
       const workoutData = {
         name: template.name,
-        exercises: template.exercises.map((ex) => {
+        exercises: template.exercises.map((ex, exIdx) => {
           if (ex.isSectionHeader) return { name: ex.name, isSectionHeader: true, sectionNotes: ex.sectionNotes || '', sets: [] };
+          const eKey = exKey(template.exercises, ex, exIdx);
           return {
             name: ex.name,
-            setType: entries[ex.name]?.find(e => e?.setType)?.setType || ex.setType || 'straight',
+            setType: entries[eKey]?.find(e => e?.setType)?.setType || ex.setType || 'straight',
             sets: ex.sets.map((s, i) => {
-              const entry = entries[ex.name]?.[i];
+              const entry = entries[eKey]?.[i];
               return {
                 setNumber: s.setNumber,
                 plannedReps: s.plannedReps ?? 10,
@@ -1342,8 +1433,10 @@ export default function WorkoutSession() {
   const completedCount = completedSets.size;
   const progressPct = totalSets > 0 ? Math.round((completedCount / totalSets) * 100) : 0;
 
-  const totalVolume = template.exercises.filter(ex => !ex.isSectionHeader).reduce((vol, ex) => {
-    const exEntries = entries[ex.name] || [];
+  const totalVolume = template.exercises.reduce((vol, ex, exIdx) => {
+    if (ex.isSectionHeader) return vol;
+    const eKey = exKey(template.exercises, ex, exIdx);
+    const exEntries = entries[eKey] || [];
     return vol + exEntries.reduce((sum, e) => {
       const w = Number(e.weight) || 0;
       const r = Number(e.reps) || 0;
@@ -1400,7 +1493,7 @@ export default function WorkoutSession() {
           >
             <h3 className="text-base font-bold text-white text-center mb-1">Substitute Exercise</h3>
             <p className="text-wf-gray-400 text-sm text-center mb-5">
-              Substituting this exercise will remove your saved sets for {pendingSwap.oldName}. This cannot be undone.
+              Substituting this exercise will remove your saved sets for {exNameFromKey(pendingSwap.oldName)}. This cannot be undone.
             </p>
             <div className="flex flex-col gap-2">
               <button
@@ -1637,8 +1730,12 @@ export default function WorkoutSession() {
 
       {/* Exercise Cards */}
       <div className="px-4">
-        {template.exercises.map((exercise, idx) => (
-          <div key={exercise.isSectionHeader ? `section-${idx}` : exercise.name}>
+        {template.exercises.map((exercise, idx) => {
+          const eKey = exercise.isSectionHeader ? null : exKey(template.exercises, exercise, idx);
+          // Wrapper: ExerciseCard passes exercise.name as first arg; replace with the unique key
+          const wrapCb = (fn) => fn ? (_name, ...args) => fn(eKey, ...args) : undefined;
+          return (
+          <div key={exercise.isSectionHeader ? `section-${idx}` : eKey}>
             {/* Inline undo toast for deleted exercise — show at this position */}
             {undoToast && undoToast.type === 'exercise' && undoToast.exerciseIndex === idx && (
               <UndoToast
@@ -1665,43 +1762,43 @@ export default function WorkoutSession() {
               </div>
             </div>
           ) : (
-          <div ref={(el) => { exerciseRefs.current[exercise.name] = el; }} className="fade-slide-up" style={{ animationDelay: `${idx * 60}ms` }}>
+          <div ref={(el) => { exerciseRefs.current[eKey] = el; }} className="fade-slide-up" style={{ animationDelay: `${idx * 60}ms` }}>
             <ExerciseCard
               exercise={exercise}
-              entries={entries[exercise.name]}
+              entries={entries[eKey]}
               pbs={pbs}
               readOnly={structureLocked}
               inputsLocked={inputsLocked}
               onLockedTap={inputsLocked ? () => setShowBeginPrompt(true) : undefined}
-              onChange={inputsLocked ? undefined : handleChange}
-              onBlur={inputsLocked ? undefined : handleBlur}
+              onChange={inputsLocked ? undefined : wrapCb(handleChange)}
+              onBlur={inputsLocked ? undefined : wrapCb(handleBlur)}
               completedSets={completedSets}
               autoFilled={autoFilled}
-              onToggleComplete={inputsLocked ? undefined : handleToggleComplete}
-              onAddSet={structureLocked ? undefined : handleAddSet}
-              onDeleteSet={structureLocked ? undefined : handleDeleteSet}
-              onSwapExercise={structureLocked ? undefined : handleSwapExercise}
+              onToggleComplete={inputsLocked ? undefined : wrapCb(handleToggleComplete)}
+              onAddSet={structureLocked ? undefined : wrapCb(handleAddSet)}
+              onDeleteSet={structureLocked ? undefined : wrapCb(handleDeleteSet)}
+              onSwapExercise={structureLocked ? undefined : (_oldName, newName) => handleSwapExercise(eKey, newName)}
               onAddExercise={structureLocked ? undefined : (name) => handleAddExercise(name, idx)}
-              onDeleteExercise={structureLocked ? undefined : () => handleDeleteExercise(exercise.name)}
+              onDeleteExercise={structureLocked ? undefined : () => handleDeleteExercise(eKey)}
               onMoveUp={structureLocked ? undefined : (idx > 0 ? () => handleMoveExercise(idx, idx - 1) : undefined)}
               onMoveDown={structureLocked ? undefined : (idx < template.exercises.length - 1 ? () => handleMoveExercise(idx, idx + 1) : undefined)}
-              note={notes[exercise.name] || ''}
-              onNoteChange={inputsLocked ? undefined : handleNoteChange}
+              note={notes[eKey] || ''}
+              onNoteChange={inputsLocked ? undefined : (_name, value) => handleNoteChange(eKey, value)}
               weightSuggestion={inputsLocked ? undefined : weightSuggestions[exercise.name]}
-              onApplySuggestion={inputsLocked ? undefined : (exName, weight) => {
+              onApplySuggestion={inputsLocked ? undefined : (_exName, weight) => {
                 setEntries(prev => {
                   const updated = { ...prev };
-                  updated[exName] = (updated[exName] || []).map(e => ({ ...e, weight }));
+                  updated[eKey] = (updated[eKey] || []).map(e => ({ ...e, weight }));
                   return updated;
                 });
-                setWeightSuggestions(prev => { const next = { ...prev }; delete next[exName]; return next; });
+                setWeightSuggestions(prev => { const next = { ...prev }; delete next[exercise.name]; return next; });
               }}
               allWorkoutExercises={template.exercises.map(e => e.name)}
               lastEntries={lastSession[exercise.name]}
               dataTutorial={tutorialMode && idx === 1 ? 'exercise-header' : undefined}
             />
             {/* Inline undo toast for deleted set — show below this exercise */}
-            {undoToast && undoToast.type === 'set' && undoToast.exerciseName === exercise.name && (
+            {undoToast && undoToast.type === 'set' && undoToast.exerciseName === eKey && (
               <UndoToast
                 message={undoToast.message}
                 onUndo={() => { undoToast.undoFn(); setUndoToast(null); }}
@@ -1741,7 +1838,8 @@ export default function WorkoutSession() {
             />
           )}
           </div>
-        ))}
+        );
+        })}
 
         {/* Add Exercise Button */}
         {!structureLocked && (
@@ -2250,8 +2348,10 @@ function WorkoutSummary({ template, programName, entries, completedSets, elapsed
   // Stats
   const realExercises = template.exercises.filter(ex => !ex.isSectionHeader);
   const totalSets = realExercises.reduce((s, ex) => s + ex.sets.length, 0);
-  const totalVolume = realExercises.reduce((vol, ex) => {
-    const exEntries = entries[ex.name] || [];
+  const totalVolume = template.exercises.reduce((vol, ex, exIdx) => {
+    if (ex.isSectionHeader) return vol;
+    const eKey = exKey(template.exercises, ex, exIdx);
+    const exEntries = entries[eKey] || [];
     return vol + exEntries.reduce((sum, e) => {
       const w = Number(e.weight) || 0;
       const r = Number(e.reps) || 0;
@@ -2262,8 +2362,10 @@ function WorkoutSummary({ template, programName, entries, completedSets, elapsed
   const [expandedSummary, setExpandedSummary] = useState(new Set());
 
   // Per-exercise data with per-set volume breakdown (goal volume vs actual volume)
-  const exerciseStats = realExercises.map((ex) => {
-    const exEntries = entries[ex.name] || [];
+  const exerciseStats = template.exercises.reduce((acc, ex, exIdx) => {
+    if (ex.isSectionHeader) return acc;
+    const eKey = exKey(template.exercises, ex, exIdx);
+    const exEntries = entries[eKey] || [];
     const setStats = ex.sets.map((set, idx) => {
       const goalWeight = Number(set.suggestedWeight) || 0;
       const goalReps = set.plannedReps || 0;
@@ -2277,8 +2379,9 @@ function WorkoutSummary({ template, programName, entries, completedSets, elapsed
     });
     const totalGoalVol = setStats.reduce((s, ss) => s + ss.goalVolume, 0);
     const totalActualVol = setStats.reduce((s, ss) => s + ss.actualVolume, 0);
-    return { name: ex.name, setStats, totalGoalVol, totalActualVol };
-  });
+    acc.push({ name: ex.name, eKey, setStats, totalGoalVol, totalActualVol });
+    return acc;
+  }, []);
 
   const totalGoalVolume = exerciseStats.reduce((s, ex) => s + ex.totalGoalVol, 0);
 
@@ -2342,13 +2445,14 @@ function WorkoutSummary({ template, programName, entries, completedSets, elapsed
     y += 50; // spacing after stats
 
     // Exercise section height
-    template.exercises.forEach(ex => {
+    template.exercises.forEach((ex, exIdx) => {
       if (ex.isSectionHeader) {
         y += 60; // section header
         return;
       }
       y += 50; // exercise name
-      const exEntries = entries[ex.name] || [];
+      const eKey = exKey(template.exercises, ex, exIdx);
+      const exEntries = entries[eKey] || [];
       y += ex.sets.length * 38; // each set row
       y += 24; // spacing after exercise
     });
@@ -2467,7 +2571,7 @@ function WorkoutSummary({ template, programName, entries, completedSets, elapsed
 
     // --- Exercise list ---
     ctx.textAlign = 'left';
-    template.exercises.forEach(ex => {
+    template.exercises.forEach((ex, exIdx) => {
       if (ex.isSectionHeader) {
         // Section header with red left accent
         ctx.fillStyle = '#ef4444';
@@ -2487,7 +2591,8 @@ function WorkoutSummary({ template, programName, entries, completedSets, elapsed
       curY += 50;
 
       // Set rows
-      const exEntries = entries[ex.name] || [];
+      const eKey = exKey(template.exercises, ex, exIdx);
+      const exEntries = entries[eKey] || [];
       ex.sets.forEach((set, idx) => {
         const e = exEntries[idx];
         const actualWeight = Number(e?.weight) || 0;
@@ -2607,13 +2712,14 @@ function WorkoutSummary({ template, programName, entries, completedSets, elapsed
     lines.push(`${template.name} \u2014 Workout Complete!`);
     lines.push(`Time: ${formatTime(elapsed)} | Sets: ${completedSets.size}/${totalSets} | Volume: ${totalVolume.toLocaleString()} lbs`);
     lines.push('');
-    template.exercises.forEach(ex => {
+    template.exercises.forEach((ex, exIdx) => {
       if (ex.isSectionHeader) {
         lines.push(`\u2014 ${ex.name} \u2014`);
         if (ex.sectionNotes) lines.push(`  ${ex.sectionNotes}`);
         return;
       }
-      const exEntries = entries[ex.name] || [];
+      const eKey = exKey(template.exercises, ex, exIdx);
+      const exEntries = entries[eKey] || [];
       lines.push(ex.name);
       if (ex.exerciseDescription) lines.push(`  Note: ${ex.exerciseDescription}`);
       ex.sets.forEach((set, idx) => {
@@ -2707,13 +2813,13 @@ function WorkoutSummary({ template, programName, entries, completedSets, elapsed
               const volDiff = ex.totalActualVol - ex.totalGoalVol;
               const volSign = volDiff > 0 ? '+' : '';
               const volColor = volDiff > 0 ? 'text-green-400' : volDiff === 0 ? 'text-yellow-400' : 'text-red-400';
-              const isExpanded = expandedSummary.has(ex.name);
+              const isExpanded = expandedSummary.has(ex.eKey);
               return (
-              <div key={ex.name} className="glass-card rounded-xl overflow-hidden">
+              <div key={ex.eKey} className="glass-card rounded-xl overflow-hidden">
                 <button
                   onClick={() => setExpandedSummary(prev => {
                     const next = new Set(prev);
-                    if (next.has(ex.name)) next.delete(ex.name); else next.add(ex.name);
+                    if (next.has(ex.eKey)) next.delete(ex.eKey); else next.add(ex.eKey);
                     return next;
                   })}
                   className="w-full text-left px-4 py-3 active:bg-white/5 transition-colors"
