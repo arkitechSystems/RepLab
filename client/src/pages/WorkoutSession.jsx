@@ -1672,7 +1672,7 @@ export default function WorkoutSession() {
               pbs={pbs}
               readOnly={structureLocked}
               inputsLocked={inputsLocked}
-              onLockedTap={inputsLocked && !isCompleted ? () => setShowBeginPrompt(true) : undefined}
+              onLockedTap={inputsLocked ? () => setShowBeginPrompt(true) : undefined}
               onChange={inputsLocked ? undefined : handleChange}
               onBlur={inputsLocked ? undefined : handleBlur}
               completedSets={completedSets}
@@ -1722,7 +1722,7 @@ export default function WorkoutSession() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
                 </svg>
               </div>
-              <h3 className="text-base font-bold text-white">Click Begin Workout to start logging sets.</h3>
+              <h3 className="text-base font-bold text-white">{isCompleted ? 'Scroll down and tap Undo Completion to edit.' : 'Click Begin Workout to start logging sets.'}</h3>
             </div>
             <button
               onClick={() => setShowBeginPrompt(false)}
