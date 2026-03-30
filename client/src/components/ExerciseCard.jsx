@@ -34,13 +34,14 @@ function getSetTypeShort(value) {
 
 export { SET_TYPES };
 
-function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, note, onNoteChange, weightSuggestion, onApplySuggestion, allWorkoutExercises, lastEntries, mode = 'session', dataTutorial }) {
+function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, note, onNoteChange, weightSuggestion, onApplySuggestion, allWorkoutExercises, lastEntries, forceShowDemo, mode = 'session', dataTutorial }) {
   const isTemplate = mode === 'template';
   const exercisePbs = pbs?.[exercise.name] || {};
   const videoId = getExerciseVideoId(exercise.name);
   const { exercises: allExercises } = useExercises();
   const [showVideo, setShowVideo] = useState(false);
-  const [showDemo, setShowDemo] = useState(false);
+  const [showDemoLocal, setShowDemoLocal] = useState(false);
+  const showDemo = forceShowDemo || showDemoLocal;
   const [deleteIdx, setDeleteIdx] = useState(null);
   const [confirmDeleteLast, setConfirmDeleteLast] = useState(false);
   const [showSwap, setShowSwap] = useState(false);
@@ -138,7 +139,7 @@ function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, inpu
           {!isTemplate && (
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); setShowDemo(!showDemo); }}
+              onClick={(e) => { e.stopPropagation(); setShowDemoLocal(!showDemoLocal); }}
               className={`shrink-0 h-7 px-2.5 rounded-lg flex items-center gap-1.5 active:scale-95 transition-all ${showDemo ? 'bg-wf-red/20 border border-wf-red/40' : 'bg-wf-red/10 border border-wf-red/20'}`}
             >
               <svg className="w-3.5 h-3.5 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

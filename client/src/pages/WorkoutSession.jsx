@@ -66,6 +66,7 @@ export default function WorkoutSession() {
   const [lastSession, setLastSession] = useState({});
   const [timerStarted, setTimerStarted] = useState(false);
   const [showBeginPrompt, setShowBeginPrompt] = useState(false);
+  const [showAllDemos, setShowAllDemos] = useState(false);
   const [timerHidden, setTimerHidden] = useState(false);
   const [timerFloating, setTimerFloating] = useState(false);
   const [floatPos, setFloatPos] = useState({ x: 16, y: 80 });
@@ -1728,6 +1729,19 @@ export default function WorkoutSession() {
         </div>
       )}
 
+      {/* View All Demos Toggle */}
+      <div className="px-4 mb-3">
+        <button
+          onClick={() => setShowAllDemos(!showAllDemos)}
+          className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.98] ${showAllDemos ? 'bg-wf-red/20 border border-wf-red/40 text-wf-red' : 'bg-white/5 border border-white/10 text-wf-gray-400'}`}
+        >
+          <svg className={`w-4 h-4 ${showAllDemos ? 'text-wf-red' : 'text-wf-gray-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
+          </svg>
+          {showAllDemos ? 'Hide Exercise Demos' : 'View Exercise Demos'}
+        </button>
+      </div>
+
       {/* Exercise Cards */}
       <div className="px-4">
         {template.exercises.map((exercise, idx) => {
@@ -1795,6 +1809,7 @@ export default function WorkoutSession() {
               }}
               allWorkoutExercises={template.exercises.map(e => e.name)}
               lastEntries={lastSession[exercise.name]}
+              forceShowDemo={showAllDemos}
               dataTutorial={tutorialMode && idx === 1 ? 'exercise-header' : undefined}
             />
             {/* Inline undo toast for deleted set — show below this exercise */}
