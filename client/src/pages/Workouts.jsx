@@ -2571,20 +2571,42 @@ export default function Workouts() {
           </div>
         ) : (
           <div className="space-y-4 pb-4">
-            {/* Featured Workouts card */}
+            {/* Featured Workouts video card */}
             <div
-              className="w-full text-left glass-card rounded-2xl overflow-hidden fade-slide-up"
-              style={{ animationDelay: '0ms' }}
+              className="w-full rounded-2xl overflow-hidden fade-slide-up relative"
+              style={{ animationDelay: '0ms', minHeight: '140px' }}
             >
-              <div className="h-1.5 bg-purple-500" />
-              <div className="p-5">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-black text-white tracking-tight">Featured Workouts</h2>
-                  <span className="px-2 py-0.5 rounded-full bg-purple-500/15 border border-purple-500/30 text-[10px] font-bold text-purple-400 uppercase tracking-wider">
-                    Coming Soon
-                  </span>
+              <video
+                ref={(el) => {
+                  if (!el) return;
+                  el.currentTime = 7;
+                  el.ontimeupdate = () => {
+                    if (el.duration && el.currentTime >= el.duration - 6) {
+                      el.currentTime = 7;
+                    }
+                  };
+                  el.play().catch(() => {});
+                }}
+                className="absolute inset-0 w-full h-full object-cover"
+                autoPlay
+                loop
+                muted
+                playsInline
+                webkit-playsinline=""
+                preload="auto"
+                src="/Gym cinematic promotion video.mp4"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
+              <div className="relative z-10 p-5 flex flex-col justify-end h-full" style={{ minHeight: '140px' }}>
+                <div className="mt-auto">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-2xl font-black text-white tracking-tight drop-shadow-lg">Featured Workouts</h2>
+                    <span className="px-2 py-0.5 rounded-full bg-purple-500/20 border border-purple-500/40 text-[10px] font-bold text-purple-300 uppercase tracking-wider drop-shadow">
+                      Coming Soon
+                    </span>
+                  </div>
+                  <p className="text-white/70 text-sm mt-1 drop-shadow">Curated workouts from top trainers</p>
                 </div>
-                <p className="text-wf-gray-400 text-sm mt-1">Curated workouts from top trainers</p>
               </div>
             </div>
 
