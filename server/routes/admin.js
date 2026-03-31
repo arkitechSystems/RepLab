@@ -4556,8 +4556,18 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
       return `
         <div class="ex-row" data-exercise-row data-name="${e.name.toLowerCase()}" data-muscle="${(e.muscle || '').toLowerCase()}" data-has-video="${videoId ? 'yes' : 'no'}">
           <div style="flex:1;min-width:0;">
-            <div style="font-weight:600;color:#fff;font-size:14px;">${e.name}${e.isCustom ? ' <span style="font-size:10px;color:rgba(168,85,247,0.8);font-weight:700;vertical-align:middle;">CUSTOM</span>' : ''}</div>
-            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px;">${e.muscle || 'Unknown'}</div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <input
+                type="text"
+                id="name-${e.id}"
+                value="${e.name.replace(/"/g, '&quot;')}"
+                style="font-weight:600;color:#fff;font-size:14px;background:none;border:1px solid transparent;border-radius:6px;padding:2px 6px;outline:none;font-family:inherit;width:100%;"
+                onfocus="this.style.borderColor='rgba(255,255,255,0.2)';this.style.background='rgba(255,255,255,0.04)'"
+                onblur="this.style.borderColor='transparent';this.style.background='none';renameExercise(${e.id})"
+                onkeydown="if(event.key==='Enter'){this.blur()}"
+              />${e.isCustom ? '<span style="font-size:10px;color:rgba(168,85,247,0.8);font-weight:700;white-space:nowrap;">CUSTOM</span>' : ''}
+            </div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px;padding-left:6px;">${e.muscle || 'Unknown'}</div>
           </div>
           <div class="video-status" style="flex-shrink:0;margin-right:12px;">
             ${videoId
@@ -4694,6 +4704,30 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
           }
         }
 
+        async function renameExercise(exerciseId) {
+          var input = document.getElementById('name-' + exerciseId);
+          var newName = input.value.trim();
+          if (!newName) return;
+          try {
+            var resp = await fetch('/admin/exercise-library/rename/' + exerciseId, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name: newName })
+            });
+            if (resp.ok) {
+              input.style.borderColor = '#22c55e';
+              setTimeout(function() { input.style.borderColor = 'transparent'; }, 1500);
+              var row = input.closest('[data-exercise-row]');
+              if (row) row.dataset.name = newName.toLowerCase();
+            } else {
+              var data = await resp.json();
+              alert(data.error || 'Failed to rename');
+            }
+          } catch (err) {
+            alert('Failed to rename: ' + err.message);
+          }
+        }
+
         async function deleteExercise(exerciseId, exerciseName) {
           if (!confirm('Delete "' + exerciseName + '" from the exercise library? This cannot be undone.')) return;
           try {
@@ -4793,6 +4827,19 @@ router.put('/exercise-library/video/:id', adminAuth, express.json(), async (req,
   } catch (err) {
     console.error('Update video_id error:', err);
     res.status(500).json({ error: 'Failed to update video ID' });
+  }
+});
+
+// PUT /admin/exercise-library/rename/:id — Rename an exercise
+router.put('/exercise-library/rename/:id', adminAuth, express.json(), async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ error: 'Name is required' });
+    await pool.query('UPDATE exercises SET name = $1 WHERE id = $2', [name.trim(), Number(req.params.id)]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Rename exercise error:', err);
+    res.status(500).json({ error: 'Failed to rename exercise' });
   }
 });
 
