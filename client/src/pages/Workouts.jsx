@@ -1372,7 +1372,17 @@ export default function Workouts() {
               className="relative w-full max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="text-lg font-black text-white mb-1">Begin Program</h3>
+              <div className="flex items-start justify-between mb-1">
+                <h3 className="text-lg font-black text-white">Begin Program</h3>
+                <button
+                  onClick={closeBeginModal}
+                  className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90 transition-all shrink-0"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
               <p className="text-wf-gray-400 text-sm mb-5">
                 Schedule <span className="text-white font-semibold">{beginModal.name}</span> starting from a day of your choice.
               </p>
