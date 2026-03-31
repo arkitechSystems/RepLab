@@ -4537,6 +4537,7 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
     const { rows } = await pool.query(
       'SELECT id, name, muscle_group, is_custom, tags, video_id FROM exercises ORDER BY name ASC'
     );
+    const muscleGroups = await db.getMuscleGroups();
 
     const exercises = rows.map(e => ({
       id: e.id,
@@ -4635,7 +4636,31 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
         </label>
       </div>
 
-      <div style="margin-top:8px;font-size:12px;color:rgba(255,255,255,0.3);" id="ex-count"></div>
+      <div style="margin-top:12px;display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:12px;color:rgba(255,255,255,0.3);" id="ex-count"></div>
+        <button onclick="document.getElementById('add-ex-form').style.display=document.getElementById('add-ex-form').style.display==='none'?'flex':'none'" style="padding:8px 16px;border-radius:10px;background:rgba(168,85,247,0.15);border:1px solid rgba(168,85,247,0.3);color:#a855f7;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;" onmouseover="this.style.background='rgba(168,85,247,0.25)'" onmouseout="this.style.background='rgba(168,85,247,0.15)'">
+          <span style="font-size:16px;line-height:1;">+</span> Add Exercise
+        </button>
+      </div>
+
+      <div id="add-ex-form" style="display:none;margin-top:12px;padding:16px;border-radius:12px;border:1px solid rgba(168,85,247,0.3);background:rgba(168,85,247,0.05);gap:10px;flex-wrap:wrap;align-items:flex-end;">
+        <div style="flex:1;min-width:180px;">
+          <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);font-weight:600;display:block;margin-bottom:4px;">Exercise Name *</label>
+          <input type="text" id="add-ex-name" placeholder="e.g. Barbell Curl" required style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#fff;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;" />
+        </div>
+        <div style="min-width:160px;">
+          <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);font-weight:600;display:block;margin-bottom:4px;">Muscle Group *</label>
+          <select id="add-ex-muscle" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#fff;font-size:13px;font-family:inherit;outline:none;">
+            ${muscleGroups.map(g => '<option value="' + g + '">' + g + '</option>').join('')}
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div style="min-width:180px;">
+          <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);font-weight:600;display:block;margin-bottom:4px;">YouTube Video ID (optional)</label>
+          <input type="text" id="add-ex-video" placeholder="e.g. tuwHzzPdaGc" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#fff;font-size:13px;font-family:monospace;outline:none;box-sizing:border-box;" />
+        </div>
+        <button onclick="addExercise()" style="padding:8px 20px;border-radius:8px;background:rgba(168,85,247,0.3);border:1px solid rgba(168,85,247,0.5);color:#a855f7;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;" onmouseover="this.style.background='rgba(168,85,247,0.4)'" onmouseout="this.style.background='rgba(168,85,247,0.3)'">Add</button>
+      </div>
 
       <div class="glass" style="margin-top:16px;border-radius:14px;overflow:hidden;max-height:70vh;overflow-y:auto;">
         <div id="ex-list">
@@ -4701,6 +4726,36 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
             }
           } catch (err) {
             alert('Failed to save: ' + err.message);
+          }
+        }
+
+        async function addExercise() {
+          var name = document.getElementById('add-ex-name').value.trim();
+          var muscle = document.getElementById('add-ex-muscle').value;
+          var videoId = document.getElementById('add-ex-video').value.trim();
+          if (!name) { alert('Exercise name is required'); return; }
+          // Extract video ID from URL
+          if (videoId.includes('youtube.com/watch')) {
+            try { videoId = new URL(videoId).searchParams.get('v') || videoId; } catch {}
+          } else if (videoId.includes('youtu.be/')) {
+            videoId = videoId.split('youtu.be/')[1]?.split(/[?&]/)[0] || videoId;
+          }
+          try {
+            var resp = await fetch('/admin/exercise-library/add', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name: name, muscle: muscle, videoId: videoId || null })
+            });
+            var data = await resp.json();
+            if (resp.ok) {
+              document.getElementById('add-ex-name').value = '';
+              document.getElementById('add-ex-video').value = '';
+              window.location.reload();
+            } else {
+              alert(data.error || 'Failed to add exercise');
+            }
+          } catch (err) {
+            alert('Failed to add: ' + err.message);
           }
         }
 
@@ -4827,6 +4882,26 @@ router.put('/exercise-library/video/:id', adminAuth, express.json(), async (req,
   } catch (err) {
     console.error('Update video_id error:', err);
     res.status(500).json({ error: 'Failed to update video ID' });
+  }
+});
+
+// POST /admin/exercise-library/add — Add a new exercise
+router.post('/exercise-library/add', adminAuth, express.json(), async (req, res) => {
+  try {
+    const { name, muscle, videoId } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ error: 'Exercise name is required' });
+    if (!muscle) return res.status(400).json({ error: 'Muscle group is required' });
+    // Check for duplicate
+    const { rows: existing } = await pool.query('SELECT id FROM exercises WHERE LOWER(name) = LOWER($1)', [name.trim()]);
+    if (existing.length > 0) return res.status(409).json({ error: 'An exercise with this name already exists' });
+    const { rows } = await pool.query(
+      'INSERT INTO exercises (name, muscle_group, is_custom, video_id) VALUES ($1, $2, FALSE, $3) RETURNING id',
+      [name.trim(), muscle, videoId || null]
+    );
+    res.status(201).json({ success: true, id: rows[0].id });
+  } catch (err) {
+    console.error('Add exercise error:', err);
+    res.status(500).json({ error: 'Failed to add exercise' });
   }
 });
 
