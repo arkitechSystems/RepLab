@@ -551,6 +551,7 @@ function adminPage(title, body) {
     <a href="/admin/announcements"${title === 'Announcements' ? ' class="active"' : ''}>Announcements</a>
     <a href="/admin/flags"${title === 'Feature Flags' ? ' class="active"' : ''}>Feature Flags</a>
     <a href="/admin/custom-exercises"${title === 'Custom Exercises' ? ' class="active"' : ''}>Custom Exercises</a>
+    <a href="/admin/exercise-library"${title === 'Exercise Library' ? ' class="active"' : ''}>Exercise Library</a>
   </div>
   <div class="sidebar-section" onclick="toggleSection('system')">
     <span>System</span>
@@ -831,6 +832,11 @@ router.get('/', adminAuth, async (req, res) => {
       <div class="card-icon">🆕</div>
       <div class="card-title">Custom Exercises</div>
       <div class="card-desc">User-created exercises to review and add to the official library.</div>
+    </a>
+    <a class="card glass" href="/admin/exercise-library" style="border-color:rgba(168,85,247,0.25);">
+      <div class="card-icon">🎬</div>
+      <div class="card-title">Exercise Library</div>
+      <div class="card-desc">View all exercises and their video mappings.</div>
     </a>
     <a class="card glass" href="/admin/monthly-costs" style="border-color:rgba(59,130,246,0.25);">
       <div class="card-icon">📋</div>
@@ -4521,6 +4527,178 @@ router.post('/users/:id/revoke-trainer', adminAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /admin/exercise-library — View all exercises and video mappings
+router.get('/exercise-library', adminAuth, async (req, res) => {
+  try {
+    // Query all global (non-custom) exercises
+    const { rows } = await pool.query(
+      'SELECT id, name, muscle_group, is_custom, tags FROM exercises ORDER BY name ASC'
+    );
+
+    const exercises = rows.map(e => ({
+      id: e.id,
+      name: e.name,
+      muscle: e.muscle_group,
+      isCustom: e.is_custom,
+      tags: e.tags || [],
+    }));
+
+    const VIDEO_MAP = {
+      'Barbell Bench Press': 'tuwHzzPdaGc',
+      'Incline Dumbbell Press': '8nNi8jbbUPE',
+      'Seated Shoulder Press (DB)': 'FRxZ6wr5bpA',
+      'Cable Tricep Pushdown': 'LzwgB15UdO8',
+      'Overhead Tricep Extension (rope)': 'NRENeEgaIgA',
+      'Lat Pulldown': 'iKrKgWR9wbY',
+      'Barbell Row': 'paCfxhgW6bI',
+      'Face Pulls': '7ZvpXA_mFpQ',
+      'Back Squat': 'R2dMsNhN3DE',
+      'Romanian Deadlift': 'CkrqLaDGvOA',
+      'Leg Press': 'sEM_zo9w2ss',
+      'Leg Extension': '0fl1RRgJ83I',
+      'Standing Calf Raise': 'RBslMmWqzzE',
+    };
+
+    const totalExercises = exercises.length;
+    const mappedCount = exercises.filter(e => VIDEO_MAP[e.name]).length;
+    const unmappedCount = totalExercises - mappedCount;
+
+    const exerciseRows = exercises.map(e => {
+      const videoId = VIDEO_MAP[e.name];
+      return `
+        <div class="ex-row" data-name="${e.name.toLowerCase()}" data-muscle="${(e.muscle || '').toLowerCase()}" data-has-video="${videoId ? 'yes' : 'no'}">
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:600;color:#fff;font-size:14px;">${e.name}${e.isCustom ? ' <span style="font-size:10px;color:rgba(168,85,247,0.8);font-weight:700;vertical-align:middle;">CUSTOM</span>' : ''}</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px;">${e.muscle || 'Unknown'}</div>
+          </div>
+          <div style="flex-shrink:0;">
+            ${videoId
+              ? `<a href="https://www.youtube.com/watch?v=${videoId}" target="_blank" class="video-link" data-video-id="${videoId}" style="color:#22c55e;font-size:12px;font-weight:600;text-decoration:none;cursor:pointer;">&#9654; Video Mapped</a>`
+              : `<span style="color:#ef4444;font-size:12px;font-weight:600;">No video mapped</span>`
+            }
+          </div>
+        </div>`;
+    }).join('');
+
+    res.send(adminPage('Exercise Library', `
+      <h1 style="font-size:28px;font-weight:800;letter-spacing:-0.5px;">Exercise Library</h1>
+      <p style="color:rgba(255,255,255,0.4);margin-top:4px;font-size:14px;">All exercises and their video mappings</p>
+
+      <div style="display:flex;gap:12px;margin-top:24px;flex-wrap:wrap;">
+        <div class="glass" style="padding:16px 20px;border-radius:12px;flex:1;min-width:140px;">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);font-weight:600;">Total Exercises</div>
+          <div style="font-size:28px;font-weight:800;margin-top:4px;">${totalExercises}</div>
+        </div>
+        <div class="glass" style="padding:16px 20px;border-radius:12px;flex:1;min-width:140px;border-color:rgba(34,197,94,0.2);">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);font-weight:600;">Mapped Videos</div>
+          <div style="font-size:28px;font-weight:800;margin-top:4px;color:#22c55e;">${mappedCount}</div>
+        </div>
+        <div class="glass" style="padding:16px 20px;border-radius:12px;flex:1;min-width:140px;border-color:rgba(239,68,68,0.2);">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);font-weight:600;">Unmapped</div>
+          <div style="font-size:28px;font-weight:800;margin-top:4px;color:#ef4444;">${unmappedCount}</div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:12px;margin-top:24px;align-items:center;flex-wrap:wrap;">
+        <input type="text" id="ex-search" placeholder="Search exercises..." style="flex:1;min-width:200px;padding:10px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;" />
+        <select id="ex-muscle-filter" style="padding:10px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;">
+          <option value="">All Muscles</option>
+        </select>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:rgba(255,255,255,0.5);cursor:pointer;white-space:nowrap;">
+          <input type="checkbox" id="ex-unmapped-only" style="accent-color:#ef4444;" />
+          Unmapped only
+        </label>
+      </div>
+
+      <div style="margin-top:8px;font-size:12px;color:rgba(255,255,255,0.3);" id="ex-count"></div>
+
+      <div class="glass" style="margin-top:16px;border-radius:14px;overflow:hidden;max-height:70vh;overflow-y:auto;">
+        <div id="ex-list">
+          ${exerciseRows}
+        </div>
+      </div>
+
+      <div id="video-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;background:rgba(0,0,0,0.8);" onclick="if(event.target===this){this.style.display='none';this.querySelector('iframe').src='';}">
+        <div style="width:90%;max-width:640px;aspect-ratio:16/9;border-radius:12px;overflow:hidden;">
+          <iframe id="video-iframe" width="100%" height="100%" frameborder="0" allowfullscreen allow="autoplay"></iframe>
+        </div>
+      </div>
+
+      <style>
+        .ex-row {
+          display:flex;align-items:center;gap:16px;padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.05);transition:background 0.15s;
+        }
+        .ex-row:hover { background:rgba(255,255,255,0.03); }
+        .ex-row:last-child { border-bottom:none; }
+        .ex-row.hidden { display:none; }
+        .video-link:hover { text-decoration:underline !important; }
+        #ex-search:focus { border-color:rgba(168,85,247,0.5); box-shadow:0 0 0 2px rgba(168,85,247,0.15); }
+        #ex-muscle-filter option { background:#111; color:#fff; }
+      </style>
+
+      <script>
+        (function() {
+          const rows = document.querySelectorAll('.ex-row');
+          const searchInput = document.getElementById('ex-search');
+          const muscleFilter = document.getElementById('ex-muscle-filter');
+          const unmappedOnly = document.getElementById('ex-unmapped-only');
+          const countEl = document.getElementById('ex-count');
+
+          // Populate muscle filter
+          const muscles = new Set();
+          rows.forEach(r => { const m = r.dataset.muscle; if (m) muscles.add(m); });
+          [...muscles].sort().forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m;
+            opt.textContent = m.charAt(0).toUpperCase() + m.slice(1);
+            muscleFilter.appendChild(opt);
+          });
+
+          function applyFilter() {
+            const q = searchInput.value.toLowerCase().trim();
+            const muscle = muscleFilter.value;
+            const unmapped = unmappedOnly.checked;
+            let shown = 0;
+            rows.forEach(r => {
+              const matchName = !q || r.dataset.name.includes(q);
+              const matchMuscle = !muscle || r.dataset.muscle === muscle;
+              const matchVideo = !unmapped || r.dataset.hasVideo === 'no';
+              const visible = matchName && matchMuscle && matchVideo;
+              r.classList.toggle('hidden', !visible);
+              if (visible) shown++;
+            });
+            countEl.textContent = 'Showing ' + shown + ' of ' + rows.length + ' exercises';
+          }
+
+          searchInput.addEventListener('input', applyFilter);
+          muscleFilter.addEventListener('change', applyFilter);
+          unmappedOnly.addEventListener('change', applyFilter);
+          applyFilter();
+
+          // Video modal
+          document.querySelectorAll('.video-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+              e.preventDefault();
+              const vid = this.dataset.videoId;
+              const modal = document.getElementById('video-modal');
+              document.getElementById('video-iframe').src = 'https://www.youtube.com/embed/' + vid + '?autoplay=1';
+              modal.style.display = 'flex';
+            });
+          });
+        })();
+      </script>
+    `));
+  } catch (err) {
+    console.error('Exercise library error:', err);
+    res.status(500).send(adminPage('Exercise Library', `
+      <h1 style="font-size:28px;font-weight:800;">Exercise Library</h1>
+      <div class="glass" style="margin-top:24px;padding:20px;border-left:3px solid #ef4444;">
+        <p style="color:#f87171;">Error loading exercises: ${err.message}</p>
+      </div>
+    `));
   }
 });
 
