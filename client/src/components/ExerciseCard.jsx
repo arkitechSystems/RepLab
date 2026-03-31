@@ -229,24 +229,38 @@ function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, inpu
           {videoId ? (
             <div className="p-3">
               <div className="rounded-xl overflow-hidden bg-black aspect-video">
-                <iframe
-                  src={`https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1&origin=${window.location.origin}`}
-                  className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  title={`${exercise.name} demo`}
-                />
+                {videoId.startsWith('http') || videoId.startsWith('/') ? (
+                  <video
+                    src={videoId}
+                    className="w-full h-full object-contain"
+                    controls
+                    playsInline
+                    preload="metadata"
+                    controlsList="nodownload"
+                    title={`${exercise.name} demo`}
+                  />
+                ) : (
+                  <iframe
+                    src={`https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1&origin=${window.location.origin}`}
+                    className="w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    title={`${exercise.name} demo`}
+                  />
+                )}
               </div>
               <div className="flex items-center justify-center gap-3 mt-2">
                 <p className="text-[10px] text-wf-gray-600">Tap video for full screen</p>
-                <a
-                  href={`https://www.youtube.com/watch?v=${videoId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[10px] text-wf-red font-semibold"
-                >
-                  Open on YouTube
-                </a>
+                {!(videoId.startsWith('http') || videoId.startsWith('/')) && (
+                  <a
+                    href={`https://www.youtube.com/watch?v=${videoId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[10px] text-wf-red font-semibold"
+                  >
+                    Open on YouTube
+                  </a>
+                )}
               </div>
             </div>
           ) : (

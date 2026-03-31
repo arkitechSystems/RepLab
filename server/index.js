@@ -125,6 +125,9 @@ app.get('/health', (req, res) => res.json({
   timestamp: new Date().toISOString(),
 }));
 
+// Serve exercise demo videos
+app.use('/videos', express.static(path.join(__dirname, 'VidLib')));
+
 // Serve built client in production
 const clientDist = path.join(__dirname, '..', 'client', 'dist');
 app.use(express.static(clientDist));
