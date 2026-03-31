@@ -27,6 +27,9 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
+  // Skip non-http(s) requests (e.g. chrome-extension://)
+  if (!url.protocol.startsWith('http')) return;
+
   // Skip non-GET for caching (handle POST queue separately)
   if (event.request.method !== 'GET') {
     // For API writes, try network and if it fails, store in IndexedDB queue
