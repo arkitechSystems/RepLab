@@ -4571,7 +4571,7 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
           </div>
           <div class="video-status" style="flex-shrink:0;margin-right:12px;">
             ${videoId
-              ? `<span style="color:#22c55e;font-weight:600;">&#10003; Mapped</span>`
+              ? `<div><span style="color:#22c55e;font-weight:600;">&#10003; Mapped</span><br><a href="https://www.youtube.com/watch?v=${videoId}" target="_blank" id="url-${e.id}" style="color:rgba(255,255,255,0.3);font-size:10px;font-family:monospace;text-decoration:none;word-break:break-all;" title="Click to open">youtube.com/watch?v=${videoId}</a></div>`
               : `<span style="color:#ef4444;font-weight:600;">No video</span>`
             }
           </div>
@@ -4590,7 +4590,7 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
               Save
             </button>
             ${videoId
-              ? `<a href="https://www.youtube.com/watch?v=${videoId}" target="_blank" class="video-link" data-video-id="${videoId}" style="color:#22c55e;font-size:12px;font-weight:600;text-decoration:none;cursor:pointer;">&#9654;</a>`
+              ? `<a href="https://www.youtube.com/watch?v=${videoId}" target="_blank" class="video-link" data-video-id="${videoId}" style="color:#22c55e;font-size:11px;font-weight:600;text-decoration:none;cursor:pointer;white-space:nowrap;" title="https://www.youtube.com/watch?v=${videoId}">&#9654; Watch</a>`
               : ''
             }
             <button
@@ -4688,7 +4688,7 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
               const status = row?.querySelector('.video-status');
               if (status) {
                 if (videoId) {
-                  status.innerHTML = '<span style="color:#22c55e;font-weight:600;">&#10003; Mapped</span>';
+                  status.innerHTML = '<div><span style="color:#22c55e;font-weight:600;">&#10003; Mapped</span><br><a href="https://www.youtube.com/watch?v=' + videoId + '" target="_blank" style="color:rgba(255,255,255,0.3);font-size:10px;font-family:monospace;text-decoration:none;">youtube.com/watch?v=' + videoId + '</a></div>';
                   row.dataset.hasVideo = 'yes';
                 } else {
                   status.innerHTML = '<span style="color:#ef4444;font-weight:600;">No video</span>';
