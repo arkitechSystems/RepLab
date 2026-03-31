@@ -230,14 +230,24 @@ function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, inpu
             <div className="p-3">
               <div className="rounded-xl overflow-hidden bg-black aspect-video">
                 <iframe
-                  src={`https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1`}
+                  src={`https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1&origin=${window.location.origin}`}
                   className="w-full h-full"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
                   title={`${exercise.name} demo`}
                 />
               </div>
-              <p className="text-[10px] text-wf-gray-600 text-center mt-2">Tap video for full screen</p>
+              <div className="flex items-center justify-center gap-3 mt-2">
+                <p className="text-[10px] text-wf-gray-600">Tap video for full screen</p>
+                <a
+                  href={`https://www.youtube.com/watch?v=${videoId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] text-wf-red font-semibold"
+                >
+                  Open on YouTube
+                </a>
+              </div>
             </div>
           ) : (
             <div className="p-4 text-center">
