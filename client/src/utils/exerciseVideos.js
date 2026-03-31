@@ -1,6 +1,5 @@
 // Maps exercise names to YouTube video IDs for form/tutorial videos.
-// Videos sourced from Muscle & Strength exercise guides.
-// For exercises without a curated ID, falls back to YouTube search.
+// Hardcoded fallback — database video_id takes priority when available.
 
 const VIDEO_MAP = {
   'Barbell Bench Press':              'tuwHzzPdaGc',
@@ -18,8 +17,9 @@ const VIDEO_MAP = {
   'Standing Calf Raise':              'RBslMmWqzzE',
 };
 
-export function getExerciseVideoId(exerciseName) {
-  return VIDEO_MAP[exerciseName] || null;
+// videoIdFromDb is an optional override from the exercises API
+export function getExerciseVideoId(exerciseName, videoIdFromDb) {
+  return videoIdFromDb || VIDEO_MAP[exerciseName] || null;
 }
 
 export function getExerciseSearchUrl(exerciseName) {

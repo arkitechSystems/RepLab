@@ -37,8 +37,9 @@ export { SET_TYPES };
 function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, note, onNoteChange, weightSuggestion, onApplySuggestion, allWorkoutExercises, lastEntries, forceShowDemo, mode = 'session', dataTutorial }) {
   const isTemplate = mode === 'template';
   const exercisePbs = pbs?.[exercise.name] || {};
-  const videoId = getExerciseVideoId(exercise.name);
   const { exercises: allExercises } = useExercises();
+  const dbExercise = allExercises.find(e => e.name.toLowerCase() === exercise.name.toLowerCase());
+  const videoId = getExerciseVideoId(exercise.name, dbExercise?.videoId);
   const [showVideo, setShowVideo] = useState(false);
   const [showDemoLocal, setShowDemoLocal] = useState(false);
   const showDemo = forceShowDemo || showDemoLocal;

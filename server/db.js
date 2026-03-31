@@ -969,6 +969,7 @@ const db = {
       tags: e.tags || [],
       isCustom: e.is_custom,
       createdBy: e.created_by,
+      videoId: e.video_id || null,
     }));
   },
 
