@@ -4583,6 +4583,14 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
               ? `<a href="https://www.youtube.com/watch?v=${videoId}" target="_blank" class="video-link" data-video-id="${videoId}" style="color:#22c55e;font-size:12px;font-weight:600;text-decoration:none;cursor:pointer;">&#9654;</a>`
               : ''
             }
+            <button
+              onclick="deleteExercise(${e.id}, '${e.name.replace(/'/g, "\\'")}')"
+              style="padding:6px 10px;border-radius:8px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);color:#ef4444;font-size:11px;font-weight:600;cursor:pointer;margin-left:4px;"
+              onmouseover="this.style.background='rgba(239,68,68,0.2)'"
+              onmouseout="this.style.background='rgba(239,68,68,0.1)'"
+            >
+              Delete
+            </button>
           </div>
         </div>`;
     }).join('');
@@ -4686,6 +4694,34 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
           }
         }
 
+        async function deleteExercise(exerciseId, exerciseName) {
+          if (!confirm('Delete "' + exerciseName + '" from the exercise library? This cannot be undone.')) return;
+          try {
+            const resp = await fetch('/admin/exercise-library/delete/' + exerciseId, { method: 'DELETE' });
+            if (resp.ok) {
+              var rows = document.querySelectorAll('[data-exercise-row]');
+              rows.forEach(function(row) {
+                var input = row.querySelector('[id^="video-"]');
+                if (input && input.id === 'video-' + exerciseId) {
+                  row.style.transition = 'opacity 0.3s, height 0.3s';
+                  row.style.opacity = '0';
+                  row.style.height = '0';
+                  row.style.overflow = 'hidden';
+                  row.style.padding = '0';
+                  row.style.margin = '0';
+                  row.style.borderBottom = 'none';
+                  setTimeout(function() { row.remove(); filterExercises(); }, 300);
+                }
+              });
+            } else {
+              var data = await resp.json();
+              alert(data.error || 'Failed to delete');
+            }
+          } catch (err) {
+            alert('Failed to delete: ' + err.message);
+          }
+        }
+
         (function() {
           const rows = document.querySelectorAll('.ex-row');
           const searchInput = document.getElementById('ex-search');
@@ -4757,6 +4793,18 @@ router.put('/exercise-library/video/:id', adminAuth, express.json(), async (req,
   } catch (err) {
     console.error('Update video_id error:', err);
     res.status(500).json({ error: 'Failed to update video ID' });
+  }
+});
+
+// DELETE /admin/exercise-library/delete/:id — Delete an exercise
+router.delete('/exercise-library/delete/:id', adminAuth, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    await pool.query('DELETE FROM exercises WHERE id = $1', [id]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Delete exercise error:', err);
+    res.status(500).json({ error: 'Failed to delete exercise' });
   }
 });
 
