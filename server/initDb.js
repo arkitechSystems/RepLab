@@ -301,6 +301,9 @@ export default async function initDb() {
     }
   }
 
+  // Video ID column for exercise YouTube videos
+  await pool.query(`ALTER TABLE exercises ADD COLUMN IF NOT EXISTS video_id TEXT`);
+
   console.log('Database schema initialized');
 
   // Seed default program if none exist

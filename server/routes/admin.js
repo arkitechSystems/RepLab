@@ -4533,9 +4533,9 @@ router.post('/users/:id/revoke-trainer', adminAuth, async (req, res) => {
 // GET /admin/exercise-library — View all exercises and video mappings
 router.get('/exercise-library', adminAuth, async (req, res) => {
   try {
-    // Query all global (non-custom) exercises
+    // Query all global (non-custom) exercises including video_id
     const { rows } = await pool.query(
-      'SELECT id, name, muscle_group, is_custom, tags FROM exercises ORDER BY name ASC'
+      'SELECT id, name, muscle_group, is_custom, tags, video_id FROM exercises ORDER BY name ASC'
     );
 
     const exercises = rows.map(e => ({
@@ -4544,40 +4544,44 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
       muscle: e.muscle_group,
       isCustom: e.is_custom,
       tags: e.tags || [],
+      video_id: e.video_id || '',
     }));
 
-    const VIDEO_MAP = {
-      'Barbell Bench Press': 'tuwHzzPdaGc',
-      'Incline Dumbbell Press': '8nNi8jbbUPE',
-      'Seated Shoulder Press (DB)': 'FRxZ6wr5bpA',
-      'Cable Tricep Pushdown': 'LzwgB15UdO8',
-      'Overhead Tricep Extension (rope)': 'NRENeEgaIgA',
-      'Lat Pulldown': 'iKrKgWR9wbY',
-      'Barbell Row': 'paCfxhgW6bI',
-      'Face Pulls': '7ZvpXA_mFpQ',
-      'Back Squat': 'R2dMsNhN3DE',
-      'Romanian Deadlift': 'CkrqLaDGvOA',
-      'Leg Press': 'sEM_zo9w2ss',
-      'Leg Extension': '0fl1RRgJ83I',
-      'Standing Calf Raise': 'RBslMmWqzzE',
-    };
-
     const totalExercises = exercises.length;
-    const mappedCount = exercises.filter(e => VIDEO_MAP[e.name]).length;
+    const mappedCount = exercises.filter(e => e.video_id).length;
     const unmappedCount = totalExercises - mappedCount;
 
     const exerciseRows = exercises.map(e => {
-      const videoId = VIDEO_MAP[e.name];
+      const videoId = e.video_id;
       return `
-        <div class="ex-row" data-name="${e.name.toLowerCase()}" data-muscle="${(e.muscle || '').toLowerCase()}" data-has-video="${videoId ? 'yes' : 'no'}">
+        <div class="ex-row" data-exercise-row data-name="${e.name.toLowerCase()}" data-muscle="${(e.muscle || '').toLowerCase()}" data-has-video="${videoId ? 'yes' : 'no'}">
           <div style="flex:1;min-width:0;">
             <div style="font-weight:600;color:#fff;font-size:14px;">${e.name}${e.isCustom ? ' <span style="font-size:10px;color:rgba(168,85,247,0.8);font-weight:700;vertical-align:middle;">CUSTOM</span>' : ''}</div>
             <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px;">${e.muscle || 'Unknown'}</div>
           </div>
-          <div style="flex-shrink:0;">
+          <div class="video-status" style="flex-shrink:0;margin-right:12px;">
             ${videoId
-              ? `<a href="https://www.youtube.com/watch?v=${videoId}" target="_blank" class="video-link" data-video-id="${videoId}" style="color:#22c55e;font-size:12px;font-weight:600;text-decoration:none;cursor:pointer;">&#9654; Video Mapped</a>`
-              : `<span style="color:#ef4444;font-size:12px;font-weight:600;">No video mapped</span>`
+              ? `<span style="color:#22c55e;font-weight:600;">&#10003; Mapped</span>`
+              : `<span style="color:#ef4444;font-weight:600;">No video</span>`
+            }
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+            <input
+              type="text"
+              id="video-${e.id}"
+              value="${videoId}"
+              placeholder="YouTube video ID"
+              style="width:180px;padding:6px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#fff;font-size:12px;font-family:monospace;"
+            />
+            <button
+              onclick="saveVideo(${e.id})"
+              style="padding:6px 12px;border-radius:8px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);color:#22c55e;font-size:11px;font-weight:600;cursor:pointer;"
+            >
+              Save
+            </button>
+            ${videoId
+              ? `<a href="https://www.youtube.com/watch?v=${videoId}" target="_blank" class="video-link" data-video-id="${videoId}" style="color:#22c55e;font-size:12px;font-weight:600;text-decoration:none;cursor:pointer;">&#9654;</a>`
+              : ''
             }
           </div>
         </div>`;
@@ -4640,6 +4644,48 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
       </style>
 
       <script>
+        async function saveVideo(exerciseId) {
+          const input = document.getElementById('video-' + exerciseId);
+          let videoId = input.value.trim();
+          // Extract video ID from full YouTube URLs
+          if (videoId.includes('youtube.com/watch')) {
+            try {
+              const url = new URL(videoId);
+              videoId = url.searchParams.get('v') || videoId;
+            } catch(e) {}
+          } else if (videoId.includes('youtu.be/')) {
+            videoId = videoId.split('youtu.be/')[1]?.split(/[?&]/)[0] || videoId;
+          }
+          input.value = videoId;
+
+          try {
+            const resp = await fetch('/admin/exercise-library/video/' + exerciseId, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ videoId })
+            });
+            if (resp.ok) {
+              // Update the status indicator
+              const row = input.closest('[data-exercise-row]');
+              const status = row?.querySelector('.video-status');
+              if (status) {
+                if (videoId) {
+                  status.innerHTML = '<span style="color:#22c55e;font-weight:600;">&#10003; Mapped</span>';
+                  row.dataset.hasVideo = 'yes';
+                } else {
+                  status.innerHTML = '<span style="color:#ef4444;font-weight:600;">No video</span>';
+                  row.dataset.hasVideo = 'no';
+                }
+              }
+              // Flash green briefly
+              input.style.borderColor = '#22c55e';
+              setTimeout(function() { input.style.borderColor = 'rgba(255,255,255,0.1)'; }, 1500);
+            }
+          } catch (err) {
+            alert('Failed to save: ' + err.message);
+          }
+        }
+
         (function() {
           const rows = document.querySelectorAll('.ex-row');
           const searchInput = document.getElementById('ex-search');
@@ -4699,6 +4745,18 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
         <p style="color:#f87171;">Error loading exercises: ${err.message}</p>
       </div>
     `));
+  }
+});
+
+// PUT /admin/exercise-library/video/:id — Update video_id for an exercise
+router.put('/exercise-library/video/:id', adminAuth, express.json(), async (req, res) => {
+  try {
+    const { videoId } = req.body;
+    await pool.query('UPDATE exercises SET video_id = $1 WHERE id = $2', [videoId || null, Number(req.params.id)]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Update video_id error:', err);
+    res.status(500).json({ error: 'Failed to update video ID' });
   }
 });
 
