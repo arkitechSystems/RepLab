@@ -490,7 +490,7 @@ export default function WorkoutSession() {
               if (s.isCompleted) restoredCompleted.add(`${key}-${i}`);
               const wdSet = ex.sets?.[i];
               const setType = wdSet?.setType || ex.setType || 'straight';
-              return { weight: s.weight || '', reps: s.reps || '', setType };
+              return { weight: s.weight ?? '', reps: s.reps || '', setType };
             });
           } else {
             saved[key] = ex.sets.map((s) => ({
@@ -1053,7 +1053,7 @@ export default function WorkoutSession() {
               const actualReps = Math.max(0, planned + repVariations[idx]);
               const actualWeight = Math.max(0, goalWt + weightVariations[idx]);
               return {
-                weight: actualWeight || '',
+                weight: actualWeight ?? '',
                 reps: actualReps,
                 setType: s.setType || ex.setType || 'straight',
               };
@@ -1267,7 +1267,7 @@ export default function WorkoutSession() {
               return {
                 setNumber: s.setNumber,
                 plannedReps: s.plannedReps ?? 10,
-                suggestedWeight: entry?.weight || s.suggestedWeight || 0,
+                suggestedWeight: (entry?.weight !== '' && entry?.weight != null) ? entry.weight : (s.suggestedWeight || 0),
                 setType: entry?.setType || s.setType || ex.setType || 'straight',
               };
             }),
@@ -2601,7 +2601,7 @@ function WorkoutSummary({ template, programName, entries, completedSets, elapsed
         const actualWeight = Number(e?.weight) || 0;
         const actualReps = Number(e?.reps) || 0;
         const goalReps = set.plannedReps || 0;
-        const weightStr = actualWeight === -1 ? 'BW' : actualWeight > 0 ? `${actualWeight} lbs` : '\u2014';
+        const weightStr = actualWeight === -1 ? 'BW' : `${actualWeight} lbs`;
         const hitGoal = goalReps > 0 ? actualReps >= goalReps : true;
 
         // Set number
@@ -2727,7 +2727,7 @@ function WorkoutSummary({ template, programName, entries, completedSets, elapsed
       if (ex.exerciseDescription) lines.push(`  Note: ${ex.exerciseDescription}`);
       ex.sets.forEach((set, idx) => {
         const e = exEntries[idx];
-        const w = Number(e?.weight) === -1 ? 'BW' : Number(e?.weight) > 0 ? `${e.weight} lbs` : '\u2014';
+        const w = Number(e?.weight) === -1 ? 'BW' : `${Number(e?.weight) || 0} lbs`;
         const goalReps = set.plannedReps || 0;
         const actualReps = Number(e?.reps) || 0;
         const hit = goalReps > 0 && actualReps >= goalReps;
