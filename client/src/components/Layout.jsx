@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Outlet, useSearchParams, useLocation } from 'react-router-dom';
+import { Outlet, useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import BottomNav from './BottomNav';
 import Tutorial from './Tutorial';
 import { useTutorial } from '../context/TutorialContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function Layout() {
   const { tutorial } = useTutorial();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const isDashboardEmbed = searchParams.get('from') === 'trainer' || searchParams.get('from') === 'admin';
@@ -30,10 +33,24 @@ export default function Layout() {
   return (
     <div className="min-h-screen bg-black text-white flex flex-col relative">
       <div className="ambient-bg" />
-      {/* Top bar with logo — hidden when embedded from dashboard */}
+      {/* Top bar with logo + profile avatar — hidden when embedded from dashboard */}
       {!isDashboardEmbed && (
-        <div className="safe-top relative z-20 px-4 pt-4 pb-1">
+        <div className="safe-top relative z-20 px-4 pt-4 pb-1 flex items-center justify-between">
           <img src="/RepLabLogo3.jpg" alt="RepLab" className="h-7 rounded" />
+          <button
+            onClick={() => navigate('/profile')}
+            className="w-8 h-8 rounded-full overflow-hidden shrink-0 active:scale-90 transition-transform"
+          >
+            {user?.photoUrl ? (
+              <img src={user.photoUrl} alt="Profile" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-wf-red/20 flex items-center justify-center">
+                <span className="text-sm font-bold text-wf-red">
+                  {(user?.firstName || user?.email || user?.phone || 'U')[0].toUpperCase()}
+                </span>
+              </div>
+            )}
+          </button>
         </div>
       )}
       {offline && (
