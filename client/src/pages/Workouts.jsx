@@ -84,16 +84,6 @@ function ProgramCard({ program, idx, onSelect, onBegin, onDelete, onShare, dataT
           </div>
         </div>
 
-        {/* Workout preview dots — unique names only */}
-        <div className="flex items-center gap-3 mt-4">
-          {[...program.colorMap.entries()].map(([name, color]) => (
-            <div key={name} className="flex items-center gap-1.5">
-              <div className={`w-2.5 h-2.5 rounded-full ${color.dot}`} />
-              <span className="text-xs text-wf-gray-400 font-medium capitalize">{name}</span>
-            </div>
-          ))}
-        </div>
-
         {/* Split summary */}
         {program.templates && program.templates.length > 0 && program.templates.length <= 7 && (
           <div className="mt-3 pt-3 border-t border-white/5">
@@ -107,6 +97,16 @@ function ProgramCard({ program, idx, onSelect, onBegin, onDelete, onShare, dataT
             </div>
           </div>
         )}
+
+        {/* Workout preview dots — unique names only */}
+        <div className="flex items-center gap-3 mt-3 flex-wrap">
+          {[...program.colorMap.entries()].map(([name, color]) => (
+            <div key={name} className="flex items-center gap-1.5 max-w-[25ch]">
+              <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${color.dot}`} />
+              <span className="text-xs text-wf-gray-400 font-medium capitalize truncate">{name}</span>
+            </div>
+          ))}
+        </div>
 
         {/* Tap hint */}
         <div className="flex items-center justify-end mt-3">
