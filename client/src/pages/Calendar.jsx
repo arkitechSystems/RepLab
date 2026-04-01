@@ -27,6 +27,7 @@ export default function Calendar() {
   const [editError, setEditError] = useState('');
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [restDayPrompt, setRestDayPrompt] = useState(false); // show rest day options sub-modal
+  const [clearCalendarConfirm, setClearCalendarConfirm] = useState(false); // confirm clear calendar modal
   const [copySource, setCopySource] = useState(null); // { templateId, templateName, date, dayOfWeek }
   const [copyStep, setCopyStep] = useState(null); // 'pick-day' | 'confirm-overwrite' | 'use-reps'
   const [copyTarget, setCopyTarget] = useState(null); // Date object
@@ -114,6 +115,7 @@ export default function Calendar() {
     setPickerSearch('');
     setEditError('');
     setRestDayPrompt(false);
+    setClearCalendarConfirm(false);
     setEditingDay(date);
   }
 
@@ -222,6 +224,35 @@ export default function Calendar() {
       setSchedule(updated);
       setCompletedSessions(completed);
       setRestDayPrompt(false);
+      setEditingDay(null);
+    } catch (err) {
+      console.error(err);
+      setEditError('Failed to save. Please try again.');
+    } finally {
+      setScheduleSaving(false);
+    }
+  }
+
+  async function handleClearCalendar() {
+    const dow = editingDay.getDay();
+    setScheduleSaving(true);
+    try {
+      // Clear this day and all days after it (through Saturday)
+      const updates = [];
+      for (let d = dow; d <= 6; d++) {
+        updates.push({ dayOfWeek: d, templateId: null });
+      }
+      await api('/schedule', {
+        method: 'PUT',
+        body: JSON.stringify({ schedule: updates }),
+      });
+      const [updated, completed] = await Promise.all([
+        api('/schedule'),
+        api('/sessions/completed'),
+      ]);
+      setSchedule(updated);
+      setCompletedSessions(completed);
+      setClearCalendarConfirm(false);
       setEditingDay(null);
     } catch (err) {
       console.error(err);
@@ -813,6 +844,18 @@ export default function Calendar() {
                         <span className="text-sm font-medium text-wf-gray-300">Rest Day</span>
                       </button>
                     )}
+                    <button
+                      onClick={() => setClearCalendarConfirm(true)}
+                      disabled={scheduleSaving}
+                      className={`w-full text-left rounded-xl px-4 py-3 flex items-center gap-3 bg-white/5 active:bg-white/10 active:scale-[0.98] transition-all ${scheduleSaving ? 'opacity-50 pointer-events-none' : ''}`}
+                    >
+                      <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
+                        <svg className="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                        </svg>
+                      </div>
+                      <span className="text-sm font-medium text-red-400">Clear Calendar</span>
+                    </button>
                   </div>
                 )}
 
@@ -969,6 +1012,44 @@ export default function Calendar() {
                 <p className="text-sm text-red-400 text-center">{editError}</p>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Clear Calendar Confirmation Modal */}
+      {clearCalendarConfirm && editingDay && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4" onClick={() => setClearCalendarConfirm(false)}>
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <div
+            className="relative w-full max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 pt-5 pb-4">
+              <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-3">
+                <svg className="w-6 h-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-white text-center">Clear Calendar</h3>
+              <p className="text-sm text-wf-gray-400 text-center mt-2">
+                This will remove all workouts from <span className="text-white font-medium">{FULL_DAY_NAMES[editingDay.getDay()]}</span> through <span className="text-white font-medium">Saturday</span>.
+              </p>
+            </div>
+            <div className="px-5 pb-5 flex gap-3">
+              <button
+                onClick={() => setClearCalendarConfirm(false)}
+                className="flex-1 py-3 rounded-xl bg-white/10 text-sm font-semibold text-white active:scale-[0.98] transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleClearCalendar}
+                disabled={scheduleSaving}
+                className={`flex-1 py-3 rounded-xl bg-red-500 text-sm font-semibold text-white active:scale-[0.98] transition-all ${scheduleSaving ? 'opacity-50 pointer-events-none' : ''}`}
+              >
+                {scheduleSaving ? 'Clearing...' : 'Clear'}
+              </button>
+            </div>
           </div>
         </div>
       )}
