@@ -98,15 +98,25 @@ function ProgramCard({ program, idx, onSelect, onBegin, onDelete, onShare, dataT
           </div>
         )}
 
-        {/* Workout preview dots — unique names only */}
-        <div className="flex items-center gap-3 mt-3 flex-wrap">
-          {[...program.colorMap.entries()].map(([name, color]) => (
-            <div key={name} className="flex items-center gap-1.5 max-w-[25ch]">
-              <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${color.dot}`} />
-              <span className="text-xs text-wf-gray-400 font-medium capitalize truncate">{name}</span>
+        {/* Workout preview dots — unique names only, max 6 shown */}
+        {(() => {
+          const entries = [...program.colorMap.entries()];
+          const shown = entries.slice(0, 6);
+          const extra = entries.length - 6;
+          return (
+            <div className="flex items-center gap-3 mt-3 flex-wrap">
+              {shown.map(([name, color]) => (
+                <div key={name} className="flex items-center gap-1.5 max-w-[25ch]">
+                  <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${color.dot}`} />
+                  <span className="text-xs text-wf-gray-400 font-medium capitalize truncate">{name}</span>
+                </div>
+              ))}
+              {extra > 0 && (
+                <span className="text-[10px] text-wf-gray-500 font-medium">+{extra} more</span>
+              )}
             </div>
-          ))}
-        </div>
+          );
+        })()}
 
         {/* Tap hint */}
         <div className="flex items-center justify-end mt-3">
