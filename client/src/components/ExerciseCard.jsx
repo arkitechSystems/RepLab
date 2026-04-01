@@ -133,81 +133,55 @@ function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, inpu
   return (
     <>
     <div data-tutorial={dataTutorial ? 'exercise-card' : undefined} className="glass-card rounded-xl overflow-hidden mb-3">
-      {/* Exercise Header */}
-      <div data-tutorial={dataTutorial} className="px-4 py-3 border-b border-white/5 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-base font-semibold text-white truncate">{exercise.name}</span>
-        </div>
-        {!readOnly && (
-          <div className="flex items-center gap-1.5">
-            <span data-tutorial={dataTutorial ? 'move-buttons' : undefined} className="flex items-center gap-1.5">
-            {onMoveUp && (
-              <button
-                type="button"
-                onClick={onMoveUp}
-                className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-white hover:bg-white/20 active:scale-90 transition-all"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
-                </svg>
-              </button>
-            )}
-            {onMoveDown && (
-              <button
-                type="button"
-                onClick={onMoveDown}
-                className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-white hover:bg-white/20 active:scale-90 transition-all"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                </svg>
-              </button>
-            )}
-            </span>
-            {onSwapExercise && (
-              <button
-                type="button"
-                data-tutorial={dataTutorial ? 'swap-button' : undefined}
-                onClick={() => { setShowSwap(true); setSwapSearch(''); }}
-                className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-blue-400 hover:bg-blue-500/20 active:scale-90 transition-all"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
-                </svg>
-              </button>
-            )}
-            <span data-tutorial={dataTutorial ? 'add-delete-buttons' : undefined} className="flex items-center gap-1.5">
-            {onAddExercise && (
-              <button
-                type="button"
-                onClick={() => { setShowAddBelow(true); setAddBelowSearch(''); }}
-                className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-green-400 hover:bg-green-500/20 active:scale-90 transition-all"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-              </button>
-            )}
-            {onDeleteExercise && (
-              <button
-                type="button"
-                onClick={onDeleteExercise}
-                className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-red-400 hover:bg-red-500/20 active:scale-90 transition-all"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
-            </span>
-          </div>
-        )}
+      {/* Exercise Header — name only */}
+      <div data-tutorial={dataTutorial} className="px-4 py-3 border-b border-white/5">
+        <span className="text-base font-semibold text-white">{exercise.name}</span>
       </div>
 
       {/* Exercise Description (from template) */}
       {exercise.exerciseDescription && (
         <div className="px-4 py-2 border-b border-white/5 bg-white/[0.02]">
           <p className="text-xs text-wf-gray-400 leading-relaxed">{exercise.exerciseDescription}</p>
+        </div>
+      )}
+
+      {/* Controls subheader — move, swap, add, delete */}
+      {!readOnly && (
+        <div className="px-4 py-2 border-b border-white/5 flex items-center justify-between bg-white/[0.015]">
+          <div className="flex items-center gap-2">
+            <span data-tutorial={dataTutorial ? 'move-buttons' : undefined} className="flex items-center gap-1.5">
+            {onMoveUp && (
+              <button type="button" onClick={onMoveUp} className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-white hover:bg-white/20 active:scale-90 transition-all">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>
+              </button>
+            )}
+            {onMoveDown && (
+              <button type="button" onClick={onMoveDown} className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-white hover:bg-white/20 active:scale-90 transition-all">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+              </button>
+            )}
+            </span>
+            {onSwapExercise && (
+              <button type="button" data-tutorial={dataTutorial ? 'swap-button' : undefined} onClick={() => { setShowSwap(true); setSwapSearch(''); }} className="h-7 px-2.5 rounded-full bg-white/10 flex items-center gap-1 text-wf-gray-400 hover:text-blue-400 hover:bg-blue-500/20 active:scale-90 transition-all">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" /></svg>
+                <span className="text-[10px] font-semibold">Swap</span>
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span data-tutorial={dataTutorial ? 'add-delete-buttons' : undefined} className="flex items-center gap-1.5">
+            {onAddExercise && (
+              <button type="button" onClick={() => { setShowAddBelow(true); setAddBelowSearch(''); }} className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-green-400 hover:bg-green-500/20 active:scale-90 transition-all">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+              </button>
+            )}
+            {onDeleteExercise && (
+              <button type="button" onClick={onDeleteExercise} className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-red-400 hover:bg-red-500/20 active:scale-90 transition-all">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            )}
+            </span>
+          </div>
         </div>
       )}
 
