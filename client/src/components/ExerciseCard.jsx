@@ -34,8 +34,10 @@ function getSetTypeShort(value) {
 
 export { SET_TYPES };
 
-function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, note, onNoteChange, weightSuggestion, onApplySuggestion, allWorkoutExercises, lastEntries, forceShowDemo, mode = 'session', dataTutorial }) {
+function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, note, onNoteChange, weightSuggestion, onApplySuggestion, allWorkoutExercises, lastEntries, forceShowDemo, mode = 'session', dataTutorial }) {
   const isTemplate = mode === 'template';
+  // Use exerciseKey (unique per card) for set-level keys; fall back to exercise.name
+  const keyName = exerciseKey || exercise.name;
   const exercisePbs = pbs?.[exercise.name] || {};
   const { exercises: allExercises } = useExercises();
   const dbExercise = allExercises.find(e => e.name.toLowerCase() === exercise.name.toLowerCase());
@@ -231,7 +233,7 @@ function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, inpu
                 type="button"
                 onClick={() => {
                   const lastIdx = exercise.sets.length - 1;
-                  const lastKey = `${exercise.name}-${lastIdx}`;
+                  const lastKey = `${keyName}-${lastIdx}`;
                   if (completedSets?.has(lastKey)) {
                     setConfirmDeleteLast(true);
                   } else {
@@ -271,7 +273,7 @@ function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, inpu
       <div className="divide-y divide-white/5">
         {exercise.sets.map((set, idx) => {
           const entry = entries?.[idx] || {};
-          const setKey = `${exercise.name}-${idx}`;
+          const setKey = `${keyName}-${idx}`;
           const isCompleted = !isTemplate && completedSets?.has(setKey);
           const isAutoFill = !isTemplate && autoFilled?.has(setKey) && !isCompleted;
           const rowWeight = entry.weight ?? set.suggestedWeight;

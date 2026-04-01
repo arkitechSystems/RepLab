@@ -1766,6 +1766,7 @@ export default function WorkoutSession() {
           <div ref={(el) => { exerciseRefs.current[eKey] = el; }} className="fade-slide-up" style={{ animationDelay: `${idx * 60}ms` }}>
             <ExerciseCard
               exercise={exercise}
+              exerciseKey={eKey}
               entries={entries[eKey]}
               pbs={pbs}
               readOnly={structureLocked}
