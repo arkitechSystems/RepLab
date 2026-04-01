@@ -8,6 +8,7 @@ export function exerciseCardScript(apiBase) {
       var API = '${apiBase}';
       var SET_TYPES = [
         { value: 'warm_up', short: 'WU', label: 'Warm Up' },
+        { value: 'touch_up', short: 'TU', label: 'Touch Up' },
         { value: 'straight', short: 'REG', label: 'Regular' },
         { value: 'drop', short: 'DS', label: 'Drop Set' },
         { value: 'rest_pause', short: 'RP', label: 'Rest-Pause' },
