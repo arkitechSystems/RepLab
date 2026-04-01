@@ -2689,23 +2689,6 @@ export default function Workouts() {
               </div>
             </div>
 
-            {/* Challenges card */}
-            <div
-              className="w-full text-left glass-card rounded-2xl overflow-hidden fade-slide-up"
-              style={{ animationDelay: '0ms' }}
-            >
-              <div className="h-1.5 bg-wf-orange" />
-              <div className="p-5">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-black text-white tracking-tight">Challenges</h2>
-                  <span className="px-2 py-0.5 rounded-full bg-orange-500/15 border border-orange-500/30 text-[10px] font-bold text-orange-400 uppercase tracking-wider">
-                    Coming Soon
-                  </span>
-                </div>
-                <p className="text-wf-gray-400 text-sm mt-1">Compete, push your limits, and earn rewards</p>
-              </div>
-            </div>
-
             {/* Tutorial card */}
             <div
               onClick={() => startTutorial(null)}
@@ -2728,6 +2711,23 @@ export default function Workouts() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                   </svg>
                 </div>
+              </div>
+            </div>
+
+            {/* Challenges card */}
+            <div
+              className="w-full text-left glass-card rounded-2xl overflow-hidden fade-slide-up"
+              style={{ animationDelay: '0ms' }}
+            >
+              <div className="h-1.5 bg-wf-orange" />
+              <div className="p-5">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-black text-white tracking-tight">Challenges</h2>
+                  <span className="px-2 py-0.5 rounded-full bg-orange-500/15 border border-orange-500/30 text-[10px] font-bold text-orange-400 uppercase tracking-wider">
+                    Coming Soon
+                  </span>
+                </div>
+                <p className="text-wf-gray-400 text-sm mt-1">Compete, push your limits, and earn rewards</p>
               </div>
             </div>
 
