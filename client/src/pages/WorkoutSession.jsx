@@ -1729,24 +1729,6 @@ export default function WorkoutSession() {
         </div>
       )}
 
-      {/* View All Demos Toggle */}
-      <div className="px-4 mb-3">
-        <div
-          onClick={() => setShowAllDemos(!showAllDemos)}
-          className="flex items-center justify-between px-4 py-3 rounded-xl bg-white/5 border border-white/10 cursor-pointer active:scale-[0.98] transition-all"
-        >
-          <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
-            </svg>
-            <span className="text-sm font-semibold text-wf-gray-400">Exercise Demos</span>
-          </div>
-          <div className={`w-10 h-6 rounded-full p-0.5 transition-colors ${showAllDemos ? 'bg-wf-red' : 'bg-white/10'}`}>
-            <div className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${showAllDemos ? 'translate-x-4' : 'translate-x-0'}`} />
-          </div>
-        </div>
-      </div>
-
       {/* Exercise Cards */}
       <div className="px-4">
         {template.exercises.map((exercise, idx) => {

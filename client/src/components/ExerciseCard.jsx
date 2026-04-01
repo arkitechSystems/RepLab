@@ -137,18 +137,6 @@ function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, inpu
       <div data-tutorial={dataTutorial} className="px-4 py-3 border-b border-white/5 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-base font-semibold text-white truncate">{exercise.name}</span>
-          {!isTemplate && (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); setShowDemoLocal(!showDemoLocal); }}
-              className={`shrink-0 h-7 px-2.5 rounded-lg flex items-center gap-1.5 active:scale-95 transition-all ${showDemo ? 'bg-wf-red/20 border border-wf-red/40' : 'bg-wf-red/10 border border-wf-red/20'}`}
-            >
-              <svg className="w-3.5 h-3.5 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
-              </svg>
-              <span className="text-[10px] font-semibold text-wf-red">Demo</span>
-            </button>
-          )}
         </div>
         {!readOnly && (
           <div className="flex items-center gap-1.5">
@@ -223,64 +211,6 @@ function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, inpu
         </div>
       )}
 
-      {/* Inline Demo Section */}
-      {showDemo && (
-        <div className="border-t border-white/5 bg-black/20">
-          {videoId ? (
-            <div className="p-3">
-              <div className="rounded-xl overflow-hidden bg-black aspect-video">
-                {videoId.startsWith('http') || videoId.startsWith('/') ? (
-                  <video
-                    src={videoId}
-                    className="w-full h-full object-contain"
-                    controls
-                    playsInline
-                    preload="metadata"
-                    controlsList="nodownload"
-                    title={`${exercise.name} demo`}
-                  />
-                ) : (
-                  <iframe
-                    src={`https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1&origin=${window.location.origin}`}
-                    className="w-full h-full"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    title={`${exercise.name} demo`}
-                  />
-                )}
-              </div>
-              <div className="flex items-center justify-center gap-3 mt-2">
-                <p className="text-[10px] text-wf-gray-600">Tap video for full screen</p>
-                {!(videoId.startsWith('http') || videoId.startsWith('/')) && (
-                  <a
-                    href={`https://www.youtube.com/watch?v=${videoId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[10px] text-wf-red font-semibold"
-                  >
-                    Open on YouTube
-                  </a>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="p-4 text-center">
-              <p className="text-sm text-wf-gray-400 mb-3">No demo video mapped yet</p>
-              <a
-                href={getExerciseSearchUrl(exercise.name)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-wf-red/10 text-wf-red text-sm font-semibold active:scale-95 transition-all"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-                </svg>
-                Search on YouTube
-              </a>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Set Controls Subheader */}
       {!readOnly && onAddSet && (
