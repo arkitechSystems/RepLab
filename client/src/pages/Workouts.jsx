@@ -2617,6 +2617,27 @@ export default function Workouts() {
               </div>
             </div>
 
+            {/* Streak Card */}
+            {streak > 0 && (
+              <div className="glass-card rounded-2xl p-4 fade-slide-up flex items-center gap-4 border-l-4 border-orange-500">
+                <div className="w-14 h-14 rounded-full bg-orange-500/15 flex items-center justify-center shrink-0">
+                  <span className="text-2xl">🔥</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-white">
+                    {streak} Day Streak{streak >= 7 ? '!' : ''}
+                  </h3>
+                  <p className="text-xs text-wf-gray-400 mt-0.5">
+                    {streak === 1 ? "You worked out today — keep it going!" :
+                     streak < 7 ? `${streak} days in a row — keep pushing!` :
+                     streak < 14 ? "A full week strong — on fire!" :
+                     streak < 30 ? `${streak} days — unstoppable!` :
+                     `${streak} days — legendary consistency!`}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Browse Workout Library card */}
             <div
               data-tutorial="browse-library"
@@ -2667,27 +2688,6 @@ export default function Workouts() {
                 </div>
               </div>
             </div>
-
-            {/* Streak Card */}
-            {streak > 0 && (
-              <div className="glass-card rounded-2xl p-4 fade-slide-up flex items-center gap-4 border-l-4 border-orange-500">
-                <div className="w-14 h-14 rounded-full bg-orange-500/15 flex items-center justify-center shrink-0">
-                  <span className="text-2xl">🔥</span>
-                </div>
-                <div>
-                  <h3 className="text-lg font-black text-white">
-                    {streak} Day Streak{streak >= 7 ? '!' : ''}
-                  </h3>
-                  <p className="text-xs text-wf-gray-400 mt-0.5">
-                    {streak === 1 ? "You worked out today — keep it going!" :
-                     streak < 7 ? `${streak} days in a row — keep pushing!` :
-                     streak < 14 ? "A full week strong — on fire!" :
-                     streak < 30 ? `${streak} days — unstoppable!` :
-                     `${streak} days — legendary consistency!`}
-                  </p>
-                </div>
-              </div>
-            )}
 
             {/* Challenges card */}
             <div
