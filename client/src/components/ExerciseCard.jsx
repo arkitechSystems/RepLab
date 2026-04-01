@@ -133,10 +133,37 @@ function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, inpu
   return (
     <>
     <div data-tutorial={dataTutorial ? 'exercise-card' : undefined} className="glass-card rounded-xl overflow-hidden mb-3">
-      {/* Exercise Header — name only */}
-      <div data-tutorial={dataTutorial} className="px-4 py-3 border-b border-white/5">
+      {/* Exercise Header — name + demo button */}
+      <div data-tutorial={dataTutorial} className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
         <span className="text-base font-semibold text-white">{exercise.name}</span>
+        {!isTemplate && videoId && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setShowDemoLocal(!showDemoLocal); }}
+            className={`shrink-0 h-7 px-2.5 rounded-lg flex items-center gap-1.5 active:scale-95 transition-all ${showDemo ? 'bg-wf-red/20 border border-wf-red/40' : 'bg-wf-red/10 border border-wf-red/20'}`}
+          >
+            <svg className="w-3.5 h-3.5 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
+            </svg>
+            <span className="text-[10px] font-semibold text-wf-red">Demo</span>
+          </button>
+        )}
       </div>
+
+      {/* Inline Demo Section */}
+      {showDemo && videoId && (
+        <div className="border-t border-white/5 bg-black/20">
+          <div className="p-3">
+            <div className="rounded-xl overflow-hidden bg-black aspect-video">
+              {videoId.startsWith('http') || videoId.startsWith('/') ? (
+                <video src={videoId} className="w-full h-full object-contain" controls playsInline preload="metadata" controlsList="nodownload" />
+              ) : (
+                <iframe src={`https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1&origin=${window.location.origin}`} className="w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen title={`${exercise.name} demo`} />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Exercise Description (from template) */}
       {exercise.exerciseDescription && (
@@ -145,10 +172,9 @@ function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, inpu
         </div>
       )}
 
-      {/* Controls subheader — move, swap, add, delete */}
+      {/* Controls subheader — move, swap, add exercise, delete exercise */}
       {!readOnly && (
-        <div className="px-4 py-2 border-b border-white/5 flex items-center justify-between bg-white/[0.015]">
-          <div className="flex items-center gap-2">
+        <div className="px-4 py-2 border-b border-white/5 flex items-center gap-1.5 bg-white/[0.015]">
             <span data-tutorial={dataTutorial ? 'move-buttons' : undefined} className="flex items-center gap-1.5">
             {onMoveUp && (
               <button type="button" onClick={onMoveUp} className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-white hover:bg-white/20 active:scale-90 transition-all">
@@ -167,8 +193,6 @@ function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, inpu
                 <span className="text-[10px] font-semibold">Swap</span>
               </button>
             )}
-          </div>
-          <div className="flex items-center gap-1.5">
             <span data-tutorial={dataTutorial ? 'add-delete-buttons' : undefined} className="flex items-center gap-1.5">
             {onAddExercise && (
               <button type="button" onClick={() => { setShowAddBelow(true); setAddBelowSearch(''); }} className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-green-400 hover:bg-green-500/20 active:scale-90 transition-all">
@@ -181,14 +205,13 @@ function ExerciseCard({ exercise, entries, pbs, onChange, onBlur, readOnly, inpu
               </button>
             )}
             </span>
-          </div>
         </div>
       )}
 
 
       {/* Set Controls Subheader */}
       {!readOnly && onAddSet && (
-        <div data-tutorial={dataTutorial ? 'set-controls' : undefined} className="px-4 py-2 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
+        <div data-tutorial={dataTutorial ? 'set-controls' : undefined} className="px-4 py-2 border-b border-white/10 flex items-center gap-3 bg-white/[0.02]">
           <span className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-medium">
             {exercise.sets.length} set{exercise.sets.length !== 1 ? 's' : ''}
           </span>
