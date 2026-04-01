@@ -1,6 +1,6 @@
 {
   "name": "willfit",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "scripts": {
     "install:all": "cd client && npm install && cd ../server && npm install",
