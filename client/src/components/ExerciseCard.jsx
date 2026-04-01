@@ -138,10 +138,10 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
       {/* Exercise Header — name + demo button */}
       <div data-tutorial={dataTutorial} className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
         <span className="text-base font-semibold text-white">{exercise.name}</span>
-        {!isTemplate && videoId && (
+        {!isTemplate && (
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); setShowDemoLocal(!showDemoLocal); }}
+            onClick={(e) => { e.stopPropagation(); videoId ? setShowDemoLocal(!showDemoLocal) : handleVideoClick(); }}
             className={`shrink-0 h-7 px-2.5 rounded-lg flex items-center gap-1.5 active:scale-95 transition-all ${showDemo ? 'bg-wf-red/20 border border-wf-red/40' : 'bg-wf-red/10 border border-wf-red/20'}`}
           >
             <svg className="w-3.5 h-3.5 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
