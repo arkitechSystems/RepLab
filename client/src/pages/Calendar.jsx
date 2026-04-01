@@ -26,6 +26,7 @@ export default function Calendar() {
   const [pickerSearch, setPickerSearch] = useState('');
   const [editError, setEditError] = useState('');
   const [scheduleSaving, setScheduleSaving] = useState(false);
+  const [restDayPrompt, setRestDayPrompt] = useState(false); // show rest day options sub-modal
   const [copySource, setCopySource] = useState(null); // { templateId, templateName, date, dayOfWeek }
   const [copyStep, setCopyStep] = useState(null); // 'pick-day' | 'confirm-overwrite' | 'use-reps'
   const [copyTarget, setCopyTarget] = useState(null); // Date object
@@ -112,6 +113,7 @@ export default function Calendar() {
     setExpandedProgram(null);
     setPickerSearch('');
     setEditError('');
+    setRestDayPrompt(false);
     setEditingDay(date);
   }
 
@@ -152,6 +154,74 @@ export default function Calendar() {
       ]);
       setSchedule(updated);
       setCompletedSessions(completed);
+      setEditingDay(null);
+    } catch (err) {
+      console.error(err);
+      setEditError('Failed to save. Please try again.');
+    } finally {
+      setScheduleSaving(false);
+    }
+  }
+
+  async function handleSkipWorkout() {
+    // Replace this day's workout with nothing (rest)
+    const dow = editingDay.getDay();
+    setScheduleSaving(true);
+    try {
+      await api('/schedule', {
+        method: 'PUT',
+        body: JSON.stringify({ schedule: [{ dayOfWeek: dow, templateId: null }] }),
+      });
+      const [updated, completed] = await Promise.all([
+        api('/schedule'),
+        api('/sessions/completed'),
+      ]);
+      setSchedule(updated);
+      setCompletedSessions(completed);
+      setRestDayPrompt(false);
+      setEditingDay(null);
+    } catch (err) {
+      console.error(err);
+      setEditError('Failed to save. Please try again.');
+    } finally {
+      setScheduleSaving(false);
+    }
+  }
+
+  async function handleInsertRestDay() {
+    // Shift all workouts from this day onward forward by one day
+    // e.g., if editing Wednesday (3): Wed→Thu, Thu→Fri, Fri→Sat, Sat→Sun
+    // The edited day becomes empty (rest)
+    const dow = editingDay.getDay();
+    setScheduleSaving(true);
+    try {
+      // Build a map of current schedule by dayOfWeek
+      const currentByDay = {};
+      for (const s of schedule) {
+        currentByDay[s.dayOfWeek] = s.templateId;
+      }
+
+      // Shift days forward: start from Saturday (6) down to the edited day
+      // Each day gets the previous day's workout; the edited day becomes null
+      const updates = [];
+      for (let d = 6; d > dow; d--) {
+        const prevTemplateId = currentByDay[d - 1] !== undefined ? currentByDay[d - 1] : null;
+        updates.push({ dayOfWeek: d, templateId: prevTemplateId });
+      }
+      // The edited day becomes a rest day
+      updates.push({ dayOfWeek: dow, templateId: null });
+
+      await api('/schedule', {
+        method: 'PUT',
+        body: JSON.stringify({ schedule: updates }),
+      });
+      const [updated, completed] = await Promise.all([
+        api('/schedule'),
+        api('/sessions/completed'),
+      ]);
+      setSchedule(updated);
+      setCompletedSessions(completed);
+      setRestDayPrompt(false);
       setEditingDay(null);
     } catch (err) {
       console.error(err);
@@ -729,6 +799,20 @@ export default function Calendar() {
                         <span className="text-sm font-medium text-wf-gray-300">Clear — No Workout</span>
                       </button>
                     )}
+                    {hasWorkout && (
+                      <button
+                        onClick={() => setRestDayPrompt(true)}
+                        disabled={scheduleSaving}
+                        className={`w-full text-left rounded-xl px-4 py-3 flex items-center gap-3 bg-white/5 active:bg-white/10 active:scale-[0.98] transition-all ${scheduleSaving ? 'opacity-50 pointer-events-none' : ''}`}
+                      >
+                        <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+                          <svg className="w-4 h-4 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.72 9.72 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+                          </svg>
+                        </div>
+                        <span className="text-sm font-medium text-wf-gray-300">Rest Day</span>
+                      </button>
+                    )}
                   </div>
                 )}
 
@@ -810,6 +894,84 @@ export default function Calendar() {
           </div>
         );
       })()}
+
+      {/* Rest Day Options Modal */}
+      {restDayPrompt && editingDay && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4" onClick={() => setRestDayPrompt(false)}>
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <div
+            className="relative w-full max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="px-5 pt-4 pb-3 border-b border-white/10">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-white">Rest Day</h3>
+                  <p className="text-sm text-wf-gray-400 mt-0.5">
+                    {DAY_NAMES[editingDay.getDay()]}, {format(editingDay, 'MMM d')}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setRestDayPrompt(false)}
+                  className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"
+                >
+                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Options */}
+            <div className="p-5 space-y-3">
+              {/* Skip Workout */}
+              <button
+                onClick={handleSkipWorkout}
+                disabled={scheduleSaving}
+                className={`w-full text-left rounded-xl px-4 py-4 bg-white/5 active:bg-white/10 active:scale-[0.98] transition-all ${scheduleSaving ? 'opacity-50 pointer-events-none' : ''}`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+                    <svg className="w-5 h-5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8.689c0-.864.933-1.406 1.683-.977l7.108 4.061a1.125 1.125 0 010 1.954l-7.108 4.061A1.125 1.125 0 013 16.811V8.69zM12.75 8.689c0-.864.933-1.406 1.683-.977l7.108 4.061a1.125 1.125 0 010 1.954l-7.108 4.061a1.125 1.125 0 01-1.683-.977V8.69z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-white">Skip Workout</p>
+                    <p className="text-xs text-wf-gray-500 mt-0.5">Replace this day with a rest day. Other days stay the same.</p>
+                  </div>
+                </div>
+              </button>
+
+              {/* Insert Rest Day */}
+              <button
+                onClick={handleInsertRestDay}
+                disabled={scheduleSaving}
+                className={`w-full text-left rounded-xl px-4 py-4 bg-white/5 active:bg-white/10 active:scale-[0.98] transition-all ${scheduleSaving ? 'opacity-50 pointer-events-none' : ''}`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+                    <svg className="w-5 h-5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-white">Insert Rest Day</p>
+                    <p className="text-xs text-wf-gray-500 mt-0.5">Push this and all later workouts forward by one day.</p>
+                  </div>
+                </div>
+              </button>
+            </div>
+
+            {editError && (
+              <div className="px-5 pb-4">
+                <p className="text-sm text-red-400 text-center">{editError}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Copy Workout Modal */}
       {copySource && copyStep && (
