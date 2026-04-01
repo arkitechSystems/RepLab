@@ -60,8 +60,9 @@ CREATE TABLE IF NOT EXISTS template_exercises (
 CREATE TABLE IF NOT EXISTS schedule_days (
   id SERIAL PRIMARY KEY,
   user_id INT NOT NULL REFERENCES users(id),
-  day_of_week INT NOT NULL,
-  template_id INT REFERENCES templates(id) ON DELETE CASCADE
+  day_of_week INT,
+  template_id INT REFERENCES templates(id) ON DELETE CASCADE,
+  schedule_date DATE
 );
 
 CREATE TABLE IF NOT EXISTS sessions (

@@ -420,22 +420,30 @@ const db = {
     }
   },
 
-  // Schedule
-  async getSchedule(userId) {
+  // Schedule (date-based)
+  async getSchedule(userId, fromDate, toDate) {
     const { rows } = await pool.query(
-      `SELECT sd.day_of_week, sd.template_id, t.name AS template_name, t.is_rest
+      `SELECT sd.schedule_date, sd.template_id, t.name AS template_name, t.is_rest
        FROM schedule_days sd
        LEFT JOIN templates t ON t.id = sd.template_id
-       WHERE sd.user_id = $1
-       ORDER BY sd.day_of_week`,
-      [userId]
+       WHERE sd.user_id = $1 AND sd.schedule_date IS NOT NULL
+         AND sd.schedule_date >= $2 AND sd.schedule_date <= $3
+       ORDER BY sd.schedule_date`,
+      [userId, fromDate, toDate]
     );
-    return rows.map((r) => ({
-      dayOfWeek: r.day_of_week,
-      templateId: r.template_id,
-      templateName: r.template_name || null,
-      isRest: r.is_rest || false,
-    }));
+    return rows.map((r) => {
+      // Format date as YYYY-MM-DD string for client consistency
+      const d = r.schedule_date;
+      const dateStr = d instanceof Date
+        ? d.toISOString().slice(0, 10)
+        : String(d).slice(0, 10);
+      return {
+        date: dateStr,
+        templateId: r.template_id,
+        templateName: r.template_name || null,
+        isRest: r.is_rest || false,
+      };
+    });
   },
 
   async setDefaultSchedule(_userId) {
@@ -447,12 +455,21 @@ const db = {
     try {
       await client.query('BEGIN');
       for (const day of schedule) {
-        await client.query(
-          `INSERT INTO schedule_days (user_id, day_of_week, template_id)
-           VALUES ($1, $2, $3)
-           ON CONFLICT (user_id, day_of_week) DO UPDATE SET template_id = $3`,
-          [userId, day.dayOfWeek, day.templateId]
-        );
+        if (day.templateId == null) {
+          // Delete the row if clearing a date
+          await client.query(
+            `DELETE FROM schedule_days WHERE user_id = $1 AND schedule_date = $2`,
+            [userId, day.date]
+          );
+        } else {
+          await client.query(
+            `INSERT INTO schedule_days (user_id, schedule_date, template_id)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (user_id, schedule_date)
+             DO UPDATE SET template_id = $3`,
+            [userId, day.date, day.templateId]
+          );
+        }
       }
       await client.query('COMMIT');
     } catch (err) {
@@ -461,6 +478,13 @@ const db = {
     } finally {
       client.release();
     }
+  },
+
+  async clearScheduleFrom(userId, fromDate) {
+    await pool.query(
+      `DELETE FROM schedule_days WHERE user_id = $1 AND schedule_date >= $2`,
+      [userId, fromDate]
+    );
   },
 
   // Sessions

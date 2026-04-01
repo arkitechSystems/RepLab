@@ -28,7 +28,7 @@ export default function Calendar() {
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [restDayPrompt, setRestDayPrompt] = useState(false); // show rest day options sub-modal
   const [clearCalendarConfirm, setClearCalendarConfirm] = useState(false); // confirm clear calendar modal
-  const [copySource, setCopySource] = useState(null); // { templateId, templateName, date, dayOfWeek }
+  const [copySource, setCopySource] = useState(null); // { templateId, templateName, date }
   const [copyStep, setCopyStep] = useState(null); // 'pick-day' | 'confirm-overwrite' | 'use-reps'
   const [copyTarget, setCopyTarget] = useState(null); // Date object
   const [copying, setCopying] = useState(false);
@@ -69,17 +69,32 @@ export default function Calendar() {
   // Build 6-week grid (42 days) to cover any month layout
   const monthGridDays = Array.from({ length: 42 }, (_, i) => addDays(monthGridStart, i));
 
+  // Compute visible date range for fetching schedule
+  // Always fetch a wide range covering both views (current month grid + a few extra weeks)
+  const fetchFrom = format(addDays(monthGridStart, -7), 'yyyy-MM-dd');
+  const fetchTo = format(addDays(monthGridStart, 56), 'yyyy-MM-dd');
+
   useEffect(() => { window.scrollTo(0, 0); }, []);
+
+  async function refreshSchedule(opts = {}) {
+    const [s, completed] = await Promise.all([
+      api(`/schedule?from=${fetchFrom}&to=${fetchTo}`, opts),
+      api('/sessions/completed', opts),
+    ]);
+    setSchedule(s);
+    setCompletedSessions(completed);
+    return s;
+  }
 
   useEffect(() => {
     const controller = new AbortController();
     const opts = { signal: controller.signal };
-    Promise.all([api('/schedule', opts), api('/templates', opts), api('/programs', opts), api('/sessions/completed', opts)])
+    Promise.all([api(`/schedule?from=${fetchFrom}&to=${fetchTo}`, opts), api('/templates', opts), api('/programs', opts), api('/sessions/completed', opts)])
       .then(([s, t, p, c]) => { setSchedule(s); setTemplates(t); setPrograms(p); setCompletedSessions(c); })
       .catch((err) => { if (err.name !== 'AbortError') setLoadError('Failed to load calendar data'); })
       .finally(() => setLoading(false));
     return () => controller.abort();
-  }, []);
+  }, [fetchFrom, fetchTo]);
 
   function getEnrichedPrograms() {
     return programs.map((p) => {
@@ -91,8 +106,8 @@ export default function Calendar() {
   }
 
   function getWorkoutForDay(date) {
-    const dow = date.getDay();
-    return schedule.find((s) => s.dayOfWeek === dow);
+    const dateStr = format(date, 'yyyy-MM-dd');
+    return schedule.find((s) => s.date === dateStr);
   }
 
   function isDayCompleted(date) {
@@ -120,19 +135,14 @@ export default function Calendar() {
   }
 
   async function handleSwap(templateId) {
-    const dow = editingDay.getDay();
+    const dateStr = format(editingDay, 'yyyy-MM-dd');
     setScheduleSaving(true);
     try {
       await api('/schedule', {
         method: 'PUT',
-        body: JSON.stringify({ schedule: [{ dayOfWeek: dow, templateId }] }),
+        body: JSON.stringify({ schedule: [{ date: dateStr, templateId }] }),
       });
-      const [updated, completed] = await Promise.all([
-        api('/schedule'),
-        api('/sessions/completed'),
-      ]);
-      setSchedule(updated);
-      setCompletedSessions(completed);
+      await refreshSchedule();
       setEditingDay(null);
     } catch (err) {
       console.error(err);
@@ -143,19 +153,14 @@ export default function Calendar() {
   }
 
   async function handleClearDay() {
-    const dow = editingDay.getDay();
+    const dateStr = format(editingDay, 'yyyy-MM-dd');
     setScheduleSaving(true);
     try {
       await api('/schedule', {
         method: 'PUT',
-        body: JSON.stringify({ schedule: [{ dayOfWeek: dow, templateId: null }] }),
+        body: JSON.stringify({ schedule: [{ date: dateStr, templateId: null }] }),
       });
-      const [updated, completed] = await Promise.all([
-        api('/schedule'),
-        api('/sessions/completed'),
-      ]);
-      setSchedule(updated);
-      setCompletedSessions(completed);
+      await refreshSchedule();
       setEditingDay(null);
     } catch (err) {
       console.error(err);
@@ -167,19 +172,14 @@ export default function Calendar() {
 
   async function handleSkipWorkout() {
     // Replace this day's workout with nothing (rest)
-    const dow = editingDay.getDay();
+    const dateStr = format(editingDay, 'yyyy-MM-dd');
     setScheduleSaving(true);
     try {
       await api('/schedule', {
         method: 'PUT',
-        body: JSON.stringify({ schedule: [{ dayOfWeek: dow, templateId: null }] }),
+        body: JSON.stringify({ schedule: [{ date: dateStr, templateId: null }] }),
       });
-      const [updated, completed] = await Promise.all([
-        api('/schedule'),
-        api('/sessions/completed'),
-      ]);
-      setSchedule(updated);
-      setCompletedSessions(completed);
+      await refreshSchedule();
       setRestDayPrompt(false);
       setEditingDay(null);
     } catch (err) {
@@ -192,37 +192,27 @@ export default function Calendar() {
 
   async function handleInsertRestDay() {
     // Shift all workouts from this day onward forward by one day
-    // e.g., if editing Wednesday (3): Wed→Thu, Thu→Fri, Fri→Sat, Sat→Sun
     // The edited day becomes empty (rest)
-    const dow = editingDay.getDay();
+    const dateStr = format(editingDay, 'yyyy-MM-dd');
     setScheduleSaving(true);
     try {
-      // Build a map of current schedule by dayOfWeek
-      const currentByDay = {};
-      for (const s of schedule) {
-        currentByDay[s.dayOfWeek] = s.templateId;
-      }
+      // Get all scheduled workouts from this date onward
+      const futureWorkouts = schedule
+        .filter((s) => s.date >= dateStr && s.templateId)
+        .sort((a, b) => a.date.localeCompare(b.date));
 
-      // Shift days forward: start from Saturday (6) down to the edited day
-      // Each day gets the previous day's workout; the edited day becomes null
-      const updates = [];
-      for (let d = 6; d > dow; d--) {
-        const prevTemplateId = currentByDay[d - 1] !== undefined ? currentByDay[d - 1] : null;
-        updates.push({ dayOfWeek: d, templateId: prevTemplateId });
+      // Build updates: each workout moves to the next day, edited day is cleared
+      const updates = [{ date: dateStr, templateId: null }];
+      for (const w of futureWorkouts) {
+        const nextDay = format(addDays(new Date(w.date + 'T00:00:00'), 1), 'yyyy-MM-dd');
+        updates.push({ date: nextDay, templateId: w.templateId });
       }
-      // The edited day becomes a rest day
-      updates.push({ dayOfWeek: dow, templateId: null });
 
       await api('/schedule', {
         method: 'PUT',
         body: JSON.stringify({ schedule: updates }),
       });
-      const [updated, completed] = await Promise.all([
-        api('/schedule'),
-        api('/sessions/completed'),
-      ]);
-      setSchedule(updated);
-      setCompletedSessions(completed);
+      await refreshSchedule();
       setRestDayPrompt(false);
       setEditingDay(null);
     } catch (err) {
@@ -234,24 +224,11 @@ export default function Calendar() {
   }
 
   async function handleClearCalendar() {
-    const dow = editingDay.getDay();
+    const dateStr = format(editingDay, 'yyyy-MM-dd');
     setScheduleSaving(true);
     try {
-      // Clear this day and all days after it (through Saturday)
-      const updates = [];
-      for (let d = dow; d <= 6; d++) {
-        updates.push({ dayOfWeek: d, templateId: null });
-      }
-      await api('/schedule', {
-        method: 'PUT',
-        body: JSON.stringify({ schedule: updates }),
-      });
-      const [updated, completed] = await Promise.all([
-        api('/schedule'),
-        api('/sessions/completed'),
-      ]);
-      setSchedule(updated);
-      setCompletedSessions(completed);
+      await api(`/schedule?from=${dateStr}`, { method: 'DELETE' });
+      await refreshSchedule();
       setClearCalendarConfirm(false);
       setEditingDay(null);
     } catch (err) {
@@ -271,7 +248,6 @@ export default function Calendar() {
       templateId: currentWorkout.templateId,
       templateName: currentWorkout.templateName,
       date: format(date, 'yyyy-MM-dd'),
-      dayOfWeek: date.getDay(),
     });
     setCopyStep('pick-day');
     setCopyTarget(null);
@@ -313,12 +289,12 @@ export default function Calendar() {
   async function executeCopy(targetDate, useReps) {
     setCopying(true);
     try {
-      const targetDow = targetDate.getDay();
+      const targetDateStr = format(targetDate, 'yyyy-MM-dd');
 
       // Step 1: Assign the templateId to the target day's schedule
       await api('/schedule', {
         method: 'PUT',
-        body: JSON.stringify({ schedule: [{ dayOfWeek: targetDow, templateId: copySource.templateId }] }),
+        body: JSON.stringify({ schedule: [{ date: targetDateStr, templateId: copySource.templateId }] }),
       });
 
       // Fetch source session to copy weights (and optionally reps as goals)
@@ -375,7 +351,6 @@ export default function Calendar() {
           }
         }
 
-        const targetDateStr = format(targetDate, 'yyyy-MM-dd');
         await api('/sessions', {
           method: 'POST',
           body: JSON.stringify({
@@ -389,12 +364,7 @@ export default function Calendar() {
       }
 
       // Refresh schedule and completed sessions
-      const [updatedSchedule, updatedCompleted] = await Promise.all([
-        api('/schedule'),
-        api('/sessions/completed'),
-      ]);
-      setSchedule(updatedSchedule);
-      setCompletedSessions(updatedCompleted);
+      await refreshSchedule();
       cancelCopy();
     } catch (err) {
       console.error('Copy failed:', err);
@@ -1032,7 +1002,7 @@ export default function Calendar() {
               </div>
               <h3 className="text-lg font-bold text-white text-center">Clear Calendar</h3>
               <p className="text-sm text-wf-gray-400 text-center mt-2">
-                This will remove all workouts from <span className="text-white font-medium">{FULL_DAY_NAMES[editingDay.getDay()]}</span> through <span className="text-white font-medium">Saturday</span>.
+                This will remove all workouts from <span className="text-white font-medium">{format(editingDay, 'MMM d')}</span> onward.
               </p>
             </div>
             <div className="px-5 pb-5 flex gap-3">

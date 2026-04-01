@@ -295,7 +295,8 @@ export default function Workouts() {
     return program.templates.slice(0, 7).map((t, i) => {
       const date = new Date(startDate);
       date.setDate(date.getDate() + i);
-      return { dayOfWeek: date.getDay(), templateId: t.id, date };
+      const dateStr = date.toISOString().slice(0, 10);
+      return { date: dateStr, templateId: t.id, displayDate: date };
     });
   }
 
@@ -306,13 +307,15 @@ export default function Workouts() {
       await applyEntries(entries);
       return;
     }
-    const schedule = await api('/schedule');
+    const fromDate = entries[0].date;
+    const toDate = entries[entries.length - 1].date;
+    const schedule = await api(`/schedule?from=${fromDate}&to=${toDate}`);
     if (beginModal?.id !== programId) return;
     const conflicts = entries
-      .filter((e) => schedule.some((s) => s.dayOfWeek === e.dayOfWeek && s.templateId))
+      .filter((e) => schedule.some((s) => s.date === e.date && s.templateId))
       .map((e) => {
-        const existing = schedule.find((s) => s.dayOfWeek === e.dayOfWeek && s.templateId);
-        const dayLabel = `${DAY_NAMES_FULL[e.dayOfWeek]}, ${e.date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`;
+        const existing = schedule.find((s) => s.date === e.date && s.templateId);
+        const dayLabel = `${DAY_NAMES_FULL[e.displayDate.getDay()]}, ${e.displayDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`;
         return { dayLabel, workoutName: existing?.templateName || 'Unknown workout' };
       });
     if (conflicts.length > 0) {
@@ -326,7 +329,7 @@ export default function Workouts() {
     if (!tutorial.active) {
       await api('/schedule', {
         method: 'PUT',
-        body: JSON.stringify({ schedule: entries.map(({ dayOfWeek, templateId }) => ({ dayOfWeek, templateId })) }),
+        body: JSON.stringify({ schedule: entries.map(({ date, templateId }) => ({ date, templateId })) }),
       });
     }
     completeTutorialAction('begin-confirmed');
@@ -511,17 +514,17 @@ export default function Workouts() {
   }
 
   async function tryAddWorkout(template, date) {
-    const dow = date.getDay();
-    const schedule = await api('/schedule');
-    const existing = schedule.find((s) => s.dayOfWeek === dow && s.templateId);
+    const dateStr = date.toISOString().slice(0, 10);
+    const schedule = await api(`/schedule?from=${dateStr}&to=${dateStr}`);
+    const existing = schedule.find((s) => s.date === dateStr && s.templateId);
     if (existing) {
       setAddConflictInfo({
-        dayName: `${DAY_NAMES_FULL[dow]}, ${date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`,
+        dayName: `${DAY_NAMES_FULL[date.getDay()]}, ${date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`,
         workoutName: existing.templateName || 'Unknown workout',
-        entry: { dayOfWeek: dow, templateId: template.id },
+        entry: { date: dateStr, templateId: template.id },
       });
     } else {
-      await applyAddWorkout({ dayOfWeek: dow, templateId: template.id });
+      await applyAddWorkout({ date: dateStr, templateId: template.id });
     }
   }
 
@@ -1599,19 +1602,19 @@ export default function Workouts() {
         console.error(err);
         return;
       }
-      const dow = new Date().getDay();
-      const schedule = await api('/schedule');
-      const existing = schedule.find((s) => s.dayOfWeek === dow && s.templateId);
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const schedule = await api(`/schedule?from=${dateStr}&to=${dateStr}`);
+      const existing = schedule.find((s) => s.date === dateStr && s.templateId);
       if (existing) {
         setAddConflictInfo({
-          dayName: `${DAY_NAMES_FULL[dow]}, ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`,
+          dayName: `${DAY_NAMES_FULL[new Date().getDay()]}, ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`,
           workoutName: existing.templateName || 'Unknown workout',
-          entry: { dayOfWeek: dow, templateId },
+          entry: { date: dateStr, templateId },
         });
       } else {
         await api('/schedule', {
           method: 'PUT',
-          body: JSON.stringify({ schedule: [{ dayOfWeek: dow, templateId }] }),
+          body: JSON.stringify({ schedule: [{ date: dateStr, templateId }] }),
         });
         navigate('/calendar');
       }
@@ -1635,19 +1638,19 @@ export default function Workouts() {
         return;
       }
       const date = new Date(addDateInput + 'T00:00:00');
-      const dow = date.getDay();
-      const schedule = await api('/schedule');
-      const existing = schedule.find((s) => s.dayOfWeek === dow && s.templateId);
+      const dateStr = addDateInput;
+      const schedule = await api(`/schedule?from=${dateStr}&to=${dateStr}`);
+      const existing = schedule.find((s) => s.date === dateStr && s.templateId);
       if (existing) {
         setAddConflictInfo({
-          dayName: `${DAY_NAMES_FULL[dow]}, ${date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`,
+          dayName: `${DAY_NAMES_FULL[date.getDay()]}, ${date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`,
           workoutName: existing.templateName || 'Unknown workout',
-          entry: { dayOfWeek: dow, templateId },
+          entry: { date: dateStr, templateId },
         });
       } else {
         await api('/schedule', {
           method: 'PUT',
-          body: JSON.stringify({ schedule: [{ dayOfWeek: dow, templateId }] }),
+          body: JSON.stringify({ schedule: [{ date: dateStr, templateId }] }),
         });
         navigate('/calendar');
       }

@@ -134,6 +134,12 @@ export default async function initDb() {
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_schedule_days_user_day ON schedule_days(user_id, day_of_week)`);
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_personal_bests_upsert ON personal_bests(user_id, template_id, exercise_name, best_weight)`);
 
+  // Migration: add schedule_date column for per-date scheduling (replaces day_of_week)
+  await pool.query(`ALTER TABLE schedule_days ADD COLUMN IF NOT EXISTS schedule_date DATE`);
+  // Drop partial index if it exists (from earlier migration), replace with plain unique index
+  await pool.query(`DROP INDEX IF EXISTS idx_schedule_days_user_date`);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_schedule_days_user_date ON schedule_days(user_id, schedule_date)`);
+
   // Add WARM UP section header to "Leg 1 (anterior chain)" before Leg Press (one-time migration)
   const { rows: leg1Templates } = await pool.query(
     `SELECT t.id FROM templates t JOIN programs p ON t.program_id = p.id WHERE t.name ILIKE '%Leg 1%' AND p.name ILIKE '%Upper/Lower/PPL%' LIMIT 1`

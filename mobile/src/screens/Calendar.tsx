@@ -20,7 +20,7 @@ import { colors } from '../theme';
 // ─── Types ───────────────────────────────────────────────────────────
 
 interface ScheduleEntry {
-  dayOfWeek: number;
+  date: string;
   templateId: number | null;
   templateName?: string;
 }
@@ -64,10 +64,13 @@ export default function CalendarScreen({ navigation }: any) {
 
   // ─── Data fetching ──────────────────────────────────────────────────
 
+  const fetchFrom = format(addDays(weekStart, -7), 'yyyy-MM-dd');
+  const fetchTo = format(addDays(weekStart, 14), 'yyyy-MM-dd');
+
   const fetchData = useCallback(async () => {
     try {
       const [sched, tmpls, progs, completed] = await Promise.all([
-        api('/schedule'),
+        api(`/schedule?from=${fetchFrom}&to=${fetchTo}`),
         api('/templates'),
         api('/programs'),
         api('/sessions/completed'),
@@ -112,8 +115,8 @@ export default function CalendarScreen({ navigation }: any) {
   // ─── Schedule helpers ───────────────────────────────────────────────
 
   function getWorkoutForDay(date: Date): ScheduleEntry | undefined {
-    const dow = date.getDay();
-    return schedule.find((s) => s.dayOfWeek === dow);
+    const dateStr = format(date, 'yyyy-MM-dd');
+    return schedule.find((s) => s.date === dateStr);
   }
 
   function getTemplateName(entry: ScheduleEntry | undefined): string | null {
@@ -134,21 +137,25 @@ export default function CalendarScreen({ navigation }: any) {
 
   // ─── Swap / Clear handlers ─────────────────────────────────────────
 
+  async function refreshSchedule() {
+    const [updated, completed] = await Promise.all([
+      api(`/schedule?from=${fetchFrom}&to=${fetchTo}`),
+      api('/sessions/completed'),
+    ]);
+    setSchedule(updated || []);
+    setCompletedSessions(completed || []);
+  }
+
   async function handleSwap(templateId: number) {
     if (!editingDay) return;
-    const dow = editingDay.getDay();
+    const dateStr = format(editingDay, 'yyyy-MM-dd');
     setScheduleSaving(true);
     try {
       await api('/schedule', {
         method: 'PUT',
-        body: JSON.stringify({ schedule: [{ dayOfWeek: dow, templateId }] }),
+        body: JSON.stringify({ schedule: [{ date: dateStr, templateId }] }),
       });
-      const [updated, completed] = await Promise.all([
-        api('/schedule'),
-        api('/sessions/completed'),
-      ]);
-      setSchedule(updated || []);
-      setCompletedSessions(completed || []);
+      await refreshSchedule();
       setEditingDay(null);
     } catch {
       // silently fail for now
@@ -159,19 +166,14 @@ export default function CalendarScreen({ navigation }: any) {
 
   async function handleClearDay() {
     if (!editingDay) return;
-    const dow = editingDay.getDay();
+    const dateStr = format(editingDay, 'yyyy-MM-dd');
     setScheduleSaving(true);
     try {
       await api('/schedule', {
         method: 'PUT',
-        body: JSON.stringify({ schedule: [{ dayOfWeek: dow, templateId: null }] }),
+        body: JSON.stringify({ schedule: [{ date: dateStr, templateId: null }] }),
       });
-      const [updated, completed] = await Promise.all([
-        api('/schedule'),
-        api('/sessions/completed'),
-      ]);
-      setSchedule(updated || []);
-      setCompletedSessions(completed || []);
+      await refreshSchedule();
       setEditingDay(null);
     } catch {
       // silently fail for now

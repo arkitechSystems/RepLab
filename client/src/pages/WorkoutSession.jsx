@@ -392,9 +392,12 @@ export default function WorkoutSession() {
     async function loadSession() {
       try {
         // Fetch PBs, schedule, last session entries, and programs in parallel
+        // Fetch schedule for a small window around the current date (for day nav arrows)
+        const schedFrom = format(subDays(parseISO(date), 7), 'yyyy-MM-dd');
+        const schedTo = format(addDays(parseISO(date), 7), 'yyyy-MM-dd');
         const [pbList, scheduleData, lastEntries, programs] = await Promise.all([
           api(`/pbs?templateId=${templateId}`),
-          api('/schedule'),
+          api(`/schedule?from=${schedFrom}&to=${schedTo}`),
           api(`/sessions/last-entries/${templateId}`).catch(() => ({})),
           api('/programs').catch(() => []),
         ]);
@@ -1350,11 +1353,10 @@ export default function WorkoutSession() {
   const [dayNavDisabled, setDayNavDisabled] = useState(false);
   const navigateToDay = useCallback((targetDate) => {
     if (!schedule || dayNavDisabled) return;
-    const dow = targetDate.getDay();
-    const entry = schedule.find(s => s.dayOfWeek === dow);
+    const dateStr = format(targetDate, 'yyyy-MM-dd');
+    const entry = schedule.find(s => s.date === dateStr);
     if (entry && entry.templateId) {
       setDayNavDisabled(true);
-      const dateStr = format(targetDate, 'yyyy-MM-dd');
       navigate(`/session/${entry.templateId}/${dateStr}`, { replace: true });
     }
   }, [schedule, navigate, dayNavDisabled]);
@@ -1408,8 +1410,10 @@ export default function WorkoutSession() {
 
   const prevDate = date ? subDays(parseISO(date), 1) : null;
   const nextDate = date ? addDays(parseISO(date), 1) : null;
-  const prevScheduled = prevDate && schedule ? schedule.find(s => s.dayOfWeek === prevDate.getDay()) : null;
-  const nextScheduled = nextDate && schedule ? schedule.find(s => s.dayOfWeek === nextDate.getDay()) : null;
+  const prevDateStr = prevDate ? format(prevDate, 'yyyy-MM-dd') : null;
+  const nextDateStr = nextDate ? format(nextDate, 'yyyy-MM-dd') : null;
+  const prevScheduled = prevDateStr && schedule ? schedule.find(s => s.date === prevDateStr) : null;
+  const nextScheduled = nextDateStr && schedule ? schedule.find(s => s.date === nextDateStr) : null;
   const hasPrev = prevScheduled && prevScheduled.templateId;
   const hasNext = nextScheduled && nextScheduled.templateId;
 

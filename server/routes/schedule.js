@@ -7,7 +7,11 @@ const router = Router();
 
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const days = await db.getSchedule(req.userId);
+    const { from, to } = req.query;
+    if (!from || !to) {
+      return res.status(400).json({ error: 'from and to query params are required (YYYY-MM-DD)' });
+    }
+    const days = await db.getSchedule(req.userId, from, to);
     res.json(days);
   } catch (err) {
     console.error(err);
@@ -22,8 +26,8 @@ router.put('/', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Schedule array is required' });
     }
     for (const day of schedule) {
-      if (!Number.isInteger(day.dayOfWeek) || day.dayOfWeek < 0 || day.dayOfWeek > 6) {
-        return res.status(400).json({ error: 'dayOfWeek must be an integer 0-6' });
+      if (!day.date || !/^\d{4}-\d{2}-\d{2}$/.test(day.date)) {
+        return res.status(400).json({ error: 'Each entry must have a date in YYYY-MM-DD format' });
       }
       if (day.templateId !== undefined && day.templateId !== null &&
           (!Number.isInteger(day.templateId) || day.templateId < 1)) {
@@ -52,6 +56,20 @@ router.put('/', authMiddleware, async (req, res) => {
     }
 
     await db.updateSchedule(req.userId, schedule);
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.delete('/', authMiddleware, async (req, res) => {
+  try {
+    const { from } = req.query;
+    if (!from || !/^\d{4}-\d{2}-\d{2}$/.test(from)) {
+      return res.status(400).json({ error: 'from query param is required (YYYY-MM-DD)' });
+    }
+    await db.clearScheduleFrom(req.userId, from);
     res.json({ success: true });
   } catch (err) {
     console.error(err);
