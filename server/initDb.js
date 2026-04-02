@@ -136,9 +136,11 @@ export default async function initDb() {
 
   // Migration: add schedule_date column for per-date scheduling (replaces day_of_week)
   await pool.query(`ALTER TABLE schedule_days ADD COLUMN IF NOT EXISTS schedule_date DATE`);
-  // Drop partial index if it exists (from earlier migration), replace with plain unique index
+  // Clean up old day_of_week rows that don't have a schedule_date
+  await pool.query(`DELETE FROM schedule_days WHERE schedule_date IS NULL`);
+  // Ensure unique index exists for date-based scheduling
   await pool.query(`DROP INDEX IF EXISTS idx_schedule_days_user_date`);
-  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_schedule_days_user_date ON schedule_days(user_id, schedule_date)`);
+  await pool.query(`CREATE UNIQUE INDEX idx_schedule_days_user_date ON schedule_days(user_id, schedule_date)`);
 
   // Add WARM UP section header to "Leg 1 (anterior chain)" before Leg Press (one-time migration)
   const { rows: leg1Templates } = await pool.query(
