@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../api';
@@ -624,11 +624,18 @@ export default function Profile() {
         {/* Logout */}
         <button
           onClick={handleLogout}
-          className="w-full glass-card !border-red-800/50 hover:!border-red-700 text-wf-red font-semibold py-4 rounded-xl text-base transition-all active:scale-[0.98] mb-6 fade-slide-up"
+          className="w-full glass-card !border-red-800/50 hover:!border-red-700 text-wf-red font-semibold py-4 rounded-xl text-base transition-all active:scale-[0.98] mb-4 fade-slide-up"
           style={{ animationDelay: '360ms' }}
         >
           Sign Out
         </button>
+
+        {/* Legal links */}
+        <div className="flex justify-center gap-4 mb-6 fade-slide-up" style={{ animationDelay: '400ms' }}>
+          <Link to="/terms" className="text-xs text-wf-gray-500 hover:text-wf-gray-300 transition-colors">Terms of Service</Link>
+          <span className="text-wf-gray-700">|</span>
+          <Link to="/privacy" className="text-xs text-wf-gray-500 hover:text-wf-gray-300 transition-colors">Privacy Policy</Link>
+        </div>
       </div>
 
       {showSplash && (

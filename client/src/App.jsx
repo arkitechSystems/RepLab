@@ -32,6 +32,8 @@ import WorkoutSessionCardTest from './pages/WorkoutSessionCardTest';
 import SectionHeaderTest from './pages/SectionHeaderTest';
 import TutorialWorkout from './pages/TutorialWorkout';
 import TutorialTest from './pages/TutorialTest';
+import Terms from './pages/Terms';
+import Privacy from './pages/Privacy';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -91,6 +93,8 @@ export default function App() {
       <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
       <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
       <Route path="/reset-password/:token" element={<PublicRoute><ResetPassword /></PublicRoute>} />
+      <Route path="/terms" element={<Terms />} />
+      <Route path="/privacy" element={<Privacy />} />
       <Route path="/welcome" element={<ProtectedRoute><Welcome /></ProtectedRoute>} />
       <Route path="/free-trial" element={<ProtectedRoute><FreeTrialOffer /></ProtectedRoute>} />
 

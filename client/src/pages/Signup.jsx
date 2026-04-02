@@ -366,6 +366,13 @@ export default function Signup() {
           >
             {loading ? 'Creating account...' : 'Sign Up'}
           </button>
+
+          <p className="text-center text-wf-gray-500 text-xs mt-3">
+            By signing up, you agree to our{' '}
+            <Link to="/terms" className="text-wf-gray-300 underline">Terms of Service</Link>
+            {' '}and{' '}
+            <Link to="/privacy" className="text-wf-gray-300 underline">Privacy Policy</Link>.
+          </p>
         </form>
 
         <p className="text-center text-wf-gray-400 text-sm mt-6">
