@@ -761,6 +761,17 @@ export default function Calendar() {
                 {/* Quick actions */}
                 {!pickerSearch && (
                   <div className="mb-4 space-y-1.5">
+                    <button
+                      onClick={() => { setEditingDay(null); navigate(`/clientworkouts/create?quick=1&date=${format(editingDay, 'yyyy-MM-dd')}`); }}
+                      className="w-full text-left rounded-xl px-4 py-3 flex items-center gap-3 bg-white/5 active:bg-white/10 active:scale-[0.98] transition-all"
+                    >
+                      <div className="w-8 h-8 rounded-full btn-gradient flex items-center justify-center shrink-0">
+                        <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                      </div>
+                      <span className="text-sm font-medium text-white">Start a Blank Workout</span>
+                    </button>
                     {hasWorkout && (
                       isPremium ? (
                         <button
