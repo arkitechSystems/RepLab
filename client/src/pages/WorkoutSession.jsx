@@ -855,6 +855,11 @@ export default function WorkoutSession() {
       [newKey]: [{ weight: '', reps: '' }],
     }));
     setShowAddExercise(false);
+    // Auto-scroll to the newly added card after React renders it
+    setTimeout(() => {
+      const el = exerciseRefs.current[newKey];
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 150);
   }
 
   const exerciseRefs = useRef({});
