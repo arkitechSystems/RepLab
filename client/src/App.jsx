@@ -34,6 +34,7 @@ import TutorialWorkout from './pages/TutorialWorkout';
 import TutorialTest from './pages/TutorialTest';
 import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
+import ErrorBoundary from './components/ErrorBoundary';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -85,6 +86,7 @@ export default function App() {
   }, []);
 
   return (
+    <ErrorBoundary>
     <TutorialProvider>
       <PageTracker />
       {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
@@ -131,5 +133,6 @@ export default function App() {
       <Route path="*" element={<CatchAllRedirect />} />
     </Routes>
     </TutorialProvider>
+    </ErrorBoundary>
   );
 }
