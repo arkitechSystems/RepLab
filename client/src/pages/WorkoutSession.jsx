@@ -855,14 +855,12 @@ export default function WorkoutSession() {
       [newKey]: [{ weight: '', reps: '' }],
     }));
     setShowAddExercise(false);
-    // Auto-scroll to the newly added card after React renders it
-    setTimeout(() => {
-      const el = exerciseRefs.current[newKey];
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 150);
+    // Mark that we want to scroll to this exercise after render
+    scrollToExercise.current = insertIdx;
   }
 
   const exerciseRefs = useRef({});
+  const scrollToExercise = useRef(null);
 
   function handleDeleteExercise(exerciseKey) {
     // Snapshot before deleting
@@ -1771,7 +1769,7 @@ export default function WorkoutSession() {
               </div>
             </div>
           ) : (
-          <div ref={(el) => { exerciseRefs.current[eKey] = el; }} className="fade-slide-up" style={{ animationDelay: `${idx * 60}ms` }}>
+          <div ref={(el) => { exerciseRefs.current[eKey] = el; if (el && scrollToExercise.current === idx) { scrollToExercise.current = null; setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); } }} className="fade-slide-up" style={{ animationDelay: `${idx * 60}ms` }}>
             <ExerciseCard
               exercise={exercise}
               exerciseKey={eKey}
