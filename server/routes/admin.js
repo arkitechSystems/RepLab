@@ -2344,8 +2344,8 @@ router.get('/builds', adminAuth, async (req, res) => {
     const labels = { not_started: 'Not Started', in_progress: 'In Progress', completed: 'Completed' };
     return '<form method="POST" action="/admin/builds/update" style="display:inline;">'
       + '<input type="hidden" name="name" value="' + name.replace(/"/g, '&quot;') + '" />'
-      + '<select name="status" onchange="this.form.submit()" style="font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-family:inherit;cursor:pointer;outline:none;">'
-      + opts.map(o => '<option value="' + o + '"' + (o === current ? ' selected' : '') + ' style="background:#111;">' + labels[o] + '</option>').join('')
+      + '<select name="status" onchange="this.form.submit()" style="font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:#111;color:#fff;font-family:inherit;cursor:pointer;outline:none;">'
+      + opts.map(o => '<option value="' + o + '"' + (o === current ? ' selected' : '') + ' style="background:#111;color:#fff;">' + labels[o] + '</option>').join('')
       + '</select></form>';
   }
 
@@ -2805,8 +2805,8 @@ router.get('/workout-manager/create', adminAuth, async (req, res) => {
           <input type="text" id="custom-ex-name" placeholder="e.g. Cable Lateral Raise" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;" />
         </div>
         <div style="margin-bottom:16px;"><label>Muscle Group</label>
-          <select id="custom-ex-muscle" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;">
-            ${muscleGroups.map(g => '<option value="' + esc(g) + '">' + esc(g) + '</option>').join('')}
+          <select id="custom-ex-muscle" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:#111;color:#fff;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;">
+            ${muscleGroups.map(g => '<option value="' + esc(g) + '" style="background:#111;color:#fff;">' + esc(g) + '</option>').join('')}
           </select>
         </div>
         <button type="button" onclick="saveCustomExercise()" class="btn" style="margin:0;width:100%;padding:12px;font-size:14px;">Add Exercise</button>
@@ -4633,8 +4633,8 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
 
       <div style="display:flex;gap:12px;margin-top:24px;align-items:center;flex-wrap:wrap;">
         <input type="text" id="ex-search" placeholder="Search exercises..." style="flex:1;min-width:200px;padding:10px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;" />
-        <select id="ex-muscle-filter" style="padding:10px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;">
-          <option value="">All Muscles</option>
+        <select id="ex-muscle-filter" style="padding:10px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:#111;color:#fff;font-size:14px;font-family:inherit;outline:none;">
+          <option value="" style="background:#111;color:#fff;">All Muscles</option>
         </select>
         <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:rgba(255,255,255,0.5);cursor:pointer;white-space:nowrap;">
           <input type="checkbox" id="ex-unmapped-only" style="accent-color:#ef4444;" />
@@ -4656,9 +4656,9 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
         </div>
         <div style="min-width:160px;">
           <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);font-weight:600;display:block;margin-bottom:4px;">Muscle Group *</label>
-          <select id="add-ex-muscle" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#fff;font-size:13px;font-family:inherit;outline:none;">
-            ${muscleGroups.map(g => '<option value="' + g + '">' + g + '</option>').join('')}
-            <option value="Other">Other</option>
+          <select id="add-ex-muscle" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:#111;color:#fff;font-size:13px;font-family:inherit;outline:none;">
+            ${muscleGroups.map(g => '<option value="' + g + '" style="background:#111;color:#fff;">' + g + '</option>').join('')}
+            <option value="Other" style="background:#111;color:#fff;">Other</option>
           </select>
         </div>
         <div style="min-width:180px;">
