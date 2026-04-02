@@ -954,14 +954,22 @@ export default function WorkoutSession() {
   function performSwap(oldKey, newName) {
     setPersisted(false);
     structureSaveNeeded.current = true;
-    // Get the number of sets from the old exercise
-    const tIdx = findExIdx(template.exercises, oldKey);
-    const oldExercise = tIdx >= 0 ? template.exercises[tIdx] : null;
+
+    // Compute everything from current template snapshot before any state updates
+    const currentExercises = template.exercises;
+    const tIdx = findExIdx(currentExercises, oldKey);
+    if (tIdx < 0) return; // Safety: exercise not found
+    const oldExercise = currentExercises[tIdx];
     const numSets = oldExercise?.sets?.length || 0;
+
+    // Compute the new key from the post-swap exercise list
+    const newExercises = currentExercises.map((ex, i) => i === tIdx ? { ...ex, name: newName } : ex);
+    const newKey = exKey(newExercises, newName, tIdx);
 
     // Update template: replace name and clear plannedReps/suggestedWeight
     setTemplate((prev) => {
       const ti = findExIdx(prev.exercises, oldKey);
+      if (ti < 0) return prev;
       return {
         ...prev,
         exercises: prev.exercises.map((ex, i) =>
@@ -975,14 +983,6 @@ export default function WorkoutSession() {
         ),
       };
     });
-
-    // Compute the new key (the exercise at tIdx now has newName; reuse same occurrence logic)
-    // Since the swap replaces the name in-place, the new key depends on other exercises.
-    // We need to compute it from the updated exercises list. For simplicity, set entries
-    // using the newName key (which will be correct since swapping keeps the position).
-    // Compute based on pre-swap template (position stays the same, name changes)
-    const newExercises = template.exercises.map((ex, i) => i === tIdx ? { ...ex, name: newName } : ex);
-    const newKey = exKey(newExercises, newName, tIdx);
 
     // Set blank entries for the new exercise
     setEntries((prev) => {
@@ -999,7 +999,7 @@ export default function WorkoutSession() {
       return updated;
     });
 
-    // Remove completedSets for old exercise (don't remap)
+    // Remove completedSets for old exercise
     setCompletedSets((prev) => {
       const next = new Set();
       for (const key of prev) {

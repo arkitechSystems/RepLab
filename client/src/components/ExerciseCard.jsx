@@ -678,13 +678,18 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
 }
 
 function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelect, onClose, allWorkoutExercises }) {
-  const substitutes = useMemo(() => getSubstitutesFromList(exerciseName, allExercises), [exerciseName, allExercises]);
+  // Ensure allExercises have required fields to prevent crashes
+  const safeExercises = useMemo(() =>
+    (allExercises || []).map(e => ({ ...e, muscle: e.muscle || '', tags: e.tags || [] })),
+    [allExercises]
+  );
+  const substitutes = useMemo(() => getSubstitutesFromList(exerciseName, safeExercises), [exerciseName, safeExercises]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return substitutes;
     const q = search.toLowerCase().trim();
     return substitutes.filter((e) =>
-      e.name.toLowerCase().includes(q) || e.muscle.toLowerCase().includes(q)
+      e.name.toLowerCase().includes(q) || (e.muscle || '').toLowerCase().includes(q)
     );
   }, [substitutes, search]);
 
