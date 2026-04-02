@@ -451,4 +451,72 @@ router.get('/trainer-application', authMiddleware, async (req, res) => {
   }
 });
 
+router.get('/export-data', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const user = await db.findUserById(userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // Gather all user data
+    const [programs, templates, sessions, schedule, pbs, metrics] = await Promise.all([
+      pool.query('SELECT id, name, created_at FROM programs WHERE user_id = $1 ORDER BY created_at', [userId]),
+      pool.query('SELECT t.id, t.name, t.program_id, t.is_rest, t.sort_order FROM templates t JOIN programs p ON t.program_id = p.id WHERE p.user_id = $1 ORDER BY t.id', [userId]),
+      pool.query(`SELECT s.id, s.template_id, s.date, s.completed, s.elapsed, s.notes, s.created_at,
+        json_agg(json_build_object('exerciseName', se.exercise_name, 'setNumber', se.set_number, 'weight', se.weight, 'reps', se.reps, 'isCompleted', se.is_completed) ORDER BY se.id) AS entries
+        FROM sessions s LEFT JOIN session_entries se ON se.session_id = s.id WHERE s.user_id = $1 GROUP BY s.id ORDER BY s.date`, [userId]),
+      pool.query('SELECT schedule_date, template_id FROM schedule_days WHERE user_id = $1 AND schedule_date IS NOT NULL ORDER BY schedule_date', [userId]),
+      pool.query('SELECT exercise_name, best_weight, best_reps, template_id FROM personal_bests WHERE user_id = $1 ORDER BY exercise_name', [userId]),
+      pool.query('SELECT * FROM user_metrics WHERE user_id = $1', [userId]),
+    ]);
+
+    const exportData = {
+      exportDate: new Date().toISOString(),
+      account: {
+        email: user.email,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        phone: user.phone,
+        plan: user.plan,
+        createdAt: user.created_at,
+      },
+      programs: programs.rows,
+      templates: templates.rows,
+      sessions: sessions.rows.map(s => ({
+        ...s,
+        entries: s.entries?.[0]?.exerciseName ? s.entries : [],
+      })),
+      schedule: schedule.rows,
+      personalBests: pbs.rows,
+      metrics: metrics.rows[0] || null,
+    };
+
+    res.setHeader('Content-Disposition', `attachment; filename="replab-data-${new Date().toISOString().slice(0, 10)}.json"`);
+    res.setHeader('Content-Type', 'application/json');
+    res.json(exportData);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.delete('/delete-account', authMiddleware, async (req, res) => {
+  try {
+    const { password } = req.body;
+    const user = await db.findUserById(req.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // Verify password (skip for demo accounts which have no real password)
+    if (user.password_hash && password) {
+      const valid = await bcrypt.compare(password, user.password_hash);
+      if (!valid) return res.status(401).json({ error: 'Incorrect password' });
+    }
+
+    await db.deleteUser(req.userId);
+    res.json({ message: 'Account deleted' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

@@ -131,6 +131,30 @@ export default function Profile() {
     navigate('/login');
   }
 
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDeleteAccount() {
+    if (deleteConfirmText !== 'DELETE') return;
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      await api('/auth/delete-account', {
+        method: 'DELETE',
+        body: JSON.stringify({ password: deletePassword }),
+      });
+      logout();
+      navigate('/login');
+    } catch (err) {
+      setDeleteError(err.message || 'Failed to delete account');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   function resizeAndCropImage(file, maxSize = 256) {
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -630,8 +654,37 @@ export default function Profile() {
           Sign Out
         </button>
 
+        {/* Export Data & Delete Account */}
+        <div className="flex justify-center gap-4 mb-4 fade-slide-up" style={{ animationDelay: '400ms' }}>
+          <button
+            onClick={async () => {
+              try {
+                const token = localStorage.getItem('replab_token');
+                const res = await fetch('/auth/export-data', { headers: { Authorization: `Bearer ${token}` } });
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `replab-data-${new Date().toISOString().slice(0, 10)}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+              } catch { /* silently fail */ }
+            }}
+            className="text-sm text-wf-gray-500 hover:text-wf-gray-300 transition-colors"
+          >
+            Export My Data
+          </button>
+          <span className="text-wf-gray-700">|</span>
+          <button
+            onClick={() => { setShowDeleteAccount(true); setDeletePassword(''); setDeleteConfirmText(''); setDeleteError(''); }}
+            className="text-sm text-wf-gray-500 hover:text-red-400 transition-colors"
+          >
+            Delete Account
+          </button>
+        </div>
+
         {/* Legal links */}
-        <div className="flex justify-center gap-4 mb-6 fade-slide-up" style={{ animationDelay: '400ms' }}>
+        <div className="flex justify-center gap-4 mb-6 fade-slide-up" style={{ animationDelay: '440ms' }}>
           <Link to="/terms" className="text-xs text-wf-gray-500 hover:text-wf-gray-300 transition-colors">Terms of Service</Link>
           <span className="text-wf-gray-700">|</span>
           <Link to="/privacy" className="text-xs text-wf-gray-500 hover:text-wf-gray-300 transition-colors">Privacy Policy</Link>
@@ -694,6 +747,72 @@ export default function Profile() {
             >
               Cancel
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Account Confirmation Modal */}
+      {showDeleteAccount && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4" onClick={() => setShowDeleteAccount(false)}>
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <div
+            className="relative w-full max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 pt-5 pb-4">
+              <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-3">
+                <svg className="w-6 h-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-white text-center">Delete Account</h3>
+              <p className="text-sm text-wf-gray-400 text-center mt-2">
+                This will permanently delete your account and all your data including workouts, programs, and history. This cannot be undone.
+              </p>
+
+              <div className="mt-4 space-y-3">
+                <div>
+                  <label className="text-xs text-wf-gray-500 mb-1 block">Enter your password</label>
+                  <input
+                    type="password"
+                    value={deletePassword}
+                    onChange={(e) => setDeletePassword(e.target.value)}
+                    placeholder="Password"
+                    className="w-full glass-input rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-wf-gray-600 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-wf-gray-500 mb-1 block">Type <span className="text-red-400 font-semibold">DELETE</span> to confirm</label>
+                  <input
+                    type="text"
+                    value={deleteConfirmText}
+                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                    placeholder="DELETE"
+                    className="w-full glass-input rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-wf-gray-600 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {deleteError && (
+                <p className="text-sm text-red-400 text-center mt-3">{deleteError}</p>
+              )}
+            </div>
+
+            <div className="px-5 pb-5 flex gap-3">
+              <button
+                onClick={() => setShowDeleteAccount(false)}
+                className="flex-1 py-3 rounded-xl bg-white/10 text-sm font-semibold text-white active:scale-[0.98] transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleteConfirmText !== 'DELETE' || deleting}
+                className={`flex-1 py-3 rounded-xl bg-red-500 text-sm font-semibold text-white active:scale-[0.98] transition-all ${deleteConfirmText !== 'DELETE' || deleting ? 'opacity-40 pointer-events-none' : ''}`}
+              >
+                {deleting ? 'Deleting...' : 'Delete Account'}
+              </button>
+            </div>
           </div>
         </div>
       )}
