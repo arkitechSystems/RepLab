@@ -134,8 +134,9 @@ export default async function initDb() {
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_schedule_days_user_day ON schedule_days(user_id, day_of_week)`);
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_personal_bests_upsert ON personal_bests(user_id, template_id, exercise_name, best_weight)`);
 
-  // Migration: add schedule_date column for per-date scheduling (replaces day_of_week)
+  // Migration: add schedule_date column and drop NOT NULL on day_of_week
   await pool.query(`ALTER TABLE schedule_days ADD COLUMN IF NOT EXISTS schedule_date DATE`);
+  await pool.query(`ALTER TABLE schedule_days ALTER COLUMN day_of_week DROP NOT NULL`);
   // Clean up old day_of_week rows that don't have a schedule_date
   await pool.query(`DELETE FROM schedule_days WHERE schedule_date IS NULL`);
   // Ensure unique index exists for date-based scheduling
