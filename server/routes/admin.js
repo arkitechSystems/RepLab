@@ -567,6 +567,7 @@ function adminPage(title, body) {
     <a href="/admin/trainer-logins"${title === 'Trainer Login History' ? ' class="active"' : ''}>Trainer Logins</a>
     <a href="/admin/user-logins"${title === 'User Login History' ? ' class="active"' : ''}>User Logins</a>
     <a href="/admin/page-visits"${title === 'Page Visits' ? ' class="active"' : ''}>Page Visits</a>
+    <a href="/admin/backup"${title === 'Database Backup' ? ' class="active"' : ''}>Database Backup</a>
   </div>
 </div>
 <script>
@@ -872,6 +873,11 @@ router.get('/', adminAuth, async (req, res) => {
       <div class="card-icon">📊</div>
       <div class="card-title">Page Visits</div>
       <div class="card-desc">Track which pages users visit and when.</div>
+    </a>
+    <a class="card glass" href="/admin/backup" style="border-color:rgba(34,197,94,0.25);">
+      <div class="card-icon">💾</div>
+      <div class="card-title">Database Backup</div>
+      <div class="card-desc">Export all user data as a JSON backup file.</div>
     </a>
   </div>
 
@@ -4928,6 +4934,115 @@ router.delete('/exercise-library/delete/:id', adminAuth, async (req, res) => {
     console.error('Delete exercise error:', err);
     res.status(500).json({ error: 'Failed to delete exercise' });
   }
+});
+
+// ─── Database Backup ────────────────────────────────────────────────
+router.get('/backup', adminAuth, async (req, res) => {
+  const isDownload = req.query.download === '1';
+
+  if (isDownload) {
+    try {
+      const [users, programs, templates, templateExercises, sessions, sessionEntries, schedule, pbs, metrics] = await Promise.all([
+        pool.query(`SELECT id, email, first_name, last_name, phone, plan, created_at FROM users ORDER BY id`),
+        pool.query(`SELECT * FROM programs ORDER BY id`),
+        pool.query(`SELECT * FROM templates ORDER BY id`),
+        pool.query(`SELECT * FROM template_exercises ORDER BY template_id, sort_order`),
+        pool.query(`SELECT id, user_id, template_id, date, completed, elapsed, notes, workout_data, created_at FROM sessions ORDER BY id`),
+        pool.query(`SELECT * FROM session_entries ORDER BY session_id, id`),
+        pool.query(`SELECT * FROM schedule_days WHERE schedule_date IS NOT NULL ORDER BY user_id, schedule_date`),
+        pool.query(`SELECT * FROM personal_bests ORDER BY user_id, exercise_name`),
+        pool.query(`SELECT * FROM user_metrics ORDER BY user_id`),
+      ]);
+
+      const backup = {
+        exportDate: new Date().toISOString(),
+        tables: {
+          users: users.rows,
+          programs: programs.rows,
+          templates: templates.rows,
+          template_exercises: templateExercises.rows,
+          sessions: sessions.rows,
+          session_entries: sessionEntries.rows,
+          schedule_days: schedule.rows,
+          personal_bests: pbs.rows,
+          user_metrics: metrics.rows,
+        },
+        counts: {
+          users: users.rows.length,
+          programs: programs.rows.length,
+          templates: templates.rows.length,
+          sessions: sessions.rows.length,
+          session_entries: sessionEntries.rows.length,
+        },
+      };
+
+      const dateStr = new Date().toISOString().slice(0, 10);
+      res.setHeader('Content-Disposition', `attachment; filename="replab-full-backup-${dateStr}.json"`);
+      res.setHeader('Content-Type', 'application/json');
+      return res.json(backup);
+    } catch (err) {
+      console.error('Backup failed:', err);
+      return res.status(500).send('Backup failed: ' + err.message);
+    }
+  }
+
+  // Show backup page
+  let counts = {};
+  try {
+    const result = await pool.query(`
+      SELECT
+        (SELECT COUNT(*) FROM users) AS users,
+        (SELECT COUNT(*) FROM programs) AS programs,
+        (SELECT COUNT(*) FROM templates) AS templates,
+        (SELECT COUNT(*) FROM sessions) AS sessions,
+        (SELECT COUNT(*) FROM session_entries) AS session_entries,
+        (SELECT COUNT(*) FROM schedule_days WHERE schedule_date IS NOT NULL) AS schedule_days,
+        (SELECT COUNT(*) FROM personal_bests) AS personal_bests
+    `);
+    counts = result.rows[0];
+  } catch {}
+
+  res.send(adminPage('Database Backup', `
+  <div class="breadcrumb"><a href="/admin">Dashboard</a> / Database Backup</div>
+  <h1>Database Backup</h1>
+  <p style="color:rgba(255,255,255,0.5);margin-bottom:24px;">Download a full JSON export of all data in the database.</p>
+
+  <div class="glass" style="padding:24px;margin-bottom:24px;">
+    <h3 style="margin:0 0 16px 0;font-size:14px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:1px;">Current Data</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;">
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:16px;text-align:center;">
+        <div style="font-size:24px;font-weight:800;color:#fff;">${counts.users || 0}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:4px;">Users</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:16px;text-align:center;">
+        <div style="font-size:24px;font-weight:800;color:#fff;">${counts.programs || 0}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:4px;">Programs</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:16px;text-align:center;">
+        <div style="font-size:24px;font-weight:800;color:#fff;">${counts.templates || 0}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:4px;">Templates</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:16px;text-align:center;">
+        <div style="font-size:24px;font-weight:800;color:#fff;">${counts.sessions || 0}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:4px;">Sessions</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:16px;text-align:center;">
+        <div style="font-size:24px;font-weight:800;color:#fff;">${counts.session_entries || 0}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:4px;">Set Entries</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:16px;text-align:center;">
+        <div style="font-size:24px;font-weight:800;color:#fff;">${counts.personal_bests || 0}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:4px;">Personal Bests</div>
+      </div>
+    </div>
+  </div>
+
+  <a href="/admin/backup?download=1" class="btn" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+    Download Full Backup
+  </a>
+  <p style="color:rgba(255,255,255,0.3);font-size:12px;margin-top:12px;">Downloads as JSON. Run this before any major updates or migrations.</p>
+  `));
 });
 
 export default router;
