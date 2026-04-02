@@ -4942,38 +4942,34 @@ router.get('/backup', adminAuth, async (req, res) => {
 
   if (isDownload) {
     try {
-      const [users, programs, templates, templateExercises, sessions, sessionEntries, schedule, pbs, metrics] = await Promise.all([
-        pool.query(`SELECT id, email, first_name, last_name, phone, plan, created_at FROM users ORDER BY id`),
-        pool.query(`SELECT * FROM programs ORDER BY id`),
-        pool.query(`SELECT * FROM templates ORDER BY id`),
-        pool.query(`SELECT * FROM template_exercises ORDER BY template_id, sort_order`),
-        pool.query(`SELECT id, user_id, template_id, date, completed, elapsed, notes, workout_data, created_at FROM sessions ORDER BY id`),
-        pool.query(`SELECT * FROM session_entries ORDER BY session_id, id`),
-        pool.query(`SELECT * FROM schedule_days WHERE schedule_date IS NOT NULL ORDER BY user_id, schedule_date`),
-        pool.query(`SELECT * FROM personal_bests ORDER BY user_id, exercise_name`),
-        pool.query(`SELECT * FROM user_metrics ORDER BY user_id`),
-      ]);
+      const tables = {};
+      const queries = [
+        ['users', `SELECT id, email, first_name, last_name, phone, plan, created_at FROM users ORDER BY id`],
+        ['programs', `SELECT * FROM programs ORDER BY id`],
+        ['templates', `SELECT * FROM templates ORDER BY id`],
+        ['template_exercises', `SELECT * FROM template_exercises ORDER BY template_id, sort_order`],
+        ['sessions', `SELECT * FROM sessions ORDER BY id`],
+        ['session_entries', `SELECT * FROM session_entries ORDER BY session_id, id`],
+        ['schedule_days', `SELECT * FROM schedule_days ORDER BY id`],
+        ['personal_bests', `SELECT * FROM personal_bests ORDER BY user_id, exercise_name`],
+        ['user_metrics', `SELECT * FROM user_metrics ORDER BY user_id`],
+      ];
+
+      for (const [name, sql] of queries) {
+        try {
+          const result = await pool.query(sql);
+          tables[name] = result.rows;
+        } catch (e) {
+          tables[name] = { error: e.message };
+        }
+      }
 
       const backup = {
         exportDate: new Date().toISOString(),
-        tables: {
-          users: users.rows,
-          programs: programs.rows,
-          templates: templates.rows,
-          template_exercises: templateExercises.rows,
-          sessions: sessions.rows,
-          session_entries: sessionEntries.rows,
-          schedule_days: schedule.rows,
-          personal_bests: pbs.rows,
-          user_metrics: metrics.rows,
-        },
-        counts: {
-          users: users.rows.length,
-          programs: programs.rows.length,
-          templates: templates.rows.length,
-          sessions: sessions.rows.length,
-          session_entries: sessionEntries.rows.length,
-        },
+        tables,
+        counts: Object.fromEntries(
+          Object.entries(tables).map(([k, v]) => [k, Array.isArray(v) ? v.length : 0])
+        ),
       };
 
       const dateStr = new Date().toISOString().slice(0, 10);
