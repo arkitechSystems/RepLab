@@ -4972,8 +4972,8 @@ router.get('/backup', adminAuth, async (req, res) => {
         ),
       };
 
-      const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      res.setHeader('Content-Disposition', `attachment; filename="replab-backup-${ts}.json"`);
+      const ct = new Date().toLocaleString('en-US', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true }).replace(/[/,:\s]+/g, '-').replace(/-+/g, '-');
+      res.setHeader('Content-Disposition', `attachment; filename="replab-backup-${ct}.json"`);
       res.setHeader('Content-Type', 'application/json');
       return res.json(backup);
     } catch (err) {
