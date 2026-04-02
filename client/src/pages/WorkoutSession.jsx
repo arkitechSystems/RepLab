@@ -835,25 +835,24 @@ export default function WorkoutSession() {
     setPersisted(false);
     structureSaveNeeded.current = true;
     const exerciseName = name.trim();
-    // Don't add if exercise already exists
-    if (template.exercises.some((ex) => ex.name === exerciseName)) return;
     const newExercise = {
       name: exerciseName,
       sets: [{ setNumber: 1, plannedReps: 10, suggestedWeight: 0 }],
     };
-    // Since we checked no duplicate exists, key is just exerciseName
+    // Compute the new exercises list to determine the correct unique key
+    const newExercises = [...template.exercises];
+    const insertIdx = afterIndex !== undefined ? afterIndex + 1 : newExercises.length;
+    newExercises.splice(insertIdx, 0, newExercise);
+    const newKey = exKey(newExercises, exerciseName, insertIdx);
+
     setTemplate((prev) => {
       const exercises = [...prev.exercises];
-      if (afterIndex !== undefined) {
-        exercises.splice(afterIndex + 1, 0, newExercise);
-      } else {
-        exercises.push(newExercise);
-      }
+      exercises.splice(insertIdx, 0, newExercise);
       return { ...prev, exercises };
     });
     setEntries((prev) => ({
       ...prev,
-      [exerciseName]: [{ weight: '', reps: '' }],
+      [newKey]: [{ weight: '', reps: '' }],
     }));
     setShowAddExercise(false);
   }
