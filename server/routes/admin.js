@@ -4939,6 +4939,7 @@ router.delete('/exercise-library/delete/:id', adminAuth, async (req, res) => {
 // ─── Database Backup ────────────────────────────────────────────────
 router.get('/backup', adminAuth, async (req, res) => {
   const isDownload = req.query.download === '1';
+  const isExcel = req.query.excel === '1';
 
   if (isDownload) {
     try {
@@ -4979,6 +4980,122 @@ router.get('/backup', adminAuth, async (req, res) => {
     } catch (err) {
       console.error('Backup failed:', err);
       return res.status(500).send('Backup failed: ' + err.message);
+    }
+  }
+
+  if (isExcel) {
+    try {
+      const XLSX = await import('xlsx');
+
+      // Fetch all raw tables
+      const usersR = await pool.query(`SELECT id, email, first_name, last_name, phone, plan, created_at FROM users ORDER BY id`);
+      const programsR = await pool.query(`SELECT * FROM programs ORDER BY id`);
+      const templatesR = await pool.query(`SELECT * FROM templates ORDER BY id`);
+      const templateExR = await pool.query(`SELECT * FROM template_exercises ORDER BY template_id, sort_order`);
+      const sessionsR = await pool.query(`SELECT id, user_id, template_id, date, completed, notes, created_at FROM sessions ORDER BY id`);
+      const entriesR = await pool.query(`SELECT * FROM session_entries ORDER BY session_id, id`);
+      const scheduleR = await pool.query(`SELECT * FROM schedule_days WHERE schedule_date IS NOT NULL ORDER BY user_id, schedule_date`);
+      const pbsR = await pool.query(`SELECT * FROM personal_bests ORDER BY user_id, exercise_name`);
+      const metricsR = await pool.query(`SELECT * FROM user_metrics ORDER BY user_id`);
+
+      // Build joined session report: sessions + entries + user info + template name
+      const userMap = {};
+      for (const u of usersR.rows) userMap[u.id] = u;
+      const tplMap = {};
+      for (const t of templatesR.rows) tplMap[t.id] = t;
+
+      const joinedRows = [];
+      for (const entry of entriesR.rows) {
+        const session = sessionsR.rows.find(s => s.id === entry.session_id);
+        if (!session) continue;
+        const user = userMap[session.user_id] || {};
+        const tpl = tplMap[session.template_id] || {};
+        joinedRows.push({
+          session_id: session.id,
+          date: session.date,
+          completed: session.completed,
+          user_id: session.user_id,
+          user_email: user.email || '',
+          user_name: [user.first_name, user.last_name].filter(Boolean).join(' ') || '',
+          template_id: session.template_id,
+          template_name: tpl.name || '',
+          exercise_name: entry.exercise_name,
+          set_number: entry.set_number,
+          weight: entry.weight,
+          reps: entry.reps,
+          is_completed: entry.is_completed,
+        });
+      }
+
+      // Build PBs report with user info
+      const pbJoined = pbsR.rows.map(pb => {
+        const user = userMap[pb.user_id] || {};
+        return {
+          user_id: pb.user_id,
+          user_email: user.email || '',
+          user_name: [user.first_name, user.last_name].filter(Boolean).join(' ') || '',
+          exercise_name: pb.exercise_name,
+          best_weight: pb.best_weight,
+          best_reps: pb.best_reps,
+          achieved_at: pb.achieved_at,
+        };
+      });
+
+      // Claude prompt sheet
+      const claudePrompt = [
+        { Instructions: 'PROMPT FOR CLAUDE IN EXCEL — Copy this into Claude to analyze your RepLab data:' },
+        { Instructions: '' },
+        { Instructions: 'You have a RepLab workout app Excel export with these sheets:' },
+        { Instructions: '' },
+        { Instructions: '1. "Session Report" — The main report. Each row is one set logged by a user. Columns: session_id, date, completed, user_id, user_email, user_name, template_id, template_name, exercise_name, set_number, weight, reps, is_completed.' },
+        { Instructions: '' },
+        { Instructions: '2. "Personal Bests" — Best weight×reps per exercise per user. Columns: user_id, user_email, user_name, exercise_name, best_weight, best_reps, achieved_at.' },
+        { Instructions: '' },
+        { Instructions: '3. Raw tables: "Users", "Programs", "Templates", "Template Exercises", "Sessions", "Session Entries", "Schedule", "User Metrics".' },
+        { Instructions: '' },
+        { Instructions: 'KEY RELATIONSHIPS:' },
+        { Instructions: '- Users.id → Programs.user_id (user owns programs)' },
+        { Instructions: '- Programs.id → Templates.program_id (program contains templates/workouts)' },
+        { Instructions: '- Templates.id → Template_Exercises.template_id (template has exercises)' },
+        { Instructions: '- Users.id → Sessions.user_id (user did workout session)' },
+        { Instructions: '- Templates.id → Sessions.template_id (session is based on template)' },
+        { Instructions: '- Sessions.id → Session_Entries.session_id (session has set entries)' },
+        { Instructions: '- Users.id → Personal_Bests.user_id (user holds PR)' },
+        { Instructions: '- Users.id → Schedule.user_id (user has scheduled workouts)' },
+        { Instructions: '- Users.id → User_Metrics.user_id (user body stats)' },
+        { Instructions: '' },
+        { Instructions: 'USEFUL REPORTS TO ASK FOR:' },
+        { Instructions: '- "Show total volume (weight × reps) per user per week"' },
+        { Instructions: '- "Show workout frequency per user (sessions per week)"' },
+        { Instructions: '- "Show progressive overload: weight trend per exercise per user over time"' },
+        { Instructions: '- "Show most popular exercises across all users"' },
+        { Instructions: '- "Show completion rate: % of sets marked completed per session"' },
+        { Instructions: '- "Show user retention: last workout date per user"' },
+        { Instructions: '- "Compare planned vs actual reps across all sessions"' },
+        { Instructions: '- "Show PR history timeline for a specific user"' },
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(claudePrompt), 'Claude Prompt');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(joinedRows), 'Session Report');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(pbJoined), 'Personal Bests');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(usersR.rows), 'Users');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(programsR.rows), 'Programs');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(templatesR.rows), 'Templates');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(templateExR.rows), 'Template Exercises');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sessionsR.rows), 'Sessions');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(entriesR.rows), 'Session Entries');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(scheduleR.rows), 'Schedule');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(metricsR.rows), 'User Metrics');
+
+      const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+      const ct = new Date().toLocaleString('en-US', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true }).replace(/[/,:\s]+/g, '-').replace(/-+/g, '-');
+      res.setHeader('Content-Disposition', `attachment; filename="replab-report-${ct}.xlsx"`);
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      return res.send(Buffer.from(buf));
+    } catch (err) {
+      console.error('Excel export failed:', err);
+      return res.status(500).send('Excel export failed: ' + err.message);
     }
   }
 
@@ -5037,6 +5154,10 @@ router.get('/backup', adminAuth, async (req, res) => {
     <a href="/admin/backup?download=1" class="btn" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
       Download Full Backup
+    </a>
+    <a href="/admin/backup?excel=1" class="btn" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0112 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0h7.5c.621 0 1.125.504 1.125 1.125M3.375 8.25c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m17.25-3.75h-7.5c-.621 0-1.125.504-1.125 1.125m8.625-1.125c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125"/></svg>
+      Download Excel Report
     </a>
     <button onclick="document.getElementById('restore-file').click()" class="btn" style="display:inline-flex;align-items:center;gap:8px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);cursor:pointer;">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
