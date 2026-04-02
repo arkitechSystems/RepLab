@@ -4972,8 +4972,8 @@ router.get('/backup', adminAuth, async (req, res) => {
         ),
       };
 
-      const dateStr = new Date().toISOString().slice(0, 10);
-      res.setHeader('Content-Disposition', `attachment; filename="replab-full-backup-${dateStr}.json"`);
+      const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      res.setHeader('Content-Disposition', `attachment; filename="replab-backup-${ts}.json"`);
       res.setHeader('Content-Type', 'application/json');
       return res.json(backup);
     } catch (err) {
@@ -5033,12 +5033,196 @@ router.get('/backup', adminAuth, async (req, res) => {
     </div>
   </div>
 
-  <a href="/admin/backup?download=1" class="btn" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
-    Download Full Backup
-  </a>
-  <p style="color:rgba(255,255,255,0.3);font-size:12px;margin-top:12px;">Downloads as JSON. Run this before any major updates or migrations.</p>
+  <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+    <a href="/admin/backup?download=1" class="btn" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+      Download Full Backup
+    </a>
+    <button onclick="document.getElementById('restore-file').click()" class="btn" style="display:inline-flex;align-items:center;gap:8px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);cursor:pointer;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+      Restore from Backup
+    </button>
+    <input type="file" id="restore-file" accept=".json" style="display:none;" onchange="handleRestoreFile(this)" />
+  </div>
+  <p style="color:rgba(255,255,255,0.3);font-size:12px;margin-top:12px;">Downloads as JSON with timestamp. Run backup before any major updates or migrations.</p>
+
+  <!-- Restore confirmation modal -->
+  <div id="restore-modal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.8);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;">
+    <div style="background:#1a1a1a;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:32px;max-width:480px;width:90%;margin:auto;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);">
+      <div style="width:48px;height:48px;border-radius:50%;background:rgba(239,68,68,0.1);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg>
+      </div>
+      <h3 style="text-align:center;margin:0 0 8px;font-size:18px;">Restore from Backup</h3>
+      <p style="text-align:center;color:rgba(255,255,255,0.5);font-size:13px;margin:0 0 8px;">This will <strong style="color:#ef4444;">delete all current data</strong> and replace it with the backup file.</p>
+      <div id="restore-info" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:12px;margin:16px 0;font-size:12px;color:rgba(255,255,255,0.5);"></div>
+      <p style="text-align:center;color:rgba(255,255,255,0.4);font-size:12px;margin:0 0 16px;">Type <strong style="color:#ef4444;">RESTORE</strong> to confirm:</p>
+      <input type="text" id="restore-confirm" placeholder="RESTORE" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:12px;color:#fff;font-size:14px;text-align:center;margin-bottom:16px;outline:none;" />
+      <div style="display:flex;gap:12px;">
+        <button onclick="closeRestoreModal()" style="flex:1;padding:12px;border-radius:10px;background:rgba(255,255,255,0.1);color:#fff;border:none;font-weight:600;font-size:14px;cursor:pointer;">Cancel</button>
+        <button id="restore-btn" onclick="executeRestore()" disabled style="flex:1;padding:12px;border-radius:10px;background:#ef4444;color:#fff;border:none;font-weight:600;font-size:14px;cursor:pointer;opacity:0.4;">Restore</button>
+      </div>
+      <div id="restore-status" style="text-align:center;margin-top:12px;font-size:13px;display:none;"></div>
+    </div>
+  </div>
+
+  <script>
+    let restoreData = null;
+
+    function handleRestoreFile(input) {
+      const file = input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          restoreData = JSON.parse(e.target.result);
+          if (!restoreData.tables) { alert('Invalid backup file — missing tables object.'); return; }
+          const info = document.getElementById('restore-info');
+          info.innerHTML = '<strong style="color:#fff;">File:</strong> ' + file.name + '<br>' +
+            '<strong style="color:#fff;">Backup date:</strong> ' + (restoreData.exportDate || 'Unknown') + '<br>' +
+            '<strong style="color:#fff;">Rows:</strong> ' + Object.entries(restoreData.counts || {}).map(function(e) { return e[0] + ': ' + e[1]; }).join(', ');
+          document.getElementById('restore-modal').style.display = 'block';
+          document.getElementById('restore-confirm').value = '';
+          document.getElementById('restore-btn').disabled = true;
+          document.getElementById('restore-btn').style.opacity = '0.4';
+          document.getElementById('restore-status').style.display = 'none';
+        } catch(err) { alert('Could not parse backup file: ' + err.message); }
+      };
+      reader.readAsText(file);
+      input.value = '';
+    }
+
+    document.addEventListener('input', function(e) {
+      if (e.target.id === 'restore-confirm') {
+        var ok = e.target.value === 'RESTORE';
+        document.getElementById('restore-btn').disabled = !ok;
+        document.getElementById('restore-btn').style.opacity = ok ? '1' : '0.4';
+      }
+    });
+
+    function closeRestoreModal() {
+      document.getElementById('restore-modal').style.display = 'none';
+      restoreData = null;
+    }
+
+    async function executeRestore() {
+      if (!restoreData) return;
+      var btn = document.getElementById('restore-btn');
+      var status = document.getElementById('restore-status');
+      btn.disabled = true;
+      btn.textContent = 'Restoring...';
+      btn.style.opacity = '0.4';
+      status.style.display = 'block';
+      status.style.color = 'rgba(255,255,255,0.5)';
+      status.textContent = 'Uploading and restoring...';
+      try {
+        var res = await fetch('/admin/backup/restore', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(restoreData),
+        });
+        var data = await res.json();
+        if (res.ok) {
+          status.style.color = '#22c55e';
+          status.textContent = 'Restore complete! ' + (data.message || '');
+          setTimeout(function() { window.location.reload(); }, 2000);
+        } else {
+          status.style.color = '#ef4444';
+          status.textContent = 'Error: ' + (data.error || 'Unknown error');
+          btn.disabled = false;
+          btn.textContent = 'Restore';
+          btn.style.opacity = '1';
+        }
+      } catch(err) {
+        status.style.color = '#ef4444';
+        status.textContent = 'Network error: ' + err.message;
+        btn.disabled = false;
+        btn.textContent = 'Restore';
+        btn.style.opacity = '1';
+      }
+    }
+  </script>
   `));
+});
+
+// ─── Restore from Backup ────────────────────────────────────────────
+router.post('/backup/restore', adminAuth, express.json({ limit: '50mb' }), async (req, res) => {
+  const { tables } = req.body;
+  if (!tables) return res.status(400).json({ error: 'Invalid backup — missing tables' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Delete in reverse dependency order
+    const deletions = [
+      'session_entries', 'personal_bests', 'schedule_days', 'user_metrics',
+      'template_exercises', 'sessions', 'templates', 'programs',
+    ];
+    for (const table of deletions) {
+      await client.query(`DELETE FROM ${table}`);
+    }
+
+    // Helper to insert rows, skipping tables with errors or no data
+    async function insertRows(table, rows) {
+      if (!Array.isArray(rows) || rows.length === 0) return 0;
+      let count = 0;
+      for (const row of rows) {
+        const keys = Object.keys(row);
+        const vals = keys.map((_, i) => '$' + (i + 1));
+        try {
+          await client.query(
+            `INSERT INTO ${table} (${keys.join(',')}) VALUES (${vals.join(',')}) ON CONFLICT DO NOTHING`,
+            keys.map(k => row[k])
+          );
+          count++;
+        } catch (e) {
+          // Skip rows that fail (e.g. FK violations, missing columns)
+        }
+      }
+      return count;
+    }
+
+    // Insert in dependency order
+    const results = {};
+    if (tables.users) {
+      // Don't overwrite users table — users have passwords, auth tokens, etc.
+      // Only restore non-user tables
+      results.users = 'skipped (user accounts preserved)';
+    }
+    results.programs = await insertRows('programs', tables.programs);
+    results.templates = await insertRows('templates', tables.templates);
+    results.template_exercises = await insertRows('template_exercises', tables.template_exercises);
+    results.sessions = await insertRows('sessions', tables.sessions);
+    results.session_entries = await insertRows('session_entries', tables.session_entries);
+    results.schedule_days = await insertRows('schedule_days', tables.schedule_days);
+    results.personal_bests = await insertRows('personal_bests', tables.personal_bests);
+    results.user_metrics = await insertRows('user_metrics', tables.user_metrics);
+
+    // Reset sequences to max id so future inserts don't collide
+    const sequences = [
+      ['programs', 'programs_id_seq'],
+      ['templates', 'templates_id_seq'],
+      ['template_exercises', 'template_exercises_id_seq'],
+      ['sessions', 'sessions_id_seq'],
+      ['session_entries', 'session_entries_id_seq'],
+      ['personal_bests', 'personal_bests_id_seq'],
+      ['schedule_days', 'schedule_days_id_seq'],
+    ];
+    for (const [table, seq] of sequences) {
+      try {
+        await client.query(`SELECT setval('${seq}', COALESCE((SELECT MAX(id) FROM ${table}), 1))`);
+      } catch {}
+    }
+
+    await client.query('COMMIT');
+    res.json({ message: 'Restored successfully', results });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Restore failed:', err);
+    res.status(500).json({ error: 'Restore failed: ' + err.message });
+  } finally {
+    client.release();
+  }
 });
 
 export default router;
