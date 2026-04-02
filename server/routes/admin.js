@@ -3248,13 +3248,13 @@ router.get('/workout-manager/copy/:id', adminAuth, async (req, res) => {
       [tmpl.user_id, tmpl.program_id, tmpl.name + ' (Copy)', tmpl.description, tmpl.is_rest, sortRows[0].next_sort]
     );
     const { rows: exercises } = await pool.query(
-      'SELECT name, set_type, set_number, planned_reps, suggested_weight, sort_order FROM template_exercises WHERE template_id = $1 ORDER BY sort_order, set_number',
+      'SELECT name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes, exercise_description FROM template_exercises WHERE template_id = $1 ORDER BY sort_order, set_number',
       [templateId]
     );
     for (const ex of exercises) {
       await pool.query(
-        'INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-        [newTmpl.id, ex.name, ex.set_type, ex.set_number, ex.planned_reps, ex.suggested_weight, ex.sort_order]
+        'INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes, exercise_description) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
+        [newTmpl.id, ex.name, ex.set_type, ex.set_number, ex.planned_reps, ex.suggested_weight, ex.sort_order, ex.is_section_header || false, ex.section_notes || '', ex.exercise_description || '']
       );
     }
     const redirectTo = programId ? '/admin/workout-manager/program/' + programId + '?msg=Workout+copied' : '/admin/workout-manager/workouts?msg=Workout+copied';

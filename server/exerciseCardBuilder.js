@@ -158,10 +158,19 @@ export function exerciseCardScript(apiBase) {
             container.insertBefore(newCard, thisCard.nextSibling);
           }
         };
+        var swapBtn = mkCircleBtn('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/></svg>', '#3b82f6', 'rgba(59,130,246,0.15)');
+        swapBtn.title = 'Swap exercise';
+        swapBtn.onclick = function() {
+          searchInput.value = '';
+          searchInput.focus();
+          searchExercises(idx, '');
+          validBadge.style.display = 'none';
+          validatedExercises[idx] = false;
+        };
         var removeBtn = mkCircleBtn('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>', '#ef4444', 'rgba(239,68,68,0.15)');
         removeBtn.title = 'Remove exercise';
         removeBtn.onclick = function() { removeExercise(idx); };
-        headerBtns.appendChild(upBtn); headerBtns.appendChild(downBtn); headerBtns.appendChild(addBelowBtn); headerBtns.appendChild(removeBtn);
+        headerBtns.appendChild(upBtn); headerBtns.appendChild(downBtn); headerBtns.appendChild(swapBtn); headerBtns.appendChild(addBelowBtn); headerBtns.appendChild(removeBtn);
         header.appendChild(searchWrap); header.appendChild(headerBtns);
         card.appendChild(header);
 
