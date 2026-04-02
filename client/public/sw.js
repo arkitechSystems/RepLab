@@ -1,4 +1,4 @@
-const CACHE_NAME = 'replab-v1';
+const CACHE_NAME = 'replab-v2';
 const SHELL_ASSETS = ['/', '/index.html'];
 
 // Install: cache app shell
@@ -79,7 +79,11 @@ self.addEventListener('fetch', (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
           return response;
         })
-        .catch(() => caches.match(event.request))
+        .catch(() =>
+          caches.match(event.request).then((cached) =>
+            cached || new Response(JSON.stringify({ error: 'Offline' }), { status: 503, headers: { 'Content-Type': 'application/json' } })
+          )
+        )
     );
     return;
   }
@@ -87,14 +91,22 @@ self.addEventListener('fetch', (event) => {
   // Navigation: network-first, fallback to cached index.html
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request).catch(() => caches.match('/index.html'))
+      fetch(event.request).catch(() =>
+        caches.match('/index.html').then((cached) =>
+          cached || new Response('Offline', { status: 503, statusText: 'Service Unavailable' })
+        )
+      )
     );
     return;
   }
 
   // Default: network-first
   event.respondWith(
-    fetch(event.request).catch(() => caches.match(event.request))
+    fetch(event.request).catch(() =>
+      caches.match(event.request).then((cached) =>
+        cached || new Response('Offline', { status: 503 })
+      )
+    )
   );
 });
 
