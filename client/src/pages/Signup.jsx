@@ -50,10 +50,10 @@ export default function Signup() {
     setError('');
 
     if (!identifier.trim()) {
-      setError('Email or phone number is required');
+      setError('Email is required');
       return;
     }
-    if (!isPhoneIdentifier && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier.trim())) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier.trim())) {
       setError('Please enter a valid email address');
       return;
     }
@@ -155,16 +155,16 @@ export default function Signup() {
             </div>
           )}
 
-          {/* Email / Phone */}
+          {/* Email */}
           <div>
-            <label className={labelClass}>Email or Phone</label>
+            <label className={labelClass}>Email *</label>
             <input
-              type={isPhoneIdentifier ? 'tel' : 'email'}
+              type="email"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
-              placeholder="Email or phone number"
+              placeholder="Email address"
               required
-              autoComplete={isPhoneIdentifier ? 'tel' : 'email'}
+              autoComplete="email"
               className={inputClass}
             />
           </div>
@@ -232,20 +232,18 @@ export default function Signup() {
             </div>
           </div>
 
-          {/* Phone (optional — shown only if they signed up with email) */}
-          {!isPhoneIdentifier && (
-            <div>
-              <label className={labelClass}>Phone Number <span className="text-wf-gray-600">(optional)</span></label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="(555) 123-4567"
-                autoComplete="tel"
-                className={inputClass}
-              />
-            </div>
-          )}
+          {/* Phone (optional) */}
+          <div>
+            <label className={labelClass}>Phone Number <span className="text-wf-gray-600">(optional)</span></label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="(555) 123-4567"
+              autoComplete="tel"
+              className={inputClass}
+            />
+          </div>
 
           {/* Zip Code (optional) */}
           <div>
