@@ -4946,8 +4946,39 @@ router.delete('/exercise-library/delete/:id', adminAuth, async (req, res) => {
 router.get('/audit', adminAuth, async (req, res) => {
   res.send(adminPage('Audit Reports', `
   <div class="breadcrumb"><a href="/admin">Dashboard</a> / Audit Reports</div>
-  <h1>UX Audit Report</h1>
-  <p style="color:rgba(255,255,255,0.5);margin-bottom:24px;">Last updated: April 3, 2026</p>
+  <h1>Audit Reports</h1>
+  <p style="color:rgba(255,255,255,0.5);margin-bottom:24px;">Historical UX audit findings. Click a report to expand.</p>
+
+  <style>
+    .audit-toggle { cursor:pointer; user-select:none; }
+    .audit-toggle:hover { background:rgba(255,255,255,0.03); }
+    .audit-body { display:none; }
+    .audit-body.open { display:block; }
+    .audit-chevron { transition:transform 0.2s; }
+    .audit-chevron.open { transform:rotate(180deg); }
+  </style>
+  <script>
+    function toggleAudit(id) {
+      var body = document.getElementById('audit-body-' + id);
+      var chev = document.getElementById('audit-chev-' + id);
+      body.classList.toggle('open');
+      chev.classList.toggle('open');
+    }
+  </script>
+
+  <!-- ========== AUDIT #1: April 3, 2026 ========== -->
+  <div class="glass" style="margin-bottom:16px;overflow:hidden;">
+    <div class="audit-toggle" onclick="toggleAudit(1)" style="padding:16px 20px;display:flex;align-items:center;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="font-size:15px;font-weight:700;color:#fff;">UX Audit — April 3, 2026</span>
+        <span style="padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);">5 Critical</span>
+        <span style="padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;background:rgba(249,115,22,0.15);color:#f97316;border:1px solid rgba(249,115,22,0.3);">3 High</span>
+        <span style="padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);">6 Med</span>
+        <span style="padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.1);">4 Low</span>
+      </div>
+      <svg id="audit-chev-1" class="audit-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+    </div>
+    <div id="audit-body-1" class="audit-body" style="padding:0 20px 20px;">
 
   <!-- Critical -->
   <div class="glass" style="padding:24px;margin-bottom:20px;border-left:4px solid #ef4444;">
@@ -5151,6 +5182,9 @@ router.get('/audit', adminAuth, async (req, res) => {
       </div>
     </div>
   </div>
+    </div><!-- /audit-body-1 -->
+  </div><!-- /audit #1 -->
+
   `));
 });
 
