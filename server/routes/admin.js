@@ -568,6 +568,7 @@ function adminPage(title, body) {
     <a href="/admin/user-logins"${title === 'User Login History' ? ' class="active"' : ''}>User Logins</a>
     <a href="/admin/page-visits"${title === 'Page Visits' ? ' class="active"' : ''}>Page Visits</a>
     <a href="/admin/backup"${title === 'Database Backup' ? ' class="active"' : ''}>Database Backup</a>
+    <a href="/admin/audit"${title === 'Audit Reports' ? ' class="active"' : ''}>Audit Reports</a>
   </div>
 </div>
 <script>
@@ -878,6 +879,11 @@ router.get('/', adminAuth, async (req, res) => {
       <div class="card-icon">💾</div>
       <div class="card-title">Database Backup</div>
       <div class="card-desc">Export all user data as a JSON backup file.</div>
+    </a>
+    <a class="card glass" href="/admin/audit" style="border-color:rgba(251,191,36,0.25);">
+      <div class="card-icon">🔍</div>
+      <div class="card-title">Audit Reports</div>
+      <div class="card-desc">UX audit findings, bugs, and fix priorities.</div>
     </a>
   </div>
 
@@ -4934,6 +4940,218 @@ router.delete('/exercise-library/delete/:id', adminAuth, async (req, res) => {
     console.error('Delete exercise error:', err);
     res.status(500).json({ error: 'Failed to delete exercise' });
   }
+});
+
+// ─── Audit Reports ──────────────────────────────────────────────────
+router.get('/audit', adminAuth, async (req, res) => {
+  res.send(adminPage('Audit Reports', `
+  <div class="breadcrumb"><a href="/admin">Dashboard</a> / Audit Reports</div>
+  <h1>UX Audit Report</h1>
+  <p style="color:rgba(255,255,255,0.5);margin-bottom:24px;">Last updated: April 3, 2026</p>
+
+  <!-- Critical -->
+  <div class="glass" style="padding:24px;margin-bottom:20px;border-left:4px solid #ef4444;">
+    <h2 style="margin:0 0 16px;font-size:16px;color:#ef4444;display:flex;align-items:center;gap:8px;">
+      <span style="width:24px;height:24px;border-radius:50%;background:rgba(239,68,68,0.15);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;">5</span>
+      Critical Issues
+    </h2>
+    <table style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.1);">
+          <th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);">#</th>
+          <th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);">Issue</th>
+          <th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);">Location</th>
+          <th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;">1</td>
+          <td style="padding:10px 12px;color:#fff;font-size:13px;"><strong>Schedule doesn't refetch when navigating weeks</strong><br><span style="color:rgba(255,255,255,0.4);font-size:11px;">fetchFrom/fetchTo only use monthOffset, not weekOffset. Users switching weeks see stale/missing data.</span></td>
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.4);font-size:12px;font-family:monospace;">Calendar.jsx:74-75</td>
+          <td style="padding:10px 12px;"><span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);">OPEN</span></td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;">2</td>
+          <td style="padding:10px 12px;color:#fff;font-size:13px;"><strong>Create Workout from calendar doesn't assign to date</strong><br><span style="color:rgba(255,255,255,0.4);font-size:11px;">CreateWorkout.jsx ignores the date query param. User creates workout but it's not scheduled on that day.</span></td>
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.4);font-size:12px;font-family:monospace;">CreateWorkout.jsx</td>
+          <td style="padding:10px 12px;"><span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);">OPEN</span></td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;">3</td>
+          <td style="padding:10px 12px;color:#fff;font-size:13px;"><strong>Swipe-to-complete uses exercise.name instead of keyName</strong><br><span style="color:rgba(255,255,255,0.4);font-size:11px;">For duplicate exercises, swipe completion targets the wrong card.</span></td>
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.4);font-size:12px;font-family:monospace;">ExerciseCard.jsx:111,113</td>
+          <td style="padding:10px 12px;"><span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);">OPEN</span></td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;">4</td>
+          <td style="padding:10px 12px;color:#fff;font-size:13px;"><strong>Can't complete workout with bodyweight/zero-weight exercises</strong><br><span style="color:rgba(255,255,255,0.4);font-size:11px;">Validation requires weight > 0 but doesn't account for -1 (BW) or 0.</span></td>
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.4);font-size:12px;font-family:monospace;">WorkoutSession.jsx:1085</td>
+          <td style="padding:10px 12px;"><span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);">OPEN</span></td>
+        </tr>
+        <tr>
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;">5</td>
+          <td style="padding:10px 12px;color:#fff;font-size:13px;"><strong>Begin Program & Add Workout have no error handling</strong><br><span style="color:rgba(255,255,255,0.4);font-size:11px;">No try/catch around API calls. Network failures leave user stuck in modal with no feedback.</span></td>
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.4);font-size:12px;font-family:monospace;">Workouts.jsx:303-553</td>
+          <td style="padding:10px 12px;"><span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);">OPEN</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- High -->
+  <div class="glass" style="padding:24px;margin-bottom:20px;border-left:4px solid #f97316;">
+    <h2 style="margin:0 0 16px;font-size:16px;color:#f97316;display:flex;align-items:center;gap:8px;">
+      <span style="width:24px;height:24px;border-radius:50%;background:rgba(249,115,22,0.15);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;">3</span>
+      High Issues
+    </h2>
+    <table style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.1);">
+          <th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);">#</th>
+          <th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);">Issue</th>
+          <th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);">Location</th>
+          <th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;">6</td>
+          <td style="padding:10px 12px;color:#fff;font-size:13px;"><strong>Day navigation arrows permanently disabled</strong><br><span style="color:rgba(255,255,255,0.4);font-size:11px;">dayNavDisabled set to true but never reset on component re-mount.</span></td>
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.4);font-size:12px;font-family:monospace;">WorkoutSession.jsx:1356</td>
+          <td style="padding:10px 12px;"><span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);">OPEN</span></td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;">7</td>
+          <td style="padding:10px 12px;color:#fff;font-size:13px;"><strong>Copy Workout fails silently if workout data can't be loaded</strong><br><span style="color:rgba(255,255,255,0.4);font-size:11px;">Schedule updated but no session created. Workout appears on calendar but can't be started.</span></td>
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.4);font-size:12px;font-family:monospace;">Calendar.jsx:344-364</td>
+          <td style="padding:10px 12px;"><span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);">OPEN</span></td>
+        </tr>
+        <tr>
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;">8</td>
+          <td style="padding:10px 12px;color:#fff;font-size:13px;"><strong>Bottom "Create New Workout" button doesn't pass date</strong><br><span style="color:rgba(255,255,255,0.4);font-size:11px;">Only the top button includes the date param. Bottom button loses calendar context.</span></td>
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.4);font-size:12px;font-family:monospace;">Calendar.jsx:906</td>
+          <td style="padding:10px 12px;"><span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);">OPEN</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Medium -->
+  <div class="glass" style="padding:24px;margin-bottom:20px;border-left:4px solid #fbbf24;">
+    <h2 style="margin:0 0 16px;font-size:16px;color:#fbbf24;display:flex;align-items:center;gap:8px;">
+      <span style="width:24px;height:24px;border-radius:50%;background:rgba(251,191,36,0.15);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;">6</span>
+      Medium Issues
+    </h2>
+    <table style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.1);">
+          <th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);">#</th>
+          <th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);">Issue</th>
+          <th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);">Location</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;">9</td>
+          <td style="padding:10px 12px;color:#fff;font-size:13px;">Weight suggestion applies to ALL sets, not just empty ones</td>
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.4);font-size:12px;font-family:monospace;">WorkoutSession.jsx:1797</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;">10</td>
+          <td style="padding:10px 12px;color:#fff;font-size:13px;">No loading state during Begin Program / Add Workout API calls</td>
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.4);font-size:12px;font-family:monospace;">Workouts.jsx:303-326</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;">11</td>
+          <td style="padding:10px 12px;color:#fff;font-size:13px;">No success feedback after Clear Calendar</td>
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.4);font-size:12px;font-family:monospace;">Calendar.jsx:231</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;">12</td>
+          <td style="padding:10px 12px;color:#fff;font-size:13px;">Date parsing in Insert Rest Day is fragile (timezone risk)</td>
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.4);font-size:12px;font-family:monospace;">Calendar.jsx:207</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;">13</td>
+          <td style="padding:10px 12px;color:#fff;font-size:13px;">Tapping empty day in week view does nothing (no hint to use edit button)</td>
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.4);font-size:12px;font-family:monospace;">Calendar.jsx:120-122</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;">14</td>
+          <td style="padding:10px 12px;color:#fff;font-size:13px;">Notes lost when undoing an exercise swap</td>
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.4);font-size:12px;font-family:monospace;">WorkoutSession.jsx:997-1001</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Low -->
+  <div class="glass" style="padding:24px;margin-bottom:20px;border-left:4px solid rgba(255,255,255,0.2);">
+    <h2 style="margin:0 0 16px;font-size:16px;color:rgba(255,255,255,0.5);display:flex;align-items:center;gap:8px;">
+      <span style="width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;">4</span>
+      Low Issues
+    </h2>
+    <table style="width:100%;border-collapse:collapse;">
+      <tbody>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;">15</td>
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.5);font-size:13px;">Reps input accepts negative numbers on some devices</td>
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:12px;font-family:monospace;">ExerciseCard.jsx:398</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;">16</td>
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.5);font-size:13px;">Undo toast for deleted exercise can be off-screen</td>
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:12px;font-family:monospace;">WorkoutSession.jsx:1842</td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;">17</td>
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.5);font-size:13px;">Progress bar doesn't guard against missing sets array</td>
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:12px;font-family:monospace;">WorkoutSession.jsx:1439</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;">18</td>
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.5);font-size:13px;">Tutorial weight variations can theoretically go negative</td>
+          <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:12px;font-family:monospace;">WorkoutSession.jsx:1047</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Summary -->
+  <div class="glass" style="padding:24px;">
+    <h2 style="margin:0 0 16px;font-size:16px;color:#fff;">Fix Priority</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+      <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:16px;">
+        <h3 style="margin:0 0 8px;font-size:12px;color:#ef4444;text-transform:uppercase;letter-spacing:1px;">Fix Now</h3>
+        <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.5);line-height:1.6;">
+          1. Schedule refetch on week nav<br>
+          2. Swipe-to-complete keyName<br>
+          3. Mark complete for bodyweight<br>
+          4. Error handling in Begin/Add flows
+        </p>
+      </div>
+      <div style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.2);border-radius:12px;padding:16px;">
+        <h3 style="margin:0 0 8px;font-size:12px;color:#f97316;text-transform:uppercase;letter-spacing:1px;">Fix Next</h3>
+        <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.5);line-height:1.6;">
+          5. Day navigation reset<br>
+          6. Copy workout null check<br>
+          7. Bottom create button date<br>
+          8. CreateWorkout date param
+        </p>
+      </div>
+      <div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);border-radius:12px;padding:16px;">
+        <h3 style="margin:0 0 8px;font-size:12px;color:#fbbf24;text-transform:uppercase;letter-spacing:1px;">Fix Later</h3>
+        <p style="margin:0;font-size:12px;color:rgba(255,255,255,0.5);line-height:1.6;">
+          9. Weight suggestion scope<br>
+          10. Loading states<br>
+          11. Success feedback<br>
+          12-18. Medium &amp; low items
+        </p>
+      </div>
+    </div>
+  </div>
+  `));
 });
 
 // ─── Database Backup ────────────────────────────────────────────────
