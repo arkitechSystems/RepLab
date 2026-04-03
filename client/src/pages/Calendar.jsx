@@ -770,7 +770,7 @@ export default function Calendar() {
                           <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                         </svg>
                       </div>
-                      <span className="text-sm font-medium text-white">Start a Blank Workout</span>
+                      <span className="text-sm font-medium text-white">Create a Workout</span>
                     </button>
                     {hasWorkout && (
                       isPremium ? (
