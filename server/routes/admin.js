@@ -5087,7 +5087,7 @@ router.get('/audit', adminAuth, async (req, res) => {
           <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;">9</td>
           <td style="padding:10px 12px;color:#fff;font-size:13px;">Weight suggestion applies to ALL sets, not just empty ones</td>
           <td style="padding:10px 12px;color:rgba(255,255,255,0.4);font-size:12px;font-family:monospace;">WorkoutSession.jsx:1797</td>
-          <td style="padding:10px 12px;"><span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);">OPEN</span></td>
+          <td style="padding:10px 12px;"><span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3);">FIXED 4/4</span></td>
         </tr>
         <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
           <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;">10</td>
@@ -5111,6 +5111,7 @@ router.get('/audit', adminAuth, async (req, res) => {
           <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;">13</td>
           <td style="padding:10px 12px;color:#fff;font-size:13px;">Tapping empty day in week view does nothing (no hint to use edit button)</td>
           <td style="padding:10px 12px;color:rgba(255,255,255,0.4);font-size:12px;font-family:monospace;">Calendar.jsx:120-122</td>
+          <td style="padding:10px 12px;"><span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3);">FIXED 4/4</span></td>
         </tr>
         <tr>
           <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;">14</td>
