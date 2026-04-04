@@ -162,6 +162,7 @@ export default function Workouts() {
   const [beginDateInput, setBeginDateInput] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [conflictInfo, setConflictInfo] = useState(null); // { conflicts: string[], pendingEntries: [] }
+  const [beginSaving, setBeginSaving] = useState(false);
   // Add Workout modal state
   const [addWorkoutModal, setAddWorkoutModal] = useState(null); // template object
   const [addDateInput, setAddDateInput] = useState('');
@@ -301,13 +302,14 @@ export default function Workouts() {
   }
 
   async function tryApply(program, startDate) {
-    if (!program) return;
+    if (!program || beginSaving) return;
     const programId = program.id;
     const entries = buildEntries(program, startDate);
     if (tutorial.active) {
       await applyEntries(entries);
       return;
     }
+    setBeginSaving(true);
     try {
       const fromDate = entries[0].date;
       const toDate = entries[entries.length - 1].date;
@@ -327,6 +329,8 @@ export default function Workouts() {
       }
     } catch (err) {
       alert(err.message || 'Failed to load schedule. Please try again.');
+    } finally {
+      setBeginSaving(false);
     }
   }
 
@@ -1424,9 +1428,10 @@ export default function Workouts() {
                   <button
                     data-tutorial="start-today-btn"
                     onClick={handleStartToday}
-                    className="flex-1 btn-gradient text-white font-semibold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-all"
+                    disabled={beginSaving}
+                    className={`flex-1 btn-gradient text-white font-semibold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-all ${beginSaving ? 'opacity-50 pointer-events-none' : ''}`}
                   >
-                    Start Today
+                    {beginSaving ? 'Saving...' : 'Start Today'}
                   </button>
                   <button
                     onClick={() => {
@@ -1455,7 +1460,7 @@ export default function Workouts() {
                   />
                   <button
                     onClick={handleBeginDate}
-                    disabled={!beginDateInput}
+                    disabled={!beginDateInput || beginSaving}
                     className="btn-gradient text-white font-semibold px-5 py-3 rounded-xl text-sm active:scale-[0.98] transition-all disabled:opacity-40"
                   >
                     Schedule

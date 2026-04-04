@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { startOfWeek, startOfMonth, endOfMonth, addDays, format, isToday, isSameWeek, isSameMonth, isSameDay } from 'date-fns';
+import { startOfWeek, startOfMonth, endOfMonth, addDays, format, isToday, isSameWeek, isSameMonth, isSameDay, parseISO } from 'date-fns';
 import { api } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { getWorkoutColor } from '../utils/workoutColors';
@@ -28,6 +28,7 @@ export default function Calendar() {
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [restDayPrompt, setRestDayPrompt] = useState(false); // show rest day options sub-modal
   const [clearCalendarConfirm, setClearCalendarConfirm] = useState(false); // confirm clear calendar modal
+  const [successMsg, setSuccessMsg] = useState(''); // brief success toast
   const [copySource, setCopySource] = useState(null); // { templateId, templateName, date }
   const [copyStep, setCopyStep] = useState(null); // 'pick-day' | 'confirm-overwrite' | 'use-reps'
   const [copyTarget, setCopyTarget] = useState(null); // Date object
@@ -207,7 +208,7 @@ export default function Calendar() {
       // Build updates: each workout moves to the next day, edited day is cleared
       const updates = [{ date: dateStr, templateId: null }];
       for (const w of futureWorkouts) {
-        const nextDay = format(addDays(new Date(w.date + 'T00:00:00'), 1), 'yyyy-MM-dd');
+        const nextDay = format(addDays(parseISO(w.date), 1), 'yyyy-MM-dd');
         updates.push({ date: nextDay, templateId: w.templateId });
       }
 
@@ -234,6 +235,8 @@ export default function Calendar() {
       await refreshSchedule();
       setClearCalendarConfirm(false);
       setEditingDay(null);
+      setSuccessMsg('Calendar cleared');
+      setTimeout(() => setSuccessMsg(''), 2500);
     } catch (err) {
       console.error(err);
       setEditError('Failed to save. Please try again.');
@@ -1039,6 +1042,13 @@ export default function Calendar() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Success Toast */}
+      {successMsg && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[200] px-5 py-2.5 rounded-full bg-green-500/90 text-white text-sm font-semibold shadow-lg animate-fade-in">
+          {successMsg}
         </div>
       )}
 
