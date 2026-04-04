@@ -5006,25 +5006,25 @@ router.get('/audit', adminAuth, async (req, res) => {
           <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;">2</td>
           <td style="padding:10px 12px;color:#fff;font-size:13px;"><strong>Create Workout from calendar doesn't assign to date</strong><br><span style="color:rgba(255,255,255,0.4);font-size:11px;">CreateWorkout.jsx ignores the date query param. User creates workout but it's not scheduled on that day.</span></td>
           <td style="padding:10px 12px;color:rgba(255,255,255,0.4);font-size:12px;font-family:monospace;">CreateWorkout.jsx</td>
-          <td style="padding:10px 12px;"><span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);">OPEN</span></td>
+          <td style="padding:10px 12px;"><span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3);">FIXED 4/4</span></td>
         </tr>
         <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
           <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;">3</td>
           <td style="padding:10px 12px;color:#fff;font-size:13px;"><strong>Swipe-to-complete uses exercise.name instead of keyName</strong><br><span style="color:rgba(255,255,255,0.4);font-size:11px;">For duplicate exercises, swipe completion targets the wrong card.</span></td>
           <td style="padding:10px 12px;color:rgba(255,255,255,0.4);font-size:12px;font-family:monospace;">ExerciseCard.jsx:111,113</td>
-          <td style="padding:10px 12px;"><span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);">OPEN</span></td>
+          <td style="padding:10px 12px;"><span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3);">FIXED 4/4</span></td>
         </tr>
         <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
           <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;">4</td>
           <td style="padding:10px 12px;color:#fff;font-size:13px;"><strong>Can't complete workout with bodyweight/zero-weight exercises</strong><br><span style="color:rgba(255,255,255,0.4);font-size:11px;">Validation requires weight > 0 but doesn't account for -1 (BW) or 0.</span></td>
           <td style="padding:10px 12px;color:rgba(255,255,255,0.4);font-size:12px;font-family:monospace;">WorkoutSession.jsx:1085</td>
-          <td style="padding:10px 12px;"><span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);">OPEN</span></td>
+          <td style="padding:10px 12px;"><span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3);">FIXED 4/4</span></td>
         </tr>
         <tr>
           <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;">5</td>
           <td style="padding:10px 12px;color:#fff;font-size:13px;"><strong>Begin Program & Add Workout have no error handling</strong><br><span style="color:rgba(255,255,255,0.4);font-size:11px;">No try/catch around API calls. Network failures leave user stuck in modal with no feedback.</span></td>
           <td style="padding:10px 12px;color:rgba(255,255,255,0.4);font-size:12px;font-family:monospace;">Workouts.jsx:303-553</td>
-          <td style="padding:10px 12px;"><span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);">OPEN</span></td>
+          <td style="padding:10px 12px;"><span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3);">FIXED 4/4</span></td>
         </tr>
       </tbody>
     </table>
