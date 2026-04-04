@@ -123,7 +123,11 @@ export default function Calendar() {
 
   function handleDayTap(date) {
     const workout = getWorkoutForDay(date);
-    if (!workout || workout.isRest || !workout.templateId) return;
+    if (!workout || workout.isRest || !workout.templateId) {
+      // No workout on this day — open the editor so user can assign one
+      openEditor(null, date);
+      return;
+    }
     const dateStr = format(date, 'yyyy-MM-dd');
     navigate(`/session/${workout.templateId}/${dateStr}`);
   }

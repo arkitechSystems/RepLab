@@ -1798,7 +1798,12 @@ export default function WorkoutSession() {
               onApplySuggestion={inputsLocked ? undefined : (_exName, weight) => {
                 setEntries(prev => {
                   const updated = { ...prev };
-                  updated[eKey] = (updated[eKey] || []).map(e => ({ ...e, weight }));
+                  updated[eKey] = (updated[eKey] || []).map((e, i) => {
+                    const k = `${eKey}-${i}`;
+                    // Skip sets that are already completed
+                    if (completedSets.has(k)) return e;
+                    return { ...e, weight };
+                  });
                   return updated;
                 });
                 setWeightSuggestions(prev => { const next = { ...prev }; delete next[exercise.name]; return next; });
