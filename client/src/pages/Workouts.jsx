@@ -12,6 +12,11 @@ import UndoToast from '../components/UndoToast';
 
 const DAY_NAMES_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+const CARD_BORDER_STYLE = {
+  border: '0.75px solid rgba(255,255,255,0.3)',
+  boxShadow: '0 0 20px rgba(255,255,255,0.07), 0 0 40px rgba(255,255,255,0.03)',
+};
+
 function ProgramCard({ program, idx, onSelect, onBegin, onDelete, onShare, dataTutorial }) {
   return (
     <div
@@ -153,6 +158,8 @@ export default function Workouts() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [streak, setStreak] = useState(0);
+  const [streakPhase, setStreakPhase] = useState(0);
+  const [prStats, setPrStats] = useState(null);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editName, setEditName] = useState('');
@@ -189,6 +196,10 @@ export default function Workouts() {
   const [trainerAppMsg, setTrainerAppMsg] = useState('');
   const [showTrainerForm, setShowTrainerForm] = useState(false);
   const [trainerAppSubmitting, setTrainerAppSubmitting] = useState(false);
+  // Next workout card state
+  const [nextWorkoutInfo, setNextWorkoutInfo] = useState(null);
+  const [totalWorkouts, setTotalWorkouts] = useState(0);
+  const [workoutsThisMonth, setWorkoutsThisMonth] = useState(0); // { status, templateName, templateId, date, dayLabel }
   const navigate = useNavigate();
   const location = useLocation();
   const beginDateRef = useRef(null);
@@ -238,23 +249,72 @@ export default function Workouts() {
   }, [selectedGroup, user?.role]);
 
   async function fetchData(opts = {}) {
-    const [progs, tmpls, sessions, shares, accepted] = await Promise.all([
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().slice(0, 10);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+
+    const [progs, tmpls, sessions, shares, accepted, prStatsData, scheduleData, completedData] = await Promise.all([
       api('/programs', opts), api('/templates', opts), api('/sessions', opts),
-      api('/sharing/pending', opts).catch(() => []), api('/sharing/accepted', opts).catch(() => ({}))
+      api('/sharing/pending', opts).catch(() => []), api('/sharing/accepted', opts).catch(() => ({})),
+      api('/pbs/stats', opts).catch(() => null),
+      api(`/schedule?from=${todayStr}&to=${tomorrowStr}`, opts).catch(() => []),
+      api('/sessions/completed', opts).catch(() => []),
     ]);
+    setPrStats(prStatsData);
+    setTotalWorkouts(completedData.length);
+    const monthPrefix = todayStr.slice(0, 7); // "YYYY-MM"
+    setWorkoutsThisMonth(completedData.filter(c => c.date && c.date.startsWith(monthPrefix)).length);
     setPrograms(progs);
     setTemplates(tmpls);
     setPendingShares(shares || []);
     setAcceptedSharesMap(accepted || {});
 
+    // Compute next workout info
+    const todaySchedule = scheduleData.find(s => s.date === todayStr);
+    const tomorrowSchedule = scheduleData.find(s => s.date === tomorrowStr);
+    const todayCompleted = todaySchedule && todaySchedule.templateId
+      ? completedData.some(c => c.templateId === todaySchedule.templateId && c.date === todayStr)
+      : false;
+    const todayStarted = todaySchedule && todaySchedule.templateId && !todaySchedule.isRest
+      ? sessions.some(s => s.templateId === todaySchedule.templateId && s.date === todayStr)
+      : false;
+
+    if (todaySchedule && todaySchedule.templateId && !todaySchedule.isRest && !todayCompleted) {
+      // Today has an active workout that's not completed
+      setNextWorkoutInfo({
+        status: todayStarted ? 'resume' : 'start',
+        templateName: todaySchedule.templateName,
+        templateId: todaySchedule.templateId,
+        date: todayStr,
+        dayLabel: 'Today',
+      });
+    } else if (todayCompleted || (todaySchedule && todaySchedule.isRest) || !todaySchedule || !todaySchedule.templateId) {
+      // Today is done/rest/empty — look at tomorrow
+      if (tomorrowSchedule && tomorrowSchedule.templateId && !tomorrowSchedule.isRest) {
+        setNextWorkoutInfo({
+          status: 'upcoming',
+          templateName: tomorrowSchedule.templateName,
+          templateId: tomorrowSchedule.templateId,
+          date: tomorrowStr,
+          dayLabel: 'Tomorrow',
+        });
+      } else if (tomorrowSchedule && tomorrowSchedule.isRest) {
+        setNextWorkoutInfo({ status: 'rest', dayLabel: 'Tomorrow' });
+      } else if (todaySchedule && todaySchedule.isRest && !todayCompleted) {
+        setNextWorkoutInfo({ status: 'rest', dayLabel: 'Today' });
+      } else {
+        setNextWorkoutInfo({ status: 'none' });
+      }
+    }
+
     // Calculate streak — consecutive days with a session going back from today
     const sessionDates = new Set(sessions.map((s) => s.date));
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
     let count = 0;
     // Start from today; if today has no session, start from yesterday
     let startDay = new Date(today);
-    const todayStr = startDay.toISOString().slice(0, 10);
     if (!sessionDates.has(todayStr)) {
       startDay.setDate(startDay.getDate() - 1);
     }
@@ -276,6 +336,13 @@ export default function Workouts() {
       .finally(() => setLoading(false));
     return () => controller.abort();
   }, []);
+
+  // Breathing blob animation for streak card
+  useEffect(() => {
+    if (streak <= 0) return;
+    const interval = setInterval(() => setStreakPhase(p => (p + 1) % 100), 80);
+    return () => clearInterval(interval);
+  }, [streak]);
 
   async function openBeginProgram(e, program) {
     e.stopPropagation();
@@ -2613,6 +2680,104 @@ export default function Workouts() {
           </div>
         ) : (
           <div className="space-y-4 pb-4">
+            {/* 25. Gradient Mesh Card */}
+            <div className="fade-slide-up" style={{
+              animationDelay: '0ms',
+              borderRadius: '24px',
+              overflow: 'hidden',
+              position: 'relative',
+              minHeight: '220px',
+              background: '#0a0a0a',
+              ...CARD_BORDER_STYLE,
+            }}>
+              {/* Mesh gradient blobs */}
+              <div style={{ position: 'absolute', top: '-20%', left: '-10%', width: '60%', height: '70%', borderRadius: '50%', background: 'radial-gradient(circle, rgba(239,68,68,0.35) 0%, transparent 70%)', filter: 'blur(30px)' }} />
+              <div style={{ position: 'absolute', bottom: '-20%', right: '-10%', width: '60%', height: '70%', borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.3) 0%, transparent 70%)', filter: 'blur(30px)' }} />
+              <div style={{ position: 'absolute', top: '30%', right: '20%', width: '40%', height: '50%', borderRadius: '50%', background: 'radial-gradient(circle, rgba(168,85,247,0.25) 0%, transparent 70%)', filter: 'blur(25px)' }} />
+              <div style={{ position: 'relative', zIndex: 1, padding: '28px 24px', display: 'flex', gap: '16px' }}>
+                {/* Left side — workout info + button */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 'clamp(16px, 4.5vw, 26px)', fontWeight: 700, color: 'white', lineHeight: 1.1, marginBottom: '8px', whiteSpace: 'nowrap', letterSpacing: '2px', textTransform: 'uppercase', textShadow: '0 0 8px rgba(255,255,255,0.05)' }}>
+                    {nextWorkoutInfo?.status === 'resume' ? 'Resume Workout' : 'Your Next Workout'}
+                  </div>
+                  {nextWorkoutInfo?.status === 'rest' ? (
+                    <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '20px' }}>
+                      {nextWorkoutInfo.dayLabel} is a rest day
+                    </div>
+                  ) : nextWorkoutInfo?.status === 'none' ? (
+                    <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '20px' }}>
+                      No workouts scheduled
+                    </div>
+                  ) : nextWorkoutInfo?.templateName ? (
+                    <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '20px' }}>
+                      {nextWorkoutInfo.dayLabel} — {nextWorkoutInfo.templateName}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '20px' }}>Loading...</div>
+                  )}
+                  {(nextWorkoutInfo?.templateId || nextWorkoutInfo?.status === 'none' || nextWorkoutInfo?.status === 'rest') && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (nextWorkoutInfo.templateId) {
+                          navigate(`/session/${nextWorkoutInfo.templateId}/${nextWorkoutInfo.date}`);
+                        } else {
+                          setSelectedGroup('browse');
+                        }
+                      }}
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.15) 100%)',
+                        backdropFilter: 'blur(10px)',
+                        border: '1px solid rgba(255,255,255,0.3)', borderRadius: '12px',
+                        padding: '12px 24px', color: 'white', fontSize: '10px', fontWeight: 600,
+                        cursor: 'pointer', letterSpacing: '3px', textTransform: 'uppercase',
+                        boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.3), inset 0 -1px 1px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.3)',
+                      }}
+                    >
+                      {nextWorkoutInfo.templateId
+                        ? (nextWorkoutInfo.status === 'resume' ? 'Resume →' : nextWorkoutInfo.status === 'upcoming' ? 'Preview →' : 'Start Now →')
+                        : 'Add a Workout →'}
+                    </button>
+                  )}
+                </div>
+                {/* Right side — mini stats */}
+                {(streak > 0 || totalWorkouts > 0 || workoutsThisMonth > 0) && (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', borderLeft: '1px solid rgba(255,255,255,0.06)', paddingLeft: '16px' }}>
+                    {streak > 0 && (
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '28px', fontWeight: 200, color: 'white', letterSpacing: '-2px', lineHeight: 1, fontFamily: 'system-ui' }}>
+                          {streak}
+                        </div>
+                        <div style={{ fontSize: '8px', color: 'rgba(249,115,22,0.6)', marginTop: '3px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600 }}>
+                          Streak
+                        </div>
+                      </div>
+                    )}
+                    {totalWorkouts > 0 && (
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '28px', fontWeight: 200, color: 'white', letterSpacing: '-2px', lineHeight: 1, fontFamily: 'system-ui' }}>
+                          {totalWorkouts}
+                        </div>
+                        <div style={{ fontSize: '8px', color: 'rgba(239,68,68,0.6)', marginTop: '3px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600 }}>
+                          Workouts
+                        </div>
+                      </div>
+                    )}
+                    {workoutsThisMonth > 0 && (
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '28px', fontWeight: 200, color: 'white', letterSpacing: '-2px', lineHeight: 1, fontFamily: 'system-ui' }}>
+                          {workoutsThisMonth}
+                        </div>
+                        <div style={{ fontSize: '8px', color: 'rgba(34,197,94,0.6)', marginTop: '3px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600 }}>
+                          This Mo
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Featured Workouts video card */}
             <div
               className="w-full rounded-2xl overflow-hidden fade-slide-up relative"
@@ -2649,45 +2814,54 @@ export default function Workouts() {
               </div>
             </div>
 
-            {/* Streak Card */}
-            {streak > 0 && (
-              <div className="glass-card rounded-2xl p-4 fade-slide-up flex items-center gap-4 border-l-4 border-orange-500">
-                <div className="w-14 h-14 rounded-full bg-orange-500/15 flex items-center justify-center shrink-0">
-                  <span className="text-2xl">🔥</span>
-                </div>
-                <div>
-                  <h3 className="text-lg font-black text-white">
-                    {streak} Day Streak{streak >= 7 ? '!' : ''}
-                  </h3>
-                  <p className="text-xs text-wf-gray-400 mt-0.5">
-                    {streak === 1 ? "You worked out today — keep it going!" :
-                     streak < 7 ? `${streak} days in a row — keep pushing!` :
-                     streak < 14 ? "A full week strong — on fire!" :
-                     streak < 30 ? `${streak} days — unstoppable!` :
-                     `${streak} days — legendary consistency!`}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Browse Workout Library card */}
+            {/* Browse Workout Library card — Organic Blob Style */}
             <div
               data-tutorial="browse-library"
               onClick={() => { setSelectedGroup('browse'); completeTutorialAction('browse-library-tap'); }}
-              className="w-full text-left glass-card rounded-2xl overflow-hidden active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
-              style={{ animationDelay: '0ms' }}
+              className="w-full text-left active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
+              style={{
+                animationDelay: '0ms',
+                background: 'linear-gradient(135deg, #0a0a0a 0%, #1a0808 50%, #0a0606 100%)',
+                borderRadius: '24px',
+                padding: '28px 24px',
+                position: 'relative',
+                overflow: 'hidden',
+                ...CARD_BORDER_STYLE,
+              }}
             >
-              <div className="h-1.5 bg-wf-green" />
-              <div className="p-5">
-                <h2 className="text-xl font-black text-white tracking-tight">Browse Workout Library</h2>
-                <p className="text-wf-gray-400 text-sm mt-1">
-                  Pre-built workout plans &middot; {browsePrograms.length} programs
-                </p>
-                <div className="flex items-center justify-end mt-3">
-                  <span className="text-xs text-wf-gray-500 mr-1">View programs</span>
-                  <svg className="w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
+              {/* Animated blob */}
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: '30%',
+                width: '160px',
+                height: '160px',
+                transform: `translate(-50%, -50%) scale(${0.8 + Math.sin((streakPhase + 50) * 0.063) * 0.2})`,
+                borderRadius: `${45 + Math.sin((streakPhase + 50) * 0.04) * 15}% ${55 - Math.sin((streakPhase + 50) * 0.04) * 15}% ${50 + Math.cos((streakPhase + 50) * 0.05) * 10}% ${50 - Math.cos((streakPhase + 50) * 0.05) * 10}%`,
+                background: 'radial-gradient(circle, rgba(239,68,68,0.4) 0%, rgba(239,68,68,0.2) 50%, transparent 70%)',
+                filter: 'blur(20px)',
+                transition: 'all 0.08s linear',
+              }} />
+              <div style={{ position: 'relative', zIndex: 1 }}>
+                <div style={{ fontSize: '15px', fontWeight: 700, color: 'white', letterSpacing: '2px', textTransform: 'uppercase', paddingBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.06)', textShadow: '0 0 8px rgba(255,255,255,0.05)' }}>Browse Workout Library</div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: '16px' }}>
+                  <div>
+                    <div style={{ fontSize: '40px', fontWeight: 200, color: 'white', letterSpacing: '-2px', lineHeight: 1, fontFamily: 'system-ui' }}>
+                      {browsePrograms.length}
+                    </div>
+                    <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '4px', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600 }}>
+                      Programs
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: '4px 8px', marginTop: '4px', flex: 1, marginLeft: '16px' }}>
+                    {[...new Set(browsePrograms.map(p => p.programType).filter(t => t && t !== 'other'))].map((type, i, arr) => (
+                      <span key={type}>
+                        <span style={{ fontSize: '10px', fontWeight: 600, color: 'rgba(239,68,68,0.6)', letterSpacing: '3px', textTransform: 'uppercase' }}>{type}</span>
+                        {i < arr.length - 1 && <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.2)', margin: '0 4px' }}>·</span>}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -2762,6 +2936,90 @@ export default function Workouts() {
                 <p className="text-wf-gray-400 text-sm mt-1">Compete, push your limits, and earn rewards</p>
               </div>
             </div>
+
+            {/* Stats & Streak — Organic Blob Card */}
+            {(streak > 0 || (prStats && prStats.totalPRs > 0)) && (
+              <div className="fade-slide-up" style={{
+                background: 'linear-gradient(135deg, #0a0a0a 0%, #1a0a0e 50%, #0a0808 100%)',
+                borderRadius: '24px',
+                padding: '28px 24px',
+                position: 'relative',
+                overflow: 'hidden',
+              }}>
+                {/* Animated blob */}
+                <div style={{
+                  position: 'absolute',
+                  top: '40%',
+                  left: '50%',
+                  width: '180px',
+                  height: '180px',
+                  transform: `translate(-50%, -50%) scale(${0.8 + Math.sin(streakPhase * 0.063) * 0.2})`,
+                  borderRadius: `${40 + Math.sin(streakPhase * 0.04) * 15}% ${60 - Math.sin(streakPhase * 0.04) * 15}% ${50 + Math.cos(streakPhase * 0.05) * 10}% ${50 - Math.cos(streakPhase * 0.05) * 10}%`,
+                  background: 'radial-gradient(circle, rgba(249,115,22,0.4) 0%, rgba(239,68,68,0.2) 50%, transparent 70%)',
+                  filter: 'blur(20px)',
+                  transition: 'all 0.08s linear',
+                }} />
+                <div style={{ position: 'relative', zIndex: 1 }}>
+                  {/* Streak + PRs row */}
+                  <div style={{ display: 'flex', gap: '0', marginBottom: prStats && (prStats.heaviestLift || prStats.mostImproved) ? '20px' : '0' }}>
+                    {streak > 0 && (
+                      <div style={{ flex: 1, textAlign: 'center' }}>
+                        <div style={{ fontSize: '42px', fontWeight: 200, color: 'white', letterSpacing: '-2px', lineHeight: 1, fontFamily: 'system-ui' }}>
+                          {streak}
+                        </div>
+                        <div style={{ fontSize: '10px', color: 'rgba(249,115,22,0.6)', marginTop: '4px', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600 }}>
+                          Day Streak
+                        </div>
+                      </div>
+                    )}
+                    {prStats && prStats.totalPRs > 0 && (
+                      <>
+                        {streak > 0 && <div style={{ width: '1px', background: 'rgba(255,255,255,0.08)', margin: '4px 0' }} />}
+                        <div style={{ flex: 1, textAlign: 'center' }}>
+                          <div style={{ fontSize: '42px', fontWeight: 200, color: 'white', letterSpacing: '-2px', lineHeight: 1, fontFamily: 'system-ui' }}>
+                            {prStats.totalPRs}
+                          </div>
+                          <div style={{ fontSize: '10px', color: 'rgba(239,68,68,0.6)', marginTop: '4px', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600 }}>
+                            Total PRs
+                          </div>
+                        </div>
+                        <div style={{ width: '1px', background: 'rgba(255,255,255,0.08)', margin: '4px 0' }} />
+                        <div style={{ flex: 1, textAlign: 'center' }}>
+                          <div style={{ fontSize: '42px', fontWeight: 200, color: 'white', letterSpacing: '-2px', lineHeight: 1, fontFamily: 'system-ui' }}>
+                            {prStats.prsThisMonth}
+                          </div>
+                          <div style={{ fontSize: '10px', color: 'rgba(34,197,94,0.6)', marginTop: '4px', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600 }}>
+                            This Month
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Heaviest lift & Most improved */}
+                  {prStats && (prStats.heaviestLift || prStats.mostImproved) && (
+                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '16px' }}>
+                      {prStats.heaviestLift && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: prStats.mostImproved ? '10px' : '0' }}>
+                          <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', letterSpacing: '1px', textTransform: 'uppercase' }}>Heaviest Lift</span>
+                          <span style={{ fontSize: '13px', fontWeight: 700, color: 'white', textShadow: '0 0 8px rgba(239,68,68,0.5)' }}>
+                            {prStats.heaviestLift.exercise_name} — {Number(prStats.heaviestLift.best_weight)} lbs
+                          </span>
+                        </div>
+                      )}
+                      {prStats.mostImproved && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', letterSpacing: '1px', textTransform: 'uppercase' }}>Most Improved</span>
+                          <span style={{ fontSize: '13px', fontWeight: 700, color: 'white', textShadow: '0 0 8px rgba(239,68,68,0.5)' }}>
+                            {prStats.mostImproved.exercise_name} — +{Number(prStats.mostImproved.improvement)} lbs
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
           </div>
         )}

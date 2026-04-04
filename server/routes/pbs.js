@@ -14,4 +14,44 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 
+router.get('/stats', authMiddleware, async (req, res) => {
+  try {
+    const pool = (await import('../dbPool.js')).default;
+    const userId = req.userId;
+
+    const [totalPRs, prsThisMonth, heaviest, improved] = await Promise.all([
+      // Total PRs
+      pool.query('SELECT COUNT(*) AS count FROM personal_bests WHERE user_id = $1', [userId]),
+      // PRs this month
+      pool.query(
+        `SELECT COUNT(*) AS count FROM personal_bests WHERE user_id = $1 AND achieved_at >= date_trunc('month', CURRENT_DATE)`,
+        [userId]
+      ),
+      // Heaviest single lift
+      pool.query(
+        `SELECT exercise_name, best_weight, best_reps FROM personal_bests WHERE user_id = $1 ORDER BY best_weight DESC LIMIT 1`,
+        [userId]
+      ),
+      // Most improved exercise (biggest weight range)
+      pool.query(
+        `SELECT exercise_name, MAX(best_weight) - MIN(best_weight) AS improvement
+         FROM personal_bests WHERE user_id = $1
+         GROUP BY exercise_name HAVING COUNT(*) > 1
+         ORDER BY improvement DESC LIMIT 1`,
+        [userId]
+      ),
+    ]);
+
+    res.json({
+      totalPRs: Number(totalPRs.rows[0]?.count || 0),
+      prsThisMonth: Number(prsThisMonth.rows[0]?.count || 0),
+      heaviestLift: heaviest.rows[0] || null,
+      mostImproved: improved.rows[0] || null,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

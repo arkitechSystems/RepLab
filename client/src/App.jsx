@@ -32,6 +32,8 @@ import WorkoutSessionCardTest from './pages/WorkoutSessionCardTest';
 import SectionHeaderTest from './pages/SectionHeaderTest';
 import TutorialWorkout from './pages/TutorialWorkout';
 import TutorialTest from './pages/TutorialTest';
+import NewWorkoutSessionTest from './pages/NewWorkoutSessionTest';
+import NeumorphicSessionTest from './pages/NeumorphicSessionTest';
 import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -45,6 +47,15 @@ function ProtectedRoute({ children }) {
 function PublicRoute({ children }) {
   const { isAuthenticated } = useAuth();
   if (isAuthenticated) return <Navigate to="/" replace />;
+  return children;
+}
+
+const TEST_EMAILS = ['willmartinmail@gmail.com', 'abilenerentals@gmail.com'];
+function TestRoute({ children }) {
+  const { isAuthenticated, user } = useAuth();
+  if (!isAuthenticated || !user?.email || !TEST_EMAILS.includes(user.email.toLowerCase())) {
+    return <Navigate to="/" replace />;
+  }
   return children;
 }
 
@@ -122,12 +133,14 @@ export default function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/upgrade" element={<Upgrade />} />
         <Route path="/tutorial/workout" element={<TutorialWorkout />} />
-        <Route path="/test" element={<Test />} />
-        <Route path="/test/cards" element={<CardsTest />} />
-        <Route path="/test/workout-session" element={<WorkoutSessionTest />} />
-        <Route path="/test/workout-session-card" element={<WorkoutSessionCardTest />} />
-        <Route path="/test/section-header" element={<SectionHeaderTest />} />
-        <Route path="/test/tutorial" element={<TutorialTest />} />
+        <Route path="/test" element={<TestRoute><Test /></TestRoute>} />
+        <Route path="/test/cards" element={<TestRoute><CardsTest /></TestRoute>} />
+        <Route path="/test/workout-session" element={<TestRoute><WorkoutSessionTest /></TestRoute>} />
+        <Route path="/test/workout-session-card" element={<TestRoute><WorkoutSessionCardTest /></TestRoute>} />
+        <Route path="/test/section-header" element={<TestRoute><SectionHeaderTest /></TestRoute>} />
+        <Route path="/test/tutorial" element={<TestRoute><TutorialTest /></TestRoute>} />
+        <Route path="/test/new-session" element={<TestRoute><NewWorkoutSessionTest /></TestRoute>} />
+        <Route path="/test/neumorphic-session" element={<TestRoute><NeumorphicSessionTest /></TestRoute>} />
       </Route>
 
       <Route path="*" element={<CatchAllRedirect />} />

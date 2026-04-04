@@ -29,7 +29,7 @@ export default function CardsTest() {
       </button>
 
       <h1 className="text-2xl font-black text-white mb-2">Cards. Test.</h1>
-      <p className="text-wf-gray-400 text-sm mb-6">10 card styles for UI exploration</p>
+      <p className="text-wf-gray-400 text-sm mb-6">25 card styles for UI exploration</p>
 
       <div className="space-y-5">
 
@@ -597,6 +597,290 @@ export default function CardsTest() {
                 }}>{tag}</span>
               ))}
             </div>
+          </div>
+        </div>
+
+        {/* 16. Polaroid / Film Card */}
+        <div style={{
+          background: '#fafafa',
+          borderRadius: '4px',
+          padding: '12px 12px 40px 12px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2)',
+          transform: 'rotate(-1.5deg)',
+        }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+            borderRadius: '2px',
+            height: '200px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'relative',
+            overflow: 'hidden',
+          }}>
+            <div style={{ position: 'absolute', top: 10, left: 12, fontSize: '9px', color: 'rgba(255,255,255,0.3)', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600 }}>16. Polaroid</div>
+            <div style={{ fontSize: '56px', fontWeight: 900, color: 'white', lineHeight: 1 }}>225</div>
+            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', letterSpacing: '4px', textTransform: 'uppercase', marginTop: '4px' }}>LBS × 8 REPS</div>
+            <div style={{ marginTop: '16px', display: 'flex', gap: '4px' }}>
+              {[1,2,3,4,5].map(i => (
+                <div key={i} style={{ width: '8px', height: '8px', borderRadius: '50%', background: i <= 4 ? '#e94560' : 'rgba(255,255,255,0.2)' }} />
+              ))}
+            </div>
+          </div>
+          <div style={{ marginTop: '12px', textAlign: 'center' }}>
+            <span style={{ fontFamily: '"Courier New", monospace', fontSize: '13px', color: '#333', fontWeight: 600 }}>Bench Press — PR Day</span>
+          </div>
+        </div>
+
+        {/* 17. Ticket / Receipt Card */}
+        <div style={{
+          background: '#1a1a1a',
+          borderRadius: '16px',
+          overflow: 'hidden',
+          border: '1px solid rgba(255,255,255,0.08)',
+        }}>
+          <div style={{ padding: '20px 20px 16px', borderBottom: '2px dashed rgba(255,255,255,0.1)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600 }}>17. Ticket</p>
+                <h3 style={{ fontSize: '20px', fontWeight: 800, color: 'white', marginTop: '4px' }}>Upper Body A</h3>
+              </div>
+              <div style={{ background: '#ef4444', borderRadius: '8px', padding: '6px 12px' }}>
+                <span style={{ fontSize: '18px', fontWeight: 900, color: 'white' }}>A</span>
+              </div>
+            </div>
+          </div>
+          <div style={{ padding: '16px 20px' }}>
+            {['Bench Press — 4×8', 'OHP — 3×10', 'Rows — 4×10', 'Curls — 3×12'].map((ex, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: i < 3 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+                <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)' }}>{ex}</span>
+                <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)' }}>✓</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px 20px', display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)' }}>Total Volume</span>
+            <span style={{ fontSize: '13px', color: '#ef4444', fontWeight: 700 }}>18,400 lbs</span>
+          </div>
+        </div>
+
+        {/* 18. Dashboard / Bento Grid Card */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gridTemplateRows: 'auto auto',
+          gap: '8px',
+        }}>
+          <div style={{ gridColumn: '1 / -1', background: 'linear-gradient(135deg, #0f0f0f, #1a1a2e)', borderRadius: '16px', padding: '16px', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <p style={{ fontSize: '9px', color: 'rgba(255,255,255,0.3)', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600, marginBottom: '8px' }}>18. Bento Grid</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', height: '60px' }}>
+              {[40,65,50,80,55,90,70,85,95,60,75,88].map((h, i) => (
+                <div key={i} style={{ width: '100%', maxWidth: '22px', height: `${h}%`, borderRadius: '4px 4px 0 0', background: `linear-gradient(to top, rgba(239,68,68,0.6), rgba(239,68,68,${0.2 + h/200}))` }} />
+              ))}
+            </div>
+          </div>
+          {[
+            { val: '5/7', label: 'DAYS', color: '#22c55e' },
+            { val: '312', label: 'STREAK', color: '#ef4444' },
+          ].map((s, i) => (
+            <div key={i} style={{ background: '#111', borderRadius: '16px', padding: '16px', border: '1px solid rgba(255,255,255,0.06)', textAlign: 'center' }}>
+              <div style={{ fontSize: '28px', fontWeight: 900, color: s.color }}>{s.val}</div>
+              <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.3)', letterSpacing: '2px', marginTop: '4px' }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* 19. Magazine / Editorial Card */}
+        <div style={{
+          background: '#0a0a0a',
+          borderRadius: '0',
+          border: '1px solid rgba(255,255,255,0.08)',
+          overflow: 'hidden',
+        }}>
+          <div style={{ padding: '24px 20px 16px' }}>
+            <p style={{ fontSize: '9px', color: 'rgba(255,255,255,0.25)', letterSpacing: '4px', textTransform: 'uppercase', fontWeight: 600 }}>19. Editorial</p>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginTop: '12px' }}>
+              <span style={{ fontSize: '72px', fontWeight: 100, color: 'white', lineHeight: 0.85, fontFamily: 'Georgia, serif' }}>5</span>
+              <div>
+                <div style={{ fontSize: '14px', fontWeight: 300, color: 'white', fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>exercises</div>
+                <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', fontFamily: 'Georgia, serif', marginTop: '2px' }}>for maximum hypertrophy</div>
+              </div>
+            </div>
+          </div>
+          <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '0 20px' }} />
+          <div style={{ padding: '16px 20px', display: 'flex', gap: '20px' }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.25)', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '6px' }}>Focus</div>
+              <div style={{ fontSize: '13px', color: 'white', fontWeight: 600 }}>Chest & Triceps</div>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.25)', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '6px' }}>Duration</div>
+              <div style={{ fontSize: '13px', color: 'white', fontWeight: 600 }}>48 min</div>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.25)', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '6px' }}>Level</div>
+              <div style={{ fontSize: '13px', color: '#ef4444', fontWeight: 600 }}>Advanced</div>
+            </div>
+          </div>
+        </div>
+
+        {/* 20. Neon Outline Card */}
+        <div style={{
+          background: '#050505',
+          borderRadius: '20px',
+          border: '1px solid rgba(0,255,136,0.3)',
+          padding: '24px',
+          boxShadow: '0 0 20px rgba(0,255,136,0.05), inset 0 0 20px rgba(0,255,136,0.02)',
+          position: 'relative',
+        }}>
+          <p style={{ fontSize: '9px', color: 'rgba(0,255,136,0.4)', letterSpacing: '4px', textTransform: 'uppercase', fontWeight: 600, marginBottom: '16px' }}>20. Neon Outline</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{
+              width: '64px', height: '64px', borderRadius: '50%',
+              border: '2px solid rgba(0,255,136,0.4)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 0 12px rgba(0,255,136,0.15)',
+            }}>
+              <span style={{ fontSize: '24px', fontWeight: 900, color: '#00ff88' }}>PR</span>
+            </div>
+            <div>
+              <div style={{ fontSize: '20px', fontWeight: 800, color: 'white' }}>Deadlift</div>
+              <div style={{ fontSize: '13px', color: 'rgba(0,255,136,0.6)' }}>365 lbs × 3 reps</div>
+            </div>
+          </div>
+          <div style={{
+            marginTop: '16px', padding: '10px 16px', borderRadius: '10px',
+            background: 'rgba(0,255,136,0.08)', border: '1px solid rgba(0,255,136,0.15)',
+            fontSize: '11px', color: 'rgba(0,255,136,0.7)', textAlign: 'center', fontWeight: 600,
+          }}>
+            +15 LBS FROM LAST SESSION
+          </div>
+        </div>
+
+        {/* 21. Split Diagonal Card */}
+        <div style={{
+          borderRadius: '20px',
+          overflow: 'hidden',
+          position: 'relative',
+          height: '180px',
+        }}>
+          <div style={{ position: 'absolute', inset: 0, background: '#ef4444', clipPath: 'polygon(0 0, 100% 0, 60% 100%, 0 100%)' }} />
+          <div style={{ position: 'absolute', inset: 0, background: '#1a1a1a', clipPath: 'polygon(60% 0, 100% 0, 100% 100%, 40% 100%)' }} />
+          <div style={{ position: 'relative', zIndex: 1, display: 'flex', height: '100%' }}>
+            <div style={{ flex: 1, padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              <p style={{ fontSize: '9px', color: 'rgba(255,255,255,0.6)', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600 }}>21. Split</p>
+              <div style={{ fontSize: '36px', fontWeight: 900, color: 'white', lineHeight: 1, marginTop: '4px' }}>PUSH</div>
+              <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)', marginTop: '4px' }}>6 exercises</div>
+            </div>
+            <div style={{ flex: 1, padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'flex-end' }}>
+              <div style={{ fontSize: '36px', fontWeight: 900, color: 'white', lineHeight: 1 }}>PULL</div>
+              <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginTop: '4px' }}>5 exercises</div>
+            </div>
+          </div>
+        </div>
+
+        {/* 22. Minimal Line Card */}
+        <div style={{
+          background: 'transparent',
+          borderLeft: '3px solid #ef4444',
+          paddingLeft: '20px',
+          paddingTop: '4px',
+          paddingBottom: '4px',
+        }}>
+          <p style={{ fontSize: '9px', color: 'rgba(255,255,255,0.25)', letterSpacing: '4px', textTransform: 'uppercase', fontWeight: 600, marginBottom: '12px' }}>22. Minimal Line</p>
+          <div style={{ fontSize: '14px', color: 'white', fontWeight: 700, marginBottom: '4px' }}>Squat — 275 lbs</div>
+          <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginBottom: '12px' }}>4 sets × 6 reps · RPE 8.5</div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {[275, 275, 275, 265].map((w, i) => (
+              <div key={i} style={{
+                padding: '6px 10px', borderRadius: '6px',
+                background: i < 3 ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.05)',
+                border: `1px solid ${i < 3 ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.08)'}`,
+                fontSize: '11px', fontWeight: 700,
+                color: i < 3 ? '#22c55e' : 'rgba(255,255,255,0.4)',
+              }}>{w}</div>
+            ))}
+          </div>
+        </div>
+
+        {/* 23. Stacked Paper Card */}
+        <div style={{ position: 'relative', paddingTop: '8px', paddingLeft: '4px' }}>
+          <div style={{ position: 'absolute', top: 0, left: 8, right: -4, bottom: 8, background: '#1a1a1a', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.04)', transform: 'rotate(1.5deg)' }} />
+          <div style={{ position: 'absolute', top: 4, left: 4, right: 0, bottom: 4, background: '#151515', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.06)', transform: 'rotate(0.5deg)' }} />
+          <div style={{ position: 'relative', background: '#111', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.08)', padding: '20px', zIndex: 1 }}>
+            <p style={{ fontSize: '9px', color: 'rgba(255,255,255,0.25)', letterSpacing: '4px', textTransform: 'uppercase', fontWeight: 600, marginBottom: '12px' }}>23. Stacked Paper</p>
+            <div style={{ fontSize: '18px', fontWeight: 800, color: 'white', marginBottom: '4px' }}>Week 4 of 8</div>
+            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginBottom: '16px' }}>Upper/Lower Split — Strength Phase</div>
+            <div style={{ height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.06)' }}>
+              <div style={{ height: '100%', width: '50%', borderRadius: '3px', background: 'linear-gradient(90deg, #ef4444, #f97316)' }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', fontSize: '10px', color: 'rgba(255,255,255,0.3)' }}>
+              <span>16 sessions done</span>
+              <span>16 remaining</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 24. Metric Dashboard Card */}
+        <div style={{
+          background: 'linear-gradient(145deg, #0f0f0f, #0a0a0a)',
+          borderRadius: '20px',
+          padding: '20px',
+          border: '1px solid rgba(255,255,255,0.06)',
+        }}>
+          <p style={{ fontSize: '9px', color: 'rgba(255,255,255,0.25)', letterSpacing: '4px', textTransform: 'uppercase', fontWeight: 600, marginBottom: '16px' }}>24. Metric Dashboard</p>
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+            {[
+              { label: 'Bench', val: '225', delta: '+10', up: true },
+              { label: 'Squat', val: '315', delta: '+15', up: true },
+              { label: 'Dead', val: '365', delta: '-5', up: false },
+            ].map((m, i) => (
+              <div key={i} style={{ flex: 1, background: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '12px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.04)' }}>
+                <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px' }}>{m.label}</div>
+                <div style={{ fontSize: '22px', fontWeight: 900, color: 'white', lineHeight: 1 }}>{m.val}</div>
+                <div style={{ fontSize: '10px', fontWeight: 700, color: m.up ? '#22c55e' : '#ef4444', marginTop: '4px' }}>
+                  {m.delta} lbs
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{
+            background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)',
+            borderRadius: '10px', padding: '10px 14px',
+            display: 'flex', alignItems: 'center', gap: '8px',
+          }}>
+            <span style={{ fontSize: '16px' }}>🏆</span>
+            <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>Total: <span style={{ color: '#ef4444', fontWeight: 800 }}>905 lbs</span> Powerlifting Total</span>
+          </div>
+        </div>
+
+        {/* 25. Gradient Mesh Card */}
+        <div style={{
+          borderRadius: '24px',
+          overflow: 'hidden',
+          position: 'relative',
+          minHeight: '220px',
+          background: '#0a0a0a',
+        }}>
+          {/* Mesh gradient blobs */}
+          <div style={{ position: 'absolute', top: '-20%', left: '-10%', width: '60%', height: '70%', borderRadius: '50%', background: 'radial-gradient(circle, rgba(239,68,68,0.35) 0%, transparent 70%)', filter: 'blur(30px)' }} />
+          <div style={{ position: 'absolute', bottom: '-20%', right: '-10%', width: '60%', height: '70%', borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.3) 0%, transparent 70%)', filter: 'blur(30px)' }} />
+          <div style={{ position: 'absolute', top: '30%', right: '20%', width: '40%', height: '50%', borderRadius: '50%', background: 'radial-gradient(circle, rgba(168,85,247,0.25) 0%, transparent 70%)', filter: 'blur(25px)' }} />
+          <div style={{ position: 'relative', zIndex: 1, padding: '28px 24px' }}>
+            <p style={{ fontSize: '9px', color: 'rgba(255,255,255,0.3)', letterSpacing: '4px', textTransform: 'uppercase', fontWeight: 600, marginBottom: '20px' }}>25. Gradient Mesh</p>
+            <div style={{ fontSize: '32px', fontWeight: 900, color: 'white', lineHeight: 1.1, marginBottom: '8px' }}>
+              Your Next<br />Workout
+            </div>
+            <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '20px' }}>Push Day — 6 exercises, ~45 min</div>
+            <button style={{
+              background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px',
+              padding: '12px 24px', color: 'white', fontSize: '13px', fontWeight: 700,
+              cursor: 'pointer', letterSpacing: '0.5px',
+            }}>
+              Start Now →
+            </button>
           </div>
         </div>
 
