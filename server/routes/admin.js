@@ -5117,6 +5117,7 @@ router.get('/audit', adminAuth, async (req, res) => {
           <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;">14</td>
           <td style="padding:10px 12px;color:#fff;font-size:13px;">Notes lost when undoing an exercise swap</td>
           <td style="padding:10px 12px;color:rgba(255,255,255,0.4);font-size:12px;font-family:monospace;">WorkoutSession.jsx:997-1001</td>
+          <td style="padding:10px 12px;"><span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3);">FIXED 4/4</span></td>
         </tr>
       </tbody>
     </table>
