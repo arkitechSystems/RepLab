@@ -294,12 +294,6 @@ export default function Calendar() {
     try {
       const targetDateStr = format(targetDate, 'yyyy-MM-dd');
 
-      // Step 1: Assign the templateId to the target day's schedule
-      await api('/schedule', {
-        method: 'PUT',
-        body: JSON.stringify({ schedule: [{ date: targetDateStr, templateId: copySource.templateId }] }),
-      });
-
       // Fetch source session to copy weights (and optionally reps as goals)
       const sourceSession = await api(`/sessions/by-template/${copySource.templateId}/${copySource.date}`).catch(() => null);
 
@@ -344,27 +338,37 @@ export default function Calendar() {
         }
       }
 
-      if (workoutDataForCopy) {
-        // Build blank entries (user starts fresh, weights show as suggestions)
-        const entries = [];
-        for (const ex of workoutDataForCopy.exercises) {
-          if (ex.isSectionHeader) continue;
-          for (const s of ex.sets) {
-            entries.push({ exerciseName: ex.name, setNumber: s.setNumber, weight: 0, reps: 0 });
-          }
-        }
-
-        await api('/sessions', {
-          method: 'POST',
-          body: JSON.stringify({
-            templateId: copySource.templateId,
-            date: targetDateStr,
-            entries,
-            notes: {},
-            workoutData: workoutDataForCopy,
-          }),
-        });
+      if (!workoutDataForCopy) {
+        setEditError('Could not load workout data for copy.');
+        cancelCopy();
+        return;
       }
+
+      // Assign the templateId to the target day's schedule (after data validated)
+      await api('/schedule', {
+        method: 'PUT',
+        body: JSON.stringify({ schedule: [{ date: targetDateStr, templateId: copySource.templateId }] }),
+      });
+
+      // Build blank entries (user starts fresh, weights show as suggestions)
+      const entries = [];
+      for (const ex of workoutDataForCopy.exercises) {
+        if (ex.isSectionHeader) continue;
+        for (const s of ex.sets) {
+          entries.push({ exerciseName: ex.name, setNumber: s.setNumber, weight: 0, reps: 0 });
+        }
+      }
+
+      await api('/sessions', {
+        method: 'POST',
+        body: JSON.stringify({
+          templateId: copySource.templateId,
+          date: targetDateStr,
+          entries,
+          notes: {},
+          workoutData: workoutDataForCopy,
+        }),
+      });
 
       // Refresh schedule and completed sessions
       await refreshSchedule();
@@ -906,7 +910,7 @@ export default function Calendar() {
 
                 {/* Create new workout */}
                 <button
-                  onClick={() => { setEditingDay(null); navigate('/clientworkouts/create?quick=1'); }}
+                  onClick={() => { const d = editingDay ? format(editingDay, 'yyyy-MM-dd') : ''; setEditingDay(null); navigate(`/clientworkouts/create?quick=1${d ? '&date=' + d : ''}`); }}
                   className="w-full text-left rounded-xl px-4 py-3.5 flex items-center gap-3 bg-white/5 active:bg-white/10 active:scale-[0.98] transition-all mt-1 mb-2"
                 >
                   <div className="w-8 h-8 rounded-full btn-gradient flex items-center justify-center shrink-0">

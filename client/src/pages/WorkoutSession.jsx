@@ -1353,6 +1353,8 @@ export default function WorkoutSession() {
 
   // Navigate to adjacent day's workout (uses schedule to find templateId for that day)
   const [dayNavDisabled, setDayNavDisabled] = useState(false);
+  // Reset nav lock when route params change (component reused, not remounted)
+  useEffect(() => { setDayNavDisabled(false); }, [templateId, date]);
   const navigateToDay = useCallback((targetDate) => {
     if (!schedule || dayNavDisabled) return;
     const dateStr = format(targetDate, 'yyyy-MM-dd');
