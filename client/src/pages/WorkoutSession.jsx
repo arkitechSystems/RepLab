@@ -961,8 +961,13 @@ export default function WorkoutSession() {
     const currentExercises = template.exercises;
     const tIdx = findExIdx(currentExercises, oldKey);
     if (tIdx < 0) return; // Safety: exercise not found
-    const oldExercise = currentExercises[tIdx];
+    const oldExercise = { ...currentExercises[tIdx], sets: currentExercises[tIdx].sets.map(s => ({ ...s })) };
     const numSets = oldExercise?.sets?.length || 0;
+    const oldEntries = entries[oldKey] ? [...entries[oldKey]] : null;
+    const oldNote = notes[oldKey] || '';
+    const oldCompletedKeys = [...completedSets].filter((k) => k.startsWith(oldKey + '-'));
+    const oldAutoFilledKeys = [...autoFilled].filter((k) => k.startsWith(oldKey + '-'));
+    const oldName = exNameFromKey(oldKey);
 
     // Compute the new key from the post-swap exercise list
     const newExercises = currentExercises.map((ex, i) => i === tIdx ? { ...ex, name: newName } : ex);
@@ -1017,6 +1022,50 @@ export default function WorkoutSession() {
         if (!key.startsWith(oldKey + '-')) next.add(key);
       }
       return next;
+    });
+
+    // Show undo toast
+    setUndoToast({
+      type: 'exercise',
+      exerciseName: newKey,
+      exerciseIndex: tIdx,
+      message: `Swapped ${oldName} → ${newName}`,
+      undoFn: () => {
+        setPersisted(false);
+        structureSaveNeeded.current = true;
+        // Restore old exercise in template
+        setTemplate((prev) => {
+          const ti = findExIdx(prev.exercises, newKey);
+          if (ti < 0) return prev;
+          return {
+            ...prev,
+            exercises: prev.exercises.map((ex, i) => i === ti ? oldExercise : ex),
+          };
+        });
+        // Restore old entries
+        setEntries((prev) => {
+          const updated = { ...prev };
+          delete updated[newKey];
+          if (oldEntries) updated[oldKey] = oldEntries;
+          return updated;
+        });
+        // Restore notes
+        if (oldNote) {
+          setNotes((prev) => ({ ...prev, [oldKey]: oldNote }));
+        }
+        // Restore completedSets
+        setCompletedSets((prev) => {
+          const next = new Set(prev);
+          oldCompletedKeys.forEach((k) => next.add(k));
+          return next;
+        });
+        // Restore autoFilled
+        setAutoFilled((prev) => {
+          const next = new Set(prev);
+          oldAutoFilledKeys.forEach((k) => next.add(k));
+          return next;
+        });
+      },
     });
   }
 
@@ -1502,7 +1551,7 @@ export default function WorkoutSession() {
           >
             <h3 className="text-base font-bold text-white text-center mb-1">Substitute Exercise</h3>
             <p className="text-wf-gray-400 text-sm text-center mb-5">
-              Substituting this exercise will remove your saved sets for {exNameFromKey(pendingSwap.oldName)}. This cannot be undone.
+              Substituting this exercise will remove your saved sets for {exNameFromKey(pendingSwap.oldName)}. You can undo this.
             </p>
             <div className="flex flex-col gap-2">
               <button
