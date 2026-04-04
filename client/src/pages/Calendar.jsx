@@ -70,9 +70,12 @@ export default function Calendar() {
   const monthGridDays = Array.from({ length: 42 }, (_, i) => addDays(monthGridStart, i));
 
   // Compute visible date range for fetching schedule
-  // Always fetch a wide range covering both views (current month grid + a few extra weeks)
-  const fetchFrom = format(addDays(monthGridStart, -7), 'yyyy-MM-dd');
-  const fetchTo = format(addDays(monthGridStart, 56), 'yyyy-MM-dd');
+  // Cover both week and month views — use the earliest/latest visible date plus padding
+  const weekEnd = addDays(weekStart, 6);
+  const rangeStart = monthGridStart < weekStart ? monthGridStart : weekStart;
+  const rangeEnd = addDays(monthGridStart, 41) > weekEnd ? addDays(monthGridStart, 41) : weekEnd;
+  const fetchFrom = format(addDays(rangeStart, -7), 'yyyy-MM-dd');
+  const fetchTo = format(addDays(rangeEnd, 7), 'yyyy-MM-dd');
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
