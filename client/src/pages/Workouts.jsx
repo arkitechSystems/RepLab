@@ -301,48 +301,58 @@ export default function Workouts() {
   }
 
   async function tryApply(program, startDate) {
+    if (!program) return;
     const programId = program.id;
     const entries = buildEntries(program, startDate);
     if (tutorial.active) {
       await applyEntries(entries);
       return;
     }
-    const fromDate = entries[0].date;
-    const toDate = entries[entries.length - 1].date;
-    const schedule = await api(`/schedule?from=${fromDate}&to=${toDate}`);
-    if (beginModal?.id !== programId) return;
-    const conflicts = entries
-      .filter((e) => schedule.some((s) => s.date === e.date && s.templateId))
-      .map((e) => {
-        const existing = schedule.find((s) => s.date === e.date && s.templateId);
-        const dayLabel = `${DAY_NAMES_FULL[e.displayDate.getDay()]}, ${e.displayDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`;
-        return { dayLabel, workoutName: existing?.templateName || 'Unknown workout' };
-      });
-    if (conflicts.length > 0) {
-      setConflictInfo({ conflicts, pendingEntries: entries });
-    } else {
-      await applyEntries(entries);
+    try {
+      const fromDate = entries[0].date;
+      const toDate = entries[entries.length - 1].date;
+      const schedule = await api(`/schedule?from=${fromDate}&to=${toDate}`);
+      if (beginModal?.id !== programId) return;
+      const conflicts = entries
+        .filter((e) => schedule.some((s) => s.date === e.date && s.templateId))
+        .map((e) => {
+          const existing = schedule.find((s) => s.date === e.date && s.templateId);
+          const dayLabel = `${DAY_NAMES_FULL[e.displayDate.getDay()]}, ${e.displayDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`;
+          return { dayLabel, workoutName: existing?.templateName || 'Unknown workout' };
+        });
+      if (conflicts.length > 0) {
+        setConflictInfo({ conflicts, pendingEntries: entries });
+      } else {
+        await applyEntries(entries);
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to load schedule. Please try again.');
     }
   }
 
   async function applyEntries(entries) {
-    if (!tutorial.active) {
-      await api('/schedule', {
-        method: 'PUT',
-        body: JSON.stringify({ schedule: entries.map(({ date, templateId }) => ({ date, templateId })) }),
-      });
+    try {
+      if (!tutorial.active) {
+        await api('/schedule', {
+          method: 'PUT',
+          body: JSON.stringify({ schedule: entries.map(({ date, templateId }) => ({ date, templateId })) }),
+        });
+      }
+      completeTutorialAction('begin-confirmed');
+      closeBeginModal();
+      navigate(tutorial.active ? '/calendar?tutorialDone=1' : '/calendar');
+    } catch (err) {
+      alert(err.message || 'Failed to save schedule. Please try again.');
     }
-    completeTutorialAction('begin-confirmed');
-    closeBeginModal();
-    navigate(tutorial.active ? '/calendar?tutorialDone=1' : '/calendar');
   }
 
   async function handleStartToday() {
+    if (!beginModal) return;
     await tryApply(beginModal, new Date());
   }
 
   async function handleBeginDate() {
-    if (!beginDateInput) return;
+    if (!beginModal || !beginDateInput) return;
     await tryApply(beginModal, new Date(beginDateInput + 'T00:00:00'));
   }
 
@@ -514,42 +524,52 @@ export default function Workouts() {
   }
 
   async function tryAddWorkout(template, date) {
-    const dateStr = date.toISOString().slice(0, 10);
-    const schedule = await api(`/schedule?from=${dateStr}&to=${dateStr}`);
-    const existing = schedule.find((s) => s.date === dateStr && s.templateId);
-    if (existing) {
-      setAddConflictInfo({
-        dayName: `${DAY_NAMES_FULL[date.getDay()]}, ${date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`,
-        workoutName: existing.templateName || 'Unknown workout',
-        entry: { date: dateStr, templateId: template.id },
-      });
-    } else {
-      await applyAddWorkout({ date: dateStr, templateId: template.id });
+    if (!template) return;
+    try {
+      const dateStr = date.toISOString().slice(0, 10);
+      const schedule = await api(`/schedule?from=${dateStr}&to=${dateStr}`);
+      const existing = schedule.find((s) => s.date === dateStr && s.templateId);
+      if (existing) {
+        setAddConflictInfo({
+          dayName: `${DAY_NAMES_FULL[date.getDay()]}, ${date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`,
+          workoutName: existing.templateName || 'Unknown workout',
+          entry: { date: dateStr, templateId: template.id },
+        });
+      } else {
+        await applyAddWorkout({ date: dateStr, templateId: template.id });
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to add workout. Please try again.');
     }
   }
 
   async function applyAddWorkout(entry) {
-    if (!tutorial.active) {
-      await api('/schedule', {
-        method: 'PUT',
-        body: JSON.stringify({ schedule: [entry] }),
-      });
-    }
-    closeAddWorkoutModal();
-    if (tutorial.active) {
-      skipTutorial();
-      navigate('/calendar?tutorialDone=1');
-    } else {
-      navigate('/calendar');
+    try {
+      if (!tutorial.active) {
+        await api('/schedule', {
+          method: 'PUT',
+          body: JSON.stringify({ schedule: [entry] }),
+        });
+      }
+      closeAddWorkoutModal();
+      if (tutorial.active) {
+        skipTutorial();
+        navigate('/calendar?tutorialDone=1');
+      } else {
+        navigate('/calendar');
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to save. Please try again.');
     }
   }
 
   async function handleAddToday() {
+    if (!addWorkoutModal) return;
     await tryAddWorkout(addWorkoutModal, new Date());
   }
 
   async function handleAddDate() {
-    if (!addDateInput) return;
+    if (!addWorkoutModal || !addDateInput) return;
     await tryAddWorkout(addWorkoutModal, new Date(addDateInput + 'T00:00:00'));
   }
 

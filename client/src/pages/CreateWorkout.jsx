@@ -10,6 +10,7 @@ export default function CreateWorkout() {
   const [searchParams] = useSearchParams();
   const preselectedProgramId = searchParams.get('programId');
   const isQuickCreate = searchParams.get('quick') === '1';
+  const assignDate = searchParams.get('date'); // date to assign workout to on calendar
   const [programs, setPrograms] = useState([]);
   const [selectedProgramId, setSelectedProgramId] = useState(preselectedProgramId || '');
   const [name, setName] = useState('');
@@ -186,7 +187,7 @@ export default function CreateWorkout() {
 
     setSaving(true);
     try {
-      await api('/templates', {
+      const created = await api('/templates', {
         method: 'POST',
         body: JSON.stringify({
           name: name.trim(),
@@ -202,6 +203,15 @@ export default function CreateWorkout() {
         if (!knownNames.has(ex.name.toLowerCase())) {
           createCustom(ex.name, 'Other').catch(() => {});
         }
+      }
+      // If a calendar date was passed, assign the new workout to that date
+      if (assignDate && created?.id) {
+        await api('/schedule', {
+          method: 'PUT',
+          body: JSON.stringify({ schedule: [{ date: assignDate, templateId: created.id }] }),
+        });
+        navigate('/calendar');
+        return;
       }
       const from = searchParams.get('from');
       if (from === 'trainer') { window.location.href = '/trainer/workouts'; }

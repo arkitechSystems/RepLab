@@ -1084,10 +1084,10 @@ export default function WorkoutSession() {
         }
         return;
       }
-      // Require at least one set with weight > 0 or reps > 0
+      // Require at least one set with data (weight > 0, weight = -1 for BW, or reps > 0)
       if (newCompleted) {
         const hasData = Object.values(entries).some((sets) =>
-          sets.some((s) => (Number(s.weight) > 0) || (Number(s.reps) > 0))
+          sets.some((s) => Number(s.weight) > 0 || Number(s.weight) === -1 || Number(s.reps) > 0)
         );
         if (!hasData) {
           alert('Log at least one set before completing your workout');

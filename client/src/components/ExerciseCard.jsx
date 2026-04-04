@@ -110,9 +110,9 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
       if (rowEl) {
         const currentX = parseFloat(rowEl.style.transform?.replace(/[^-\d.]/g, '') || '0');
         if (currentX > 60 && onToggleComplete) {
-          onToggleComplete(exercise.name, idx);
+          onToggleComplete(keyName, idx);
         } else if (currentX < -60 && onDeleteSet) {
-          onDeleteSet(exercise.name, idx);
+          onDeleteSet(keyName, idx);
         }
         rowEl.style.transition = 'transform 0.2s ease, background 0.2s ease';
         rowEl.style.transform = 'translateX(0)';
