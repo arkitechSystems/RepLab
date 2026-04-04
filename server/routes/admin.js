@@ -5050,19 +5050,19 @@ router.get('/audit', adminAuth, async (req, res) => {
           <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;">6</td>
           <td style="padding:10px 12px;color:#fff;font-size:13px;"><strong>Day navigation arrows permanently disabled</strong><br><span style="color:rgba(255,255,255,0.4);font-size:11px;">dayNavDisabled set to true but never reset on component re-mount.</span></td>
           <td style="padding:10px 12px;color:rgba(255,255,255,0.4);font-size:12px;font-family:monospace;">WorkoutSession.jsx:1356</td>
-          <td style="padding:10px 12px;"><span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);">OPEN</span></td>
+          <td style="padding:10px 12px;"><span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3);">FIXED 4/4</span></td>
         </tr>
         <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
           <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;">7</td>
           <td style="padding:10px 12px;color:#fff;font-size:13px;"><strong>Copy Workout fails silently if workout data can't be loaded</strong><br><span style="color:rgba(255,255,255,0.4);font-size:11px;">Schedule updated but no session created. Workout appears on calendar but can't be started.</span></td>
           <td style="padding:10px 12px;color:rgba(255,255,255,0.4);font-size:12px;font-family:monospace;">Calendar.jsx:344-364</td>
-          <td style="padding:10px 12px;"><span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);">OPEN</span></td>
+          <td style="padding:10px 12px;"><span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3);">FIXED 4/4</span></td>
         </tr>
         <tr>
           <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;">8</td>
           <td style="padding:10px 12px;color:#fff;font-size:13px;"><strong>Bottom "Create New Workout" button doesn't pass date</strong><br><span style="color:rgba(255,255,255,0.4);font-size:11px;">Only the top button includes the date param. Bottom button loses calendar context.</span></td>
           <td style="padding:10px 12px;color:rgba(255,255,255,0.4);font-size:12px;font-family:monospace;">Calendar.jsx:906</td>
-          <td style="padding:10px 12px;"><span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);">OPEN</span></td>
+          <td style="padding:10px 12px;"><span style="padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3);">FIXED 4/4</span></td>
         </tr>
       </tbody>
     </table>
