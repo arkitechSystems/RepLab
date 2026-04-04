@@ -206,6 +206,8 @@ export default function Workouts() {
   const [tutorialPointer, setTutorialPointer] = useState(null); // 'create' | null
   const [pointerRect, setPointerRect] = useState(null);
 
+  // Featured video ref
+  const featuredVideoRef = useRef(null);
   // Pull-to-refresh state
   const [refreshing, setRefreshing] = useState(false);
   const pullStartY = useRef(0);
@@ -2784,16 +2786,7 @@ export default function Workouts() {
               style={{ animationDelay: '0ms', minHeight: '140px' }}
             >
               <video
-                ref={(el) => {
-                  if (!el) return;
-                  el.currentTime = 7;
-                  el.ontimeupdate = () => {
-                    if (el.duration && el.currentTime >= el.duration - 6) {
-                      el.currentTime = 7;
-                    }
-                  };
-                  el.play().catch(() => {});
-                }}
+                ref={featuredVideoRef}
                 className="absolute inset-0 w-full h-full object-cover"
                 autoPlay
                 loop
