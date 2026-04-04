@@ -1043,8 +1043,8 @@ export default function WorkoutSession() {
       if (tutorialMode) {
         if (newCompleted) {
           // Autofill entries with varied reps and weights so summary shows volume variance
-          const repVariations = [0, 1, 2, -1, -2, 0, 1, -1, 2, -2, 0, 1];
-          const weightVariations = [0, 5, 10, 0, -5, 5, 0, -10, 10, 0, 5, -5];
+          const repVariations = [0, 1, 2, 0, 1, 0, 1, 0, 2, 1, 0, 1];
+          const weightVariations = [0, 5, 10, 0, 5, 5, 0, 10, 10, 0, 5, 0];
           let variIdx = 0;
           const filled = {};
           for (let exIdx = 0; exIdx < template.exercises.length; exIdx++) {
@@ -1438,7 +1438,7 @@ export default function WorkoutSession() {
     );
   }
 
-  const totalSets = template.exercises.filter(ex => !ex.isSectionHeader).reduce((sum, ex) => sum + ex.sets.length, 0);
+  const totalSets = template.exercises.filter(ex => !ex.isSectionHeader).reduce((sum, ex) => sum + (ex.sets?.length || 0), 0);
   const completedCount = completedSets.size;
   const progressPct = totalSets > 0 ? Math.round((completedCount / totalSets) * 100) : 0;
 
@@ -1842,11 +1842,13 @@ export default function WorkoutSession() {
         </div>
       )}
       {undoToast && undoToast.type === 'exercise' && undoToast.exerciseIndex >= template.exercises.length && idx === template.exercises.length - 1 && (
-            <UndoToast
-              message={undoToast.message}
-              onUndo={() => { undoToast.undoFn(); setUndoToast(null); }}
-              onExpire={() => setUndoToast(null)}
-            />
+            <div className="fixed bottom-28 left-4 right-4 z-50">
+              <UndoToast
+                message={undoToast.message}
+                onUndo={() => { undoToast.undoFn(); setUndoToast(null); }}
+                onExpire={() => setUndoToast(null)}
+              />
+            </div>
           )}
           </div>
         );

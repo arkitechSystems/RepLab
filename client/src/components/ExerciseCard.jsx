@@ -373,7 +373,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                     min="0"
                     max="9999"
                     value={entry.reps ?? ''}
-                    onChange={(e) => onChange?.(exercise.name, idx, 'reps', e.target.value)}
+                    onChange={(e) => { const v = e.target.value; onChange?.(exercise.name, idx, 'reps', v === '' ? '' : Math.max(0, Number(v))); }}
                     onFocus={(e) => e.target.select()}
                     placeholder="0"
                     className="w-full lcd-input rounded-lg px-2 py-2.5 text-center text-base text-white focus:outline-none"
@@ -397,7 +397,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                       min="0"
                       max="9999"
                       value={entry.reps ?? ''}
-                      onChange={(e) => onChange?.(exercise.name, idx, 'reps', e.target.value)}
+                      onChange={(e) => { const v = e.target.value; onChange?.(exercise.name, idx, 'reps', v === '' ? '' : Math.max(0, Number(v))); }}
                       onFocus={(e) => { if (inputsLocked && onLockedTap) { e.target.blur(); onLockedTap(); return; } e.target.select(); }}
                       onBlur={() => onBlur?.(exercise.name, idx, 'reps')}
                       readOnly={readOnly || inputsLocked}
