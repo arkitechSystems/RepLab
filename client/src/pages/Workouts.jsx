@@ -12,6 +12,27 @@ import UndoToast from '../components/UndoToast';
 
 const DAY_NAMES_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+function CountUp({ to, duration = 1200, delay = 0 }) {
+  const [value, setValue] = useState(0);
+  const ref = useRef();
+  useEffect(() => {
+    if (!to) return;
+    const timeout = setTimeout(() => {
+      const start = performance.now();
+      function tick(now) {
+        const elapsed = now - start;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        setValue(Math.round(eased * to));
+        if (progress < 1) ref.current = requestAnimationFrame(tick);
+      }
+      ref.current = requestAnimationFrame(tick);
+    }, delay);
+    return () => { clearTimeout(timeout); if (ref.current) cancelAnimationFrame(ref.current); };
+  }, [to, duration, delay]);
+  return value;
+}
+
 const CARD_BORDER_STYLE = {
   border: '0.75px solid rgba(255,255,255,0.3)',
   boxShadow: '0 0 20px rgba(255,255,255,0.07), 0 0 40px rgba(255,255,255,0.03)',
@@ -2801,7 +2822,7 @@ export default function Workouts() {
                     {streak > 0 && (
                       <div style={{ textAlign: 'center' }}>
                         <div style={{ fontSize: '28px', fontWeight: 200, color: 'white', letterSpacing: '-2px', lineHeight: 1, fontFamily: 'system-ui' }}>
-                          {streak}
+                          <CountUp to={streak} duration={800} delay={200} />
                         </div>
                         <div style={{ fontSize: '8px', color: 'rgba(249,115,22,0.6)', marginTop: '3px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600 }}>
                           Streak
@@ -2814,7 +2835,7 @@ export default function Workouts() {
                     {totalWorkouts > 0 && (
                       <div style={{ textAlign: 'center' }}>
                         <div style={{ fontSize: '28px', fontWeight: 200, color: 'white', letterSpacing: '-2px', lineHeight: 1, fontFamily: 'system-ui' }}>
-                          {totalWorkouts}
+                          <CountUp to={totalWorkouts} duration={1000} delay={500} />
                         </div>
                         <div style={{ fontSize: '8px', color: 'rgba(239,68,68,0.6)', marginTop: '3px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600 }}>
                           Workouts
@@ -2827,7 +2848,7 @@ export default function Workouts() {
                     {workoutsThisMonth > 0 && (
                       <div style={{ textAlign: 'center' }}>
                         <div style={{ fontSize: '28px', fontWeight: 200, color: 'white', letterSpacing: '-2px', lineHeight: 1, fontFamily: 'system-ui' }}>
-                          {workoutsThisMonth}
+                          <CountUp to={workoutsThisMonth} duration={1200} delay={800} />
                         </div>
                         <div style={{ fontSize: '8px', color: 'rgba(34,197,94,0.6)', marginTop: '3px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600 }}>
                           This Mo
