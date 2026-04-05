@@ -423,7 +423,7 @@ const db = {
   // Schedule (date-based)
   async getSchedule(userId, fromDate, toDate) {
     const { rows } = await pool.query(
-      `SELECT sd.schedule_date, sd.template_id, t.name AS template_name, t.is_rest
+      `SELECT sd.schedule_date, sd.template_id, sd.is_rest AS day_is_rest, t.name AS template_name, t.is_rest AS template_is_rest
        FROM schedule_days sd
        LEFT JOIN templates t ON t.id = sd.template_id
        WHERE sd.user_id = $1 AND sd.schedule_date IS NOT NULL
@@ -441,7 +441,7 @@ const db = {
         date: dateStr,
         templateId: r.template_id,
         templateName: r.template_name || null,
-        isRest: r.is_rest || false,
+        isRest: r.day_is_rest || r.template_is_rest || false,
       };
     });
   },
@@ -455,7 +455,7 @@ const db = {
     try {
       await client.query('BEGIN');
       for (const day of schedule) {
-        if (day.templateId == null) {
+        if (day.templateId == null && !day.isRest) {
           // Delete the row if clearing a date
           await client.query(
             `DELETE FROM schedule_days WHERE user_id = $1 AND schedule_date = $2`,
@@ -463,11 +463,11 @@ const db = {
           );
         } else {
           await client.query(
-            `INSERT INTO schedule_days (user_id, schedule_date, template_id)
-             VALUES ($1, $2, $3)
+            `INSERT INTO schedule_days (user_id, schedule_date, template_id, is_rest)
+             VALUES ($1, $2, $3, $4)
              ON CONFLICT (user_id, schedule_date)
-             DO UPDATE SET template_id = $3`,
-            [userId, day.date, day.templateId]
+             DO UPDATE SET template_id = $3, is_rest = $4`,
+            [userId, day.date, day.templateId || null, day.isRest || false]
           );
         }
       }

@@ -143,6 +143,9 @@ export default async function initDb() {
   await pool.query(`DROP INDEX IF EXISTS idx_schedule_days_user_date`);
   await pool.query(`CREATE UNIQUE INDEX idx_schedule_days_user_date ON schedule_days(user_id, schedule_date)`);
 
+  // Migration: add is_rest column to schedule_days for standalone rest days
+  await pool.query(`ALTER TABLE schedule_days ADD COLUMN IF NOT EXISTS is_rest BOOLEAN DEFAULT FALSE`);
+
   // Add WARM UP section header to "Leg 1 (anterior chain)" before Leg Press (one-time migration)
   const { rows: leg1Templates } = await pool.query(
     `SELECT t.id FROM templates t JOIN programs p ON t.program_id = p.id WHERE t.name ILIKE '%Leg 1%' AND p.name ILIKE '%Upper/Lower/PPL%' LIMIT 1`

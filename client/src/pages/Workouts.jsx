@@ -251,12 +251,13 @@ export default function Workouts() {
   }, [selectedGroup, user?.role]);
 
   async function fetchData(opts = {}) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString().slice(0, 10);
+    // Use local date parts to avoid UTC timezone shift
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+    const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
 
     const [progs, tmpls, sessions, shares, accepted, prStatsData, scheduleData, completedData] = await Promise.all([
       api('/programs', opts), api('/templates', opts), api('/sessions', opts),
@@ -293,8 +294,11 @@ export default function Workouts() {
         date: todayStr,
         dayLabel: 'Today',
       });
-    } else if (todayCompleted || (todaySchedule && todaySchedule.isRest) || !todaySchedule || !todaySchedule.templateId) {
-      // Today is done/rest/empty — look at tomorrow
+    } else if (todaySchedule && todaySchedule.isRest && !todayCompleted) {
+      // Today is a rest day — show that first before looking at tomorrow
+      setNextWorkoutInfo({ status: 'rest', dayLabel: 'Today' });
+    } else {
+      // Today is done/empty — look at tomorrow
       if (tomorrowSchedule && tomorrowSchedule.templateId && !tomorrowSchedule.isRest) {
         setNextWorkoutInfo({
           status: 'upcoming',
@@ -305,8 +309,6 @@ export default function Workouts() {
         });
       } else if (tomorrowSchedule && tomorrowSchedule.isRest) {
         setNextWorkoutInfo({ status: 'rest', dayLabel: 'Tomorrow' });
-      } else if (todaySchedule && todaySchedule.isRest && !todayCompleted) {
-        setNextWorkoutInfo({ status: 'rest', dayLabel: 'Today' });
       } else {
         setNextWorkoutInfo({ status: 'none' });
       }
@@ -321,7 +323,7 @@ export default function Workouts() {
       startDay.setDate(startDay.getDate() - 1);
     }
     for (let d = startDay; ; d.setDate(d.getDate() - 1)) {
-      const dateStr = d.toISOString().slice(0, 10);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       if (sessionDates.has(dateStr)) {
         count++;
       } else {
@@ -331,12 +333,37 @@ export default function Workouts() {
     setStreak(count);
   }
 
+  async function markRestDay() {
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    try {
+      await api('/schedule', {
+        method: 'PUT',
+        body: JSON.stringify({ schedule: [{ date: todayStr, isRest: true }] }),
+      });
+      await fetchData();
+    } catch (err) {
+      console.error('Failed to mark rest day:', err);
+    }
+  }
+
   useEffect(() => {
     const controller = new AbortController();
     fetchData({ signal: controller.signal })
       .catch((err) => { if (err.name !== 'AbortError') setLoadError('Failed to load workouts'); })
       .finally(() => setLoading(false));
     return () => controller.abort();
+  }, []);
+
+  // Refresh data when user returns to page (e.g. after completing a workout)
+  useEffect(() => {
+    function handleVisibility() {
+      if (document.visibilityState === 'visible') {
+        fetchData().catch(() => {});
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, []);
 
   // Breathing blob animation for streak card
@@ -2495,7 +2522,14 @@ export default function Workouts() {
           <button
             data-tutorial="create-btn"
             onClick={() => setShowCreateMenu(true)}
-            className="btn-gradient active:scale-[0.98] text-white font-medium px-4 py-2.5 rounded-xl text-sm transition-all shrink-0"
+            className="active:scale-[0.98] text-white font-medium px-4 py-2.5 rounded-xl text-sm transition-all shrink-0"
+            style={{
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255,255,255,0.2)',
+              boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.2), 0 4px 12px rgba(0,0,0,0.2)',
+            }}
           >
             + Create
           </button>
@@ -2718,6 +2752,7 @@ export default function Workouts() {
                     <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '20px' }}>Loading...</div>
                   )}
                   {(nextWorkoutInfo?.templateId || nextWorkoutInfo?.status === 'none' || nextWorkoutInfo?.status === 'rest') && (
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -2740,6 +2775,24 @@ export default function Workouts() {
                         ? (nextWorkoutInfo.status === 'resume' ? 'Resume →' : nextWorkoutInfo.status === 'upcoming' ? 'Preview →' : 'Start Now →')
                         : 'Add a Workout →'}
                     </button>
+                    {nextWorkoutInfo?.status === 'none' && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          markRestDay();
+                        }}
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%)',
+                          backdropFilter: 'blur(10px)',
+                          border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px',
+                          padding: '12px 20px', color: 'rgba(255,255,255,0.6)', fontSize: '10px', fontWeight: 600,
+                          cursor: 'pointer', letterSpacing: '3px', textTransform: 'uppercase',
+                        }}
+                      >
+                        Rest Day
+                      </button>
+                    )}
+                    </div>
                   )}
                 </div>
                 {/* Right side — mini stats */}
@@ -2755,6 +2808,9 @@ export default function Workouts() {
                         </div>
                       </div>
                     )}
+                    {streak > 0 && totalWorkouts > 0 && (
+                      <div style={{ width: '100%', height: '1px', background: 'rgba(255,255,255,0.06)' }} />
+                    )}
                     {totalWorkouts > 0 && (
                       <div style={{ textAlign: 'center' }}>
                         <div style={{ fontSize: '28px', fontWeight: 200, color: 'white', letterSpacing: '-2px', lineHeight: 1, fontFamily: 'system-ui' }}>
@@ -2764,6 +2820,9 @@ export default function Workouts() {
                           Workouts
                         </div>
                       </div>
+                    )}
+                    {totalWorkouts > 0 && workoutsThisMonth > 0 && (
+                      <div style={{ width: '100%', height: '1px', background: 'rgba(255,255,255,0.06)' }} />
                     )}
                     {workoutsThisMonth > 0 && (
                       <div style={{ textAlign: 'center' }}>

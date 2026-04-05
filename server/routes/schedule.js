@@ -35,6 +35,13 @@ router.put('/', authMiddleware, async (req, res) => {
       }
     }
 
+    // Normalize isRest flag
+    for (const day of schedule) {
+      if (day.isRest !== undefined && typeof day.isRest !== 'boolean') {
+        return res.status(400).json({ error: 'isRest must be a boolean' });
+      }
+    }
+
     // Verify all templateIds belong to user or are global
     const templateIds = schedule.map(s => s.templateId).filter(id => id != null);
     if (templateIds.length > 0) {
