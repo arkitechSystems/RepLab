@@ -12,8 +12,9 @@ import UndoToast from '../components/UndoToast';
 
 const DAY_NAMES_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-function CountUp({ to, duration = 1200, delay = 0 }) {
+function CountUp({ to, duration = 1200, delay = 0, pulse, labelDelay }) {
   const [value, setValue] = useState(0);
+  const [done, setDone] = useState(false);
   const ref = useRef();
   useEffect(() => {
     if (!to) return;
@@ -25,12 +26,33 @@ function CountUp({ to, duration = 1200, delay = 0 }) {
         const eased = 1 - Math.pow(1 - progress, 3);
         setValue(Math.round(eased * to));
         if (progress < 1) ref.current = requestAnimationFrame(tick);
+        else setDone(true);
       }
       ref.current = requestAnimationFrame(tick);
     }, delay);
     return () => { clearTimeout(timeout); if (ref.current) cancelAnimationFrame(ref.current); };
   }, [to, duration, delay]);
-  return value;
+  return { value, done };
+}
+
+function StatNumber({ to, duration, delay, pulse, color, label }) {
+  const { value, done } = CountUp({ to, duration, delay });
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <div style={{
+        fontSize: '28px', fontWeight: 200, color: 'white', letterSpacing: '-2px', lineHeight: 1, fontFamily: 'system-ui',
+        animation: pulse && done ? 'statPulse 0.4s ease-out' : 'none',
+      }}>
+        {value}
+      </div>
+      <div style={{
+        fontSize: '8px', color, marginTop: '3px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600,
+        opacity: done ? 1 : 0, transition: 'opacity 0.4s ease',
+      }}>
+        {label}
+      </div>
+    </div>
+  );
 }
 
 const CARD_BORDER_STYLE = {
@@ -2747,6 +2769,15 @@ export default function Workouts() {
               background: '#0a0a0a',
               ...CARD_BORDER_STYLE,
             }}>
+              {/* Border shimmer sweep */}
+              <div style={{ position: 'absolute', inset: 0, borderRadius: '24px', overflow: 'hidden', pointerEvents: 'none', zIndex: 2 }}>
+                <div style={{
+                  position: 'absolute', top: '-50%', left: '-50%', width: '40%', height: '200%',
+                  background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.06) 50%, transparent 100%)',
+                  animation: 'borderShimmer 4s ease-in-out infinite',
+                  animationDelay: '1.5s',
+                }} />
+              </div>
               {/* Mesh gradient blobs */}
               <div style={{ position: 'absolute', top: '-20%', left: '-10%', width: '60%', height: '70%', borderRadius: '50%', background: 'radial-gradient(circle, rgba(239,68,68,0.35) 0%, transparent 70%)', filter: 'blur(30px)' }} />
               <div style={{ position: 'absolute', bottom: '-20%', right: '-10%', width: '60%', height: '70%', borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.3) 0%, transparent 70%)', filter: 'blur(30px)' }} />
@@ -2820,40 +2851,19 @@ export default function Workouts() {
                 {(streak > 0 || totalWorkouts > 0 || workoutsThisMonth > 0) && (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', borderLeft: '1px solid rgba(255,255,255,0.06)', paddingLeft: '16px' }}>
                     {streak > 0 && (
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '28px', fontWeight: 200, color: 'white', letterSpacing: '-2px', lineHeight: 1, fontFamily: 'system-ui' }}>
-                          <CountUp to={streak} duration={800} delay={200} />
-                        </div>
-                        <div style={{ fontSize: '8px', color: 'rgba(249,115,22,0.6)', marginTop: '3px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600 }}>
-                          Streak
-                        </div>
-                      </div>
+                      <StatNumber to={streak} duration={800} delay={200} pulse color="rgba(249,115,22,0.6)" label="Streak" />
                     )}
                     {streak > 0 && totalWorkouts > 0 && (
                       <div style={{ width: '100%', height: '1px', background: 'rgba(255,255,255,0.06)' }} />
                     )}
                     {totalWorkouts > 0 && (
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '28px', fontWeight: 200, color: 'white', letterSpacing: '-2px', lineHeight: 1, fontFamily: 'system-ui' }}>
-                          <CountUp to={totalWorkouts} duration={1000} delay={500} />
-                        </div>
-                        <div style={{ fontSize: '8px', color: 'rgba(239,68,68,0.6)', marginTop: '3px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600 }}>
-                          Workouts
-                        </div>
-                      </div>
+                      <StatNumber to={totalWorkouts} duration={1000} delay={500} color="rgba(239,68,68,0.6)" label="Workouts" />
                     )}
                     {totalWorkouts > 0 && workoutsThisMonth > 0 && (
                       <div style={{ width: '100%', height: '1px', background: 'rgba(255,255,255,0.06)' }} />
                     )}
                     {workoutsThisMonth > 0 && (
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '28px', fontWeight: 200, color: 'white', letterSpacing: '-2px', lineHeight: 1, fontFamily: 'system-ui' }}>
-                          <CountUp to={workoutsThisMonth} duration={1200} delay={800} />
-                        </div>
-                        <div style={{ fontSize: '8px', color: 'rgba(34,197,94,0.6)', marginTop: '3px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600 }}>
-                          This Mo
-                        </div>
-                      </div>
+                      <StatNumber to={workoutsThisMonth} duration={1200} delay={800} color="rgba(34,197,94,0.6)" label="This Mo" />
                     )}
                   </div>
                 )}
