@@ -2845,36 +2845,72 @@ export default function Workouts() {
                     </div>
                   )}
                   <div style={{ width: '100%', height: '1px', background: 'rgba(255,255,255,0.06)', marginTop: '16px' }} />
-                  {bodyPartPRs.length > 0 && (
+                  {bodyPartPRs.length === 0 && (
                     <div style={{ marginTop: '12px', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                       <div style={{
                         display: 'inline-block',
-                        animation: `prTicker ${Math.max(11.4, bodyPartPRs.length * 4)}s linear infinite`,
+                        animation: 'prTicker 20s linear infinite',
                         fontSize: '11px', fontWeight: 500,
                       }}>
-                        {bodyPartPRs.map((pr, i) => (
-                          <span key={pr.muscle_group}>
-                            <span style={{ color: 'rgba(239,68,68,0.6)', letterSpacing: '2px', textTransform: 'uppercase', fontSize: '8px', fontWeight: 600 }}>{pr.muscle_group} PR</span>
-                            <span style={{ color: 'rgba(255,255,255,0.2)', margin: '0 6px' }}>-</span>
-                            <span style={{ color: 'rgba(255,255,255,0.6)' }}>{pr.exercise_name}</span>
-                            <span style={{ color: 'rgba(255,255,255,0.2)', margin: '0 6px' }}>-</span>
-                            <span style={{ color: 'rgba(255,255,255,0.3)' }}>{Number(pr.best_weight)} LBS × {pr.best_reps} REPS</span>
-                            {i < bodyPartPRs.length - 1 && (
-                              <span style={{ color: 'rgba(255,255,255,0.1)', margin: '0 12px' }}>|</span>
-                            )}
+                        {[
+                          'Complete your first workout to start tracking PRs',
+                          'Add a program to get started',
+                          'Schedule workouts in the calendar',
+                          'Tap a workout to start a session',
+                        ].map((hint, i) => (
+                          <span key={i}>
+                            <span style={{ color: 'rgba(255,255,255,0.4)' }}>{hint}</span>
+                            <span style={{ color: 'rgba(255,255,255,0.1)', margin: '0 12px' }}>|</span>
+                          </span>
+                        ))}
+                        {[
+                          'Complete your first workout to start tracking PRs',
+                          'Add a program to get started',
+                          'Schedule workouts in the calendar',
+                          'Tap a workout to start a session',
+                        ].map((hint, i) => (
+                          <span key={`dup-${i}`}>
+                            <span style={{ color: 'rgba(255,255,255,0.4)' }}>{hint}</span>
+                            <span style={{ color: 'rgba(255,255,255,0.1)', margin: '0 12px' }}>|</span>
                           </span>
                         ))}
                       </div>
                     </div>
                   )}
+                  {bodyPartPRs.length > 0 && (() => {
+                    const prContent = bodyPartPRs.map((pr, i) => (
+                      <span key={pr.muscle_group}>
+                        <span style={{ color: 'rgba(239,68,68,0.6)', letterSpacing: '2px', textTransform: 'uppercase', fontSize: '8px', fontWeight: 600 }}>{pr.muscle_group} PR</span>
+                        <span style={{ color: 'rgba(255,255,255,0.2)', margin: '0 6px' }}>-</span>
+                        <span style={{ color: 'rgba(255,255,255,0.6)' }}>{pr.exercise_name}</span>
+                        <span style={{ color: 'rgba(255,255,255,0.2)', margin: '0 6px' }}>-</span>
+                        <span style={{ color: 'rgba(255,255,255,0.3)' }}>{Number(pr.best_weight)} LBS × {pr.best_reps} REPS</span>
+                        <span style={{ color: 'rgba(255,255,255,0.1)', margin: '0 12px' }}>|</span>
+                      </span>
+                    ));
+                    return (
+                      <div style={{ marginTop: '12px', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                        <div style={{
+                          display: 'inline-block',
+                          animation: `prTicker ${Math.max(18.4, bodyPartPRs.length * 6.44)}s linear infinite`,
+                          fontSize: '11px', fontWeight: 500,
+                        }}>
+                          {prContent}{prContent}
+                        </div>
+                      </div>
+                    );
+                  })()}
                   {lastWorkout && (
                     <div style={{ marginTop: '6px', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                       <div style={{
                         display: 'inline-block',
-                        animation: 'prTicker 11.4s linear infinite',
-                        animationDelay: '2s',
+                        animation: 'prTicker 16s linear infinite',
                         fontSize: '11px', fontWeight: 500,
                       }}>
+                        <span style={{ color: 'rgba(255,255,255,0.3)', letterSpacing: '2px', textTransform: 'uppercase', fontSize: '8px', fontWeight: 600, marginRight: '8px' }}>Last Session</span>
+                        <span style={{ color: 'rgba(255,255,255,0.6)' }}>{lastWorkout.name}</span>
+                        <span style={{ color: 'rgba(255,255,255,0.2)', margin: '0 6px' }}>·</span>
+                        <span style={{ color: 'rgba(255,255,255,0.3)', marginRight: '40px' }}>{lastWorkout.ago}</span>
                         <span style={{ color: 'rgba(255,255,255,0.3)', letterSpacing: '2px', textTransform: 'uppercase', fontSize: '8px', fontWeight: 600, marginRight: '8px' }}>Last Session</span>
                         <span style={{ color: 'rgba(255,255,255,0.6)' }}>{lastWorkout.name}</span>
                         <span style={{ color: 'rgba(255,255,255,0.2)', margin: '0 6px' }}>·</span>
@@ -2909,7 +2945,7 @@ export default function Workouts() {
             {/* Featured Workouts video card */}
             <div
               className="w-full rounded-2xl overflow-hidden fade-slide-up relative"
-              style={{ animationDelay: '0ms', minHeight: '140px' }}
+              style={{ animationDelay: '0ms', minHeight: '119px' }}
             >
               <video
                 ref={featuredVideoRef}
