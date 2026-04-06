@@ -248,6 +248,12 @@ input[type="number"] {
   100% { transform: translateX(200%) rotate(15deg); }
 }
 
+/* PR ticker scroll */
+@keyframes prTicker {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+
 /* Staggered card entrance animation */
 .fade-slide-up {
   opacity: 0;

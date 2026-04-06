@@ -203,6 +203,8 @@ export default function Workouts() {
   const [streak, setStreak] = useState(0);
   const [streakPhase, setStreakPhase] = useState(0);
   const [prStats, setPrStats] = useState(null);
+  const [bodyPartPRs, setBodyPartPRs] = useState([]);
+  const [lastWorkout, setLastWorkout] = useState(null);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editName, setEditName] = useState('');
@@ -302,17 +304,30 @@ export default function Workouts() {
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
 
-    const [progs, tmpls, sessions, shares, accepted, prStatsData, scheduleData, completedData] = await Promise.all([
+    const [progs, tmpls, sessions, shares, accepted, prStatsData, scheduleData, completedData, bodyPartPRData] = await Promise.all([
       api('/programs', opts), api('/templates', opts), api('/sessions', opts),
       api('/sharing/pending', opts).catch(() => []), api('/sharing/accepted', opts).catch(() => ({})),
       api('/pbs/stats', opts).catch(() => null),
       api(`/schedule?from=${todayStr}&to=${tomorrowStr}`, opts).catch(() => []),
       api('/sessions/completed', opts).catch(() => []),
+      api('/pbs/by-body-part', opts).catch(() => []),
     ]);
     setPrStats(prStatsData);
+    setBodyPartPRs(bodyPartPRData || []);
     setTotalWorkouts(completedData.length);
     const monthPrefix = todayStr.slice(0, 7); // "YYYY-MM"
     setWorkoutsThisMonth(completedData.filter(c => c.date && c.date.startsWith(monthPrefix)).length);
+
+    // Compute last workout
+    if (completedData.length > 0) {
+      const sorted = [...completedData].sort((a, b) => b.date.localeCompare(a.date));
+      const last = sorted[0];
+      const tmpl = tmpls.find(t => t.id === last.templateId);
+      const daysAgo = Math.floor((today - new Date(last.date + 'T00:00:00')) / 86400000);
+      const ago = daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : `${daysAgo} days ago`;
+      setLastWorkout({ name: tmpl?.name || 'Workout', ago });
+    }
+
     setPrograms(progs);
     setTemplates(tmpls);
     setPendingShares(shares || []);
@@ -2782,7 +2797,7 @@ export default function Workouts() {
               <div style={{ position: 'absolute', top: '-20%', left: '-10%', width: '60%', height: '70%', borderRadius: '50%', background: 'radial-gradient(circle, rgba(239,68,68,0.35) 0%, transparent 70%)', filter: 'blur(30px)' }} />
               <div style={{ position: 'absolute', bottom: '-20%', right: '-10%', width: '60%', height: '70%', borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.3) 0%, transparent 70%)', filter: 'blur(30px)' }} />
               <div style={{ position: 'absolute', top: '30%', right: '20%', width: '40%', height: '50%', borderRadius: '50%', background: 'radial-gradient(circle, rgba(168,85,247,0.25) 0%, transparent 70%)', filter: 'blur(25px)' }} />
-              <div style={{ position: 'relative', zIndex: 1, padding: '28px 24px', display: 'flex', gap: '16px' }}>
+              <div style={{ position: 'relative', zIndex: 1, padding: '22px 24px 28px', display: 'flex', gap: '16px' }}>
                 {/* Left side — workout info + button */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 'clamp(16px, 4.5vw, 26px)', fontWeight: 700, color: 'white', lineHeight: 1.1, marginBottom: '8px', whiteSpace: 'nowrap', letterSpacing: '2px', textTransform: 'uppercase', textShadow: '0 0 8px rgba(255,255,255,0.05)' }}>
@@ -2793,7 +2808,7 @@ export default function Workouts() {
                       {nextWorkoutInfo.dayLabel} is a rest day
                     </div>
                   ) : nextWorkoutInfo?.status === 'none' ? (
-                    <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '20px' }}>
+                    <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '12px' }}>
                       No workouts scheduled
                     </div>
                   ) : nextWorkoutInfo?.templateName ? (
@@ -2827,23 +2842,44 @@ export default function Workouts() {
                         ? (nextWorkoutInfo.status === 'resume' ? 'Resume →' : nextWorkoutInfo.status === 'upcoming' ? 'Preview →' : 'Start Now →')
                         : 'Add a Workout →'}
                     </button>
-                    {nextWorkoutInfo?.status === 'none' && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          markRestDay();
-                        }}
-                        style={{
-                          background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%)',
-                          backdropFilter: 'blur(10px)',
-                          border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px',
-                          padding: '12px 20px', color: 'rgba(255,255,255,0.6)', fontSize: '10px', fontWeight: 600,
-                          cursor: 'pointer', letterSpacing: '3px', textTransform: 'uppercase',
-                        }}
-                      >
-                        Rest Day
-                      </button>
-                    )}
+                    </div>
+                  )}
+                  <div style={{ width: '100%', height: '1px', background: 'rgba(255,255,255,0.06)', marginTop: '16px' }} />
+                  {bodyPartPRs.length > 0 && (
+                    <div style={{ marginTop: '12px', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                      <div style={{
+                        display: 'inline-block',
+                        animation: `prTicker ${Math.max(11.4, bodyPartPRs.length * 4)}s linear infinite`,
+                        fontSize: '11px', fontWeight: 500,
+                      }}>
+                        {bodyPartPRs.map((pr, i) => (
+                          <span key={pr.muscle_group}>
+                            <span style={{ color: 'rgba(239,68,68,0.6)', letterSpacing: '2px', textTransform: 'uppercase', fontSize: '8px', fontWeight: 600 }}>{pr.muscle_group} PR</span>
+                            <span style={{ color: 'rgba(255,255,255,0.2)', margin: '0 6px' }}>-</span>
+                            <span style={{ color: 'rgba(255,255,255,0.6)' }}>{pr.exercise_name}</span>
+                            <span style={{ color: 'rgba(255,255,255,0.2)', margin: '0 6px' }}>-</span>
+                            <span style={{ color: 'rgba(255,255,255,0.3)' }}>{Number(pr.best_weight)} LBS × {pr.best_reps} REPS</span>
+                            {i < bodyPartPRs.length - 1 && (
+                              <span style={{ color: 'rgba(255,255,255,0.1)', margin: '0 12px' }}>|</span>
+                            )}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {lastWorkout && (
+                    <div style={{ marginTop: '6px', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                      <div style={{
+                        display: 'inline-block',
+                        animation: 'prTicker 11.4s linear infinite',
+                        animationDelay: '2s',
+                        fontSize: '11px', fontWeight: 500,
+                      }}>
+                        <span style={{ color: 'rgba(255,255,255,0.3)', letterSpacing: '2px', textTransform: 'uppercase', fontSize: '8px', fontWeight: 600, marginRight: '8px' }}>Last Session</span>
+                        <span style={{ color: 'rgba(255,255,255,0.6)' }}>{lastWorkout.name}</span>
+                        <span style={{ color: 'rgba(255,255,255,0.2)', margin: '0 6px' }}>·</span>
+                        <span style={{ color: 'rgba(255,255,255,0.3)' }}>{lastWorkout.ago}</span>
+                      </div>
                     </div>
                   )}
                 </div>

@@ -54,4 +54,23 @@ router.get('/stats', authMiddleware, async (req, res) => {
   }
 });
 
+router.get('/by-body-part', authMiddleware, async (req, res) => {
+  try {
+    const pool = (await import('../dbPool.js')).default;
+    const { rows } = await pool.query(
+      `SELECT DISTINCT ON (e.muscle_group)
+         e.muscle_group, pb.exercise_name, pb.best_weight, pb.best_reps
+       FROM personal_bests pb
+       JOIN exercises e ON LOWER(e.name) = LOWER(pb.exercise_name)
+       WHERE pb.user_id = $1
+       ORDER BY e.muscle_group, pb.best_weight DESC`,
+      [req.userId]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
