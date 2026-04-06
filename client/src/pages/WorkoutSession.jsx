@@ -1340,7 +1340,8 @@ export default function WorkoutSession() {
         }),
       });
 
-      // Refresh PBs
+      // Refresh PBs — preserve scroll position to prevent jump
+      const scrollY = window.scrollY;
       const pbList = await api(`/pbs?templateId=${templateId}`);
       const pbMap = {};
       for (const pb of pbList) {
@@ -1348,6 +1349,7 @@ export default function WorkoutSession() {
         pbMap[pb.exerciseName][pb.bestWeight] = pb.bestReps;
       }
       setPbs(pbMap);
+      requestAnimationFrame(() => window.scrollTo(0, scrollY));
 
       // Compare old vs new PBs to detect improvements
       const improved = [];
@@ -1379,6 +1381,8 @@ export default function WorkoutSession() {
       setSaved(true);
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
       savedTimerRef.current = setTimeout(() => setSaved(false), 2000);
+      // Restore scroll in case any state update caused a layout shift
+      requestAnimationFrame(() => window.scrollTo(0, scrollY));
     } catch (err) {
       alert('Failed to save: ' + err.message);
     } finally {

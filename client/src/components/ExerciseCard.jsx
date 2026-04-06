@@ -785,7 +785,7 @@ function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelec
             </>
           )}
 
-          {filtered.length === 0 && !aiSuggestions && !search.trim() && (
+          {filtered.length === 0 && !search.trim() && (
             <div className="text-center py-12">
               <p className="text-wf-gray-500 text-sm">No exercises found</p>
             </div>

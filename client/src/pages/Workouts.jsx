@@ -374,8 +374,9 @@ export default function Workouts() {
       }
     }
 
-    // Calculate streak — consecutive days with a session going back from today
-    const sessionDates = new Set(sessions.map((s) => s.date));
+    // Calculate streak — consecutive days with a session going back from today (exclude rest days)
+    const nonRestSessions = sessions.filter(s => !restTemplateIds.has(s.templateId));
+    const sessionDates = new Set(nonRestSessions.map((s) => s.date));
     let count = 0;
     // Start from today; if today has no session, start from yesterday
     let startDay = new Date(today);
@@ -900,9 +901,17 @@ export default function Workouts() {
         <div className="px-4 pb-4">
           {/* Workout header card */}
           <div className={`glass-card rounded-xl p-4 mb-4 border-l-4 ${pwColor.border} fade-slide-up`}>
-            <div className="flex items-center gap-2 mb-1">
-              <div className={`w-3 h-3 rounded-full ${pwColor.dot}`} />
-              <h2 className="text-xl font-black text-white">{pw.name}</h2>
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2">
+                <div className={`w-3 h-3 rounded-full ${pwColor.dot}`} />
+                <h2 className="text-xl font-black text-white">{pw.name}</h2>
+              </div>
+              <button
+                onClick={() => openAddWorkout(pw)}
+                className="btn-gradient active:scale-[0.98] text-white font-medium px-3 py-2 rounded-xl text-xs transition-all shrink-0"
+              >
+                Add Workout
+              </button>
             </div>
             {pw.description && (
               <p className="text-wf-gray-400 text-sm ml-5">{pw.description}</p>
@@ -1143,7 +1152,7 @@ export default function Workouts() {
                   onClick={() => navigate(`/clientworkouts/create?programId=${program.id}`)}
                   className="btn-gradient active:scale-[0.98] text-white font-medium px-4 py-2.5 rounded-xl text-sm transition-all shrink-0"
                 >
-                  + Workout
+                  Add Workout
                 </button>
               )}
             </div>
