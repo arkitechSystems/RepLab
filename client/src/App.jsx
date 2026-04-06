@@ -34,6 +34,7 @@ import TutorialWorkout from './pages/TutorialWorkout';
 import TutorialTest from './pages/TutorialTest';
 import NewWorkoutSessionTest from './pages/NewWorkoutSessionTest';
 import NeumorphicSessionTest from './pages/NeumorphicSessionTest';
+import GradientMeshTest from './pages/GradientMeshTest';
 import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -141,6 +142,7 @@ export default function App() {
         <Route path="/test/tutorial" element={<TestRoute><TutorialTest /></TestRoute>} />
         <Route path="/test/new-session" element={<TestRoute><NewWorkoutSessionTest /></TestRoute>} />
         <Route path="/test/neumorphic-session" element={<TestRoute><NeumorphicSessionTest /></TestRoute>} />
+        <Route path="/test/gradient-mesh" element={<TestRoute><GradientMeshTest /></TestRoute>} />
       </Route>
 
       <Route path="*" element={<CatchAllRedirect />} />

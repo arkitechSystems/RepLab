@@ -19,7 +19,9 @@ html, body {
 
 /* Monospace for stats/numbers */
 .font-mono-stat {
-  font-family: 'DM Mono', 'Courier New', monospace;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-weight: 200;
+  letter-spacing: -1px;
 }
 
 /* Hide number input spinners */
@@ -40,7 +42,9 @@ input[type="number"] {
   border: 1px solid rgba(239, 68, 68, 0.18);
   box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.7), inset 0 0 0 1px rgba(255, 255, 255, 0.02);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
-  font-family: 'DM Mono', 'Courier New', monospace;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-weight: 200;
+  letter-spacing: -1px;
 }
 .lcd-input:focus {
   border-color: rgba(239, 68, 68, 0.7);

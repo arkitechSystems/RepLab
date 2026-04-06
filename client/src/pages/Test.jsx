@@ -98,6 +98,14 @@ export default function Test() {
               <p className="text-xs text-wf-gray-500 mt-1">Chest One · Light neumorphic sandbox</p>
             </div>
           </div>
+          <div
+            onClick={() => navigate('/test/gradient-mesh')}
+            className="glass-card rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
+          >
+            <div className="p-5">
+              <h2 className="text-xl font-black text-white tracking-tight">Gradient Mesh Test Page</h2>
+            </div>
+          </div>
         </div>
       </div>
     </div>

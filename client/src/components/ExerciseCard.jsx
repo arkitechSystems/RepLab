@@ -339,7 +339,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
               {/* Goal Weight (read-only, from template) — session mode only */}
               {!isTemplate && (
                 <div className="w-[3.15rem] shrink-0">
-                  <div className="w-full rounded-lg px-1 py-2.5 text-center text-sm font-mono-stat text-wf-gray-500 bg-black/40 border border-white/5">
+                  <div className="w-full rounded-lg px-1 py-2.5 text-center text-sm font-mono-stat bg-black/40 border border-white/5" style={{ color: 'rgba(239,68,68,0.6)' }}>
                     {set.suggestedWeight ?? '—'}
                   </div>
                 </div>
@@ -383,7 +383,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                 <>
                   {/* Goal reps (read-only, from template) */}
                   <div className="flex-1">
-                    <div className="w-full rounded-lg px-2 py-2.5 text-center text-base font-mono-stat text-wf-gray-500 bg-black/40 border border-white/5">
+                    <div className="w-full rounded-lg px-2 py-2.5 text-center text-base font-mono-stat bg-black/40 border border-white/5" style={{ color: 'rgba(239,68,68,0.6)' }}>
                       {set.plannedReps ?? '—'}
                     </div>
                   </div>

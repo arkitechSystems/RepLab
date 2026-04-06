@@ -314,13 +314,15 @@ export default function Workouts() {
     ]);
     setPrStats(prStatsData);
     setBodyPartPRs(bodyPartPRData || []);
-    setTotalWorkouts(completedData.length);
+    const restTemplateIds = new Set(tmpls.filter(t => t.isRest).map(t => t.id));
+    const nonRestCompleted = completedData.filter(c => !restTemplateIds.has(c.templateId));
+    setTotalWorkouts(nonRestCompleted.length);
     const monthPrefix = todayStr.slice(0, 7); // "YYYY-MM"
-    setWorkoutsThisMonth(completedData.filter(c => c.date && c.date.startsWith(monthPrefix)).length);
+    setWorkoutsThisMonth(nonRestCompleted.filter(c => c.date && c.date.startsWith(monthPrefix)).length);
 
     // Compute last workout
-    if (completedData.length > 0) {
-      const sorted = [...completedData].sort((a, b) => b.date.localeCompare(a.date));
+    if (nonRestCompleted.length > 0) {
+      const sorted = [...nonRestCompleted].sort((a, b) => b.date.localeCompare(a.date));
       const last = sorted[0];
       const tmpl = tmpls.find(t => t.id === last.templateId);
       const daysAgo = Math.floor((today - new Date(last.date + 'T00:00:00')) / 86400000);
