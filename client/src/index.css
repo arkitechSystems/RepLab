@@ -23,6 +23,22 @@
   background: #ffffff !important;
   color: #111 !important;
 }
+/* Modals/portals inside the card should NOT inherit light theme — restore white text on dark modal background */
+.exercise-card-light-test .fixed,
+.exercise-card-light-test .fixed * {
+  color: white !important;
+}
+.exercise-card-light-test .fixed .text-wf-gray-400 { color: rgb(156, 163, 175) !important; }
+.exercise-card-light-test .fixed .text-wf-gray-500 { color: rgb(107, 114, 128) !important; }
+.exercise-card-light-test .fixed .text-wf-gray-600 { color: rgb(75, 85, 99) !important; }
+.exercise-card-light-test .fixed .text-wf-red,
+.exercise-card-light-test .fixed [class*="text-red"] { color: #ef4444 !important; }
+.exercise-card-light-test .fixed [class*="text-blue"] { color: rgb(96, 165, 250) !important; }
+.exercise-card-light-test .fixed [class*="text-green"] { color: rgb(34, 197, 94) !important; }
+/* Override the select transparent rule for selects inside modals */
+.exercise-card-light-test .fixed select {
+  color: white !important;
+}
 .exercise-card-light-test .text-wf-gray-400,
 .exercise-card-light-test .text-wf-gray-500,
 .exercise-card-light-test .text-wf-gray-600,

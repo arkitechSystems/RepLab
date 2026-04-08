@@ -89,7 +89,7 @@ export default function WorkoutSession() {
   const [restRemaining, setRestRemaining] = useState(null); // null = not running
   const restTimerRef = useRef(null);
   const REST_OPTIONS = [15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180];
-  const [pinWorkoutTimer, setPinWorkoutTimer] = useState(true);
+  const [pinWorkoutTimer, setPinWorkoutTimer] = useState(false);
   const [pinRestTimer, setPinRestTimer] = useState(true);
   const [undoToast, setUndoToast] = useState(null); // { message, undoFn }
   const autoSaveRef = useRef(null);
@@ -2091,31 +2091,16 @@ export default function WorkoutSession() {
         </div>
       )}
 
-      {/* Save & Share Buttons - Fixed at bottom */}
+      {/* Share Button - Fixed at bottom (auto-save handles persistence) */}
       <div className="fixed bottom-16 left-0 right-0 p-4 bg-gradient-to-t from-black via-black/95 to-transparent safe-bottom z-40">
-        <div className="flex gap-2">
-          {/* Save button hidden — auto-save on check mark is fast enough
-          <button
-            onClick={handleSave}
-            disabled={saving || !timerStarted}
-            className={`flex-1 font-semibold py-4 rounded-xl text-base transition-all active:scale-[0.98] ${
-              saved
-                ? 'bg-green-600 text-white shadow-[0_4px_20px_rgba(22,163,74,0.3)]'
-                : 'btn-gradient text-white'
-            } disabled:opacity-50`}
-          >
-            {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Session'}
-          </button>
-          */}
-          <button
-            onClick={handleShare}
-            className="flex-1 glass-card rounded-xl flex items-center justify-center py-4 text-wf-gray-400 hover:text-white transition-colors active:scale-[0.98]"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-            </svg>
-          </button>
-        </div>
+        <button
+          onClick={handleShare}
+          className="w-full glass-card rounded-xl flex items-center justify-center py-4 text-wf-gray-400 hover:text-white transition-colors active:scale-[0.98]"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+          </svg>
+        </button>
       </div>
 
       {/* Workout Summary */}
