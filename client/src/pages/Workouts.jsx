@@ -35,10 +35,18 @@ function CountUp({ to, duration = 1200, delay = 0, pulse, labelDelay }) {
   return { value, done };
 }
 
-function StatNumber({ to, duration, delay, pulse, color, label }) {
+function StatNumber({ to, duration, delay, pulse, color, label, topLabel }) {
   const { value, done } = CountUp({ to, duration, delay });
   return (
     <div style={{ textAlign: 'center' }}>
+      {topLabel && (
+        <div style={{
+          fontSize: '8px', color, marginBottom: '3px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600,
+          opacity: done ? 1 : 0, transition: 'opacity 0.4s ease',
+        }}>
+          {topLabel}
+        </div>
+      )}
       <div style={{
         fontSize: '28px', fontWeight: 200, color: 'white', letterSpacing: '-2px', lineHeight: 1, fontFamily: 'system-ui',
         animation: pulse && done ? 'statPulse 0.4s ease-out' : 'none',
@@ -205,6 +213,11 @@ export default function Workouts() {
   const [prStats, setPrStats] = useState(null);
   const [bodyPartPRs, setBodyPartPRs] = useState([]);
   const [lastWorkout, setLastWorkout] = useState(null);
+  // Swipeable PR stacked cards
+  const [prCardIdx, setPrCardIdx] = useState(0);
+  const [prCardDragX, setPrCardDragX] = useState(0);
+  const [prCardDragging, setPrCardDragging] = useState(false);
+  const prCardStartX = useRef(0);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editName, setEditName] = useState('');
@@ -1341,7 +1354,7 @@ export default function Workouts() {
                             {isExpanded && (
                               <div className="border-t border-white/5 px-3.5 py-2.5 space-y-1.5 bg-white/[0.02]">
                                 {sets.map((set, sIdx) => {
-                                  const typeLabel = set.setType === 'warm_up' ? 'WU' : set.setType === 'touch_up' ? 'TU' : set.setType === 'drop' ? 'DS' : set.setType === 'rest_pause' ? 'RP' : set.setType === 'superset' ? 'SS' : set.setType === 'alternating' ? 'Alt' : set.setType === 'giant' ? 'Gia' : set.setType === 'pre_exhaust' ? 'PrEx' : 'REG';
+                                  const typeLabel = set.setType === 'warm_up' ? 'WU' : set.setType === 'touch_up' ? 'TU' : set.setType === 'drop' ? 'DS' : set.setType === 'rest_pause' ? 'RP' : set.setType === 'superset' ? 'SS' : set.setType === 'alternating' ? 'Alt' : set.setType === 'pre_exhaust' ? 'PrEx' : 'REG';
                                   const isWarmup = set.setType === 'warm_up' || set.setType === 'touch_up';
                                   return (
                                     <div key={sIdx} className="flex items-center justify-between py-1.5">
@@ -2940,13 +2953,13 @@ export default function Workouts() {
                       <div style={{ width: '100%', height: '1px', background: 'rgba(255,255,255,0.06)' }} />
                     )}
                     {totalWorkouts > 0 && (
-                      <StatNumber to={totalWorkouts} duration={1000} delay={500} color="rgba(239,68,68,0.6)" label="Workouts" />
+                      <StatNumber to={totalWorkouts} duration={1000} delay={500} color="rgba(239,68,68,0.6)" label="Workouts" topLabel="Total" />
                     )}
                     {totalWorkouts > 0 && workoutsThisMonth > 0 && (
                       <div style={{ width: '100%', height: '1px', background: 'rgba(255,255,255,0.06)' }} />
                     )}
                     {workoutsThisMonth > 0 && (
-                      <StatNumber to={workoutsThisMonth} duration={1200} delay={800} color="rgba(34,197,94,0.6)" label="This Mo" />
+                      <StatNumber to={workoutsThisMonth} duration={1200} delay={800} color="rgba(34,197,94,0.6)" label="This Mo" topLabel="Workouts" />
                     )}
                   </div>
                 )}
@@ -3032,29 +3045,66 @@ export default function Workouts() {
               </div>
             </div>
 
-            {/* My Workouts card */}
+            {/* My Workouts card — Organic Blob Style (matches Browse Library) */}
             <div
               data-tutorial="my-workouts"
               onClick={() => setSelectedGroup('my')}
-              className="w-full text-left glass-card rounded-2xl overflow-hidden active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
-              style={{ animationDelay: '0ms' }}
+              className="w-full text-left active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
+              style={{
+                animationDelay: '0ms',
+                background: 'linear-gradient(135deg, #0a0a0a 0%, #1a0808 50%, #0a0606 100%)',
+                borderRadius: '24px',
+                padding: '28px 24px',
+                position: 'relative',
+                overflow: 'hidden',
+                ...CARD_BORDER_STYLE,
+              }}
             >
-              <div className="h-1.5 bg-wf-red" />
-              <div className="p-5">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-black text-white tracking-tight">My Workouts</h2>
+              {/* Animated blob */}
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: '70%',
+                width: '160px',
+                height: '160px',
+                transform: `translate(-50%, -50%) scale(${0.8 + Math.sin((streakPhase + 25) * 0.063) * 0.2})`,
+                borderRadius: `${45 + Math.sin((streakPhase + 25) * 0.04) * 15}% ${55 - Math.sin((streakPhase + 25) * 0.04) * 15}% ${50 + Math.cos((streakPhase + 25) * 0.05) * 10}% ${50 - Math.cos((streakPhase + 25) * 0.05) * 10}%`,
+                background: 'radial-gradient(circle, rgba(239,68,68,0.4) 0%, rgba(239,68,68,0.2) 50%, transparent 70%)',
+                filter: 'blur(20px)',
+                transition: 'all 0.08s linear',
+              }} />
+              <div style={{ position: 'relative', zIndex: 1 }}>
+                <div style={{ fontSize: '15px', fontWeight: 700, color: 'white', letterSpacing: '2px', textTransform: 'uppercase', paddingBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.06)', textShadow: '0 0 8px rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  My Workouts
                   {pendingShares.length > 0 && (
                     <span className="bg-blue-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{pendingShares.length}</span>
                   )}
                 </div>
-                <p className="text-wf-gray-400 text-sm mt-1">
-                  {myPrograms.length === 0
-                    ? 'Your created workouts will appear here'
-                    : `${myPrograms.length} program${myPrograms.length !== 1 ? 's' : ''} · Your custom workouts`}
-                </p>
-                <div className="flex items-center justify-end mt-3">
-                  <span className="text-xs text-wf-gray-500 mr-1">{myPrograms.length === 0 ? 'Get started' : 'View programs'}</span>
-                  <svg className="w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: '16px' }}>
+                  <div>
+                    <div style={{ fontSize: '40px', fontWeight: 200, color: 'white', letterSpacing: '-2px', lineHeight: 1, fontFamily: 'system-ui' }}>
+                      {myPrograms.length}
+                    </div>
+                    <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '4px', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600 }}>
+                      {myPrograms.length === 1 ? 'Program' : 'Programs'}
+                    </div>
+                  </div>
+                  <div style={{ flex: 1, marginLeft: '16px', textAlign: 'right' }}>
+                    <span style={{ fontSize: '10px', fontWeight: 600, color: 'rgba(239,68,68,0.6)', letterSpacing: '3px', textTransform: 'uppercase' }}>
+                      Your Custom Workouts
+                    </span>
+                    {myPrograms.length === 0 && (
+                      <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '6px' }}>
+                        Create your first workout
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginTop: '12px' }}>
+                  <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginRight: '6px' }}>{myPrograms.length === 0 ? 'Get started' : 'View programs'}</span>
+                  <svg className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.4)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                   </svg>
                 </div>
@@ -3162,30 +3212,142 @@ export default function Workouts() {
                     )}
                   </div>
 
-                  {/* Heaviest lift & Most improved */}
-                  {prStats && (prStats.heaviestLift || prStats.mostImproved) && (
-                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '16px' }}>
-                      {prStats.heaviestLift && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: prStats.mostImproved ? '10px' : '0' }}>
-                          <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', letterSpacing: '1px', textTransform: 'uppercase' }}>Heaviest Lift</span>
-                          <span style={{ fontSize: '13px', fontWeight: 700, color: 'white', textShadow: '0 0 8px rgba(239,68,68,0.5)' }}>
-                            {prStats.heaviestLift.exercise_name} — {Number(prStats.heaviestLift.best_weight)} lbs
-                          </span>
-                        </div>
-                      )}
-                      {prStats.mostImproved && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', letterSpacing: '1px', textTransform: 'uppercase' }}>Most Improved</span>
-                          <span style={{ fontSize: '13px', fontWeight: 700, color: 'white', textShadow: '0 0 8px rgba(239,68,68,0.5)' }}>
-                            {prStats.mostImproved.exercise_name} — +{Number(prStats.mostImproved.improvement)} lbs
-                          </span>
-                        </div>
-                      )}
+                  {/* PRs by body part — right column constrained to 2/3 to align with first vertical divider above */}
+                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '16px' }}>
+                    <div style={{ textAlign: 'center', fontSize: '13px', fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '14px', textShadow: '0 0 8px rgba(255,255,255,0.3)' }}>
+                      Heaviest Lifts
                     </div>
-                  )}
+                    {['Chest', 'Back', 'Shoulders', 'Quads', 'Biceps', 'Triceps'].map((muscle, i, arr) => {
+                      const pr = bodyPartPRs.find(p => p.muscle_group?.toLowerCase() === muscle.toLowerCase());
+                      return (
+                        <div key={muscle} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: i < arr.length - 1 ? '10px' : '0' }}>
+                          <span style={{ flex: '0 0 33.333%', fontSize: '11px', color: 'rgba(255,255,255,0.3)', letterSpacing: '1px', textTransform: 'uppercase', paddingTop: '1px' }}>{muscle}</span>
+                          {pr ? (
+                            <span style={{ flex: 1, textAlign: 'right', fontSize: '13px', fontWeight: 700, color: 'white', textShadow: '0 0 8px rgba(239,68,68,0.5)', wordBreak: 'break-word' }}>
+                              {pr.exercise_name} — {Number(pr.best_weight)} lbs × {pr.best_reps} reps
+                            </span>
+                          ) : (
+                            <span style={{ flex: 1, textAlign: 'right', fontSize: '13px', fontWeight: 700, color: 'rgba(255,255,255,0.3)' }}>
+                              No PR set
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             )}
+
+            {/* Stacked Paper PR Cards — swipeable */}
+            {(() => {
+              const muscleGroups = ['Chest', 'Back', 'Shoulders', 'Quads', 'Hamstrings', 'Glutes', 'Biceps', 'Triceps'];
+              const prCards = muscleGroups.map((muscle) => {
+                const pr = bodyPartPRs.find(p => p.muscle_group?.toLowerCase() === muscle.toLowerCase());
+                return {
+                  muscle,
+                  title: `${muscle} PR`,
+                  body: pr
+                    ? `${pr.exercise_name} — ${Number(pr.best_weight)} lbs × ${pr.best_reps} reps`
+                    : 'No PR set yet',
+                };
+              });
+              const total = prCards.length;
+
+              function handleStart(e) {
+                const x = e.touches ? e.touches[0].clientX : e.clientX;
+                prCardStartX.current = x;
+                setPrCardDragging(true);
+              }
+              function handleMove(e) {
+                if (!prCardDragging) return;
+                const x = e.touches ? e.touches[0].clientX : e.clientX;
+                setPrCardDragX(x - prCardStartX.current);
+              }
+              function handleEnd() {
+                if (!prCardDragging) return;
+                const threshold = 100;
+                if (Math.abs(prCardDragX) > threshold) {
+                  // Swipe off in current direction, then advance
+                  const dir = prCardDragX > 0 ? 1 : -1;
+                  setPrCardDragX(dir * 600);
+                  setTimeout(() => {
+                    setPrCardIdx((i) => (i + 1) % total);
+                    setPrCardDragX(0);
+                  }, 250);
+                } else {
+                  setPrCardDragX(0);
+                }
+                setPrCardDragging(false);
+              }
+
+              // Visible stack: top card + 2 behind
+              const visibleCount = Math.min(3, total);
+
+              return (
+                <div className="fade-slide-up" style={{ position: 'relative', height: '160px', animationDelay: '0ms', userSelect: 'none' }}>
+                  {Array.from({ length: visibleCount }).map((_, depth) => {
+                    const cardIdx = (prCardIdx + depth) % total;
+                    const card = prCards[cardIdx];
+                    const isTop = depth === 0;
+                    // Layered offsets — back cards peek out behind top
+                    const baseTransform = depth === 0
+                      ? 'translate(0, 0) rotate(0deg)'
+                      : depth === 1
+                        ? 'translate(6px, 6px) rotate(1.5deg)'
+                        : 'translate(12px, 10px) rotate(-1deg)';
+                    const dragTransform = isTop && (prCardDragX !== 0 || prCardDragging)
+                      ? `translate(${prCardDragX}px, 0) rotate(${prCardDragX * 0.05}deg)`
+                      : baseTransform;
+                    const opacity = depth === 0 ? 1 : depth === 1 ? 0.85 : 0.7;
+                    const zIndex = visibleCount - depth;
+                    return (
+                      <div
+                        key={`${cardIdx}-${depth}`}
+                        onTouchStart={isTop ? handleStart : undefined}
+                        onTouchMove={isTop ? handleMove : undefined}
+                        onTouchEnd={isTop ? handleEnd : undefined}
+                        onMouseDown={isTop ? handleStart : undefined}
+                        onMouseMove={isTop && prCardDragging ? handleMove : undefined}
+                        onMouseUp={isTop ? handleEnd : undefined}
+                        onMouseLeave={isTop && prCardDragging ? handleEnd : undefined}
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          background: depth === 0 ? '#111' : depth === 1 ? '#151515' : '#1a1a1a',
+                          borderRadius: '16px',
+                          border: '1px solid rgba(255,255,255,0.08)',
+                          padding: '20px',
+                          zIndex,
+                          opacity,
+                          transform: dragTransform,
+                          transition: prCardDragging && isTop ? 'none' : 'transform 0.25s ease-out',
+                          cursor: isTop ? 'grab' : 'default',
+                          touchAction: isTop ? 'pan-y' : 'auto',
+                        }}
+                      >
+                        <p style={{ fontSize: '9px', color: 'rgba(239,68,68,0.6)', letterSpacing: '4px', textTransform: 'uppercase', fontWeight: 700, marginBottom: '12px' }}>
+                          {card.title}
+                        </p>
+                        <div style={{ fontSize: '18px', fontWeight: 800, color: 'white', marginBottom: '6px' }}>
+                          {card.body.split(' — ')[0]}
+                        </div>
+                        <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>
+                          {card.body.includes(' — ') ? card.body.split(' — ')[1] : ''}
+                        </div>
+                        {isTop && (
+                          <div style={{ position: 'absolute', bottom: '12px', right: '16px', fontSize: '9px', color: 'rgba(255,255,255,0.25)', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600 }}>
+                            Swipe →
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
 
           </div>
         )}

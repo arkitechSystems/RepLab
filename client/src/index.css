@@ -2,6 +2,77 @@
 @tailwind components;
 @tailwind utilities;
 
+/* === EXERCISE CARD LIGHT TEST — remove this block to revert === */
+.exercise-card-light-test.glass-card {
+  background: #e8e8e8 !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.exercise-card-light-test * {
+  color: #111 !important;
+}
+/* Keep the set-type select transparent so only the overlay abbreviation shows */
+.exercise-card-light-test select {
+  color: transparent !important;
+  background: rgba(255, 255, 255, 0.8) !important;
+  border-color: rgba(239, 68, 68, 0.25) !important;
+}
+/* Style dropdown options to match light card */
+.exercise-card-light-test select option {
+  background: #ffffff !important;
+  color: #111 !important;
+}
+.exercise-card-light-test .text-wf-gray-400,
+.exercise-card-light-test .text-wf-gray-500,
+.exercise-card-light-test .text-wf-gray-600,
+.exercise-card-light-test .text-wf-gray-700 {
+  color: #555 !important;
+}
+/* Keep red text red */
+.exercise-card-light-test .text-wf-red,
+.exercise-card-light-test [class*="text-red"],
+.exercise-card-light-test [style*="rgba(239,68,68"],
+.exercise-card-light-test [style*="rgba(239, 68, 68"] {
+  color: rgba(239, 68, 68, 0.85) !important;
+}
+/* Borders / dividers */
+.exercise-card-light-test .border-white\/5,
+.exercise-card-light-test .border-white\/10 {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+.exercise-card-light-test .divide-white\/5 > * + * {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+/* Subtle backgrounds */
+.exercise-card-light-test .bg-white\/\[0\.015\],
+.exercise-card-light-test .bg-white\/\[0\.02\],
+.exercise-card-light-test .bg-white\/5,
+.exercise-card-light-test .bg-white\/10 {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+/* Goal weight/reps boxes — keep visible box, slightly darker than card */
+.exercise-card-light-test .bg-black\/40 {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+/* LCD inputs in light mode */
+.exercise-card-light-test .lcd-input {
+  background: rgba(255, 255, 255, 0.8) !important;
+  border-color: rgba(239, 68, 68, 0.25) !important;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  color: #111 !important;
+}
+.exercise-card-light-test .lcd-input:focus {
+  border-color: rgba(239, 68, 68, 0.6) !important;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.08), 0 0 0 2px rgba(239, 68, 68, 0.2) !important;
+}
+.exercise-card-light-test .lcd-input.completed {
+  background: rgba(34, 197, 94, 0.12) !important;
+  border-color: rgba(34, 197, 94, 0.4) !important;
+}
+/* === END EXERCISE CARD LIGHT TEST === */
+
 * {
   -webkit-tap-highlight-color: transparent;
   box-sizing: border-box;

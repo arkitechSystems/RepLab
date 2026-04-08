@@ -28,8 +28,6 @@ import Test from './pages/Test';
 import ExerciseDetail from './pages/ExerciseDetail';
 import CardsTest from './pages/CardsTest';
 import WorkoutSessionTest from './pages/WorkoutSessionTest';
-import WorkoutSessionCardTest from './pages/WorkoutSessionCardTest';
-import SectionHeaderTest from './pages/SectionHeaderTest';
 import TutorialWorkout from './pages/TutorialWorkout';
 import TutorialTest from './pages/TutorialTest';
 import NewWorkoutSessionTest from './pages/NewWorkoutSessionTest';
@@ -137,8 +135,6 @@ export default function App() {
         <Route path="/test" element={<TestRoute><Test /></TestRoute>} />
         <Route path="/test/cards" element={<TestRoute><CardsTest /></TestRoute>} />
         <Route path="/test/workout-session" element={<TestRoute><WorkoutSessionTest /></TestRoute>} />
-        <Route path="/test/workout-session-card" element={<TestRoute><WorkoutSessionCardTest /></TestRoute>} />
-        <Route path="/test/section-header" element={<TestRoute><SectionHeaderTest /></TestRoute>} />
         <Route path="/test/tutorial" element={<TestRoute><TutorialTest /></TestRoute>} />
         <Route path="/test/new-session" element={<TestRoute><NewWorkoutSessionTest /></TestRoute>} />
         <Route path="/test/neumorphic-session" element={<TestRoute><NeumorphicSessionTest /></TestRoute>} />

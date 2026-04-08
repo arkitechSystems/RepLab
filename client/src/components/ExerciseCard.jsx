@@ -24,7 +24,6 @@ const SET_TYPES = [
   { value: 'rest_pause',   short: 'RP',   label: 'Rest-Pause Set' },
   { value: 'superset',     short: 'SS',   label: 'Super Set' },
   { value: 'alternating',  short: 'Alt',  label: 'Alternating Set' },
-  { value: 'giant',        short: 'Gia',  label: 'Giant Set' },
   { value: 'pre_exhaust',  short: 'PrEx', label: 'Pre-Exhaust' },
 ];
 
@@ -134,7 +133,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
 
   return (
     <>
-    <div data-tutorial={dataTutorial ? 'exercise-card' : undefined} className="glass-card rounded-xl overflow-hidden mb-3">
+    <div data-tutorial={dataTutorial ? 'exercise-card' : undefined} className="exercise-card-light-test glass-card rounded-xl overflow-hidden mb-3">
       {/* Exercise Header — name + demo button */}
       <div data-tutorial={dataTutorial} className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
         <span className="text-base font-semibold text-white">{exercise.name}</span>
@@ -255,7 +254,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
       {/* Column Headers */}
       <div className="px-3 pt-2 pb-1 flex items-center gap-1.5 text-[9px] text-wf-gray-500 uppercase tracking-wider">
         {!isTemplate && !readOnly && onToggleComplete && <div className="w-5 shrink-0" />}
-        <div className="w-[1.3rem] shrink-0 text-center">Set</div>
+        <div className="w-[1.43rem] shrink-0 text-center">Set</div>
         <div className="w-[2.8rem] shrink-0 text-center">Type</div>
         {!isTemplate && <div className="w-[3.15rem] shrink-0 text-center">Goal Wt</div>}
         <div className="w-[3.15rem] shrink-0 text-center">Weight</div>
@@ -264,7 +263,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
         ) : (
           <>
             <div className="flex-1 text-center">Goal</div>
-            <div className="flex-1 text-center">Actual</div>
+            <div className="text-center" style={{ flex: '0.9' }}>Actual</div>
           </>
         )}
       </div>
@@ -310,7 +309,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
               )}
 
               {/* Set label */}
-              <span className="text-wf-gray-400 text-xs font-medium w-[1.3rem] shrink-0 text-center">
+              <span className="text-wf-gray-400 text-xs font-medium w-[1.43rem] shrink-0 text-center">
                 {isTemplate ? idx + 1 : set.setNumber}
               </span>
 
@@ -389,7 +388,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                   </div>
 
                   {/* Actual reps (editable) */}
-                  <div className="flex-1">
+                  <div style={{ flex: '0.9' }}>
                     <input
                       type="number"
                       inputMode="numeric"

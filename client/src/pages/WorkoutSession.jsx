@@ -1169,6 +1169,10 @@ export default function WorkoutSession() {
   }
 
   function handleToggleComplete(exerciseKey, setIdx) {
+    // Blur any focused input so the browser doesn't scroll it back into view on re-render
+    if (document.activeElement && document.activeElement.tagName === 'INPUT') {
+      document.activeElement.blur();
+    }
     setPersisted(false);
     const key = `${exerciseKey}-${setIdx}`;
     setCompletedSets((prev) => {
@@ -1340,16 +1344,20 @@ export default function WorkoutSession() {
         }),
       });
 
-      // Refresh PBs — preserve scroll position to prevent jump
-      const scrollY = window.scrollY;
+      // Refresh PBs — preserve user's CURRENT scroll position (re-captured right before state update)
       const pbList = await api(`/pbs?templateId=${templateId}`);
       const pbMap = {};
       for (const pb of pbList) {
         if (!pbMap[pb.exerciseName]) pbMap[pb.exerciseName] = {};
         pbMap[pb.exerciseName][pb.bestWeight] = pb.bestReps;
       }
+      // Capture scroll position right before setPbs (user may have scrolled during API call)
+      const pbsScrollY = window.scrollY;
       setPbs(pbMap);
-      requestAnimationFrame(() => window.scrollTo(0, scrollY));
+      requestAnimationFrame(() => {
+        window.scrollTo(0, pbsScrollY);
+        requestAnimationFrame(() => window.scrollTo(0, pbsScrollY));
+      });
 
       // Compare old vs new PBs to detect improvements
       const improved = [];
@@ -1377,12 +1385,16 @@ export default function WorkoutSession() {
         }
       }
 
+      // Capture scroll position right before final state updates
+      const finalScrollY = window.scrollY;
       setPersisted(true);
       setSaved(true);
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
       savedTimerRef.current = setTimeout(() => setSaved(false), 2000);
-      // Restore scroll in case any state update caused a layout shift
-      requestAnimationFrame(() => window.scrollTo(0, scrollY));
+      requestAnimationFrame(() => {
+        window.scrollTo(0, finalScrollY);
+        requestAnimationFrame(() => window.scrollTo(0, finalScrollY));
+      });
     } catch (err) {
       alert('Failed to save: ' + err.message);
     } finally {
@@ -1807,19 +1819,24 @@ export default function WorkoutSession() {
               />
             )}
             {exercise.isSectionHeader ? (
-            <div className="fade-slide-up mb-3" style={{ animationDelay: `${idx * 60}ms` }}>
-              <div className="rounded-xl overflow-hidden border border-white/10 bg-gradient-to-r from-wf-red/10 via-transparent to-transparent">
-                <div className="px-4 py-3 flex items-center gap-3">
-                  <div className="w-1 h-6 rounded-full bg-wf-red shrink-0" />
-                  <span className="text-[9px] text-wf-red uppercase tracking-widest font-bold shrink-0">Section</span>
-                  <span className="text-sm font-black text-white uppercase tracking-wide">{exercise.name}</span>
+            <div className="fade-slide-up mb-3 mt-2" style={{ animationDelay: `${idx * 60}ms` }}>
+              <div className="rounded-lg overflow-hidden" style={{
+                background: '#c4c4c4',
+                border: '1px solid rgba(239,68,68,0.4)',
+                boxShadow: 'inset 4px 0 0 rgba(239,68,68,0.85)',
+              }}>
+                <div className="px-5 py-3.5 flex items-center gap-3">
+                  <span className="text-[9px] uppercase font-bold shrink-0" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.2em' }}>Section</span>
+                  <span className="w-px h-3.5 shrink-0" style={{ background: 'rgba(0,0,0,0.15)' }} />
+                  <span className="text-[13px] font-black uppercase" style={{ color: '#111', letterSpacing: '0.12em' }}>{exercise.name}</span>
                 </div>
                 {exercise.sectionNotes && (
-                  <div className="px-4 pb-3 pl-8">
-                    <div className="ml-0.5 pl-3 border-l border-white/10">
-                      <p className="text-xs text-wf-gray-400 leading-relaxed">{exercise.sectionNotes}</p>
+                  <>
+                    <div style={{ height: '1px', background: 'rgba(0,0,0,0.12)', marginLeft: '20px', marginRight: '20px' }} />
+                    <div className="px-5 py-3 pl-[3.5rem]">
+                      <p className="text-xs leading-relaxed" style={{ color: '#555' }}>{exercise.sectionNotes}</p>
                     </div>
-                  </div>
+                  </>
                 )}
               </div>
             </div>
@@ -2947,7 +2964,7 @@ function WorkoutSummary({ template, programName, entries, completedSets, elapsed
                       <span className="w-6" />
                     </div>
                     {ex.setStats.map((ss) => {
-                      const typeLabel = ss.setType === 'warm_up' ? 'WU' : ss.setType === 'touch_up' ? 'TU' : ss.setType === 'drop' ? 'DS' : ss.setType === 'rest_pause' ? 'RP' : ss.setType === 'superset' ? 'SS' : ss.setType === 'alternating' ? 'Alt' : ss.setType === 'giant' ? 'Gia' : ss.setType === 'pre_exhaust' ? 'PrEx' : 'REG';
+                      const typeLabel = ss.setType === 'warm_up' ? 'WU' : ss.setType === 'touch_up' ? 'TU' : ss.setType === 'drop' ? 'DS' : ss.setType === 'rest_pause' ? 'RP' : ss.setType === 'superset' ? 'SS' : ss.setType === 'alternating' ? 'Alt' : ss.setType === 'pre_exhaust' ? 'PrEx' : 'REG';
                       const isWarmup = ss.setType === 'warm_up' || ss.setType === 'touch_up';
                       return (
                         <div key={ss.setNumber} className="flex items-center py-1.5">

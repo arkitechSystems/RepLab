@@ -13,7 +13,6 @@ const SET_TYPES = [
   { value: 'rest_pause',   short: 'RP',   label: 'Rest-Pause Set' },
   { value: 'superset',     short: 'SS',   label: 'Super Set' },
   { value: 'alternating',  short: 'Alt',  label: 'Alternating Set' },
-  { value: 'giant',        short: 'Gia',  label: 'Giant Set' },
   { value: 'pre_exhaust',  short: 'PrEx', label: 'Pre-Exhaust' },
 ];
 

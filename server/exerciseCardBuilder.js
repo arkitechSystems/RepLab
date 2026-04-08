@@ -14,7 +14,6 @@ export function exerciseCardScript(apiBase) {
         { value: 'rest_pause', short: 'RP', label: 'Rest-Pause' },
         { value: 'superset', short: 'SS', label: 'Super Set' },
         { value: 'alternating', short: 'Alt', label: 'Alternating' },
-        { value: 'giant', short: 'Gia', label: 'Giant Set' },
         { value: 'pre_exhaust', short: 'PrEx', label: 'Pre-Exhaust' },
       ];
       function getSetTypeLabel(v) { var t = SET_TYPES.find(function(x) { return x.value === v; }); return t ? t.label : 'Regular'; }
