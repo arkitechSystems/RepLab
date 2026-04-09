@@ -327,6 +327,10 @@ export default async function initDb() {
   // Remove Upper/Lower program from library (deprecated)
   await pool.query("DELETE FROM programs WHERE name = 'Upper/Lower' AND user_id IS NULL");
 
+  // Remove deprecated library programs
+  await pool.query("DELETE FROM programs WHERE name = $1 AND user_id IS NULL", ["ZJ's Workout"]);
+  await pool.query("DELETE FROM programs WHERE name = $1 AND user_id IS NULL", ['Push, Pull, Legs']);
+
   // Seed Bro Split program if not already present
   const { rows: bsRows } = await pool.query("SELECT id FROM programs WHERE name = 'Bro Split Workout' AND user_id IS NULL");
   if (bsRows.length === 0) {
@@ -404,11 +408,7 @@ export default async function initDb() {
     console.error('PPL expansion migration failed (non-fatal):', err.message);
   }
 
-  // Seed ZJ's Workout if not already present
-  const { rows: zjRows } = await pool.query("SELECT id FROM programs WHERE name = $1 AND user_id IS NULL", ["ZJ's Workout"]);
-  if (zjRows.length === 0) {
-    await seedZJsWorkout();
-  }
+  // ZJ's Workout removed from library — no longer seeded
 
   // Seed or expand Mike Mentzer Workout
   const { rows: mmRows } = await pool.query("SELECT id FROM programs WHERE name = $1 AND user_id IS NULL", ['Mike Mentzer Workout']);
@@ -430,19 +430,7 @@ export default async function initDb() {
     }
   }
 
-  // Expand Push, Pull, Legs to 6-week program (non-fatal)
-  try {
-    const { rows: pplBrowseRows } = await pool.query("SELECT id FROM programs WHERE name = $1 AND user_id IS NULL", ['Push, Pull, Legs']);
-    if (pplBrowseRows.length > 0) {
-      const pid = pplBrowseRows[0].id;
-      const { rows: tmplCount } = await pool.query("SELECT COUNT(*)::int AS cnt FROM templates WHERE program_id = $1", [pid]);
-      if (tmplCount[0].cnt < 42) {
-        await expandBrowsePPLto6Weeks(pid);
-      }
-    }
-  } catch (err) {
-    console.error('Browse PPL expansion failed (non-fatal):', err.message);
-  }
+  // Push, Pull, Legs program removed from library — no longer seeded or expanded
 }
 
 async function seedDefaults() {

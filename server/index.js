@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/node';
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -5,6 +6,17 @@ import rateLimit from 'express-rate-limit';
 import sanitize from './middleware/sanitize.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
+
+// Initialize Sentry for server-side error tracking
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.NODE_ENV || 'development',
+    enabled: process.env.NODE_ENV === 'production',
+    sampleRate: 1.0,
+    tracesSampleRate: 0.1,
+  });
+}
 import initDb from './initDb.js';
 import authRoutes from './routes/auth.js';
 import programRoutes from './routes/programs.js';
@@ -139,7 +151,7 @@ app.get('*', (req, res, next) => {
   res.sendFile(path.join(clientDist, 'index.html'));
 });
 
-// Error capture middleware — stores last 50 errors in memory for admin dashboard
+// Error capture middleware — stores last 50 errors in memory for admin dashboard + Sentry
 app.use((err, req, res, next) => {
   errorLog.unshift({
     message: err.message,
@@ -149,40 +161,48 @@ app.use((err, req, res, next) => {
     timestamp: new Date().toISOString(),
   });
   if (errorLog.length > 50) errorLog.length = 50;
+  // Report to Sentry
+  if (process.env.SENTRY_DSN) {
+    Sentry.captureException(err, { extra: { method: req.method, url: req.originalUrl } });
+  }
   console.error(err);
   res.status(500).json({ error: 'Internal server error' });
 });
 
-// Initialize database then start server
-initDb()
-  .then(() => {
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`RepLab server running on http://localhost:${PORT}`);
+export { app };
 
-      // Daily summary email scheduler — runs at 8am ET every day
-      function scheduleDailySummary() {
-        const now = new Date();
-        // Target 8:00 AM ET (UTC-5 / UTC-4 depending on DST)
-        const target = new Date(now);
-        target.setUTCHours(13, 0, 0, 0); // 13:00 UTC = 8:00 AM ET
-        if (target <= now) target.setDate(target.getDate() + 1);
-        const ms = target - now;
-        console.log(`Daily summary scheduled in ${Math.round(ms / 60000)} minutes`);
-        setTimeout(async () => {
-          try {
-            const stats = await db.getDailyStats();
-            await sendDailySummaryEmail(stats);
-          } catch (err) {
-            console.error('Daily summary error:', err.message);
-          }
-          // Schedule next one
-          scheduleDailySummary();
-        }, ms);
-      }
-      scheduleDailySummary();
+// Initialize database then start server (skip when imported for testing)
+if (process.env.NODE_ENV !== 'test') {
+  initDb()
+    .then(() => {
+      app.listen(PORT, '0.0.0.0', () => {
+        console.log(`RepLab server running on http://localhost:${PORT}`);
+
+        // Daily summary email scheduler — runs at 8am ET every day
+        function scheduleDailySummary() {
+          const now = new Date();
+          // Target 8:00 AM ET (UTC-5 / UTC-4 depending on DST)
+          const target = new Date(now);
+          target.setUTCHours(13, 0, 0, 0); // 13:00 UTC = 8:00 AM ET
+          if (target <= now) target.setDate(target.getDate() + 1);
+          const ms = target - now;
+          console.log(`Daily summary scheduled in ${Math.round(ms / 60000)} minutes`);
+          setTimeout(async () => {
+            try {
+              const stats = await db.getDailyStats();
+              await sendDailySummaryEmail(stats);
+            } catch (err) {
+              console.error('Daily summary error:', err.message);
+            }
+            // Schedule next one
+            scheduleDailySummary();
+          }, ms);
+        }
+        scheduleDailySummary();
+      });
+    })
+    .catch((err) => {
+      console.error('Failed to initialize database:', err);
+      process.exit(1);
     });
-  })
-  .catch((err) => {
-    console.error('Failed to initialize database:', err);
-    process.exit(1);
-  });
+}
