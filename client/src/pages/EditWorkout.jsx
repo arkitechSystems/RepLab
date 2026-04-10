@@ -296,7 +296,7 @@ export default function EditWorkout() {
       </div>
 
       {/* Save Button */}
-      <div className="fixed bottom-16 left-0 right-0 p-4 bg-gradient-to-t from-black via-black/95 to-transparent safe-bottom z-40">
+      <div className="fixed bottom-20 left-0 right-0 p-4 bg-gradient-to-t from-black via-black/95 to-transparent safe-bottom z-40">
         <button
           onClick={handleSave}
           disabled={saving}

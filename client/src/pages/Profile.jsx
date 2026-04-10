@@ -214,7 +214,7 @@ export default function Profile() {
     <div>
       <StickyHeader title="Profile" />
 
-      <div className="px-4 pb-6">
+      <div className="px-4 pb-24">
         {/* Member Info */}
         <div className="glass-card rounded-xl p-6 mb-4 fade-slide-up">
           {/* Avatar */}

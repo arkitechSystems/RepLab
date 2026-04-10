@@ -25,7 +25,7 @@ export default function History() {
   }, []);
 
   return (
-    <div>
+    <div className="pb-24">
       <StickyHeader title="History" />
 
       <div className="px-4">

@@ -1929,7 +1929,7 @@ export default function WorkoutSession() {
         </div>
       )}
       {undoToast && undoToast.type === 'exercise' && undoToast.exerciseIndex >= template.exercises.length && idx === template.exercises.length - 1 && (
-            <div className="fixed bottom-28 left-4 right-4 z-50">
+            <div className="fixed bottom-32 left-4 right-4 z-50">
               <UndoToast
                 message={undoToast.message}
                 onUndo={() => { undoToast.undoFn(); setUndoToast(null); }}
@@ -2104,7 +2104,7 @@ export default function WorkoutSession() {
       )}
 
       {/* Share Button - Fixed at bottom (auto-save handles persistence) */}
-      <div className="fixed bottom-16 left-0 right-0 p-4 bg-gradient-to-t from-black via-black/95 to-transparent safe-bottom z-40">
+      <div className="fixed bottom-20 left-0 right-0 p-4 bg-gradient-to-t from-black via-black/95 to-transparent safe-bottom z-40">
         <button
           onClick={handleShare}
           className="w-full glass-card rounded-xl flex items-center justify-center py-4 text-wf-gray-400 hover:text-white transition-colors active:scale-[0.98]"

@@ -389,7 +389,7 @@ export default function Calendar() {
   const enrichedPrograms = getEnrichedPrograms();
 
   return (
-    <div>
+    <div className="pb-24">
       <StickyHeader
         title="Schedule"
         subtitle={viewMode === 'week'

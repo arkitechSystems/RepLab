@@ -390,6 +390,23 @@ export default function FeaturedWorkoutSession() {
                 {workout.subtitle}
               </div>
               <div style={{ width: '100%', height: '1px', background: 'rgba(255,255,255,0.06)', marginBottom: '16px' }} />
+
+              {/* Start button — above description */}
+              {totalExercises > 0 && (
+                <button
+                  onClick={() => setCurrentIdx(0)}
+                  style={{
+                    width: '100%', padding: '16px', borderRadius: '14px', border: 'none', marginBottom: '16px',
+                    background: 'linear-gradient(135deg, rgba(239,68,68,0.9), rgba(249,115,22,0.9))',
+                    color: 'white', fontSize: '15px', fontWeight: 700, cursor: 'pointer',
+                    boxShadow: '0 0 20px rgba(239,68,68,0.3)',
+                  }}
+                  className="active:scale-[0.98] transition-all"
+                >
+                  Start Guided Workout
+                </button>
+              )}
+
               <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', lineHeight: 1.7 }}>
                 {workout.description}
               </p>
@@ -425,18 +442,6 @@ export default function FeaturedWorkoutSession() {
                   </div>
                 </div>
               ))}
-              <button
-                onClick={() => setCurrentIdx(0)}
-                style={{
-                  width: '100%', padding: '16px', borderRadius: '14px', border: 'none', marginTop: '16px',
-                  background: 'linear-gradient(135deg, rgba(239,68,68,0.9), rgba(249,115,22,0.9))',
-                  color: 'white', fontSize: '15px', fontWeight: 700, cursor: 'pointer',
-                  boxShadow: '0 0 20px rgba(239,68,68,0.3)',
-                }}
-                className="active:scale-[0.98] transition-all"
-              >
-                Start Guided Workout
-              </button>
             </>
           ) : (
             <div style={{ textAlign: 'center', padding: '40px 0' }}>
@@ -468,27 +473,31 @@ export default function FeaturedWorkoutSession() {
         </span>
       </div>
 
-      {/* Progress bar */}
-      <div className="px-4 mb-4">
-        <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all duration-500 ease-out"
-            style={{ width: `${progressPct}%`, background: 'linear-gradient(90deg, #ef4444, #f97316)' }}
-          />
+      {/* Sticky exercise header — stays at top when scrolling */}
+      <div className="sticky top-0 z-30 bg-black/90 backdrop-blur-xl" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        {/* Progress bar */}
+        <div className="px-4 pt-2 pb-2">
+          <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${progressPct}%`, background: 'linear-gradient(90deg, #ef4444, #f97316)' }}
+            />
+          </div>
+        </div>
+        <div className="px-4 pb-3">
+          <div style={{ fontSize: '9px', color: 'rgba(239,68,68,0.6)', letterSpacing: '4px', textTransform: 'uppercase', fontWeight: 700, marginBottom: '4px' }}>
+            Exercise {currentIdx + 1} of {totalExercises}
+          </div>
+          <h2 style={{ fontSize: '20px', fontWeight: 800, color: 'white', lineHeight: 1.2 }}>
+            {exercise.name}
+          </h2>
+          <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '2px', letterSpacing: '1px', textTransform: 'uppercase' }}>
+            {exercise.sets.length} sets · {exercise.setType?.replace('_', ' ') || 'straight'}
+          </div>
         </div>
       </div>
 
-      <div className="px-4">
-        {/* Exercise name */}
-        <div style={{ fontSize: '9px', color: 'rgba(239,68,68,0.6)', letterSpacing: '4px', textTransform: 'uppercase', fontWeight: 700, marginBottom: '6px' }}>
-          Exercise {currentIdx + 1}
-        </div>
-        <h2 style={{ fontSize: '24px', fontWeight: 800, color: 'white', marginBottom: '8px' }}>
-          {exercise.name}
-        </h2>
-        <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', marginBottom: '16px', letterSpacing: '1px', textTransform: 'uppercase' }}>
-          {exercise.sets.length} sets · {exercise.setType?.replace('_', ' ') || 'straight'}
-        </div>
+      <div className="px-4 pt-4">
 
         {/* Video */}
         {exercise.videoUrl && (
@@ -609,7 +618,7 @@ export default function FeaturedWorkoutSession() {
       </div>
 
       {/* Bottom navigation */}
-      <div className="fixed bottom-16 left-0 right-0 p-4 bg-gradient-to-t from-black via-black/95 to-transparent safe-bottom z-40">
+      <div className="fixed bottom-20 left-0 right-0 p-4 bg-gradient-to-t from-black via-black/95 to-transparent safe-bottom z-40">
         <div className="flex gap-3">
           <button
             onClick={goPrev}
