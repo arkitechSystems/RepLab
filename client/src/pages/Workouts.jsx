@@ -217,6 +217,7 @@ export default function Workouts() {
   const [prStats, setPrStats] = useState(null);
   const [bodyPartPRs, setBodyPartPRs] = useState([]);
   const [lastWorkout, setLastWorkout] = useState(null);
+  const [currentProgram, setCurrentProgram] = useState(null); // { name, week }
   // Swipeable PR stacked cards
   const [prCardIdx, setPrCardIdx] = useState(0);
   const [prCardDragX, setPrCardDragX] = useState(0);
@@ -391,6 +392,26 @@ export default function Workouts() {
       }
     }
 
+    // Compute current program from today's or tomorrow's scheduled template
+    const activeSchedule = todaySchedule?.templateId ? todaySchedule : (tomorrowSchedule?.templateId ? tomorrowSchedule : null);
+    if (activeSchedule) {
+      const tmpl = tmpls.find(t => t.id === activeSchedule.templateId);
+      if (tmpl && tmpl.programId) {
+        const prog = progs.find(p => p.id === tmpl.programId);
+        if (prog) {
+          // Compute week from sortOrder (7 days per week, 0-indexed)
+          const week = Math.floor((tmpl.sortOrder || 0) / 7) + 1;
+          setCurrentProgram({ name: prog.name, week });
+        } else {
+          setCurrentProgram(null);
+        }
+      } else {
+        setCurrentProgram(null);
+      }
+    } else {
+      setCurrentProgram(null);
+    }
+
     // Calculate streak — consecutive days with a session going back from today (exclude rest days)
     const nonRestSessions = sessions.filter(s => !restTemplateIds.has(s.templateId));
     const sessionDates = new Set(nonRestSessions.map((s) => s.date));
@@ -444,12 +465,16 @@ export default function Workouts() {
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, []);
 
-  // Breathing blob animation for streak card
+  // Breathing blob animation for streak card + featured waveform
+  const [wavePhase, setWavePhase] = useState(0);
   useEffect(() => {
-    if (streak <= 0) return;
-    const interval = setInterval(() => setStreakPhase(p => (p + 1) % 100), 80);
+    if (streak <= 0 && selectedGroup !== 'featured') return;
+    const interval = setInterval(() => {
+      setStreakPhase(p => (p + 1) % 100);
+      setWavePhase(p => (p + 1) % 1000);
+    }, 80);
     return () => clearInterval(interval);
-  }, [streak]);
+  }, [streak, selectedGroup]);
 
   async function openBeginProgram(e, program) {
     e.stopPropagation();
@@ -1975,17 +2000,17 @@ export default function Workouts() {
           {/* Will's Hypertrophy Program */}
           <div
             onClick={() => navigate('/featured-session')}
-            className="fade-slide-up cursor-pointer active:scale-[0.98] transition-transform"
-            style={{
+            className="featured-glow-border fade-slide-up cursor-pointer active:scale-[0.98] transition-transform"
+            style={{ position: 'relative', borderRadius: '24px' }}
+          >
+            {/* Inner card — original design unchanged */}
+            <div style={{
               background: 'linear-gradient(135deg, #0a0a0a 0%, #1a0808 50%, #0a0606 100%)',
               borderRadius: '24px',
               padding: '24px 20px',
               position: 'relative',
               overflow: 'hidden',
-              border: '0.75px solid rgba(255,255,255,0.3)',
-              boxShadow: '0 0 20px rgba(255,255,255,0.07), 0 0 40px rgba(255,255,255,0.03)',
-            }}
-          >
+            }}>
             {/* Blob */}
             <div style={{ position: 'absolute', top: '-20%', right: '-10%', width: '50%', height: '70%', borderRadius: '50%', background: 'radial-gradient(circle, rgba(239,68,68,0.3) 0%, transparent 70%)', filter: 'blur(25px)' }} />
             <div style={{ position: 'relative', zIndex: 1 }}>
@@ -2033,12 +2058,71 @@ export default function Workouts() {
                 </div>
               </div>
             </div>
+            </div>
           </div>
 
           {/* More coming soon */}
-          <div className="glass-card rounded-xl p-6 text-center fade-slide-up" style={{ animationDelay: '80ms' }}>
-            <p className="text-wf-gray-400 text-sm">More featured programs coming soon!</p>
+          <div className="fade-slide-up" style={{
+            animationDelay: '80ms',
+            marginTop: '50px',
+            background: 'linear-gradient(135deg, #0a0a0a 0%, #1a0808 50%, #0a0606 100%)',
+            borderRadius: '24px',
+            padding: '28px 24px',
+            position: 'relative',
+            overflow: 'hidden',
+            border: '0.75px solid rgba(255,255,255,0.15)',
+          }}>
+            <div style={{ position: 'absolute', top: '40%', left: '50%', width: '160px', height: '160px', transform: 'translate(-50%, -50%)', borderRadius: '50%', background: 'radial-gradient(circle, rgba(239,68,68,0.15) 0%, transparent 70%)', filter: 'blur(25px)' }} />
+            <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
+              <div style={{ fontSize: '10px', color: 'rgba(239,68,68,0.5)', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600, marginBottom: '8px' }}>
+                Coming Soon
+              </div>
+              <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)' }}>More featured programs dropping soon</p>
+            </div>
           </div>
+
+          {/* Placeholder copies for scroll testing */}
+          {[2, 3, 4].map((n) => (
+            <div key={n} className="fade-slide-up" style={{
+              animationDelay: `${n * 80}ms`,
+              marginTop: '50px',
+              background: 'linear-gradient(135deg, #0a0a0a 0%, #1a0808 50%, #0a0606 100%)',
+              borderRadius: '24px',
+              padding: '28px 24px',
+              position: 'relative',
+              overflow: 'hidden',
+              border: '0.75px solid rgba(255,255,255,0.15)',
+            }}>
+              <div style={{ position: 'absolute', top: '40%', left: '50%', width: '160px', height: '160px', transform: 'translate(-50%, -50%)', borderRadius: '50%', background: 'radial-gradient(circle, rgba(239,68,68,0.15) 0%, transparent 70%)', filter: 'blur(25px)' }} />
+              <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
+                <div style={{ fontSize: '10px', color: 'rgba(239,68,68,0.5)', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600, marginBottom: '8px' }}>
+                  Coming Soon
+                </div>
+                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)' }}>More featured programs dropping soon</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Inverted waveform bars at bottom — fixed to nav bar */}
+        <div style={{ position: 'fixed', bottom: '64px', left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: '2px', padding: '0 16px', overflow: 'hidden', transform: 'scaleY(-1)', zIndex: 10 }}>
+          {Array.from({ length: 60 }, (_, i) => {
+            const h = 4 + Math.sin((wavePhase + i * 2 + 30) * 0.1) * 12;
+            const t = (h - 4) / 12;
+            const r = Math.round(249 - t * 60);
+            const g = Math.round(115 - t * 90);
+            const b = Math.round(22 - t * 10);
+            return (
+              <div key={i} style={{
+                width: '100%',
+                maxWidth: '5px',
+                height: `${h}px`,
+                borderRadius: '2px',
+                background: `rgba(${r},${g},${b},${0.4 + t * 0.5})`,
+                transition: 'height 0.08s linear',
+              }} />
+            );
+          })}
         </div>
       </div>
     );
@@ -2950,6 +3034,11 @@ export default function Workouts() {
                         ? (nextWorkoutInfo.status === 'resume' ? 'Resume →' : nextWorkoutInfo.status === 'upcoming' ? 'Preview →' : 'Start Now →')
                         : 'Add a Workout →'}
                     </button>
+                    </div>
+                  )}
+                  {currentProgram && (
+                    <div style={{ marginTop: '12px', fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>
+                      Current Program: <span style={{ color: 'rgba(239,68,68,0.7)', fontWeight: 600 }}>{currentProgram.name}</span> — Week {currentProgram.week}
                     </div>
                   )}
                   <div style={{ width: '100%', height: '1px', background: 'rgba(255,255,255,0.06)', marginTop: '16px' }} />

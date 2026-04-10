@@ -45,8 +45,11 @@ router.post('/initialize', authMiddleware, async (req, res) => {
     if (tmpl.userId && tmpl.userId !== req.userId) return res.status(403).json({ error: 'Template does not belong to you' });
 
     // Look up best previous performance per exercise/set from completed sessions.
-    // This enables progressive overload: the goal becomes what the user achieved last time.
-    const previousBests = await db.getBestPerformanceByTemplate(req.userId, Number(templateId));
+    // If the template has a group_id, look up by group (links repeated workouts across weeks).
+    // Otherwise fall back to template-level lookup.
+    const previousBests = tmpl.groupId
+      ? await db.getBestPerformanceByGroup(req.userId, tmpl.groupId)
+      : await db.getBestPerformanceByTemplate(req.userId, Number(templateId));
 
     // Build workout_data — the independent copy, with previous bests as goals
     const workoutData = {

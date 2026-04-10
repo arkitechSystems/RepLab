@@ -120,12 +120,51 @@ const PROGRAM = {
 export default function FeaturedWorkoutSession() {
   const navigate = useNavigate();
   const { workoutId } = useParams();
-  const [selectedWeek, setSelectedWeek] = useState(null); // null = week list, 1-12 = week detail
-  const [selectedDay, setSelectedDay] = useState(null); // null = day list, workout key like 'chest'
-  const [currentIdx, setCurrentIdx] = useState(-1); // -1 = overview, 0+ = exercise index
+  const [selectedWeek, setSelectedWeek] = useState(null);
+  const [selectedDay, setSelectedDay] = useState(null);
+  const [currentIdx, setCurrentIdx] = useState(-1);
   const [entries, setEntries] = useState({});
   const [completedSets, setCompletedSets] = useState(new Set());
   const containerRef = useRef(null);
+
+  // Workout timer
+  const [timerStarted, setTimerStarted] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const timerRef = useRef(null);
+  const [pinTimer, setPinTimer] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
+  const [timerFloating, setTimerFloating] = useState(false);
+  const [floatPos, setFloatPos] = useState({ x: 16, y: 100 });
+  const floatStartRef = useRef(null);
+
+  // Timer tick
+  useEffect(() => {
+    if (!timerStarted) return;
+    timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000);
+    return () => clearInterval(timerRef.current);
+  }, [timerStarted]);
+
+  function formatTime(secs) {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  }
+
+  function startTimer() {
+    if (!timerStarted) setTimerStarted(true);
+  }
+
+  // Floating timer drag handlers
+  function handleFloatTouchStart(e) {
+    const t = e.touches[0];
+    floatStartRef.current = { x: t.clientX - floatPos.x, y: t.clientY - floatPos.y };
+  }
+  function handleFloatTouchMove(e) {
+    if (!floatStartRef.current) return;
+    const t = e.touches[0];
+    setFloatPos({ x: t.clientX - floatStartRef.current.x, y: t.clientY - floatStartRef.current.y });
+  }
+  function handleFloatTouchEnd() { floatStartRef.current = null; }
 
   const workout = selectedDay ? WORKOUTS[selectedDay] : null;
   const totalExercises = workout ? workout.exercises.length : 0;
@@ -394,7 +433,7 @@ export default function FeaturedWorkoutSession() {
               {/* Start button — above description */}
               {totalExercises > 0 && (
                 <button
-                  onClick={() => setCurrentIdx(0)}
+                  onClick={() => { setCurrentIdx(0); startTimer(); }}
                   style={{
                     width: '100%', padding: '16px', borderRadius: '14px', border: 'none', marginBottom: '16px',
                     background: 'linear-gradient(135deg, rgba(239,68,68,0.9), rgba(249,115,22,0.9))',
@@ -484,20 +523,102 @@ export default function FeaturedWorkoutSession() {
             />
           </div>
         </div>
-        <div className="px-4 pb-3">
-          <div style={{ fontSize: '9px', color: 'rgba(239,68,68,0.6)', letterSpacing: '4px', textTransform: 'uppercase', fontWeight: 700, marginBottom: '4px' }}>
+        {/* Workout timer — inside sticky header */}
+        {timerStarted && !timerFloating && (
+          <div className={`px-4 pb-2 ${!pinTimer ? 'hidden' : ''}`} id="featured-timer">
+            <div className="rounded-lg overflow-hidden bg-black">
+              <div className="px-3 py-2 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-semibold">Workout</span>
+                  <span className="bg-black/60 rounded-md px-2.5 py-1">
+                    <span className="text-lg font-mono-stat font-bold text-white tracking-wider" style={{ letterSpacing: '2px' }}>{formatTime(elapsed)}</span>
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setTimerFloating(true); }}
+                    className="p-1.5 rounded-md text-wf-gray-500 active:scale-90 hover:text-white/70 transition-colors"
+                    title="Pop out timer"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 5H1v14h18v-6M15 3h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setPinTimer(p => !p); }}
+                    className={`relative w-8 h-[18px] rounded-full transition-all duration-200 ${pinTimer ? '' : 'bg-wf-gray-700'}`}
+                    style={pinTimer ? { background: 'linear-gradient(to right, rgba(239,68,68,0.8), rgba(239,68,68,0.3))' } : {}}
+                    title={pinTimer ? 'Unpin timer' : 'Pin timer'}
+                  >
+                    {pinTimer && (
+                      <svg className="absolute left-[3px] top-[3px] w-[12px] h-[12px] text-white/70" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM9 8V6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9z"/>
+                      </svg>
+                    )}
+                    <span className={`absolute top-[2px] left-[2px] w-[14px] h-[14px] rounded-full bg-white transition-transform duration-200 ${pinTimer ? 'translate-x-[14px]' : 'translate-x-0'}`} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Navigation arrows + exercise counter */}
+        <div className="px-4 pb-2 flex items-center justify-between">
+          <button
+            onClick={goPrev}
+            disabled={currentIdx === 0}
+            className={`w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all ${currentIdx === 0 ? 'opacity-20' : ''}`}
+          >
+            <svg className="w-5 h-5" style={{ color: 'rgba(239,68,68,0.7)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+            </svg>
+          </button>
+          <div style={{ fontSize: '9px', color: 'rgba(239,68,68,0.6)', letterSpacing: '4px', textTransform: 'uppercase', fontWeight: 700 }}>
             Exercise {currentIdx + 1} of {totalExercises}
           </div>
-          <h2 style={{ fontSize: '20px', fontWeight: 800, color: 'white', lineHeight: 1.2 }}>
-            {exercise.name}
-          </h2>
-          <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '2px', letterSpacing: '1px', textTransform: 'uppercase' }}>
-            {exercise.sets.length} sets · {exercise.setType?.replace('_', ' ') || 'straight'}
+          <button
+            onClick={goNext}
+            disabled={currentIdx >= totalExercises - 1}
+            className={`w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all ${currentIdx >= totalExercises - 1 ? 'opacity-20' : ''}`}
+          >
+            <svg className="w-5 h-5" style={{ color: 'rgba(239,68,68,0.7)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            </svg>
+          </button>
+        </div>
+        {/* Exercise name + timer */}
+        <div className="px-4 pb-3">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <h2 style={{ fontSize: '20px', fontWeight: 800, color: 'white', lineHeight: 1.2 }}>
+                {exercise.name}
+              </h2>
+              <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '2px', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                {exercise.sets.length} sets · {exercise.setType?.replace('_', ' ') || 'straight'}
+              </div>
+            </div>
+            {/* Compact timer when not pinned */}
+            {timerStarted && !pinTimer && !timerFloating && (
+              <div className="flex flex-col items-end gap-0.5 shrink-0">
+                <span style={{ fontSize: '8px', color: 'rgba(255,255,255,0.3)', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600 }}>Workout Time</span>
+                <div className="flex items-center gap-1.5">
+                <span className="text-sm font-mono-stat font-bold text-wf-gray-400">{formatTime(elapsed)}</span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setTimerFloating(true); }}
+                  className="p-1 rounded text-wf-gray-500 active:scale-90"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 5H1v14h18v-6M15 3h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      <div className="px-4 pt-4">
+      <div className="px-4 pt-2">
 
         {/* Video */}
         {exercise.videoUrl && (
@@ -645,19 +766,136 @@ export default function FeaturedWorkoutSession() {
             </button>
           ) : (
             <button
-              onClick={() => navigate('/')}
-              className="flex-[2] py-4 rounded-xl text-sm font-semibold active:scale-[0.98] transition-all"
-              style={{
-                background: 'linear-gradient(135deg, rgba(34,197,94,0.9), rgba(16,185,129,0.9))',
-                color: 'white',
-                boxShadow: '0 0 16px rgba(34,197,94,0.3)',
+              onClick={() => {
+                clearInterval(timerRef.current);
+                setTimerFloating(false);
+                setShowSummary(true);
               }}
+              className="flex-[2] py-4 rounded-xl text-sm font-semibold active:scale-[0.98] transition-all bg-wf-red/90 hover:bg-wf-red text-white"
             >
               Complete Workout
             </button>
           )}
         </div>
       </div>
+
+      {/* Workout Summary */}
+      {showSummary && workout && (() => {
+        const completedExercises = workout.exercises.filter((ex, i) => {
+          return ex.sets.some((_, si) => completedSets.has(`${ex.name}-${si}`));
+        });
+        const totalSetsCompleted = completedSets.size;
+        const totalSetsAvailable = workout.exercises.reduce((s, ex) => s + ex.sets.length, 0);
+        const totalVolume = workout.exercises.reduce((vol, ex) => {
+          const exEntries = entries[ex.name] || [];
+          return vol + exEntries.reduce((sum, e) => {
+            const w = Number(e.weight) || 0;
+            const r = Number(e.reps) || 0;
+            return sum + (w > 0 ? w * r : 0);
+          }, 0);
+        }, 0);
+
+        return (
+          <div className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center px-4" style={{ backdropFilter: 'blur(8px)' }}>
+            <div className="w-full max-w-sm">
+              <div style={{
+                background: 'linear-gradient(135deg, #0a0a0a 0%, #1a0808 50%, #0a0606 100%)',
+                borderRadius: '24px',
+                padding: '32px 24px',
+                border: '0.75px solid rgba(255,255,255,0.2)',
+                boxShadow: '0 0 40px rgba(239,68,68,0.1)',
+              }}>
+                <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                  <div style={{ fontSize: '48px', marginBottom: '8px' }}>&#10003;</div>
+                  <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'white', marginBottom: '4px' }}>Workout Complete!</h2>
+                  <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>{workout.name} — Week {selectedWeek}</p>
+                </div>
+
+                <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '20px' }}>
+                  {/* Stats grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '28px', fontWeight: 200, color: 'white', fontFamily: 'system-ui', letterSpacing: '-2px' }}>{formatTime(elapsed)}</div>
+                      <div style={{ fontSize: '9px', color: 'rgba(239,68,68,0.6)', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600, marginTop: '4px' }}>Duration</div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '28px', fontWeight: 200, color: 'white', fontFamily: 'system-ui', letterSpacing: '-2px' }}>{totalSetsCompleted}/{totalSetsAvailable}</div>
+                      <div style={{ fontSize: '9px', color: 'rgba(239,68,68,0.6)', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600, marginTop: '4px' }}>Sets</div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '28px', fontWeight: 200, color: 'white', fontFamily: 'system-ui', letterSpacing: '-2px' }}>{completedExercises.length}</div>
+                      <div style={{ fontSize: '9px', color: 'rgba(239,68,68,0.6)', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600, marginTop: '4px' }}>Exercises</div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '28px', fontWeight: 200, color: 'white', fontFamily: 'system-ui', letterSpacing: '-2px' }}>{totalVolume.toLocaleString()}</div>
+                      <div style={{ fontSize: '9px', color: 'rgba(239,68,68,0.6)', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600, marginTop: '4px' }}>Volume (lbs)</div>
+                    </div>
+                  </div>
+
+                  {/* Exercise breakdown */}
+                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '16px' }}>
+                    {workout.exercises.map((ex, i) => {
+                      const exCompleted = ex.sets.filter((_, si) => completedSets.has(`${ex.name}-${si}`)).length;
+                      return (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: i < workout.exercises.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                          <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>{ex.name}</span>
+                          <span style={{ fontSize: '12px', color: exCompleted === ex.sets.length ? '#22c55e' : 'rgba(255,255,255,0.3)', fontWeight: 600 }}>
+                            {exCompleted}/{ex.sets.length}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setShowSummary(false);
+                    setCurrentIdx(-1);
+                    setSelectedDay(null);
+                    setTimerStarted(false);
+                    setElapsed(0);
+                    window.scrollTo({ top: 0, behavior: 'instant' });
+                  }}
+                  style={{
+                    width: '100%', padding: '16px', borderRadius: '14px', border: 'none', marginTop: '20px',
+                    background: 'linear-gradient(135deg, rgba(239,68,68,0.9), rgba(249,115,22,0.9))',
+                    color: 'white', fontSize: '15px', fontWeight: 700, cursor: 'pointer',
+                    boxShadow: '0 0 20px rgba(239,68,68,0.3)',
+                  }}
+                  className="active:scale-[0.98] transition-all"
+                >
+                  Back to Week {selectedWeek}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Floating timer — draggable */}
+      {timerFloating && timerStarted && (
+        <div
+          className="fixed z-50 touch-none"
+          style={{ left: floatPos.x, top: floatPos.y }}
+          onTouchStart={handleFloatTouchStart}
+          onTouchMove={handleFloatTouchMove}
+          onTouchEnd={handleFloatTouchEnd}
+        >
+          <div className="bg-wf-gray-900/95 rounded-2xl px-4 py-2.5 shadow-2xl backdrop-blur-sm flex items-center gap-3">
+            <span className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-semibold">Workout</span>
+            <span className="text-lg font-black text-white tabular-nums font-mono-stat">{formatTime(elapsed)}</span>
+            <button
+              onClick={() => setTimerFloating(false)}
+              className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

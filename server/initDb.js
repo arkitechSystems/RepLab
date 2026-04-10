@@ -146,6 +146,11 @@ export default async function initDb() {
   // Migration: add is_rest column to schedule_days for standalone rest days
   await pool.query(`ALTER TABLE schedule_days ADD COLUMN IF NOT EXISTS is_rest BOOLEAN DEFAULT FALSE`);
 
+  // Migration: add group_id to templates for linking repeated workouts across weeks
+  await pool.query(`ALTER TABLE templates ADD COLUMN IF NOT EXISTS group_id TEXT`);
+  // Migration: add is_featured flag to programs
+  await pool.query(`ALTER TABLE programs ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT FALSE`);
+
   // Add WARM UP section header to "Leg 1 (anterior chain)" before Leg Press (one-time migration)
   const { rows: leg1Templates } = await pool.query(
     `SELECT t.id FROM templates t JOIN programs p ON t.program_id = p.id WHERE t.name ILIKE '%Leg 1%' AND p.name ILIKE '%Upper/Lower/PPL%' LIMIT 1`
@@ -431,6 +436,149 @@ export default async function initDb() {
   }
 
   // Push, Pull, Legs program removed from library — no longer seeded or expanded
+
+  // Seed Will's Hypertrophy Program (featured) if not present
+  const { rows: featRows } = await pool.query("SELECT id FROM programs WHERE name = $1 AND user_id IS NULL", ["Will's Hypertrophy Program"]);
+  if (featRows.length === 0) {
+    await seedWillsHypertrophy();
+  } else {
+    // Ensure it's marked as featured
+    await pool.query("UPDATE programs SET is_featured = TRUE WHERE id = $1", [featRows[0].id]);
+  }
+}
+
+async function seedWillsHypertrophy() {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const { rows: [prog] } = await client.query(
+      "INSERT INTO programs (user_id, name, description, is_featured, program_type) VALUES (NULL, $1, $2, TRUE, 'hypertrophy') RETURNING id",
+      ["Will's Hypertrophy Program", "12 Week Resistance Training Program focused on muscle hypertrophy"]
+    );
+    const programId = prog.id;
+
+    // 6 workout days + 1 rest day per week, repeated for 12 weeks
+    // Each workout day shares a group_id so progressive overload links across weeks
+    const days = [
+      {
+        name: 'Chest', groupId: 'wills_hypertrophy_chest',
+        description: 'Chest, Triceps, Shoulders — pre-exhaust flyes, bench, dips, pushdowns, shoulder press, burnout',
+        exercises: [
+          { name: 'Mid Upper Chest Flyes', sets: [{r:20,w:30},{r:20,w:30},{r:20,w:30}] },
+          { name: 'Banded Close-Grip DB Bench', sets: [{r:10,w:85},{r:10,w:85},{r:10,w:85}] },
+          { name: 'Incline DB Press', sets: [{r:12,w:75},{r:12,w:75},{r:12,w:75}] },
+          { name: 'Weighted Dips', setType: 'drop', sets: [{r:4,w:90},{r:4,w:45},{r:10,w:0}] },
+          { name: 'Cable Tricep Pushdowns', sets: [{r:12,w:40},{r:10,w:50},{r:8,w:60},{r:10,w:50},{r:12,w:40}] },
+          { name: 'Cable Tricep Kickbacks', sets: [{r:15,w:20},{r:15,w:20},{r:15,w:20}] },
+          { name: 'Hammer Strength Shoulder Press', sets: [{r:10,w:90},{r:10,w:90},{r:10,w:90}] },
+          { name: 'Max Push-Ups', sets: [{r:0,w:0},{r:0,w:0}] },
+        ],
+      },
+      {
+        name: 'Bis/RDs', groupId: 'wills_hypertrophy_bis_rds',
+        description: 'Biceps, Rear Delts — supersets, cable work, isolation burnouts',
+        exercises: [
+          { name: 'Cable Warm Up (Rope)', sets: [{r:15,w:30},{r:15,w:30},{r:15,w:30}] },
+          { name: 'Single-Arm Cable Curls', sets: [{r:25,w:20},{r:25,w:20}] },
+          { name: 'Supinated Weighted Pull-Ups', sets: [{r:6,w:25},{r:6,w:25},{r:6,w:25}] },
+          { name: 'Barbell Shrugs', sets: [{r:12,w:135},{r:12,w:135},{r:12,w:135}] },
+          { name: 'Hammer Curls', sets: [{r:12,w:35},{r:12,w:35},{r:12,w:35}] },
+          { name: 'Banded Preacher Curls', sets: [{r:12,w:40},{r:12,w:40},{r:12,w:40}] },
+          { name: 'Wide-Grip Cable Pulldowns', sets: [{r:12,w:120},{r:12,w:120},{r:12,w:120}] },
+        ],
+      },
+      {
+        name: 'Quads', groupId: 'wills_hypertrophy_quads',
+        description: 'Quads, Calves — extensions, squats, leg press, calf work',
+        exercises: [
+          { name: 'Leg Extensions', sets: [{r:12,w:110},{r:12,w:120},{r:10,w:130}] },
+          { name: 'Leg Curls', sets: [{r:12,w:90},{r:12,w:100},{r:10,w:110}] },
+          { name: 'Single Leg Leg Press', sets: [{r:10,w:180},{r:10,w:180},{r:10,w:180}] },
+          { name: 'BB Lunges', sets: [{r:10,w:95},{r:10,w:95},{r:10,w:95}] },
+          { name: 'BB Squats', sets: [{r:10,w:185},{r:10,w:185},{r:10,w:185}] },
+          { name: 'Standing Calf Raises', sets: [{r:15,w:160},{r:15,w:160},{r:15,w:160}] },
+        ],
+      },
+      {
+        name: 'Tris/Shoulders', groupId: 'wills_hypertrophy_tris_shoulders',
+        description: 'Triceps, Shoulders — pressing movements, isolation burnouts',
+        exercises: [
+          { name: 'Seated Shoulder Press (DB)', sets: [{r:10,w:50},{r:10,w:50},{r:8,w:55}] },
+          { name: 'Lateral Raises', sets: [{r:15,w:20},{r:15,w:20},{r:12,w:25}] },
+          { name: 'Cable Tricep Pushdowns', sets: [{r:12,w:50},{r:12,w:60},{r:10,w:70}] },
+          { name: 'Overhead Tricep Extension (rope)', sets: [{r:12,w:50},{r:10,w:60},{r:10,w:60}] },
+          { name: 'Front Raises', sets: [{r:12,w:20},{r:12,w:20},{r:12,w:20}] },
+          { name: 'Close-Grip Bench Press', sets: [{r:10,w:135},{r:8,w:155},{r:8,w:155}] },
+        ],
+      },
+      {
+        name: 'Back/Traps', groupId: 'wills_hypertrophy_back_traps',
+        description: 'Back, Traps — rows, pulldowns, shrugs, rear delt work',
+        exercises: [
+          { name: 'Lat Pulldown', sets: [{r:12,w:120},{r:10,w:140},{r:8,w:160}] },
+          { name: 'Barbell Row', sets: [{r:10,w:135},{r:8,w:155},{r:8,w:155}] },
+          { name: 'Seated Cable Row', sets: [{r:12,w:120},{r:12,w:130},{r:10,w:140}] },
+          { name: 'Face Pulls', sets: [{r:15,w:50},{r:15,w:60},{r:12,w:70}] },
+          { name: 'Barbell Shrugs', sets: [{r:12,w:185},{r:12,w:185},{r:10,w:205}] },
+          { name: 'Rear Delt Fly', sets: [{r:15,w:20},{r:15,w:20},{r:12,w:25}] },
+        ],
+      },
+      {
+        name: 'Glutes/Hams', groupId: 'wills_hypertrophy_glutes_hams',
+        description: 'Glutes, Hamstrings — RDLs, hip thrusts, leg curls, walking lunges',
+        exercises: [
+          { name: 'Romanian Deadlift', sets: [{r:10,w:135},{r:10,w:155},{r:8,w:185}] },
+          { name: 'Hip Thrust', sets: [{r:12,w:135},{r:12,w:155},{r:10,w:185}] },
+          { name: 'Leg Curls', sets: [{r:12,w:90},{r:12,w:100},{r:10,w:110}] },
+          { name: 'DB Walking Lunges', sets: [{r:20,w:40},{r:20,w:40}] },
+          { name: 'Hip Abduction', sets: [{r:15,w:100},{r:15,w:100}] },
+          { name: 'Hip Adduction', sets: [{r:15,w:100},{r:15,w:100}] },
+        ],
+      },
+    ];
+
+    // Create 12 weeks of templates (7 days each: 6 workouts + 1 rest)
+    for (let week = 0; week < 12; week++) {
+      for (let dayIdx = 0; dayIdx < days.length; dayIdx++) {
+        const day = days[dayIdx];
+        const sortOrder = week * 7 + dayIdx;
+        const weekLabel = week > 0 ? ` (Week ${week + 1})` : '';
+
+        const { rows: [tmpl] } = await client.query(
+          'INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order, group_id) VALUES (NULL, $1, $2, $3, FALSE, $4, $5) RETURNING id',
+          [programId, `${day.name}${weekLabel}`, day.description, sortOrder, day.groupId]
+        );
+
+        let exSortOrder = 0;
+        for (const ex of day.exercises) {
+          for (let i = 0; i < ex.sets.length; i++) {
+            await client.query(
+              'INSERT INTO template_exercises (template_id, name, set_number, planned_reps, suggested_weight, sort_order, set_type) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+              [tmpl.id, ex.name, i + 1, ex.sets[i].r, ex.sets[i].w, exSortOrder, ex.setType || 'straight']
+            );
+          }
+          exSortOrder++;
+        }
+      }
+
+      // Rest day at end of each week
+      const restSort = week * 7 + 6;
+      const restLabel = week > 0 ? ` (Week ${week + 1})` : '';
+      await client.query(
+        'INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES (NULL, $1, $2, $3, TRUE, $4)',
+        [programId, `Rest${restLabel}`, 'Recovery Day', restSort]
+      );
+    }
+
+    await client.query('COMMIT');
+    console.log("Seeded Will's Hypertrophy Program (featured, 12 weeks)");
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error("Failed to seed Will's Hypertrophy Program:", err.message);
+  } finally {
+    client.release();
+  }
 }
 
 async function seedDefaults() {

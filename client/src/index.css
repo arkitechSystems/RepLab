@@ -2,6 +2,59 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Fire-like flickering glow border for featured program cards */
+.featured-glow-border {
+  position: relative;
+  z-index: 0;
+}
+/* Inner fire glow — tight to the card */
+.featured-glow-border::before {
+  content: '';
+  position: absolute;
+  top: -4px; bottom: -4px; left: -2px; right: -2px;
+  border-radius: 26px;
+  background:
+    radial-gradient(ellipse 40% 60% at 20% 0%, rgba(255, 180, 50, 0.7) 0%, transparent 70%),
+    radial-gradient(ellipse 35% 50% at 50% 0%, rgba(239, 68, 68, 0.6) 0%, transparent 70%),
+    radial-gradient(ellipse 30% 55% at 80% 0%, rgba(255, 120, 30, 0.5) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 50% at 30% 100%, rgba(239, 68, 68, 0.5) 0%, transparent 70%),
+    radial-gradient(ellipse 35% 45% at 70% 100%, rgba(255, 160, 40, 0.4) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 30% at 0% 40%, rgba(239, 68, 68, 0.3) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 30% at 100% 60%, rgba(255, 140, 30, 0.3) 0%, transparent 70%);
+  z-index: -1;
+  animation: fireFlicker1 5s ease-in-out infinite alternate;
+  filter: blur(4px);
+}
+/* Outer fire halo — softer, more spread */
+.featured-glow-border::after {
+  content: '';
+  position: absolute;
+  top: -10px; bottom: -10px; left: -6px; right: -6px;
+  border-radius: 30px;
+  background:
+    radial-gradient(ellipse 50% 70% at 30% 0%, rgba(255, 180, 50, 0.4) 0%, transparent 70%),
+    radial-gradient(ellipse 45% 65% at 65% 0%, rgba(239, 68, 68, 0.35) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 55% at 50% 100%, rgba(255, 120, 30, 0.3) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 35% at 0% 50%, rgba(239, 68, 68, 0.2) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 35% at 100% 50%, rgba(255, 160, 40, 0.2) 0%, transparent 70%);
+  z-index: -1;
+  animation: fireFlicker2 6.25s ease-in-out infinite alternate;
+  filter: blur(16px);
+}
+@keyframes fireFlicker1 {
+  0% { opacity: 0.7; transform: scaleY(1) translateY(0); }
+  25% { opacity: 1; transform: scaleY(1.05) translateY(-1px); }
+  50% { opacity: 0.8; transform: scaleY(0.97) translateY(1px); }
+  75% { opacity: 1; transform: scaleY(1.03) translateY(-2px); }
+  100% { opacity: 0.75; transform: scaleY(1) translateY(0); }
+}
+@keyframes fireFlicker2 {
+  0% { opacity: 0.5; transform: scaleY(1) translateY(0); }
+  30% { opacity: 0.8; transform: scaleY(1.08) translateY(-2px); }
+  60% { opacity: 0.55; transform: scaleY(0.95) translateY(1px); }
+  100% { opacity: 0.7; transform: scaleY(1.04) translateY(-1px); }
+}
+
 /* === EXERCISE CARD LIGHT TEST — remove this block to revert === */
 .exercise-card-light-test.glass-card {
   background: #e8e8e8 !important;

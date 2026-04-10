@@ -241,7 +241,7 @@ const db = {
       'SELECT * FROM programs WHERE user_id IS NULL OR user_id = $1 ORDER BY sort_order, id',
       [userId]
     );
-    return rows.map((p) => ({ id: p.id, userId: p.user_id, name: p.name, description: p.description || '', sortOrder: p.sort_order || 0, programType: p.program_type || 'other', createdAt: p.created_at }));
+    return rows.map((p) => ({ id: p.id, userId: p.user_id, name: p.name, description: p.description || '', sortOrder: p.sort_order || 0, programType: p.program_type || 'other', isFeatured: p.is_featured || false, createdAt: p.created_at }));
   },
 
   async createProgram(userId, name, description = '') {
@@ -353,6 +353,7 @@ const db = {
         description: t.description,
         isRest: t.is_rest,
         sortOrder: t.sort_order,
+        groupId: t.group_id || null,
         exercises: grouped,
       };
     });
@@ -656,6 +657,34 @@ const db = {
   // Get the best weight/reps per exercise+set from completed sessions for a template.
   // "Best" = highest weight wins; if tied, highest reps wins.
   // Returns: { "Exercise Name": { 1: { weight, reps }, 2: { weight, reps } } }
+  async getBestPerformanceByGroup(userId, groupId) {
+    if (!groupId) return {};
+    const { rows } = await pool.query(
+      `SELECT DISTINCT ON (se.exercise_name, se.set_number)
+         se.exercise_name, se.set_number, se.weight, se.reps
+       FROM session_entries se
+       JOIN sessions s ON se.session_id = s.id
+       JOIN templates t ON s.template_id = t.id
+       WHERE s.user_id = $1
+         AND t.group_id = $2
+         AND s.completed = TRUE
+         AND se.weight > 0
+         AND se.reps > 0
+       ORDER BY se.exercise_name, se.set_number,
+                se.weight DESC, se.reps DESC`,
+      [userId, groupId]
+    );
+    const result = {};
+    for (const r of rows) {
+      if (!result[r.exercise_name]) result[r.exercise_name] = {};
+      result[r.exercise_name][r.set_number] = {
+        weight: Number(r.weight),
+        reps: r.reps,
+      };
+    }
+    return result;
+  },
+
   async getBestPerformanceByTemplate(userId, templateId) {
     const { rows } = await pool.query(
       `SELECT DISTINCT ON (se.exercise_name, se.set_number)
