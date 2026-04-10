@@ -128,12 +128,12 @@ export default function Calendar() {
       const prog = programs.find(p => p.id === tmpl.programId);
       if (prog && prog.isFeatured) {
         const groupToDay = {
-          wills_hypertrophy_chest: 'chest',
-          wills_hypertrophy_bis_rds: 'bis-rds',
-          wills_hypertrophy_quads: 'quads',
-          wills_hypertrophy_tris_shoulders: 'tris-shoulders',
-          wills_hypertrophy_back_traps: 'back-traps',
-          wills_hypertrophy_glutes_hams: 'glutes-hams',
+          wills_hypertrophy_chest_a: 'chest', wills_hypertrophy_chest_b: 'chest',
+          wills_hypertrophy_bis_rds_a: 'bis-rds', wills_hypertrophy_bis_rds_b: 'bis-rds',
+          wills_hypertrophy_quads_a: 'quads', wills_hypertrophy_quads_b: 'quads',
+          wills_hypertrophy_tris_shoulders_a: 'tris-shoulders', wills_hypertrophy_tris_shoulders_b: 'tris-shoulders',
+          wills_hypertrophy_back_traps_a: 'back-traps', wills_hypertrophy_back_traps_b: 'back-traps',
+          wills_hypertrophy_glutes_hams_a: 'glutes-hams', wills_hypertrophy_glutes_hams_b: 'glutes-hams',
         };
         const dayKey = groupToDay[tmpl.groupId] || null;
         const week = Math.floor((tmpl.sortOrder || 0) / 7) + 1;
