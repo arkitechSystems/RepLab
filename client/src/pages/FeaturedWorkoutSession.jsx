@@ -13,7 +13,7 @@ const WORKOUTS = {
         name: 'Mid Upper Chest Flyes',
         setType: 'straight',
         description: "Start with a cable fly variation to pre-exhaust the chest. Keep your elbows slightly bent, squeeze at the top, and control the negative. This isolation move warms up the pec fibers and ensures your chest — not your triceps — is the limiting factor on the compounds that follow.",
-        videoUrl: '/videos/Barbell Back Squat.mp4',
+        videoUrl: 'https://replab-videos.onrender.com/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4',
         sets: [
           { setNumber: 1, plannedReps: 20, suggestedWeight: 30 },
           { setNumber: 2, plannedReps: 20, suggestedWeight: 30 },
@@ -626,35 +626,20 @@ export default function FeaturedWorkoutSession() {
             <video
               src={exercise.videoUrl}
               className="w-full aspect-video object-cover"
-              controls
+              autoPlay
+              loop
+              muted
               playsInline
-              preload="metadata"
-              controlsList="nodownload"
+              preload="auto"
             />
           </div>
         )}
-
-        {/* Description card */}
-        <div style={{
-          background: 'rgba(255,255,255,0.04)',
-          borderRadius: '14px',
-          padding: '16px',
-          border: '1px solid rgba(255,255,255,0.08)',
-          marginBottom: '20px',
-        }}>
-          <div style={{ fontSize: '9px', color: 'rgba(239,68,68,0.5)', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600, marginBottom: '8px' }}>
-            How to Perform
-          </div>
-          <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.7)', lineHeight: 1.7 }}>
-            {exercise.description}
-          </p>
-        </div>
 
         {/* Sets */}
         <div style={{
           background: 'rgba(255,255,255,0.03)',
           borderRadius: '14px',
-          border: '1px solid rgba(255,255,255,0.08)',
+          border: '2px solid rgba(239,68,68,0.4)',
           overflow: 'hidden',
         }}>
           {/* Column headers */}
@@ -735,6 +720,22 @@ export default function FeaturedWorkoutSession() {
               </div>
             );
           })}
+        </div>
+
+        {/* How to Perform — below exercise card */}
+        <div style={{
+          background: 'rgba(255,255,255,0.04)',
+          borderRadius: '14px',
+          padding: '16px',
+          border: '1px solid rgba(255,255,255,0.08)',
+          marginTop: '20px',
+        }}>
+          <div style={{ fontSize: '9px', color: 'rgba(239,68,68,0.5)', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600, marginBottom: '8px' }}>
+            How to Perform
+          </div>
+          <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.7)', lineHeight: 1.7 }}>
+            {exercise.description}
+          </p>
         </div>
       </div>
 
