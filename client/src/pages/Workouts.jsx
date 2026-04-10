@@ -3375,7 +3375,8 @@ export default function Workouts() {
 
             {/* Challenges card */}
             <div
-              className="w-full text-left glass-card rounded-2xl overflow-hidden fade-slide-up"
+              onClick={() => setSelectedGroup('challenges')}
+              className="w-full text-left glass-card rounded-2xl overflow-hidden fade-slide-up cursor-pointer active:scale-[0.98] transition-transform"
               style={{ animationDelay: '0ms' }}
             >
               <div className="h-1.5 bg-wf-orange" />
