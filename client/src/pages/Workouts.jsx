@@ -492,11 +492,14 @@ export default function Workouts() {
   }
 
   function buildEntries(program, startDate) {
-    return program.templates.slice(0, 7).map((t, i) => {
+    // Featured programs schedule ALL templates (full program duration)
+    // Regular programs schedule first 7 (one week)
+    const templatesToSchedule = program.isFeatured ? program.templates : program.templates.slice(0, 7);
+    return templatesToSchedule.map((t, i) => {
       const date = new Date(startDate);
       date.setDate(date.getDate() + i);
-      const dateStr = date.toISOString().slice(0, 10);
-      return { date: dateStr, templateId: t.id, displayDate: date };
+      const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      return { date: dateStr, templateId: t.id, isRest: t.isRest || false, displayDate: date };
     });
   }
 
@@ -538,7 +541,7 @@ export default function Workouts() {
       if (!tutorial.active) {
         await api('/schedule', {
           method: 'PUT',
-          body: JSON.stringify({ schedule: entries.map(({ date, templateId }) => ({ date, templateId })) }),
+          body: JSON.stringify({ schedule: entries.map(({ date, templateId, isRest }) => ({ date, templateId, isRest: isRest || false })) }),
         });
       }
       completeTutorialAction('begin-confirmed');
@@ -1630,7 +1633,9 @@ export default function Workouts() {
                 </button>
               </div>
               <p className="text-wf-gray-400 text-sm mb-5">
-                Schedule <span className="text-white font-semibold">{beginModal.name}</span> starting from a day of your choice.
+                {beginModal.isFeatured
+                  ? <>Schedule the full <span className="text-white font-semibold">{beginModal.weekCount}-week {beginModal.name}</span> to your calendar. This will add {beginModal.templates.length} days of workouts and rest days.</>
+                  : <>Schedule <span className="text-white font-semibold">{beginModal.name}</span> starting from a day of your choice.</>}
               </p>
               {!showDatePicker ? (
                 <div className="flex gap-3">
@@ -1689,10 +1694,12 @@ export default function Workouts() {
             >
               <h3 className="text-base font-black text-white mb-2">Overwrite existing workouts?</h3>
               <p className="text-wf-gray-400 text-sm mb-3">
-                This will overwrite your current workout on:
+                {beginModal?.isFeatured
+                  ? 'You already have workouts for these dates. Beginning this program will remove them from the calendar:'
+                  : 'This will overwrite your current workout on:'}
               </p>
-              <ul className="mb-5 space-y-2">
-                {conflictInfo.conflicts.map((c) => (
+              <ul className="mb-5 space-y-2 max-h-48 overflow-y-auto">
+                {(conflictInfo.conflicts.length > 10 ? conflictInfo.conflicts.slice(0, 8) : conflictInfo.conflicts).map((c) => (
                   <li key={c.dayLabel} className="flex items-start gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-wf-red mt-1.5 shrink-0" />
                     <div>
@@ -1701,6 +1708,11 @@ export default function Workouts() {
                     </div>
                   </li>
                 ))}
+                {conflictInfo.conflicts.length > 10 && (
+                  <li className="text-xs text-wf-gray-400 pl-3.5">
+                    ...and {conflictInfo.conflicts.length - 8} more workouts
+                  </li>
+                )}
               </ul>
               <div className="flex gap-2">
                 <button
@@ -2019,6 +2031,11 @@ export default function Workouts() {
                   Featured Program
                 </div>
                 <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const featuredProg = enrichedPrograms.find(p => p.isFeatured);
+                    if (featuredProg) openBeginProgram(e, featuredProg);
+                  }}
                   className="active:scale-[0.97] transition-all"
                   style={{
                     fontSize: '10px', fontWeight: 600, color: 'white', letterSpacing: '1px', textTransform: 'uppercase',
@@ -2103,6 +2120,8 @@ export default function Workouts() {
             </div>
           ))}
         </div>
+
+        {renderBeginModals()}
 
         {/* Inverted waveform bars at bottom — fixed to nav bar */}
         <div style={{ position: 'fixed', bottom: '64px', left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: '2px', padding: '0 16px', overflow: 'hidden', transform: 'scaleY(-1)', zIndex: 10 }}>
