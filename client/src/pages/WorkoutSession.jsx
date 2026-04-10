@@ -151,6 +151,18 @@ export default function WorkoutSession() {
       const isInStickyHeader = !!el.closest('.sticky-header');
       if (isInStickyHeader) {
         window.scrollTo({ top: 0, behavior: 'instant' });
+        // Give the sticky header time to fully expand before measuring
+        setTimeout(() => {
+          if (cancelled) return;
+          const freshRect = el.getBoundingClientRect();
+          if (freshRect.width === 0 || freshRect.height === 0) {
+            if (attempts < 30) { attempts++; setTimeout(tryFind, 200); }
+            return;
+          }
+          tutorialRectRef.current = freshRect;
+          setTutorialReady(true);
+        }, 300);
+        return;
       } else {
         // For tall elements (like exercise cards) or exercise-card sub-elements,
         // scroll so the top is visible just below the sticky header rather than
@@ -2249,7 +2261,7 @@ export default function WorkoutSession() {
           'set-row': {
             target: '[data-tutorial="set-row"]',
             title: 'Tracking a Set',
-            description: <>Each row is one set. The <span className="text-white font-semibold">circle on the left</span> marks the set as complete. <span className="text-white font-semibold">Type</span> shows the set type (warm-up, regular, drop set, etc.) — tap to change it. <span className="text-white font-semibold">Weight</span> is where you enter the weight used. <span className="text-white font-semibold">Goal</span> shows the target reps. <span className="text-white font-semibold">Actual</span> is where you enter the reps you completed.</>,
+            description: <>Each row is one set. The <span className="text-white font-semibold">circle on the left</span> marks the set as complete. <span className="text-white font-semibold">Type</span> shows the set type (warm-up, regular, drop set, etc.) — tap to change it. <span className="text-white font-semibold">Goal Wt</span> shows the target weight. <span className="text-white font-semibold">Actual Wt</span> is where you enter the weight used. <span className="text-white font-semibold">Goal Reps</span> shows the target reps. <span className="text-white font-semibold">Actual Reps</span> is where you enter the reps you completed.</>,
             prev: 'set-controls',
             next: 'exercise-notes',
             position: 'below',

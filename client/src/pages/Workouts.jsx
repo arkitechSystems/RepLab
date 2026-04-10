@@ -110,7 +110,8 @@ function ProgramCard({ program, idx, onSelect, onBegin, onDelete, onShare, dataT
               <button
                 data-tutorial="begin-program-btn"
                 onClick={(e) => onBegin(e, program)}
-                className="btn-gradient text-white font-semibold text-xs px-3 py-2 rounded-xl active:scale-[0.97] transition-all"
+                className="text-white font-semibold text-xs px-3 py-2 rounded-xl active:scale-[0.97] transition-all"
+                style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.2)', boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.2), 0 4px 12px rgba(0,0,0,0.2)' }}
               >
                 Begin Program
               </button>
@@ -196,7 +197,10 @@ export default function Workouts() {
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
-  const [selectedGroup, setSelectedGroup] = useState(null); // 'browse' | 'my' | 'partners' | null
+  const [selectedGroup, setSelectedGroup] = useState(null); // 'browse' | 'my' | 'partners' | 'featured' | null
+  const [featuredTransition, setFeaturedTransition] = useState(null); // 'card' | 'full' | 'logo' | 'fade' | null
+  const [featuredCardRect, setFeaturedCardRect] = useState(null);
+  const featuredCardRef = useRef(null);
   const [selectedProgram, setSelectedProgram] = useState(null);
   const [selectedTrainer, setSelectedTrainer] = useState(null);
   const [previewWorkout, setPreviewWorkout] = useState(null); // template object for detail view
@@ -1015,7 +1019,8 @@ export default function Workouts() {
               <button
                 data-tutorial="begin-program-btn"
                 onClick={(e) => openBeginProgram(e, program)}
-                className="btn-gradient shrink-0 text-white font-semibold text-xs px-3 py-2 rounded-xl active:scale-[0.97] transition-all"
+                className="shrink-0 text-white font-semibold text-xs px-3 py-2 rounded-xl active:scale-[0.97] transition-all"
+                style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.2)', boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.2), 0 4px 12px rgba(0,0,0,0.2)' }}
               >
                 Begin Program
               </button>
@@ -1155,7 +1160,8 @@ export default function Workouts() {
                 <button
                   data-tutorial="begin-program-btn"
                   onClick={(e) => openBeginProgram(e, program)}
-                  className="btn-gradient shrink-0 text-white font-semibold text-xs px-3 py-2 rounded-xl active:scale-[0.97] transition-all"
+                  className="shrink-0 text-white font-semibold text-xs px-3 py-2 rounded-xl active:scale-[0.97] transition-all"
+                style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.2)', boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.2), 0 4px 12px rgba(0,0,0,0.2)' }}
                 >
                   Begin Program
                 </button>
@@ -1966,64 +1972,72 @@ export default function Workouts() {
         </div>
 
         <div className="px-4 pb-4 space-y-3">
-          {/* 10X10 Workout Card */}
+          {/* Will's Hypertrophy Program */}
           <div
-            onClick={() => setPreviewWorkout({
-              id: '__featured-10x10__',
-              name: '10X10',
-              description: 'German Volume Training — 10 sets of 10 reps per exercise. High volume, maximum hypertrophy.',
-              exercises: [
-                { name: 'Barbell Bench Press', sets: Array(10).fill({ plannedReps: 10 }), repRange: '10' },
-                { name: 'Lat Pulldowns', sets: Array(10).fill({ plannedReps: 10 }), repRange: '10' },
-              ],
-              isRest: false,
-            })}
-            className="glass-card rounded-xl overflow-hidden fade-slide-up cursor-pointer active:scale-[0.98] transition-transform"
+            onClick={() => navigate('/featured-session')}
+            className="fade-slide-up cursor-pointer active:scale-[0.98] transition-transform"
+            style={{
+              background: 'linear-gradient(135deg, #0a0a0a 0%, #1a0808 50%, #0a0606 100%)',
+              borderRadius: '24px',
+              padding: '24px 20px',
+              position: 'relative',
+              overflow: 'hidden',
+              border: '0.75px solid rgba(255,255,255,0.3)',
+              boxShadow: '0 0 20px rgba(255,255,255,0.07), 0 0 40px rgba(255,255,255,0.03)',
+            }}
           >
-            <div className="h-1.5 bg-gradient-to-r from-wf-red to-orange-500" />
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-wf-red" />
-                  <h4 className="text-lg font-semibold text-white">10X10</h4>
+            {/* Blob */}
+            <div style={{ position: 'absolute', top: '-20%', right: '-10%', width: '50%', height: '70%', borderRadius: '50%', background: 'radial-gradient(circle, rgba(239,68,68,0.3) 0%, transparent 70%)', filter: 'blur(25px)' }} />
+            <div style={{ position: 'relative', zIndex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <div style={{ fontSize: '9px', color: 'rgba(239,68,68,0.7)', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 700 }}>
+                  Featured Program
                 </div>
-                <span className="px-2 py-0.5 rounded-full bg-red-500/15 border border-red-500/30 text-[10px] font-bold text-red-400 uppercase tracking-wider">
-                  Advanced
-                </span>
+                <button
+                  className="active:scale-[0.97] transition-all"
+                  style={{
+                    fontSize: '10px', fontWeight: 600, color: 'white', letterSpacing: '1px', textTransform: 'uppercase',
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%)',
+                    backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.2), 0 4px 12px rgba(0,0,0,0.2)',
+                    padding: '6px 14px', borderRadius: '10px',
+                  }}
+                >
+                  Begin Program
+                </button>
               </div>
-              <p className="text-xs text-wf-gray-400 ml-4.5 mb-2">German Volume Training — maximum hypertrophy</p>
-              <div className="flex items-center gap-3 ml-4.5">
-                <span className="flex items-center gap-1 text-xs text-wf-gray-500">
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  60 min
-                </span>
-                <span className="flex items-center gap-1 text-xs text-wf-gray-500">
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
-                  </svg>
-                  2 exercises
-                </span>
-                <span className="flex items-center gap-1 text-xs text-wf-gray-500">
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 13.5V3.75m0 9.75a1.5 1.5 0 010 3m0-3a1.5 1.5 0 000 3m0 3.75V16.5m12-3V3.75m0 9.75a1.5 1.5 0 010 3m0-3a1.5 1.5 0 000 3m0 3.75V16.5m-6-9V3.75m0 3.75a1.5 1.5 0 010 3m0-3a1.5 1.5 0 000 3m0 9.75V10.5" />
-                  </svg>
-                  20 total sets
-                </span>
+              <div style={{ fontSize: '20px', fontWeight: 800, color: 'white', marginBottom: '4px' }}>
+                Will's Hypertrophy Program
               </div>
-              <div className="flex items-center justify-end mt-2">
-                <span className="text-xs text-wf-gray-500 mr-1">Tap to preview</span>
-                <svg className="w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                </svg>
+              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginBottom: '14px' }}>
+                12 Week Resistance Training Program focused on muscle hypertrophy
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 0', marginBottom: '12px', alignItems: 'center' }}>
+                {['Chest', 'Bis/RDs', 'Quads', 'Tris/Shoulders', 'Back/Traps', 'Glutes/Hams'].map((split, i, arr) => (
+                  <span key={i}>
+                    <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)' }}>{split}</span>
+                    {i < arr.length - 1 && <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.15)', margin: '0 8px' }}>•</span>}
+                  </span>
+                ))}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(239,68,68,0.8)', letterSpacing: '2px', textTransform: 'uppercase', background: 'rgba(239,68,68,0.12)', padding: '3px 8px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.3)' }}>
+                  Hypertrophy
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)' }}>Start guided session</span>
+                  <svg className="w-3.5 h-3.5" style={{ color: 'rgba(255,255,255,0.4)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </div>
               </div>
             </div>
           </div>
 
           {/* More coming soon */}
           <div className="glass-card rounded-xl p-6 text-center fade-slide-up" style={{ animationDelay: '80ms' }}>
-            <p className="text-wf-gray-400 text-sm">More workouts dropping soon. Stay Tuned!!</p>
+            <p className="text-wf-gray-400 text-sm">More featured programs coming soon!</p>
           </div>
         </div>
       </div>
@@ -2360,7 +2374,8 @@ export default function Workouts() {
                               <div className="flex items-center gap-2 shrink-0">
                                 <button
                                   onClick={() => handleAcceptShare(share.id)}
-                                  className="btn-gradient text-white font-semibold text-xs px-3 py-2 rounded-xl active:scale-[0.97] transition-all"
+                                  className="text-white font-semibold text-xs px-3 py-2 rounded-xl active:scale-[0.97] transition-all"
+                style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.2)', boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.2), 0 4px 12px rgba(0,0,0,0.2)' }}
                                 >
                                   Accept
                                 </button>
@@ -2584,6 +2599,75 @@ export default function Workouts() {
       onTouchMove={handlePullMove}
       onTouchEnd={handlePullEnd}
     >
+      {/* Featured Workouts zoom-in transition */}
+      {featuredTransition && featuredCardRect && (() => {
+        const r = featuredCardRect;
+        const cx = r.left + r.width / 2;
+        const cy = r.top + r.height / 2;
+        // 2x size centered on card
+        const growW = r.width * 2;
+        const growH = r.height * 2;
+        const growLeft = cx - growW / 2;
+        const growTop = cy - growH / 2;
+
+        let cardStyle;
+        if (featuredTransition === 'card') {
+          cardStyle = { top: r.top, left: r.left, width: r.width, height: r.height, borderRadius: '16px' };
+        } else if (featuredTransition === 'grow') {
+          cardStyle = { top: growTop, left: growLeft, width: growW, height: growH, borderRadius: '24px' };
+        } else {
+          cardStyle = { top: 0, left: 0, width: '100%', height: '100%', borderRadius: '0px' };
+        }
+
+        return (
+          <div className="fixed inset-0 z-[9999]" style={{ pointerEvents: 'none' }}>
+            {/* Black backdrop that fades in */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: '#000',
+              opacity: featuredTransition === 'card' ? 0 : featuredTransition === 'grow' ? 0.5 : 1,
+              transition: 'opacity 0.6s ease',
+            }} />
+            {/* Expanding card with video */}
+            <div style={{
+              position: 'absolute',
+              ...cardStyle,
+              transition: featuredTransition === 'card' ? 'none' : 'top 0.8s cubic-bezier(0.4, 0, 0.2, 1), left 0.8s cubic-bezier(0.4, 0, 0.2, 1), width 0.8s cubic-bezier(0.4, 0, 0.2, 1), height 0.8s cubic-bezier(0.4, 0, 0.2, 1), border-radius 0.8s ease',
+              overflow: 'hidden',
+            }}>
+              {/* Video background — continues playing from the card */}
+              <video
+                className="absolute inset-0 w-full h-full object-cover"
+                autoPlay loop muted playsInline
+                src="/Gym cinematic promotion video.mp4"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
+              {/* Text overlay — fades out as it grows */}
+              <div style={{
+                position: 'absolute', bottom: '20px', left: '20px', zIndex: 1,
+                opacity: (featuredTransition === 'card' || featuredTransition === 'grow') ? 1 : 0,
+                transition: 'opacity 0.4s ease',
+              }}>
+                <h2 style={{ fontSize: '24px', fontWeight: 900, color: 'white' }}>Featured Workouts</h2>
+                <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', marginTop: '4px' }}>Guided sessions · Custom coaching</p>
+              </div>
+            </div>
+            {/* Logo — appears after card fills screen */}
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <img
+                src="/RepLabLogo2.jpg"
+                alt="RepLab"
+                style={{
+                  width: '16rem', borderRadius: '24px',
+                  opacity: featuredTransition === 'logo' ? 1 : 0,
+                  transform: featuredTransition === 'logo' ? 'scale(1)' : 'scale(0.9)',
+                  transition: 'opacity 0.5s ease, transform 0.5s ease',
+                }}
+              />
+            </div>
+          </div>
+        );
+      })()}
       {pullOffset > 0 && (
         <div className="flex justify-center py-2" style={{ height: pullOffset, transition: refreshing ? 'none' : 'height 0.2s' }}>
           <svg className={`w-5 h-5 text-wf-red ${refreshing ? 'animate-spin' : ''}`} style={{ opacity: Math.min(pullOffset / 50, 1), transform: `rotate(${pullOffset * 4}deg)` }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -2966,9 +3050,25 @@ export default function Workouts() {
               </div>
             </div>
 
-            {/* Featured Workouts video card */}
+            {/* Featured Workouts card */}
             <div
-              className="w-full rounded-2xl overflow-hidden fade-slide-up relative"
+              ref={featuredCardRef}
+              onClick={() => {
+                const rect = featuredCardRef.current?.getBoundingClientRect();
+                if (rect) setFeaturedCardRect(rect);
+                setFeaturedTransition('card');
+                // Phase 1: grow to 2x size
+                requestAnimationFrame(() => setTimeout(() => setFeaturedTransition('grow'), 50));
+                // Phase 2: expand to full screen
+                setTimeout(() => setFeaturedTransition('full'), 900);
+                // Phase 3: show logo
+                setTimeout(() => setFeaturedTransition('logo'), 1600);
+                // Phase 4: fade out
+                setTimeout(() => setFeaturedTransition('fade'), 3100);
+                // Done
+                setTimeout(() => { setFeaturedTransition(null); setFeaturedCardRect(null); setSelectedGroup('featured'); }, 3600);
+              }}
+              className="w-full rounded-2xl overflow-hidden fade-slide-up relative cursor-pointer active:scale-[0.98] transition-transform"
               style={{ animationDelay: '0ms', minHeight: '119px' }}
             >
               <video
@@ -2985,10 +3085,14 @@ export default function Workouts() {
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
               <div className="relative z-10 p-5 flex flex-col justify-end h-full" style={{ minHeight: '140px' }}>
                 <div className="mt-auto">
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-black text-white tracking-tight drop-shadow-lg">Featured Workouts</h2>
+                  <h2 className="text-2xl font-black text-white tracking-tight drop-shadow-lg">Featured Workouts</h2>
+                  <p className="text-white/60 text-xs mt-1 drop-shadow">Guided sessions · Custom coaching</p>
+                  <div className="flex items-center gap-1 mt-2">
+                    <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)' }}>Tap to start</span>
+                    <svg className="w-3.5 h-3.5" style={{ color: 'rgba(255,255,255,0.5)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                    </svg>
                   </div>
-                  <p className="text-white/70 text-sm mt-1 drop-shadow">Coming Soon!</p>
                 </div>
               </div>
             </div>

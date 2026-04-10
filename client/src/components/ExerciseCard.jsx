@@ -257,13 +257,13 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
         <div className="w-[1.43rem] shrink-0 text-center">Set</div>
         <div className="w-[2.8rem] shrink-0 text-center">Type</div>
         {!isTemplate && <div className="w-[3.15rem] shrink-0 text-center">Goal Wt</div>}
-        <div className="w-[3.15rem] shrink-0 text-center">Weight</div>
+        <div className="w-[3.15rem] shrink-0 text-center">Actual Wt</div>
         {isTemplate ? (
           <div className="flex-1 text-center">Reps</div>
         ) : (
           <>
-            <div className="flex-1 text-center">Goal</div>
-            <div className="text-center" style={{ flex: '0.9' }}>Actual</div>
+            <div className="flex-1 text-center">Goal Reps</div>
+            <div className="text-center" style={{ flex: '0.9' }}>Actual Reps</div>
           </>
         )}
       </div>

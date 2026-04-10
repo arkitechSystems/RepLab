@@ -1,41 +1,48 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { api } from './api';
 import SplashScreen from './components/SplashScreen';
 import { TutorialProvider } from './context/TutorialContext';
 import Layout from './components/Layout';
+import ErrorBoundary from './components/ErrorBoundary';
+
+// Critical routes — loaded immediately (core user paths)
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import Workouts from './pages/Workouts';
 import Calendar from './pages/Calendar';
 import WorkoutSession from './pages/WorkoutSession';
-import Workouts from './pages/Workouts';
-import CreateWorkout from './pages/CreateWorkout';
-import EditWorkout from './pages/EditWorkout';
-import CreateProgram from './pages/CreateProgram';
-import History from './pages/History';
-import SessionDetail from './pages/SessionDetail';
-import Profile from './pages/Profile';
-import Utilities from './pages/Utilities';
-import Welcome from './pages/Welcome';
-import ForgotPassword from './pages/ForgotPassword';
-import FreeTrialOffer from './pages/FreeTrialOffer';
-import Upgrade from './pages/Upgrade';
-import ResetPassword from './pages/ResetPassword';
-import AIWorkoutGenerator from './pages/AIWorkoutGenerator';
-import ExerciseLibrary from './pages/ExerciseLibrary';
-import Test from './pages/Test';
-import ExerciseDetail from './pages/ExerciseDetail';
-import CardsTest from './pages/CardsTest';
-import WorkoutSessionTest from './pages/WorkoutSessionTest';
-import TutorialWorkout from './pages/TutorialWorkout';
-import TutorialTest from './pages/TutorialTest';
-import NewWorkoutSessionTest from './pages/NewWorkoutSessionTest';
-import NeumorphicSessionTest from './pages/NeumorphicSessionTest';
-import GradientMeshTest from './pages/GradientMeshTest';
-import Terms from './pages/Terms';
-import Privacy from './pages/Privacy';
-import ErrorBoundary from './components/ErrorBoundary';
+
+// Lazy-loaded routes — downloaded on demand
+const CreateWorkout = lazy(() => import('./pages/CreateWorkout'));
+const EditWorkout = lazy(() => import('./pages/EditWorkout'));
+const CreateProgram = lazy(() => import('./pages/CreateProgram'));
+const History = lazy(() => import('./pages/History'));
+const SessionDetail = lazy(() => import('./pages/SessionDetail'));
+const Profile = lazy(() => import('./pages/Profile'));
+const Utilities = lazy(() => import('./pages/Utilities'));
+const Welcome = lazy(() => import('./pages/Welcome'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const FreeTrialOffer = lazy(() => import('./pages/FreeTrialOffer'));
+const Upgrade = lazy(() => import('./pages/Upgrade'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const AIWorkoutGenerator = lazy(() => import('./pages/AIWorkoutGenerator'));
+const ExerciseLibrary = lazy(() => import('./pages/ExerciseLibrary'));
+const ExerciseDetail = lazy(() => import('./pages/ExerciseDetail'));
+const TutorialWorkout = lazy(() => import('./pages/TutorialWorkout'));
+const Terms = lazy(() => import('./pages/Terms'));
+const Privacy = lazy(() => import('./pages/Privacy'));
+
+// Test pages — only loaded by test users
+const Test = lazy(() => import('./pages/Test'));
+const CardsTest = lazy(() => import('./pages/CardsTest'));
+const WorkoutSessionTest = lazy(() => import('./pages/WorkoutSessionTest'));
+const TutorialTest = lazy(() => import('./pages/TutorialTest'));
+const NewWorkoutSessionTest = lazy(() => import('./pages/NewWorkoutSessionTest'));
+const NeumorphicSessionTest = lazy(() => import('./pages/NeumorphicSessionTest'));
+const GradientMeshTest = lazy(() => import('./pages/GradientMeshTest'));
+const FeaturedWorkoutSession = lazy(() => import('./pages/FeaturedWorkoutSession'));
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -100,6 +107,7 @@ export default function App() {
     <TutorialProvider>
       <PageTracker />
       {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
+    <Suspense fallback={<div className="min-h-screen bg-black" />}>
     <Routes>
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
@@ -132,6 +140,8 @@ export default function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/upgrade" element={<Upgrade />} />
         <Route path="/tutorial/workout" element={<TutorialWorkout />} />
+        <Route path="/featured-session" element={<FeaturedWorkoutSession />} />
+        <Route path="/featured-session/:workoutId" element={<FeaturedWorkoutSession />} />
         <Route path="/test" element={<TestRoute><Test /></TestRoute>} />
         <Route path="/test/cards" element={<TestRoute><CardsTest /></TestRoute>} />
         <Route path="/test/workout-session" element={<TestRoute><WorkoutSessionTest /></TestRoute>} />
@@ -143,6 +153,7 @@ export default function App() {
 
       <Route path="*" element={<CatchAllRedirect />} />
     </Routes>
+    </Suspense>
     </TutorialProvider>
     </ErrorBoundary>
   );
