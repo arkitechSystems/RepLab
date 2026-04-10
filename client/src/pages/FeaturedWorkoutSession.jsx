@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import StickyHeader from '../components/StickyHeader';
 
 // Daily workout templates
@@ -120,9 +120,13 @@ const PROGRAM = {
 export default function FeaturedWorkoutSession() {
   const navigate = useNavigate();
   const { workoutId } = useParams();
-  const [selectedWeek, setSelectedWeek] = useState(null);
-  const [selectedDay, setSelectedDay] = useState(null);
-  const [currentIdx, setCurrentIdx] = useState(-1);
+  const location = useLocation();
+
+  // If navigated from calendar/home with specific week+day, start there
+  const navState = location.state || {};
+  const [selectedWeek, setSelectedWeek] = useState(navState.week || null);
+  const [selectedDay, setSelectedDay] = useState(navState.day || null);
+  const [currentIdx, setCurrentIdx] = useState(navState.day ? -1 : -1);
   const [entries, setEntries] = useState({});
   const [completedSets, setCompletedSets] = useState(new Set());
   const containerRef = useRef(null);

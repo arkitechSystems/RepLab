@@ -803,6 +803,31 @@ export default function Workouts() {
   const browsePrograms = enrichedPrograms.filter((p) => p.userId === null);
   const myPrograms = enrichedPrograms.filter((p) => p.userId !== null);
 
+  // Navigate to the right workout flow based on whether the template belongs to a featured program
+  function navigateToWorkout(templateId, date) {
+    const tmpl = templates.find(t => t.id === templateId);
+    if (tmpl && tmpl.programId) {
+      const prog = programs.find(p => p.id === tmpl.programId);
+      if (prog && prog.isFeatured) {
+        // Featured Workout Flow — find the day key from the template's group_id
+        const groupToDay = {
+          wills_hypertrophy_chest: 'chest',
+          wills_hypertrophy_bis_rds: 'bis-rds',
+          wills_hypertrophy_quads: 'quads',
+          wills_hypertrophy_tris_shoulders: 'tris-shoulders',
+          wills_hypertrophy_back_traps: 'back-traps',
+          wills_hypertrophy_glutes_hams: 'glutes-hams',
+        };
+        const dayKey = groupToDay[tmpl.groupId] || null;
+        const week = Math.floor((tmpl.sortOrder || 0) / 7) + 1;
+        navigate('/featured-session', { state: { week, day: dayKey, templateId, date } });
+        return;
+      }
+    }
+    // Normal Workout Session
+    navigate(`/session/${templateId}/${date}`);
+  }
+
   function enterEditMode(program) {
     setEditMode(true);
     setEditName(program.name);
@@ -3035,7 +3060,7 @@ export default function Workouts() {
                       onClick={(e) => {
                         e.stopPropagation();
                         if (nextWorkoutInfo.templateId) {
-                          navigate(`/session/${nextWorkoutInfo.templateId}/${nextWorkoutInfo.date}`);
+                          navigateToWorkout(nextWorkoutInfo.templateId, nextWorkoutInfo.date);
                         } else {
                           setSelectedGroup('browse');
                         }

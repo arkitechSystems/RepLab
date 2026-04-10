@@ -121,15 +121,37 @@ export default function Calendar() {
     return completedSessions.some((c) => c.templateId === workout.templateId && c.date === dateStr);
   }
 
+  // Route to Featured Workout Flow or Normal Workout Session
+  function navigateToWorkout(templateId, date) {
+    const tmpl = templates.find(t => t.id === templateId);
+    if (tmpl && tmpl.programId) {
+      const prog = programs.find(p => p.id === tmpl.programId);
+      if (prog && prog.isFeatured) {
+        const groupToDay = {
+          wills_hypertrophy_chest: 'chest',
+          wills_hypertrophy_bis_rds: 'bis-rds',
+          wills_hypertrophy_quads: 'quads',
+          wills_hypertrophy_tris_shoulders: 'tris-shoulders',
+          wills_hypertrophy_back_traps: 'back-traps',
+          wills_hypertrophy_glutes_hams: 'glutes-hams',
+        };
+        const dayKey = groupToDay[tmpl.groupId] || null;
+        const week = Math.floor((tmpl.sortOrder || 0) / 7) + 1;
+        navigate('/featured-session', { state: { week, day: dayKey, templateId, date } });
+        return;
+      }
+    }
+    navigate(`/session/${templateId}/${date}`);
+  }
+
   function handleDayTap(date) {
     const workout = getWorkoutForDay(date);
     if (!workout || workout.isRest || !workout.templateId) {
-      // No workout on this day — open the editor so user can assign one
       openEditor(null, date);
       return;
     }
     const dateStr = format(date, 'yyyy-MM-dd');
-    navigate(`/session/${workout.templateId}/${dateStr}`);
+    navigateToWorkout(workout.templateId, dateStr);
   }
 
   function openEditor(e, date) {
@@ -472,7 +494,7 @@ export default function Calendar() {
                   key={dateStr}
                   onClick={() => {
                     if (hasWorkout) {
-                      navigate(`/session/${workout.templateId}/${dateStr}`);
+                      navigateToWorkout(workout.templateId, dateStr);
                     }
                   }}
                   className={`relative min-h-[72px] rounded-lg p-1 transition-all ${
