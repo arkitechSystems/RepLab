@@ -626,25 +626,50 @@ export default function FeaturedWorkoutSession() {
 
         {/* Video */}
         {exercise.videoUrl && (
-          <div style={{ borderRadius: '16px', overflow: 'hidden', marginBottom: '16px' }}>
-            <video
-              ref={(el) => {
-                if (!el) return;
-                // Seamless manual loop — reset before the browser's built-in loop delay kicks in
-                el.ontimeupdate = () => {
-                  if (el.duration && el.currentTime >= el.duration - 0.08) {
-                    el.currentTime = 0;
+          <div style={{ borderRadius: '16px', overflow: 'hidden', marginBottom: '16px', position: 'relative' }}>
+            {/* Two stacked videos for seamless crossfade loop */}
+            {[0, 1].map((idx) => (
+              <video
+                key={`${exercise.name}-vid-${idx}`}
+                ref={(el) => {
+                  if (!el) return;
+                  const other = el.parentElement.querySelector(`video:${idx === 0 ? 'last-child' : 'first-child'}`);
+                  let raf;
+                  const check = () => {
+                    if (el.duration && el.currentTime >= el.duration - 0.15) {
+                      // Start the other video from 0 and bring it on top
+                      if (other && other.paused) {
+                        other.currentTime = 0;
+                        other.play().catch(() => {});
+                      }
+                      el.style.opacity = '0';
+                      if (other) other.style.opacity = '1';
+                      // Reset this video after it's hidden
+                      setTimeout(() => {
+                        el.currentTime = 0;
+                        el.pause();
+                      }, 100);
+                    }
+                    raf = requestAnimationFrame(check);
+                  };
+                  el.addEventListener('play', () => { raf = requestAnimationFrame(check); });
+                  el.addEventListener('pause', () => { cancelAnimationFrame(raf); });
+                  // Start first video immediately
+                  if (idx === 0) {
+                    el.style.opacity = '1';
                     el.play().catch(() => {});
+                  } else {
+                    el.style.opacity = '0';
                   }
-                };
-              }}
-              src={exercise.videoUrl}
-              className="w-full aspect-video object-cover"
-              autoPlay
-              muted
-              playsInline
-              preload="auto"
-            />
+                }}
+                src={exercise.videoUrl}
+                className="w-full aspect-video object-cover"
+                style={{ position: idx === 0 ? 'relative' : 'absolute', top: 0, left: 0, transition: 'opacity 0.05s linear' }}
+                muted
+                playsInline
+                preload="auto"
+              />
+            ))}
           </div>
         )}
 
