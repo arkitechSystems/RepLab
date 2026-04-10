@@ -43,6 +43,7 @@ const NewWorkoutSessionTest = lazy(() => import('./pages/NewWorkoutSessionTest')
 const NeumorphicSessionTest = lazy(() => import('./pages/NeumorphicSessionTest'));
 const GradientMeshTest = lazy(() => import('./pages/GradientMeshTest'));
 const FeaturedWorkoutSession = lazy(() => import('./pages/FeaturedWorkoutSession'));
+const TestChallengeSection = lazy(() => import('./pages/TestChallengeSection'));
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -149,6 +150,7 @@ export default function App() {
         <Route path="/test/new-session" element={<TestRoute><NewWorkoutSessionTest /></TestRoute>} />
         <Route path="/test/neumorphic-session" element={<TestRoute><NeumorphicSessionTest /></TestRoute>} />
         <Route path="/test/gradient-mesh" element={<TestRoute><GradientMeshTest /></TestRoute>} />
+        <Route path="/test/challenge-section" element={<TestRoute><TestChallengeSection /></TestRoute>} />
       </Route>
 
       <Route path="*" element={<CatchAllRedirect />} />
