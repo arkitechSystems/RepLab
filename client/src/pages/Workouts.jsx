@@ -2131,27 +2131,6 @@ export default function Workouts() {
             </div>
           </div>
 
-          {/* Placeholder copies for scroll testing */}
-          {[2, 3, 4].map((n) => (
-            <div key={n} className="fade-slide-up" style={{
-              animationDelay: `${n * 80}ms`,
-              marginTop: '50px',
-              background: 'linear-gradient(135deg, #0a0a0a 0%, #1a0808 50%, #0a0606 100%)',
-              borderRadius: '24px',
-              padding: '28px 24px',
-              position: 'relative',
-              overflow: 'hidden',
-              border: '0.75px solid rgba(255,255,255,0.15)',
-            }}>
-              <div style={{ position: 'absolute', top: '40%', left: '50%', width: '160px', height: '160px', transform: 'translate(-50%, -50%)', borderRadius: '50%', background: 'radial-gradient(circle, rgba(239,68,68,0.15) 0%, transparent 70%)', filter: 'blur(25px)' }} />
-              <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
-                <div style={{ fontSize: '10px', color: 'rgba(239,68,68,0.5)', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600, marginBottom: '8px' }}>
-                  Coming Soon
-                </div>
-                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)' }}>More featured programs dropping soon</p>
-              </div>
-            </div>
-          ))}
         </div>
 
         {renderBeginModals()}

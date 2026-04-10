@@ -502,7 +502,7 @@ export default function FeaturedWorkoutSession() {
   const exEntries = entries[exercise.name] || exercise.sets.map((s) => ({ weight: s.suggestedWeight || '', reps: '' }));
 
   return (
-    <div className="min-h-screen bg-black pb-32" ref={containerRef}>
+    <div className="min-h-screen bg-black pb-24" ref={containerRef}>
       {/* Header */}
       <div className="px-4 pt-6 mb-2 flex items-center justify-between">
         <button onClick={goPrev} className="flex items-center gap-1 text-wf-red text-sm font-medium active:opacity-70">
@@ -626,12 +626,21 @@ export default function FeaturedWorkoutSession() {
 
         {/* Video */}
         {exercise.videoUrl && (
-          <div style={{ borderRadius: '16px', overflow: 'hidden', marginBottom: '16px', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <div style={{ borderRadius: '16px', overflow: 'hidden', marginBottom: '16px' }}>
             <video
+              ref={(el) => {
+                if (!el) return;
+                // Seamless manual loop — reset before the browser's built-in loop delay kicks in
+                el.ontimeupdate = () => {
+                  if (el.duration && el.currentTime >= el.duration - 0.08) {
+                    el.currentTime = 0;
+                    el.play().catch(() => {});
+                  }
+                };
+              }}
               src={exercise.videoUrl}
               className="w-full aspect-video object-cover"
               autoPlay
-              loop
               muted
               playsInline
               preload="auto"
@@ -744,7 +753,7 @@ export default function FeaturedWorkoutSession() {
       </div>
 
       {/* Bottom navigation */}
-      <div className="fixed bottom-20 left-0 right-0 p-4 bg-gradient-to-t from-black via-black/95 to-transparent safe-bottom z-40">
+      <div className="px-4 py-6">
         <div className="flex gap-3">
           <button
             onClick={goPrev}
