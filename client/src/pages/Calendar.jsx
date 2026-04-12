@@ -497,11 +497,12 @@ export default function Calendar() {
                       navigateToWorkout(workout.templateId, dateStr);
                     }
                   }}
-                  className={`relative min-h-[72px] rounded-lg p-1 transition-all ${
+                  className={`relative min-h-[72px] p-1 transition-all ${
                     !inMonth ? 'opacity-20' : ''
                   } ${hasWorkout ? 'cursor-pointer active:scale-[0.97]' : ''} ${
                     dayIsToday ? 'ring-2 ring-wf-red' : ''
                   } ${dayCompleted ? 'bg-green-500/10' : 'bg-white/[0.02]'}`}
+                  style={{ borderRadius: '16px', boxShadow: '-4px 2px 8px rgba(0,0,0,0.5)' }}
                 >
                   {/* Date number */}
                   <div className={`text-center text-xs font-bold mb-0.5 ${

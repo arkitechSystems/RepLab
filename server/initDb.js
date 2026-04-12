@@ -335,18 +335,15 @@ export default async function initDb() {
   // Remove deprecated library programs
   await pool.query("DELETE FROM programs WHERE name = $1 AND user_id IS NULL", ["ZJ's Workout"]);
   await pool.query("DELETE FROM programs WHERE name = $1 AND user_id IS NULL", ['Push, Pull, Legs']);
-
-  // Seed Bro Split program if not already present
-  const { rows: bsRows } = await pool.query("SELECT id FROM programs WHERE name = 'Bro Split Workout' AND user_id IS NULL");
-  if (bsRows.length === 0) {
-    await seedBroSplit();
-  }
-
-  // Seed Booty Revolution Inspired if not already present
-  const { rows: brRows } = await pool.query("SELECT id FROM programs WHERE name IN ('Booty Revolution Inspired', 'Glute Hypertrophy') AND user_id IS NULL");
-  if (brRows.length === 0) {
-    await seedBootyRevolution();
-  }
+  await pool.query("DELETE FROM programs WHERE name = $1 AND user_id IS NULL", ['Science-Based Upper/Lower (Jeff Nippard Inspired)']);
+  await pool.query("DELETE FROM programs WHERE name = $1 AND user_id IS NULL", ['nSuns 5/3/1 LP']);
+  await pool.query("DELETE FROM programs WHERE name = $1 AND user_id IS NULL", ['Creeping Death (John Meadows Inspired)']);
+  await pool.query("DELETE FROM programs WHERE name = $1 AND user_id IS NULL", ['GZCL Method']);
+  await pool.query("DELETE FROM programs WHERE name = $1 AND user_id IS NULL", ['PHAT (Power Hypertrophy Adaptive Training)']);
+  await pool.query("DELETE FROM programs WHERE name = $1 AND user_id IS NULL", ['PHUL (Power Hypertrophy Upper Lower)']);
+  await pool.query("DELETE FROM programs WHERE name = $1 AND user_id IS NULL", ['German Volume Training (GVT)']);
+  await pool.query("DELETE FROM programs WHERE name = $1 AND user_id IS NULL", ['Bro Split Workout']);
+  await pool.query("DELETE FROM programs WHERE name = $1 AND user_id IS NULL", ['Glute Hypertrophy']);
 
   // Seed Will's PPL if not already present
   const { rows: wpplRows } = await pool.query("SELECT id FROM programs WHERE name = $1 AND user_id IS NULL", ["Will's PPL"]);

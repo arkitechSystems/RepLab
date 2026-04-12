@@ -68,11 +68,11 @@ const CARD_BORDER_STYLE = {
   boxShadow: '0 0 20px rgba(255,255,255,0.07), 0 0 40px rgba(255,255,255,0.03)',
 };
 
-function ProgramCard({ program, idx, onSelect, onBegin, onDelete, onShare, dataTutorial }) {
+function ProgramCard({ program, idx, onSelect, onBegin, onDelete, onShare, dataTutorial, onNavigateFeatured }) {
   return (
     <div
       data-tutorial={dataTutorial}
-      onClick={() => onSelect(program.id)}
+      onClick={() => program.isFeatured && onNavigateFeatured ? onNavigateFeatured() : onSelect(program.id)}
       style={{ animationDelay: `${idx * 80}ms` }}
       className="w-full text-left glass-card rounded-2xl overflow-hidden active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
     >
@@ -87,6 +87,9 @@ function ProgramCard({ program, idx, onSelect, onBegin, onDelete, onShare, dataT
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-0.5">
+              {program.isFeatured && (
+                <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400">Featured</span>
+              )}
               {program.programType && program.programType !== 'other' && (
                 <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
                   program.programType === 'strength' ? 'bg-orange-500/15 text-orange-400' :
@@ -109,7 +112,14 @@ function ProgramCard({ program, idx, onSelect, onBegin, onDelete, onShare, dataT
             {program.workoutCount > 0 && (
               <button
                 data-tutorial="begin-program-btn"
-                onClick={(e) => onBegin(e, program)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (program.isFeatured && onNavigateFeatured) {
+                    onNavigateFeatured();
+                  } else {
+                    onBegin(e, program);
+                  }
+                }}
                 className="text-white font-semibold text-xs px-3 py-2 rounded-xl active:scale-[0.97] transition-all"
                 style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.2)', boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.2), 0 4px 12px rgba(0,0,0,0.2)' }}
               >
@@ -2190,17 +2200,17 @@ export default function Workouts() {
           {/* Will's Hypertrophy Program */}
           <div
             onClick={() => navigate('/featured-session')}
-            className="featured-glow-border fade-slide-up cursor-pointer active:scale-[0.98] transition-transform"
-            style={{ position: 'relative', borderRadius: '24px' }}
-          >
-            {/* Inner card — original design unchanged */}
-            <div style={{
-              background: 'linear-gradient(135deg, #0a0a0a 0%, #1a0808 50%, #0a0606 100%)',
-              borderRadius: '24px',
-              padding: '24px 20px',
+            className="fade-slide-up cursor-pointer active:scale-[0.98] transition-transform"
+            style={{
               position: 'relative',
+              borderRadius: '24px',
+              background: 'linear-gradient(135deg, #0a0a0a 0%, #1a0808 50%, #0a0606 100%)',
+              padding: '24px 20px',
               overflow: 'hidden',
-            }}>
+              border: '0.75px solid rgba(255,255,255,0.15)',
+            }}
+          >
+            <div style={{ position: 'relative' }}>
             {/* Blob */}
             <div style={{ position: 'absolute', top: '-20%', right: '-10%', width: '50%', height: '70%', borderRadius: '50%', background: 'radial-gradient(circle, rgba(239,68,68,0.3) 0%, transparent 70%)', filter: 'blur(25px)' }} />
             <div style={{ position: 'relative', zIndex: 1 }}>
@@ -2211,8 +2221,7 @@ export default function Workouts() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    const featuredProg = enrichedPrograms.find(p => p.isFeatured);
-                    if (featuredProg) openBeginProgram(e, featuredProg);
+                    navigate('/featured-session');
                   }}
                   className="active:scale-[0.97] transition-all"
                   style={{
@@ -2572,7 +2581,7 @@ export default function Workouts() {
                 {ownPrograms.length > 0 && (
                   <div className="space-y-4 pb-4">
                     {ownPrograms.map((program, idx) => (
-                      <ProgramCard key={program.id} program={program} idx={idx} dataTutorial={idx === 0 ? 'program-card' : undefined} onSelect={(id) => { setSelectedProgram(id); setSelectedWeek(null); setBrowseSearch(''); completeTutorialAction('program-selected'); }} onBegin={openBeginProgram} onDelete={!isBrowse ? handleDeleteProgram : undefined} onShare={!isBrowse ? (p) => { setShareResult(null); setShareInput(''); setShareModal(p); } : undefined} />
+                      <ProgramCard key={program.id} program={program} idx={idx} dataTutorial={idx === 0 ? 'program-card' : undefined} onSelect={(id) => { setSelectedProgram(id); setSelectedWeek(null); setBrowseSearch(''); completeTutorialAction('program-selected'); }} onBegin={openBeginProgram} onDelete={!isBrowse ? handleDeleteProgram : undefined} onShare={!isBrowse ? (p) => { setShareResult(null); setShareInput(''); setShareModal(p); } : undefined} onNavigateFeatured={program.isFeatured ? () => navigate('/featured-session') : undefined} />
                     ))}
                   </div>
                 )}
@@ -2596,7 +2605,7 @@ export default function Workouts() {
                               )}
                               <span className="text-xs text-wf-gray-500">From <span className="text-blue-400 font-semibold">{sender?.senderName || 'a user'}{sender?.senderUsername ? ` (@${sender.senderUsername})` : ''}</span></span>
                             </div>
-                            <ProgramCard program={program} idx={idx} onSelect={(id) => { setSelectedProgram(id); setSelectedWeek(null); setBrowseSearch(''); }} onBegin={openBeginProgram} onDelete={handleDeleteProgram} onShare={(p) => openShareModal(p)} />
+                            <ProgramCard program={program} idx={idx} onSelect={(id) => { setSelectedProgram(id); setSelectedWeek(null); setBrowseSearch(''); }} onBegin={openBeginProgram} onDelete={handleDeleteProgram} onShare={(p) => openShareModal(p)} onNavigateFeatured={program.isFeatured ? () => navigate('/featured-session') : undefined} />
                           </div>
                         );
                       })}

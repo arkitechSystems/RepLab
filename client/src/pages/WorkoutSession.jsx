@@ -1646,7 +1646,7 @@ export default function WorkoutSession() {
               </div>
               <div className="h-2 rounded-full bg-white/10 overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-green-500 transition-all duration-300 ease-out"
+                  className="h-full rounded-full bg-wf-red transition-all duration-300 ease-out"
                   style={{ width: `${progressPct}%` }}
                 />
               </div>

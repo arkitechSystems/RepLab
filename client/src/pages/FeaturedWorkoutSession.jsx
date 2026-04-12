@@ -2,6 +2,9 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import StickyHeader from '../components/StickyHeader';
 
+// RepLab exercise video CDN (Render static site, source: replab-videos/)
+const VIDEO_CDN = 'https://replab-videos.onrender.com';
+
 // Daily workout templates
 const WORKOUTS = {
   'chest': {
@@ -13,7 +16,13 @@ const WORKOUTS = {
         name: 'Barbell Bench (Warm Up)',
         isSectionHeader: true,
         sectionNotes: 'Warm up with progressive sets. Pause reps on sets 2 and 3 — hold the bar 1 inch off the chest for 2 seconds before pressing.',
-        sets: [],
+        setType: 'warm_up',
+        videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/chest/dumbbell-lateral-raise.mp4`,
+        sets: [
+          { setNumber: 1, plannedReps: 10, suggestedWeight: 0 },
+          { setNumber: 2, plannedReps: 10, suggestedWeight: 0 },
+          { setNumber: 3, plannedReps: 10, suggestedWeight: 0 },
+        ],
       },
       {
         name: 'Barbell Bench',
@@ -119,6 +128,16 @@ export default function FeaturedWorkoutSession() {
   const [entries, setEntries] = useState({});
   const [completedSets, setCompletedSets] = useState(new Set());
   const containerRef = useRef(null);
+
+  // Sync state when navigation changes (component may be reused by React Router)
+  useEffect(() => {
+    const s = location.state || {};
+    if (s.week) setSelectedWeek(s.week);
+    if (s.day) {
+      setSelectedDay(s.day);
+      setCurrentIdx(-1);
+    }
+  }, [location.key]);
 
   // Workout timer
   const [timerStarted, setTimerStarted] = useState(false);
@@ -469,7 +488,7 @@ export default function FeaturedWorkoutSession() {
                     <div style={{ fontSize: '14px', fontWeight: 600, color: 'white' }}>{ex.name}</div>
                     <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', marginTop: '2px' }}>
                       {ex.sets.length} sets
-                      {ex.setType !== 'straight' && ` · ${ex.setType.replace('_', ' ')}`}
+                      {ex.setType && ex.setType !== 'straight' && ` · ${ex.setType.replace('_', ' ')}`}
                     </div>
                   </div>
                 </div>
