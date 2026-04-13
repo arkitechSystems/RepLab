@@ -2240,7 +2240,7 @@ export default function Workouts() {
                 Will's Hypertrophy Program
               </div>
               <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginBottom: '14px' }}>
-                12 Week Resistance Training Program focused on muscle hypertrophy
+                Guided workout sessions with custom set logging
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 0', marginBottom: '12px', alignItems: 'center' }}>
                 {['Chest', 'Bis/RDs', 'Quads', 'Tris/Shoulders', 'Back/Traps', 'Glutes/Hams'].map((split, i, arr) => (

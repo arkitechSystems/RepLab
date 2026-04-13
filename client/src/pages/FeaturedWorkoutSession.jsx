@@ -17,7 +17,7 @@ const WORKOUTS = {
         isSectionHeader: true,
         sectionNotes: 'Warm up with progressive sets. Pause reps on sets 2 and 3 — hold the bar 1 inch off the chest for 2 seconds before pressing.',
         setType: 'warm_up',
-        videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/chest/dumbbell-lateral-raise.mp4`,
+        videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
         sets: [
           { setNumber: 1, plannedReps: 10, suggestedWeight: 0 },
           { setNumber: 2, plannedReps: 10, suggestedWeight: 0 },
@@ -28,7 +28,7 @@ const WORKOUTS = {
         name: 'Barbell Bench',
         setType: 'warm_up',
         description: "Warm-up sets to prime your chest, shoulders, and triceps. Sets 2 and 3 are pause reps — lower the bar to just above your chest, hold for a 2-count, then press explosively. Set 4 is heavier to activate the nervous system before working sets.",
-        videoUrl: null,
+        videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
         sets: [
           { setNumber: 1, plannedReps: 6, suggestedWeight: 0 },
           { setNumber: 2, plannedReps: 5, suggestedWeight: 0 },
@@ -40,7 +40,7 @@ const WORKOUTS = {
         name: 'Barbell Bench',
         setType: 'straight',
         description: "Working sets. Controlled reps with a full range of motion — touch the chest, press to full lockout. Aim for 8-10 reps per set. If you hit 10 on all 3 sets, increase weight next session.",
-        videoUrl: null,
+        videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
         sets: [
           { setNumber: 1, plannedReps: 10, suggestedWeight: 0 },
           { setNumber: 2, plannedReps: 10, suggestedWeight: 0 },
@@ -51,7 +51,7 @@ const WORKOUTS = {
         name: 'DB Incline Bench Press',
         setType: 'straight',
         description: "10×10 German Volume Training — 10 sets of 10 reps with only 60 seconds rest between sets. Use a weight you could do 20 reps with. This is about volume and time under tension, not max weight. The burn will be intense by set 6.",
-        videoUrl: null,
+        videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
         sets: [
           { setNumber: 1, plannedReps: 10, suggestedWeight: 0 },
           { setNumber: 2, plannedReps: 10, suggestedWeight: 0 },
@@ -69,7 +69,7 @@ const WORKOUTS = {
         name: 'Straight Arm Kneeling Upper Chest Cable Flyes',
         setType: 'straight',
         description: "Kneel in front of a low cable with arms straight. Bring the handles up and together in front of your upper chest, squeezing at the top. This targets the upper chest fibers that are hard to hit with pressing alone. Keep the arms nearly straight throughout.",
-        videoUrl: null,
+        videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
         sets: [
           { setNumber: 1, plannedReps: 15, suggestedWeight: 0 },
           { setNumber: 2, plannedReps: 15, suggestedWeight: 0 },
@@ -80,7 +80,7 @@ const WORKOUTS = {
         name: 'Pec Deck Flyes',
         setType: 'straight',
         description: "Isolation finisher on the pec deck. Squeeze hard at the peak contraction and control the negative. Go to near-failure on each set.",
-        videoUrl: null,
+        videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
         sets: [
           { setNumber: 1, plannedReps: 15, suggestedWeight: 0 },
           { setNumber: 2, plannedReps: 15, suggestedWeight: 0 },
@@ -91,7 +91,7 @@ const WORKOUTS = {
         name: 'Max Push-Ups',
         setType: 'straight',
         description: "Final burnout — one set to absolute failure. Your chest is completely pre-fatigued at this point, so even bodyweight will be a challenge. Log your total reps.",
-        videoUrl: null,
+        videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
         sets: [
           { setNumber: 1, plannedReps: 0, suggestedWeight: 0 },
         ],
@@ -127,7 +127,11 @@ export default function FeaturedWorkoutSession() {
   const [currentIdx, setCurrentIdx] = useState(navState.day ? -1 : -1);
   const [entries, setEntries] = useState({});
   const [completedSets, setCompletedSets] = useState(new Set());
+  const [highlightNext, setHighlightNext] = useState(false);
+  const [expandedWeek, setExpandedWeek] = useState(null);
+  const [expandedDay, setExpandedDay] = useState(null);
   const containerRef = useRef(null);
+  const nextBtnRef = useRef(null);
 
   // Sync state when navigation changes (component may be reused by React Router)
   useEffect(() => {
@@ -182,6 +186,20 @@ export default function FeaturedWorkoutSession() {
   const totalExercises = workout ? workout.exercises.length : 0;
   const exercise = currentIdx >= 0 && workout ? workout.exercises[currentIdx] : null;
 
+  // Auto-scroll to Next Exercise button when all sets on current exercise are completed
+  useEffect(() => {
+    if (!exercise || exercise.sets.length === 0) return;
+    const allDone = exercise.sets.every((_, idx) => completedSets.has(`${exercise.name}-${idx}`));
+    if (allDone) {
+      setHighlightNext(true);
+      setTimeout(() => {
+        nextBtnRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 200);
+    } else {
+      setHighlightNext(false);
+    }
+  }, [completedSets, exercise]);
+
   function handleChange(setIdx, field, value) {
     if (!exercise) return;
     const key = exercise.name;
@@ -212,6 +230,7 @@ export default function FeaturedWorkoutSession() {
 
   function goNext() {
     if (currentIdx < totalExercises - 1) {
+      setHighlightNext(false);
       setCurrentIdx(currentIdx + 1);
       window.scrollTo({ top: 0, behavior: 'instant' });
     }
@@ -256,27 +275,31 @@ export default function FeaturedWorkoutSession() {
             </div>
           </div>
 
-          {/* Week cards */}
+          {/* Week cards — accordion style */}
           <div className="space-y-3">
             {Array.from({ length: PROGRAM.totalWeeks }, (_, i) => i + 1).map((week) => {
               const weightBonus = Math.floor((week - 1) / 2) * 5;
+              const isExpanded = expandedWeek === week;
               return (
                 <div
                   key={week}
-                  onClick={() => { setSelectedWeek(week); window.scrollTo({ top: 0, behavior: 'instant' }); }}
-                  className="cursor-pointer active:scale-[0.98] transition-transform fade-slide-up"
+                  className="fade-slide-up"
                   style={{
                     animationDelay: `${Math.min(week * 40, 400)}ms`,
                     background: 'linear-gradient(135deg, #0a0a0a 0%, #1a0808 50%, #0a0606 100%)',
                     borderRadius: '16px',
-                    padding: '16px 20px',
                     border: '0.75px solid rgba(255,255,255,0.15)',
                     position: 'relative',
                     overflow: 'hidden',
                   }}
                 >
                   <div style={{ position: 'absolute', top: '-30%', right: '-15%', width: '40%', height: '80%', borderRadius: '50%', background: 'radial-gradient(circle, rgba(239,68,68,0.15) 0%, transparent 70%)', filter: 'blur(20px)' }} />
-                  <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  {/* Header — tap to expand/collapse */}
+                  <div
+                    onClick={() => setExpandedWeek(isExpanded ? null : week)}
+                    className="cursor-pointer active:scale-[0.98] transition-transform"
+                    style={{ padding: '16px 20px', position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                  >
                     <div>
                       <div style={{ fontSize: '16px', fontWeight: 700, color: 'white', marginBottom: '4px' }}>
                         Week {week}
@@ -290,10 +313,143 @@ export default function FeaturedWorkoutSession() {
                         </div>
                       )}
                     </div>
-                    <svg className="w-5 h-5 shrink-0" style={{ color: 'rgba(255,255,255,0.3)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="w-5 h-5 shrink-0 transition-transform duration-200" style={{ color: 'rgba(255,255,255,0.3)', transform: isExpanded ? 'rotate(90deg)' : 'none' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                     </svg>
                   </div>
+                  {/* Expanded day list */}
+                  {isExpanded && (
+                    <div style={{ position: 'relative', zIndex: 1, padding: '0 20px 16px' }}>
+                      <div style={{ width: '100%', height: '1px', background: 'rgba(255,255,255,0.06)', marginBottom: '4px' }} />
+
+                      {/* Go to week button */}
+                      <button
+                        onClick={() => { setSelectedWeek(week); setExpandedWeek(null); setExpandedDay(null); window.scrollTo({ top: 0, behavior: 'instant' }); }}
+                        className="active:scale-[0.98] transition-all"
+                        style={{
+                          width: '100%', padding: '10px', borderRadius: '10px', border: 'none', marginBottom: '12px',
+                          background: 'linear-gradient(135deg, rgba(239,68,68,0.9), rgba(249,115,22,0.9))',
+                          color: 'white', fontSize: '10px', fontWeight: 600, cursor: 'pointer',
+                          letterSpacing: '2px', textTransform: 'uppercase',
+                          boxShadow: '0 0 16px rgba(239,68,68,0.2)',
+                        }}
+                      >
+                        Go to Week {week}
+                      </button>
+
+                      {PROGRAM.daysPerWeek.map((dayKey, dayIdx) => {
+                        const dayExpanded = expandedDay === `${week}-${dayIdx}`;
+                        const dayWorkout = WORKOUTS[dayKey];
+                        return (
+                          <div key={dayKey}>
+                            {/* Day header — tap to expand exercises */}
+                            <div
+                              onClick={() => setExpandedDay(dayExpanded ? null : `${week}-${dayIdx}`)}
+                              className="cursor-pointer active:opacity-70 transition-opacity"
+                              style={{
+                                padding: '10px 0',
+                                borderBottom: '1px solid rgba(255,255,255,0.06)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div style={{
+                                  width: '24px', height: '24px', borderRadius: '50%',
+                                  background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  fontSize: '10px', fontWeight: 700, color: '#ef4444',
+                                }}>
+                                  {dayIdx + 1}
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)' }}>Day {dayIdx + 1}</div>
+                                  <div style={{ fontSize: '13px', fontWeight: 600, color: 'white', marginTop: '1px' }}>
+                                    {dayWorkout.name} · {dayWorkout.exercises.length} exercises · {dayWorkout.exercises.reduce((s, ex) => s + ex.sets.length, 0)} sets
+                                  </div>
+                                </div>
+                              </div>
+                              <svg className="w-4 h-4 transition-transform duration-200" style={{ color: 'rgba(255,255,255,0.2)', transform: dayExpanded ? 'rotate(90deg)' : 'none' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                              </svg>
+                            </div>
+                            {/* Expanded exercise list */}
+                            {dayExpanded && dayWorkout.exercises.length > 0 && (
+                              <div style={{ padding: '8px 0 4px 36px' }}>
+                                {dayWorkout.exercises.map((ex, exIdx) => (
+                                  <div key={exIdx} style={{
+                                    padding: '6px 0',
+                                    borderBottom: exIdx < dayWorkout.exercises.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none',
+                                    display: 'flex', alignItems: 'center', gap: '8px',
+                                  }}>
+                                    <span style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(239,68,68,0.5)', width: '16px', textAlign: 'center' }}>{exIdx + 1}</span>
+                                    <div>
+                                      <div style={{ fontSize: '12px', fontWeight: 500, color: 'rgba(255,255,255,0.7)' }}>{ex.name}</div>
+                                      <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.25)', marginTop: '1px' }}>
+                                        {ex.sets.length} sets{ex.setType && ex.setType !== 'straight' ? ` · ${ex.setType.replace('_', ' ')}` : ''}
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {dayExpanded && dayWorkout.exercises.length === 0 && (
+                              <div style={{ padding: '8px 0 4px 36px', fontSize: '11px', color: 'rgba(255,255,255,0.25)' }}>Coming soon</div>
+                            )}
+                            {dayExpanded && (
+                              <div style={{ padding: '4px 0 8px', display: 'flex', justifyContent: 'flex-end' }}>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (dayWorkout.exercises.length > 0) {
+                                      setSelectedWeek(week);
+                                      setSelectedDay(dayKey);
+                                      setCurrentIdx(-1);
+                                      setExpandedWeek(null);
+                                      setExpandedDay(null);
+                                      window.scrollTo({ top: 0, behavior: 'instant' });
+                                    }
+                                  }}
+                                  disabled={dayWorkout.exercises.length === 0}
+                                  className="active:scale-[0.97] transition-all"
+                                  style={{
+                                    padding: '6px 14px', borderRadius: '8px', border: 'none',
+                                    fontSize: '10px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase',
+                                    cursor: dayWorkout.exercises.length > 0 ? 'pointer' : 'not-allowed',
+                                    background: dayWorkout.exercises.length > 0
+                                      ? 'linear-gradient(135deg, rgba(239,68,68,0.9), rgba(249,115,22,0.9))'
+                                      : 'rgba(255,255,255,0.05)',
+                                    color: dayWorkout.exercises.length > 0 ? 'white' : 'rgba(255,255,255,0.2)',
+                                    opacity: dayWorkout.exercises.length > 0 ? 1 : 0.5,
+                                  }}
+                                >
+                                  Begin Workout
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {/* Rest day */}
+                      <div style={{
+                        padding: '10px 0',
+                        borderBottom: '1px solid rgba(255,255,255,0.06)',
+                        display: 'flex', alignItems: 'center', gap: '12px',
+                      }}>
+                        <div style={{
+                          width: '24px', height: '24px', borderRadius: '50%',
+                          background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.3)',
+                        }}>
+                          7
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.2)' }}>Day 7</div>
+                          <div style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(255,255,255,0.3)', marginTop: '1px' }}>Rest</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -442,14 +598,19 @@ export default function FeaturedWorkoutSession() {
               </div>
               <div style={{ width: '100%', height: '1px', background: 'rgba(255,255,255,0.06)', marginBottom: '16px' }} />
 
-              {/* Start button — above description */}
+              <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', lineHeight: 1.7 }}>
+                {workout.description}
+              </p>
+
+              {/* Start button — bottom of header card */}
               {totalExercises > 0 && (
                 <button
                   onClick={() => { setCurrentIdx(0); startTimer(); }}
                   style={{
-                    width: '100%', padding: '16px', borderRadius: '14px', border: 'none', marginBottom: '16px',
+                    width: '100%', padding: '16px', borderRadius: '14px', border: 'none', marginTop: '16px',
                     background: 'linear-gradient(135deg, rgba(239,68,68,0.9), rgba(249,115,22,0.9))',
-                    color: 'white', fontSize: '15px', fontWeight: 700, cursor: 'pointer',
+                    color: 'white', fontSize: '11px', fontWeight: 600, cursor: 'pointer',
+                    letterSpacing: '3px', textTransform: 'uppercase',
                     boxShadow: '0 0 20px rgba(239,68,68,0.3)',
                   }}
                   className="active:scale-[0.98] transition-all"
@@ -457,10 +618,6 @@ export default function FeaturedWorkoutSession() {
                   Start Guided Workout
                 </button>
               )}
-
-              <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', lineHeight: 1.7 }}>
-                {workout.description}
-              </p>
             </div>
           </div>
 
@@ -501,12 +658,14 @@ export default function FeaturedWorkoutSession() {
               <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)' }}>This workout is being built. Check back soon!</div>
             </div>
           )}
+
         </div>
       </div>
     );
   }
 
   // Exercise page
+  if (!exercise) return null;
   const exEntries = entries[exercise.name] || exercise.sets.map((s) => ({ weight: s.suggestedWeight || '', reps: '' }));
 
   return (
@@ -801,24 +960,28 @@ export default function FeaturedWorkoutSession() {
           </button>
           {currentIdx < totalExercises - 1 ? (
             <button
+              ref={nextBtnRef}
               onClick={goNext}
-              className="flex-[2] py-4 rounded-xl text-sm font-semibold active:scale-[0.98] transition-all"
+              className={`flex-[2] py-4 rounded-xl text-sm font-semibold active:scale-[0.98] transition-all ${highlightNext ? 'animate-pulse' : ''}`}
               style={{
                 background: 'linear-gradient(135deg, rgba(239,68,68,0.9), rgba(249,115,22,0.9))',
                 color: 'white',
-                boxShadow: '0 0 16px rgba(239,68,68,0.3)',
+                boxShadow: highlightNext ? '0 0 30px rgba(239,68,68,0.6), 0 0 60px rgba(239,68,68,0.3)' : '0 0 16px rgba(239,68,68,0.3)',
+                transform: highlightNext ? 'scale(1.03)' : undefined,
               }}
             >
-              Next Exercise
+              Next Exercise →
             </button>
           ) : (
             <button
+              ref={nextBtnRef}
               onClick={() => {
                 clearInterval(timerRef.current);
                 setTimerFloating(false);
                 setShowSummary(true);
               }}
-              className="flex-[2] py-4 rounded-xl text-sm font-semibold active:scale-[0.98] transition-all bg-wf-red/90 hover:bg-wf-red text-white"
+              className={`flex-[2] py-4 rounded-xl text-sm font-semibold active:scale-[0.98] transition-all bg-wf-red/90 hover:bg-wf-red text-white ${highlightNext ? 'animate-pulse' : ''}`}
+              style={highlightNext ? { boxShadow: '0 0 30px rgba(239,68,68,0.6), 0 0 60px rgba(239,68,68,0.3)', transform: 'scale(1.03)' } : undefined}
             >
               Complete Workout
             </button>
