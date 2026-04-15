@@ -35,6 +35,7 @@ import billingRoutes from './routes/billing.js';
 import shopRoutes from './routes/shop.js';
 import workoutDashboardRoutes from './routes/workoutDashboard.js';
 import sharingRoutes from './routes/sharing.js';
+import pushRoutes from './routes/push.js';
 import db from './db.js';
 import { sendDailySummaryEmail } from './email.js';
 
@@ -129,6 +130,7 @@ app.use('/billing', billingRoutes);
 app.use('/shop', shopRoutes);
 app.use('/workouts', workoutDashboardRoutes);
 app.use('/sharing', apiLimiter, sharingRoutes);
+app.use('/push', pushRoutes);
 
 // Health check — pinged by UptimeRobot to prevent Render free-tier sleep
 app.get('/health', (req, res) => res.json({

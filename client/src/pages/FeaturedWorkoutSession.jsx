@@ -115,6 +115,50 @@ const PROGRAM = {
   daysPerWeek: WEEKLY_SCHEDULE,
 };
 
+function VideoLoop({ src }) {
+  const videoARef = useRef(null);
+  const videoBRef = useRef(null);
+  const rafRef = useRef(null);
+
+  useEffect(() => {
+    const a = videoARef.current;
+    const b = videoBRef.current;
+    if (!a || !b) return;
+
+    a.style.opacity = '1';
+    b.style.opacity = '0';
+    a.play().catch(() => {});
+
+    const check = () => {
+      const active = a.style.opacity === '1' ? a : b;
+      const standby = active === a ? b : a;
+      if (active.duration && active.currentTime >= active.duration - 0.15) {
+        standby.currentTime = 0;
+        standby.play().catch(() => {});
+        standby.style.opacity = '1';
+        active.style.opacity = '0';
+        setTimeout(() => { active.currentTime = 0; active.pause(); }, 100);
+      }
+      rafRef.current = requestAnimationFrame(check);
+    };
+    rafRef.current = requestAnimationFrame(check);
+
+    return () => {
+      cancelAnimationFrame(rafRef.current);
+      a.pause();
+      b.pause();
+    };
+  }, [src]);
+
+  const style = { transition: 'opacity 0.05s linear' };
+  return (
+    <div style={{ borderRadius: '16px', overflow: 'hidden', marginBottom: '16px', position: 'relative' }}>
+      <video ref={videoARef} src={src} className="w-full aspect-video object-cover" style={{ ...style, position: 'relative' }} muted playsInline preload="auto" />
+      <video ref={videoBRef} src={src} className="w-full aspect-video object-cover" style={{ ...style, position: 'absolute', top: 0, left: 0 }} muted playsInline preload="auto" />
+    </div>
+  );
+}
+
 export default function FeaturedWorkoutSession() {
   const navigate = useNavigate();
   const { workoutId } = useParams();
@@ -124,7 +168,7 @@ export default function FeaturedWorkoutSession() {
   const navState = location.state || {};
   const [selectedWeek, setSelectedWeek] = useState(navState.week || null);
   const [selectedDay, setSelectedDay] = useState(navState.day || null);
-  const [currentIdx, setCurrentIdx] = useState(navState.day ? -1 : -1);
+  const [currentIdx, setCurrentIdx] = useState(-1);
   const [entries, setEntries] = useState({});
   const [completedSets, setCompletedSets] = useState(new Set());
   const [highlightNext, setHighlightNext] = useState(false);
@@ -132,16 +176,53 @@ export default function FeaturedWorkoutSession() {
   const [expandedDay, setExpandedDay] = useState(null);
   const containerRef = useRef(null);
   const nextBtnRef = useRef(null);
+  // Track the deepest view the user was sent to via navigation state
+  const arrivedWithWeek = useRef(!!(navState.week));
+  const arrivedWithDay = useRef(!!(navState.day));
 
   // Sync state when navigation changes (component may be reused by React Router)
   useEffect(() => {
     const s = location.state || {};
-    if (s.week) setSelectedWeek(s.week);
+    if (s.week) {
+      setSelectedWeek(s.week);
+      arrivedWithWeek.current = true;
+    }
     if (s.day) {
       setSelectedDay(s.day);
       setCurrentIdx(-1);
+      arrivedWithDay.current = true;
     }
   }, [location.key]);
+
+  // Restore or reset workout data when switching days
+  useEffect(() => {
+    if (!selectedDay) return;
+    const storageKey = `featured-workout-${selectedDay}`;
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey));
+      if (saved && saved.day === selectedDay) {
+        setEntries(saved.entries || {});
+        setCompletedSets(new Set(saved.completedSets || []));
+        return;
+      }
+    } catch {}
+    setEntries({});
+    setCompletedSets(new Set());
+    setHighlightNext(false);
+  }, [selectedDay]);
+
+  // Persist entries and completedSets to localStorage
+  useEffect(() => {
+    if (!selectedDay) return;
+    const storageKey = `featured-workout-${selectedDay}`;
+    try {
+      localStorage.setItem(storageKey, JSON.stringify({
+        day: selectedDay,
+        entries,
+        completedSets: [...completedSets],
+      }));
+    } catch {}
+  }, [entries, completedSets, selectedDay]);
 
   // Workout timer
   const [timerStarted, setTimerStarted] = useState(false);
@@ -150,7 +231,13 @@ export default function FeaturedWorkoutSession() {
   const [pinTimer, setPinTimer] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [timerFloating, setTimerFloating] = useState(false);
-  const [floatPos, setFloatPos] = useState({ x: 16, y: 100 });
+  const [floatPos, setFloatPos] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('featured-timer-pos'));
+      if (saved?.x != null && saved?.y != null) return saved;
+    } catch {}
+    return { x: 16, y: 100 };
+  });
   const floatStartRef = useRef(null);
 
   // Timer tick
@@ -180,11 +267,14 @@ export default function FeaturedWorkoutSession() {
     const t = e.touches[0];
     setFloatPos({ x: t.clientX - floatStartRef.current.x, y: t.clientY - floatStartRef.current.y });
   }
-  function handleFloatTouchEnd() { floatStartRef.current = null; }
+  function handleFloatTouchEnd() {
+    floatStartRef.current = null;
+    try { localStorage.setItem('featured-timer-pos', JSON.stringify(floatPos)); } catch {}
+  }
 
   const workout = selectedDay ? WORKOUTS[selectedDay] : null;
   const totalExercises = workout ? workout.exercises.length : 0;
-  const exercise = currentIdx >= 0 && workout ? workout.exercises[currentIdx] : null;
+  const exercise = currentIdx >= 0 && workout && currentIdx < workout.exercises.length ? workout.exercises[currentIdx] : null;
 
   // Auto-scroll to Next Exercise button when all sets on current exercise are completed
   useEffect(() => {
@@ -236,6 +326,14 @@ export default function FeaturedWorkoutSession() {
     }
   }
 
+  function goBack() {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/');
+    }
+  }
+
   function goPrev() {
     if (currentIdx > 0) {
       setCurrentIdx(currentIdx - 1);
@@ -253,7 +351,7 @@ export default function FeaturedWorkoutSession() {
     return (
       <div className="min-h-screen bg-black pb-24">
         <div className="px-4 pt-6 mb-2">
-          <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-wf-red text-sm font-medium active:opacity-70">
+          <button onClick={goBack} className="flex items-center gap-1 text-wf-red text-sm font-medium active:opacity-70">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
             </svg>
@@ -465,11 +563,18 @@ export default function FeaturedWorkoutSession() {
     return (
       <div className="min-h-screen bg-black pb-24">
         <div className="px-4 pt-6 mb-2">
-          <button onClick={() => { setSelectedWeek(null); window.scrollTo({ top: 0, behavior: 'instant' }); }} className="flex items-center gap-1 text-wf-red text-sm font-medium active:opacity-70">
+          <button onClick={() => {
+            if (arrivedWithWeek.current) {
+              goBack();
+            } else {
+              setSelectedWeek(null);
+              window.scrollTo({ top: 0, behavior: 'instant' });
+            }
+          }} className="flex items-center gap-1 text-wf-red text-sm font-medium active:opacity-70">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
             </svg>
-            All Weeks
+            {arrivedWithWeek.current ? 'Back' : 'All Weeks'}
           </button>
         </div>
 
@@ -565,11 +670,18 @@ export default function FeaturedWorkoutSession() {
     return (
       <div className="min-h-screen bg-black pb-24">
         <div className="px-4 pt-6 mb-2">
-          <button onClick={() => { setSelectedDay(null); window.scrollTo({ top: 0, behavior: 'instant' }); }} className="flex items-center gap-1 text-wf-red text-sm font-medium active:opacity-70">
+          <button onClick={() => {
+            if (arrivedWithDay.current) {
+              goBack();
+            } else {
+              setSelectedDay(null);
+              window.scrollTo({ top: 0, behavior: 'instant' });
+            }
+          }} className="flex items-center gap-1 text-wf-red text-sm font-medium active:opacity-70">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
             </svg>
-            Week {selectedWeek}
+            {arrivedWithDay.current ? 'Back' : `Week ${selectedWeek}`}
           </button>
         </div>
 
@@ -793,51 +905,7 @@ export default function FeaturedWorkoutSession() {
 
         {/* Video */}
         {exercise.videoUrl && (
-          <div style={{ borderRadius: '16px', overflow: 'hidden', marginBottom: '16px', position: 'relative' }}>
-            {/* Two stacked videos for seamless crossfade loop */}
-            {[0, 1].map((idx) => (
-              <video
-                key={`${exercise.name}-vid-${idx}`}
-                ref={(el) => {
-                  if (!el) return;
-                  const other = el.parentElement.querySelector(`video:${idx === 0 ? 'last-child' : 'first-child'}`);
-                  let raf;
-                  const check = () => {
-                    if (el.duration && el.currentTime >= el.duration - 0.15) {
-                      // Start the other video from 0 and bring it on top
-                      if (other && other.paused) {
-                        other.currentTime = 0;
-                        other.play().catch(() => {});
-                      }
-                      el.style.opacity = '0';
-                      if (other) other.style.opacity = '1';
-                      // Reset this video after it's hidden
-                      setTimeout(() => {
-                        el.currentTime = 0;
-                        el.pause();
-                      }, 100);
-                    }
-                    raf = requestAnimationFrame(check);
-                  };
-                  el.addEventListener('play', () => { raf = requestAnimationFrame(check); });
-                  el.addEventListener('pause', () => { cancelAnimationFrame(raf); });
-                  // Start first video immediately
-                  if (idx === 0) {
-                    el.style.opacity = '1';
-                    el.play().catch(() => {});
-                  } else {
-                    el.style.opacity = '0';
-                  }
-                }}
-                src={exercise.videoUrl}
-                className="w-full aspect-video object-cover"
-                style={{ position: idx === 0 ? 'relative' : 'absolute', top: 0, left: 0, transition: 'opacity 0.05s linear' }}
-                muted
-                playsInline
-                preload="auto"
-              />
-            ))}
-          </div>
+          <VideoLoop key={`${exercise.name}-${currentIdx}`} src={exercise.videoUrl} />
         )}
 
         {/* Sets */}
@@ -895,6 +963,8 @@ export default function FeaturedWorkoutSession() {
                   <input
                     type="number"
                     inputMode="decimal"
+                    min="0"
+                    step="0.5"
                     value={entry.weight ?? ''}
                     placeholder={set.suggestedWeight ? String(set.suggestedWeight) : '0'}
                     onChange={(e) => handleChange(idx, 'weight', e.target.value)}
@@ -915,6 +985,8 @@ export default function FeaturedWorkoutSession() {
                   <input
                     type="number"
                     inputMode="numeric"
+                    min="0"
+                    step="1"
                     value={entry.reps ?? ''}
                     placeholder={set.plannedReps ? String(set.plannedReps) : '0'}
                     onChange={(e) => handleChange(idx, 'reps', e.target.value)}

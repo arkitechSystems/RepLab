@@ -202,6 +202,15 @@ CREATE TABLE IF NOT EXISTS user_login_history (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS device_tokens (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  push_token TEXT NOT NULL UNIQUE,
+  platform TEXT DEFAULT 'ios',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS shared_programs (
   id SERIAL PRIMARY KEY,
   source_program_id INT REFERENCES programs(id) ON DELETE SET NULL,

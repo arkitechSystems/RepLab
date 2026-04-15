@@ -17,7 +17,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.willfit.app",
       "infoPlist": {
-        "UIBackgroundModes": []
+        "UIBackgroundModes": ["remote-notification"]
       }
     },
     "android": {
@@ -27,8 +27,24 @@
         "foregroundImage": "./assets/android-icon-foreground.png"
       }
     },
+    "updates": {
+      "url": "https://u.expo.dev/willfit",
+      "enabled": true,
+      "fallbackToCacheTimeout": 0
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "plugins": [
-      "expo-splash-screen"
+      "expo-splash-screen",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#EF4444"
+        }
+      ],
+      "expo-updates"
     ]
   }
 }
