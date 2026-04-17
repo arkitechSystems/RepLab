@@ -33,7 +33,7 @@ function getSetTypeShort(value) {
 
 export { SET_TYPES };
 
-function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, note, onNoteChange, weightSuggestion, onApplySuggestion, allWorkoutExercises, lastEntries, forceShowDemo, mode = 'session', dataTutorial }) {
+function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, note, onNoteChange, weightSuggestion, onApplySuggestion, allWorkoutExercises, lastEntries, forceShowDemo, mode = 'session', dataTutorial, showGoalWeight = true, showGoalReps = true, showSetType = true, exerciseNumber }) {
   const isTemplate = mode === 'template';
   // Use exerciseKey (unique per card) for set-level keys; fall back to exercise.name
   const keyName = exerciseKey || exercise.name;
@@ -135,8 +135,13 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
     <>
     <div data-tutorial={dataTutorial ? 'exercise-card' : undefined} className="exercise-card-light-test glass-card rounded-xl overflow-hidden mb-3">
       {/* Exercise Header — name + demo button */}
-      <div data-tutorial={dataTutorial} className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
-        <span className="text-base font-semibold text-white">{exercise.name}</span>
+      <div data-tutorial={dataTutorial} className="px-4 py-3 flex items-center justify-between" style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '3px double rgba(255,255,255,0.15)' }}>
+        <div className="min-w-0">
+          <span className="text-[17px] font-bold text-white">{exercise.name}</span>
+          <div className="text-[10px] text-wf-gray-500 mt-0.5">
+            {exercise.sets?.length || 0} sets{exercise.setType && exercise.setType !== 'straight' ? ` · ${exercise.setType.replace('_', ' ')}` : ''}
+          </div>
+        </div>
         {!isTemplate && (
           <button
             type="button"
@@ -253,17 +258,17 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
 
       {/* Column Headers */}
       <div className="px-3 pt-2 pb-1 flex items-center gap-1.5 text-[9px] text-wf-gray-500 uppercase tracking-wider">
-        {!isTemplate && !readOnly && onToggleComplete && <div className="w-5 shrink-0" />}
-        <div className="w-[1.43rem] shrink-0 text-center">Set</div>
-        <div className="w-[2.8rem] shrink-0 text-center">Type</div>
-        {!isTemplate && <div className="w-[3.15rem] shrink-0 text-center">Goal Wt</div>}
-        <div className="w-[3.15rem] shrink-0 text-center">Actual Wt</div>
+        {!isTemplate && !readOnly && onToggleComplete && <div className={showSetType ? 'w-5 shrink-0' : 'w-[1.8rem] shrink-0'} />}
+        <div className={showSetType ? 'w-[1.43rem] shrink-0 text-center' : 'w-[2.8rem] shrink-0 text-center'}>Set</div>
+        {showSetType && <div className="w-[2.8rem] shrink-0 text-center">Type</div>}
+        {!isTemplate && showGoalWeight && <div className="w-[3.15rem] shrink-0 text-center">Goal Wt</div>}
+        <div className={showGoalWeight ? 'w-[3.15rem] shrink-0 text-center' : 'w-[6.5rem] shrink-0 text-center'}>Actual Wt</div>
         {isTemplate ? (
           <div className="flex-1 text-center">Reps</div>
         ) : (
           <>
-            <div className="flex-1 text-center">Goal Reps</div>
-            <div className="text-center" style={{ flex: '0.9' }}>Actual Reps</div>
+            {showGoalReps && <div className="flex-1 text-center">Goal Reps</div>}
+            <div className="text-center" style={{ flex: '1' }}>Actual Reps</div>
           </>
         )}
       </div>
@@ -294,7 +299,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                 <button
                   type="button"
                   onClick={() => onToggleComplete(exercise.name, idx)}
-                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-200 ${
+                  className={`${showSetType ? 'w-5 h-5' : 'w-6 h-6'} rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-200 ${
                     isCompleted
                       ? 'bg-green-500 border-green-500'
                       : 'border-wf-gray-500 bg-transparent'
@@ -309,34 +314,36 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
               )}
 
               {/* Set label */}
-              <span className="text-wf-gray-400 text-xs font-medium w-[1.43rem] shrink-0 text-center">
+              <span className={`text-wf-gray-400 text-xs font-medium shrink-0 text-center ${showSetType ? 'w-[1.43rem]' : 'w-[2.8rem]'}`}>
                 {isTemplate ? idx + 1 : set.setNumber}
               </span>
 
               {/* Set type dropdown — shows shorthand, dropdown lists full names */}
-              <div className="w-[2.8rem] shrink-0 relative">
-                <span className="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-wf-gray-400 uppercase pointer-events-none">
-                  {getSetTypeShort(entry.setType || exercise.setType || 'straight')}
-                </span>
-                {!readOnly ? (
-                  <select
-                    value={entry.setType || exercise.setType || 'straight'}
-                    onChange={(e) => onChange?.(exercise.name, idx, 'setType', e.target.value)}
-                    className="w-full h-10 bg-transparent text-transparent rounded-lg border border-white/5 focus:outline-none appearance-none cursor-pointer"
-                  >
-                    {SET_TYPES.map(t => (
-                      <option key={t.value} value={t.value} className="bg-wf-gray-900 text-white text-sm">
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <div className="h-10" />
-                )}
-              </div>
+              {showSetType && (
+                <div className="w-[2.8rem] shrink-0 relative">
+                  <span className="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-wf-gray-400 uppercase pointer-events-none">
+                    {getSetTypeShort(entry.setType || exercise.setType || 'straight')}
+                  </span>
+                  {!readOnly ? (
+                    <select
+                      value={entry.setType || exercise.setType || 'straight'}
+                      onChange={(e) => onChange?.(exercise.name, idx, 'setType', e.target.value)}
+                      className="w-full h-10 bg-transparent text-transparent rounded-lg border border-white/5 focus:outline-none appearance-none cursor-pointer"
+                    >
+                      {SET_TYPES.map(t => (
+                        <option key={t.value} value={t.value} className="bg-wf-gray-900 text-white text-sm">
+                          {t.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="h-10" />
+                  )}
+                </div>
+              )}
 
               {/* Goal Weight (read-only, from template) — session mode only */}
-              {!isTemplate && (
+              {!isTemplate && showGoalWeight && (
                 <div className="w-[3.15rem] shrink-0">
                   <div className="w-full rounded-lg px-1 py-2.5 text-center text-sm font-mono-stat bg-black/40 border border-white/5" style={{ color: 'rgba(239,68,68,0.6)' }}>
                     {set.suggestedWeight ?? '—'}
@@ -345,7 +352,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
               )}
 
               {/* Weight input */}
-              <div className="w-[3.15rem] shrink-0">
+              <div className={showGoalWeight ? 'w-[3.15rem] shrink-0' : 'w-[6.5rem] shrink-0'}>
                 <input
                   type="number"
                   inputMode="decimal"
@@ -381,14 +388,16 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
               ) : (
                 <>
                   {/* Goal reps (read-only, from template) */}
-                  <div className="flex-1">
-                    <div className="w-full rounded-lg px-2 py-2.5 text-center text-base font-mono-stat bg-black/40 border border-white/5" style={{ color: 'rgba(239,68,68,0.6)' }}>
-                      {set.plannedReps ?? '—'}
+                  {showGoalReps && (
+                    <div className="flex-1">
+                      <div className="w-full rounded-lg px-2 py-2.5 text-center text-base font-mono-stat bg-black/40 border border-white/5" style={{ color: 'rgba(239,68,68,0.6)' }}>
+                        {set.plannedReps ?? '—'}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Actual reps (editable) */}
-                  <div style={{ flex: '0.9' }}>
+                  <div style={{ flex: '1' }}>
                     <input
                       type="number"
                       inputMode="numeric"

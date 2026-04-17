@@ -92,6 +92,13 @@ export default function WorkoutSession() {
   const [pinWorkoutTimer, setPinWorkoutTimer] = useState(false);
   const [pinRestTimer, setPinRestTimer] = useState(true);
   const [undoToast, setUndoToast] = useState(null); // { message, undoFn }
+  const [showGoals, setShowGoals] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('replab_show_goals')) ?? true; } catch { return true; }
+  });
+  const [showSetType, setShowSetType] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('replab_show_set_type')) ?? true; } catch { return true; }
+  });
+  const [showSessionMenu, setShowSessionMenu] = useState(false);
   const autoSaveRef = useRef(null);
   const autoSaveNeeded = useRef(false);
   const structureSaveRef = useRef(null);
@@ -130,6 +137,7 @@ export default function WorkoutSession() {
       'add-delete-exercise': '[data-tutorial="add-delete-buttons"]',
       'set-controls': '[data-tutorial="set-controls"]',
       'set-row': '[data-tutorial="set-row"]',
+      'session-settings': '[data-tutorial="session-settings"]',
       'exercise-notes': '[data-tutorial="exercise-notes"]',
       'mark-complete': '[data-tutorial="mark-complete"]',
     };
@@ -1640,9 +1648,51 @@ export default function WorkoutSession() {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs text-wf-gray-400 font-medium">Progress</span>
-                <span className="text-xs text-wf-gray-400 font-medium tabular-nums">
-                  {completedCount}/{totalSets} sets
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-wf-gray-400 font-medium tabular-nums">
+                    {completedCount}/{totalSets} sets
+                  </span>
+                  <div className="relative">
+                    <button
+                      data-tutorial="session-settings"
+                      onClick={() => setShowSessionMenu(!showSessionMenu)}
+                      className="w-6 h-6 rounded-full flex items-center justify-center text-wf-gray-400 active:bg-white/10 transition-colors"
+                    >
+                      <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </button>
+                    {showSessionMenu && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setShowSessionMenu(false)} />
+                        <div className="absolute right-0 top-8 z-50 w-52 rounded-xl bg-wf-gray-900 border border-white/10 shadow-2xl overflow-hidden">
+                          <div className="px-3 py-2 border-b border-white/5">
+                            <span className="text-[9px] text-wf-gray-500 uppercase tracking-wider font-semibold">Display</span>
+                          </div>
+                          <button
+                            onClick={() => { const v = !showGoals; setShowGoals(v); try { localStorage.setItem('replab_show_goals', JSON.stringify(v)); } catch {} }}
+                            className="w-full px-3 py-2.5 flex items-center justify-between text-sm text-white active:bg-white/5 transition-colors"
+                          >
+                            <span>Goal Weight / Reps</span>
+                            <div className={`w-8 h-5 rounded-full transition-colors ${showGoals ? 'bg-wf-red' : 'bg-wf-gray-600'}`}>
+                              <div className={`w-4 h-4 rounded-full bg-white mt-0.5 transition-transform ${showGoals ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                            </div>
+                          </button>
+                          <button
+                            onClick={() => { const v = !showSetType; setShowSetType(v); try { localStorage.setItem('replab_show_set_type', JSON.stringify(v)); } catch {} }}
+                            className="w-full px-3 py-2.5 flex items-center justify-between text-sm text-white active:bg-white/5 transition-colors"
+                          >
+                            <span>Set Type</span>
+                            <div className={`w-8 h-5 rounded-full transition-colors ${showSetType ? 'bg-wf-red' : 'bg-wf-gray-600'}`}>
+                              <div className={`w-4 h-4 rounded-full bg-white mt-0.5 transition-transform ${showSetType ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                            </div>
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
               <div className="h-2 rounded-full bg-white/10 overflow-hidden">
                 <div
@@ -1816,7 +1866,9 @@ export default function WorkoutSession() {
 
       {/* Exercise Cards */}
       <div className="px-4">
-        {template.exercises.map((exercise, idx) => {
+        {(() => { let visibleIdx = 0; return template.exercises.map((exercise, idx) => {
+          if (!exercise.isSectionHeader) visibleIdx++;
+          const exerciseNumber = visibleIdx;
           const eKey = exercise.isSectionHeader ? null : exKey(template.exercises, exercise, idx);
           // Wrapper: ExerciseCard passes exercise.name as first arg; replace with the unique key
           const wrapCb = (fn) => fn ? (_name, ...args) => fn(eKey, ...args) : undefined;
@@ -1894,6 +1946,10 @@ export default function WorkoutSession() {
               lastEntries={lastSession[exercise.name]}
               forceShowDemo={showAllDemos}
               dataTutorial={tutorialMode && idx === 1 ? 'exercise-header' : undefined}
+              showGoalWeight={showGoals}
+              showGoalReps={showGoals}
+              showSetType={showSetType}
+              exerciseNumber={exerciseNumber}
             />
             {/* Inline undo toast for deleted set — show below this exercise */}
             {undoToast && undoToast.type === 'set' && undoToast.exerciseName === eKey && (
@@ -1939,7 +1995,7 @@ export default function WorkoutSession() {
           )}
           </div>
         );
-        })}
+        }); })()}
 
         {/* Add Exercise Button */}
         {!structureLocked && (
@@ -1956,18 +2012,6 @@ export default function WorkoutSession() {
 
         {/* Quick Add Buttons */}
         {!structureLocked && <div className="flex gap-2 mb-3">
-          <button className="flex-1 glass-card rounded-xl py-3 text-wf-gray-400 text-xs font-semibold active:text-wf-red active:border-wf-red/30 transition-colors flex items-center justify-center gap-1.5">
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-            </svg>
-            Add Cardio
-          </button>
-          <button className="flex-1 glass-card rounded-xl py-3 text-wf-gray-400 text-xs font-semibold active:text-wf-red active:border-wf-red/30 transition-colors flex items-center justify-center gap-1.5">
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-            </svg>
-            Add Abs
-          </button>
           <button className="flex-1 glass-card rounded-xl py-3 text-wf-gray-400 text-xs font-semibold active:text-wf-red active:border-wf-red/30 transition-colors flex items-center justify-center gap-1.5">
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" />
@@ -2263,6 +2307,14 @@ export default function WorkoutSession() {
             title: 'Tracking a Set',
             description: <>Each row is one set. The <span className="text-white font-semibold">circle on the left</span> marks the set as complete. <span className="text-white font-semibold">Type</span> shows the set type (warm-up, regular, drop set, etc.) — tap to change it. <span className="text-white font-semibold">Goal Wt</span> shows the target weight. <span className="text-white font-semibold">Actual Wt</span> is where you enter the weight used. <span className="text-white font-semibold">Goal Reps</span> shows the target reps. <span className="text-white font-semibold">Actual Reps</span> is where you enter the reps you completed.</>,
             prev: 'set-controls',
+            next: 'session-settings',
+            position: 'below',
+          },
+          'session-settings': {
+            target: '[data-tutorial="session-settings"]',
+            title: 'Display Settings',
+            description: <>Tap the <span className="text-white font-semibold">gear icon</span> to customize your workout view. You can toggle <span className="text-white font-semibold">Goal Weight / Reps</span> columns on or off, and show or hide the <span className="text-white font-semibold">Set Type</span> column to keep your layout clean.</>,
+            prev: 'set-row',
             next: 'exercise-notes',
             position: 'below',
           },
@@ -2270,7 +2322,7 @@ export default function WorkoutSession() {
             target: '[data-tutorial="exercise-notes"]',
             title: 'Exercise Notes',
             description: <>Tap here to add notes for this exercise — things like form cues, how the set felt, or adjustments for next time.</>,
-            prev: 'set-row',
+            prev: 'session-settings',
             next: 'mark-complete',
             position: 'below',
           },
@@ -2371,6 +2423,39 @@ function WorkoutSummary({ template, programName, entries, completedSets, elapsed
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [shareImage, setShareImage] = useState(null);
   const [generatingImage, setGeneratingImage] = useState(false);
+  const [savedAsTemplate, setSavedAsTemplate] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+
+  async function saveAsTemplate() {
+    if (savingTemplate || savedAsTemplate) return;
+    setSavingTemplate(true);
+    try {
+      const today = new Date();
+      const dateLabel = today.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const name = `${template.name} - ${dateLabel}`;
+      const exercises = template.exercises.filter(ex => !ex.isSectionHeader).map((ex, exIdx) => {
+        const eKey = exKey(template.exercises, ex, exIdx);
+        const exEntries = entries[eKey] || [];
+        return {
+          name: ex.name,
+          setType: ex.setType || 'straight',
+          sets: ex.sets.map((set, idx) => ({
+            reps: Number(exEntries[idx]?.reps) || set.plannedReps || 10,
+            weight: Number(exEntries[idx]?.weight) || Number(set.suggestedWeight) || 0,
+          })),
+        };
+      });
+      await api('/templates', {
+        method: 'POST',
+        body: JSON.stringify({ name, description: '', exercises }),
+      });
+      setSavedAsTemplate(true);
+    } catch (err) {
+      console.error('Failed to save template:', err);
+    } finally {
+      setSavingTemplate(false);
+    }
+  }
 
   // Confetti
   useEffect(() => {
@@ -2995,8 +3080,19 @@ function WorkoutSummary({ template, programName, entries, completedSets, elapsed
         </div>
       </div>
 
-      {/* Done button */}
-      <div className="relative z-20 p-4 bg-gradient-to-t from-black via-black/95 to-transparent safe-bottom">
+      {/* Bottom buttons */}
+      <div className="relative z-20 p-4 bg-gradient-to-t from-black via-black/95 to-transparent safe-bottom space-y-2">
+        <button
+          onClick={saveAsTemplate}
+          disabled={savingTemplate || savedAsTemplate}
+          className={`w-full py-3 rounded-xl text-sm font-semibold active:scale-[0.98] transition-all ${
+            savedAsTemplate
+              ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+              : 'bg-white/10 text-white border border-white/15 active:bg-white/15'
+          }`}
+        >
+          {savedAsTemplate ? 'Saved to My Workouts' : savingTemplate ? 'Saving...' : 'Save as Template'}
+        </button>
         <button
           onClick={onClose}
           className="w-full btn-gradient text-white font-bold py-4 rounded-xl text-base active:scale-[0.98] transition-all"
