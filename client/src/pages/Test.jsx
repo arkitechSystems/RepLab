@@ -41,6 +41,16 @@ export default function Test() {
 
         <div className="space-y-4">
           <div
+            onClick={() => navigate('/test/nike')}
+            className="glass-card rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
+            style={{ border: '1px solid rgba(255,255,255,0.15)' }}
+          >
+            <div className="p-5">
+              <h2 className="text-xl font-black text-white tracking-tight">Nike Test Homepage</h2>
+              <p className="text-xs text-wf-gray-500 mt-1">Bold typography, full-bleed hero, carousel, counters, pill buttons</p>
+            </div>
+          </div>
+          <div
             onClick={() => navigate('/test/cards')}
             className="glass-card rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
           >
