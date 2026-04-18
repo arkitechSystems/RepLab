@@ -1180,7 +1180,7 @@ export default function WorkoutSession() {
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
         stopRestTimer();
         clearTimerStorage();
-        if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+        if (navigator.vibrate) navigator.vibrate([50, 30, 50, 30, 100]);
         setShowSummary(true);
       }
     } catch (err) {
@@ -1201,7 +1201,7 @@ export default function WorkoutSession() {
         next.delete(key);
       } else {
         next.add(key);
-        if (navigator.vibrate) navigator.vibrate(15);
+        if (navigator.vibrate) navigator.vibrate([10, 30, 10]);
         startTimer();
         startRestTimer();
       }

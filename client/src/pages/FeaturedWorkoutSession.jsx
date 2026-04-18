@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, Fragment } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import StickyHeader from '../components/StickyHeader';
 
@@ -18,22 +18,25 @@ const WORKOUTS = {
         sectionNotes: 'Warm up with progressive sets. Pause reps on sets 2 and 3 — hold the bar 1 inch off the chest for 2 seconds before pressing.',
         setType: 'warm_up',
         videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+        warmupNotes: "Perform your preferred chest warm-up if you feel like you need to before doing the three warm-up sets of barbell bench, whether that be cardio, push-ups, etc. Performing pull-ups or pull-up isometric holds at the top reinforces proper scapular control by encouraging you to keep your shoulders pulled down and back, protecting the shoulder during the press.",
+        description: "1. First set is 40% of one rep max, 10 reps.\n2. Second set is 60% for 6 reps.\n3. The third set is 70% for 2 reps.",
+        hideGoals: true,
         sets: [
           { setNumber: 1, plannedReps: 10, suggestedWeight: 0 },
-          { setNumber: 2, plannedReps: 10, suggestedWeight: 0 },
-          { setNumber: 3, plannedReps: 10, suggestedWeight: 0 },
+          { setNumber: 2, plannedReps: 6, suggestedWeight: 0 },
+          { setNumber: 3, plannedReps: 2, suggestedWeight: 0 },
         ],
       },
       {
         name: 'Barbell Bench',
         setType: 'warm_up',
-        description: "Warm-up sets to prime your chest, shoulders, and triceps. Sets 2 and 3 are pause reps — lower the bar to just above your chest, hold for a 2-count, then press explosively. Set 4 is heavier to activate the nervous system before working sets.",
+        hideGoals: true,
         videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
         sets: [
-          { setNumber: 1, plannedReps: 6, suggestedWeight: 0 },
-          { setNumber: 2, plannedReps: 5, suggestedWeight: 0 },
-          { setNumber: 3, plannedReps: 2, suggestedWeight: 0 },
-          { setNumber: 4, plannedReps: 2, suggestedWeight: 0 },
+          { setNumber: 1, plannedReps: 8, suggestedWeight: 0 },
+          { setNumber: 2, plannedReps: 8, suggestedWeight: 0 },
+          { setNumber: 3, plannedReps: 8, suggestedWeight: 0 },
+          { setNumber: 4, plannedReps: 8, suggestedWeight: 0 },
         ],
       },
       {
@@ -53,20 +56,20 @@ const WORKOUTS = {
         description: "10×10 German Volume Training — 10 sets of 10 reps with only 60 seconds rest between sets. Use a weight you could do 20 reps with. This is about volume and time under tension, not max weight. The burn will be intense by set 6.",
         videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
         sets: [
-          { setNumber: 1, plannedReps: 10, suggestedWeight: 0 },
-          { setNumber: 2, plannedReps: 10, suggestedWeight: 0 },
-          { setNumber: 3, plannedReps: 10, suggestedWeight: 0 },
-          { setNumber: 4, plannedReps: 10, suggestedWeight: 0 },
-          { setNumber: 5, plannedReps: 10, suggestedWeight: 0 },
-          { setNumber: 6, plannedReps: 10, suggestedWeight: 0 },
-          { setNumber: 7, plannedReps: 10, suggestedWeight: 0 },
-          { setNumber: 8, plannedReps: 10, suggestedWeight: 0 },
-          { setNumber: 9, plannedReps: 10, suggestedWeight: 0 },
+          { setNumber: 1, plannedReps: 10, suggestedWeight: 0, restAfter: 60 },
+          { setNumber: 2, plannedReps: 10, suggestedWeight: 0, restAfter: 60 },
+          { setNumber: 3, plannedReps: 10, suggestedWeight: 0, restAfter: 60 },
+          { setNumber: 4, plannedReps: 10, suggestedWeight: 0, restAfter: 60 },
+          { setNumber: 5, plannedReps: 10, suggestedWeight: 0, restAfter: 60 },
+          { setNumber: 6, plannedReps: 10, suggestedWeight: 0, restAfter: 60 },
+          { setNumber: 7, plannedReps: 10, suggestedWeight: 0, restAfter: 60 },
+          { setNumber: 8, plannedReps: 10, suggestedWeight: 0, restAfter: 60 },
+          { setNumber: 9, plannedReps: 10, suggestedWeight: 0, restAfter: 60 },
           { setNumber: 10, plannedReps: 10, suggestedWeight: 0 },
         ],
       },
       {
-        name: 'Straight Arm Kneeling Upper Chest Cable Flyes',
+        name: 'Kneeling Upper Chest Cable Flyes',
         setType: 'straight',
         description: "Kneel in front of a low cable with arms straight. Bring the handles up and together in front of your upper chest, squeezing at the top. This targets the upper chest fibers that are hard to hit with pressing alone. Keep the arms nearly straight throughout.",
         videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
@@ -90,8 +93,10 @@ const WORKOUTS = {
       {
         name: 'Max Push-Ups',
         setType: 'straight',
-        description: "Final burnout — one set to absolute failure. Your chest is completely pre-fatigued at this point, so even bodyweight will be a challenge. Log your total reps.",
+        description: "Final burnout. Perform as many push-ups as you can in two minutes.",
         videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+        hideWeight: true,
+        scoreboardTimer: 120,
         sets: [
           { setNumber: 1, plannedReps: 0, suggestedWeight: 0 },
         ],
@@ -114,6 +119,227 @@ const PROGRAM = {
   totalWeeks: 12,
   daysPerWeek: WEEKLY_SCHEDULE,
 };
+
+function ScoreboardTimer({ duration }) {
+  const containerRef = useRef(null);
+  const [size, setSize] = useState({ w: 0, h: 0 });
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const [running, setRunning] = useState(false);
+  const rafRef = useRef(null);
+  const startedAtRef = useRef(null);
+  const baseElapsedRef = useRef(0);
+
+  // Track container size so the SVG perimeter path matches it pixel-for-pixel
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setSize({ w: Math.round(width), h: Math.round(height) });
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // Continuous elapsed time via rAF — keeps the perimeter sweep smooth, not 1-sec jumps
+  useEffect(() => {
+    if (!running) return;
+    startedAtRef.current = performance.now();
+    const tick = (now) => {
+      const next = baseElapsedRef.current + (now - startedAtRef.current);
+      const totalMs = duration * 1000;
+      if (next >= totalMs) {
+        setElapsedMs(totalMs);
+        setRunning(false);
+        return;
+      }
+      setElapsedMs(next);
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(rafRef.current);
+      // Capture progress so resuming continues from where we paused
+      baseElapsedRef.current = elapsedMs;
+    };
+  }, [running, duration]);
+
+  const handleStart = () => {
+    if (elapsedMs >= duration * 1000) {
+      baseElapsedRef.current = 0;
+      setElapsedMs(0);
+    }
+    setRunning(true);
+  };
+  const handleReset = () => {
+    cancelAnimationFrame(rafRef.current);
+    setRunning(false);
+    baseElapsedRef.current = 0;
+    setElapsedMs(0);
+  };
+
+  const remaining = Math.max(0, Math.ceil((duration * 1000 - elapsedMs) / 1000));
+  const mm = Math.floor(remaining / 60);
+  const ss = String(remaining % 60).padStart(2, '0');
+
+  // Perimeter progress geometry
+  const radius = 14;
+  const stroke = 2;
+  const inset = stroke / 2;
+  const { w, h } = size;
+  const ready = w > 2 * radius && h > 2 * radius;
+  const perimeter = ready
+    ? 2 * (w - 2 * inset - 2 * radius) + 2 * (h - 2 * inset - 2 * radius) + 2 * Math.PI * radius
+    : 0;
+  const progress = duration > 0 ? Math.min(1, elapsedMs / (duration * 1000)) : 0;
+  const filled = perimeter * progress;
+
+  // Path begins at top-middle and traces the rounded rect clockwise.
+  const pathD = ready ? [
+    `M ${w / 2} ${inset}`,
+    `H ${w - inset - radius}`,
+    `A ${radius} ${radius} 0 0 1 ${w - inset} ${inset + radius}`,
+    `V ${h - inset - radius}`,
+    `A ${radius} ${radius} 0 0 1 ${w - inset - radius} ${h - inset}`,
+    `H ${inset + radius}`,
+    `A ${radius} ${radius} 0 0 1 ${inset} ${h - inset - radius}`,
+    `V ${inset + radius}`,
+    `A ${radius} ${radius} 0 0 1 ${inset + radius} ${inset}`,
+    `H ${w / 2}`,
+  ].join(' ') : '';
+
+  return (
+    <div style={{ marginBottom: '16px' }}>
+      <div ref={containerRef} style={{
+        position: 'relative',
+        background: '#000',
+        borderRadius: '14px',
+        padding: '24px 16px',
+        textAlign: 'center',
+        boxShadow: '0 0 20px rgba(239,68,68,0.2), inset 0 0 30px rgba(239,68,68,0.05)',
+      }}>
+        {ready && (
+          <svg
+            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' }}
+            viewBox={`0 0 ${w} ${h}`}
+            preserveAspectRatio="none"
+          >
+            <path d={pathD} fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth={stroke} />
+            <path
+              d={pathD}
+              fill="none"
+              stroke="#ef4444"
+              strokeWidth={stroke}
+              strokeDasharray={`${filled} ${Math.max(0, perimeter - filled)}`}
+              strokeLinecap="butt"
+              style={{ filter: 'drop-shadow(0 0 6px rgba(239,68,68,0.7))' }}
+            />
+          </svg>
+        )}
+        <div style={{
+          position: 'relative',
+          fontSize: '64px',
+          fontWeight: 700,
+          color: '#ef4444',
+          fontFamily: 'monospace',
+          letterSpacing: '6px',
+          fontVariantNumeric: 'tabular-nums',
+          textShadow: '0 0 16px rgba(239,68,68,0.7)',
+          lineHeight: 1,
+        }}>
+          {mm}:{ss}
+        </div>
+      </div>
+      <div className="flex gap-3 justify-center mt-3">
+        <button
+          onClick={handleStart}
+          disabled={running}
+          className="active:bg-white/10 transition-colors"
+          style={{
+            padding: '10px 30px',
+            borderRadius: '100px',
+            border: '1px solid rgba(255,255,255,0.7)',
+            background: 'transparent',
+            color: 'white',
+            fontSize: '11px',
+            fontWeight: 600,
+            letterSpacing: '0.2em',
+            textTransform: 'uppercase',
+            cursor: running ? 'not-allowed' : 'pointer',
+            opacity: running ? 0.4 : 1,
+            boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+          }}
+        >
+          Start
+        </button>
+        <button
+          onClick={handleReset}
+          className="active:bg-white/10 transition-colors"
+          style={{
+            padding: '10px 30px',
+            borderRadius: '100px',
+            border: '1px solid rgba(255,255,255,0.7)',
+            background: 'transparent',
+            color: 'white',
+            fontSize: '11px',
+            fontWeight: 600,
+            letterSpacing: '0.2em',
+            textTransform: 'uppercase',
+            cursor: 'pointer',
+            boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+          }}
+        >
+          Reset
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function RestTimer({ duration, isActive }) {
+  const [remaining, setRemaining] = useState(duration);
+  const intervalRef = useRef(null);
+
+  useEffect(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (!isActive) {
+      setRemaining(duration);
+      return;
+    }
+    setRemaining(duration);
+    intervalRef.current = setInterval(() => {
+      setRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(intervalRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(intervalRef.current);
+  }, [isActive, duration]);
+
+  const mm = Math.floor(remaining / 60);
+  const ss = String(remaining % 60).padStart(2, '0');
+  const finished = isActive && remaining === 0;
+
+  return (
+    <div
+      className="px-4 py-1 flex items-center justify-center gap-3 border-t"
+      style={{
+        borderColor: 'rgba(0,0,0,0.08)',
+        background: finished ? 'rgba(34,197,94,0.12)' : isActive ? 'rgba(239,68,68,0.06)' : 'transparent',
+      }}
+    >
+      <span className="text-[9px] uppercase font-bold" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.2em' }}>
+        Rest Timer
+      </span>
+      <span style={{ color: '#111', fontSize: '13px', fontWeight: 700, fontFamily: 'system-ui', letterSpacing: '1px', fontVariantNumeric: 'tabular-nums' }}>
+        {mm}:{ss}
+      </span>
+    </div>
+  );
+}
 
 function VideoLoop({ src }) {
   const videoARef = useRef(null);
@@ -192,6 +418,7 @@ export default function FeaturedWorkoutSession() {
       setCurrentIdx(-1);
       arrivedWithDay.current = true;
     }
+    window.scrollTo({ top: 0, behavior: 'instant' });
   }, [location.key]);
 
   // Restore or reset workout data when switching days
@@ -296,10 +523,18 @@ export default function FeaturedWorkoutSession() {
     setEntries((prev) => {
       const updated = { ...prev };
       updated[key] = [...(updated[key] || exercise.sets.map(() => ({ weight: '', reps: '' })))];
+      const parsedValue = field === 'setType' ? value : (value === '' ? '' : Math.max(0, Number(value)));
       updated[key][setIdx] = {
         ...updated[key][setIdx],
-        [field]: field === 'setType' ? value : (value === '' ? '' : Math.max(0, Number(value))),
+        [field]: parsedValue,
       };
+      // Cascade weight changes forward — every subsequent set adopts the new weight
+      // until the user manually changes it again at a later set.
+      if (field === 'weight') {
+        for (let i = setIdx + 1; i < updated[key].length; i++) {
+          updated[key][i] = { ...updated[key][i], weight: parsedValue };
+        }
+      }
       return updated;
     });
   }
@@ -307,6 +542,19 @@ export default function FeaturedWorkoutSession() {
   function handleToggleComplete(setIdx) {
     if (!exercise) return;
     const key = `${exercise.name}-${setIdx}`;
+    const isCurrentlyComplete = completedSets.has(key);
+    // Sequential rule: completed sets must be a contiguous prefix.
+    // - To mark complete: every previous set must already be complete.
+    // - To uncomplete: no later set may still be complete.
+    if (!isCurrentlyComplete) {
+      for (let i = 0; i < setIdx; i++) {
+        if (!completedSets.has(`${exercise.name}-${i}`)) return;
+      }
+    } else {
+      for (let i = setIdx + 1; i < exercise.sets.length; i++) {
+        if (completedSets.has(`${exercise.name}-${i}`)) return;
+      }
+    }
     setCompletedSets((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
@@ -327,11 +575,7 @@ export default function FeaturedWorkoutSession() {
   }
 
   function goBack() {
-    if (window.history.length > 1) {
-      navigate(-1);
-    } else {
-      navigate('/');
-    }
+    navigate('/', { state: { openSection: 'featured' } });
   }
 
   function goPrev() {
@@ -346,12 +590,15 @@ export default function FeaturedWorkoutSession() {
 
   const progressPct = totalExercises > 0 ? Math.round(((currentIdx + 1) / totalExercises) * 100) : 0;
 
-  // WEEK LIST VIEW — shows all 12 weeks
+  // WEEK LIST VIEW — shows all 12 weeks (Nike style)
   if (!selectedWeek) {
     return (
-      <div className="min-h-screen bg-black pb-24">
-        <div className="px-4 pt-6 mb-2">
-          <button onClick={goBack} className="flex items-center gap-1 text-wf-red text-sm font-medium active:opacity-70">
+      <div className="min-h-screen pb-24" style={{ background: 'linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 40%, #111 70%, #0a0a0a 100%)' }}>
+        {/* Ambient spotlight */}
+        <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] pointer-events-none z-0" style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+
+        <div className="relative z-10 px-5 pt-6 pb-2">
+          <button onClick={goBack} className="flex items-center gap-1 text-white/50 text-sm font-medium active:opacity-70">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
             </svg>
@@ -359,21 +606,23 @@ export default function FeaturedWorkoutSession() {
           </button>
         </div>
 
-        <div className="px-4">
+        <div className="relative z-10 px-5">
           {/* Program header */}
-          <div style={{ marginBottom: '20px' }}>
-            <div style={{ fontSize: '9px', color: 'rgba(239,68,68,0.6)', letterSpacing: '4px', textTransform: 'uppercase', fontWeight: 700, marginBottom: '8px' }}>
-              Featured Program
-            </div>
-            <div style={{ fontSize: '24px', fontWeight: 800, color: 'white', marginBottom: '4px' }}>
-              {PROGRAM.name}
-            </div>
-            <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>
+          <div style={{ marginBottom: '24px' }}>
+            <p className="text-[10px] text-white/30 uppercase tracking-[0.3em] font-light mb-2">Featured Program</p>
+            <h1 className="text-[28px] font-black text-white leading-[0.95] tracking-tight mb-2" style={{ fontFamily: 'system-ui' }}>
+              {PROGRAM.name.toUpperCase()}
+            </h1>
+            <p className="text-[13px] text-white/35 font-light">
               {PROGRAM.description}
-            </div>
+            </p>
+            <div className="h-px bg-white/10 my-4" />
+            <p className="text-[13px] text-white/50 font-light leading-relaxed">
+              Built as a 2-week cycle that repeats six times across 12 weeks. Weeks one and two will be used as a baseline to set your goal weight and reps for the future weeks. Every cycle after, you'll repeat the same workouts and aim to beat your previous numbers by adding weight or completing more reps.
+            </p>
           </div>
 
-          {/* Week cards — accordion style */}
+          {/* Week cards — Nike accordion style */}
           <div className="space-y-3">
             {Array.from({ length: PROGRAM.totalWeeks }, (_, i) => i + 1).map((week) => {
               const weightBonus = Math.floor((week - 1) / 2) * 5;
@@ -384,14 +633,13 @@ export default function FeaturedWorkoutSession() {
                   className="fade-slide-up"
                   style={{
                     animationDelay: `${Math.min(week * 40, 400)}ms`,
-                    background: 'linear-gradient(135deg, #0a0a0a 0%, #1a0808 50%, #0a0606 100%)',
-                    borderRadius: '16px',
-                    border: '0.75px solid rgba(255,255,255,0.15)',
+                    background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                    borderRadius: '2px',
+                    boxShadow: '0 8px 30px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)',
                     position: 'relative',
                     overflow: 'hidden',
                   }}
                 >
-                  <div style={{ position: 'absolute', top: '-30%', right: '-15%', width: '40%', height: '80%', borderRadius: '50%', background: 'radial-gradient(circle, rgba(239,68,68,0.15) 0%, transparent 70%)', filter: 'blur(20px)' }} />
                   {/* Header — tap to expand/collapse */}
                   <div
                     onClick={() => setExpandedWeek(isExpanded ? null : week)}
@@ -399,37 +647,32 @@ export default function FeaturedWorkoutSession() {
                     style={{ padding: '16px 20px', position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
                   >
                     <div>
-                      <div style={{ fontSize: '16px', fontWeight: 700, color: 'white', marginBottom: '4px' }}>
-                        Week {week}
+                      <div className="text-[18px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui' }}>
+                        WEEK {week}
                       </div>
-                      <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)' }}>
+                      <div className="text-[11px] text-white/25 font-light mt-1">
                         {PROGRAM.daysPerWeek.map(d => WORKOUTS[d].name).join(' · ')}
                       </div>
-                      {weightBonus > 0 && (
-                        <div style={{ fontSize: '10px', color: 'rgba(239,68,68,0.5)', marginTop: '4px' }}>
-                          +{weightBonus} lbs progressive overload
-                        </div>
-                      )}
                     </div>
-                    <svg className="w-5 h-5 shrink-0 transition-transform duration-200" style={{ color: 'rgba(255,255,255,0.3)', transform: isExpanded ? 'rotate(90deg)' : 'none' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="w-4 h-4 shrink-0 transition-transform duration-200" style={{ color: 'rgba(255,255,255,0.2)', transform: isExpanded ? 'rotate(90deg)' : 'none' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                     </svg>
                   </div>
                   {/* Expanded day list */}
                   {isExpanded && (
                     <div style={{ position: 'relative', zIndex: 1, padding: '0 20px 16px' }}>
-                      <div style={{ width: '100%', height: '1px', background: 'rgba(255,255,255,0.06)', marginBottom: '4px' }} />
+                      <div className="h-px bg-white/5 mb-3" />
 
-                      {/* Go to week button */}
+                      {/* Go to week button — pill style */}
                       <button
                         onClick={() => { setSelectedWeek(week); setExpandedWeek(null); setExpandedDay(null); window.scrollTo({ top: 0, behavior: 'instant' }); }}
-                        className="active:scale-[0.98] transition-all"
+                        className="active:scale-[0.97] transition-all w-full mb-4"
                         style={{
-                          width: '100%', padding: '10px', borderRadius: '10px', border: 'none', marginBottom: '12px',
-                          background: 'linear-gradient(135deg, rgba(239,68,68,0.9), rgba(249,115,22,0.9))',
-                          color: 'white', fontSize: '10px', fontWeight: 600, cursor: 'pointer',
-                          letterSpacing: '2px', textTransform: 'uppercase',
-                          boxShadow: '0 0 16px rgba(239,68,68,0.2)',
+                          padding: '10px', borderRadius: '100px', border: 'none',
+                          background: 'linear-gradient(135deg, #fff 0%, #e0e0e0 100%)',
+                          color: '#000', fontSize: '10px', fontWeight: 700, cursor: 'pointer',
+                          letterSpacing: '1.5px', textTransform: 'uppercase',
+                          boxShadow: '0 4px 15px rgba(255,255,255,0.08)',
                         }}
                       >
                         Go to Week {week}
@@ -446,27 +689,20 @@ export default function FeaturedWorkoutSession() {
                               className="cursor-pointer active:opacity-70 transition-opacity"
                               style={{
                                 padding: '10px 0',
-                                borderBottom: '1px solid rgba(255,255,255,0.06)',
+                                borderBottom: '1px solid rgba(255,255,255,0.04)',
                                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                               }}
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <div style={{
-                                  width: '24px', height: '24px', borderRadius: '50%',
-                                  background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)',
-                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                  fontSize: '10px', fontWeight: 700, color: '#ef4444',
-                                }}>
-                                  {dayIdx + 1}
-                                </div>
+                                <span className="text-[11px] font-black w-5" style={{ color: 'rgba(239,68,68,0.5)' }}>{String(dayIdx + 1).padStart(2, '0')}</span>
                                 <div>
-                                  <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)' }}>Day {dayIdx + 1}</div>
-                                  <div style={{ fontSize: '13px', fontWeight: 600, color: 'white', marginTop: '1px' }}>
-                                    {dayWorkout.name} · {dayWorkout.exercises.length} exercises · {dayWorkout.exercises.reduce((s, ex) => s + ex.sets.length, 0)} sets
+                                  <div className="text-[10px] text-white/20 font-light">Day {dayIdx + 1}</div>
+                                  <div className="text-[13px] font-semibold text-white mt-0.5">
+                                    {dayWorkout.name} <span className="text-white/25 font-light">· {dayWorkout.exercises.length} exercises · {dayWorkout.exercises.reduce((s, ex) => s + ex.sets.length, 0)} sets</span>
                                   </div>
                                 </div>
                               </div>
-                              <svg className="w-4 h-4 transition-transform duration-200" style={{ color: 'rgba(255,255,255,0.2)', transform: dayExpanded ? 'rotate(90deg)' : 'none' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <svg className="w-4 h-4 transition-transform duration-200" style={{ color: 'rgba(255,255,255,0.15)', transform: dayExpanded ? 'rotate(90deg)' : 'none' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                               </svg>
                             </div>
@@ -474,15 +710,11 @@ export default function FeaturedWorkoutSession() {
                             {dayExpanded && dayWorkout.exercises.length > 0 && (
                               <div style={{ padding: '8px 0 4px 36px' }}>
                                 {dayWorkout.exercises.map((ex, exIdx) => (
-                                  <div key={exIdx} style={{
-                                    padding: '6px 0',
-                                    borderBottom: exIdx < dayWorkout.exercises.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none',
-                                    display: 'flex', alignItems: 'center', gap: '8px',
-                                  }}>
-                                    <span style={{ fontSize: '10px', fontWeight: 700, color: 'rgba(239,68,68,0.5)', width: '16px', textAlign: 'center' }}>{exIdx + 1}</span>
+                                  <div key={exIdx} className="flex items-center gap-3 py-1.5" style={{ borderBottom: exIdx < dayWorkout.exercises.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none' }}>
+                                    <span className="text-[10px] font-black w-4 text-center" style={{ color: 'rgba(239,68,68,0.4)' }}>{exIdx + 1}</span>
                                     <div>
-                                      <div style={{ fontSize: '12px', fontWeight: 500, color: 'rgba(255,255,255,0.7)' }}>{ex.name}</div>
-                                      <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.25)', marginTop: '1px' }}>
+                                      <div className="text-[12px] text-white/60 font-light">{ex.name}</div>
+                                      <div className="text-[10px] text-white/20 font-light mt-0.5">
                                         {ex.sets.length} sets{ex.setType && ex.setType !== 'straight' ? ` · ${ex.setType.replace('_', ' ')}` : ''}
                                       </div>
                                     </div>
@@ -491,10 +723,10 @@ export default function FeaturedWorkoutSession() {
                               </div>
                             )}
                             {dayExpanded && dayWorkout.exercises.length === 0 && (
-                              <div style={{ padding: '8px 0 4px 36px', fontSize: '11px', color: 'rgba(255,255,255,0.25)' }}>Coming soon</div>
+                              <div className="text-[11px] text-white/20 font-light" style={{ padding: '8px 0 4px 36px' }}>Coming soon</div>
                             )}
                             {dayExpanded && (
-                              <div style={{ padding: '4px 0 8px', display: 'flex', justifyContent: 'flex-end' }}>
+                              <div className="flex justify-end py-2">
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -508,16 +740,14 @@ export default function FeaturedWorkoutSession() {
                                     }
                                   }}
                                   disabled={dayWorkout.exercises.length === 0}
-                                  className="active:scale-[0.97] transition-all"
+                                  className="active:scale-[0.95] transition-all"
                                   style={{
-                                    padding: '6px 14px', borderRadius: '8px', border: 'none',
-                                    fontSize: '10px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase',
+                                    padding: '8px 20px', borderRadius: '100px',
+                                    fontSize: '9px', fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase',
                                     cursor: dayWorkout.exercises.length > 0 ? 'pointer' : 'not-allowed',
-                                    background: dayWorkout.exercises.length > 0
-                                      ? 'linear-gradient(135deg, rgba(239,68,68,0.9), rgba(249,115,22,0.9))'
-                                      : 'rgba(255,255,255,0.05)',
-                                    color: dayWorkout.exercises.length > 0 ? 'white' : 'rgba(255,255,255,0.2)',
-                                    opacity: dayWorkout.exercises.length > 0 ? 1 : 0.5,
+                                    background: dayWorkout.exercises.length > 0 ? 'transparent' : 'rgba(255,255,255,0.03)',
+                                    border: dayWorkout.exercises.length > 0 ? '1px solid rgba(255,255,255,0.3)' : '1px solid rgba(255,255,255,0.06)',
+                                    color: dayWorkout.exercises.length > 0 ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.15)',
                                   }}
                                 >
                                   Begin Workout
@@ -530,20 +760,13 @@ export default function FeaturedWorkoutSession() {
                       {/* Rest day */}
                       <div style={{
                         padding: '10px 0',
-                        borderBottom: '1px solid rgba(255,255,255,0.06)',
+                        borderBottom: '1px solid rgba(255,255,255,0.04)',
                         display: 'flex', alignItems: 'center', gap: '12px',
                       }}>
-                        <div style={{
-                          width: '24px', height: '24px', borderRadius: '50%',
-                          background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: '10px', fontWeight: 700, color: 'rgba(255,255,255,0.3)',
-                        }}>
-                          7
-                        </div>
+                        <span className="text-[11px] font-black w-5 text-center text-white/10">07</span>
                         <div>
-                          <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.2)' }}>Day 7</div>
-                          <div style={{ fontSize: '13px', fontWeight: 600, color: 'rgba(255,255,255,0.3)', marginTop: '1px' }}>Rest</div>
+                          <div className="text-[10px] text-white/15 font-light">Day 7</div>
+                          <div className="text-[13px] font-semibold text-white/20 mt-0.5">Rest</div>
                         </div>
                       </div>
                     </div>
@@ -561,8 +784,11 @@ export default function FeaturedWorkoutSession() {
   if (selectedWeek && !selectedDay) {
     const weightBonus = Math.floor((selectedWeek - 1) / 2) * 5;
     return (
-      <div className="min-h-screen bg-black pb-24">
-        <div className="px-4 pt-6 mb-2">
+      <div className="min-h-screen pb-24" style={{ background: 'linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 40%, #111 70%, #0a0a0a 100%)' }}>
+        {/* Ambient spotlight */}
+        <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] pointer-events-none z-0" style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+
+        <div className="relative z-10 px-5 pt-6 pb-2">
           <button onClick={() => {
             if (arrivedWithWeek.current) {
               goBack();
@@ -570,7 +796,7 @@ export default function FeaturedWorkoutSession() {
               setSelectedWeek(null);
               window.scrollTo({ top: 0, behavior: 'instant' });
             }
-          }} className="flex items-center gap-1 text-wf-red text-sm font-medium active:opacity-70">
+          }} className="flex items-center gap-1 text-white/50 text-sm font-medium active:opacity-70">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
             </svg>
@@ -578,18 +804,18 @@ export default function FeaturedWorkoutSession() {
           </button>
         </div>
 
-        <div className="px-4">
-          <div style={{ marginBottom: '20px' }}>
-            <div style={{ fontSize: '9px', color: 'rgba(239,68,68,0.6)', letterSpacing: '4px', textTransform: 'uppercase', fontWeight: 700, marginBottom: '8px' }}>
+        <div className="relative z-10 px-5">
+          <div style={{ marginBottom: '24px' }}>
+            <p className="text-[10px] text-white/30 uppercase tracking-[0.3em] font-light mb-2">
               Week {selectedWeek} of {PROGRAM.totalWeeks}
-            </div>
-            <div style={{ fontSize: '22px', fontWeight: 800, color: 'white', marginBottom: '4px' }}>
-              {PROGRAM.name}
-            </div>
+            </p>
+            <h1 className="text-[28px] font-black text-white leading-[0.95] tracking-tight mb-2" style={{ fontFamily: 'system-ui' }}>
+              {PROGRAM.name.toUpperCase()}
+            </h1>
             {weightBonus > 0 && (
-              <div style={{ fontSize: '12px', color: 'rgba(239,68,68,0.5)', marginTop: '4px' }}>
+              <p className="text-[12px] text-white/35 font-light">
                 +{weightBonus} lbs progressive overload this week
-              </div>
+              </p>
             )}
           </div>
 
@@ -610,34 +836,29 @@ export default function FeaturedWorkoutSession() {
                   className={`fade-slide-up ${hasExercises ? 'cursor-pointer active:scale-[0.98]' : 'opacity-50'} transition-transform`}
                   style={{
                     animationDelay: `${i * 60}ms`,
-                    background: 'rgba(255,255,255,0.04)',
-                    borderRadius: '14px',
+                    background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                    borderRadius: '2px',
                     padding: '16px 20px',
-                    border: '1px solid rgba(255,255,255,0.08)',
+                    boxShadow: '0 8px 30px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)',
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                      <div style={{
-                        width: '36px', height: '36px', borderRadius: '50%',
-                        background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '13px', fontWeight: 700, color: '#ef4444',
-                      }}>
-                        {i + 1}
-                      </div>
+                      <span className="text-[11px] font-black w-5 text-center" style={{ color: 'rgba(239,68,68,0.5)' }}>
+                        {String(i + 1).padStart(2, '0')}
+                      </span>
                       <div>
-                        <div style={{ fontSize: '15px', fontWeight: 700, color: 'white' }}>
+                        <div className="text-[10px] text-white/20 font-light">Day {i + 1}</div>
+                        <div className="text-[14px] font-semibold text-white mt-0.5">
                           {dayWorkout.name}
-                        </div>
-                        <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', marginTop: '2px' }}>
-                          {dayWorkout.subtitle}
-                          {hasExercises ? ` · ${dayWorkout.exercises.length} exercises` : ' · Coming soon'}
+                          <span className="text-white/25 font-light">
+                            {hasExercises ? ` · ${dayWorkout.exercises.length} exercises` : ' · Coming soon'}
+                          </span>
                         </div>
                       </div>
                     </div>
                     {hasExercises ? (
-                      <svg className="w-5 h-5 shrink-0" style={{ color: 'rgba(255,255,255,0.3)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <svg className="w-4 h-4 shrink-0" style={{ color: 'rgba(255,255,255,0.2)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                       </svg>
                     ) : (
@@ -651,13 +872,18 @@ export default function FeaturedWorkoutSession() {
             {/* Rest day */}
             <div className="fade-slide-up" style={{
               animationDelay: `${PROGRAM.daysPerWeek.length * 60}ms`,
-              background: 'rgba(255,255,255,0.02)',
-              borderRadius: '14px',
+              background: 'linear-gradient(160deg, #1a1a1a 0%, #0f0f0f 100%)',
+              borderRadius: '2px',
               padding: '16px 20px',
-              border: '1px solid rgba(255,255,255,0.04)',
-              textAlign: 'center',
+              boxShadow: '0 8px 30px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.02)',
             }}>
-              <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.25)', fontWeight: 600 }}>Day 7 — Rest</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <span className="text-[11px] font-black w-5 text-center text-white/10">07</span>
+                <div>
+                  <div className="text-[10px] text-white/15 font-light">Day 7</div>
+                  <div className="text-[14px] font-semibold text-white/20 mt-0.5">Rest</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -668,8 +894,11 @@ export default function FeaturedWorkoutSession() {
   // EXERCISE OVERVIEW — shows exercise list for the selected day's workout
   if (selectedDay && currentIdx === -1) {
     return (
-      <div className="min-h-screen bg-black pb-24">
-        <div className="px-4 pt-6 mb-2">
+      <div className="min-h-screen pb-24" style={{ background: 'linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 40%, #111 70%, #0a0a0a 100%)' }}>
+        {/* Ambient spotlight */}
+        <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] pointer-events-none z-0" style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+
+        <div className="relative z-10 px-5 pt-6 pb-2">
           <button onClick={() => {
             if (arrivedWithDay.current) {
               goBack();
@@ -677,7 +906,7 @@ export default function FeaturedWorkoutSession() {
               setSelectedDay(null);
               window.scrollTo({ top: 0, behavior: 'instant' });
             }
-          }} className="flex items-center gap-1 text-wf-red text-sm font-medium active:opacity-70">
+          }} className="flex items-center gap-1 text-white/50 text-sm font-medium active:opacity-70">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
             </svg>
@@ -685,83 +914,83 @@ export default function FeaturedWorkoutSession() {
           </button>
         </div>
 
-        <div className="px-4">
-          {/* Workout header card */}
-          <div style={{
-            background: 'linear-gradient(135deg, #0a0a0a 0%, #1a0808 50%, #0a0606 100%)',
-            borderRadius: '24px',
-            padding: '28px 24px',
-            position: 'relative',
-            overflow: 'hidden',
-            border: '0.75px solid rgba(255,255,255,0.3)',
-            boxShadow: '0 0 20px rgba(255,255,255,0.07), 0 0 40px rgba(255,255,255,0.03)',
-            marginBottom: '16px',
-          }}>
-            <div style={{ position: 'absolute', top: '-20%', right: '-10%', width: '60%', height: '70%', borderRadius: '50%', background: 'radial-gradient(circle, rgba(239,68,68,0.35) 0%, transparent 70%)', filter: 'blur(30px)' }} />
-            <div style={{ position: 'relative', zIndex: 1 }}>
-              <div style={{ fontSize: '9px', color: 'rgba(239,68,68,0.6)', letterSpacing: '4px', textTransform: 'uppercase', fontWeight: 700, marginBottom: '8px' }}>
-                Week {selectedWeek} · Day {PROGRAM.daysPerWeek.indexOf(selectedDay) + 1}
-              </div>
-              <div style={{ fontSize: '22px', fontWeight: 800, color: 'white', marginBottom: '4px' }}>
-                {workout.name}
-              </div>
-              <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '16px' }}>
-                {workout.subtitle}
-              </div>
-              <div style={{ width: '100%', height: '1px', background: 'rgba(255,255,255,0.06)', marginBottom: '16px' }} />
-
-              <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', lineHeight: 1.7 }}>
-                {workout.description}
-              </p>
-
-              {/* Start button — bottom of header card */}
-              {totalExercises > 0 && (
-                <button
-                  onClick={() => { setCurrentIdx(0); startTimer(); }}
-                  style={{
-                    width: '100%', padding: '16px', borderRadius: '14px', border: 'none', marginTop: '16px',
-                    background: 'linear-gradient(135deg, rgba(239,68,68,0.9), rgba(249,115,22,0.9))',
-                    color: 'white', fontSize: '11px', fontWeight: 600, cursor: 'pointer',
-                    letterSpacing: '3px', textTransform: 'uppercase',
-                    boxShadow: '0 0 20px rgba(239,68,68,0.3)',
-                  }}
-                  className="active:scale-[0.98] transition-all"
-                >
-                  Start Guided Workout
-                </button>
-              )}
-            </div>
+        <div className="relative z-10 px-5">
+          {/* Program title */}
+          <div style={{ marginBottom: '20px' }}>
+            <p className="text-[10px] text-white/30 uppercase tracking-[0.3em] font-light mb-2">
+              Week {selectedWeek} · Day {PROGRAM.daysPerWeek.indexOf(selectedDay) + 1}
+            </p>
+            <h1 className="text-[28px] font-black text-white leading-[0.95] tracking-tight" style={{ fontFamily: 'system-ui' }}>
+              {PROGRAM.name.toUpperCase()}
+            </h1>
           </div>
 
-          {/* Exercise list */}
+          {/* Workout header card — Nike style */}
+          <div style={{
+            background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+            borderRadius: '2px',
+            padding: '20px',
+            boxShadow: '0 8px 30px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)',
+            marginBottom: '20px',
+          }}>
+            <div className="text-[20px] font-black text-white tracking-tight uppercase" style={{ fontFamily: 'system-ui' }}>
+              {workout.name}
+            </div>
+            <div className="text-[11px] text-white/25 font-light mt-1">
+              {workout.subtitle}
+            </div>
+            <div className="h-px bg-white/5 my-4" />
+            <p className="text-[13px] text-white/60 leading-relaxed">
+              {workout.description}
+            </p>
+
+            {/* Start button — Nike pill */}
+            {totalExercises > 0 && (
+              <button
+                onClick={() => { setCurrentIdx(0); startTimer(); }}
+                className="active:scale-[0.97] transition-all w-full mt-5"
+                style={{
+                  padding: '12px', borderRadius: '100px', border: 'none',
+                  background: 'linear-gradient(135deg, #fff 0%, #e0e0e0 100%)',
+                  color: '#000', fontSize: '10px', fontWeight: 700, cursor: 'pointer',
+                  letterSpacing: '1.5px', textTransform: 'uppercase',
+                  boxShadow: '0 4px 15px rgba(255,255,255,0.08)',
+                }}
+              >
+                Start Guided Workout
+              </button>
+            )}
+          </div>
+
+          {/* Exercise list — Nike cards */}
           {totalExercises > 0 ? (
             <>
-              <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600, marginBottom: '12px' }}>
+              <p className="text-[10px] text-white/30 uppercase tracking-[0.3em] font-light mb-3">
                 {totalExercises} Exercises
-              </div>
-              {workout.exercises.map((ex, i) => (
-                <div key={i} style={{
-                  display: 'flex', alignItems: 'center', gap: '12px',
-                  padding: '12px 0',
-                  borderBottom: i < totalExercises - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
-                }}>
-                  <div style={{
-                    width: '28px', height: '28px', borderRadius: '50%',
-                    background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '11px', fontWeight: 700, color: '#ef4444',
+              </p>
+              <div className="space-y-3">
+                {workout.exercises.map((ex, i) => (
+                  <div key={i} style={{
+                    background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                    borderRadius: '2px',
+                    padding: '14px 18px',
+                    boxShadow: '0 8px 30px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)',
                   }}>
-                    {i + 1}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '14px', fontWeight: 600, color: 'white' }}>{ex.name}</div>
-                    <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', marginTop: '2px' }}>
-                      {ex.sets.length} sets
-                      {ex.setType && ex.setType !== 'straight' && ` · ${ex.setType.replace('_', ' ')}`}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                      <span className="text-[11px] font-black w-5 text-center" style={{ color: 'rgba(239,68,68,0.5)' }}>
+                        {String(i + 1).padStart(2, '0')}
+                      </span>
+                      <div style={{ flex: 1 }}>
+                        <div className="text-[14px] font-semibold text-white">{ex.name}</div>
+                        <div className="text-[11px] text-white/25 font-light mt-0.5">
+                          {ex.sets.length} sets
+                          {ex.setType && ex.setType !== 'straight' && ` · ${ex.setType.replace('_', ' ')}`}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </>
           ) : (
             <div style={{ textAlign: 'center', padding: '40px 0' }}>
@@ -779,6 +1008,10 @@ export default function FeaturedWorkoutSession() {
   // Exercise page
   if (!exercise) return null;
   const exEntries = entries[exercise.name] || exercise.sets.map((s) => ({ weight: s.suggestedWeight || '', reps: '' }));
+  // Weeks 1 & 2 act as a baseline cycle: show goal columns even on hide-goals exercises,
+  // but the goal value is derived from what the user enters once the set is completed.
+  const showGoals = !exercise.hideGoals || selectedWeek <= 2;
+  const useDynamicGoals = exercise.hideGoals && selectedWeek <= 2;
 
   return (
     <div className="min-h-screen bg-black pb-24" ref={containerRef}>
@@ -903,36 +1136,76 @@ export default function FeaturedWorkoutSession() {
 
       <div className="px-4 pt-2">
 
+        {/* Warm Up — above video */}
+        {exercise.warmupNotes && (
+          <div style={{
+            background: 'rgba(255,255,255,0.04)',
+            borderRadius: '14px',
+            padding: '16px',
+            border: '1px solid rgba(255,255,255,0.08)',
+            marginBottom: '16px',
+          }}>
+            <div style={{ fontSize: '9px', color: 'rgba(239,68,68,0.5)', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600, marginBottom: '8px' }}>
+              Warm Up
+            </div>
+            <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.7)', lineHeight: 1.7 }}>
+              {exercise.warmupNotes}
+            </p>
+          </div>
+        )}
+
+        {/* How to Perform — above video */}
+        {exercise.description && (
+          <div style={{
+            background: 'rgba(255,255,255,0.04)',
+            borderRadius: '14px',
+            padding: '16px',
+            border: '1px solid rgba(255,255,255,0.08)',
+            marginBottom: '16px',
+          }}>
+            <div style={{ fontSize: '9px', color: 'rgba(239,68,68,0.5)', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600, marginBottom: '8px' }}>
+              How to Perform
+            </div>
+            <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.7)', lineHeight: 1.7, whiteSpace: 'pre-line' }}>
+              {exercise.description}
+            </p>
+          </div>
+        )}
+
         {/* Video */}
         {exercise.videoUrl && (
           <VideoLoop key={`${exercise.name}-${currentIdx}`} src={exercise.videoUrl} />
         )}
 
+        {/* Scoreboard timer — above sets, below video */}
+        {exercise.scoreboardTimer && (
+          <ScoreboardTimer key={`${exercise.name}-${currentIdx}-scoreboard`} duration={exercise.scoreboardTimer} />
+        )}
+
         {/* Sets */}
-        <div style={{
-          background: 'rgba(255,255,255,0.03)',
+        <div className="exercise-card-light-test glass-card" style={{
           borderRadius: '14px',
           border: '2px solid rgba(239,68,68,0.4)',
           overflow: 'hidden',
         }}>
           {/* Column headers */}
-          <div className="px-4 pt-3 pb-2 flex items-center gap-2" style={{ fontSize: '9px', color: 'rgba(255,255,255,0.3)', letterSpacing: '1px', textTransform: 'uppercase' }}>
+          <div className="px-4 pt-3 pb-2 flex items-center gap-2 text-[9px] uppercase text-wf-gray-400" style={{ letterSpacing: '1px' }}>
             <div className="w-5 shrink-0" />
             <div className="w-8 shrink-0 text-center">Set</div>
-            <div className="flex-1 text-center">Goal Wt</div>
-            <div className="flex-1 text-center">Actual Wt</div>
-            <div className="flex-1 text-center">Goal Reps</div>
-            <div className="flex-1 text-center">Actual Reps</div>
+            {showGoals && !exercise.hideWeight && <div className="flex-1 text-center">Goal Wt</div>}
+            {!exercise.hideWeight && <div className="flex-1 text-center">{showGoals ? 'Actual Wt' : 'Weight'}</div>}
+            {showGoals && <div className="flex-1 text-center">Goal Reps</div>}
+            <div className="flex-1 text-center">{showGoals ? 'Actual Reps' : 'Reps'}</div>
           </div>
 
           {exercise.sets.map((set, idx) => {
             const entry = exEntries[idx] || {};
             const isCompleted = completedSets.has(`${exercise.name}-${idx}`);
             return (
+              <Fragment key={idx}>
               <div
-                key={idx}
                 className={`px-4 py-3 flex items-center gap-2 border-t transition-colors duration-200 ${isCompleted ? 'bg-green-500/10' : ''}`}
-                style={{ borderColor: 'rgba(255,255,255,0.05)' }}
+                style={{ borderColor: 'rgba(0,0,0,0.08)' }}
               >
                 {/* Checkmark */}
                 <button
@@ -952,33 +1225,41 @@ export default function FeaturedWorkoutSession() {
                 <div className="w-8 shrink-0 text-center text-xs text-wf-gray-400 font-medium">{set.setNumber}</div>
 
                 {/* Goal Weight */}
-                <div className="flex-1">
-                  <div className="w-full rounded-lg px-2 py-2.5 text-center text-sm bg-black/40 border border-white/5" style={{ color: 'rgba(239,68,68,0.6)', fontFamily: 'system-ui', fontWeight: 200, letterSpacing: '-1px' }}>
-                    {set.suggestedWeight || '—'}
+                {showGoals && !exercise.hideWeight && (
+                  <div className="flex-1">
+                    <div className="w-full rounded-lg px-2 py-2.5 text-center text-sm bg-black/40 border border-white/5" style={{ color: 'rgba(239,68,68,0.6)', fontFamily: 'system-ui', fontWeight: 200, letterSpacing: '-1px' }}>
+                      {useDynamicGoals
+                        ? (isCompleted && entry.weight ? entry.weight : 0)
+                        : (set.suggestedWeight || '—')}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Actual Weight */}
-                <div className="flex-1">
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    min="0"
-                    step="0.5"
-                    value={entry.weight ?? ''}
-                    placeholder={set.suggestedWeight ? String(set.suggestedWeight) : '0'}
-                    onChange={(e) => handleChange(idx, 'weight', e.target.value)}
-                    onFocus={(e) => e.target.select()}
-                    className={`w-full lcd-input rounded-lg px-2 py-2.5 text-center text-base focus:outline-none ${isCompleted ? 'completed text-white' : 'text-white'}`}
-                  />
-                </div>
+                {!exercise.hideWeight && (
+                  <div className="flex-1">
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      step="0.5"
+                      value={entry.weight ?? ''}
+                      placeholder={set.suggestedWeight ? String(set.suggestedWeight) : '0'}
+                      onChange={(e) => handleChange(idx, 'weight', e.target.value)}
+                      onFocus={(e) => e.target.select()}
+                      className={`w-full lcd-input rounded-lg px-2 py-2.5 text-center text-base focus:outline-none ${isCompleted ? 'completed text-white' : 'text-white'}`}
+                    />
+                  </div>
+                )}
 
                 {/* Goal Reps */}
-                <div className="flex-1">
-                  <div className="w-full rounded-lg px-2 py-2.5 text-center text-sm bg-black/40 border border-white/5" style={{ color: 'rgba(239,68,68,0.6)', fontFamily: 'system-ui', fontWeight: 200, letterSpacing: '-1px' }}>
-                    {set.plannedReps || '—'}
+                {showGoals && (
+                  <div className="flex-1">
+                    <div className="w-full rounded-lg px-2 py-2.5 text-center text-sm bg-black/40 border border-white/5" style={{ color: 'rgba(239,68,68,0.6)', fontFamily: 'system-ui', fontWeight: 200, letterSpacing: '-1px' }}>
+                      {set.plannedReps || '—'}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Actual Reps */}
                 <div className="flex-1">
@@ -995,54 +1276,61 @@ export default function FeaturedWorkoutSession() {
                   />
                 </div>
               </div>
+              {set.restAfter && (
+                <RestTimer duration={set.restAfter} isActive={isCompleted} />
+              )}
+              </Fragment>
             );
           })}
         </div>
 
-        {/* How to Perform — below exercise card */}
-        <div style={{
-          background: 'rgba(255,255,255,0.04)',
-          borderRadius: '14px',
-          padding: '16px',
-          border: '1px solid rgba(255,255,255,0.08)',
-          marginTop: '20px',
-        }}>
-          <div style={{ fontSize: '9px', color: 'rgba(239,68,68,0.5)', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600, marginBottom: '8px' }}>
-            How to Perform
-          </div>
-          <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.7)', lineHeight: 1.7 }}>
-            {exercise.description}
-          </p>
-        </div>
       </div>
 
       {/* Bottom navigation */}
       <div className="px-4 py-6">
-        <div className="flex gap-3">
-          <button
-            onClick={goPrev}
-            className="flex-1 py-4 rounded-xl text-sm font-semibold active:scale-[0.98] transition-all"
-            style={{
-              background: 'rgba(255,255,255,0.08)',
-              border: '1px solid rgba(255,255,255,0.15)',
-              color: 'rgba(255,255,255,0.6)',
-            }}
-          >
-            {currentIdx === 0 ? 'Overview' : 'Previous'}
-          </button>
+        <div className="flex gap-3 justify-center items-center">
+          {currentIdx > 0 && (
+            <button
+              onClick={goPrev}
+              className="active:bg-white/10 transition-colors"
+              style={{
+                padding: '12px 40px',
+                borderRadius: '100px',
+                border: '1px solid rgba(255,255,255,0.7)',
+                background: 'transparent',
+                color: 'white',
+                fontSize: '11px',
+                fontWeight: 600,
+                letterSpacing: '0.2em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+              }}
+            >
+              Previous
+            </button>
+          )}
           {currentIdx < totalExercises - 1 ? (
             <button
               ref={nextBtnRef}
               onClick={goNext}
-              className={`flex-[2] py-4 rounded-xl text-sm font-semibold active:scale-[0.98] transition-all ${highlightNext ? 'animate-pulse' : ''}`}
+              className={`active:bg-white/10 transition-colors ${highlightNext ? 'animate-pulse' : ''}`}
               style={{
-                background: 'linear-gradient(135deg, rgba(239,68,68,0.9), rgba(249,115,22,0.9))',
+                padding: '12px 40px',
+                borderRadius: '100px',
+                border: '1px solid rgba(255,255,255,0.7)',
+                background: 'transparent',
                 color: 'white',
-                boxShadow: highlightNext ? '0 0 30px rgba(239,68,68,0.6), 0 0 60px rgba(239,68,68,0.3)' : '0 0 16px rgba(239,68,68,0.3)',
+                fontSize: '11px',
+                fontWeight: 600,
+                letterSpacing: '0.2em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                boxShadow: highlightNext ? '0 0 30px rgba(239,68,68,0.6), 0 0 60px rgba(239,68,68,0.3)' : '0 4px 15px rgba(0,0,0,0.3)',
                 transform: highlightNext ? 'scale(1.03)' : undefined,
               }}
             >
-              Next Exercise →
+              Next Exercise
             </button>
           ) : (
             <button
@@ -1052,8 +1340,21 @@ export default function FeaturedWorkoutSession() {
                 setTimerFloating(false);
                 setShowSummary(true);
               }}
-              className={`flex-[2] py-4 rounded-xl text-sm font-semibold active:scale-[0.98] transition-all bg-wf-red/90 hover:bg-wf-red text-white ${highlightNext ? 'animate-pulse' : ''}`}
-              style={highlightNext ? { boxShadow: '0 0 30px rgba(239,68,68,0.6), 0 0 60px rgba(239,68,68,0.3)', transform: 'scale(1.03)' } : undefined}
+              className={`active:bg-white/10 transition-colors ${highlightNext ? 'animate-pulse' : ''}`}
+              style={{
+                padding: '12px 40px',
+                borderRadius: '100px',
+                border: '1px solid rgba(255,255,255,0.7)',
+                background: 'transparent',
+                color: 'white',
+                fontSize: '11px',
+                fontWeight: 600,
+                letterSpacing: '0.2em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                boxShadow: highlightNext ? '0 0 30px rgba(239,68,68,0.6), 0 0 60px rgba(239,68,68,0.3)' : '0 4px 15px rgba(0,0,0,0.3)',
+                transform: highlightNext ? 'scale(1.03)' : undefined,
+              }}
             >
               Complete Workout
             </button>

@@ -41,6 +41,16 @@ export default function Test() {
 
         <div className="space-y-4">
           <div
+            onClick={() => navigate('/test/new-homepage')}
+            className="glass-card rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
+            style={{ border: '1px solid rgba(239,68,68,0.3)' }}
+          >
+            <div className="p-5">
+              <h2 className="text-xl font-black text-white tracking-tight">New Test Homepage</h2>
+              <p className="text-xs text-wf-gray-500 mt-1">Homepage redesign sandbox — based on Nike-inspired design</p>
+            </div>
+          </div>
+          <div
             onClick={() => navigate('/test/nike')}
             className="glass-card rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
             style={{ border: '1px solid rgba(255,255,255,0.15)' }}

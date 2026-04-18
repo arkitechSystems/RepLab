@@ -230,6 +230,7 @@ export default function Workouts() {
   const [bodyPartPRs, setBodyPartPRs] = useState([]);
   const [lastWorkout, setLastWorkout] = useState(null);
   const [currentProgram, setCurrentProgram] = useState(null); // { name, week }
+  const [featuredEnrollment, setFeaturedEnrollment] = useState({ enrolled: false });
   // Swipeable PR stacked cards
   const [prCardIdx, setPrCardIdx] = useState(0);
   const [prCardDragX, setPrCardDragX] = useState(0);
@@ -280,6 +281,15 @@ export default function Workouts() {
   const beginDateRef = useRef(null);
   const [tutorialPointer, setTutorialPointer] = useState(null); // 'create' | null
   const [pointerRect, setPointerRect] = useState(null);
+
+  // Open a specific section when navigated to with state (e.g. from FeaturedWorkoutSession back button)
+  useEffect(() => {
+    if (location.state?.openSection) {
+      setSelectedGroup(location.state.openSection);
+      // Clear the state so it doesn't re-trigger on re-render
+      window.history.replaceState({}, '');
+    }
+  }, [location.key]);
 
   // Featured video ref
   const featuredVideoRef = useRef(null);
@@ -342,6 +352,16 @@ export default function Workouts() {
       api('/sessions/completed', opts).catch(() => []),
       api('/pbs/by-body-part', opts).catch(() => []),
     ]);
+
+    // Lazy-fetch featured enrollment — only if a featured program exists
+    let fullScheduleData = null;
+    const featuredProg = progs.find(p => p.isFeatured);
+    if (featuredProg) {
+      const futureDate = new Date(today);
+      futureDate.setDate(futureDate.getDate() + 90);
+      const futureDateStr = `${futureDate.getFullYear()}-${String(futureDate.getMonth() + 1).padStart(2, '0')}-${String(futureDate.getDate()).padStart(2, '0')}`;
+      fullScheduleData = await api(`/schedule?from=${todayStr}&to=${futureDateStr}`, opts).catch(() => []);
+    }
     setPrStats(prStatsData);
     setBodyPartPRs(bodyPartPRData || []);
     const restTemplateIds = new Set(tmpls.filter(t => t.isRest).map(t => t.id));
@@ -422,6 +442,42 @@ export default function Workouts() {
       }
     } else {
       setCurrentProgram(null);
+    }
+
+    // Compute featured program enrollment — check if user has scheduled featured workouts
+    if (featuredProg) {
+      const featuredTemplateIds = new Set(tmpls.filter(t => t.programId === featuredProg.id).map(t => t.id));
+      const completedTemplateIds = new Set(completedData.map(c => `${c.templateId}-${c.date}`));
+      // Find scheduled featured workouts from today onwards that are not completed and not rest days
+      const upcomingFeatured = (fullScheduleData || [])
+        .filter(s => s.templateId && featuredTemplateIds.has(s.templateId) && !s.isRest)
+        .filter(s => !completedTemplateIds.has(`${s.templateId}-${s.date}`))
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+      const hasAnyScheduled = (fullScheduleData || []).some(s => featuredTemplateIds.has(s.templateId));
+
+      if (hasAnyScheduled && upcomingFeatured.length > 0) {
+        const next = upcomingFeatured[0];
+        const nextTmpl = tmpls.find(t => t.id === next.templateId);
+        const groupToDay = {
+          wills_hypertrophy_chest_a: 'chest', wills_hypertrophy_chest_b: 'chest',
+          wills_hypertrophy_bis_rds_a: 'bis-rds', wills_hypertrophy_bis_rds_b: 'bis-rds',
+          wills_hypertrophy_quads_a: 'quads', wills_hypertrophy_quads_b: 'quads',
+          wills_hypertrophy_tris_shoulders_a: 'tris-shoulders', wills_hypertrophy_tris_shoulders_b: 'tris-shoulders',
+          wills_hypertrophy_back_traps_a: 'back-traps', wills_hypertrophy_back_traps_b: 'back-traps',
+          wills_hypertrophy_glutes_hams_a: 'glutes-hams', wills_hypertrophy_glutes_hams_b: 'glutes-hams',
+        };
+        const dayKey = nextTmpl ? (groupToDay[nextTmpl.groupId] || null) : null;
+        const week = nextTmpl ? Math.floor((nextTmpl.sortOrder || 0) / 7) + 1 : 1;
+        setFeaturedEnrollment({ enrolled: true, nextTemplateId: next.templateId, nextDate: next.date, nextDay: dayKey, nextWeek: week });
+      } else if (hasAnyScheduled) {
+        // Enrolled but all workouts completed
+        setFeaturedEnrollment({ enrolled: true, nextTemplateId: null, nextDate: null, nextDay: null, nextWeek: null });
+      } else {
+        setFeaturedEnrollment({ enrolled: false });
+      }
+    } else {
+      setFeaturedEnrollment({ enrolled: false });
     }
 
     // Calculate streak — consecutive days with a session going back from today (exclude rest days)
@@ -2197,71 +2253,81 @@ export default function Workouts() {
         </div>
 
         <div className="px-4 pb-4 space-y-3">
-          {/* Will's Hypertrophy Program */}
+          {/* Will's Hypertrophy Program — Nike-style floating photo */}
           <div
             onClick={() => navigate('/featured-session')}
             className="fade-slide-up cursor-pointer active:scale-[0.98] transition-transform"
-            style={{
-              position: 'relative',
-              borderRadius: '24px',
-              background: 'linear-gradient(135deg, #0a0a0a 0%, #1a0808 50%, #0a0606 100%)',
-              padding: '24px 20px',
-              overflow: 'hidden',
-              border: '0.75px solid rgba(255,255,255,0.15)',
-            }}
+            style={{ position: 'relative', overflow: 'hidden' }}
           >
-            <div style={{ position: 'relative' }}>
-            {/* Blob */}
-            <div style={{ position: 'absolute', top: '-20%', right: '-10%', width: '50%', height: '70%', borderRadius: '50%', background: 'radial-gradient(circle, rgba(239,68,68,0.3) 0%, transparent 70%)', filter: 'blur(25px)' }} />
-            <div style={{ position: 'relative', zIndex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <div style={{ fontSize: '9px', color: 'rgba(239,68,68,0.7)', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 700 }}>
-                  Featured Program
-                </div>
+            {/* Studio backdrop gradient */}
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, #1a1a1a 0%, #252525 30%, #2a2a2a 50%, #1a1a1a 80%, #0d0d0d 100%)', borderRadius: '4px' }} />
+            {/* Spotlight glow behind subject */}
+            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '500px', height: '500px', background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 40%, transparent 70%)', filter: 'blur(20px)', pointerEvents: 'none' }} />
+            {/* Secondary warm glow */}
+            <div style={{ position: 'absolute', top: '30%', left: '20%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(239,68,68,0.05) 0%, transparent 60%)', filter: 'blur(40px)', pointerEvents: 'none' }} />
+
+            <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: '24px', paddingBottom: '32px' }}>
+              {/* Program label */}
+              <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', letterSpacing: '0.3em', textTransform: 'uppercase', fontWeight: 300, marginBottom: '8px' }}>Featured Program</p>
+              <h2 style={{ fontSize: '26px', fontWeight: 900, color: 'white', lineHeight: 1, letterSpacing: '-0.5px', marginBottom: '24px', textAlign: 'center', textShadow: '0 2px 20px rgba(0,0,0,0.5)', fontFamily: 'system-ui' }}>
+                WILL'S HYPERTROPHY PROGRAM
+              </h2>
+
+              {/* Floating photo */}
+              <div style={{ position: 'relative' }}>
+                {/* Floor shadow */}
+                <div style={{ position: 'absolute', bottom: '-16px', left: '50%', transform: 'translateX(-50%)', width: '70%', height: '32px', background: 'radial-gradient(ellipse, rgba(0,0,0,0.6) 0%, transparent 70%)', filter: 'blur(8px)' }} />
+                <img
+                  src="/RepLabPhotoShoot.png"
+                  alt="Will training"
+                  style={{ position: 'relative', width: '280px', maxWidth: '75vw', objectFit: 'contain', filter: 'drop-shadow(0 10px 30px rgba(0,0,0,0.5))' }}
+                />
+              </div>
+
+              {/* Text + CTA below photo */}
+              <div style={{ marginTop: '24px', textAlign: 'center', padding: '0 32px' }}>
+                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', fontWeight: 300, marginBottom: '10px' }}>12 weeks. 6 workouts per week. Built for growth.</p>
+                <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.25)', fontWeight: 300, marginBottom: '20px' }}>
+                  Chest · Bis/RDs · Quads · Tris/Shoulders · Back/Traps · Glutes/Hams · Rest
+                </p>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigate('/featured-session');
+                    if (featuredEnrollment.enrolled && featuredEnrollment.nextDay) {
+                      // Enrolled with upcoming workouts — go directly to next workout
+                      navigate('/featured-session', { state: { week: featuredEnrollment.nextWeek, day: featuredEnrollment.nextDay } });
+                    } else if (featuredEnrollment.enrolled && !featuredEnrollment.nextDay) {
+                      // All workouts completed — open scheduling modal to restart
+                      const fp = enrichedPrograms.find(p => p.isFeatured);
+                      if (fp) openBeginProgram(e, fp);
+                      else navigate('/featured-session');
+                    } else {
+                      // Not enrolled — open scheduling modal to pick start date
+                      const fp = enrichedPrograms.find(p => p.isFeatured);
+                      if (fp) openBeginProgram(e, fp);
+                      else navigate('/featured-session');
+                    }
                   }}
-                  className="active:scale-[0.97] transition-all"
-                  style={{
-                    fontSize: '10px', fontWeight: 600, color: 'white', letterSpacing: '1px', textTransform: 'uppercase',
-                    background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%)',
-                    backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.2), 0 4px 12px rgba(0,0,0,0.2)',
-                    padding: '6px 14px', borderRadius: '10px',
-                  }}
+                  className="active:bg-white/10 transition-colors"
+                  style={{ padding: '12px 40px', borderRadius: '100px', border: '1px solid rgba(255,255,255,0.7)', background: 'transparent', color: 'white', fontSize: '11px', fontWeight: 600, letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer', boxShadow: '0 4px 15px rgba(0,0,0,0.3)' }}
                 >
-                  Begin Program
+                  {featuredEnrollment.enrolled
+                    ? (featuredEnrollment.nextDay ? 'Resume Program' : 'Restart Program')
+                    : 'Start Program'}
                 </button>
-              </div>
-              <div style={{ fontSize: '20px', fontWeight: 800, color: 'white', marginBottom: '4px' }}>
-                Will's Hypertrophy Program
-              </div>
-              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginBottom: '14px' }}>
-                Guided workout sessions with custom set logging
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 0', marginBottom: '12px', alignItems: 'center' }}>
-                {['Chest', 'Bis/RDs', 'Quads', 'Tris/Shoulders', 'Back/Traps', 'Glutes/Hams'].map((split, i, arr) => (
-                  <span key={i}>
-                    <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)' }}>{split}</span>
-                    {i < arr.length - 1 && <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.15)', margin: '0 8px' }}>•</span>}
-                  </span>
-                ))}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(239,68,68,0.8)', letterSpacing: '2px', textTransform: 'uppercase', background: 'rgba(239,68,68,0.12)', padding: '3px 8px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.3)' }}>
-                  Hypertrophy
-                </span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)' }}>Start guided session</span>
-                  <svg className="w-3.5 h-3.5" style={{ color: 'rgba(255,255,255,0.4)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
+                <div style={{ marginTop: '12px' }}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate('/featured-session');
+                    }}
+                    className="active:bg-white/10 transition-colors"
+                    style={{ padding: '12px 40px', borderRadius: '100px', border: '1px solid rgba(255,255,255,0.7)', background: 'transparent', color: 'white', fontSize: '11px', fontWeight: 600, letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer', boxShadow: '0 4px 15px rgba(0,0,0,0.3)' }}
+                  >
+                    Program Overview
+                  </button>
                 </div>
               </div>
-            </div>
             </div>
           </div>
 
@@ -2579,11 +2645,69 @@ export default function Workouts() {
             return (
               <>
                 {ownPrograms.length > 0 && (
-                  <div className="space-y-4 pb-4">
-                    {ownPrograms.map((program, idx) => (
-                      <ProgramCard key={program.id} program={program} idx={idx} dataTutorial={idx === 0 ? 'program-card' : undefined} onSelect={(id) => { setSelectedProgram(id); setSelectedWeek(null); setBrowseSearch(''); completeTutorialAction('program-selected'); }} onBegin={openBeginProgram} onDelete={!isBrowse ? handleDeleteProgram : undefined} onShare={!isBrowse ? (p) => { setShareResult(null); setShareInput(''); setShareModal(p); } : undefined} onNavigateFeatured={program.isFeatured ? () => navigate('/featured-session') : undefined} />
-                    ))}
-                  </div>
+                  isBrowse ? (
+                    <div className="flex gap-4 overflow-x-auto scrollbar-hide -mx-4 px-4 snap-x snap-mandatory pb-4" style={{ WebkitOverflowScrolling: 'touch' }}>
+                      {ownPrograms.map((program, idx) => {
+                        const BROWSE_COLORS = ['#ef4444', '#3b82f6', '#22c55e', '#a855f7'];
+                        const programColor = BROWSE_COLORS[idx % BROWSE_COLORS.length];
+                        return (
+                          <div
+                            key={program.id}
+                            data-tutorial={idx === 0 ? 'program-card' : undefined}
+                            onClick={() => {
+                              if (program.isFeatured) {
+                                navigate('/featured-session');
+                              } else {
+                                setSelectedProgram(program.id);
+                                setSelectedWeek(null);
+                                setBrowseSearch('');
+                                completeTutorialAction('program-selected');
+                              }
+                            }}
+                            className="snap-start shrink-0 w-[170px] relative overflow-hidden fade-slide-up cursor-pointer active:scale-[0.97] transition-transform"
+                            style={{
+                              animationDelay: `${idx * 60}ms`,
+                              background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                              boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+                              borderRadius: '2px',
+                            }}
+                          >
+                            <div className="h-[3px]" style={{ background: `linear-gradient(90deg, ${programColor}, ${programColor}40)` }} />
+                            <div className="p-4 pb-5">
+                              <h4 className="text-[18px] font-black text-white leading-[1.05] tracking-tight mb-3 uppercase">
+                                {program.name}
+                              </h4>
+                              <div className="flex items-center gap-2 mb-4">
+                                <span className="text-[10px] text-white/30 font-light">{program.weekCount} {program.weekCount === 1 ? 'week' : 'weeks'}</span>
+                                <span className="w-px h-2.5 bg-white/10" />
+                                <span className="text-[10px] text-white/30 font-light">{program.workoutCount} workouts</span>
+                              </div>
+                              <button
+                                data-tutorial={idx === 0 ? 'begin-program-btn' : undefined}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (program.isFeatured) {
+                                    navigate('/featured-session');
+                                  } else if (program.workoutCount > 0) {
+                                    openBeginProgram(e, program);
+                                  }
+                                }}
+                                className="w-full py-2 rounded-full border border-white/15 text-[9px] text-white/50 uppercase tracking-[0.2em] font-medium active:bg-white/5 transition-colors"
+                              >
+                                Begin
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="space-y-4 pb-4">
+                      {ownPrograms.map((program, idx) => (
+                        <ProgramCard key={program.id} program={program} idx={idx} dataTutorial={idx === 0 ? 'program-card' : undefined} onSelect={(id) => { setSelectedProgram(id); setSelectedWeek(null); setBrowseSearch(''); completeTutorialAction('program-selected'); }} onBegin={openBeginProgram} onDelete={!isBrowse ? handleDeleteProgram : undefined} onShare={!isBrowse ? (p) => { setShareResult(null); setShareInput(''); setShareModal(p); } : undefined} onNavigateFeatured={program.isFeatured ? () => navigate('/featured-session') : undefined} />
+                      ))}
+                    </div>
+                  )
                 )}
 
                 {/* Shared With Me — accepted programs */}

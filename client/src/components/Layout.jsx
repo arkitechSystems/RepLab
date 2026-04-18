@@ -19,14 +19,41 @@ export default function Layout() {
     document.documentElement.setAttribute('data-theme', theme);
   }, []);
 
+  const [syncStatus, setSyncStatus] = useState(null); // null | 'syncing' | 'synced'
+
   useEffect(() => {
-    const goOnline = () => setOffline(false);
+    const goOnline = () => {
+      setOffline(false);
+      // Trigger sync queue processing
+      if (navigator.serviceWorker?.controller) {
+        setSyncStatus('syncing');
+        navigator.serviceWorker.controller.postMessage('process-sync-queue');
+        // Also try Background Sync API
+        navigator.serviceWorker.ready.then((reg) => {
+          reg.sync?.register('replab-sync').catch(() => {});
+        });
+      }
+    };
     const goOffline = () => setOffline(true);
     window.addEventListener('online', goOnline);
     window.addEventListener('offline', goOffline);
+
+    // Listen for sync completion from service worker
+    const handleSWMessage = (event) => {
+      if (event.data?.type === 'sync-complete') {
+        setSyncStatus('synced');
+        setTimeout(() => setSyncStatus(null), 3000);
+      }
+      if (event.data?.type === 'queued-offline') {
+        setOffline(true);
+      }
+    };
+    navigator.serviceWorker?.addEventListener('message', handleSWMessage);
+
     return () => {
       window.removeEventListener('online', goOnline);
       window.removeEventListener('offline', goOffline);
+      navigator.serviceWorker?.removeEventListener('message', handleSWMessage);
     };
   }, []);
 
@@ -57,6 +84,18 @@ export default function Layout() {
         <div className="bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-2 flex items-center justify-center gap-2 z-30 relative">
           <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
           <span className="text-xs text-yellow-400 font-medium">You're offline — changes will sync when you reconnect</span>
+        </div>
+      )}
+      {syncStatus === 'syncing' && (
+        <div className="bg-blue-500/10 border-b border-blue-500/20 px-4 py-2 flex items-center justify-center gap-2 z-30 relative">
+          <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+          <span className="text-xs text-blue-400 font-medium">Syncing offline changes...</span>
+        </div>
+      )}
+      {syncStatus === 'synced' && (
+        <div className="bg-green-500/10 border-b border-green-500/20 px-4 py-2 flex items-center justify-center gap-2 z-30 relative">
+          <div className="w-2 h-2 rounded-full bg-green-500" />
+          <span className="text-xs text-green-400 font-medium">All changes synced</span>
         </div>
       )}
       <main className={`grow shrink-0 basis-auto relative z-10 ${isDashboardEmbed ? 'pb-4' : 'pb-24'}`}>

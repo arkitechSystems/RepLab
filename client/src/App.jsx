@@ -45,6 +45,7 @@ const GradientMeshTest = lazy(() => import('./pages/GradientMeshTest'));
 const FeaturedWorkoutSession = lazy(() => import('./pages/FeaturedWorkoutSession'));
 const TestChallengeSection = lazy(() => import('./pages/TestChallengeSection'));
 const NikeTestHomepage = lazy(() => import('./pages/NikeTestHomepage'));
+const NewHomepage = lazy(() => import('./pages/NewHomepage'));
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -153,6 +154,7 @@ export default function App() {
         <Route path="/test/gradient-mesh" element={<TestRoute><GradientMeshTest /></TestRoute>} />
         <Route path="/test/challenge-section" element={<TestRoute><TestChallengeSection /></TestRoute>} />
         <Route path="/test/nike" element={<TestRoute><NikeTestHomepage /></TestRoute>} />
+        <Route path="/test/new-homepage" element={<TestRoute><NewHomepage /></TestRoute>} />
       </Route>
 
       <Route path="*" element={<CatchAllRedirect />} />

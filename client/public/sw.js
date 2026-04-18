@@ -1,5 +1,17 @@
-const CACHE_NAME = 'replab-v2';
+const CACHE_NAME = 'replab-v3';
 const SHELL_ASSETS = ['/', '/index.html'];
+
+// API paths to cache (GET) for offline use
+const CACHEABLE_API = [
+  '/templates', '/sessions', '/programs', '/schedule',
+  '/pbs', '/exercises', '/metrics', '/sharing',
+];
+
+// API paths to queue (POST/PUT/DELETE) when offline
+const QUEUEABLE_API = [
+  '/sessions', '/schedule', '/templates', '/metrics',
+  '/pbs', '/push', '/auth/page-visit',
+];
 
 // Install: cache app shell
 self.addEventListener('install', (event) => {
@@ -19,28 +31,28 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch strategy:
-// - Navigation requests: network-first, fall back to cached index.html
-// - Static assets (JS/CSS/images): cache-first, fall back to network
-// - API GET requests: network-first, cache response for offline use
-// - API POST/PUT requests: try network, queue if offline
+// Fetch strategy
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Skip non-http(s) requests (e.g. chrome-extension://)
+  // Skip non-http(s) requests
   if (!url.protocol.startsWith('http')) return;
 
-  // Skip non-GET for caching (handle POST queue separately)
+  // Non-GET: try network, queue if offline
   if (event.request.method !== 'GET') {
-    // For API writes, try network and if it fails, store in IndexedDB queue
-    if (url.pathname.startsWith('/sessions') || url.pathname.startsWith('/auth/page-visit')) {
+    const shouldQueue = QUEUEABLE_API.some((p) => url.pathname.startsWith(p));
+    if (shouldQueue) {
       event.respondWith(
         fetch(event.request.clone()).catch(() => {
-          return saveToSyncQueue(event.request.clone()).then(() =>
-            new Response(JSON.stringify({ queued: true }), {
+          return saveToSyncQueue(event.request.clone()).then(() => {
+            // Notify all clients that a request was queued
+            self.clients.matchAll().then((clients) => {
+              clients.forEach((c) => c.postMessage({ type: 'queued-offline' }));
+            });
+            return new Response(JSON.stringify({ queued: true, offline: true }), {
               headers: { 'Content-Type': 'application/json' },
-            })
-          );
+            });
+          });
         })
       );
       return;
@@ -49,7 +61,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Static assets: cache-first
-  if (url.pathname.match(/\.(js|css|png|jpg|svg|woff2?)$/)) {
+  if (url.pathname.match(/\.(js|css|png|jpg|svg|woff2?|mp4)$/)) {
     event.respondWith(
       caches.match(event.request).then((cached) =>
         cached ||
@@ -64,14 +76,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   // API GET requests: network-first with cache fallback
-  if (
-    url.pathname.startsWith('/templates') ||
-    url.pathname.startsWith('/sessions') ||
-    url.pathname.startsWith('/programs') ||
-    url.pathname.startsWith('/schedule') ||
-    url.pathname.startsWith('/pbs') ||
-    url.pathname.startsWith('/exercises')
-  ) {
+  if (CACHEABLE_API.some((p) => url.pathname.startsWith(p))) {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
@@ -81,7 +86,7 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() =>
           caches.match(event.request).then((cached) =>
-            cached || new Response(JSON.stringify({ error: 'Offline' }), { status: 503, headers: { 'Content-Type': 'application/json' } })
+            cached || new Response(JSON.stringify({ error: 'Offline', offline: true }), { status: 503, headers: { 'Content-Type': 'application/json' } })
           )
         )
     );
@@ -152,6 +157,7 @@ async function processSyncQueue() {
     req.onsuccess = () => resolve(req.result);
   });
 
+  let synced = 0;
   for (let i = 0; i < all.length; i++) {
     const entry = all[i];
     try {
@@ -160,24 +166,30 @@ async function processSyncQueue() {
         headers: entry.headers,
         body: entry.body,
       });
-      // Remove from queue on success
       const delTx = db.transaction('queue', 'readwrite');
       delTx.objectStore('queue').delete(keys[i]);
+      synced++;
     } catch {
-      // Still offline, stop processing
       break;
     }
   }
+
+  // Notify clients that sync is done
+  if (synced > 0) {
+    self.clients.matchAll().then((clients) => {
+      clients.forEach((c) => c.postMessage({ type: 'sync-complete', count: synced }));
+    });
+  }
 }
 
-// Listen for sync event (Background Sync API)
+// Background Sync API
 self.addEventListener('sync', (event) => {
   if (event.tag === 'replab-sync') {
     event.waitUntil(processSyncQueue());
   }
 });
 
-// Fallback: process queue when messaged by the client
+// Process queue when messaged by the client
 self.addEventListener('message', (event) => {
   if (event.data === 'process-sync-queue') {
     processSyncQueue();
