@@ -512,14 +512,14 @@ export default function Calendar() {
                   </div>
                   {/* Workout name */}
                   {hasWorkout && inMonth && (
-                    <div className={`text-[8px] leading-tight font-medium text-center truncate px-0.5 ${
+                    <div className={`text-[10px] leading-tight font-medium text-center truncate px-0.5 ${
                       dayCompleted ? 'text-green-400' : color.text || 'text-wf-gray-400'
                     }`}>
                       {workout.templateName}
                     </div>
                   )}
                   {workout?.isRest && inMonth && (
-                    <div className="text-[8px] leading-tight font-medium text-center text-wf-gray-500 px-0.5">
+                    <div className="text-[10px] leading-tight font-medium text-center text-wf-gray-500 px-0.5">
                       Rest
                     </div>
                   )}

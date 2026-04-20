@@ -941,7 +941,7 @@ export default function FeaturedWorkoutSession() {
     return (
       <div className="min-h-screen pb-24" style={{ background: 'linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 40%, #111 70%, #0a0a0a 100%)' }}>
         {/* Ambient spotlight */}
-        <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] pointer-events-none z-0" style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+        <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[min(600px,90vw)] h-[min(600px,90vw)] pointer-events-none z-0" style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 60%)', filter: 'blur(40px)' }} />
 
         <div className="relative z-10 px-5 pt-6 pb-2">
           <button onClick={goBack} className="flex items-center gap-1 text-white/50 text-sm font-medium active:opacity-70">
@@ -1132,7 +1132,7 @@ export default function FeaturedWorkoutSession() {
     return (
       <div className="min-h-screen pb-24" style={{ background: 'linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 40%, #111 70%, #0a0a0a 100%)' }}>
         {/* Ambient spotlight */}
-        <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] pointer-events-none z-0" style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+        <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[min(600px,90vw)] h-[min(600px,90vw)] pointer-events-none z-0" style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 60%)', filter: 'blur(40px)' }} />
 
         <div className="relative z-10 px-5 pt-6 pb-2">
           <button onClick={() => {
@@ -1242,7 +1242,7 @@ export default function FeaturedWorkoutSession() {
     return (
       <div className="min-h-screen pb-24" style={{ background: 'linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 40%, #111 70%, #0a0a0a 100%)' }}>
         {/* Ambient spotlight */}
-        <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] pointer-events-none z-0" style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+        <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[min(600px,90vw)] h-[min(600px,90vw)] pointer-events-none z-0" style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 60%)', filter: 'blur(40px)' }} />
 
         <div className="relative z-10 px-5 pt-6 pb-2">
           <button onClick={() => {
@@ -1830,7 +1830,7 @@ export default function FeaturedWorkoutSession() {
             <div className="min-h-full flex items-center justify-center px-4 py-6 relative" style={{ zIndex: 202 }}>
               <div className="w-full max-w-sm relative">
                 {/* Ambient spotlight */}
-                <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[500px] h-[500px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+                <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[min(500px,90vw)] h-[min(500px,90vw)] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
 
                 <div style={{
                   position: 'relative',
