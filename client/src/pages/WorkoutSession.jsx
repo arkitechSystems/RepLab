@@ -418,8 +418,14 @@ export default function WorkoutSession() {
         const [pbList, scheduleData, lastEntries, programs] = await Promise.all([
           api(`/pbs?templateId=${templateId}`),
           api(`/schedule?from=${schedFrom}&to=${schedTo}`),
-          api(`/sessions/last-entries/${templateId}`).catch(() => ({})),
-          api('/programs').catch(() => []),
+          api(`/sessions/last-entries/${templateId}`).catch((err) => {
+            console.warn('Failed to load last-session entries; weight suggestions may be stale:', err);
+            return {};
+          }),
+          api('/programs').catch((err) => {
+            console.warn('Failed to load programs:', err);
+            return [];
+          }),
         ]);
         setLastSession(lastEntries || {});
         const pbMap = {};
@@ -1353,7 +1359,7 @@ export default function WorkoutSession() {
         }),
       };
 
-      await api('/sessions', {
+      const saveResp = await api('/sessions', {
         method: 'POST',
         body: JSON.stringify({
           templateId: Number(templateId),
@@ -1363,37 +1369,47 @@ export default function WorkoutSession() {
           workoutData,
         }),
       });
-
-      // Refresh PBs — preserve user's CURRENT scroll position (re-captured right before state update)
-      const pbList = await api(`/pbs?templateId=${templateId}`);
-      const pbMap = {};
-      for (const pb of pbList) {
-        if (!pbMap[pb.exerciseName]) pbMap[pb.exerciseName] = {};
-        pbMap[pb.exerciseName][pb.bestWeight] = pb.bestReps;
+      // Server returns an error envelope if the write failed; treat that as a save failure.
+      if (saveResp && saveResp.error) {
+        throw new Error(saveResp.error);
       }
-      // Capture scroll position right before setPbs (user may have scrolled during API call)
-      const pbsScrollY = window.scrollY;
-      setPbs(pbMap);
-      requestAnimationFrame(() => {
-        window.scrollTo(0, pbsScrollY);
-        requestAnimationFrame(() => window.scrollTo(0, pbsScrollY));
-      });
 
-      // Compare old vs new PBs to detect improvements
-      const improved = [];
-      for (const [exerciseName, newWeights] of Object.entries(pbMap)) {
-        const oldWeights = oldPbs[exerciseName] || {};
-        for (const [weight, newReps] of Object.entries(newWeights)) {
-          const oldReps = oldWeights[weight] || 0;
-          if (newReps > oldReps) {
-            improved.push({ name: exerciseName, weight: Number(weight), reps: newReps });
+      // Post-save: refresh PBs and detect improvements. Best-effort — if this fails
+      // the session IS saved, so log the failure but don't alarm the user with
+      // "Failed to save".
+      try {
+        const pbList = await api(`/pbs?templateId=${templateId}`);
+        const pbMap = {};
+        for (const pb of pbList) {
+          if (!pbMap[pb.exerciseName]) pbMap[pb.exerciseName] = {};
+          pbMap[pb.exerciseName][pb.bestWeight] = pb.bestReps;
+        }
+        // Capture scroll position right before setPbs (user may have scrolled during API call)
+        const pbsScrollY = window.scrollY;
+        setPbs(pbMap);
+        requestAnimationFrame(() => {
+          window.scrollTo(0, pbsScrollY);
+          requestAnimationFrame(() => window.scrollTo(0, pbsScrollY));
+        });
+
+        // Compare old vs new PBs to detect improvements
+        const improved = [];
+        for (const [exerciseName, newWeights] of Object.entries(pbMap)) {
+          const oldWeights = oldPbs[exerciseName] || {};
+          for (const [weight, newReps] of Object.entries(newWeights)) {
+            const oldReps = oldWeights[weight] || 0;
+            if (newReps > oldReps) {
+              improved.push({ name: exerciseName, weight: Number(weight), reps: newReps });
+            }
           }
         }
-      }
 
-      if (improved.length > 0) {
-        setNewPBs(improved);
-        navigator.vibrate?.([40, 30, 80]);
+        if (improved.length > 0) {
+          setNewPBs(improved);
+          navigator.vibrate?.([40, 30, 80]);
+        }
+      } catch (postSaveErr) {
+        console.warn('Post-save PB refresh failed (session was saved):', postSaveErr);
       }
 
       // Auto-save any custom exercises not in the library

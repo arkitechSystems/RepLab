@@ -20,7 +20,7 @@ router.post('/', authMiddleware, async (req, res) => {
 });
 
 // GET /feedback/announcement — Get active announcement for client
-router.get('/announcement', async (req, res) => {
+router.get('/announcement', authMiddleware, async (req, res) => {
   try {
     const announcement = await db.getActiveAnnouncement();
     res.json(announcement);

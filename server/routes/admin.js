@@ -10,6 +10,15 @@ import { exerciseCardScript } from '../exerciseCardBuilder.js';
 
 const router = Router();
 
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
 // Generate a session token
 const activeSessions = new Set();
 
@@ -50,8 +59,13 @@ router.post('/login', express.urlencoded({ extended: false }), async (req, res) 
   if (dbHash) {
     valid = username === validUser && bcrypt.compareSync(password, dbHash);
   } else {
-    const validPass = process.env.ADMIN_PASS || process.env.ADMIN_KEY;
-    valid = username === validUser && password === validPass;
+    // Env fallback requires a bcrypt hash (not plaintext). To migrate: generate
+    // a hash via `bcrypt.hashSync('yourPassword', 10)` and set ADMIN_PASS to the
+    // resulting "$2..." string. Plaintext env passwords are rejected.
+    const envHash = process.env.ADMIN_PASS || process.env.ADMIN_KEY;
+    if (envHash && envHash.startsWith('$2')) {
+      valid = username === validUser && bcrypt.compareSync(password, envHash);
+    }
   }
 
   if (valid) {
@@ -257,7 +271,7 @@ function adminLoginPage(error, customContent) {
     <div class="logo">REP<span>LAB</span></div>
     <p class="subtitle">Admin Dashboard</p>
     <div class="glass">
-      ${error ? `<div class="error">${error}</div>` : ''}
+      ${error ? `<div class="error">${escapeHtml(error)}</div>` : ''}
       ${customContent || `
       <form method="POST" action="/admin/login">
         <div class="field">
