@@ -111,6 +111,15 @@ app.use('/auth/login', authLimiter);
 app.use('/auth/signup', authLimiter);
 app.use('/auth/request-reset', authLimiter);
 app.use('/admin/login', authLimiter);
+// Data export is expensive (many joined queries) and nothing legitimate runs
+// it more than a handful of times per day — cap it aggressively.
+app.use('/auth/export-data', rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: process.env.NODE_ENV === 'production' ? 5 : 50,
+  message: { error: 'Too many export requests. Try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+}));
 
 // Apply general limiter to all API routes
 app.use('/programs', apiLimiter);

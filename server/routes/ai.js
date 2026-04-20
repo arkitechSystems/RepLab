@@ -19,6 +19,24 @@ function sanitizePromptInput(str, maxLen = 500) {
     .slice(0, maxLen);
 }
 
+// Cap every Anthropic call at 30 seconds. Without this, if the API hangs the
+// request sits open until Express's default 120s socket timeout, burning
+// resources and leaving the user staring at a spinner. On timeout the
+// outer try/catch returns a friendly 500.
+async function withAnthropicTimeout(promise, ms = 30000) {
+  let timer;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`Anthropic request timed out after ${ms}ms`)), ms);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 router.post('/generate-workout', authMiddleware, async (req, res) => {
   if (!process.env.ANTHROPIC_API_KEY) {
     return res.status(503).json({ error: 'AI workout generation is not configured' });
@@ -94,11 +112,11 @@ Rules:
 
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-    const message = await client.messages.create({
+    const message = await withAnthropicTimeout(client.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1024,
       messages: [{ role: 'user', content: prompt }],
-    });
+    }));
 
     const text = message.content[0]?.text || '';
 
@@ -186,11 +204,11 @@ Rules:
 
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-    const message = await client.messages.create({
+    const message = await withAnthropicTimeout(client.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1024,
       messages: [{ role: 'user', content: prompt }],
-    });
+    }));
 
     const text = message.content[0]?.text || '';
 
@@ -264,11 +282,11 @@ IMPORTANT: Respond ONLY with valid JSON, no other text:
 
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-    const message = await client.messages.create({
+    const message = await withAnthropicTimeout(client.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 512,
       messages: [{ role: 'user', content: prompt }],
-    });
+    }));
 
     const text = message.content[0]?.text || '';
 

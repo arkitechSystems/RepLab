@@ -135,6 +135,39 @@ export default async function initDb() {
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_sessions_user_created_at ON sessions(user_id, created_at)`);
   // Stats endpoint filters PBs by user + achieved_at month boundary.
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_personal_bests_user_achieved ON personal_bests(user_id, achieved_at)`);
+
+  // Drop redundant indexes from earlier iterations:
+  // - idx_personal_bests_upsert duplicates idx_personal_bests_lookup (same 4-col composite)
+  // - idx_schedule_days_user_day is dead weight (day_of_week column was replaced
+  //   by schedule_date; no query reads it anymore)
+  await pool.query(`DROP INDEX IF EXISTS idx_personal_bests_upsert`);
+  await pool.query(`DROP INDEX IF EXISTS idx_schedule_days_user_day`);
+
+  // Rewrite shared_programs FKs to cascade on user deletion. db.deleteUser
+  // already explicitly DELETEs these rows, but CASCADE is belt-and-suspenders
+  // for GDPR erasure — any future path that deletes a user row without going
+  // through db.deleteUser will still cleanly remove the shares.
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1 FROM information_schema.referential_constraints
+        WHERE constraint_name = 'shared_programs_sender_id_fkey' AND delete_rule <> 'CASCADE'
+      ) THEN
+        ALTER TABLE shared_programs DROP CONSTRAINT shared_programs_sender_id_fkey;
+        ALTER TABLE shared_programs ADD CONSTRAINT shared_programs_sender_id_fkey
+          FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE;
+      END IF;
+      IF EXISTS (
+        SELECT 1 FROM information_schema.referential_constraints
+        WHERE constraint_name = 'shared_programs_recipient_id_fkey' AND delete_rule <> 'CASCADE'
+      ) THEN
+        ALTER TABLE shared_programs DROP CONSTRAINT shared_programs_recipient_id_fkey;
+        ALTER TABLE shared_programs ADD CONSTRAINT shared_programs_recipient_id_fkey
+          FOREIGN KEY (recipient_id) REFERENCES users(id) ON DELETE CASCADE;
+      END IF;
+    END $$;
+  `);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_sessions_completed_lookup ON sessions(user_id, template_id) WHERE completed = TRUE`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_schedule_days_user_id ON schedule_days(user_id)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_reset_token ON users(reset_token) WHERE reset_token IS NOT NULL`);
