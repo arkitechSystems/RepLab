@@ -10,6 +10,28 @@ import { exerciseCardScript } from '../exerciseCardBuilder.js';
 
 const router = Router();
 
+// CSRF defense-in-depth: reject state-changing requests whose Origin/Referer
+// doesn't match the host. SameSite=strict on the session cookie is the
+// primary defense; this catches edge cases (cookie-less browsers, relaxed
+// cross-origin setups) and gives clear logs if someone is probing.
+function adminCsrfCheck(req, res, next) {
+  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next();
+  const host = req.get('host');
+  const origin = req.get('origin');
+  const referer = req.get('referer');
+  try {
+    if (origin) {
+      if (new URL(origin).host !== host) return res.status(403).send('Cross-origin request blocked');
+    } else if (referer) {
+      if (new URL(referer).host !== host) return res.status(403).send('Cross-origin referer blocked');
+    }
+  } catch {
+    return res.status(403).send('Malformed Origin/Referer');
+  }
+  next();
+}
+router.use(adminCsrfCheck);
+
 function escapeHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;')
@@ -68,7 +90,10 @@ router.post('/login', express.urlencoded({ extended: false }), async (req, res) 
     res.cookie('admin_session', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      // 'strict' blocks the cookie on cross-site requests (primary CSRF
+      // defense). Pair this with the Origin check below so a compromised
+      // subdomain can't forge requests either.
+      sameSite: 'strict',
       maxAge: 24 * 60 * 60 * 1000,
     });
     return res.redirect('/admin');
