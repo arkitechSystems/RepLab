@@ -95,6 +95,17 @@ const apiLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// AI endpoints are expensive (Anthropic API cost per call). Cap per IP to
+// stop scripted abuse — unauthenticated hits are already blocked by auth
+// middleware, but an authenticated attacker could still rack up the bill.
+const aiLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: process.env.NODE_ENV === 'production' ? 20 : 200,
+  message: { error: 'AI rate limit hit. Try again in an hour.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Apply strict limiter to auth endpoints (login, signup, reset)
 app.use('/auth/login', authLimiter);
 app.use('/auth/signup', authLimiter);
@@ -111,6 +122,7 @@ app.use('/metrics', apiLimiter);
 app.use('/feedback', apiLimiter);
 app.use('/exercises', apiLimiter);
 app.use('/challenges', apiLimiter);
+app.use('/ai', aiLimiter);
 
 // API Routes
 app.use('/auth', authRoutes);

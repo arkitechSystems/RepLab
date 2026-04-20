@@ -462,27 +462,51 @@ router.get('/export-data', authMiddleware, async (req, res) => {
     const user = await db.findUserById(userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    // Gather all user data
-    const [programs, templates, sessions, schedule, pbs, metrics] = await Promise.all([
-      pool.query('SELECT id, name, created_at FROM programs WHERE user_id = $1 ORDER BY created_at', [userId]),
+    // Gather all user-owned data across every table that references users.id.
+    // Required for GDPR Art. 20 (right to data portability) — the user should
+    // be able to retrieve every piece of personally-identifiable data we hold.
+    // Queries wrapped in `catch(() => ({ rows: [] }))` where the table is
+    // optional (admin/trainer-only) so missing tables don't break the export.
+    const [
+      programs, templates, sessions, schedule, pbs, metrics,
+      aiUsage, feedback, challengeEntries, pageVisits, loginHistory,
+      deviceTokens, trainerClients, trainerApplications, subscriptions,
+      sharesSent, sharesReceived, customExercises,
+    ] = await Promise.all([
+      pool.query('SELECT id, name, description, created_at FROM programs WHERE user_id = $1 ORDER BY created_at', [userId]),
       pool.query('SELECT t.id, t.name, t.program_id, t.is_rest, t.sort_order FROM templates t JOIN programs p ON t.program_id = p.id WHERE p.user_id = $1 ORDER BY t.id', [userId]),
       pool.query(`SELECT s.id, s.template_id, s.date, s.completed, s.notes, s.created_at,
         json_agg(json_build_object('exerciseName', se.exercise_name, 'setNumber', se.set_number, 'weight', se.weight, 'reps', se.reps, 'isCompleted', se.is_completed) ORDER BY se.id) AS entries
         FROM sessions s LEFT JOIN session_entries se ON se.session_id = s.id WHERE s.user_id = $1 GROUP BY s.id ORDER BY s.date`, [userId]),
       pool.query('SELECT schedule_date, template_id FROM schedule_days WHERE user_id = $1 AND schedule_date IS NOT NULL ORDER BY schedule_date', [userId]),
-      pool.query('SELECT exercise_name, best_weight, best_reps, template_id FROM personal_bests WHERE user_id = $1 ORDER BY exercise_name', [userId]),
+      pool.query('SELECT exercise_name, best_weight, best_reps, template_id, achieved_at FROM personal_bests WHERE user_id = $1 ORDER BY exercise_name', [userId]),
       pool.query('SELECT * FROM user_metrics WHERE user_id = $1', [userId]),
+      pool.query('SELECT endpoint, input_tokens, output_tokens, created_at FROM ai_usage WHERE user_id = $1 ORDER BY created_at', [userId]).catch(() => ({ rows: [] })),
+      pool.query('SELECT type, message, created_at FROM feedback WHERE user_id = $1 ORDER BY created_at', [userId]).catch(() => ({ rows: [] })),
+      pool.query('SELECT challenge, value, created_at FROM challenge_entries WHERE user_id = $1 ORDER BY created_at', [userId]).catch(() => ({ rows: [] })),
+      pool.query('SELECT path, created_at FROM page_visits WHERE user_id = $1 ORDER BY created_at', [userId]).catch(() => ({ rows: [] })),
+      pool.query('SELECT ip, user_agent, city, state, created_at FROM user_login_history WHERE user_id = $1 ORDER BY created_at', [userId]).catch(() => ({ rows: [] })),
+      pool.query('SELECT platform, created_at FROM device_tokens WHERE user_id = $1 ORDER BY created_at', [userId]).catch(() => ({ rows: [] })),
+      pool.query('SELECT trainer_id, client_id, created_at FROM trainer_clients WHERE trainer_id = $1 OR client_id = $1 ORDER BY created_at', [userId]).catch(() => ({ rows: [] })),
+      pool.query('SELECT message, status, created_at, reviewed_at FROM trainer_applications WHERE user_id = $1 ORDER BY created_at', [userId]).catch(() => ({ rows: [] })),
+      pool.query('SELECT plan, status, cancel_at_period_end, current_period_end, created_at FROM subscriptions WHERE user_id = $1 ORDER BY created_at', [userId]).catch(() => ({ rows: [] })),
+      pool.query('SELECT recipient_id, type, template_id, source_program_id, status, created_at FROM shared_programs WHERE sender_id = $1 ORDER BY created_at', [userId]).catch(() => ({ rows: [] })),
+      pool.query('SELECT sender_id, type, template_id, source_program_id, status, created_at FROM shared_programs WHERE recipient_id = $1 ORDER BY created_at', [userId]).catch(() => ({ rows: [] })),
+      pool.query('SELECT id, name, muscle, tags, created_at FROM exercises WHERE created_by = $1 ORDER BY created_at', [userId]).catch(() => ({ rows: [] })),
     ]);
 
     const exportData = {
       exportDate: new Date().toISOString(),
       account: {
         email: user.email,
-        firstName: user.first_name,
-        lastName: user.last_name,
         phone: user.phone,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        username: user.username,
+        role: user.role,
         plan: user.plan,
-        createdAt: user.created_at,
+        trialEnd: user.trialEnd,
+        createdAt: user.createdAt,
       },
       programs: programs.rows,
       templates: templates.rows,
@@ -493,6 +517,18 @@ router.get('/export-data', authMiddleware, async (req, res) => {
       schedule: schedule.rows,
       personalBests: pbs.rows,
       metrics: metrics.rows[0] || null,
+      aiUsage: aiUsage.rows,
+      feedback: feedback.rows,
+      challengeEntries: challengeEntries.rows,
+      pageVisits: pageVisits.rows,
+      loginHistory: loginHistory.rows,
+      deviceTokens: deviceTokens.rows,
+      trainerRelationships: trainerClients.rows,
+      trainerApplications: trainerApplications.rows,
+      subscriptions: subscriptions.rows,
+      sharesSent: sharesSent.rows,
+      sharesReceived: sharesReceived.rows,
+      customExercises: customExercises.rows,
     };
 
     res.setHeader('Content-Disposition', `attachment; filename="replab-data-${new Date().toISOString().slice(0, 10)}.json"`);

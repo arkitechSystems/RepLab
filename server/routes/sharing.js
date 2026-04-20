@@ -128,12 +128,19 @@ router.post('/invite', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Workout and recipient are required' });
     }
 
-    // Verify template exists
-    const { rows: tmplRows } = await pool.query('SELECT id, name FROM templates WHERE id = $1', [templateId]);
+    // Verify template exists AND the sender is allowed to share it. Global
+    // library templates have user_id NULL and can be shared by anyone; a
+    // user-owned template can only be shared by its owner. Without this check,
+    // any authenticated user could enumerate template IDs and invite other
+    // users to private templates they don't own.
+    const { rows: tmplRows } = await pool.query('SELECT id, name, user_id FROM templates WHERE id = $1', [templateId]);
     if (tmplRows.length === 0) {
       return res.status(404).json({ error: 'Workout not found' });
     }
-    const templateName = tmplRows[0].name;
+    const { name: templateName, user_id: ownerId } = tmplRows[0];
+    if (ownerId !== null && ownerId !== req.userId) {
+      return res.status(403).json({ error: "You can only share workouts you own or from the library" });
+    }
 
     // Find recipient
     const recipient = await db.findUserByUsernameOrEmail(recipientIdentifier);

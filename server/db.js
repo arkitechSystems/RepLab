@@ -196,7 +196,11 @@ const db = {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      // Delete in order to respect foreign key constraints
+      // Delete in order to respect foreign key constraints.
+      // shared_programs is explicit (not CASCADE) because its FK constraints
+      // in initDb.js don't set ON DELETE CASCADE. Without this, deleted
+      // users would leave orphaned share records — a GDPR erasure breach.
+      await client.query('DELETE FROM shared_programs WHERE sender_id = $1 OR recipient_id = $1', [id]);
       await client.query('DELETE FROM feedback WHERE user_id = $1', [id]);
       await client.query('DELETE FROM trainer_login_history WHERE user_id = $1', [id]);
       await client.query('DELETE FROM challenge_entries WHERE user_id = $1', [id]);
