@@ -42,14 +42,23 @@ export function AuthProvider({ children }) {
 
     // Fetch user data with the bridge token
     fetch('/auth/me', { headers: { 'Authorization': 'Bearer ' + bridgeToken } })
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error(`/auth/me returned ${r.status}`);
+        return r.json();
+      })
       .then(data => {
         if (data.user) {
           try { localStorage.setItem('replab_user', JSON.stringify(data.user)); } catch {}
           setUser(data.user);
         }
       })
-      .catch(() => {});
+      .catch((err) => {
+        // Bridge token was rejected — clear it so the user lands on login instead
+        // of in a half-authenticated state with a token but no user object.
+        console.warn('Bridge token auth failed:', err);
+        setApiToken(null);
+        setToken(null);
+      });
 
     // Navigate to target after a tick so React Router can mount
     if (redirectPath) {

@@ -4,6 +4,12 @@ import pool from '../dbPool.js';
 if (!process.env.JWT_SECRET) {
   throw new Error('JWT_SECRET environment variable is required');
 }
+if (process.env.JWT_SECRET.length < 32) {
+  throw new Error(
+    `JWT_SECRET must be at least 32 characters (got ${process.env.JWT_SECRET.length}). ` +
+    `Generate with: node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`
+  );
+}
 const JWT_SECRET = process.env.JWT_SECRET;
 
 export function generateToken(user) {

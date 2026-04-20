@@ -150,7 +150,7 @@ export default function Signup() {
 
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
           {error && (
-            <div ref={errorRef} className="bg-red-900/30 border border-red-800 rounded-lg px-4 py-3 text-red-300 text-sm">
+            <div ref={errorRef} className="bg-red-900/30 border border-red-800 rounded-[2px] px-4 py-3 text-red-300 text-sm">
               {error}
             </div>
           )}
@@ -270,7 +270,7 @@ export default function Signup() {
                   key={g}
                   type="button"
                   onClick={() => setGender(gender === g ? '' : g)}
-                  className={`flex-1 py-3 rounded-xl text-sm font-medium transition-all ${
+                  className={`flex-1 py-3 rounded-[2px] text-sm font-medium transition-all ${
                     gender === g
                       ? 'bg-wf-red text-white'
                       : 'glass-input text-wf-gray-400'
@@ -352,7 +352,7 @@ export default function Signup() {
           </div>
 
           {error && (
-            <div className="bg-red-900/30 border border-red-800 rounded-lg px-4 py-3 text-red-300 text-sm">
+            <div className="bg-red-900/30 border border-red-800 rounded-[2px] px-4 py-3 text-red-300 text-sm">
               {error}
             </div>
           )}
@@ -360,7 +360,7 @@ export default function Signup() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full btn-gradient active:scale-[0.98] text-white font-semibold py-3.5 rounded-xl text-base transition-all disabled:opacity-50"
+            className="w-full btn-gradient active:scale-[0.98] text-white font-semibold py-3.5 rounded-[100px] text-base transition-all disabled:opacity-50"
           >
             {loading ? 'Creating account...' : 'Sign Up'}
           </button>

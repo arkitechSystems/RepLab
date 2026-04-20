@@ -44,7 +44,7 @@ export default function Login() {
 
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
           {error && (
-            <div className="bg-red-900/30 border border-red-800 rounded-lg px-4 py-3 text-red-300 text-sm">
+            <div className="bg-red-900/30 border border-red-800 rounded-[2px] px-4 py-3 text-red-300 text-sm">
               {error}
             </div>
           )}
@@ -84,7 +84,7 @@ export default function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full btn-gradient active:scale-[0.98] text-white font-semibold py-3.5 rounded-xl text-base transition-all disabled:opacity-50"
+            className="w-full btn-gradient active:scale-[0.98] text-white font-semibold py-3.5 rounded-[100px] text-base transition-all disabled:opacity-50"
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
