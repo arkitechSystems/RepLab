@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, Fragment } from 'react';
 import { api } from '../api';
 import { generateSummaryImage, composeShareText, dataURLtoBlob } from '../utils/workoutSummaryShare';
+import { exportProgramPDF } from '../utils/exportProgramPDF';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import StickyHeader from '../components/StickyHeader';
 
@@ -966,6 +967,24 @@ export default function FeaturedWorkoutSession() {
             <p className="text-[13px] text-white/50 font-light leading-relaxed">
               Built as a 2-week cycle that repeats six times across 12 weeks. Weeks one and two will be used as a baseline to set your goal weight and reps for the future weeks. Every cycle after, you'll repeat the same workouts and aim to beat your previous numbers by adding weight or completing more reps.
             </p>
+            <button
+              onClick={() => exportProgramPDF({ program: PROGRAM, workouts: WORKOUTS, weeklySchedule: WEEKLY_SCHEDULE })}
+              className="active:scale-[0.97] transition-all mt-5 flex items-center gap-2"
+              style={{
+                padding: '10px 20px', borderRadius: '100px',
+                border: '1px solid rgba(255,255,255,0.25)',
+                background: 'rgba(255,255,255,0.05)',
+                color: 'white', fontSize: '10px', fontWeight: 700, cursor: 'pointer',
+                letterSpacing: '2px', textTransform: 'uppercase',
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Download PDF
+            </button>
           </div>
 
           {/* Week cards — Nike accordion style */}
