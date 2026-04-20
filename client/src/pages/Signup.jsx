@@ -97,6 +97,11 @@ export default function Signup() {
       // Get native device info if running in Capacitor
       const deviceInfo = await getDeviceInfo();
 
+      // IANA timezone (e.g. "America/Los_Angeles") so the server can later
+      // format dates in the user's local calendar instead of UTC.
+      let timezone;
+      try { timezone = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { timezone = undefined; }
+
       await signup(identifier, password, {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
@@ -106,6 +111,7 @@ export default function Signup() {
         referralSource: finalReferral || undefined,
         referralCode: referralCode.trim() || undefined,
         zipCode: zipCode.trim() || undefined,
+        timezone: timezone || undefined,
         utmSource: utm.utm_source || undefined,
         utmMedium: utm.utm_medium || undefined,
         utmCampaign: utm.utm_campaign || undefined,

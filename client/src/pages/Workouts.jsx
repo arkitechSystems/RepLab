@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../api';
 import { buildProgramColorMap, getColorFromMap } from '../utils/workoutColors';
@@ -279,6 +280,7 @@ export default function Workouts() {
   const navigate = useNavigate();
   const location = useLocation();
   const beginDateRef = useRef(null);
+  const addDateRef = useRef(null);
   const [tutorialPointer, setTutorialPointer] = useState(null); // 'create' | null
   const [pointerRect, setPointerRect] = useState(null);
 
@@ -800,7 +802,9 @@ export default function Workouts() {
   async function tryAddWorkout(template, date) {
     if (!template) return;
     try {
-      const dateStr = date.toISOString().slice(0, 10);
+      // User-local YYYY-MM-DD — avoids the UTC rollover bug where a user in
+      // Sydney logging at 11pm Monday would send Tuesday's date.
+      const dateStr = date.toLocaleDateString('en-CA');
       const schedule = await api(`/schedule?from=${dateStr}&to=${dateStr}`);
       const existing = schedule.find((s) => s.date === dateStr && s.templateId);
       if (existing) {
@@ -1750,13 +1754,14 @@ export default function Workouts() {
                   </button>
                   <button
                     onClick={() => {
-                      setShowDatePicker(true);
-                      setTimeout(() => {
-                        if (beginDateRef.current) {
-                          beginDateRef.current.focus();
-                          try { beginDateRef.current.showPicker(); } catch {}
-                        }
-                      }, 50);
+                      // flushSync renders the input synchronously so showPicker()
+                      // still runs inside the user-gesture window the browser needs.
+                      flushSync(() => setShowDatePicker(true));
+                      const el = beginDateRef.current;
+                      if (el) {
+                        el.focus();
+                        try { el.showPicker?.(); } catch {}
+                      }
                     }}
                     className="flex-1 glass-card text-white font-semibold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-all"
                   >
@@ -1768,7 +1773,7 @@ export default function Workouts() {
                   <input
                     type="date"
                     value={beginDateInput}
-                    min={new Date().toISOString().slice(0, 10)}
+                    min={new Date().toLocaleDateString('en-CA')}
                     onChange={(e) => setBeginDateInput(e.target.value)}
                     className="flex-1 glass-input rounded-xl px-3 py-3 text-white text-sm focus:outline-none"
                     ref={beginDateRef}
@@ -1847,7 +1852,18 @@ export default function Workouts() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-5" />
-              <h3 className="text-lg font-black text-white mb-1">Add Workout</h3>
+              <div className="flex items-start justify-between mb-1">
+                <h3 className="text-lg font-black text-white">Add Workout</h3>
+                <button
+                  onClick={closeAddWorkoutModal}
+                  aria-label="Close"
+                  className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90 transition-all shrink-0"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
               <p className="text-wf-gray-400 text-sm mb-5">
                 Add <span className="text-white font-semibold">{addWorkoutModal.name}</span> to your calendar.
               </p>
@@ -1860,7 +1876,14 @@ export default function Workouts() {
                     Begin Today
                   </button>
                   <button
-                    onClick={() => setShowAddDatePicker(true)}
+                    onClick={() => {
+                      flushSync(() => setShowAddDatePicker(true));
+                      const el = addDateRef.current;
+                      if (el) {
+                        el.focus();
+                        try { el.showPicker?.(); } catch {}
+                      }
+                    }}
                     className="flex-1 glass-card text-white font-semibold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-all"
                   >
                     Choose Date
@@ -1871,10 +1894,10 @@ export default function Workouts() {
                   <input
                     type="date"
                     value={addDateInput}
-                    min={new Date().toISOString().slice(0, 10)}
+                    min={new Date().toLocaleDateString('en-CA')}
                     onChange={(e) => setAddDateInput(e.target.value)}
                     className="flex-1 glass-input rounded-xl px-3 py-3 text-white text-sm focus:outline-none"
-                    ref={iosFocusRef}
+                    ref={addDateRef}
                   />
                   <button
                     onClick={handleAddDate}
@@ -1949,7 +1972,8 @@ export default function Workouts() {
         console.error(err);
         return;
       }
-      const dateStr = new Date().toISOString().slice(0, 10);
+      // User-local "today" so a user in Asia logging at 11pm doesn't roll over to tomorrow (UTC).
+      const dateStr = new Date().toLocaleDateString('en-CA');
       const schedule = await api(`/schedule?from=${dateStr}&to=${dateStr}`);
       const existing = schedule.find((s) => s.date === dateStr && s.templateId);
       if (existing) {

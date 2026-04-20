@@ -50,7 +50,7 @@ function userResponse(user) {
 
 router.post('/signup', async (req, res) => {
   try {
-    const { identifier, password, firstName, lastName, phone: extraPhone, gender, username, referralSource, referralCode, zipCode, utmSource, utmMedium, utmCampaign, utmContent, utmTerm, deviceInfo } = req.body;
+    const { identifier, password, firstName, lastName, phone: extraPhone, gender, username, referralSource, referralCode, zipCode, timezone, utmSource, utmMedium, utmCampaign, utmContent, utmTerm, deviceInfo } = req.body;
 
 
     if (!identifier || !password) {
@@ -128,6 +128,7 @@ router.post('/signup', async (req, res) => {
       referralSource: referralSource || null,
       referralCode: referralCode || null,
       zipCode: zipCode || null,
+      timezone: timezone || null,
       utmSource: utmSource || null,
       utmMedium: utmMedium || null,
       utmCampaign: utmCampaign || null,

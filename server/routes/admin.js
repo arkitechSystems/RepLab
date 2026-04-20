@@ -936,7 +936,7 @@ router.get('/users', adminAuth, async (req, res) => {
           const stickyClass = ci <= 1 ? ` class="sticky-col sticky-col-${ci + 1}"` : '';
           const val = u[k];
           if (val == null) return `<td${stickyClass}>—</td>`;
-          if (k === 'createdAt' || k.endsWith('At')) return `<td${stickyClass}>${new Date(val).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', year: 'numeric' })} <span style="color:#888;">${new Date(val).toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' })} CT</span></td>`;
+          if (k === 'createdAt' || k.endsWith('At')) return `<td${stickyClass}>${new Date(val).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })} <span style="color:#888;">${new Date(val).toLocaleTimeString('en-US', { timeZone: 'UTC', hour: 'numeric', minute: '2-digit' })} UTC</span></td>`;
           return `<td${stickyClass}>${esc(val)}</td>`;
         }).join('');
         const deleteBtn = `<td style="text-align:center;white-space:nowrap;">
@@ -1420,8 +1420,8 @@ router.get('/feedback', adminAuth, async (req, res) => {
     const feedback = await db.getAllFeedback();
     const rows = feedback.map((f, i) => {
       const name = [f.first_name, f.last_name].filter(Boolean).join(' ') || f.email || 'Unknown';
-      const date = new Date(f.created_at).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', year: 'numeric' });
-      const time = new Date(f.created_at).toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' });
+      const date = new Date(f.created_at).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' });
+      const time = new Date(f.created_at).toLocaleTimeString('en-US', { timeZone: 'UTC', hour: 'numeric', minute: '2-digit' });
       const typeBadge = f.type === 'Bug Report'
         ? '<span style="background:rgba(239,68,68,0.15);color:#f87171;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">Bug</span>'
         : '<span style="background:rgba(59,130,246,0.15);color:#60a5fa;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">Idea</span>';
@@ -1430,7 +1430,7 @@ router.get('/feedback', adminAuth, async (req, res) => {
         <td>${esc(name)}</td>
         <td>${typeBadge}</td>
         <td style="max-width:400px;word-wrap:break-word;">${esc(f.message)}</td>
-        <td>${date} <span style="color:#888;">${time} CT</span></td>
+        <td>${date} <span style="color:#888;">${time} UTC</span></td>
       </tr>`;
     }).join('');
 
@@ -1439,7 +1439,7 @@ router.get('/feedback', adminAuth, async (req, res) => {
   <div class="header">
     <h1>Admin Dashboard</h1>
     <h2>Feedback</h2>
-    <p>Generated ${new Date().toLocaleDateString('en-US', { timeZone: 'America/Chicago', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+    <p>Generated ${new Date().toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
   </div>
   <div class="stats">
     <div class="stat glass">
@@ -1481,7 +1481,7 @@ router.get('/retention', adminAuth, async (req, res) => {
   <div class="header">
     <h1>Admin Dashboard</h1>
     <h2>Retention Dashboard</h2>
-    <p>Generated ${new Date().toLocaleDateString('en-US', { timeZone: 'America/Chicago', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+    <p>Generated ${new Date().toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
   </div>
   <div class="stats">
     <div class="stat glass">
@@ -1545,7 +1545,7 @@ router.get('/referrals', adminAuth, async (req, res) => {
   <div class="header">
     <h1>Admin Dashboard</h1>
     <h2>Referral Breakdown</h2>
-    <p>Generated ${new Date().toLocaleDateString('en-US', { timeZone: 'America/Chicago', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+    <p>Generated ${new Date().toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
   </div>
   <div class="stats">
     <div class="stat glass">
@@ -1595,7 +1595,7 @@ router.get('/devices', adminAuth, async (req, res) => {
   <div class="header">
     <h1>Admin Dashboard</h1>
     <h2>Device Breakdown</h2>
-    <p>Generated ${new Date().toLocaleDateString('en-US', { timeZone: 'America/Chicago', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+    <p>Generated ${new Date().toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
   </div>
   <div class="stats">
     <div class="stat glass">
@@ -1634,7 +1634,7 @@ router.get('/workouts', adminAuth, async (req, res) => {
         <td>${p.description || '—'}</td>
         <td>${badge}</td>
         <td>${p.template_count}</td>
-        <td>${new Date(p.created_at).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', year: 'numeric' })}</td>
+        <td>${new Date(p.created_at).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })}</td>
       </tr>`;
     }).join('');
 
@@ -1643,7 +1643,7 @@ router.get('/workouts', adminAuth, async (req, res) => {
   <div class="header">
     <h1>Admin Dashboard</h1>
     <h2>Workout Library</h2>
-    <p>Generated ${new Date().toLocaleDateString('en-US', { timeZone: 'America/Chicago', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+    <p>Generated ${new Date().toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
   </div>
   <div class="stats">
     <div class="stat glass">
@@ -1685,7 +1685,7 @@ router.get('/announcements', adminAuth, async (req, res) => {
       const statusBadge = a.active
         ? '<span style="background:rgba(34,197,94,0.15);color:#4ade80;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">Active</span>'
         : '<span style="background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">Inactive</span>';
-      const date = new Date(a.created_at).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', year: 'numeric' });
+      const date = new Date(a.created_at).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' });
       return `<tr>
         <td>${a.id}</td>
         <td style="max-width:400px;word-wrap:break-word;">${esc(a.message)}</td>
@@ -1712,7 +1712,7 @@ router.get('/announcements', adminAuth, async (req, res) => {
   <div class="header">
     <h1>Admin Dashboard</h1>
     <h2>Announcement Manager</h2>
-    <p>Generated ${new Date().toLocaleDateString('en-US', { timeZone: 'America/Chicago', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+    <p>Generated ${new Date().toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
   </div>
   <div class="glass" style="padding:24px;margin-bottom:24px;">
     <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:rgba(255,255,255,0.7);">Create New Announcement</h3>
@@ -1804,7 +1804,7 @@ router.get('/flags', adminAuth, async (req, res) => {
   <div class="header">
     <h1>Admin Dashboard</h1>
     <h2>Feature Flags</h2>
-    <p>Generated ${new Date().toLocaleDateString('en-US', { timeZone: 'America/Chicago', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+    <p>Generated ${new Date().toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
   </div>
   <div class="glass" style="padding:24px;margin-bottom:24px;">
     <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:rgba(255,255,255,0.7);">Add New Flag</h3>
@@ -1882,13 +1882,13 @@ router.get('/errors', adminAuth, async (req, res) => {
     }
 
     const rows = errors.map((e, i) => {
-      const date = new Date(e.timestamp).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', year: 'numeric' });
-      const time = new Date(e.timestamp).toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit', second: '2-digit' });
+      const date = new Date(e.timestamp).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' });
+      const time = new Date(e.timestamp).toLocaleTimeString('en-US', { timeZone: 'UTC', hour: 'numeric', minute: '2-digit', second: '2-digit' });
       return `<tr>
         <td>${i + 1}</td>
         <td><span style="font-family:monospace;font-size:12px;color:#f97316;">${e.method}</span> ${e.url}</td>
         <td style="max-width:400px;word-wrap:break-word;color:#f87171;">${e.message}</td>
-        <td>${date} <span style="color:#888;">${time} CT</span></td>
+        <td>${date} <span style="color:#888;">${time} UTC</span></td>
       </tr>`;
     }).join('');
 
@@ -1947,7 +1947,7 @@ router.get('/health', adminAuth, async (req, res) => {
   <div class="header">
     <h1>Admin Dashboard</h1>
     <h2>Health Check</h2>
-    <p>Generated ${new Date().toLocaleDateString('en-US', { timeZone: 'America/Chicago', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+    <p>Generated ${new Date().toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
   </div>
   <div class="stats">
     <div class="stat glass">
@@ -2008,13 +2008,13 @@ router.get('/active', adminAuth, async (req, res) => {
     const data = await db.getActiveUsers();
     const rows = data.recentUsers.map((u, i) => {
       const name = [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email || `User #${u.user_id}`;
-      const date = new Date(u.last_session).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', year: 'numeric' });
-      const time = new Date(u.last_session).toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' });
+      const date = new Date(u.last_session).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' });
+      const time = new Date(u.last_session).toLocaleTimeString('en-US', { timeZone: 'UTC', hour: 'numeric', minute: '2-digit' });
       return `<tr>
         <td>${i + 1}</td>
         <td>${esc(name)}</td>
         <td>${u.email || '—'}</td>
-        <td>${date} <span style="color:#888;">${time} CT</span></td>
+        <td>${date} <span style="color:#888;">${time} UTC</span></td>
       </tr>`;
     }).join('');
 
@@ -2023,7 +2023,7 @@ router.get('/active', adminAuth, async (req, res) => {
   <div class="header">
     <h1>Admin Dashboard</h1>
     <h2>Active Users</h2>
-    <p>Generated ${new Date().toLocaleDateString('en-US', { timeZone: 'America/Chicago', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+    <p>Generated ${new Date().toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
   </div>
   <div class="stats">
     <div class="stat glass">
@@ -2451,8 +2451,8 @@ router.get('/ai-usage', adminAuth, async (req, res) => {
 
     const rows = stats.recent.map((r, i) => {
       const name = [r.first_name, r.last_name].filter(Boolean).join(' ') || r.email || 'Unknown';
-      const date = new Date(r.created_at).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', year: 'numeric' });
-      const time = new Date(r.created_at).toLocaleTimeString('en-US', { timeZone: 'America/Chicago', hour: 'numeric', minute: '2-digit' });
+      const date = new Date(r.created_at).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' });
+      const time = new Date(r.created_at).toLocaleTimeString('en-US', { timeZone: 'UTC', hour: 'numeric', minute: '2-digit' });
       return `<tr>
         <td>${i + 1}</td>
         <td>${esc(name)}</td>
@@ -2460,7 +2460,7 @@ router.get('/ai-usage', adminAuth, async (req, res) => {
         <td>${r.input_tokens?.toLocaleString() || 0}</td>
         <td>${r.output_tokens?.toLocaleString() || 0}</td>
         <td>${fmt(parseFloat(r.cost_cents || 0))}</td>
-        <td>${date} <span style="color:#888;">${time} CT</span></td>
+        <td>${date} <span style="color:#888;">${time} UTC</span></td>
       </tr>`;
     }).join('');
 
@@ -3352,7 +3352,7 @@ router.get('/trainers', adminAuth, async (req, res) => {
     const tableRows = trainers.map((t, i) => {
       const date = t.appliedAt || t.createdAt;
       const dateStr = date
-        ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' })
+        ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
         : '—';
       const rowBg = i % 2 === 0 ? 'background:rgba(255,255,255,0.02);' : '';
       const tdStyle = 'padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);';
@@ -3449,7 +3449,7 @@ router.get('/trainer-logins', adminAuth, async (req, res) => {
         : r.username || r.email || 'Unknown';
       const location = [r.city, r.state].filter(Boolean).join(', ') || '—';
       const date = r.created_at
-        ? new Date(r.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Chicago' })
+        ? new Date(r.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'UTC' })
         : '—';
       const rowBg = i % 2 === 0 ? 'background:rgba(255,255,255,0.02);' : '';
       return '<tr style="' + rowBg + '">' +
@@ -3527,7 +3527,7 @@ router.get('/user-logins', adminAuth, async (req, res) => {
         : esc(r.username || r.email || 'Unknown');
       const location = [r.city, r.state].filter(Boolean).join(', ') || '—';
       const date = r.created_at
-        ? new Date(r.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Chicago' })
+        ? new Date(r.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'UTC' })
         : '—';
       const rowBg = i % 2 === 0 ? 'background:rgba(255,255,255,0.02);' : '';
       return '<tr style="' + rowBg + '">' +
@@ -3675,7 +3675,7 @@ router.get('/page-visits', adminAuth, async (req, res) => {
     const detailRows = details.map((r, i) => {
       const name = r.first_name && r.last_name ? esc(r.first_name + ' ' + r.last_name) : esc(r.username || r.email || 'Unknown');
       const date = r.created_at
-        ? new Date(r.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Chicago' })
+        ? new Date(r.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'UTC' })
         : '—';
       const rowBg = i % 2 === 0 ? 'background:rgba(255,255,255,0.02);' : '';
       const td = 'padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.06);';
@@ -3759,7 +3759,7 @@ router.get('/custom-exercises', adminAuth, async (req, res) => {
         ? `${r.first_name} ${r.last_name}`
         : r.username || r.email || 'Unknown';
       const date = r.created_at
-        ? new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' })
+        ? new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
         : '—';
       return `<tr>
         <td>${esc(username)}</td>
@@ -5243,7 +5243,7 @@ router.get('/backup', adminAuth, async (req, res) => {
         ),
       };
 
-      const ct = new Date().toLocaleString('en-US', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true }).replace(/[/,:\s]+/g, '-').replace(/-+/g, '-');
+      const ct = new Date().toLocaleString('en-US', { timeZone: 'UTC', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true }).replace(/[/,:\s]+/g, '-').replace(/-+/g, '-');
       res.setHeader('Content-Disposition', `attachment; filename="replab-backup-${ct}.json"`);
       res.setHeader('Content-Type', 'application/json');
       return res.json(backup);
@@ -5359,7 +5359,7 @@ router.get('/backup', adminAuth, async (req, res) => {
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(metricsR.rows), 'User Metrics');
 
       const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-      const ct = new Date().toLocaleString('en-US', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true }).replace(/[/,:\s]+/g, '-').replace(/-+/g, '-');
+      const ct = new Date().toLocaleString('en-US', { timeZone: 'UTC', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true }).replace(/[/,:\s]+/g, '-').replace(/-+/g, '-');
       res.setHeader('Content-Disposition', `attachment; filename="replab-report-${ct}.xlsx"`);
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       return res.send(Buffer.from(buf));

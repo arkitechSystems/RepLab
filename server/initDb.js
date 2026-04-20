@@ -36,6 +36,9 @@ export default async function initDb() {
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS utm_content TEXT`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS utm_term TEXT`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS zip_code TEXT`);
+  // IANA timezone name captured on signup (e.g., 'America/Los_Angeles'). Used to
+  // format dates in the user's local calendar instead of assuming server time.
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS timezone TEXT DEFAULT 'UTC'`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS signup_city TEXT`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS signup_state TEXT`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT`);
