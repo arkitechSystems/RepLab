@@ -23,6 +23,22 @@ function setsSummary(ex) {
   return `${ex.sets.length} sets · ${reps.join('/')} reps`;
 }
 
+function renderSetGrid(ex) {
+  if (!ex.sets || ex.sets.length === 0) return '';
+  const hideWeight = !!ex.hideWeight;
+  const header = hideWeight
+    ? `<tr><th class="col-set">Set</th><th class="col-goal">Goal</th><th class="col-reps">Reps</th><th class="col-notes">Notes</th></tr>`
+    : `<tr><th class="col-set">Set</th><th class="col-goal">Goal</th><th class="col-weight">Weight</th><th class="col-reps">Reps</th></tr>`;
+  const rows = ex.sets.map((s, i) => {
+    const num = String(s.setNumber || i + 1).padStart(2, '0');
+    const goal = s.plannedReps > 0 ? `${s.plannedReps}` : '—';
+    return hideWeight
+      ? `<tr><td class="set-num">${num}</td><td class="set-goal">${goal}</td><td class="blank"></td><td class="blank"></td></tr>`
+      : `<tr><td class="set-num">${num}</td><td class="set-goal">${goal}</td><td class="blank"></td><td class="blank"></td></tr>`;
+  }).join('');
+  return `<table class="set-grid"><thead>${header}</thead><tbody>${rows}</tbody></table>`;
+}
+
 function renderExercise(ex, idx) {
   if (ex.isSectionHeader) {
     return `
@@ -33,6 +49,7 @@ function renderExercise(ex, idx) {
           ${ex.sets?.length ? `<div class="ex-meta">${escapeHTML(setsSummary(ex))} · WARM-UP</div>` : ''}
           ${ex.sectionNotes ? `<div class="ex-notes">${escapeHTML(ex.sectionNotes)}</div>` : ''}
           ${ex.description ? `<div class="ex-desc">${escapeHTML(ex.description).replace(/\n/g, '<br/>')}</div>` : ''}
+          ${renderSetGrid(ex)}
         </div>
       </div>`;
   }
@@ -46,6 +63,7 @@ function renderExercise(ex, idx) {
         <div class="ex-name">${escapeHTML(ex.name)}</div>
         <div class="ex-meta">${escapeHTML(setsSummary(ex))}${typeLabel}</div>
         ${ex.description ? `<div class="ex-desc">${escapeHTML(ex.description).replace(/\n/g, '<br/>')}</div>` : ''}
+        ${renderSetGrid(ex)}
       </div>
     </div>`;
 }
@@ -54,7 +72,7 @@ function renderWorkoutPage(workout, dayIdx) {
   const hasExercises = workout.exercises && workout.exercises.length > 0;
   return `
     <section class="page">
-      <div class="watermark"></div>
+      <div class="corner-mark">RL</div>
       <div class="page-inner">
         <header class="workout-head">
           <div class="day-label">Day ${dayIdx + 1}</div>
@@ -79,7 +97,6 @@ function renderCoverPage(program, dateStr) {
     <section class="page cover">
       <div class="cover-spotlight"></div>
       <div class="cover-warm-glow"></div>
-      <div class="watermark"></div>
       <div class="page-inner cover-inner">
         <div class="cover-top">
           <div class="brand">REPLAB</div>
@@ -88,7 +105,7 @@ function renderCoverPage(program, dateStr) {
 
         <div class="cover-hero">
           <div class="cover-eyebrow">Featured Program</div>
-          <h1 class="cover-title">WILL'S<br/>HYPERTROPHY</h1>
+          <h1 class="cover-title">WILL'S<br/>HYPERTROPHY<br/>PROGRAM</h1>
           <div class="cover-photo-wrap">
             <div class="cover-floor-shadow"></div>
             <img class="cover-photo" src="/RepLabPhotoShoot.png" alt="Will training" />
@@ -143,20 +160,20 @@ export function exportProgramPDF({ program, workouts, weeklySchedule }) {
     background: #f5f3ee;
   }
   .page:last-child { page-break-after: auto; }
+  /* Workout pages: let content flow naturally across print pages when long */
+  .page:not(.cover) { height: auto; min-height: 11in; overflow: visible; }
+  .page:not(.cover) .page-inner { height: auto; min-height: 11in; }
 
-  .watermark {
+  .corner-mark {
     position: absolute;
-    top: 50%; left: 50%;
-    width: 7.5in; height: 7.5in;
-    transform: translate(-50%, -50%);
-    background-image: url("${WATERMARK_SRC}");
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: contain;
-    opacity: 0.07;
-    mix-blend-mode: multiply;
+    top: 0.55in; right: 0.85in;
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    color: rgba(10,10,10,0.22);
     pointer-events: none;
-    z-index: 0;
+    z-index: 2;
   }
 
   .page-inner {
@@ -173,7 +190,6 @@ export function exportProgramPDF({ program, workouts, weeklySchedule }) {
     color: #f5f3ee;
     background: linear-gradient(180deg, #1a1a1a 0%, #252525 30%, #2a2a2a 50%, #1a1a1a 80%, #0d0d0d 100%);
   }
-  .cover .watermark { opacity: 0.05; filter: invert(1); }
   .cover-spotlight {
     position: absolute; top: 50%; left: 50%;
     width: 6in; height: 6in;
@@ -326,6 +342,56 @@ export function exportProgramPDF({ program, workouts, weeklySchedule }) {
     font-size: 10.5px; line-height: 1.5; font-weight: 400;
     color: rgba(10,10,10,0.65); margin-top: 6px;
   }
+  .ex { page-break-inside: avoid; break-inside: avoid; }
+
+  /* ===== SET GRID — Nike-style fillable table ===== */
+  .set-grid {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    table-layout: fixed;
+  }
+  .set-grid th {
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: rgba(10,10,10,0.55);
+    text-align: left;
+    padding: 6px 8px 6px 0;
+    border-bottom: 1.5px solid #0a0a0a;
+  }
+  .set-grid td {
+    padding: 7px 8px 7px 0;
+    border-bottom: 1px solid rgba(10,10,10,0.12);
+    font-size: 11px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: #0a0a0a;
+    height: 16px;
+    vertical-align: middle;
+  }
+  .set-grid tr:last-child td { border-bottom: 1.5px solid #0a0a0a; }
+  .set-grid .col-set { width: 14%; }
+  .set-grid .col-goal { width: 16%; }
+  .set-grid .col-weight { width: 35%; }
+  .set-grid .col-reps { width: 35%; }
+  .set-grid .col-notes { width: 35%; }
+  .set-grid td.set-num {
+    font-weight: 900;
+    color: rgba(10,10,10,0.35);
+    font-size: 10px;
+    letter-spacing: 0.05em;
+  }
+  .set-grid td.set-goal {
+    color: rgba(10,10,10,0.6);
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .set-grid td.blank {
+    /* Empty cells — user writes in the blank space */
+  }
+  .section-header .set-grid th { color: rgba(10,10,10,0.5); }
 
   .coming-soon {
     flex: 1; display: flex; align-items: center; justify-content: center;

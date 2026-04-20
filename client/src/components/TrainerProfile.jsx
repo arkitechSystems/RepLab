@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import StickyHeader from './StickyHeader';
 
 // Social icon SVGs
@@ -41,6 +42,7 @@ export default function TrainerProfile({
 }) {
   const t = trainer;
   const socialKeys = t.socials ? Object.keys(t.socials) : [];
+  const trainerDateRef = useRef(null);
 
   return (
     <div>
@@ -265,29 +267,49 @@ export default function TrainerProfile({
                       Add to Today
                     </button>
                     <button
-                      onClick={() => setShowAddDatePicker(true)}
+                      onClick={() => {
+                        // flushSync mounts the input inside the user-gesture window
+                        // so showPicker() actually opens the native calendar.
+                        flushSync(() => setShowAddDatePicker(true));
+                        const el = trainerDateRef.current;
+                        if (el) {
+                          el.focus();
+                          try { el.showPicker?.(); } catch {}
+                        }
+                      }}
                       className="flex-1 glass-card text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
                     >
                       Choose Date
                     </button>
                   </div>
                 ) : (
-                  <div className="flex gap-2 mt-2">
-                    <input
-                      type="date"
-                      value={addDateInput}
-                      min={new Date().toISOString().slice(0, 10)}
-                      onChange={(e) => setAddDateInput(e.target.value)}
-                      className="flex-1 glass-input rounded-xl px-3 py-3 text-white text-sm focus:outline-none"
-                      autoFocus
-                    />
+                  <div className="relative mt-2">
                     <button
-                      onClick={() => onAddDate(workout)}
-                      disabled={!addDateInput}
-                      className="btn-gradient text-white font-semibold px-5 py-3 rounded-xl text-sm active:scale-[0.98] transition-all disabled:opacity-40"
+                      onClick={() => { setShowAddDatePicker(false); setAddDateInput(''); }}
+                      aria-label="Cancel date selection"
+                      className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90 transition-all z-10"
                     >
-                      Schedule
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
                     </button>
+                    <div className="flex gap-2 pt-4">
+                      <input
+                        type="date"
+                        value={addDateInput}
+                        min={new Date().toISOString().slice(0, 10)}
+                        onChange={(e) => setAddDateInput(e.target.value)}
+                        className="flex-1 glass-input rounded-xl px-3 py-3 text-white text-sm focus:outline-none"
+                        ref={trainerDateRef}
+                      />
+                      <button
+                        onClick={() => onAddDate(workout)}
+                        disabled={!addDateInput}
+                        className="btn-gradient text-white font-semibold px-5 py-3 rounded-xl text-sm active:scale-[0.98] transition-all disabled:opacity-40"
+                      >
+                        Schedule
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

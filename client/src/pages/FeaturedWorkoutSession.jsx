@@ -632,45 +632,17 @@ function RestTimer({ duration, isActive }) {
 }
 
 function VideoLoop({ src }) {
-  const videoARef = useRef(null);
-  const videoBRef = useRef(null);
-  const rafRef = useRef(null);
-
-  useEffect(() => {
-    const a = videoARef.current;
-    const b = videoBRef.current;
-    if (!a || !b) return;
-
-    a.style.opacity = '1';
-    b.style.opacity = '0';
-    a.play().catch(() => {});
-
-    const check = () => {
-      const active = a.style.opacity === '1' ? a : b;
-      const standby = active === a ? b : a;
-      if (active.duration && active.currentTime >= active.duration - 0.15) {
-        standby.currentTime = 0;
-        standby.play().catch(() => {});
-        standby.style.opacity = '1';
-        active.style.opacity = '0';
-        setTimeout(() => { active.currentTime = 0; active.pause(); }, 100);
-      }
-      rafRef.current = requestAnimationFrame(check);
-    };
-    rafRef.current = requestAnimationFrame(check);
-
-    return () => {
-      cancelAnimationFrame(rafRef.current);
-      a.pause();
-      b.pause();
-    };
-  }, [src]);
-
-  const style = { transition: 'opacity 0.05s linear' };
   return (
-    <div style={{ borderRadius: '16px', overflow: 'hidden', marginBottom: '16px', position: 'relative' }}>
-      <video ref={videoARef} src={src} className="w-full aspect-video object-cover" style={{ ...style, position: 'relative' }} muted playsInline preload="auto" />
-      <video ref={videoBRef} src={src} className="w-full aspect-video object-cover" style={{ ...style, position: 'absolute', top: 0, left: 0 }} muted playsInline preload="auto" />
+    <div style={{ borderRadius: '16px', overflow: 'hidden', marginBottom: '16px' }}>
+      <video
+        src={src}
+        className="w-full aspect-video object-cover"
+        autoPlay
+        loop
+        muted
+        playsInline
+        preload="auto"
+      />
     </div>
   );
 }
@@ -690,6 +662,7 @@ export default function FeaturedWorkoutSession() {
   const [highlightNext, setHighlightNext] = useState(false);
   const [expandedWeek, setExpandedWeek] = useState(null);
   const [expandedDay, setExpandedDay] = useState(null);
+  const [showIntro, setShowIntro] = useState(false);
   const containerRef = useRef(null);
   const nextBtnRef = useRef(null);
   // Track the deepest view the user was sent to via navigation state
@@ -1260,6 +1233,33 @@ export default function FeaturedWorkoutSession() {
   if (selectedDay && currentIdx === -1) {
     return (
       <div className="min-h-screen pb-24" style={{ background: 'linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 35%, #111 70%, #0a0a0a 100%)' }}>
+        {/* Intro animation — plays when user taps Start Guided Workout, then fades to first exercise */}
+        {showIntro && (
+          <>
+            <style>{`
+              @keyframes lockInFade {
+                0% { opacity: 0; transform: scale(0.94); }
+                17% { opacity: 1; transform: scale(1); }
+                83% { opacity: 1; transform: scale(1); }
+                100% { opacity: 0; transform: scale(1.03); }
+              }
+            `}</style>
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
+              style={{
+                background: 'linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 35%, #111 70%, #0a0a0a 100%)',
+                animation: 'lockInFade 1.8s ease forwards',
+              }}
+            >
+              <h1
+                className="text-[72px] font-black text-white leading-[0.85] tracking-tight text-center"
+                style={{ fontFamily: 'system-ui', textShadow: '0 4px 30px rgba(0,0,0,0.5)' }}
+              >
+                LET'S<br/>LOCK IN.
+              </h1>
+            </div>
+          </>
+        )}
         {/* Ambient spotlight */}
         <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[min(600px,90vw)] h-[min(600px,90vw)] pointer-events-none z-0" style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.04) 0%, transparent 60%)', filter: 'blur(40px)' }} />
 
@@ -1282,12 +1282,9 @@ export default function FeaturedWorkoutSession() {
         {/* Nike-style hero */}
         <div className="relative z-10 px-5 pt-4 pb-8">
           <div className="absolute -top-10 -left-10 w-[300px] h-[300px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.06) 0%, transparent 70%)', filter: 'blur(60px)' }} />
-          <p className="text-[11px] text-white/35 uppercase tracking-[0.3em] font-light mb-3">
+          <p className="text-[11px] text-white/35 uppercase tracking-[0.3em] font-light mb-2">
             {workout.name}
           </p>
-          <h1 className="text-[52px] font-black text-white leading-[0.9] tracking-tight mb-4" style={{ fontFamily: 'system-ui', textShadow: '0 4px 30px rgba(0,0,0,0.5)' }}>
-            LET'S<br/>LOCK IN.
-          </h1>
           <p className="text-[13px] text-white/40 font-light tracking-[0.15em] uppercase">
             Week {selectedWeek} · Day {PROGRAM.daysPerWeek.indexOf(selectedDay) + 1}
           </p>
@@ -1314,7 +1311,14 @@ export default function FeaturedWorkoutSession() {
             {/* Start button — Nike pill */}
             {totalExercises > 0 && (
               <button
-                onClick={() => { setCurrentIdx(0); startTimer(); }}
+                onClick={() => {
+                  setShowIntro(true);
+                  setTimeout(() => {
+                    setShowIntro(false);
+                    setCurrentIdx(0);
+                    startTimer();
+                  }, 1800);
+                }}
                 className="active:scale-[0.97] transition-all w-full mt-5"
                 style={{
                   padding: '12px', borderRadius: '100px', border: 'none',
@@ -1503,7 +1507,12 @@ export default function FeaturedWorkoutSession() {
 
       <div className="px-4 pt-2">
 
-        {/* Warm Up — above video */}
+        {/* Video — moved above warm-up so users see the motion first */}
+        {exercise.videoUrl && (
+          <VideoLoop key={`${exercise.name}-${currentIdx}`} src={exercise.videoUrl} />
+        )}
+
+        {/* Warm Up */}
         {exercise.warmupNotes && (
           <div style={{
             background: 'rgba(255,255,255,0.04)',
@@ -1521,7 +1530,7 @@ export default function FeaturedWorkoutSession() {
           </div>
         )}
 
-        {/* How to Perform — above video */}
+        {/* How to Perform */}
         {exercise.description && (
           <div style={{
             background: 'rgba(255,255,255,0.04)',
@@ -1537,11 +1546,6 @@ export default function FeaturedWorkoutSession() {
               {exercise.description}
             </p>
           </div>
-        )}
-
-        {/* Video */}
-        {exercise.videoUrl && (
-          <VideoLoop key={`${exercise.name}-${currentIdx}`} src={exercise.videoUrl} />
         )}
 
         {/* Scoreboard timer — above sets, below video */}
