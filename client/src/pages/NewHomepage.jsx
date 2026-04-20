@@ -74,74 +74,96 @@ export default function NewHomepage() {
         </button>
       </div>
 
-      {/* ===== YOUR NEXT WORKOUT ===== */}
-      <div className="relative z-10 mx-4 mt-2 mb-6">
-        <NikeCard>
-          {/* Red accent line */}
-          <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, #ef444440)' }} />
-          {/* Accent spotlight */}
-          <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
-
-          <div className="relative p-6">
-            <p className="text-[10px] text-white/30 uppercase tracking-[0.3em] font-light mb-2">Up Next</p>
-            <h2 className="text-[28px] font-black text-white leading-[0.95] tracking-tight mb-1" style={{ fontFamily: 'system-ui' }}>
-              YOUR NEXT<br/>WORKOUT
-            </h2>
-
-            {/* Workout info */}
-            <div className="mt-4 mb-5">
-              <div className="flex items-center gap-3 mb-1">
-                <span className="text-[15px] font-semibold text-white">Chest</span>
-                <span className="w-px h-3.5 bg-white/10" />
-                <span className="text-[13px] text-white/35 font-light">Today</span>
+      {/* ===== YOUR NEXT WORKOUT — legacy Workouts homepage design (reference) ===== */}
+      <div ref={statsRef} className="relative z-10 mx-4 mt-2 mb-6">
+        <div style={{
+          borderRadius: '24px',
+          overflow: 'hidden',
+          position: 'relative',
+          minHeight: '220px',
+          background: '#0a0a0a',
+          border: '0.75px solid rgba(255,255,255,0.3)',
+          boxShadow: '0 0 20px rgba(255,255,255,0.07), 0 0 40px rgba(255,255,255,0.03)',
+        }}>
+          {/* Border shimmer sweep */}
+          <div style={{ position: 'absolute', inset: 0, borderRadius: '24px', overflow: 'hidden', pointerEvents: 'none', zIndex: 2 }}>
+            <div style={{
+              position: 'absolute', top: '-50%', left: '-50%', width: '40%', height: '200%',
+              background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.06) 50%, transparent 100%)',
+              animation: 'borderShimmer 4s ease-in-out infinite',
+              animationDelay: '1.5s',
+            }} />
+          </div>
+          {/* Mesh gradient blobs */}
+          <div style={{ position: 'absolute', top: '-20%', left: '-10%', width: '60%', height: '70%', borderRadius: '50%', background: 'radial-gradient(circle, rgba(239,68,68,0.35) 0%, transparent 70%)', filter: 'blur(30px)' }} />
+          <div style={{ position: 'absolute', bottom: '-20%', right: '-10%', width: '60%', height: '70%', borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.3) 0%, transparent 70%)', filter: 'blur(30px)' }} />
+          <div style={{ position: 'absolute', top: '30%', right: '20%', width: '40%', height: '50%', borderRadius: '50%', background: 'radial-gradient(circle, rgba(168,85,247,0.25) 0%, transparent 70%)', filter: 'blur(25px)' }} />
+          <div style={{ position: 'relative', zIndex: 1, padding: '22px 24px 28px', display: 'flex', gap: '16px' }}>
+            {/* Left side — workout info + button */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 'clamp(16px, 4.5vw, 26px)', fontWeight: 700, color: 'white', lineHeight: 1.1, marginBottom: '8px', whiteSpace: 'nowrap', letterSpacing: '2px', textTransform: 'uppercase', textShadow: '0 0 8px rgba(255,255,255,0.05)' }}>
+                Your Next Workout
               </div>
-              <p className="text-[12px] text-white/25 font-light">Will's Hypertrophy Program — Week 3</p>
-            </div>
-
-            {/* Exercise preview */}
-            <div className="mb-6">
-              {['Barbell Bench', 'DB Incline Press', 'Cable Flyes'].map((name, i) => (
-                <div key={i} className="flex items-center gap-3 py-2" style={{ borderBottom: i < 2 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
-                  <span className="text-[11px] font-black w-5" style={{ color: 'rgba(239,68,68,0.5)' }}>{String(i + 1).padStart(2, '0')}</span>
-                  <span className="text-[13px] text-white/60 font-light">{name}</span>
+              <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '20px' }}>
+                Today — Chest
+              </div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.15) 100%)',
+                    backdropFilter: 'blur(10px)',
+                    border: '1px solid rgba(255,255,255,0.3)', borderRadius: '12px',
+                    padding: '12px 24px', color: 'white', fontSize: '10px', fontWeight: 600,
+                    cursor: 'pointer', letterSpacing: '3px', textTransform: 'uppercase',
+                    boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.3), inset 0 -1px 1px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.3)',
+                  }}
+                >
+                  Start Now →
+                </button>
+              </div>
+              <div style={{ marginTop: '12px', fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>
+                Current Program: <span style={{ color: 'rgba(239,68,68,0.7)', fontWeight: 600 }}>Will's Hypertrophy</span> — Week 3
+              </div>
+              <div style={{ width: '100%', height: '1px', background: 'rgba(255,255,255,0.06)', marginTop: '16px' }} />
+              <div style={{ marginTop: '12px', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                <div style={{
+                  display: 'inline-block',
+                  animation: 'prTicker 20s linear infinite',
+                  fontSize: '11px', fontWeight: 500,
+                }}>
+                  {['Chest PR — Bench Press — 225 LBS x 8', 'Back PR — Barbell Row — 185 LBS x 10', 'Legs PR — Squat — 275 LBS x 6'].map((pr, i) => (
+                    <span key={i}>
+                      <span style={{ color: 'rgba(255,255,255,0.5)' }}>{pr}</span>
+                      <span style={{ color: 'rgba(255,255,255,0.1)', margin: '0 12px' }}>|</span>
+                    </span>
+                  ))}
+                  {['Chest PR — Bench Press — 225 LBS x 8', 'Back PR — Barbell Row — 185 LBS x 10', 'Legs PR — Squat — 275 LBS x 6'].map((pr, i) => (
+                    <span key={`d-${i}`}>
+                      <span style={{ color: 'rgba(255,255,255,0.5)' }}>{pr}</span>
+                      <span style={{ color: 'rgba(255,255,255,0.1)', margin: '0 12px' }}>|</span>
+                    </span>
+                  ))}
                 </div>
-              ))}
-              <div className="pt-1">
-                <span className="text-[11px] text-white/20 font-light">+4 more exercises</span>
               </div>
             </div>
-
-            {/* CTA */}
-            <div className="flex gap-3">
-              <button
-                className="flex-1 py-3.5 rounded-full text-[11px] font-bold uppercase tracking-[0.15em] active:scale-[0.97] transition-all"
-                style={{ background: 'linear-gradient(135deg, #fff 0%, #e0e0e0 100%)', color: '#000', boxShadow: '0 6px 20px rgba(255,255,255,0.1)' }}
-              >
-                Start Now
-              </button>
-              <button className="flex-1 py-3.5 rounded-full border border-white/15 text-white/50 text-[11px] font-medium uppercase tracking-[0.15em] active:bg-white/5 transition-colors">
-                Preview
-              </button>
+            {/* Right side — mini stats */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', borderLeft: '1px solid rgba(255,255,255,0.06)', paddingLeft: '16px' }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '9px', color: 'rgba(249,115,22,0.6)', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600, marginBottom: '2px' }}>Streak</div>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: 'white', fontFamily: 'system-ui', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{streak}</div>
+              </div>
+              <div style={{ width: '100%', height: '1px', background: 'rgba(255,255,255,0.06)' }} />
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '9px', color: 'rgba(239,68,68,0.6)', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600, marginBottom: '2px' }}>Total</div>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: 'white', fontFamily: 'system-ui', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{totalWorkouts}</div>
+              </div>
+              <div style={{ width: '100%', height: '1px', background: 'rgba(255,255,255,0.06)' }} />
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '9px', color: 'rgba(34,197,94,0.6)', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600, marginBottom: '2px' }}>This Mo</div>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: 'white', fontFamily: 'system-ui', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{monthWorkouts}</div>
+              </div>
             </div>
           </div>
-        </NikeCard>
-      </div>
-
-      {/* ===== STATS ROW ===== */}
-      <div ref={statsRef} className="relative z-10 px-4 mb-6">
-        <div className="flex gap-3">
-          {[
-            { value: streak, label: 'DAY STREAK', suffix: '', color: 'rgba(249,115,22,0.6)' },
-            { value: totalWorkouts, label: 'TOTAL', suffix: '', color: 'rgba(239,68,68,0.6)' },
-            { value: monthWorkouts, label: 'THIS MONTH', suffix: '', color: 'rgba(34,197,94,0.6)' },
-          ].map((stat, i) => (
-            <NikeCard key={i} className="flex-1 text-center py-4 px-2">
-              <div className="text-[26px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', fontVariantNumeric: 'tabular-nums' }}>
-                {stat.value}
-              </div>
-              <div className="text-[7px] uppercase tracking-[0.25em] font-light mt-1" style={{ color: stat.color }}>{stat.label}</div>
-            </NikeCard>
-          ))}
         </div>
       </div>
 

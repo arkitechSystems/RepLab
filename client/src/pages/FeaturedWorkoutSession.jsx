@@ -1240,9 +1240,9 @@ export default function FeaturedWorkoutSession() {
   // EXERCISE OVERVIEW — shows exercise list for the selected day's workout
   if (selectedDay && currentIdx === -1) {
     return (
-      <div className="min-h-screen pb-24" style={{ background: 'linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 40%, #111 70%, #0a0a0a 100%)' }}>
+      <div className="min-h-screen pb-24" style={{ background: 'linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 35%, #111 70%, #0a0a0a 100%)' }}>
         {/* Ambient spotlight */}
-        <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[min(600px,90vw)] h-[min(600px,90vw)] pointer-events-none z-0" style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.03) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+        <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[min(600px,90vw)] h-[min(600px,90vw)] pointer-events-none z-0" style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.04) 0%, transparent 60%)', filter: 'blur(40px)' }} />
 
         <div className="relative z-10 px-5 pt-6 pb-2">
           <button onClick={() => {
@@ -1260,16 +1260,21 @@ export default function FeaturedWorkoutSession() {
           </button>
         </div>
 
+        {/* Nike-style hero */}
+        <div className="relative z-10 px-5 pt-4 pb-8">
+          <div className="absolute -top-10 -left-10 w-[300px] h-[300px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.06) 0%, transparent 70%)', filter: 'blur(60px)' }} />
+          <p className="text-[11px] text-white/35 uppercase tracking-[0.3em] font-light mb-3">
+            {workout.name}
+          </p>
+          <h1 className="text-[52px] font-black text-white leading-[0.9] tracking-tight mb-4" style={{ fontFamily: 'system-ui', textShadow: '0 4px 30px rgba(0,0,0,0.5)' }}>
+            LET'S<br/>LOCK IN.
+          </h1>
+          <p className="text-[13px] text-white/40 font-light tracking-[0.15em] uppercase">
+            Week {selectedWeek} · Day {PROGRAM.daysPerWeek.indexOf(selectedDay) + 1}
+          </p>
+        </div>
+
         <div className="relative z-10 px-5">
-          {/* Program title */}
-          <div style={{ marginBottom: '20px' }}>
-            <p className="text-[10px] text-white/30 uppercase tracking-[0.3em] font-light mb-2">
-              Week {selectedWeek} · Day {PROGRAM.daysPerWeek.indexOf(selectedDay) + 1}
-            </p>
-            <h1 className="text-[28px] font-black text-white leading-[0.95] tracking-tight" style={{ fontFamily: 'system-ui' }}>
-              {PROGRAM.name.toUpperCase()}
-            </h1>
-          </div>
 
           {/* Workout header card — Nike style */}
           <div style={{
@@ -1279,10 +1284,7 @@ export default function FeaturedWorkoutSession() {
             boxShadow: '0 8px 30px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)',
             marginBottom: '20px',
           }}>
-            <div className="text-[20px] font-black text-white tracking-tight uppercase" style={{ fontFamily: 'system-ui' }}>
-              {workout.name}
-            </div>
-            <div className="text-[11px] text-white/25 font-light mt-1">
+            <div className="text-[11px] text-white/40 uppercase tracking-[0.25em] font-medium">
               {workout.subtitle}
             </div>
             <div className="h-px bg-white/5 my-4" />
