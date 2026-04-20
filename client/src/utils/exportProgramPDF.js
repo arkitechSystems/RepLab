@@ -2,7 +2,7 @@
 // Nike-inspired layout: cream/white pages, heavy black display type,
 // subtle RepLab logo watermark fills each page at low opacity.
 
-const WATERMARK_SRC = '/RepLabLogo2.jpg';
+const WATERMARK_SRC = '/RepLaplogo3NoBG.jpg';
 
 function escapeHTML(str) {
   if (str == null) return '';
@@ -77,16 +77,25 @@ function renderWorkoutPage(workout, dayIdx) {
 function renderCoverPage(program, dateStr) {
   return `
     <section class="page cover">
+      <div class="cover-spotlight"></div>
+      <div class="cover-warm-glow"></div>
       <div class="watermark"></div>
       <div class="page-inner cover-inner">
         <div class="cover-top">
           <div class="brand">REPLAB</div>
+          <img class="cover-logo" src="${WATERMARK_SRC}" alt="RepLab" />
         </div>
-        <div class="cover-mid">
+
+        <div class="cover-hero">
           <div class="cover-eyebrow">Featured Program</div>
-          <h1 class="cover-title">WILL'S<br/>HYPERTROPHY.</h1>
-          <p class="cover-tag">Push your limits. Track every rep. Own your progress.</p>
+          <h1 class="cover-title">WILL'S<br/>HYPERTROPHY</h1>
+          <div class="cover-photo-wrap">
+            <div class="cover-floor-shadow"></div>
+            <img class="cover-photo" src="/RepLabPhotoShoot.png" alt="Will training" />
+          </div>
+          <p class="cover-tag">12 weeks. 6 days. Built for growth.</p>
         </div>
+
         <div class="cover-bot">
           <div class="cover-stats">
             <div class="stat"><div class="stat-num">${program.totalWeeks}</div><div class="stat-label">Weeks</div></div>
@@ -160,39 +169,89 @@ export function exportProgramPDF({ program, workouts, weeklySchedule }) {
   }
 
   /* ===== COVER ===== */
-  .cover { background: #0a0a0a; color: #f5f3ee; }
+  .cover {
+    color: #f5f3ee;
+    background: linear-gradient(180deg, #1a1a1a 0%, #252525 30%, #2a2a2a 50%, #1a1a1a 80%, #0d0d0d 100%);
+  }
   .cover .watermark { opacity: 0.05; filter: invert(1); }
-  .cover-inner { justify-content: space-between; padding: 0.9in 0.9in; }
+  .cover-spotlight {
+    position: absolute; top: 50%; left: 50%;
+    width: 6in; height: 6in;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.03) 40%, transparent 70%);
+    filter: blur(25px);
+    pointer-events: none; z-index: 0;
+  }
+  .cover-warm-glow {
+    position: absolute; top: 30%; left: 18%;
+    width: 3.5in; height: 3.5in;
+    background: radial-gradient(circle, rgba(239,68,68,0.07) 0%, transparent 60%);
+    filter: blur(50px);
+    pointer-events: none; z-index: 0;
+  }
+  .cover-inner { justify-content: space-between; padding: 0.7in 0.8in; }
+  .cover-top { display: flex; align-items: flex-start; justify-content: space-between; }
   .brand {
-    font-size: 12px; font-weight: 900; letter-spacing: 0.35em;
+    font-size: 11px; font-weight: 900; letter-spacing: 0.35em;
     color: rgba(245,243,238,0.55);
   }
-  .cover-mid { padding: 0 0 0.3in; }
+  .cover-logo {
+    width: 1.3in; height: auto;
+    display: block;
+    filter: drop-shadow(0 4px 20px rgba(0,0,0,0.4));
+  }
+
+  .cover-hero {
+    display: flex; flex-direction: column; align-items: center;
+    text-align: center;
+    padding: 0.2in 0;
+  }
   .cover-eyebrow {
     font-size: 11px; font-weight: 500; letter-spacing: 0.3em;
     text-transform: uppercase; color: rgba(245,243,238,0.45);
-    margin-bottom: 18px;
+    margin-bottom: 14px;
   }
   .cover-title {
-    font-size: 92px; font-weight: 900; line-height: 0.88;
-    letter-spacing: -0.035em;
+    font-size: 56px; font-weight: 900; line-height: 1;
+    letter-spacing: -0.03em;
     color: #f5f3ee;
-    text-shadow: 0 2px 30px rgba(0,0,0,0.4);
+    text-shadow: 0 2px 20px rgba(0,0,0,0.5);
+    margin-bottom: 0.35in;
+  }
+  .cover-photo-wrap {
+    position: relative;
+    margin-bottom: 0.35in;
+  }
+  .cover-floor-shadow {
+    position: absolute;
+    bottom: -14px; left: 50%;
+    transform: translateX(-50%);
+    width: 70%; height: 24px;
+    background: radial-gradient(ellipse, rgba(0,0,0,0.7) 0%, transparent 70%);
+    filter: blur(10px);
+  }
+  .cover-photo {
+    position: relative;
+    width: 3.2in; height: auto;
+    object-fit: contain;
+    filter: drop-shadow(0 14px 40px rgba(0,0,0,0.6));
   }
   .cover-tag {
-    margin-top: 22px;
-    font-size: 14px; font-weight: 300; line-height: 1.55;
-    max-width: 320px; color: rgba(245,243,238,0.55);
+    font-size: 13px; font-weight: 300; letter-spacing: 0.02em;
+    color: rgba(245,243,238,0.55);
   }
+
+  .cover-bot { margin-top: auto; }
   .cover-stats {
-    display: flex; gap: 28px;
-    padding: 22px 0;
+    display: flex; gap: 32px; justify-content: center;
+    padding: 20px 0;
     border-top: 1px solid rgba(245,243,238,0.15);
     border-bottom: 1px solid rgba(245,243,238,0.15);
-    margin-bottom: 22px;
+    margin-bottom: 18px;
   }
+  .stat { text-align: center; }
   .stat-num {
-    font-size: 38px; font-weight: 900; letter-spacing: -0.02em;
+    font-size: 34px; font-weight: 900; letter-spacing: -0.02em;
     font-variant-numeric: tabular-nums; color: #f5f3ee;
   }
   .stat-label {
@@ -201,13 +260,14 @@ export function exportProgramPDF({ program, workouts, weeklySchedule }) {
     margin-top: 4px;
   }
   .cover-desc {
-    font-size: 12px; line-height: 1.6; font-weight: 300;
-    color: rgba(245,243,238,0.55); max-width: 5.5in;
+    font-size: 11px; line-height: 1.55; font-weight: 300;
+    color: rgba(245,243,238,0.55); text-align: center;
+    max-width: 5in; margin: 0 auto;
   }
   .cover-date {
-    margin-top: 24px;
-    font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase;
-    color: rgba(245,243,238,0.35);
+    margin-top: 16px;
+    font-size: 9px; letter-spacing: 0.3em; text-transform: uppercase;
+    color: rgba(245,243,238,0.35); text-align: center;
   }
 
   /* ===== WORKOUT PAGES ===== */
