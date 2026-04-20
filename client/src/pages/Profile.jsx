@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
-import { api } from '../api';
+import { api, setApiToken } from '../api';
 import StickyHeader from '../components/StickyHeader';
 import SplashScreen from '../components/SplashScreen';
 import { APP_VERSION } from '../version';
@@ -622,10 +622,13 @@ export default function Profile() {
                   }
                   setPasswordSaving(true);
                   try {
-                    await api('/auth/change-password', {
+                    const resp = await api('/auth/change-password', {
                       method: 'POST',
                       body: JSON.stringify({ currentPassword, newPassword }),
                     });
+                    // Server bumps tokenVersion on password change; new JWT keeps
+                    // this session signed in while other sessions are kicked out.
+                    if (resp?.token) setApiToken(resp.token);
                     setPasswordChanged(true);
                     setCurrentPassword('');
                     setNewPassword('');

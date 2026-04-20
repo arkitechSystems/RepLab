@@ -13,7 +13,17 @@ if (process.env.JWT_SECRET.length < 32) {
 const JWT_SECRET = process.env.JWT_SECRET;
 
 export function generateToken(user) {
-  return jwt.sign({ userId: user.id, email: user.email, phone: user.phone, role: user.role || 'client' }, JWT_SECRET, { expiresIn: '7d' });
+  return jwt.sign(
+    {
+      userId: user.id,
+      email: user.email,
+      phone: user.phone,
+      role: user.role || 'client',
+      tokenVersion: user.tokenVersion ?? 0,
+    },
+    JWT_SECRET,
+    { expiresIn: '7d' }
+  );
 }
 
 export async function authMiddleware(req, res, next) {
@@ -26,10 +36,17 @@ export async function authMiddleware(req, res, next) {
     const token = header.split(' ')[1];
     const decoded = jwt.verify(token, JWT_SECRET);
 
-    // Verify user still exists in the database
-    const { rows } = await pool.query('SELECT id FROM users WHERE id = $1', [decoded.userId]);
+    // Verify user still exists AND that this JWT hasn't been invalidated by a
+    // password change. token_version is bumped in db.updatePassword so every
+    // JWT issued before the reset has a stale version and is rejected here.
+    const { rows } = await pool.query('SELECT id, token_version FROM users WHERE id = $1', [decoded.userId]);
     if (rows.length === 0) {
       return res.status(401).json({ error: 'Account no longer exists' });
+    }
+    const currentVersion = rows[0].token_version ?? 0;
+    const tokenVersion = decoded.tokenVersion ?? 0;
+    if (tokenVersion !== currentVersion) {
+      return res.status(401).json({ error: 'Session expired. Please sign in again.' });
     }
 
     req.userId = decoded.userId;

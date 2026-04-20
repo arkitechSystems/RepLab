@@ -300,7 +300,12 @@ router.post('/change-password', authMiddleware, async (req, res) => {
     const passwordHash = bcrypt.hashSync(newPassword, 10);
     await db.updatePassword(user.id, passwordHash);
 
-    res.json({ message: 'Password changed successfully' });
+    // updatePassword bumps token_version so every existing JWT is now invalid.
+    // Issue a fresh JWT so the caller's current session stays signed in (only
+    // their OTHER sessions are kicked out, which is the intent).
+    const refreshed = await db.findUserById(user.id);
+    const newJwt = generateToken(refreshed);
+    res.json({ message: 'Password changed successfully', token: newJwt });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
