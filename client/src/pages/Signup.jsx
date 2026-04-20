@@ -122,8 +122,11 @@ export default function Signup() {
 
       // Clear UTM after successful signup
       try { localStorage.removeItem('replab_utm'); } catch {};
-      // Use window.location since PublicRoute would redirect to / before navigate fires
-      window.location.href = '/welcome';
+      // window.location.replace (not .href) avoids adding /signup to browser
+      // back history. Full reload is intentional: PublicRoute wraps /signup
+      // and would redirect authenticated users to / before React Router's
+      // navigate() could land on /welcome, so we bypass the SPA here.
+      window.location.replace('/welcome');
     } catch (err) {
       setError(err.message);
     } finally {
