@@ -2646,7 +2646,10 @@ export default function Workouts() {
               <>
                 {ownPrograms.length > 0 && (
                   isBrowse ? (
-                    <div className="flex gap-4 overflow-x-auto scrollbar-hide -mx-4 px-4 snap-x snap-mandatory pb-4" style={{ WebkitOverflowScrolling: 'touch' }}>
+                    <div
+                      className="flex flex-col gap-4 overflow-y-auto scrollbar-hide snap-y snap-mandatory pb-4"
+                      style={{ WebkitOverflowScrolling: 'touch', maxHeight: 'calc(100vh - 260px)' }}
+                    >
                       {ownPrograms.map((program, idx) => {
                         const BROWSE_COLORS = ['#ef4444', '#3b82f6', '#22c55e', '#a855f7'];
                         const programColor = BROWSE_COLORS[idx % BROWSE_COLORS.length];
@@ -2664,7 +2667,7 @@ export default function Workouts() {
                                 completeTutorialAction('program-selected');
                               }
                             }}
-                            className="snap-start shrink-0 w-[170px] relative overflow-hidden fade-slide-up cursor-pointer active:scale-[0.97] transition-transform"
+                            className="snap-start shrink-0 w-full relative overflow-hidden fade-slide-up cursor-pointer active:scale-[0.98] transition-transform"
                             style={{
                               animationDelay: `${idx * 60}ms`,
                               background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
@@ -2673,14 +2676,14 @@ export default function Workouts() {
                             }}
                           >
                             <div className="h-[3px]" style={{ background: `linear-gradient(90deg, ${programColor}, ${programColor}40)` }} />
-                            <div className="p-4 pb-5">
-                              <h4 className="text-[18px] font-black text-white leading-[1.05] tracking-tight mb-3 uppercase">
+                            <div className="p-6 pb-6">
+                              <h4 className="text-[24px] font-black text-white leading-[1.05] tracking-tight mb-3 uppercase">
                                 {program.name}
                               </h4>
-                              <div className="flex items-center gap-2 mb-4">
-                                <span className="text-[10px] text-white/30 font-light">{program.weekCount} {program.weekCount === 1 ? 'week' : 'weeks'}</span>
+                              <div className="flex items-center gap-2 mb-5">
+                                <span className="text-[11px] text-white/30 font-light">{program.weekCount} {program.weekCount === 1 ? 'week' : 'weeks'}</span>
                                 <span className="w-px h-2.5 bg-white/10" />
-                                <span className="text-[10px] text-white/30 font-light">{program.workoutCount} workouts</span>
+                                <span className="text-[11px] text-white/30 font-light">{program.workoutCount} workouts</span>
                               </div>
                               <button
                                 data-tutorial={idx === 0 ? 'begin-program-btn' : undefined}
@@ -2692,7 +2695,7 @@ export default function Workouts() {
                                     openBeginProgram(e, program);
                                   }
                                 }}
-                                className="w-full py-2 rounded-full border border-white/15 text-[9px] text-white/50 uppercase tracking-[0.2em] font-medium active:bg-white/5 transition-colors"
+                                className="w-full py-2.5 rounded-full border border-white/15 text-[10px] text-white/50 uppercase tracking-[0.2em] font-medium active:bg-white/5 transition-colors"
                               >
                                 Begin
                               </button>
@@ -3275,8 +3278,94 @@ export default function Workouts() {
           </div>
         ) : (
           <div className="space-y-4 pb-4">
-            {/* 25. Gradient Mesh Card */}
-            <div className="fade-slide-up" style={{
+            {/* Your Next Workout — Nike style */}
+            <div className="fade-slide-up" style={{ animationDelay: '0ms' }}>
+              <div className="relative overflow-hidden" style={{
+                background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+                borderRadius: '2px',
+              }}>
+                {/* Red accent line */}
+                <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25))' }} />
+                {/* Accent spotlight */}
+                <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+
+                <div className="relative p-6">
+                  <p className="text-[10px] text-white/30 uppercase font-light mb-2" style={{ letterSpacing: '0.3em' }}>Up Next</p>
+                  <h2 className="text-[28px] font-black text-white tracking-tight mb-1" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>
+                    YOUR NEXT<br/>WORKOUT
+                  </h2>
+
+                  {/* Workout info */}
+                  <div className="mt-4 mb-5">
+                    <div className="flex items-center gap-3 mb-1">
+                      <span className="text-[15px] font-semibold text-white">
+                        {nextWorkoutInfo?.templateName || (nextWorkoutInfo?.status === 'rest' ? 'Rest Day' : nextWorkoutInfo?.status === 'none' ? 'Nothing scheduled' : 'Loading...')}
+                      </span>
+                      {nextWorkoutInfo?.dayLabel && (
+                        <>
+                          <span className="w-px h-3.5 bg-white/10" />
+                          <span className="text-[13px] text-white/35 font-light">{nextWorkoutInfo.dayLabel}</span>
+                        </>
+                      )}
+                    </div>
+                    {currentProgram && (
+                      <p className="text-[12px] text-white/25 font-light">{currentProgram.name} — Week {currentProgram.week}</p>
+                    )}
+                  </div>
+
+                  {/* CTA */}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (nextWorkoutInfo?.templateId) {
+                          navigateToWorkout(nextWorkoutInfo.templateId, nextWorkoutInfo.date);
+                        } else {
+                          setSelectedGroup('browse');
+                        }
+                      }}
+                      className="flex-1 py-3.5 rounded-full text-[11px] font-bold uppercase active:scale-[0.97] transition-all"
+                      style={{ background: 'linear-gradient(135deg, #fff 0%, #e0e0e0 100%)', color: '#000', letterSpacing: '0.15em', boxShadow: '0 6px 20px rgba(255,255,255,0.1)' }}
+                    >
+                      {nextWorkoutInfo?.templateId
+                        ? (nextWorkoutInfo.status === 'resume' ? 'Resume' : nextWorkoutInfo.status === 'upcoming' ? 'Preview' : 'Start Now')
+                        : 'Add a Workout'}
+                    </button>
+                    <button
+                      onClick={() => setSelectedGroup('browse')}
+                      className="flex-1 py-3.5 rounded-full border border-white/15 text-white/50 text-[11px] font-medium uppercase active:bg-white/5 transition-colors"
+                      style={{ letterSpacing: '0.15em' }}
+                    >
+                      Browse
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Stats row — Nike style */}
+            {(streak > 0 || totalWorkouts > 0 || workoutsThisMonth > 0) && (
+              <div className="flex gap-3 fade-slide-up" style={{ animationDelay: '100ms' }}>
+                {[
+                  { value: streak, label: 'Day Streak', color: 'rgba(249,115,22,0.6)' },
+                  { value: totalWorkouts, label: 'Total', color: 'rgba(239,68,68,0.6)' },
+                  { value: workoutsThisMonth, label: 'This Month', color: 'rgba(34,197,94,0.6)' },
+                ].map((stat, i) => (
+                  <div key={i} className="flex-1 text-center py-4 px-2 relative overflow-hidden" style={{
+                    background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                    boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+                    borderRadius: '2px',
+                  }}>
+                    <div className="text-[26px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', fontVariantNumeric: 'tabular-nums' }}>{stat.value}</div>
+                    <div className="text-[7px] uppercase font-light mt-1" style={{ color: stat.color, letterSpacing: '0.25em' }}>{stat.label}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* (Legacy Your Next Workout card — hidden for reference) */}
+            <div className="fade-slide-up hidden" style={{
               animationDelay: '0ms',
               borderRadius: '24px',
               overflow: 'hidden',

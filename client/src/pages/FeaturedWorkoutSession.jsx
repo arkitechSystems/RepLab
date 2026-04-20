@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect, Fragment } from 'react';
+import { api } from '../api';
+import { generateSummaryImage, composeShareText, dataURLtoBlob } from '../utils/workoutSummaryShare';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import StickyHeader from '../components/StickyHeader';
 
@@ -25,18 +27,6 @@ const WORKOUTS = {
           { setNumber: 1, plannedReps: 10, suggestedWeight: 0 },
           { setNumber: 2, plannedReps: 6, suggestedWeight: 0 },
           { setNumber: 3, plannedReps: 2, suggestedWeight: 0 },
-        ],
-      },
-      {
-        name: 'Barbell Bench',
-        setType: 'warm_up',
-        hideGoals: true,
-        videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
-        sets: [
-          { setNumber: 1, plannedReps: 8, suggestedWeight: 0 },
-          { setNumber: 2, plannedReps: 8, suggestedWeight: 0 },
-          { setNumber: 3, plannedReps: 8, suggestedWeight: 0 },
-          { setNumber: 4, plannedReps: 8, suggestedWeight: 0 },
         ],
       },
       {
@@ -69,7 +59,7 @@ const WORKOUTS = {
         ],
       },
       {
-        name: 'Kneeling Upper Chest Cable Flyes',
+        name: 'Single-Arm Kneeling Upper Chest Cable Flyes',
         setType: 'straight',
         description: "Kneel in front of a low cable with arms straight. Bring the handles up and together in front of your upper chest, squeezing at the top. This targets the upper chest fibers that are hard to hit with pressing alone. Keep the arms nearly straight throughout.",
         videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
@@ -80,9 +70,9 @@ const WORKOUTS = {
         ],
       },
       {
-        name: 'Pec Deck Flyes',
+        name: 'One-Arm Hammer Strength Angled Press',
         setType: 'straight',
-        description: "Isolation finisher on the pec deck. Squeeze hard at the peak contraction and control the negative. Go to near-failure on each set.",
+        description: "Unilateral pressing on the angled Hammer Strength machine. Drive through one arm at a time with full range of motion, squeezing the chest at lockout and controlling the negative. Go to near-failure on each set.",
         videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
         sets: [
           { setNumber: 1, plannedReps: 15, suggestedWeight: 0 },
@@ -104,11 +94,310 @@ const WORKOUTS = {
     ],
   },
   'bis-rds': { name: 'Bis/RDs', subtitle: 'Biceps, Rear Delts', description: 'Bicep and rear delt focused session with supersets and isolation work.', exercises: [] },
-  'quads': { name: 'Quads', subtitle: 'Quads, Calves', description: 'Quad-dominant leg day with leg extensions, squats, leg press, and calf work.', exercises: [] },
+  'quads': {
+    name: 'Quads',
+    subtitle: 'Quads',
+    description: 'Quad-focused leg day — leg press warm-up into working sets, a 10×10 hack squat block, DB split squats, and a leg extension drop-set burnout.',
+    exercises: [
+      {
+        name: 'Leg Press (Warm Up)',
+        isSectionHeader: true,
+        setType: 'warm_up',
+        hideGoals: true,
+        videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+        description: "Three progressive warm-up sets to prime the legs.\n1. 2×45s for 15 reps\n2. 4×45s for 8 reps\n3. 6×45s for 4 reps",
+        sets: [
+          { setNumber: 1, plannedReps: 15, suggestedWeight: 0 },
+          { setNumber: 2, plannedReps: 8, suggestedWeight: 0 },
+          { setNumber: 3, plannedReps: 4, suggestedWeight: 0 },
+        ],
+      },
+      {
+        name: 'Leg Press',
+        setType: 'straight',
+        description: "Working sets. Controlled eccentric, full depth without losing lower-back contact with the pad. Target 8 reps per set.",
+        videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+        sets: [
+          { setNumber: 1, plannedReps: 8, suggestedWeight: 0 },
+          { setNumber: 2, plannedReps: 8, suggestedWeight: 0 },
+          { setNumber: 3, plannedReps: 8, suggestedWeight: 0 },
+        ],
+      },
+      {
+        name: 'Hack Squat',
+        setType: 'straight',
+        description: "10×10 — 10 sets of 10 reps with only 60 seconds rest between sets. Pick a weight you could rep 15-20 times fresh; the short rest makes the later sets brutal.",
+        videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+        sets: [
+          { setNumber: 1, plannedReps: 10, suggestedWeight: 0, restAfter: 60 },
+          { setNumber: 2, plannedReps: 10, suggestedWeight: 0, restAfter: 60 },
+          { setNumber: 3, plannedReps: 10, suggestedWeight: 0, restAfter: 60 },
+          { setNumber: 4, plannedReps: 10, suggestedWeight: 0, restAfter: 60 },
+          { setNumber: 5, plannedReps: 10, suggestedWeight: 0, restAfter: 60 },
+          { setNumber: 6, plannedReps: 10, suggestedWeight: 0, restAfter: 60 },
+          { setNumber: 7, plannedReps: 10, suggestedWeight: 0, restAfter: 60 },
+          { setNumber: 8, plannedReps: 10, suggestedWeight: 0, restAfter: 60 },
+          { setNumber: 9, plannedReps: 10, suggestedWeight: 0, restAfter: 60 },
+          { setNumber: 10, plannedReps: 10, suggestedWeight: 0 },
+        ],
+      },
+      {
+        name: 'DB Split Squats',
+        setType: 'straight',
+        description: "DBs held at your sides (on the outside of the body, not goblet). Keep the torso upright and drive through the front heel.",
+        videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+        sets: [
+          { setNumber: 1, plannedReps: 8, suggestedWeight: 25 },
+          { setNumber: 2, plannedReps: 8, suggestedWeight: 25 },
+        ],
+      },
+      {
+        name: 'Leg Extension Burnout',
+        setType: 'straight',
+        description: "Constant-tension drop set — move through only the top 3/4 of the range to keep the quads under load. Drop the weight each set and rep to failure.",
+        videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+        sets: [
+          { setNumber: 1, plannedReps: 0, suggestedWeight: 260 },
+          { setNumber: 2, plannedReps: 0, suggestedWeight: 220 },
+          { setNumber: 3, plannedReps: 0, suggestedWeight: 180 },
+          { setNumber: 4, plannedReps: 0, suggestedWeight: 140 },
+          { setNumber: 5, plannedReps: 0, suggestedWeight: 100 },
+        ],
+      },
+    ],
+  },
   'tris-shoulders': { name: 'Tris/Shoulders', subtitle: 'Triceps, Shoulders', description: 'Tricep and shoulder session with pressing movements and isolation burnouts.', exercises: [] },
   'back-traps': { name: 'Back/Traps', subtitle: 'Back, Traps', description: 'Pulling session — rows, pulldowns, shrugs, and rear delt work.', exercises: [] },
   'glutes-hams': { name: 'Glutes/Hams', subtitle: 'Glutes, Hamstrings', description: 'Posterior chain focused — RDLs, hip thrusts, leg curls, and walking lunges.', exercises: [] },
 };
+
+// Per-week overrides. Keyed by week number, then day key. Falls back to WORKOUTS[dayKey] when no override exists.
+const WEEK_OVERRIDES = {
+  1: {
+    'back-traps': {
+      name: 'Back/Traps',
+      subtitle: 'Back, Traps',
+      description: 'Pull-focused session — progressive weighted chins into cluster work, a five-movement horizontal-pull sandwich, heavy shrugs with holds, overhead squats, and finisher isolation work.',
+      exercises: [
+        {
+          name: 'Weighted Chins (Warm Up)',
+          isSectionHeader: true,
+          setType: 'warm_up',
+          hideGoals: true,
+          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          description: "Progressive warm-up to prime the lats and grip.\n1. Bodyweight × 8\n2. +45 lb × 3\n3. +90 lb × 1",
+          sets: [
+            { setNumber: 1, plannedReps: 8, suggestedWeight: 0 },
+            { setNumber: 2, plannedReps: 3, suggestedWeight: 45 },
+            { setNumber: 3, plannedReps: 1, suggestedWeight: 90 },
+          ],
+        },
+        {
+          name: 'Weighted Chins',
+          setType: 'straight',
+          description: "Cluster sets at +35 lb — inside each working set, do 4, 3, 3, 2, 1 reps with 30 seconds rest between each mini-set. All 13 reps count as one set. 3 working sets total.",
+          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          sets: [
+            { setNumber: 1, plannedReps: 13, suggestedWeight: 35 },
+            { setNumber: 2, plannedReps: 13, suggestedWeight: 35 },
+            { setNumber: 3, plannedReps: 13, suggestedWeight: 35 },
+          ],
+        },
+        {
+          name: 'DB Rear Delt Raises / W\'s',
+          setType: 'straight',
+          description: "Horizontal Pull Sandwich — position 1 of 5. Rotate through the full five-movement sandwich in order: RD Raises/W's → Overhand Rows → Underhand Cable Rows → Overhand Rows → RD Raises/W's.",
+          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          sets: [
+            { setNumber: 1, plannedReps: 0, suggestedWeight: 0 },
+            { setNumber: 2, plannedReps: 0, suggestedWeight: 0 },
+            { setNumber: 3, plannedReps: 0, suggestedWeight: 0 },
+          ],
+        },
+        {
+          name: 'Overhand Rows',
+          setType: 'straight',
+          description: "Sandwich position 2 of 5.",
+          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          sets: [
+            { setNumber: 1, plannedReps: 0, suggestedWeight: 0 },
+            { setNumber: 2, plannedReps: 0, suggestedWeight: 0 },
+            { setNumber: 3, plannedReps: 0, suggestedWeight: 0 },
+          ],
+        },
+        {
+          name: 'Underhand Cable Rows',
+          setType: 'straight',
+          description: "Sandwich position 3 of 5.",
+          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          sets: [
+            { setNumber: 1, plannedReps: 0, suggestedWeight: 0 },
+            { setNumber: 2, plannedReps: 0, suggestedWeight: 0 },
+            { setNumber: 3, plannedReps: 0, suggestedWeight: 0 },
+          ],
+        },
+        {
+          name: 'Overhand Rows',
+          setType: 'straight',
+          description: "Sandwich position 4 of 5.",
+          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          sets: [
+            { setNumber: 1, plannedReps: 0, suggestedWeight: 0 },
+            { setNumber: 2, plannedReps: 0, suggestedWeight: 0 },
+            { setNumber: 3, plannedReps: 0, suggestedWeight: 0 },
+          ],
+        },
+        {
+          name: 'DB Rear Delt Raises / W\'s',
+          setType: 'straight',
+          description: "Sandwich position 5 of 5.",
+          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          sets: [
+            { setNumber: 1, plannedReps: 0, suggestedWeight: 0 },
+            { setNumber: 2, plannedReps: 0, suggestedWeight: 0 },
+            { setNumber: 3, plannedReps: 0, suggestedWeight: 0 },
+          ],
+        },
+        {
+          name: 'BB Shrugs',
+          setType: 'straight',
+          description: "1-second holds at the top of each rep. Set 1: underhand grip. Set 2: overhand grip.",
+          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          sets: [
+            { setNumber: 1, plannedReps: 9, suggestedWeight: 225 },
+            { setNumber: 2, plannedReps: 10, suggestedWeight: 225 },
+          ],
+        },
+        {
+          name: 'Overhead Squats',
+          setType: 'straight',
+          description: "Thoracic mobility and overhead stability work. Keep the bar tracking over the mid-foot with arms locked out.",
+          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          sets: [
+            { setNumber: 1, plannedReps: 7, suggestedWeight: 95 },
+            { setNumber: 2, plannedReps: 7, suggestedWeight: 95 },
+            { setNumber: 3, plannedReps: 6, suggestedWeight: 95 },
+          ],
+        },
+        {
+          name: 'Straight Arm Pull Downs',
+          setType: 'straight',
+          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          sets: [
+            { setNumber: 1, plannedReps: 0, suggestedWeight: 0 },
+            { setNumber: 2, plannedReps: 0, suggestedWeight: 0 },
+            { setNumber: 3, plannedReps: 0, suggestedWeight: 0 },
+          ],
+        },
+        {
+          name: 'DB Hammer Curls',
+          setType: 'straight',
+          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          sets: [
+            { setNumber: 1, plannedReps: 0, suggestedWeight: 35 },
+            { setNumber: 2, plannedReps: 0, suggestedWeight: 35 },
+            { setNumber: 3, plannedReps: 0, suggestedWeight: 35 },
+          ],
+        },
+      ],
+    },
+    'glutes-hams': {
+      name: 'Glutes/Hams',
+      subtitle: 'Glutes, Hamstrings',
+      description: 'Posterior chain session — progressive RDL warm-up into working sets, 10×10 lying leg curls, GHD glute-ham raises, hip abductor/adductor isolation, and a DB hip flexor / side plank finisher.',
+      exercises: [
+        {
+          name: 'Barbell Romanian Deadlift (Warm Up)',
+          isSectionHeader: true,
+          setType: 'warm_up',
+          hideGoals: true,
+          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          description: "Four progressive warm-up sets with just the bar to prime the hinge.\n1. BW × 6\n2. BW × 3\n3. BW × 1\n4. BW × 1",
+          sets: [
+            { setNumber: 1, plannedReps: 6, suggestedWeight: 0 },
+            { setNumber: 2, plannedReps: 3, suggestedWeight: 0 },
+            { setNumber: 3, plannedReps: 1, suggestedWeight: 0 },
+            { setNumber: 4, plannedReps: 1, suggestedWeight: 0 },
+          ],
+        },
+        {
+          name: 'Barbell Romanian Deadlift',
+          setType: 'straight',
+          description: "Working sets. Hinge at the hips with a neutral spine; keep the bar tracking over the mid-foot and feel the stretch in the hamstrings at the bottom.",
+          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          sets: [
+            { setNumber: 1, plannedReps: 10, suggestedWeight: 0 },
+            { setNumber: 2, plannedReps: 0, suggestedWeight: 0 },
+            { setNumber: 3, plannedReps: 0, suggestedWeight: 0 },
+          ],
+        },
+        {
+          name: 'Lying Leg Curls',
+          setType: 'straight',
+          description: "10×10 — 10 sets of 10 reps at 100 lb with only 60 seconds rest between sets.",
+          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          sets: [
+            { setNumber: 1, plannedReps: 10, suggestedWeight: 100, restAfter: 60 },
+            { setNumber: 2, plannedReps: 10, suggestedWeight: 100, restAfter: 60 },
+            { setNumber: 3, plannedReps: 10, suggestedWeight: 100, restAfter: 60 },
+            { setNumber: 4, plannedReps: 10, suggestedWeight: 100, restAfter: 60 },
+            { setNumber: 5, plannedReps: 10, suggestedWeight: 100, restAfter: 60 },
+            { setNumber: 6, plannedReps: 10, suggestedWeight: 100, restAfter: 60 },
+            { setNumber: 7, plannedReps: 10, suggestedWeight: 100, restAfter: 60 },
+            { setNumber: 8, plannedReps: 10, suggestedWeight: 100, restAfter: 60 },
+            { setNumber: 9, plannedReps: 10, suggestedWeight: 100, restAfter: 60 },
+            { setNumber: 10, plannedReps: 10, suggestedWeight: 100 },
+          ],
+        },
+        {
+          name: 'GHD Glute Ham Raise',
+          setType: 'straight',
+          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          sets: [
+            { setNumber: 1, plannedReps: 10, suggestedWeight: 17.5 },
+            { setNumber: 2, plannedReps: 10, suggestedWeight: 20 },
+            { setNumber: 3, plannedReps: 0, suggestedWeight: 0 },
+          ],
+        },
+        {
+          name: 'Machine Hip Adduction',
+          setType: 'straight',
+          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          sets: [
+            { setNumber: 1, plannedReps: 8, suggestedWeight: 80 },
+            { setNumber: 2, plannedReps: 6, suggestedWeight: 80 },
+            { setNumber: 3, plannedReps: 6, suggestedWeight: 80 },
+          ],
+        },
+        {
+          name: 'Machine Hip Abduction',
+          setType: 'straight',
+          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          sets: [
+            { setNumber: 1, plannedReps: 8, suggestedWeight: 200 },
+            { setNumber: 2, plannedReps: 8, suggestedWeight: 200 },
+            { setNumber: 3, plannedReps: 8, suggestedWeight: 200 },
+          ],
+        },
+        {
+          name: 'DB Hip Flexors / Side Plank Holds',
+          setType: 'straight',
+          description: "Paired movement — DB hip flexor raises alternated with side plank holds.",
+          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          sets: [
+            { setNumber: 1, plannedReps: 10, suggestedWeight: 30 },
+            { setNumber: 2, plannedReps: 10, suggestedWeight: 30 },
+            { setNumber: 3, plannedReps: 10, suggestedWeight: 30 },
+          ],
+        },
+      ],
+    },
+  },
+};
+
+function resolveWorkout(week, dayKey) {
+  return WEEK_OVERRIDES[week]?.[dayKey] || WORKOUTS[dayKey];
+}
 
 // Program structure: 12 weeks, 6 workouts per week
 const WEEKLY_SCHEDULE = ['chest', 'bis-rds', 'quads', 'tris-shoulders', 'back-traps', 'glutes-hams'];
@@ -457,6 +746,63 @@ export default function FeaturedWorkoutSession() {
   const timerRef = useRef(null);
   const [pinTimer, setPinTimer] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [shareImage, setShareImage] = useState(null);
+  const [generatingImage, setGeneratingImage] = useState(false);
+  const [savedAsTemplate, setSavedAsTemplate] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const confettiRef = useRef(null);
+
+  // Confetti when the summary appears
+  useEffect(() => {
+    if (!showSummary) return;
+    const canvas = confettiRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const colors = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#ec4899', '#ffffff'];
+    const pieces = Array.from({ length: 120 }, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height * -1,
+      w: Math.random() * 8 + 4,
+      h: Math.random() * 6 + 2,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      vy: Math.random() * 3 + 2,
+      vx: (Math.random() - 0.5) * 2,
+      rot: Math.random() * 360,
+      rotSpeed: (Math.random() - 0.5) * 10,
+      opacity: 1,
+    }));
+
+    let frame;
+    let fadeStart = null;
+    const duration = 3500;
+    function animate(ts) {
+      if (!fadeStart) fadeStart = ts;
+      const progress = ts - fadeStart;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const globalFade = progress > duration ? Math.max(0, 1 - (progress - duration) / 1000) : 1;
+      for (const p of pieces) {
+        p.y += p.vy;
+        p.x += p.vx;
+        p.rot += p.rotSpeed;
+        p.vy += 0.04;
+        p.opacity = globalFade;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate((p.rot * Math.PI) / 180);
+        ctx.globalAlpha = p.opacity;
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore();
+      }
+      if (globalFade > 0) frame = requestAnimationFrame(animate);
+    }
+    frame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(frame);
+  }, [showSummary]);
   const [timerFloating, setTimerFloating] = useState(false);
   const [floatPos, setFloatPos] = useState(() => {
     try {
@@ -499,7 +845,7 @@ export default function FeaturedWorkoutSession() {
     try { localStorage.setItem('featured-timer-pos', JSON.stringify(floatPos)); } catch {}
   }
 
-  const workout = selectedDay ? WORKOUTS[selectedDay] : null;
+  const workout = selectedDay ? resolveWorkout(selectedWeek, selectedDay) : null;
   const totalExercises = workout ? workout.exercises.length : 0;
   const exercise = currentIdx >= 0 && workout && currentIdx < workout.exercises.length ? workout.exercises[currentIdx] : null;
 
@@ -680,7 +1026,7 @@ export default function FeaturedWorkoutSession() {
 
                       {PROGRAM.daysPerWeek.map((dayKey, dayIdx) => {
                         const dayExpanded = expandedDay === `${week}-${dayIdx}`;
-                        const dayWorkout = WORKOUTS[dayKey];
+                        const dayWorkout = resolveWorkout(week, dayKey);
                         return (
                           <div key={dayKey}>
                             {/* Day header — tap to expand exercises */}
@@ -821,7 +1167,7 @@ export default function FeaturedWorkoutSession() {
 
           <div className="space-y-3">
             {PROGRAM.daysPerWeek.map((dayKey, i) => {
-              const dayWorkout = WORKOUTS[dayKey];
+              const dayWorkout = resolveWorkout(selectedWeek, dayKey);
               const hasExercises = dayWorkout.exercises.length > 0;
               return (
                 <div
@@ -1364,7 +1710,7 @@ export default function FeaturedWorkoutSession() {
 
       {/* Workout Summary */}
       {showSummary && workout && (() => {
-        const completedExercises = workout.exercises.filter((ex, i) => {
+        const completedExercises = workout.exercises.filter((ex) => {
           return ex.sets.some((_, si) => completedSets.has(`${ex.name}-${si}`));
         });
         const totalSetsCompleted = completedSets.size;
@@ -1378,80 +1724,321 @@ export default function FeaturedWorkoutSession() {
           }, 0);
         }, 0);
 
-        return (
-          <div className="fixed inset-0 z-[200] bg-black/95 flex items-center justify-center px-4" style={{ backdropFilter: 'blur(8px)' }}>
-            <div className="w-full max-w-sm">
-              <div style={{
-                background: 'linear-gradient(135deg, #0a0a0a 0%, #1a0808 50%, #0a0606 100%)',
-                borderRadius: '24px',
-                padding: '32px 24px',
-                border: '0.75px solid rgba(255,255,255,0.2)',
-                boxShadow: '0 0 40px rgba(239,68,68,0.1)',
-              }}>
-                <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                  <div style={{ fontSize: '48px', marginBottom: '8px' }}>&#10003;</div>
-                  <h2 style={{ fontSize: '22px', fontWeight: 800, color: 'white', marginBottom: '4px' }}>Workout Complete!</h2>
-                  <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>{workout.name} — Week {selectedWeek}</p>
-                </div>
+        const shareOpts = {
+          workout,
+          programName: PROGRAM.name,
+          entries,
+          completedSets,
+          elapsed,
+          totalSets: totalSetsAvailable,
+          totalVolume,
+          formatTime,
+          getEntryKey: (_list, ex) => ex.name,
+        };
 
-                <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '20px' }}>
-                  {/* Stats grid */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: '28px', fontWeight: 200, color: 'white', fontFamily: 'system-ui', letterSpacing: '-2px' }}>{formatTime(elapsed)}</div>
-                      <div style={{ fontSize: '9px', color: 'rgba(239,68,68,0.6)', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600, marginTop: '4px' }}>Duration</div>
-                    </div>
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: '28px', fontWeight: 200, color: 'white', fontFamily: 'system-ui', letterSpacing: '-2px' }}>{totalSetsCompleted}/{totalSetsAvailable}</div>
-                      <div style={{ fontSize: '9px', color: 'rgba(239,68,68,0.6)', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600, marginTop: '4px' }}>Sets</div>
-                    </div>
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: '28px', fontWeight: 200, color: 'white', fontFamily: 'system-ui', letterSpacing: '-2px' }}>{completedExercises.length}</div>
-                      <div style={{ fontSize: '9px', color: 'rgba(239,68,68,0.6)', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600, marginTop: '4px' }}>Exercises</div>
-                    </div>
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: '28px', fontWeight: 200, color: 'white', fontFamily: 'system-ui', letterSpacing: '-2px' }}>{totalVolume.toLocaleString()}</div>
-                      <div style={{ fontSize: '9px', color: 'rgba(239,68,68,0.6)', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600, marginTop: '4px' }}>Volume (lbs)</div>
-                    </div>
+        const openShareMenu = async () => {
+          setShowShareMenu(true);
+          if (!shareImage) {
+            setGeneratingImage(true);
+            try {
+              const img = await generateSummaryImage(shareOpts);
+              setShareImage(img);
+            } catch (err) {
+              console.error('Failed to generate share image:', err);
+            }
+            setGeneratingImage(false);
+          }
+        };
+
+        const handleShareImage = async () => {
+          if (!shareImage) return;
+          try {
+            const blob = dataURLtoBlob(shareImage);
+            const file = new File([blob], 'workout-summary.png', { type: 'image/png' });
+            if (navigator.share && navigator.canShare?.({ files: [file] })) {
+              await navigator.share({ files: [file], text: 'Check out my workout!' });
+              return;
+            }
+          } catch {}
+          // Fallback: download
+          const link = document.createElement('a');
+          link.download = 'workout-summary.png';
+          link.href = shareImage;
+          link.click();
+        };
+
+        const handleSaveImage = async () => {
+          if (!shareImage) return;
+          try {
+            const blob = dataURLtoBlob(shareImage);
+            const file = new File([blob], 'workout-summary.png', { type: 'image/png' });
+            if (navigator.share && navigator.canShare?.({ files: [file] })) {
+              await navigator.share({ files: [file] });
+              return;
+            }
+          } catch {}
+          const link = document.createElement('a');
+          link.download = 'workout-summary.png';
+          link.href = shareImage;
+          link.click();
+        };
+
+        const handleShareText = async () => {
+          const text = composeShareText(shareOpts);
+          if (navigator.share) {
+            try { await navigator.share({ text }); } catch {}
+          } else {
+            try { await navigator.clipboard.writeText(text); alert('Copied to clipboard!'); } catch {}
+          }
+        };
+
+        const saveAsTemplate = async () => {
+          if (savingTemplate || savedAsTemplate) return;
+          setSavingTemplate(true);
+          try {
+            const today = new Date();
+            const dateLabel = today.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const name = `${workout.name} - ${dateLabel}`;
+            const templateExercises = workout.exercises.filter((ex) => !ex.isSectionHeader).map((ex) => {
+              const exEntries = entries[ex.name] || [];
+              return {
+                name: ex.name,
+                setType: ex.setType || 'straight',
+                sets: ex.sets.map((set, idx) => ({
+                  reps: Number(exEntries[idx]?.reps) || set.plannedReps || 10,
+                  weight: Number(exEntries[idx]?.weight) || Number(set.suggestedWeight) || 0,
+                })),
+              };
+            });
+            await api('/templates', {
+              method: 'POST',
+              body: JSON.stringify({ name, description: '', exercises: templateExercises }),
+            });
+            setSavedAsTemplate(true);
+          } catch (err) {
+            console.error('Failed to save template:', err);
+          } finally {
+            setSavingTemplate(false);
+          }
+        };
+
+        return (
+          <div className="fixed inset-0 z-[200] overflow-y-auto" style={{ background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(8px)' }}>
+            {/* Confetti canvas */}
+            <canvas ref={confettiRef} className="fixed inset-0 pointer-events-none" style={{ zIndex: 201 }} />
+
+            <div className="min-h-full flex items-center justify-center px-4 py-6 relative" style={{ zIndex: 202 }}>
+              <div className="w-full max-w-sm relative">
+                {/* Ambient spotlight */}
+                <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[500px] h-[500px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+
+                <div style={{
+                  position: 'relative',
+                  background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                  borderRadius: '2px',
+                  padding: '32px 24px',
+                  boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+                  overflow: 'hidden',
+                }}>
+                  {/* Red accent strip */}
+                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25))' }} />
+
+                  {/* Top action row: share icon */}
+                  <div className="flex justify-end" style={{ marginTop: '-8px', marginBottom: '8px' }}>
+                    <button
+                      onClick={openShareMenu}
+                      className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/60 active:scale-90 transition-all"
+                      title="Share workout summary"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Header */}
+                  <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+                    <p className="text-[10px] uppercase font-light mb-2" style={{ color: 'rgba(239,68,68,0.6)', letterSpacing: '0.3em' }}>
+                      Complete
+                    </p>
+                    <h2 className="font-black tracking-tight mb-2" style={{ fontSize: '28px', fontFamily: 'system-ui', color: 'white', lineHeight: '0.95' }}>
+                      WORKOUT COMPLETE
+                    </h2>
+                    <p className="text-[12px] font-light" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                      {workout.name} · Week {selectedWeek}
+                    </p>
+                  </div>
+
+                  {/* Stats grid — Nike cards */}
+                  <div className="grid grid-cols-2 gap-3" style={{ marginBottom: '24px' }}>
+                    {[
+                      { value: formatTime(elapsed), label: 'Duration' },
+                      { value: `${totalSetsCompleted}/${totalSetsAvailable}`, label: 'Sets' },
+                      { value: completedExercises.length, label: 'Exercises' },
+                      { value: totalVolume.toLocaleString(), label: 'Volume (lbs)' },
+                    ].map((stat, i) => (
+                      <div key={i} style={{
+                        background: 'rgba(255,255,255,0.03)',
+                        borderRadius: '2px',
+                        padding: '16px 10px',
+                        textAlign: 'center',
+                        border: '1px solid rgba(255,255,255,0.05)',
+                      }}>
+                        <div style={{ fontSize: '24px', fontWeight: 900, color: 'white', fontFamily: 'system-ui', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.5px', lineHeight: 1 }}>
+                          {stat.value}
+                        </div>
+                        <div className="uppercase font-light" style={{ fontSize: '8px', color: 'rgba(239,68,68,0.5)', letterSpacing: '0.25em', marginTop: '6px' }}>
+                          {stat.label}
+                        </div>
+                      </div>
+                    ))}
                   </div>
 
                   {/* Exercise breakdown */}
-                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '16px' }}>
+                  <div style={{ marginBottom: '24px' }}>
+                    <p className="uppercase font-light" style={{ fontSize: '9px', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.3em', marginBottom: '10px' }}>
+                      Exercises
+                    </p>
                     {workout.exercises.map((ex, i) => {
                       const exCompleted = ex.sets.filter((_, si) => completedSets.has(`${ex.name}-${si}`)).length;
+                      const allDone = exCompleted === ex.sets.length;
                       return (
-                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: i < workout.exercises.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
-                          <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>{ex.name}</span>
-                          <span style={{ fontSize: '12px', color: exCompleted === ex.sets.length ? '#22c55e' : 'rgba(255,255,255,0.3)', fontWeight: 600 }}>
+                        <div key={i} className="flex items-center gap-3" style={{ padding: '10px 0', borderBottom: i < workout.exercises.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+                          <span className="font-black" style={{ fontSize: '11px', color: 'rgba(239,68,68,0.5)', width: '20px' }}>
+                            {String(i + 1).padStart(2, '0')}
+                          </span>
+                          <span className="flex-1 font-light truncate" style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>
+                            {ex.name}
+                          </span>
+                          <span className="font-bold tabular-nums" style={{ fontSize: '11px', color: allDone ? '#22c55e' : 'rgba(255,255,255,0.3)' }}>
                             {exCompleted}/{ex.sets.length}
                           </span>
                         </div>
                       );
                     })}
                   </div>
-                </div>
 
-                <button
-                  onClick={() => {
-                    setShowSummary(false);
-                    setCurrentIdx(-1);
-                    setSelectedDay(null);
-                    setTimerStarted(false);
-                    setElapsed(0);
-                    window.scrollTo({ top: 0, behavior: 'instant' });
-                  }}
-                  style={{
-                    width: '100%', padding: '16px', borderRadius: '14px', border: 'none', marginTop: '20px',
-                    background: 'linear-gradient(135deg, rgba(239,68,68,0.9), rgba(249,115,22,0.9))',
-                    color: 'white', fontSize: '15px', fontWeight: 700, cursor: 'pointer',
-                    boxShadow: '0 0 20px rgba(239,68,68,0.3)',
-                  }}
-                  className="active:scale-[0.98] transition-all"
-                >
-                  Back to Week {selectedWeek}
-                </button>
+                  {/* Save as Template */}
+                  <button
+                    onClick={saveAsTemplate}
+                    disabled={savingTemplate || savedAsTemplate}
+                    className="active:bg-white/10 transition-colors"
+                    style={{
+                      width: '100%',
+                      padding: '14px',
+                      marginBottom: '10px',
+                      borderRadius: '100px',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      background: 'transparent',
+                      color: savedAsTemplate ? '#22c55e' : 'rgba(255,255,255,0.6)',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      letterSpacing: '0.2em',
+                      textTransform: 'uppercase',
+                      cursor: savingTemplate || savedAsTemplate ? 'default' : 'pointer',
+                      opacity: savingTemplate ? 0.6 : 1,
+                    }}
+                  >
+                    {savingTemplate ? 'Saving…' : savedAsTemplate ? 'Saved as Template \u2713' : 'Save as Template'}
+                  </button>
+
+                  {/* Close — Nike pill button */}
+                  <button
+                    onClick={() => {
+                      setShowSummary(false);
+                      setCurrentIdx(-1);
+                      setSelectedDay(null);
+                      setTimerStarted(false);
+                      setElapsed(0);
+                      setShareImage(null);
+                      setSavedAsTemplate(false);
+                      window.scrollTo({ top: 0, behavior: 'instant' });
+                    }}
+                    className="active:bg-white/10 transition-colors"
+                    style={{
+                      width: '100%',
+                      padding: '14px',
+                      borderRadius: '100px',
+                      border: '1px solid rgba(255,255,255,0.7)',
+                      background: 'transparent',
+                      color: 'white',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      letterSpacing: '0.2em',
+                      textTransform: 'uppercase',
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+                    }}
+                  >
+                    Back to Week {selectedWeek}
+                  </button>
+                </div>
               </div>
             </div>
+
+            {/* Share menu bottom sheet */}
+            {showShareMenu && (
+              <div className="fixed inset-0 flex flex-col" style={{ zIndex: 210 }} onClick={() => setShowShareMenu(false)}>
+                <div className="absolute inset-0 bg-black/60" />
+                <div className="relative flex-1 flex flex-col mt-12 bg-wf-gray-900 rounded-t-2xl shadow-2xl animate-drop-down overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                  <div className="shrink-0 pt-3 pb-2 px-5">
+                    <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-3" />
+                    <h3 className="text-lg font-black text-white">Share Workout</h3>
+                  </div>
+                  <div className="flex-1 overflow-y-auto px-5 pb-24">
+                    {generatingImage && (
+                      <div className="mb-4 rounded-xl border border-white/10 p-8 flex items-center justify-center">
+                        <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                        <span className="text-sm text-wf-gray-400 ml-3">Generating image...</span>
+                      </div>
+                    )}
+                    {shareImage && !generatingImage && (
+                      <div className="mb-4 rounded-xl overflow-hidden border border-white/10">
+                        <img src={shareImage} alt="Workout summary" className="w-full" />
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <button onClick={handleShareImage} disabled={!shareImage} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 active:bg-white/10 transition-colors disabled:opacity-40">
+                        <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
+                          <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
+                          </svg>
+                        </div>
+                        <div className="text-left">
+                          <span className="text-sm font-semibold text-white block">Share Image</span>
+                          <span className="text-xs text-wf-gray-500">Share via Instagram, Messages, etc.</span>
+                        </div>
+                      </button>
+
+                      <button onClick={handleSaveImage} disabled={!shareImage} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 active:bg-white/10 transition-colors disabled:opacity-40">
+                        <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
+                          <svg className="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                          </svg>
+                        </div>
+                        <div className="text-left">
+                          <span className="text-sm font-semibold text-white block">Save to Camera Roll</span>
+                          <span className="text-xs text-wf-gray-500">Download image to your device</span>
+                        </div>
+                      </button>
+
+                      <button onClick={handleShareText} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 active:bg-white/10 transition-colors">
+                        <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center shrink-0">
+                          <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+                          </svg>
+                        </div>
+                        <div className="text-left">
+                          <span className="text-sm font-semibold text-white block">Share as Text</span>
+                          <span className="text-xs text-wf-gray-500">Copy or share text summary</span>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         );
       })()}
