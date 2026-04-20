@@ -29,12 +29,6 @@ function adminAuth(req, res, next) {
     req.adminKey = process.env.ADMIN_KEY;
     return next();
   }
-  // Key-in-URL fallback (disabled — uncomment to re-enable):
-  // const key = req.query.key || req.headers['x-admin-key'];
-  // if (process.env.ADMIN_KEY && key === process.env.ADMIN_KEY) {
-  //   req.adminKey = key;
-  //   return next();
-  // }
   // Not authenticated — redirect to login for HTML requests, 401 for API
   if (req.headers.accept?.includes('text/html') || req.query.format === 'html') {
     return res.redirect('/admin/login');

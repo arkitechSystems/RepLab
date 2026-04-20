@@ -150,10 +150,9 @@ export default function WorkoutSession() {
       if (cancelled) return;
       const el = document.querySelector(selector);
       if (!el || el.offsetWidth === 0) {
-        if (attempts < 30) { attempts++; console.log('[Tutorial] Attempt', attempts, '- element not found or zero width for:', selector); setTimeout(tryFind, 200); }
+        if (attempts < 30) { attempts++; setTimeout(tryFind, 200); }
         return;
       }
-      console.log('[Tutorial] Found element:', selector, 'rect:', el.getBoundingClientRect());
       // If the element is inside a sticky header, scroll to page top so the header
       // is in its expanded (non-collapsed) state — otherwise the measured rect drifts.
       const isInStickyHeader = !!el.closest('.sticky-header');
@@ -201,14 +200,12 @@ export default function WorkoutSession() {
             if (attempts < 30) { attempts++; setTimeout(tryFind, 200); }
             return;
           }
-          console.log('[Tutorial] Measured rect:', measured);
           tutorialRectRef.current = measured;
           setTutorialReady(true);
         });
       });
     }
     // Delay initial attempt to let React paint
-    console.log('[Tutorial] Looking for:', selector, 'tip:', tutorialTip);
     setTimeout(tryFind, 100);
     return () => { cancelled = true; };
   }, [tutorialTip]);

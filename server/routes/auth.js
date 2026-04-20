@@ -461,7 +461,7 @@ router.get('/export-data', authMiddleware, async (req, res) => {
     const [programs, templates, sessions, schedule, pbs, metrics] = await Promise.all([
       pool.query('SELECT id, name, created_at FROM programs WHERE user_id = $1 ORDER BY created_at', [userId]),
       pool.query('SELECT t.id, t.name, t.program_id, t.is_rest, t.sort_order FROM templates t JOIN programs p ON t.program_id = p.id WHERE p.user_id = $1 ORDER BY t.id', [userId]),
-      pool.query(`SELECT s.id, s.template_id, s.date, s.completed, s.elapsed, s.notes, s.created_at,
+      pool.query(`SELECT s.id, s.template_id, s.date, s.completed, s.notes, s.created_at,
         json_agg(json_build_object('exerciseName', se.exercise_name, 'setNumber', se.set_number, 'weight', se.weight, 'reps', se.reps, 'isCompleted', se.is_completed) ORDER BY se.id) AS entries
         FROM sessions s LEFT JOIN session_entries se ON se.session_id = s.id WHERE s.user_id = $1 GROUP BY s.id ORDER BY s.date`, [userId]),
       pool.query('SELECT schedule_date, template_id FROM schedule_days WHERE user_id = $1 AND schedule_date IS NOT NULL ORDER BY schedule_date', [userId]),
