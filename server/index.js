@@ -192,27 +192,36 @@ if (process.env.NODE_ENV !== 'test') {
       app.listen(PORT, '0.0.0.0', () => {
         console.log(`RepLab server running on http://localhost:${PORT}`);
 
-        // Daily summary email scheduler — runs at 8am ET every day
-        function scheduleDailySummary() {
-          const now = new Date();
-          // Target 8:00 AM ET (UTC-5 / UTC-4 depending on DST)
-          const target = new Date(now);
-          target.setUTCHours(13, 0, 0, 0); // 13:00 UTC = 8:00 AM ET
-          if (target <= now) target.setDate(target.getDate() + 1);
-          const ms = target - now;
-          console.log(`Daily summary scheduled in ${Math.round(ms / 60000)} minutes`);
-          setTimeout(async () => {
-            try {
-              const stats = await db.getDailyStats();
-              await sendDailySummaryEmail(stats);
-            } catch (err) {
-              console.error('Daily summary error:', err.message);
-            }
-            // Schedule next one
-            scheduleDailySummary();
-          }, ms);
+        // Daily summary email heartbeat. Replaces a fragile recursive setTimeout
+        // that was lost on every server restart and silently dropped the day's
+        // send if Resend hit an error. This polls every 10 minutes and fires
+        // once per UTC day once the target hour has passed. The "already sent"
+        // flag is persisted in admin_settings so restarts can't double-send,
+        // and failed sends don't update the flag → automatic retry next tick.
+        const DAILY_SUMMARY_TARGET_UTC_HOUR = 13; // 13:00 UTC, honestly labeled
+        const DAILY_SUMMARY_FLAG = 'daily_summary_last_sent_date';
+        const HEARTBEAT_MS = 10 * 60 * 1000;
+
+        async function tickDailySummary() {
+          try {
+            const now = new Date();
+            const todayUTC = now.toISOString().slice(0, 10);
+            if (now.getUTCHours() < DAILY_SUMMARY_TARGET_UTC_HOUR) return;
+            const lastSent = await db.getAdminSetting(DAILY_SUMMARY_FLAG);
+            if (lastSent === todayUTC) return;
+            const stats = await db.getDailyStats();
+            await sendDailySummaryEmail(stats);
+            // Only record success. A thrown error here means the flag is NOT
+            // updated, and the next heartbeat will retry within ~10 min.
+            await db.setAdminSetting(DAILY_SUMMARY_FLAG, todayUTC);
+            console.log(`Daily summary sent for ${todayUTC}`);
+          } catch (err) {
+            console.error('Daily summary tick failed (will retry):', err.message);
+          }
         }
-        scheduleDailySummary();
+
+        tickDailySummary();
+        setInterval(tickDailySummary, HEARTBEAT_MS);
       });
     })
     .catch((err) => {

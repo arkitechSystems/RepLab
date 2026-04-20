@@ -67,7 +67,7 @@ export default function Privacy() {
 
         <section>
           <h2 className="text-base font-semibold text-white mb-2">6. Data Retention</h2>
-          <p>We retain your data for as long as your account is active. When you delete your account, your personal data is permanently removed from our servers within 30 days. Anonymized, aggregated data may be retained for analytics purposes.</p>
+          <p>We retain your data for as long as your account is active. When you delete your account, your personal data is permanently removed from our servers immediately. Anonymized, aggregated data may be retained for analytics purposes.</p>
         </section>
 
         <section>

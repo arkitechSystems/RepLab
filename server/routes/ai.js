@@ -5,6 +5,20 @@ import db from '../db.js';
 
 const router = Router();
 
+// Strip characters that could break out of the prompt's quoted contexts and
+// trim length. User-provided free-text fields are templated directly into the
+// system prompt, so backticks, triple quotes, and newlines are all injection
+// vectors. Doesn't eliminate all prompt-injection risk (the model can still be
+// talked into ignoring instructions) but removes the easy syntactic attacks.
+function sanitizePromptInput(str, maxLen = 500) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/[`"]/g, '')
+    .replace(/[\r\n]+/g, ' ')
+    .trim()
+    .slice(0, maxLen);
+}
+
 router.post('/generate-workout', authMiddleware, async (req, res) => {
   if (!process.env.ANTHROPIC_API_KEY) {
     return res.status(503).json({ error: 'AI workout generation is not configured' });
@@ -16,6 +30,14 @@ router.post('/generate-workout', authMiddleware, async (req, res) => {
     if (!goal || !experience) {
       return res.status(400).json({ error: 'Goal and experience level are required' });
     }
+
+    // Sanitize free-text fields that get templated into the prompt.
+    const safeGoal = sanitizePromptInput(goal, 100);
+    const safeExperience = sanitizePromptInput(experience, 50);
+    const safeEquipment = sanitizePromptInput(equipment, 200);
+    const safeDuration = sanitizePromptInput(duration, 50);
+    const safeMuscleGroups = sanitizePromptInput(muscleGroups, 200);
+    const safeNotes = sanitizePromptInput(notes, 500);
 
     // Fetch user's PRs for context
     let prContext = '';
@@ -32,12 +54,12 @@ router.post('/generate-workout', authMiddleware, async (req, res) => {
     const prompt = `You are a certified personal trainer creating a workout for a user of the RepLab fitness app.
 
 User Profile:
-- Goal: ${goal}
-- Experience Level: ${experience}
-- Available Equipment: ${equipment || 'Full gym'}
-- Workout Duration: ${duration || '45-60'} minutes
-- Target Muscle Groups: ${muscleGroups || 'Full body'}
-${notes ? `- Additional Notes: ${notes}` : ''}
+- Goal: ${safeGoal}
+- Experience Level: ${safeExperience}
+- Available Equipment: ${safeEquipment || 'Full gym'}
+- Workout Duration: ${safeDuration || '45-60'} minutes
+- Target Muscle Groups: ${safeMuscleGroups || 'Full body'}
+${safeNotes ? `- Additional Notes: ${safeNotes}` : ''}
 ${prContext}
 
 Create a complete workout with exercises, sets, reps, and suggested weights. Use the personal records to suggest appropriate weights (typically 70-85% of PR weight for working sets).
@@ -127,12 +149,14 @@ router.post('/edit-workout', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Workout and instruction are required' });
     }
 
+    const safeInstruction = sanitizePromptInput(instruction, 500);
+
     const prompt = `You are a certified personal trainer helping edit a workout in the RepLab fitness app.
 
 Current workout:
 ${JSON.stringify(workout, null, 2)}
 
-User's instruction: "${instruction}"
+User's instruction: "${safeInstruction}"
 
 Apply the user's requested changes to the workout. Keep everything else the same unless the instruction implies otherwise.
 
@@ -212,12 +236,16 @@ router.post('/suggest-swap', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'exerciseName is required' });
     }
 
-    const avoidList = (currentWorkoutExercises || []).filter(n => n !== exerciseName);
+    const avoidList = (currentWorkoutExercises || [])
+      .filter(n => n !== exerciseName)
+      .map(n => sanitizePromptInput(n, 100));
+    const safeExerciseName = sanitizePromptInput(exerciseName, 100);
+    const safeReason = sanitizePromptInput(reason, 200);
 
     const prompt = `You are a certified personal trainer helping a user of the RepLab fitness app swap an exercise mid-workout.
 
-The user wants to replace: "${exerciseName}"
-${reason ? `Reason: ${reason}` : 'Reason: equipment unavailable'}
+The user wants to replace: "${safeExerciseName}"
+${safeReason ? `Reason: ${safeReason}` : 'Reason: equipment unavailable'}
 ${avoidList.length > 0 ? `Already in this workout (avoid duplicates): ${avoidList.join(', ')}` : ''}
 
 Suggest exactly 3 alternative exercises. Each should:

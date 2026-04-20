@@ -233,15 +233,43 @@ router.post('/demo', async (req, res) => {
   }
 });
 
+// Per-email rate limit for password reset. The global IP-based limiter blocks
+// a single attacker hammering one IP, but an attacker with IP rotation could
+// still spam 1000 different email addresses. This caps any given email at 3
+// reset emails per 15 minutes regardless of source IP, and returns the same
+// "if an account exists..." message either way to preserve enumeration safety.
+const resetEmailWindow = new Map(); // email -> [timestamp, timestamp, ...]
+const RESET_WINDOW_MS = 15 * 60 * 1000;
+const RESET_MAX_PER_EMAIL = 3;
+
+function canSendReset(email) {
+  const now = Date.now();
+  const recent = (resetEmailWindow.get(email) || []).filter((t) => now - t < RESET_WINDOW_MS);
+  if (recent.length >= RESET_MAX_PER_EMAIL) {
+    resetEmailWindow.set(email, recent);
+    return false;
+  }
+  recent.push(now);
+  resetEmailWindow.set(email, recent);
+  return true;
+}
+
 // Request password reset email
 router.post('/request-reset', async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email is required' });
 
-    const user = await db.findUserByIdentifier(email.toLowerCase().trim());
+    const normalized = email.toLowerCase().trim();
+    const user = await db.findUserByIdentifier(normalized);
     // Always return success to prevent email enumeration
     if (!user || !user.email) return res.json({ message: 'If an account exists with that email, a reset link has been sent.' });
+
+    // Cap per-email even if the request came from a fresh IP. Still return
+    // the same success message to avoid leaking that the email was throttled.
+    if (!canSendReset(normalized)) {
+      return res.json({ message: 'If an account exists with that email, a reset link has been sent.' });
+    }
 
     const token = crypto.randomBytes(32).toString('hex');
     const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour

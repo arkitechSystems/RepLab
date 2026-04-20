@@ -127,6 +127,14 @@ export default async function initDb() {
     created_at TIMESTAMPTZ DEFAULT NOW()
   )`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_shared_programs_recipient ON shared_programs(recipient_id, status)`);
+  // Every push notification send does `WHERE user_id = $1` on device_tokens;
+  // without this, it's a full-table scan per send.
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_device_tokens_user_id ON device_tokens(user_id)`);
+  // Admin analytics query COUNT(DISTINCT user_id) on sessions in a date range.
+  // idx_sessions_user_template_date doesn't cover created_at ranges.
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_sessions_user_created_at ON sessions(user_id, created_at)`);
+  // Stats endpoint filters PBs by user + achieved_at month boundary.
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_personal_bests_user_achieved ON personal_bests(user_id, achieved_at)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_sessions_completed_lookup ON sessions(user_id, template_id) WHERE completed = TRUE`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_schedule_days_user_id ON schedule_days(user_id)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_reset_token ON users(reset_token) WHERE reset_token IS NOT NULL`);
