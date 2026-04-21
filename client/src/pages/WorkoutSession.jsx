@@ -1644,6 +1644,7 @@ export default function WorkoutSession() {
             <button
               onClick={() => hasPrev && !dayNavDisabled && navigateToDay(prevDate)}
               disabled={!hasPrev || dayNavDisabled}
+              aria-label="Previous day"
               className={`w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-90 ${hasPrev && !dayNavDisabled ? 'bg-white/10 text-white' : 'bg-white/5 text-wf-gray-600 cursor-default opacity-50'}`}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -1654,6 +1655,7 @@ export default function WorkoutSession() {
             <button
               onClick={() => hasNext && !dayNavDisabled && navigateToDay(nextDate)}
               disabled={!hasNext || dayNavDisabled}
+              aria-label="Next day"
               className={`w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-90 ${hasNext && !dayNavDisabled ? 'bg-white/10 text-white' : 'bg-white/5 text-wf-gray-600 cursor-default opacity-50'}`}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -1681,6 +1683,7 @@ export default function WorkoutSession() {
                     <button
                       data-tutorial="session-settings"
                       onClick={() => setShowSessionMenu(!showSessionMenu)}
+                      aria-label="Session settings"
                       className="w-6 h-6 rounded-full flex items-center justify-center text-wf-gray-400 active:bg-white/10 transition-colors"
                     >
                       <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -2079,7 +2082,7 @@ export default function WorkoutSession() {
               <div className="px-5 pt-5 pb-3 border-b border-white/10 shrink-0">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-lg font-bold text-white">Add Exercise</h3>
-                  <button onClick={() => setShowAddExercise(false)} className="text-wf-gray-400 active:opacity-70">
+                  <button onClick={() => setShowAddExercise(false)} aria-label="Close" className="text-wf-gray-400 active:opacity-70">
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -2176,6 +2179,7 @@ export default function WorkoutSession() {
       <div className="fixed bottom-20 left-0 right-0 p-4 bg-gradient-to-t from-black via-black/95 to-transparent safe-bottom z-40">
         <button
           onClick={handleShare}
+          aria-label="Share workout"
           className="w-full glass-card rounded-xl flex items-center justify-center py-4 text-wf-gray-400 hover:text-white transition-colors active:scale-[0.98]"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -2212,6 +2216,7 @@ export default function WorkoutSession() {
             <span className="text-lg font-black text-white tabular-nums font-mono-stat">{formatTime(elapsed)}</span>
             <button
               onClick={() => setTimerFloating(false)}
+              aria-label="Close timer"
               className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -2248,6 +2253,7 @@ export default function WorkoutSession() {
             )}
             <button
               onClick={() => setRestFloating(false)}
+              aria-label="Close rest timer"
               className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -2951,6 +2957,7 @@ function WorkoutSummary({ template, programName, entries, completedSets, elapsed
           <div className="flex items-center justify-between mb-4">
             <button
               onClick={onClose}
+              aria-label="Close"
               className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90 transition-all"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

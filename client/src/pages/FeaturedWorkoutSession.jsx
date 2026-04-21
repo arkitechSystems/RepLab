@@ -1555,6 +1555,7 @@ export default function FeaturedWorkoutSession() {
           <button
             onClick={goPrev}
             disabled={currentIdx === 0}
+            aria-label="Previous exercise"
             className={`w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all ${currentIdx === 0 ? 'opacity-20' : ''}`}
           >
             <svg className="w-5 h-5" style={{ color: 'rgba(239,68,68,0.7)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -1567,6 +1568,7 @@ export default function FeaturedWorkoutSession() {
           <button
             onClick={goNext}
             disabled={currentIdx >= totalExercises - 1}
+            aria-label="Next exercise"
             className={`w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all ${currentIdx >= totalExercises - 1 ? 'opacity-20' : ''}`}
           >
             <svg className="w-5 h-5" style={{ color: 'rgba(239,68,68,0.7)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -1593,6 +1595,7 @@ export default function FeaturedWorkoutSession() {
                 <span className="text-sm font-mono-stat font-bold text-wf-gray-400">{formatTime(elapsed)}</span>
                 <button
                   onClick={(e) => { e.stopPropagation(); setTimerFloating(true); }}
+                  aria-label="Pop out timer"
                   className="p-1 rounded text-wf-gray-500 active:scale-90"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1682,6 +1685,7 @@ export default function FeaturedWorkoutSession() {
                 {/* Checkmark */}
                 <button
                   onClick={() => handleToggleComplete(idx)}
+                  aria-label={isCompleted ? 'Mark set incomplete' : 'Mark set complete'}
                   className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-200 ${
                     isCompleted ? 'bg-green-500 border-green-500' : 'border-wf-gray-500 bg-transparent'
                   }`}
@@ -2191,6 +2195,7 @@ export default function FeaturedWorkoutSession() {
             <span className="text-lg font-black text-white tabular-nums font-mono-stat">{formatTime(elapsed)}</span>
             <button
               onClick={() => setTimerFloating(false)}
+              aria-label="Close timer"
               className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>

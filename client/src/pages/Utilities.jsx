@@ -123,6 +123,7 @@ function PRsSection() {
           {isPremium && prSearch ? (
             <button
               onClick={() => setPrSearch('')}
+              aria-label="Clear search"
               className="absolute right-3 top-1/2 -translate-y-1/2 text-wf-gray-500 active:text-white"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -490,6 +491,7 @@ function HIITTimer({ onClose }) {
         </span>
         <button
           onClick={() => setSoundEnabled(!soundEnabled)}
+          aria-label={soundEnabled ? 'Mute sound' : 'Enable sound'}
           className={`w-9 h-9 rounded-full flex items-center justify-center transition-all active:scale-90 ${soundEnabled ? 'bg-white/10 text-white' : 'bg-white/5 text-wf-gray-600'}`}
         >
           {soundEnabled ? (
@@ -551,6 +553,7 @@ function HIITTimer({ onClose }) {
         <div className="flex items-center gap-6">
           <button
             onClick={resetTimer}
+            aria-label="Reset timer"
             className="w-14 h-14 rounded-full glass-card flex items-center justify-center text-wf-gray-400 active:scale-90 transition-transform"
           >
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -561,6 +564,7 @@ function HIITTimer({ onClose }) {
           {phase !== 'done' ? (
             <button
               onClick={togglePause}
+              aria-label={paused ? 'Resume' : 'Pause'}
               className={`w-20 h-20 rounded-full flex items-center justify-center active:scale-90 transition-transform ${
                 paused ? 'bg-green-500 shadow-[0_0_20px_rgba(34,197,94,0.4)]' : 'bg-white/10'
               }`}
@@ -578,6 +582,7 @@ function HIITTimer({ onClose }) {
           ) : (
             <button
               onClick={resetTimer}
+              aria-label="Done"
               className="w-20 h-20 rounded-full bg-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)] flex items-center justify-center active:scale-90 transition-transform"
             >
               <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -588,6 +593,7 @@ function HIITTimer({ onClose }) {
 
           <button
             onClick={resetTimer}
+            aria-label="Close timer"
             className="w-14 h-14 rounded-full glass-card flex items-center justify-center text-wf-gray-400 active:scale-90 transition-transform"
           >
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

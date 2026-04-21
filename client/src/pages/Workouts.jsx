@@ -1279,6 +1279,7 @@ export default function Workouts() {
               {program.userId !== null && (
                 <button
                   onClick={() => enterEditMode(program)}
+                  aria-label="Edit program"
                   className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center active:bg-white/20 transition-colors"
                 >
                   <svg className="w-4.5 h-4.5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -1342,6 +1343,7 @@ export default function Workouts() {
                         <button
                           onClick={() => handleMoveTemplate(program, idx, -1)}
                           disabled={idx === 0}
+                          aria-label="Move up"
                           className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center disabled:opacity-25 active:bg-white/20 transition-colors"
                         >
                           <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1351,6 +1353,7 @@ export default function Workouts() {
                         <button
                           onClick={() => handleMoveTemplate(program, idx, 1)}
                           disabled={idx === weekTemplates.length - 1}
+                          aria-label="Move down"
                           className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center disabled:opacity-25 active:bg-white/20 transition-colors"
                         >
                           <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1389,6 +1392,7 @@ export default function Workouts() {
                     {editMode ? (
                       <button
                         onClick={() => handleDeleteTemplate(t.id)}
+                        aria-label="Delete workout"
                         className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center shrink-0 active:bg-red-500/40 transition-colors"
                       >
                         <svg className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1420,6 +1424,7 @@ export default function Workouts() {
                             </button>
                             <button
                               onClick={() => navigate(`/clientworkouts/edit/${t.id}`)}
+                              aria-label="Edit workout"
                               className="w-9 h-9 rounded-lg bg-wf-red/20 flex items-center justify-center shrink-0 active:bg-wf-red/40 transition-colors"
                             >
                               <svg className="w-4 h-4 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -1736,6 +1741,7 @@ export default function Workouts() {
                 <h3 className="text-lg font-black text-white">Begin Program</h3>
                 <button
                   onClick={closeBeginModal}
+                  aria-label="Close"
                   className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90 transition-all shrink-0"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -2602,6 +2608,7 @@ export default function Workouts() {
               {browseSearch && (
                 <button
                   onClick={() => setBrowseSearch('')}
+                  aria-label="Clear search"
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-wf-gray-500 active:text-white"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

@@ -81,7 +81,7 @@ export default function TrainerProfile({
             {socialKeys.length > 0 && (
               <div className="flex items-center gap-4 mt-3">
                 {socialKeys.map((key) => (
-                  <a key={key} href={t.socials[key]} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center active:bg-white/20 transition-colors">
+                  <a key={key} href={t.socials[key]} aria-label={key} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center active:bg-white/20 transition-colors">
                     {SOCIAL_ICONS[key]}
                   </a>
                 ))}

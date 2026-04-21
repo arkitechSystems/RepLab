@@ -398,17 +398,18 @@ function TemplateExerciseWrapper({
           />
           <div className="flex items-center gap-1 shrink-0">
             {handleMoveUp(exIdx) && (
-              <button onClick={handleMoveUp(exIdx)} className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90 transition-all">
+              <button onClick={handleMoveUp(exIdx)} aria-label="Move up" className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90 transition-all">
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>
               </button>
             )}
             {handleMoveDown(exIdx) && (
-              <button onClick={handleMoveDown(exIdx)} className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90 transition-all">
+              <button onClick={handleMoveDown(exIdx)} aria-label="Move down" className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90 transition-all">
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
               </button>
             )}
             <button
               onClick={() => removeExercise(exIdx)}
+              aria-label="Remove exercise"
               className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-red-400 hover:bg-red-500/20 active:scale-90 transition-all"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -501,6 +502,7 @@ function TemplateExerciseWrapper({
           {exercises.length > 1 && (
             <button
               onClick={() => removeExercise(exIdx)}
+              aria-label="Remove exercise"
               className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-red-400 hover:bg-red-500/20 active:scale-90 transition-all shrink-0 ml-2"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
