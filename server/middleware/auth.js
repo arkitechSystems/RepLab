@@ -12,7 +12,14 @@ if (process.env.JWT_SECRET.length < 32) {
 }
 const JWT_SECRET = process.env.JWT_SECRET;
 
-export function generateToken(user) {
+// Short-lived access token. Kept short so a leaked token has a tight blast
+// radius; the refresh token extends the effective session to 30 days.
+export const ACCESS_TOKEN_TTL = '15m';
+// Long-lived refresh token. Used only against /auth/refresh, never as an
+// access token (the `type` claim is checked there).
+export const REFRESH_TOKEN_TTL = '30d';
+
+export function generateAccessToken(user) {
   return jwt.sign(
     {
       userId: user.id,
@@ -20,10 +27,40 @@ export function generateToken(user) {
       phone: user.phone,
       role: user.role || 'client',
       tokenVersion: user.tokenVersion ?? 0,
+      type: 'access',
     },
     JWT_SECRET,
-    { expiresIn: '7d' }
+    { expiresIn: ACCESS_TOKEN_TTL }
   );
+}
+
+export function generateRefreshToken(user) {
+  return jwt.sign(
+    {
+      userId: user.id,
+      tokenVersion: user.tokenVersion ?? 0,
+      type: 'refresh',
+    },
+    JWT_SECRET,
+    { expiresIn: REFRESH_TOKEN_TTL }
+  );
+}
+
+// Backwards-compatible alias. Existing callers (e.g. admin password reset,
+// change-password route) continue to work — they now receive an access token.
+export function generateToken(user) {
+  return generateAccessToken(user);
+}
+
+export function verifyRefreshToken(token) {
+  const decoded = jwt.verify(token, JWT_SECRET);
+  // A refresh token must never be usable as an access token and vice versa.
+  // Without this check an attacker who stole an access token could POST it to
+  // /auth/refresh and get a new 15-min access token indefinitely.
+  if (decoded.type !== 'refresh') {
+    throw new Error('Not a refresh token');
+  }
+  return decoded;
 }
 
 export async function authMiddleware(req, res, next) {
@@ -35,6 +72,13 @@ export async function authMiddleware(req, res, next) {
   try {
     const token = header.split(' ')[1];
     const decoded = jwt.verify(token, JWT_SECRET);
+
+    // Reject refresh tokens presented as access tokens. Pre-existing tokens
+    // (issued before this change) have no `type` claim — treat those as
+    // access tokens for backwards compatibility during rollout.
+    if (decoded.type && decoded.type !== 'access') {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
 
     // Verify user still exists AND that this JWT hasn't been invalidated by a
     // password change. token_version is bumped in db.updatePassword so every

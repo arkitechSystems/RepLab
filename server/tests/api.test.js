@@ -272,6 +272,99 @@ describe('Auth Routes', () => {
     });
   });
 
+  describe('POST /auth/login (token pair)', () => {
+    it('returns both accessToken and refreshToken', async () => {
+      const bcrypt = await import('bcryptjs');
+      const hash = bcrypt.hashSync('StrongPass1', 10);
+
+      db.findUserByIdentifier.mockResolvedValue({
+        ...TEST_USER,
+        passwordHash: hash,
+      });
+
+      const res = await request(app)
+        .post('/auth/login')
+        .send({ identifier: 'test@example.com', password: 'StrongPass1' });
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('accessToken');
+      expect(res.body).toHaveProperty('refreshToken');
+      // Legacy `token` alias still present so old clients keep working.
+      expect(res.body).toHaveProperty('token');
+      expect(res.body.token).toBe(res.body.accessToken);
+
+      // Access token carries type:'access', refresh carries type:'refresh'.
+      // The auth middleware rejects refresh tokens presented as Bearer creds.
+      const accessDecoded = jwt.verify(res.body.accessToken, process.env.JWT_SECRET);
+      const refreshDecoded = jwt.verify(res.body.refreshToken, process.env.JWT_SECRET);
+      expect(accessDecoded.type).toBe('access');
+      expect(refreshDecoded.type).toBe('refresh');
+    });
+  });
+
+  describe('POST /auth/refresh', () => {
+    it('returns a new access+refresh token pair for a valid refresh token', async () => {
+      const refreshToken = jwt.sign(
+        { userId: 1, tokenVersion: 0, type: 'refresh' },
+        process.env.JWT_SECRET,
+        { expiresIn: '30d' }
+      );
+      db.findUserById.mockResolvedValue({ ...TEST_USER, id: 1, tokenVersion: 0 });
+
+      const res = await request(app)
+        .post('/auth/refresh')
+        .send({ refreshToken });
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('accessToken');
+      expect(res.body).toHaveProperty('refreshToken');
+      // Both returned tokens verify cleanly against the same secret and
+      // carry the right `type` claim (rotation is fine; we can't assert a
+      // different signature here because JWT `iat` is 1-second resolution
+      // and the test issues both within the same second).
+      const accessDecoded = jwt.verify(res.body.accessToken, process.env.JWT_SECRET);
+      const refreshDecoded = jwt.verify(res.body.refreshToken, process.env.JWT_SECRET);
+      expect(accessDecoded.type).toBe('access');
+      expect(refreshDecoded.type).toBe('refresh');
+    });
+
+    it('rejects a refresh token with stale tokenVersion (password changed)', async () => {
+      const refreshToken = jwt.sign(
+        { userId: 1, tokenVersion: 0, type: 'refresh' },
+        process.env.JWT_SECRET,
+        { expiresIn: '30d' }
+      );
+      // Password has since been changed, bumping tokenVersion to 1.
+      db.findUserById.mockResolvedValue({ ...TEST_USER, id: 1, tokenVersion: 1 });
+
+      const res = await request(app)
+        .post('/auth/refresh')
+        .send({ refreshToken });
+
+      expect(res.status).toBe(401);
+    });
+
+    it('rejects an access token presented as a refresh token', async () => {
+      // type:'access' token should NOT be accepted by /auth/refresh.
+      const accessToken = jwt.sign(
+        { userId: 1, tokenVersion: 0, type: 'access' },
+        process.env.JWT_SECRET,
+        { expiresIn: '15m' }
+      );
+
+      const res = await request(app)
+        .post('/auth/refresh')
+        .send({ refreshToken: accessToken });
+
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 400 when refreshToken is missing', async () => {
+      const res = await request(app).post('/auth/refresh').send({});
+      expect(res.status).toBe(400);
+    });
+  });
+
   describe('DELETE /auth/delete-account', () => {
     it('deletes account for authenticated user', async () => {
       mockAuthPoolQuery(1);

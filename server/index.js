@@ -111,6 +111,11 @@ app.use('/auth/login', authLimiter);
 app.use('/auth/signup', authLimiter);
 app.use('/auth/request-reset', authLimiter);
 app.use('/admin/login', authLimiter);
+// Refresh gets the general api limiter, not authLimiter — a healthy session
+// legitimately refreshes every ~15 minutes, and concurrent 401s on a fresh
+// page load can burst a few refreshes in quick succession. A valid refresh
+// token is required, so this endpoint is not an auth-bypass surface.
+app.use('/auth/refresh', apiLimiter);
 // Data export is expensive (many joined queries) and nothing legitimate runs
 // it more than a handful of times per day — cap it aggressively.
 app.use('/auth/export-data', rateLimit({

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { api, setApiToken, getApiToken, setOnUnauthorized } from '../api';
+import { api, setApiToken, getApiToken, setOnUnauthorized, setAuthTokens, clearAuthTokens, setRefreshToken } from '../api';
 
 const AuthContext = createContext(null);
 
@@ -16,8 +16,8 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => getApiToken());
 
   const logout = useCallback(() => {
-    setApiToken(null);
-    try { localStorage.removeItem('replab_user'); } catch {}
+    // Clears access token, refresh token, and cached user.
+    clearAuthTokens();
     setToken(null);
     setUser(null);
   }, []);
@@ -32,11 +32,16 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const bridgeToken = params.get('authToken');
+    const bridgeRefreshToken = params.get('refreshToken');
     const redirectPath = params.get('redirect');
     if (!bridgeToken) return;
 
-    // Store the JWT and clean URL immediately
+    // Store the JWT pair and clean URL immediately. The bridge may or may not
+    // include a refresh token — older bridges issued access-only. If there's
+    // no refresh token, the session will end when the 15-min access token
+    // expires and api.js fails to refresh.
     setApiToken(bridgeToken);
+    setRefreshToken(bridgeRefreshToken || null);
     setToken(bridgeToken);
     window.history.replaceState({}, '', '/');
 
@@ -56,7 +61,7 @@ export function AuthProvider({ children }) {
         // Bridge token was rejected — clear it so the user lands on login instead
         // of in a half-authenticated state with a token but no user object.
         console.warn('Bridge token auth failed:', err);
-        setApiToken(null);
+        clearAuthTokens();
         setToken(null);
       });
 
@@ -66,17 +71,18 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  // Helper to set all auth state atomically, cleaning up on failure
+  // Helper to set all auth state atomically, cleaning up on failure.
+  // Accepts `{ accessToken, refreshToken, user }` from /auth/login, /auth/signup,
+  // and /auth/demo. `token` (legacy alias of accessToken) is also accepted.
   function applyAuth(data) {
     try {
-      setApiToken(data.token);
+      setAuthTokens(data);
       try { localStorage.setItem('replab_user', JSON.stringify(data.user)); } catch {}
-      setToken(data.token);
+      setToken(data.accessToken ?? data.token ?? null);
       setUser(data.user);
     } catch {
       // If anything fails, clear everything to avoid partial state
-      setApiToken(null);
-      try { localStorage.removeItem('replab_user'); } catch {}
+      clearAuthTokens();
       setToken(null);
       setUser(null);
       throw new Error('Failed to save login state');

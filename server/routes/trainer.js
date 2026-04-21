@@ -5,7 +5,7 @@ import pool from '../dbPool.js';
 import db from '../db.js';
 import { DASHBOARD_CSS, SIDEBAR_JS } from '../dashboardCSS.js';
 import { exerciseCardScript } from '../exerciseCardBuilder.js';
-import { generateToken } from '../middleware/auth.js';
+import { generateToken, generateAccessToken, generateRefreshToken } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -854,11 +854,16 @@ router.get('/create-workout', trainerAuth, async (req, res) => {
   try {
     const user = await db.findUserById(req.trainer.userId);
     if (!user) return res.redirect('/trainer?error=User+not+found');
-    const jwt = generateToken(user);
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
     const programId = req.query.programId;
     let target = '/clientworkouts/create?from=trainer';
     if (programId) target += '&programId=' + programId;
-    return res.redirect('/?authToken=' + encodeURIComponent(jwt) + '&redirect=' + encodeURIComponent(target));
+    return res.redirect(
+      '/?authToken=' + encodeURIComponent(accessToken) +
+      '&refreshToken=' + encodeURIComponent(refreshToken) +
+      '&redirect=' + encodeURIComponent(target)
+    );
   } catch (err) {
     console.error('Bridge error:', err);
     return res.redirect('/trainer?error=Failed+to+open+workout+builder');
@@ -1288,9 +1293,14 @@ router.get('/edit-workout/:id', trainerAuth, async (req, res) => {
   try {
     const user = await db.findUserById(req.trainer.userId);
     if (!user) return res.redirect('/trainer?error=User+not+found');
-    const jwt = generateToken(user);
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
     const target = '/clientworkouts/edit/' + req.params.id + '?from=trainer';
-    return res.redirect('/?authToken=' + encodeURIComponent(jwt) + '&redirect=' + encodeURIComponent(target));
+    return res.redirect(
+      '/?authToken=' + encodeURIComponent(accessToken) +
+      '&refreshToken=' + encodeURIComponent(refreshToken) +
+      '&redirect=' + encodeURIComponent(target)
+    );
   } catch (err) {
     console.error('Bridge error:', err);
     return res.redirect('/trainer?error=Failed+to+open+workout+editor');

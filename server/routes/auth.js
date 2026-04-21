@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import db from '../db.js';
 import pool from '../dbPool.js';
 import crypto from 'crypto';
-import { generateToken, authMiddleware } from '../middleware/auth.js';
+import { generateToken, generateAccessToken, generateRefreshToken, verifyRefreshToken, authMiddleware } from '../middleware/auth.js';
 import { sendWelcomeEmail, sendPasswordResetEmail, sendNewSignupNotification } from '../email.js';
 
 const router = Router();
@@ -46,6 +46,20 @@ function normalizePhone(value) {
 
 function userResponse(user) {
   return { id: user.id, email: user.email, phone: user.phone, firstName: user.firstName, lastName: user.lastName, username: user.username, role: user.role || 'client', plan: user.plan || 'Free', trialEnd: user.trialEnd || null, photoUrl: user.profilePhoto || null };
+}
+
+// Build the standard auth response body. `token` remains for backwards
+// compatibility with older clients that haven't been updated to read
+// `accessToken` yet — new clients should use the access/refresh pair.
+function authPayload(user) {
+  const accessToken = generateAccessToken(user);
+  const refreshToken = generateRefreshToken(user);
+  return {
+    token: accessToken,
+    accessToken,
+    refreshToken,
+    user: userResponse(user),
+  };
 }
 
 router.post('/signup', async (req, res) => {
@@ -146,8 +160,7 @@ router.post('/signup', async (req, res) => {
     const allUsers = await db.getAllUsers();
     sendNewSignupNotification(user, allUsers.length);
 
-    const token = generateToken(user);
-    res.status(201).json({ token, user: userResponse(user) });
+    res.status(201).json(authPayload(user));
   } catch (err) {
     console.error(err);
     // Handle unique constraint violations from concurrent signups
@@ -182,8 +195,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const token = generateToken(user);
-    res.json({ token, user: userResponse(user) });
+    res.json(authPayload(user));
 
     // Log login history (fire-and-forget)
     try {
@@ -225,8 +237,52 @@ router.post('/demo', async (req, res) => {
     const passwordHash = bcrypt.hashSync(Math.random().toString(36), 10);
     const user = await db.createUser({ email, phone: null, passwordHash });
     await db.setDefaultSchedule(user.id);
-    const token = generateToken(user);
-    res.status(201).json({ token, user: userResponse(user) });
+    res.status(201).json(authPayload(user));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Exchange a refresh token for a fresh access token. The refresh token is
+// itself re-issued (rotation) — this limits the window in which a leaked
+// refresh token is useful and gives us a natural hook if we ever add server-
+// side reuse detection. Password-change invalidation works here the same way
+// it does in authMiddleware: the refresh token carries tokenVersion, and we
+// reject it if the DB's token_version has advanced past it.
+router.post('/refresh', async (req, res) => {
+  try {
+    const { refreshToken } = req.body || {};
+    if (!refreshToken || typeof refreshToken !== 'string') {
+      return res.status(400).json({ error: 'Refresh token required' });
+    }
+
+    let decoded;
+    try {
+      decoded = verifyRefreshToken(refreshToken);
+    } catch {
+      return res.status(401).json({ error: 'Invalid refresh token' });
+    }
+
+    const user = await db.findUserById(decoded.userId);
+    if (!user) {
+      return res.status(401).json({ error: 'Account no longer exists' });
+    }
+
+    const currentVersion = user.tokenVersion ?? 0;
+    const tokenVersion = decoded.tokenVersion ?? 0;
+    if (tokenVersion !== currentVersion) {
+      return res.status(401).json({ error: 'Session expired. Please sign in again.' });
+    }
+
+    const accessToken = generateAccessToken(user);
+    const newRefreshToken = generateRefreshToken(user);
+    res.json({
+      accessToken,
+      refreshToken: newRefreshToken,
+      // Alias for legacy field name, matches login/signup shape.
+      token: accessToken,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
@@ -329,12 +385,19 @@ router.post('/change-password', authMiddleware, async (req, res) => {
     const passwordHash = bcrypt.hashSync(newPassword, 10);
     await db.updatePassword(user.id, passwordHash);
 
-    // updatePassword bumps token_version so every existing JWT is now invalid.
-    // Issue a fresh JWT so the caller's current session stays signed in (only
-    // their OTHER sessions are kicked out, which is the intent).
+    // updatePassword bumps token_version so every existing access AND refresh
+    // JWT is now invalid (both carry tokenVersion). Issue a fresh pair so the
+    // caller's current session stays signed in — only their OTHER sessions
+    // are kicked out, which is the intent.
     const refreshed = await db.findUserById(user.id);
-    const newJwt = generateToken(refreshed);
-    res.json({ message: 'Password changed successfully', token: newJwt });
+    const newAccessToken = generateAccessToken(refreshed);
+    const newRefreshToken = generateRefreshToken(refreshed);
+    res.json({
+      message: 'Password changed successfully',
+      token: newAccessToken,
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });

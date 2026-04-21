@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
-import { api, setApiToken } from '../api';
+import { api, setApiToken, setAuthTokens, getApiToken } from '../api';
 import StickyHeader from '../components/StickyHeader';
 import SplashScreen from '../components/SplashScreen';
 import { APP_VERSION } from '../version';
@@ -749,9 +749,11 @@ export default function Profile() {
                       method: 'POST',
                       body: JSON.stringify({ currentPassword, newPassword }),
                     });
-                    // Server bumps tokenVersion on password change; new JWT keeps
-                    // this session signed in while other sessions are kicked out.
-                    if (resp?.token) setApiToken(resp.token);
+                    // Server bumps tokenVersion on password change, invalidating
+                    // every existing access + refresh JWT. The response includes
+                    // a fresh pair so THIS session stays signed in while other
+                    // sessions are kicked out on their next request.
+                    if (resp) setAuthTokens(resp);
                     setPasswordChanged(true);
                     setCurrentPassword('');
                     setNewPassword('');
@@ -785,7 +787,9 @@ export default function Profile() {
           <button
             onClick={async () => {
               try {
-                const token = localStorage.getItem('replab_token');
+                // Use getApiToken() so we pick up the in-memory token after a
+                // mid-session refresh (localStorage may be a tick behind).
+                const token = getApiToken();
                 const res = await fetch('/auth/export-data', { headers: { Authorization: `Bearer ${token}` } });
                 const blob = await res.blob();
                 const url = URL.createObjectURL(blob);
