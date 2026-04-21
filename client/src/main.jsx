@@ -4,7 +4,11 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { AuthProvider } from './context/AuthContext';
+import { initAnalytics } from './utils/analytics';
 import './index.css';
+
+// Initialize Posthog analytics (no-op if VITE_POSTHOG_KEY is not set)
+initAnalytics();
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

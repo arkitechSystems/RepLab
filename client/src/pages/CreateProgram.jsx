@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
+import { track } from '../utils/analytics';
 import { useUnsavedGuard } from '../components/UnsavedGuard';
 
 export default function CreateProgram() {
@@ -23,9 +24,14 @@ export default function CreateProgram() {
 
     setSaving(true);
     try {
-      await api('/programs', {
+      const program = await api('/programs', {
         method: 'POST',
         body: JSON.stringify({ name: programName.trim(), description: description.trim() }),
+      });
+      track('program_created', {
+        programId: program?.id,
+        source: 'create_program_page',
+        hasDescription: description.trim().length > 0,
       });
       navigate('/');
     } catch (err) {
