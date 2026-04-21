@@ -4480,11 +4480,16 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
         </label>
       </div>
 
-      <div style="margin-top:12px;display:flex;align-items:center;justify-content:space-between;">
+      <div style="margin-top:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
         <div style="font-size:12px;color:rgba(255,255,255,0.3);" id="ex-count"></div>
-        <button onclick="document.getElementById('add-ex-form').style.display=document.getElementById('add-ex-form').style.display==='none'?'flex':'none'" style="padding:8px 16px;border-radius:10px;background:rgba(168,85,247,0.15);border:1px solid rgba(168,85,247,0.3);color:#a855f7;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;" onmouseover="this.style.background='rgba(168,85,247,0.25)'" onmouseout="this.style.background='rgba(168,85,247,0.15)'">
-          <span style="font-size:16px;line-height:1;">+</span> Add Exercise
-        </button>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <a href="/admin/exercise-library/export.xlsx" style="padding:8px 16px;border-radius:10px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);color:#22c55e;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;text-decoration:none;" onmouseover="this.style.background='rgba(34,197,94,0.25)'" onmouseout="this.style.background='rgba(34,197,94,0.15)'">
+            <span style="font-size:14px;line-height:1;">&#8595;</span> Download Excel
+          </a>
+          <button onclick="document.getElementById('add-ex-form').style.display=document.getElementById('add-ex-form').style.display==='none'?'flex':'none'" style="padding:8px 16px;border-radius:10px;background:rgba(168,85,247,0.15);border:1px solid rgba(168,85,247,0.3);color:#a855f7;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;" onmouseover="this.style.background='rgba(168,85,247,0.25)'" onmouseout="this.style.background='rgba(168,85,247,0.15)'">
+            <span style="font-size:16px;line-height:1;">+</span> Add Exercise
+          </button>
+        </div>
       </div>
 
       <div id="add-ex-form" style="display:none;margin-top:12px;padding:16px;border-radius:12px;border:1px solid rgba(168,85,247,0.3);background:rgba(168,85,247,0.05);gap:10px;flex-wrap:wrap;align-items:flex-end;">
@@ -4714,6 +4719,88 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
         <p style="color:#f87171;">Error loading exercises: ${err.message}</p>
       </div>
     `));
+  }
+});
+
+// GET /admin/exercise-library/export.xlsx — Download exercise master list as .xlsx
+router.get('/exercise-library/export.xlsx', adminAuth, async (req, res) => {
+  try {
+    const XLSX = await import('xlsx');
+    const { rows } = await pool.query(`
+      SELECT
+        e.id,
+        e.name,
+        e.muscle_group,
+        e.is_custom,
+        COALESCE(e.tags, '{}') AS tags,
+        COALESCE(e.video_id, '') AS video_id,
+        COALESCE(pb.pr_count, 0) AS pr_count
+      FROM exercises e
+      LEFT JOIN (
+        SELECT exercise_name, COUNT(*) AS pr_count
+        FROM personal_bests
+        GROUP BY exercise_name
+      ) pb ON LOWER(pb.exercise_name) = LOWER(e.name)
+      ORDER BY e.muscle_group ASC, e.name ASC
+    `);
+
+    const sheetRows = rows.map(r => ({
+      id: r.id,
+      name: r.name,
+      muscle_group: r.muscle_group || '',
+      is_custom: r.is_custom ? 'TRUE' : 'FALSE',
+      tags: Array.isArray(r.tags) ? r.tags.join('; ') : '',
+      video_id: r.video_id,
+      has_video: r.video_id ? 'YES' : 'NO',
+      pr_count: Number(r.pr_count) || 0,
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(sheetRows, {
+      header: ['id', 'name', 'muscle_group', 'is_custom', 'tags', 'video_id', 'has_video', 'pr_count'],
+    });
+    ws['!cols'] = [
+      { wch: 6 }, { wch: 40 }, { wch: 18 }, { wch: 10 },
+      { wch: 24 }, { wch: 14 }, { wch: 10 }, { wch: 10 },
+    ];
+    ws['!freeze'] = { xSplit: 0, ySplit: 1 };
+
+    // Sheet 2: orphan PR names — personal_bests.exercise_name with no matching row in exercises
+    const orphansR = await pool.query(`
+      SELECT
+        pb.exercise_name,
+        COUNT(*)::int AS pr_count,
+        COUNT(DISTINCT pb.user_id)::int AS distinct_users,
+        MAX(pb.achieved_at) AS latest_achieved_at
+      FROM personal_bests pb
+      LEFT JOIN exercises e ON LOWER(e.name) = LOWER(pb.exercise_name)
+      WHERE e.id IS NULL
+      GROUP BY pb.exercise_name
+      ORDER BY pr_count DESC, pb.exercise_name ASC
+    `);
+    const orphanRows = orphansR.rows.map(r => ({
+      exercise_name: r.exercise_name,
+      pr_count: r.pr_count,
+      distinct_users: r.distinct_users,
+      latest_achieved_at: r.latest_achieved_at ? new Date(r.latest_achieved_at).toISOString().slice(0, 10) : '',
+    }));
+    const ws2 = XLSX.utils.json_to_sheet(orphanRows, {
+      header: ['exercise_name', 'pr_count', 'distinct_users', 'latest_achieved_at'],
+    });
+    ws2['!cols'] = [{ wch: 40 }, { wch: 10 }, { wch: 14 }, { wch: 18 }];
+    ws2['!freeze'] = { xSplit: 0, ySplit: 1 };
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Exercises');
+    XLSX.utils.book_append_sheet(wb, ws2, 'Orphan PRs');
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+    const ts = new Date().toISOString().slice(0, 10);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="replab-exercise-library-${ts}.xlsx"`);
+    res.send(buf);
+  } catch (err) {
+    console.error('Exercise library export error:', err);
+    res.status(500).send('Export failed: ' + err.message);
   }
 });
 
