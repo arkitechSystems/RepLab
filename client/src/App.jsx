@@ -33,6 +33,7 @@ const ExerciseDetail = lazy(() => import('./pages/ExerciseDetail'));
 const TutorialWorkout = lazy(() => import('./pages/TutorialWorkout'));
 const Terms = lazy(() => import('./pages/Terms'));
 const Privacy = lazy(() => import('./pages/Privacy'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 // Test pages — only loaded by test users
 const Test = lazy(() => import('./pages/Test'));
@@ -70,7 +71,10 @@ function TestRoute({ children }) {
 
 function CatchAllRedirect() {
   const { isAuthenticated } = useAuth();
-  return <Navigate to={isAuthenticated ? '/' : '/login'} replace />;
+  // Unauthenticated users get bounced to login (preserves the original auth gate);
+  // authenticated users landing on an unknown path see the friendly 404.
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  return <NotFound />;
 }
 
 function PageTracker() {
