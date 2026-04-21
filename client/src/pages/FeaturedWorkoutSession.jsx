@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, Fragment } from 'react';
 import { api } from '../api';
 import { generateSummaryImage, composeShareText, dataURLtoBlob } from '../utils/workoutSummaryShare';
 import { exportProgramPDF } from '../utils/exportProgramPDF';
+import { track } from '../utils/analytics';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import StickyHeader from '../components/StickyHeader';
 
@@ -801,7 +802,15 @@ export default function FeaturedWorkoutSession() {
   }
 
   function startTimer() {
-    if (!timerStarted) setTimerStarted(true);
+    if (!timerStarted) {
+      setTimerStarted(true);
+      track('workout_session_started', {
+        program: 'wills_hypertrophy',
+        week: selectedWeek,
+        day: selectedDay,
+        source: 'featured',
+      });
+    }
   }
 
   // Floating timer drag handlers
@@ -1710,6 +1719,14 @@ export default function FeaturedWorkoutSession() {
                 clearInterval(timerRef.current);
                 setTimerFloating(false);
                 setShowSummary(true);
+                track('workout_session_completed', {
+                  program: 'wills_hypertrophy',
+                  week: selectedWeek,
+                  day: selectedDay,
+                  elapsedSeconds: elapsed,
+                  completedSets: completedSets.size,
+                  source: 'featured',
+                });
               }}
               className={`active:bg-white/10 transition-colors ${highlightNext ? 'animate-pulse' : ''}`}
               style={{

@@ -12,6 +12,7 @@ import UndoToast from '../components/UndoToast';
 import { iosFocusRef } from '../utils/iosFocus';
 import { getWeightSuggestion } from '../utils/weightSuggestion';
 import { beepCountdown, beepComplete, initAudio } from '../utils/sounds';
+import { track } from '../utils/analytics';
 
 // Build a unique key for each exercise card. The first occurrence of a name
 // keeps the plain name (backward-compatible with saved sessions). Subsequent
@@ -273,7 +274,12 @@ export default function WorkoutSession() {
     setTimerStarted(true);
     setElapsed(0);
     runTimerInterval(now);
-  }, [timerStarted, timerStorageKey, runTimerInterval]);
+    track('workout_session_started', {
+      templateId: Number(templateId) || undefined,
+      date,
+      source: 'standard',
+    });
+  }, [timerStarted, timerStorageKey, runTimerInterval, templateId, date]);
 
   const handleBeginWorkout = useCallback(() => {
     if (tutorialMode) {
@@ -1185,6 +1191,12 @@ export default function WorkoutSession() {
         clearTimerStorage();
         if (navigator.vibrate) navigator.vibrate([50, 30, 50, 30, 100]);
         setShowSummary(true);
+        track('workout_session_completed', {
+          templateId: Number(templateId) || undefined,
+          date,
+          elapsedSeconds: elapsed,
+          source: 'standard',
+        });
       }
     } catch (err) {
       alert('Failed to update: ' + err.message);

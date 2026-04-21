@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { api, setApiToken, getApiToken, setOnUnauthorized } from '../api';
+import { identify as analyticsIdentify, reset as analyticsReset, track } from '../utils/analytics';
 
 const AuthContext = createContext(null);
 
@@ -20,6 +21,7 @@ export function AuthProvider({ children }) {
     try { localStorage.removeItem('replab_user'); } catch {}
     setToken(null);
     setUser(null);
+    analyticsReset();
   }, []);
 
   // Register 401 handler — clears auth state without page reload
@@ -89,6 +91,13 @@ export function AuthProvider({ children }) {
       body: JSON.stringify({ identifier, password }),
     });
     applyAuth(data);
+    if (data?.user?.id != null) {
+      analyticsIdentify(data.user.id, {
+        email: data.user.email,
+        username: data.user.username,
+      });
+    }
+    track('login_completed', { userId: data?.user?.id });
     return data;
   }, []);
 
@@ -98,6 +107,13 @@ export function AuthProvider({ children }) {
       body: JSON.stringify({ identifier, password, ...extra }),
     });
     applyAuth(data);
+    if (data?.user?.id != null) {
+      analyticsIdentify(data.user.id, {
+        email: data.user.email,
+        username: data.user.username,
+      });
+    }
+    track('signup_completed', { userId: data?.user?.id });
     return data;
   }, []);
 

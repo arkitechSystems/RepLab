@@ -10,6 +10,7 @@ import { getTrainers, getTrainerById } from '../data/trainers';
 import { useAuth } from '../context/AuthContext';
 import { useTutorial } from '../context/TutorialContext';
 import UndoToast from '../components/UndoToast';
+import { track } from '../utils/analytics';
 
 const DAY_NAMES_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -2279,7 +2280,14 @@ export default function Workouts() {
         <div className="px-4 pb-4 space-y-3">
           {/* Will's Hypertrophy Program — Nike-style floating photo */}
           <div
-            onClick={() => navigate('/featured-session')}
+            onClick={() => {
+              track('featured_program_viewed', {
+                program: 'wills_hypertrophy',
+                enrolled: !!featuredEnrollment.enrolled,
+                source: 'hero_card',
+              });
+              navigate('/featured-session');
+            }}
             className="fade-slide-up cursor-pointer active:scale-[0.98] transition-transform"
             style={{ position: 'relative', overflow: 'hidden' }}
           >
