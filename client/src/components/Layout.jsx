@@ -66,6 +66,7 @@ export default function Layout() {
           <img src="/RepLabLogo3.jpg" alt="RepLab" className="h-7 rounded" />
           <button
             onClick={() => navigate('/profile')}
+            aria-label="Open profile"
             className="w-8 h-8 rounded-full overflow-hidden shrink-0 active:scale-90 transition-transform"
           >
             {user?.photoUrl ? (

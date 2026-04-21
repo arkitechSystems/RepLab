@@ -422,6 +422,7 @@ export default function Calendar() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => viewMode === 'week' ? setWeekOffset(w => w - 1) : setMonthOffset(m => m - 1)}
+            aria-label="Previous"
             className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center active:scale-90 transition-transform"
           >
             <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -438,6 +439,7 @@ export default function Calendar() {
           )}
           <button
             onClick={() => viewMode === 'week' ? setWeekOffset(w => w + 1) : setMonthOffset(m => m + 1)}
+            aria-label="Next"
             className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center active:scale-90 transition-transform"
           >
             <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -751,6 +753,7 @@ export default function Calendar() {
                   </div>
                   <button
                     onClick={() => setEditingDay(null)}
+                    aria-label="Close"
                     className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"
                   >
                     <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -776,6 +779,7 @@ export default function Calendar() {
                   {pickerSearch && (
                     <button
                       onClick={() => setPickerSearch('')}
+                      aria-label="Clear search"
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-wf-gray-500 active:text-white"
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -975,6 +979,7 @@ export default function Calendar() {
                 </div>
                 <button
                   onClick={() => setRestDayPrompt(false)}
+                  aria-label="Close"
                   className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"
                 >
                   <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1111,6 +1116,7 @@ export default function Calendar() {
                 </div>
                 <button
                   onClick={cancelCopy}
+                  aria-label="Cancel copy"
                   className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"
                 >
                   <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1131,6 +1137,7 @@ export default function Calendar() {
                   <div className="flex items-center justify-between mb-3">
                     <button
                       onClick={() => setCopyWeekOffset(prev => prev - 1)}
+                      aria-label="Previous week"
                       className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center active:bg-white/20 transition-colors"
                     >
                       <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1142,6 +1149,7 @@ export default function Calendar() {
                     </span>
                     <button
                       onClick={() => setCopyWeekOffset(prev => prev + 1)}
+                      aria-label="Next week"
                       className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center active:bg-white/20 transition-colors"
                     >
                       <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

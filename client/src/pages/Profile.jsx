@@ -228,6 +228,7 @@ export default function Profile() {
           <div className="flex items-center gap-4 mb-6">
             <button
               onClick={() => setShowPhotoMenu(true)}
+              aria-label="Change profile photo"
               className="relative w-16 h-16 rounded-full overflow-hidden shrink-0 active:scale-95 transition-transform"
             >
               {user?.photoUrl ? (
@@ -410,6 +411,7 @@ export default function Profile() {
             </div>
             <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
               className={`relative w-12 h-7 rounded-full transition-colors ${theme === 'light' ? 'bg-wf-red' : 'bg-white/15'}`}
             >
               <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${theme === 'light' ? 'translate-x-5' : 'translate-x-0.5'}`} />

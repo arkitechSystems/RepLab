@@ -242,6 +242,7 @@ export default function ExerciseAnatomy({ figure, customSvg }) {
         {/* Play/Pause button */}
         <button
           onClick={() => setPlaying(!playing)}
+          aria-label={playing ? 'Pause' : 'Play'}
           className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-black/60 border border-white/10 flex items-center justify-center text-wf-gray-400 hover:text-white active:scale-90 transition-all"
         >
           {playing ? (

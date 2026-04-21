@@ -69,6 +69,7 @@ export default function PBCelebration({ prs, onDismiss }) {
               </div>
               <button
                 onClick={() => { setDismissing(true); setTimeout(onDismiss, 300); }}
+                aria-label="Dismiss"
                 className="w-7 h-7 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0 active:bg-amber-500/40 transition-colors"
               >
                 <svg className="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
