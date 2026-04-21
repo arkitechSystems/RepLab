@@ -33,29 +33,20 @@ function trainerLoginPage(error) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>RepLab Trainer — Login</title>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     ${DASHBOARD_CSS}
+    /* Login page overrides */
     body { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 0; }
-    .login-card { position: relative; z-index: 1; width: 100%; max-width: 380px; padding: 0 24px; }
     .login-logo { font-size: 36px; font-weight: 900; letter-spacing: 2px; text-align: center; margin-bottom: 8px; }
     .login-logo span { color: #ef4444; }
-    .subtitle { text-align: center; color: rgba(255,255,255,0.4); font-size: 14px; margin-bottom: 32px; }
-    .btn-login {
-      width: 100%; padding: 14px; border: none; border-radius: 12px; font-size: 15px; font-weight: 700;
-      font-family: inherit; cursor: pointer; color: #fff;
-      background: linear-gradient(135deg, #DC2626, #EF4444, #F97316);
-      background-size: 200% 200%; animation: gradShift 3s ease infinite;
-      box-shadow: 0 4px 20px rgba(239,68,68,0.3); transition: all 0.2s;
-    }
-    .btn-login:hover { box-shadow: 0 6px 30px rgba(239,68,68,0.45); transform: translateY(-1px); }
   </style>
 </head>
 <body>
   <div class="login-card">
     <div class="login-logo">REP<span>LAB</span></div>
-    <p class="subtitle">Trainer Dashboard</p>
-    <div class="glass" style="padding:28px;">
+    <div class="eyebrow" style="display:block;text-align:center;margin-bottom:24px;">Trainer / Sign In</div>
+    <div class="glass" style="padding:28px;border-radius:20px;">
       ${error ? `<div class="error">${error}</div>` : ''}
       <form method="POST" action="/trainer/login">
         <div class="field">
@@ -81,7 +72,7 @@ function trainerPage(title, body, trainer) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>RepLab Trainer — ${title}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>${DASHBOARD_CSS}</style>
 </head>
 <body>
@@ -90,7 +81,7 @@ function trainerPage(title, body, trainer) {
   <div style="display:flex;align-items:center;gap:12px;">
     <span style="color:rgba(255,255,255,0.4);font-size:12px;font-weight:600;">${trainer ? esc(trainer.firstName || trainer.email) : 'Trainer'}</span>
     <a href="/trainer" style="color:rgba(255,255,255,0.5);font-size:12px;font-weight:600;text-decoration:none;padding:8px 14px;border-radius:8px;transition:all 0.2s;" onmouseover="this.style.color='#fff';this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.color='rgba(255,255,255,0.5)';this.style.background='none'">Home</a>
-    <a href="/trainer/logout" style="color:#ef4444;font-size:12px;font-weight:600;text-decoration:none;padding:8px 14px;border-radius:8px;transition:all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.1)'" onmouseout="this.style.background='none'">Logout</a>
+    <a href="/trainer/logout" style="color:rgba(255,255,255,0.5);font-size:12px;font-weight:600;text-decoration:none;padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);transition:all 0.2s;" onmouseover="this.style.color='#fff';this.style.background='rgba(255,255,255,0.08)';this.style.borderColor='rgba(255,255,255,0.25)'" onmouseout="this.style.color='rgba(255,255,255,0.5)';this.style.background='none';this.style.borderColor='rgba(255,255,255,0.12)'">Logout</a>
   </div>
 </nav>
 <div style="height:56px;"></div>
@@ -128,6 +119,7 @@ function trainerPage(title, body, trainer) {
 <script>${SIDEBAR_JS}</script>
 <div class="main-with-sidebar">
 <div class="container">
+<div class="eyebrow" style="display:block;margin-bottom:14px;">Trainer / ${title}</div>
 ${body}
 </div>
 </div>
@@ -218,7 +210,7 @@ router.get('/guide', (req, res) => {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>RepLab — User Guide</title>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Space Grotesk', -apple-system, sans-serif; background: #000; color: #fff; -webkit-font-smoothing: antialiased; }
