@@ -3698,6 +3698,53 @@ export default function Workouts() {
               </div>
             </div>
 
+            {/* Personal Records ticker — ported from NewHomepage */}
+            {bodyPartPRs.length > 0 && (() => {
+              const items = bodyPartPRs.map((pr) => {
+                const muscle = (pr.muscle_group || 'PR').toUpperCase();
+                const w = Number(pr.best_weight);
+                const reps = pr.best_reps;
+                return `${muscle} PR — ${pr.exercise_name} — ${w} LBS × ${reps}`;
+              });
+              return (
+                <div
+                  className="fade-slide-up"
+                  style={{
+                    position: 'relative',
+                    overflow: 'hidden',
+                    borderRadius: '2px',
+                    background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                    boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+                  }}
+                >
+                  <div style={{ padding: '16px', overflow: 'hidden' }}>
+                    <p
+                      className="text-[9px] uppercase font-light mb-3"
+                      style={{ color: 'rgba(255,255,255,0.25)', letterSpacing: '0.25em' }}
+                    >
+                      Personal Records
+                    </p>
+                    <div style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                      <div style={{ display: 'inline-block', animation: 'prTicker 20s linear infinite', fontSize: '12px' }}>
+                        {items.map((pr, i) => (
+                          <span key={i}>
+                            <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 300 }}>{pr}</span>
+                            <span style={{ color: 'rgba(255,255,255,0.1)', margin: '0 16px' }}>|</span>
+                          </span>
+                        ))}
+                        {items.map((pr, i) => (
+                          <span key={`d-${i}`}>
+                            <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 300 }}>{pr}</span>
+                            <span style={{ color: 'rgba(255,255,255,0.1)', margin: '0 16px' }}>|</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Browse Workout Library card — Organic Blob Style */}
             <div
               data-tutorial="browse-library"
@@ -3816,7 +3863,8 @@ export default function Workouts() {
               </div>
             </div>
 
-            {/* Tutorial card */}
+            {/* ----- Original Tutorial card (glass style) — kept so you can swap back ----- */}
+            {/*
             <div
               onClick={() => startTutorial(null)}
               className="w-full text-left glass-card rounded-2xl overflow-hidden fade-slide-up cursor-pointer active:scale-[0.98] transition-transform"
@@ -3835,6 +3883,55 @@ export default function Workouts() {
                     <p className="text-xs text-wf-gray-400 mt-1">Step-by-step walkthrough to pick your first program, schedule workouts, and track your progress.</p>
                   </div>
                   <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            */}
+
+            {/* Tutorial card — Nike style */}
+            <div
+              onClick={() => startTutorial(null)}
+              className="cursor-pointer active:scale-[0.98] transition-transform fade-slide-up"
+              style={{
+                position: 'relative',
+                overflow: 'hidden',
+                borderRadius: '2px',
+                background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+                animationDelay: '240ms',
+              }}
+            >
+              {/* Cyan accent bar */}
+              <div style={{ height: '3px', background: 'linear-gradient(90deg, #06b6d4, rgba(6,182,212,0.5), transparent)' }} />
+
+              {/* Cyan glow spotlight */}
+              <div style={{
+                position: 'absolute',
+                top: '-30%', right: '-20%',
+                width: '70%', height: '160%',
+                background: 'radial-gradient(circle, rgba(6,182,212,0.10) 0%, transparent 60%)',
+                filter: 'blur(40px)',
+                pointerEvents: 'none',
+              }} />
+
+              <div style={{ position: 'relative', padding: '24px' }}>
+                <p className="text-[10px] uppercase font-light mb-2" style={{ color: 'rgba(6,182,212,0.7)', letterSpacing: '0.3em' }}>
+                  Get Started
+                </p>
+                <h3
+                  className="text-[28px] font-black text-white leading-[0.9] tracking-tight"
+                  style={{ fontFamily: 'system-ui', textShadow: '0 2px 20px rgba(0,0,0,0.5)' }}
+                >
+                  TUTORIAL
+                </h3>
+                <p className="text-[11px] text-white/40 font-light mt-3 max-w-[300px] leading-relaxed">
+                  Step-by-step walkthrough to pick your first program, schedule workouts, and track your progress.
+                </p>
+                <div className="flex items-center gap-1.5 mt-4">
+                  <span className="text-[10px] text-white/40 uppercase font-medium" style={{ letterSpacing: '0.2em' }}>Begin</span>
+                  <svg className="w-3 h-3 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                   </svg>
                 </div>
