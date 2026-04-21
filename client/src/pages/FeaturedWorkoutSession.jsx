@@ -632,17 +632,85 @@ function RestTimer({ duration, isActive }) {
 }
 
 function VideoLoop({ src }) {
+  const videoRef = useRef(null);
+  const [needsTap, setNeedsTap] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setNeedsTap(false);
+    setFailed(false);
+    const el = videoRef.current;
+    if (!el) return;
+    // Try to start playback. iOS Low Power Mode and some mobile browsers will
+    // reject the promise even for muted+playsInline videos — fall back to a
+    // tap-to-play overlay instead of leaving the user staring at a black box.
+    const attempt = el.play();
+    if (attempt && typeof attempt.then === 'function') {
+      attempt.catch(() => setNeedsTap(true));
+    }
+  }, [src]);
+
+  function handleTap() {
+    const el = videoRef.current;
+    if (!el) return;
+    el.muted = true;
+    el.play().then(() => setNeedsTap(false)).catch(() => setNeedsTap(true));
+  }
+
   return (
-    <div style={{ borderRadius: '16px', overflow: 'hidden', marginBottom: '16px' }}>
+    <div
+      style={{ position: 'relative', borderRadius: '16px', overflow: 'hidden', marginBottom: '16px', background: '#0a0a0a' }}
+      onClick={needsTap ? handleTap : undefined}
+    >
       <video
-        src={src}
+        ref={videoRef}
         className="w-full aspect-video object-cover"
         autoPlay
         loop
         muted
         playsInline
+        webkit-playsinline="true"
         preload="auto"
-      />
+        onCanPlay={() => setFailed(false)}
+        onError={() => setFailed(true)}
+      >
+        <source src={src} type="video/mp4" />
+      </video>
+
+      {needsTap && !failed && (
+        <div style={{
+          position: 'absolute', inset: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(0,0,0,0.45)', cursor: 'pointer',
+        }}>
+          <div style={{
+            width: 64, height: 64, borderRadius: '50%',
+            background: 'rgba(255,255,255,0.9)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+          }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="#0a0a0a">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </div>
+        </div>
+      )}
+
+      {failed && (
+        <div style={{
+          position: 'absolute', inset: 0,
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(10,10,10,0.9)', color: 'rgba(255,255,255,0.5)',
+          fontSize: 12, letterSpacing: '0.15em', textTransform: 'uppercase',
+          gap: 8, padding: 16, textAlign: 'center',
+        }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M4.93 19h14.14c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.2 16c-.77 1.33.19 3 1.73 3z"/>
+          </svg>
+          <div>Video unavailable</div>
+        </div>
+      )}
     </div>
   );
 }
