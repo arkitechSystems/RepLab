@@ -3745,51 +3745,45 @@ export default function Workouts() {
               );
             })()}
 
-            {/* Browse Workout Library card — Organic Blob Style */}
+            {/* Browse Workout Library card — Nike style */}
             <div
               data-tutorial="browse-library"
               onClick={() => { setSelectedGroup('browse'); completeTutorialAction('browse-library-tap'); }}
               className="w-full text-left active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
               style={{
                 animationDelay: '0ms',
-                background: 'linear-gradient(135deg, #0a0a0a 0%, #1a0808 50%, #0a0606 100%)',
-                borderRadius: '24px',
-                padding: '28px 24px',
+                background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                borderRadius: '2px',
                 position: 'relative',
                 overflow: 'hidden',
-                ...CARD_BORDER_STYLE,
+                boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
               }}
             >
-              {/* Animated blob */}
-              <div style={{
-                position: 'absolute',
-                top: '50%',
-                left: '30%',
-                width: '160px',
-                height: '160px',
-                transform: `translate(-50%, -50%) scale(${0.8 + Math.sin((streakPhase + 50) * 0.063) * 0.2})`,
-                borderRadius: `${45 + Math.sin((streakPhase + 50) * 0.04) * 15}% ${55 - Math.sin((streakPhase + 50) * 0.04) * 15}% ${50 + Math.cos((streakPhase + 50) * 0.05) * 10}% ${50 - Math.cos((streakPhase + 50) * 0.05) * 10}%`,
-                background: 'radial-gradient(circle, rgba(239,68,68,0.4) 0%, rgba(239,68,68,0.2) 50%, transparent 70%)',
-                filter: 'blur(20px)',
-                transition: 'all 0.08s linear',
-              }} />
-              <div style={{ position: 'relative', zIndex: 1 }}>
-                <div style={{ fontSize: '15px', fontWeight: 700, color: 'white', letterSpacing: '2px', textTransform: 'uppercase', paddingBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.06)', textShadow: '0 0 8px rgba(255,255,255,0.05)' }}>Browse Workout Library</div>
+              {/* Red accent line */}
+              <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25))' }} />
+              {/* Ambient spotlight */}
+              <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: '16px' }}>
+              <div className="relative p-6">
+                <p className="text-[10px] text-white/30 uppercase font-light mb-2" style={{ letterSpacing: '0.3em' }}>Browse</p>
+                <h2 className="text-[28px] font-black text-white tracking-tight mb-1" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>
+                  WORKOUT<br/>LIBRARY
+                </h2>
+
+                <div className="mt-5 flex items-end justify-between gap-4">
                   <div>
-                    <div style={{ fontSize: '40px', fontWeight: 200, color: 'white', letterSpacing: '-2px', lineHeight: 1, fontFamily: 'system-ui' }}>
+                    <div className="text-[44px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.9' }}>
                       {browsePrograms.length}
                     </div>
-                    <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '4px', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600 }}>
+                    <div className="text-[10px] text-white/30 uppercase font-semibold mt-1" style={{ letterSpacing: '0.3em' }}>
                       Programs
                     </div>
                   </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: '4px 8px', marginTop: '4px', flex: 1, marginLeft: '16px' }}>
+                  <div className="flex flex-wrap justify-end gap-x-2 gap-y-1 pb-1 flex-1">
                     {[...new Set(browsePrograms.map(p => p.programType).filter(t => t && t !== 'other'))].map((type, i, arr) => (
                       <span key={type}>
-                        <span style={{ fontSize: '10px', fontWeight: 600, color: 'rgba(239,68,68,0.6)', letterSpacing: '3px', textTransform: 'uppercase' }}>{type}</span>
-                        {i < arr.length - 1 && <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.2)', margin: '0 4px' }}>·</span>}
+                        <span className="text-[10px] font-bold uppercase" style={{ color: 'rgba(239,68,68,0.7)', letterSpacing: '0.25em' }}>{type}</span>
+                        {i < arr.length - 1 && <span className="text-[10px] text-white/20 mx-1">·</span>}
                       </span>
                     ))}
                   </div>
