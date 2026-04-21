@@ -495,7 +495,8 @@ function ScoreboardTimerBasic({ duration }) {
 //   (2) pulsing glow when ≤10s left (driven by halo filter ramp)
 //   (3) heartbeat scale bump on each whole-second crossing in final 3s
 //   (4) tick line sweep during final 10s
-//   (5) conic-gradient progress ring behind the number
+//   (5) SVG perimeter sweep that traces the card's rounded-rectangle border;
+//       at progress=1 the full perimeter glows in the accent color
 //   (6) number flick animation on whole-second crossings
 //   (8) done flash + "TIME" label when countdown hits zero
 //   (9) shimmer band sweeping the progress bar while running
@@ -507,10 +508,26 @@ function ScoreboardTimer({ duration }) {
   const [completed, setCompleted] = useState(false);
   const [showDoneFlash, setShowDoneFlash] = useState(false);
   const [heartbeat, setHeartbeat] = useState(0);
+  const [size, setSize] = useState({ w: 0, h: 0 });
   const rafRef = useRef(null);
   const startedAtRef = useRef(null);
   const baseElapsedRef = useRef(0);
   const lastWholeSecRef = useRef(null);
+  const haloRef = useRef(null);
+
+  // Measure the card so the SVG perimeter path matches pixel-for-pixel.
+  // Use the halo wrapper (stable — never remounts) instead of the inner card
+  // which re-keys on every heartbeat.
+  useEffect(() => {
+    const el = haloRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setSize({ w: Math.round(width), h: Math.round(height) });
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (!running) return;
@@ -589,16 +606,43 @@ function ScoreboardTimer({ duration }) {
   const accentRGB = `${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}`;
   const accent = (a = 1) => `rgba(${accentRGB}, ${a})`;
 
+  // Perimeter path geometry — matches the card's 20px rounded corners.
+  const cornerR = 20;
+  const stroke = 3;
+  const inset = stroke / 2;
+  const { w, h } = size;
+  const pathReady = w > 2 * cornerR && h > 2 * cornerR;
+  const perimeter = pathReady
+    ? 2 * (w - 2 * inset - 2 * cornerR) + 2 * (h - 2 * inset - 2 * cornerR) + 2 * Math.PI * cornerR
+    : 0;
+  const filled = perimeter * progress;
+  // Start at top-middle and trace clockwise so progress fills both sides symmetrically-ish.
+  const pathD = pathReady ? [
+    `M ${w / 2} ${inset}`,
+    `H ${w - inset - cornerR}`,
+    `A ${cornerR} ${cornerR} 0 0 1 ${w - inset} ${inset + cornerR}`,
+    `V ${h - inset - cornerR}`,
+    `A ${cornerR} ${cornerR} 0 0 1 ${w - inset - cornerR} ${h - inset}`,
+    `H ${inset + cornerR}`,
+    `A ${cornerR} ${cornerR} 0 0 1 ${inset} ${h - inset - cornerR}`,
+    `V ${inset + cornerR}`,
+    `A ${cornerR} ${cornerR} 0 0 1 ${inset + cornerR} ${inset}`,
+    `H ${w / 2}`,
+  ].join(' ') : '';
+
   return (
     <div style={{ marginBottom: '16px' }}>
       {/* (10) Ambient halo — glow ramps up while running, stronger when urgent. */}
-      <div style={{
-        position: 'relative',
-        transition: 'filter 0.5s ease',
-        filter: running
-          ? `drop-shadow(0 0 ${isUrgent ? 36 : 18}px ${accent(isUrgent ? 0.55 : 0.22)})`
-          : 'drop-shadow(0 0 0 rgba(0,0,0,0))',
-      }}>
+      <div
+        ref={haloRef}
+        style={{
+          position: 'relative',
+          transition: 'filter 0.5s ease',
+          filter: running
+            ? `drop-shadow(0 0 ${isUrgent ? 36 : 18}px ${accent(isUrgent ? 0.55 : 0.22)})`
+            : 'drop-shadow(0 0 0 rgba(0,0,0,0))',
+        }}
+      >
         {/* (3) Heartbeat — key forces animation restart on each whole-second in final 3s. */}
         <div
           key={`hb-${heartbeat}`}
@@ -614,21 +658,41 @@ function ScoreboardTimer({ duration }) {
             animation: isFinal3 ? 'timerHeartbeat 1s ease-out' : 'none',
           }}
         >
-          {/* (5) Conic ring — sweeps with progress behind the number. */}
-          <div style={{
-            position: 'absolute',
-            top: '50%', left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: '240px', height: '240px',
-            borderRadius: '50%',
-            background: `conic-gradient(from -90deg, ${accent(1)} ${progress * 360}deg, rgba(255,255,255,0.03) 0deg)`,
-            mask: 'radial-gradient(circle, transparent 104px, black 106px, black 120px, transparent 122px)',
-            WebkitMask: 'radial-gradient(circle, transparent 104px, black 106px, black 120px, transparent 122px)',
-            opacity: 0.5,
-            pointerEvents: 'none',
-            transition: 'opacity 0.2s linear',
-            filter: isUrgent ? `drop-shadow(0 0 6px ${accent(0.7)})` : 'none',
-          }} />
+          {/* (5) Perimeter sweep — stroke traces the card's rounded-rect border,
+              filling clockwise from top-center as time elapses. At progress=1
+              the entire perimeter renders in the accent color. */}
+          {pathReady && (
+            <svg
+              style={{
+                position: 'absolute',
+                top: 0, left: 0,
+                width: '100%', height: '100%',
+                pointerEvents: 'none',
+                zIndex: 1,
+              }}
+              viewBox={`0 0 ${w} ${h}`}
+              preserveAspectRatio="none"
+            >
+              <path
+                d={pathD}
+                fill="none"
+                stroke="rgba(255,255,255,0.06)"
+                strokeWidth={stroke}
+              />
+              <path
+                d={pathD}
+                fill="none"
+                stroke={accent(1)}
+                strokeWidth={stroke}
+                strokeDasharray={`${filled} ${Math.max(0, perimeter - filled)}`}
+                strokeLinecap="butt"
+                style={{
+                  filter: isUrgent || completed ? `drop-shadow(0 0 8px ${accent(0.7)})` : 'none',
+                  transition: 'stroke 0.2s linear',
+                }}
+              />
+            </svg>
+          )}
 
           {/* (4) Tick sweep — vertical line moves across the card each second during urgency. */}
           {isUrgent && (
@@ -674,7 +738,7 @@ function ScoreboardTimer({ duration }) {
               marginTop: '8px',
               transition: 'color 0.2s linear',
             }}>
-              {completed ? "That's Time" : 'Minutes Remaining'}
+              {completed ? "That's Time" : 'Time Remaining'}
             </div>
             {/* Progress bar with (9) shimmer overlay. */}
             <div style={{
@@ -816,136 +880,23 @@ function RestTimer({ duration, isActive }) {
   );
 }
 
-// Human-readable labels for HTMLMediaElement.error.code values.
-const MEDIA_ERROR_LABELS = {
-  1: 'Load aborted',
-  2: 'Network error',
-  3: 'Decode error (codec unsupported)',
-  4: 'Format not supported',
-};
-
+// Minimal, known-working VideoLoop. Keep this simple — prior iterations with
+// proactive play() + source-type-hint + onError overlays fought Chrome's async
+// loading and latched "Video unavailable" before autoplay ever got a chance.
+// If the file at `src` is reachable and autoplay is allowed, the native video
+// element handles everything on its own with autoPlay + muted + playsInline.
 function VideoLoop({ src }) {
-  const videoRef = useRef(null);
-  const [needsTap, setNeedsTap] = useState(false);
-  const [errorInfo, setErrorInfo] = useState(null);
-  // Safari can be picky about the <source type="video/mp4"> hint if the server
-  // returns an odd Content-Type. On retry we drop the hint and bind src directly.
-  const [useTypeHint, setUseTypeHint] = useState(true);
-  const [reloadKey, setReloadKey] = useState(0);
-
-  useEffect(() => {
-    setNeedsTap(false);
-    setErrorInfo(null);
-    const el = videoRef.current;
-    if (!el) return;
-    const attempt = el.play();
-    if (attempt && typeof attempt.then === 'function') {
-      attempt.catch(() => setNeedsTap(true));
-    }
-  }, [src, reloadKey, useTypeHint]);
-
-  function handleTap() {
-    const el = videoRef.current;
-    if (!el) return;
-    el.muted = true;
-    el.play().then(() => setNeedsTap(false)).catch(() => setNeedsTap(true));
-  }
-
-  function handleError() {
-    const el = videoRef.current;
-    const code = el?.error?.code;
-    const message = el?.error?.message;
-    // Log so we can dig in via Safari Web Inspector if needed.
-    // eslint-disable-next-line no-console
-    console.warn('[VideoLoop] load failed', { src, code, message });
-    setErrorInfo({ code, message });
-  }
-
-  function handleRetry() {
-    // First retry: drop the type hint and force a fresh load.
-    // Subsequent retries: just reload.
-    if (useTypeHint) {
-      setUseTypeHint(false);
-    } else {
-      setReloadKey((k) => k + 1);
-    }
-    setErrorInfo(null);
-    // Kick the element itself — React won't call .load() for us.
-    const el = videoRef.current;
-    if (el) {
-      try { el.load(); } catch {}
-    }
-  }
-
   return (
-    <div
-      style={{ position: 'relative', borderRadius: '16px', overflow: 'hidden', marginBottom: '16px', background: '#0a0a0a' }}
-      onClick={needsTap ? handleTap : undefined}
-    >
+    <div style={{ borderRadius: '16px', overflow: 'hidden', marginBottom: '16px' }}>
       <video
-        ref={videoRef}
-        key={`${src}-${useTypeHint ? 'typed' : 'raw'}-${reloadKey}`}
-        src={useTypeHint ? undefined : src}
+        src={src}
         className="w-full aspect-video object-cover"
         autoPlay
         loop
         muted
         playsInline
-        webkit-playsinline="true"
         preload="auto"
-        onCanPlay={() => setErrorInfo(null)}
-        onError={handleError}
-      >
-        {useTypeHint && <source src={src} type="video/mp4" />}
-      </video>
-
-      {needsTap && !errorInfo && (
-        <div style={{
-          position: 'absolute', inset: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(0,0,0,0.45)', cursor: 'pointer',
-        }}>
-          <div style={{
-            width: 64, height: 64, borderRadius: '50%',
-            background: 'rgba(255,255,255,0.9)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-          }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="#0a0a0a">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          </div>
-        </div>
-      )}
-
-      {errorInfo && (
-        <div style={{
-          position: 'absolute', inset: 0,
-          display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(10,10,10,0.92)', color: 'rgba(255,255,255,0.65)',
-          gap: 10, padding: 16, textAlign: 'center',
-        }}>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M4.93 19h14.14c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.2 16c-.77 1.33.19 3 1.73 3z"/>
-          </svg>
-          <div style={{ fontSize: 12, letterSpacing: '0.15em', textTransform: 'uppercase' }}>
-            {MEDIA_ERROR_LABELS[errorInfo.code] || 'Video unavailable'}
-          </div>
-          <button
-            onClick={(e) => { e.stopPropagation(); handleRetry(); }}
-            style={{
-              marginTop: 4, padding: '8px 18px', borderRadius: 100,
-              border: '1px solid rgba(255,255,255,0.3)',
-              background: 'rgba(255,255,255,0.08)', color: 'white',
-              fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase',
-              fontWeight: 700, cursor: 'pointer',
-            }}
-          >
-            Retry
-          </button>
-        </div>
-      )}
+      />
     </div>
   );
 }

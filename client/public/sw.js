@@ -1,4 +1,4 @@
-const CACHE_NAME = 'replab-v3';
+const CACHE_NAME = 'replab-v4';
 const SHELL_ASSETS = ['/', '/index.html'];
 
 // API paths to cache (GET) for offline use
@@ -38,6 +38,18 @@ self.addEventListener('fetch', (event) => {
   // Skip non-http(s) requests
   if (!url.protocol.startsWith('http')) return;
 
+  // Bypass the SW for video requests. Safari loads <video> via HTTP byte-range
+  // (206 Partial Content) requests and the SW's cache-first strategy doesn't
+  // preserve Range semantics — the browser silently refuses to play the result.
+  // Let the network handle these directly.
+  if (event.request.destination === 'video') return;
+  if (url.pathname.match(/\.(mp4|webm|mov|m4v|m3u8|ts)$/i)) return;
+
+  // Bypass the SW for any cross-origin request. We only want to cache our own
+  // shell + API; intercepting CDN traffic (e.g. replab-videos.onrender.com)
+  // has no benefit and breaks media playback on strict browsers.
+  if (url.origin !== self.location.origin) return;
+
   // Non-GET: try network, queue if offline
   if (event.request.method !== 'GET') {
     const shouldQueue = QUEUEABLE_API.some((p) => url.pathname.startsWith(p));
@@ -60,8 +72,8 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets: cache-first
-  if (url.pathname.match(/\.(js|css|png|jpg|svg|woff2?|mp4)$/)) {
+  // Static assets: cache-first (video extensions dropped — handled above)
+  if (url.pathname.match(/\.(js|css|png|jpg|svg|woff2?)$/)) {
     event.respondWith(
       caches.match(event.request).then((cached) =>
         cached ||

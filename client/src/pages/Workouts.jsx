@@ -3759,39 +3759,46 @@ export default function Workouts() {
                 boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
               }}
             >
-              {/* Red accent line */}
-              <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25))' }} />
-              {/* Ambient spotlight */}
-              <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+              {/* Green accent line (matches "Leg Day" in NikeTestHomepage PROGRAMS carousel) */}
+              <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #22c55e, rgba(34,197,94,0.25))' }} />
+              {/* Ambient green spotlight */}
+              <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(34,197,94,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
 
-              <div className="relative p-6">
-                <p className="text-[10px] text-white/30 uppercase font-light mb-2" style={{ letterSpacing: '0.3em' }}>Browse</p>
-                <h2 className="text-[28px] font-black text-white tracking-tight mb-1" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>
-                  WORKOUT<br/>LIBRARY
-                </h2>
+              {/* Header row — "Browse Workout Library" spans as a single tracked uppercase line */}
+              <div className="relative px-6 pt-5 pb-4 border-b border-white/10">
+                <p className="text-[11px] text-white/40 uppercase font-light" style={{ letterSpacing: '0.3em' }}>
+                  Browse Workout Library
+                </p>
+              </div>
 
-                <div className="mt-5 flex items-end justify-between gap-4">
-                  <div>
-                    <div className="text-[44px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.9' }}>
-                      {browsePrograms.length}
-                    </div>
-                    <div className="text-[10px] text-white/30 uppercase font-semibold mt-1" style={{ letterSpacing: '0.3em' }}>
-                      Programs
-                    </div>
+              <div className="relative px-6 py-5 flex items-center justify-between gap-5">
+                <div>
+                  <div className="text-[44px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.9' }}>
+                    {browsePrograms.length}
                   </div>
-                  <div className="flex flex-wrap justify-end gap-x-2 gap-y-1 pb-1 flex-1">
-                    {[...new Set(browsePrograms.map(p => p.programType).filter(t => t && t !== 'other'))].map((type, i, arr) => (
-                      <span key={type}>
-                        <span className="text-[10px] font-bold uppercase" style={{ color: 'rgba(239,68,68,0.7)', letterSpacing: '0.25em' }}>{type}</span>
-                        {i < arr.length - 1 && <span className="text-[10px] text-white/20 mx-1">·</span>}
-                      </span>
-                    ))}
+                  <div className="text-[10px] text-white/30 uppercase font-semibold mt-1" style={{ letterSpacing: '0.3em' }}>
+                    Programs
                   </div>
+                </div>
+                {/* Fixed 2x2 grid in the user's preferred order:
+                    Hypertrophy | Strength
+                    Hybrid      | Conditioning */}
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 flex-1 justify-items-end text-right">
+                  {['Hypertrophy', 'Strength', 'Hybrid', 'Conditioning'].map((type) => (
+                    <span
+                      key={type}
+                      className="text-[10px] font-bold uppercase whitespace-nowrap"
+                      style={{ color: 'rgba(34,197,94,0.75)', letterSpacing: '0.25em' }}
+                    >
+                      {type}
+                    </span>
+                  ))}
                 </div>
               </div>
             </div>
 
-            {/* My Workouts card — Organic Blob Style (matches Browse Library) */}
+            {/* ----- Original My Workouts card (Organic Blob style) — kept so you can swap back ----- */}
+            {/*
             <div
               data-tutorial="my-workouts"
               onClick={() => setSelectedGroup('my')}
@@ -3806,53 +3813,75 @@ export default function Workouts() {
                 ...CARD_BORDER_STYLE,
               }}
             >
-              {/* Animated blob */}
-              <div style={{
-                position: 'absolute',
-                top: '50%',
-                left: '70%',
-                width: '160px',
-                height: '160px',
+              <div style={{ position: 'absolute', top: '50%', left: '70%', width: '160px', height: '160px',
                 transform: `translate(-50%, -50%) scale(${0.8 + Math.sin((streakPhase + 25) * 0.063) * 0.2})`,
                 borderRadius: `${45 + Math.sin((streakPhase + 25) * 0.04) * 15}% ${55 - Math.sin((streakPhase + 25) * 0.04) * 15}% ${50 + Math.cos((streakPhase + 25) * 0.05) * 10}% ${50 - Math.cos((streakPhase + 25) * 0.05) * 10}%`,
                 background: 'radial-gradient(circle, rgba(239,68,68,0.4) 0%, rgba(239,68,68,0.2) 50%, transparent 70%)',
-                filter: 'blur(20px)',
-                transition: 'all 0.08s linear',
-              }} />
+                filter: 'blur(20px)', transition: 'all 0.08s linear' }} />
               <div style={{ position: 'relative', zIndex: 1 }}>
-                <div style={{ fontSize: '15px', fontWeight: 700, color: 'white', letterSpacing: '2px', textTransform: 'uppercase', paddingBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.06)', textShadow: '0 0 8px rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ fontSize: '15px', fontWeight: 700, color: 'white', letterSpacing: '2px', textTransform: 'uppercase', paddingBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   My Workouts
-                  {pendingShares.length > 0 && (
-                    <span className="bg-blue-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{pendingShares.length}</span>
-                  )}
                 </div>
-
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: '16px' }}>
                   <div>
-                    <div style={{ fontSize: '40px', fontWeight: 200, color: 'white', letterSpacing: '-2px', lineHeight: 1, fontFamily: 'system-ui' }}>
-                      {myPrograms.length}
-                    </div>
-                    <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '4px', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600 }}>
-                      {myPrograms.length === 1 ? 'Program' : 'Programs'}
-                    </div>
+                    <div style={{ fontSize: '40px', fontWeight: 200, color: 'white', letterSpacing: '-2px', lineHeight: 1, fontFamily: 'system-ui' }}>{myPrograms.length}</div>
+                    <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '4px', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600 }}>{myPrograms.length === 1 ? 'Program' : 'Programs'}</div>
                   </div>
                   <div style={{ flex: 1, marginLeft: '16px', textAlign: 'right' }}>
-                    <span style={{ fontSize: '10px', fontWeight: 600, color: 'rgba(239,68,68,0.6)', letterSpacing: '3px', textTransform: 'uppercase' }}>
-                      Your Custom Workouts
-                    </span>
-                    {myPrograms.length === 0 && (
-                      <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '6px' }}>
-                        Create your first workout
-                      </div>
-                    )}
+                    <span style={{ fontSize: '10px', fontWeight: 600, color: 'rgba(239,68,68,0.6)', letterSpacing: '3px', textTransform: 'uppercase' }}>Your Custom Workouts</span>
                   </div>
                 </div>
+              </div>
+            </div>
+            */}
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginTop: '12px' }}>
-                  <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginRight: '6px' }}>{myPrograms.length === 0 ? 'Get started' : 'View programs'}</span>
-                  <svg className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.4)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
+            {/* My Workouts card — Nike style (matches Browse Library) */}
+            <div
+              data-tutorial="my-workouts"
+              onClick={() => setSelectedGroup('my')}
+              className="w-full text-left active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
+              style={{
+                animationDelay: '0ms',
+                background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                borderRadius: '2px',
+                position: 'relative',
+                overflow: 'hidden',
+                boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+              }}
+            >
+              {/* Purple accent line (matches "Arms & Shoulders" in NikeTestHomepage PROGRAMS carousel) */}
+              <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #a855f7, rgba(168,85,247,0.25))' }} />
+              {/* Ambient purple spotlight */}
+              <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(168,85,247,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+
+              {/* Header row */}
+              <div className="relative px-6 pt-5 pb-4 border-b border-white/10 flex items-center gap-2">
+                <p className="text-[11px] text-white/40 uppercase font-light" style={{ letterSpacing: '0.3em' }}>
+                  My Workouts
+                </p>
+                {pendingShares.length > 0 && (
+                  <span className="text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: '#a855f7' }}>{pendingShares.length}</span>
+                )}
+              </div>
+
+              <div className="relative px-6 py-5 flex items-center justify-between gap-5">
+                <div>
+                  <div className="text-[44px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.9' }}>
+                    {myPrograms.length}
+                  </div>
+                  <div className="text-[10px] text-white/30 uppercase font-semibold mt-1" style={{ letterSpacing: '0.3em' }}>
+                    {myPrograms.length === 1 ? 'Program' : 'Programs'}
+                  </div>
+                </div>
+                <div className="flex-1 text-right">
+                  <span className="text-[10px] font-bold uppercase" style={{ color: 'rgba(168,85,247,0.75)', letterSpacing: '0.25em' }}>
+                    Your Custom Workouts
+                  </span>
+                  {myPrograms.length === 0 && (
+                    <div className="text-[11px] text-white/40 mt-1">
+                      Create your first workout
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

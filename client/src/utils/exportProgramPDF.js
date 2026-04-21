@@ -72,6 +72,7 @@ function renderWorkoutPage(workout, dayIdx) {
   const hasExercises = workout.exercises && workout.exercises.length > 0;
   return `
     <section class="page">
+      <div class="watermark"></div>
       <div class="corner-mark">RL</div>
       <div class="page-inner">
         <header class="workout-head">
@@ -174,6 +175,23 @@ export function exportProgramPDF({ program, workouts, weeklySchedule }) {
     color: rgba(10,10,10,0.22);
     pointer-events: none;
     z-index: 2;
+  }
+
+  /* Subtle RepLab watermark — fills each workout page at low opacity.
+     Cover page does not render this element, so it only appears on content pages. */
+  .watermark {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 7.5in; height: 7.5in;
+    transform: translate(-50%, -50%);
+    background-image: url("${WATERMARK_SRC}");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    opacity: 0.08;
+    mix-blend-mode: multiply;
+    pointer-events: none;
+    z-index: 0;
   }
 
   .page-inner {
