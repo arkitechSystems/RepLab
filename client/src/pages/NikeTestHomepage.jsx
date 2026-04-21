@@ -84,40 +84,36 @@ export default function NikeTestHomepage() {
         </p>
       </div>
 
-      {/* ===== 2. HERO — Floating photo with spotlight ===== */}
-      <div className="relative z-10 mb-6">
-        {/* Studio backdrop gradient */}
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, #1a1a1a 0%, #252525 30%, #2a2a2a 50%, #1a1a1a 80%, #0d0d0d 100%)' }} />
-        {/* Spotlight glow behind subject */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 40%, transparent 70%)', filter: 'blur(20px)' }} />
-        {/* Secondary warm glow */}
-        <div className="absolute top-[30%] left-[20%] w-[300px] h-[300px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.05) 0%, transparent 60%)', filter: 'blur(40px)' }} />
-
-        <div className="relative flex flex-col items-center pt-6 pb-8">
-          {/* Program label */}
-          <p className="text-[10px] text-white/40 uppercase tracking-[0.3em] font-light mb-2">Featured Program</p>
-          <h2 className="text-[26px] font-black text-white leading-[1] tracking-tight mb-6 text-center" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.5)' }}>
-            WILL'S HYPERTROPHY
-          </h2>
-
-          {/* Floating photo */}
+      {/* ===== 2. FEATURED WORKOUTS — swapped from NewHomepage ===== */}
+      <div className="relative z-10 mx-4 mb-6">
+        <div
+          onClick={() => navigate('/featured-session')}
+          className="relative overflow-hidden cursor-pointer active:scale-[0.97] transition-transform"
+          style={{
+            background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+            borderRadius: '2px',
+          }}
+        >
           <div className="relative">
-            {/* Floor shadow */}
-            <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-[70%] h-8" style={{ background: 'radial-gradient(ellipse, rgba(0,0,0,0.6) 0%, transparent 70%)', filter: 'blur(8px)' }} />
-            <img
-              src="/RepLabPhotoShoot.png"
-              alt="Will training"
-              className="relative w-[280px] max-w-[75vw] object-contain drop-shadow-2xl"
-              style={{ filter: 'drop-shadow(0 10px 30px rgba(0,0,0,0.5))' }}
+            <video
+              ref={(el) => { if (el) { el.currentTime = 10; el.play().catch(() => {}); } }}
+              className="absolute inset-0 w-full h-full object-cover"
+              autoPlay loop muted playsInline preload="auto"
+              src="/Gym cinematic promotion video.mp4"
             />
-          </div>
-
-          {/* Text + CTA below photo */}
-          <div className="mt-6 text-center px-8">
-            <p className="text-[13px] text-white/40 font-light mb-5">12 weeks. 6 days. Built for growth.</p>
-            <button className="px-10 py-3 rounded-full border border-white/70 text-white text-[11px] font-semibold uppercase tracking-[0.2em] active:bg-white/10 transition-colors" style={{ boxShadow: '0 4px 15px rgba(0,0,0,0.3)' }}>
-              Start Program
-            </button>
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.8) 100%)' }} />
+            <div className="relative p-6" style={{ minHeight: '140px' }}>
+              <p className="text-[10px] text-white/40 uppercase tracking-[0.3em] font-light mb-2">Featured</p>
+              <h3 className="text-[22px] font-black text-white tracking-tight leading-[1]">FEATURED<br/>WORKOUTS</h3>
+              <p className="text-[11px] text-white/35 font-light mt-2">Guided sessions with custom set logging</p>
+              <div className="flex items-center gap-1 mt-3">
+                <span className="text-[10px] text-white/40 font-light">Explore</span>
+                <svg className="w-3 h-3 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
+              </div>
+            </div>
           </div>
         </div>
       </div>

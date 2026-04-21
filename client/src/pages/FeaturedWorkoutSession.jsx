@@ -411,27 +411,12 @@ const PROGRAM = {
 };
 
 function ScoreboardTimer({ duration }) {
-  const containerRef = useRef(null);
-  const [size, setSize] = useState({ w: 0, h: 0 });
   const [elapsedMs, setElapsedMs] = useState(0);
   const [running, setRunning] = useState(false);
   const rafRef = useRef(null);
   const startedAtRef = useRef(null);
   const baseElapsedRef = useRef(0);
 
-  // Track container size so the SVG perimeter path matches it pixel-for-pixel
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const observer = new ResizeObserver(([entry]) => {
-      const { width, height } = entry.contentRect;
-      setSize({ w: Math.round(width), h: Math.round(height) });
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  // Continuous elapsed time via rAF — keeps the perimeter sweep smooth, not 1-sec jumps
   useEffect(() => {
     if (!running) return;
     startedAtRef.current = performance.now();
@@ -449,7 +434,6 @@ function ScoreboardTimer({ duration }) {
     rafRef.current = requestAnimationFrame(tick);
     return () => {
       cancelAnimationFrame(rafRef.current);
-      // Capture progress so resuming continues from where we paused
       baseElapsedRef.current = elapsedMs;
     };
   }, [running, duration]);
@@ -468,78 +452,68 @@ function ScoreboardTimer({ duration }) {
     setElapsedMs(0);
   };
 
-  const remaining = Math.max(0, Math.ceil((duration * 1000 - elapsedMs) / 1000));
-  const mm = Math.floor(remaining / 60);
-  const ss = String(remaining % 60).padStart(2, '0');
-
-  // Perimeter progress geometry
-  const radius = 14;
-  const stroke = 2;
-  const inset = stroke / 2;
-  const { w, h } = size;
-  const ready = w > 2 * radius && h > 2 * radius;
-  const perimeter = ready
-    ? 2 * (w - 2 * inset - 2 * radius) + 2 * (h - 2 * inset - 2 * radius) + 2 * Math.PI * radius
-    : 0;
+  const remainingSec = Math.max(0, Math.ceil((duration * 1000 - elapsedMs) / 1000));
   const progress = duration > 0 ? Math.min(1, elapsedMs / (duration * 1000)) : 0;
-  const filled = perimeter * progress;
-
-  // Path begins at top-middle and traces the rounded rect clockwise.
-  const pathD = ready ? [
-    `M ${w / 2} ${inset}`,
-    `H ${w - inset - radius}`,
-    `A ${radius} ${radius} 0 0 1 ${w - inset} ${inset + radius}`,
-    `V ${h - inset - radius}`,
-    `A ${radius} ${radius} 0 0 1 ${w - inset - radius} ${h - inset}`,
-    `H ${inset + radius}`,
-    `A ${radius} ${radius} 0 0 1 ${inset} ${h - inset - radius}`,
-    `V ${inset + radius}`,
-    `A ${radius} ${radius} 0 0 1 ${inset + radius} ${inset}`,
-    `H ${w / 2}`,
-  ].join(' ') : '';
 
   return (
     <div style={{ marginBottom: '16px' }}>
-      <div ref={containerRef} style={{
-        position: 'relative',
-        background: '#000',
-        borderRadius: '14px',
-        padding: '24px 16px',
+      {/* Card body — styled exactly like CardsTest card 28 */}
+      <div style={{
+        borderRadius: '20px',
+        padding: '28px',
         textAlign: 'center',
-        boxShadow: '0 0 20px rgba(239,68,68,0.2), inset 0 0 30px rgba(239,68,68,0.05)',
+        background: 'linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%)',
+        border: '1px solid rgba(255,255,255,0.06)',
       }}>
-        {ready && (
-          <svg
-            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', overflow: 'visible' }}
-            viewBox={`0 0 ${w} ${h}`}
-            preserveAspectRatio="none"
-          >
-            <path d={pathD} fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth={stroke} />
-            <path
-              d={pathD}
-              fill="none"
-              stroke="#ef4444"
-              strokeWidth={stroke}
-              strokeDasharray={`${filled} ${Math.max(0, perimeter - filled)}`}
-              strokeLinecap="butt"
-              style={{ filter: 'drop-shadow(0 0 6px rgba(239,68,68,0.7))' }}
-            />
-          </svg>
-        )}
-        <div style={{
-          position: 'relative',
-          fontSize: '64px',
-          fontWeight: 700,
-          color: '#ef4444',
-          fontFamily: 'monospace',
-          letterSpacing: '6px',
-          fontVariantNumeric: 'tabular-nums',
-          textShadow: '0 0 16px rgba(239,68,68,0.7)',
-          lineHeight: 1,
+        <p style={{
+          fontSize: '9px',
+          color: 'rgba(255,255,255,0.3)',
+          letterSpacing: '3px',
+          textTransform: 'uppercase',
+          fontWeight: 600,
+          marginBottom: '16px',
         }}>
-          {mm}:{ss}
+          Countdown
+        </p>
+        <div style={{
+          fontSize: '56px',
+          fontWeight: 200,
+          color: 'white',
+          fontFamily: 'system-ui',
+          letterSpacing: '-4px',
+          lineHeight: 1,
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          {remainingSec}
+        </div>
+        <div style={{
+          fontSize: '10px',
+          color: 'rgba(239,68,68,0.6)',
+          letterSpacing: '3px',
+          textTransform: 'uppercase',
+          fontWeight: 600,
+          marginTop: '8px',
+        }}>
+          Seconds Remaining
+        </div>
+        <div style={{
+          height: '4px',
+          borderRadius: '2px',
+          background: 'rgba(255,255,255,0.06)',
+          marginTop: '20px',
+          overflow: 'hidden',
+        }}>
+          <div style={{
+            height: '100%',
+            width: `${progress * 100}%`,
+            borderRadius: '2px',
+            background: 'linear-gradient(90deg, #ef4444, #f97316)',
+            transition: 'width 0.08s linear',
+          }} />
         </div>
       </div>
+
+      {/* Controls — kept outside the card so the card itself matches #28 exactly */}
       <div className="flex gap-3 justify-center mt-3">
         <button
           onClick={handleStart}
@@ -631,30 +605,65 @@ function RestTimer({ duration, isActive }) {
   );
 }
 
+// Human-readable labels for HTMLMediaElement.error.code values.
+const MEDIA_ERROR_LABELS = {
+  1: 'Load aborted',
+  2: 'Network error',
+  3: 'Decode error (codec unsupported)',
+  4: 'Format not supported',
+};
+
 function VideoLoop({ src }) {
   const videoRef = useRef(null);
   const [needsTap, setNeedsTap] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [errorInfo, setErrorInfo] = useState(null);
+  // Safari can be picky about the <source type="video/mp4"> hint if the server
+  // returns an odd Content-Type. On retry we drop the hint and bind src directly.
+  const [useTypeHint, setUseTypeHint] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     setNeedsTap(false);
-    setFailed(false);
+    setErrorInfo(null);
     const el = videoRef.current;
     if (!el) return;
-    // Try to start playback. iOS Low Power Mode and some mobile browsers will
-    // reject the promise even for muted+playsInline videos — fall back to a
-    // tap-to-play overlay instead of leaving the user staring at a black box.
     const attempt = el.play();
     if (attempt && typeof attempt.then === 'function') {
       attempt.catch(() => setNeedsTap(true));
     }
-  }, [src]);
+  }, [src, reloadKey, useTypeHint]);
 
   function handleTap() {
     const el = videoRef.current;
     if (!el) return;
     el.muted = true;
     el.play().then(() => setNeedsTap(false)).catch(() => setNeedsTap(true));
+  }
+
+  function handleError() {
+    const el = videoRef.current;
+    const code = el?.error?.code;
+    const message = el?.error?.message;
+    // Log so we can dig in via Safari Web Inspector if needed.
+    // eslint-disable-next-line no-console
+    console.warn('[VideoLoop] load failed', { src, code, message });
+    setErrorInfo({ code, message });
+  }
+
+  function handleRetry() {
+    // First retry: drop the type hint and force a fresh load.
+    // Subsequent retries: just reload.
+    if (useTypeHint) {
+      setUseTypeHint(false);
+    } else {
+      setReloadKey((k) => k + 1);
+    }
+    setErrorInfo(null);
+    // Kick the element itself — React won't call .load() for us.
+    const el = videoRef.current;
+    if (el) {
+      try { el.load(); } catch {}
+    }
   }
 
   return (
@@ -664,6 +673,8 @@ function VideoLoop({ src }) {
     >
       <video
         ref={videoRef}
+        key={`${src}-${useTypeHint ? 'typed' : 'raw'}-${reloadKey}`}
+        src={useTypeHint ? undefined : src}
         className="w-full aspect-video object-cover"
         autoPlay
         loop
@@ -671,13 +682,13 @@ function VideoLoop({ src }) {
         playsInline
         webkit-playsinline="true"
         preload="auto"
-        onCanPlay={() => setFailed(false)}
-        onError={() => setFailed(true)}
+        onCanPlay={() => setErrorInfo(null)}
+        onError={handleError}
       >
-        <source src={src} type="video/mp4" />
+        {useTypeHint && <source src={src} type="video/mp4" />}
       </video>
 
-      {needsTap && !failed && (
+      {needsTap && !errorInfo && (
         <div style={{
           position: 'absolute', inset: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -696,19 +707,32 @@ function VideoLoop({ src }) {
         </div>
       )}
 
-      {failed && (
+      {errorInfo && (
         <div style={{
           position: 'absolute', inset: 0,
           display: 'flex', flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(10,10,10,0.9)', color: 'rgba(255,255,255,0.5)',
-          fontSize: 12, letterSpacing: '0.15em', textTransform: 'uppercase',
-          gap: 8, padding: 16, textAlign: 'center',
+          background: 'rgba(10,10,10,0.92)', color: 'rgba(255,255,255,0.65)',
+          gap: 10, padding: 16, textAlign: 'center',
         }}>
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M4.93 19h14.14c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.2 16c-.77 1.33.19 3 1.73 3z"/>
           </svg>
-          <div>Video unavailable</div>
+          <div style={{ fontSize: 12, letterSpacing: '0.15em', textTransform: 'uppercase' }}>
+            {MEDIA_ERROR_LABELS[errorInfo.code] || 'Video unavailable'}
+          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); handleRetry(); }}
+            style={{
+              marginTop: 4, padding: '8px 18px', borderRadius: 100,
+              border: '1px solid rgba(255,255,255,0.3)',
+              background: 'rgba(255,255,255,0.08)', color: 'white',
+              fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase',
+              fontWeight: 700, cursor: 'pointer',
+            }}
+          >
+            Retry
+          </button>
         </div>
       )}
     </div>

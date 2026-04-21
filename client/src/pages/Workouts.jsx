@@ -229,6 +229,8 @@ export default function Workouts() {
   const [streakPhase, setStreakPhase] = useState(0);
   const [prStats, setPrStats] = useState(null);
   const [bodyPartPRs, setBodyPartPRs] = useState([]);
+  const [allPRsByMuscle, setAllPRsByMuscle] = useState([]);
+  const [expandedPR, setExpandedPR] = useState(null); // key: `${muscle}::${exercise}`
   const [lastWorkout, setLastWorkout] = useState(null);
   const [currentProgram, setCurrentProgram] = useState(null); // { name, week }
   const [featuredEnrollment, setFeaturedEnrollment] = useState({ enrolled: false });
@@ -346,13 +348,14 @@ export default function Workouts() {
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
 
-    const [progs, tmpls, sessions, shares, accepted, prStatsData, scheduleData, completedData, bodyPartPRData] = await Promise.all([
+    const [progs, tmpls, sessions, shares, accepted, prStatsData, scheduleData, completedData, bodyPartPRData, allPRsByMuscleData] = await Promise.all([
       api('/programs', opts), api('/templates', opts), api('/sessions', opts),
       api('/sharing/pending', opts).catch(() => []), api('/sharing/accepted', opts).catch(() => ({})),
       api('/pbs/stats', opts).catch(() => null),
       api(`/schedule?from=${todayStr}&to=${tomorrowStr}`, opts).catch(() => []),
       api('/sessions/completed', opts).catch(() => []),
       api('/pbs/by-body-part', opts).catch(() => []),
+      api('/pbs/all-by-muscle', opts).catch(() => []),
     ]);
 
     // Lazy-fetch featured enrollment — only if a featured program exists
@@ -366,6 +369,7 @@ export default function Workouts() {
     }
     setPrStats(prStatsData);
     setBodyPartPRs(bodyPartPRData || []);
+    setAllPRsByMuscle(allPRsByMuscleData || []);
     const restTemplateIds = new Set(tmpls.filter(t => t.isRest).map(t => t.id));
     const nonRestCompleted = completedData.filter(c => !restTemplateIds.has(c.templateId));
     setTotalWorkouts(nonRestCompleted.length);
@@ -3769,91 +3773,7 @@ export default function Workouts() {
               </div>
             </div>
 
-            {/* Stats & Streak — Organic Blob Card */}
-            {(streak > 0 || (prStats && prStats.totalPRs > 0)) && (
-              <div className="fade-slide-up" style={{
-                background: 'linear-gradient(135deg, #0a0a0a 0%, #1a0a0e 50%, #0a0808 100%)',
-                borderRadius: '24px',
-                padding: '28px 24px',
-                position: 'relative',
-                overflow: 'hidden',
-              }}>
-                {/* Animated blob */}
-                <div style={{
-                  position: 'absolute',
-                  top: '40%',
-                  left: '50%',
-                  width: '180px',
-                  height: '180px',
-                  transform: `translate(-50%, -50%) scale(${0.8 + Math.sin(streakPhase * 0.063) * 0.2})`,
-                  borderRadius: `${40 + Math.sin(streakPhase * 0.04) * 15}% ${60 - Math.sin(streakPhase * 0.04) * 15}% ${50 + Math.cos(streakPhase * 0.05) * 10}% ${50 - Math.cos(streakPhase * 0.05) * 10}%`,
-                  background: 'radial-gradient(circle, rgba(249,115,22,0.4) 0%, rgba(239,68,68,0.2) 50%, transparent 70%)',
-                  filter: 'blur(20px)',
-                  transition: 'all 0.08s linear',
-                }} />
-                <div style={{ position: 'relative', zIndex: 1 }}>
-                  {/* Streak + PRs row */}
-                  <div style={{ display: 'flex', gap: '0', marginBottom: prStats && (prStats.heaviestLift || prStats.mostImproved) ? '20px' : '0' }}>
-                    {streak > 0 && (
-                      <div style={{ flex: 1, textAlign: 'center' }}>
-                        <div style={{ fontSize: '42px', fontWeight: 200, color: 'white', letterSpacing: '-2px', lineHeight: 1, fontFamily: 'system-ui' }}>
-                          {streak}
-                        </div>
-                        <div style={{ fontSize: '10px', color: 'rgba(249,115,22,0.6)', marginTop: '4px', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600 }}>
-                          Day Streak
-                        </div>
-                      </div>
-                    )}
-                    {prStats && prStats.totalPRs > 0 && (
-                      <>
-                        {streak > 0 && <div style={{ width: '1px', background: 'rgba(255,255,255,0.08)', margin: '4px 0' }} />}
-                        <div style={{ flex: 1, textAlign: 'center' }}>
-                          <div style={{ fontSize: '42px', fontWeight: 200, color: 'white', letterSpacing: '-2px', lineHeight: 1, fontFamily: 'system-ui' }}>
-                            {prStats.totalPRs}
-                          </div>
-                          <div style={{ fontSize: '10px', color: 'rgba(239,68,68,0.6)', marginTop: '4px', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600 }}>
-                            Total PRs
-                          </div>
-                        </div>
-                        <div style={{ width: '1px', background: 'rgba(255,255,255,0.08)', margin: '4px 0' }} />
-                        <div style={{ flex: 1, textAlign: 'center' }}>
-                          <div style={{ fontSize: '42px', fontWeight: 200, color: 'white', letterSpacing: '-2px', lineHeight: 1, fontFamily: 'system-ui' }}>
-                            {prStats.prsThisMonth}
-                          </div>
-                          <div style={{ fontSize: '10px', color: 'rgba(34,197,94,0.6)', marginTop: '4px', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600 }}>
-                            This Month
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  {/* PRs by body part — right column constrained to 2/3 to align with first vertical divider above */}
-                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '16px' }}>
-                    <div style={{ textAlign: 'center', fontSize: '13px', fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '14px', textShadow: '0 0 8px rgba(255,255,255,0.3)' }}>
-                      Heaviest Lifts
-                    </div>
-                    {['Chest', 'Back', 'Shoulders', 'Quads', 'Biceps', 'Triceps'].map((muscle, i, arr) => {
-                      const pr = bodyPartPRs.find(p => p.muscle_group?.toLowerCase() === muscle.toLowerCase());
-                      return (
-                        <div key={muscle} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: i < arr.length - 1 ? '10px' : '0' }}>
-                          <span style={{ flex: '0 0 33.333%', fontSize: '11px', color: 'rgba(255,255,255,0.3)', letterSpacing: '1px', textTransform: 'uppercase', paddingTop: '1px' }}>{muscle}</span>
-                          {pr ? (
-                            <span style={{ flex: 1, textAlign: 'right', fontSize: '13px', fontWeight: 700, color: 'white', textShadow: '0 0 8px rgba(239,68,68,0.5)', wordBreak: 'break-word' }}>
-                              {pr.exercise_name} — {Number(pr.best_weight)} lbs × {pr.best_reps} reps
-                            </span>
-                          ) : (
-                            <span style={{ flex: 1, textAlign: 'right', fontSize: '13px', fontWeight: 700, color: 'rgba(255,255,255,0.3)' }}>
-                              No PR set
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Stats & Streak card moved to Profile page. */}
 
             {/* Stacked Paper PR Cards — swipeable */}
             {(() => {
@@ -3958,6 +3878,137 @@ export default function Workouts() {
                             Swipe →
                           </div>
                         )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+
+            {/* Personal Records — sticky-header list (cards test #38 pattern) */}
+            {allPRsByMuscle.length > 0 && (() => {
+              // Group rows: muscle → exercise → [{ weight, reps }, ...]
+              const grouped = {};
+              for (const row of allPRsByMuscle) {
+                const muscle = row.muscle_group || 'Other';
+                const exercise = row.exercise_name;
+                if (!grouped[muscle]) grouped[muscle] = {};
+                if (!grouped[muscle][exercise]) grouped[muscle][exercise] = [];
+                grouped[muscle][exercise].push({
+                  weight: Number(row.best_weight),
+                  reps: row.best_reps,
+                  achievedAt: row.achieved_at,
+                });
+              }
+              // Preferred ordering; anything not listed goes to the end alphabetically.
+              const preferredOrder = ['Chest', 'Back', 'Shoulders', 'Quads', 'Hamstrings', 'Glutes', 'Biceps', 'Triceps', 'Core', 'Calves', 'Forearms'];
+              const muscles = Object.keys(grouped).sort((a, b) => {
+                const ai = preferredOrder.findIndex((m) => m.toLowerCase() === a.toLowerCase());
+                const bi = preferredOrder.findIndex((m) => m.toLowerCase() === b.toLowerCase());
+                if (ai === -1 && bi === -1) return a.localeCompare(b);
+                if (ai === -1) return 1;
+                if (bi === -1) return -1;
+                return ai - bi;
+              });
+              return (
+                <div className="fade-slide-up" style={{
+                  borderRadius: '20px', overflow: 'hidden',
+                  background: '#111', border: '1px solid rgba(255,255,255,0.06)',
+                  maxHeight: '360px', overflowY: 'auto',
+                }}>
+                  <p style={{
+                    fontSize: '9px', color: 'rgba(255,255,255,0.3)',
+                    letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600,
+                    padding: '16px 20px 8px',
+                  }}>
+                    Personal Records
+                  </p>
+                  {muscles.map((muscle) => {
+                    const exercises = Object.keys(grouped[muscle]).sort((a, b) => {
+                      // Rank exercises within a muscle by their heaviest lift desc.
+                      const aMax = grouped[muscle][a][0]?.weight || 0;
+                      const bMax = grouped[muscle][b][0]?.weight || 0;
+                      return bMax - aMax;
+                    });
+                    return (
+                      <div key={muscle}>
+                        <div style={{
+                          position: 'sticky', top: 0, zIndex: 1,
+                          background: '#1a1a1a',
+                          padding: '8px 20px',
+                          fontSize: '11px', fontWeight: 700,
+                          color: 'rgba(239,68,68,0.7)',
+                          letterSpacing: '1px', textTransform: 'uppercase',
+                          borderBottom: '1px solid rgba(255,255,255,0.04)',
+                        }}>
+                          {muscle}
+                        </div>
+                        {exercises.map((exercise) => {
+                          const key = `${muscle}::${exercise}`;
+                          const isOpen = expandedPR === key;
+                          const lifts = grouped[muscle][exercise];
+                          const topLift = lifts[0];
+                          return (
+                            <div key={exercise}>
+                              <div
+                                onClick={() => setExpandedPR(isOpen ? null : key)}
+                                style={{
+                                  padding: '14px 20px',
+                                  borderBottom: '1px solid rgba(255,255,255,0.04)',
+                                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                  cursor: 'pointer',
+                                }}
+                                className="active:bg-white/5 transition-colors"
+                              >
+                                <div>
+                                  <div style={{ fontSize: '14px', color: 'white', fontWeight: 500 }}>{exercise}</div>
+                                  <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '2px', fontVariantNumeric: 'tabular-nums' }}>
+                                    Top: {topLift.weight} lbs × {topLift.reps}
+                                    {lifts.length > 1 && <span style={{ color: 'rgba(255,255,255,0.25)', marginLeft: '8px' }}>· {lifts.length} PRs</span>}
+                                  </div>
+                                </div>
+                                <svg style={{
+                                  width: '16px', height: '16px',
+                                  color: 'rgba(255,255,255,0.3)',
+                                  transform: isOpen ? 'rotate(90deg)' : 'none',
+                                  transition: 'transform 0.18s ease',
+                                }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                                </svg>
+                              </div>
+                              {isOpen && (
+                                <div style={{ background: 'rgba(0,0,0,0.25)', padding: '4px 0' }}>
+                                  {lifts.map((lift, i) => (
+                                    <div key={i} style={{
+                                      padding: '10px 20px 10px 36px',
+                                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                      borderBottom: i < lifts.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none',
+                                    }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <span style={{
+                                          fontSize: '10px', fontWeight: 800,
+                                          color: i === 0 ? 'rgba(239,68,68,0.8)' : 'rgba(255,255,255,0.2)',
+                                          letterSpacing: '1px',
+                                          width: '20px', textAlign: 'center',
+                                        }}>
+                                          {String(i + 1).padStart(2, '0')}
+                                        </span>
+                                        <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.85)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+                                          {lift.weight} lbs × {lift.reps}
+                                        </span>
+                                      </div>
+                                      {lift.achievedAt && (
+                                        <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                                          {new Date(lift.achievedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     );
                   })}

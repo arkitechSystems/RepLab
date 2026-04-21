@@ -73,4 +73,25 @@ router.get('/by-body-part', authMiddleware, async (req, res) => {
   }
 });
 
+// Every PB row with muscle_group attached, ordered for client-side grouping:
+// muscle_group → exercise_name → descending weight.
+router.get('/all-by-muscle', authMiddleware, async (req, res) => {
+  try {
+    const pool = (await import('../dbPool.js')).default;
+    const { rows } = await pool.query(
+      `SELECT e.muscle_group, pb.exercise_name, pb.best_weight, pb.best_reps,
+              pb.template_id, pb.achieved_at
+       FROM personal_bests pb
+       JOIN exercises e ON LOWER(e.name) = LOWER(pb.exercise_name)
+       WHERE pb.user_id = $1
+       ORDER BY e.muscle_group, pb.exercise_name, pb.best_weight DESC, pb.best_reps DESC`,
+      [req.userId]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
