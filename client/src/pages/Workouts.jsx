@@ -231,6 +231,7 @@ export default function Workouts() {
   const [bodyPartPRs, setBodyPartPRs] = useState([]);
   const [allPRsByMuscle, setAllPRsByMuscle] = useState([]);
   const [expandedPR, setExpandedPR] = useState(null); // key: `${muscle}::${exercise}`
+  const [prSortMode, setPrSortMode] = useState('weight'); // 'weight' | 'volume'
   const [lastWorkout, setLastWorkout] = useState(null);
   const [currentProgram, setCurrentProgram] = useState(null); // { name, week }
   const [featuredEnrollment, setFeaturedEnrollment] = useState({ enrolled: false });
@@ -3755,7 +3756,8 @@ export default function Workouts() {
               </div>
             </div>
 
-            {/* Challenges card */}
+            {/* ----- Original Challenges card (glass style) — kept so you can swap back ----- */}
+            {/*
             <div
               onClick={() => setSelectedGroup('challenges')}
               className="w-full text-left glass-card rounded-2xl overflow-hidden fade-slide-up cursor-pointer active:scale-[0.98] transition-transform"
@@ -3770,6 +3772,55 @@ export default function Workouts() {
                   </span>
                 </div>
                 <p className="text-wf-gray-400 text-sm mt-1">Compete, push your limits, and earn rewards</p>
+              </div>
+            </div>
+            */}
+
+            {/* Challenges card — Nike style */}
+            <div
+              onClick={() => setSelectedGroup('challenges')}
+              className="cursor-pointer active:scale-[0.98] transition-transform fade-slide-up"
+              style={{
+                position: 'relative',
+                overflow: 'hidden',
+                borderRadius: '2px',
+                background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+                animationDelay: '0ms',
+              }}
+            >
+              {/* Orange accent bar */}
+              <div style={{ height: '3px', background: 'linear-gradient(90deg, #f97316, rgba(249,115,22,0.5), transparent)' }} />
+
+              {/* Warm glow spotlight */}
+              <div style={{
+                position: 'absolute',
+                top: '-30%', right: '-20%',
+                width: '70%', height: '160%',
+                background: 'radial-gradient(circle, rgba(249,115,22,0.10) 0%, transparent 60%)',
+                filter: 'blur(40px)',
+                pointerEvents: 'none',
+              }} />
+
+              <div style={{ position: 'relative', padding: '24px' }}>
+                <p className="text-[10px] uppercase font-light mb-2" style={{ color: 'rgba(249,115,22,0.7)', letterSpacing: '0.3em' }}>
+                  Coming Soon
+                </p>
+                <h3
+                  className="text-[28px] font-black text-white leading-[0.9] tracking-tight"
+                  style={{ fontFamily: 'system-ui', textShadow: '0 2px 20px rgba(0,0,0,0.5)' }}
+                >
+                  CHALLENGES
+                </h3>
+                <p className="text-[11px] text-white/40 font-light mt-3 max-w-[280px] leading-relaxed">
+                  Compete, push your limits, and earn rewards.
+                </p>
+                <div className="flex items-center gap-1.5 mt-4">
+                  <span className="text-[10px] text-white/40 uppercase font-medium" style={{ letterSpacing: '0.2em' }}>Explore</span>
+                  <svg className="w-3 h-3 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </div>
               </div>
             </div>
 
@@ -3887,20 +3938,31 @@ export default function Workouts() {
 
             {/* Personal Records — sticky-header list (cards test #38 pattern) */}
             {allPRsByMuscle.length > 0 && (() => {
-              // Group rows: muscle → exercise → [{ weight, reps }, ...]
+              // Group rows: muscle → exercise → [{ weight, reps, volume, ... }]
+              // Sort lifts within each exercise by the active metric (desc).
+              const byVolume = prSortMode === 'volume';
+              const sortKey = (lift) => (byVolume ? lift.volume : lift.weight);
               const grouped = {};
               for (const row of allPRsByMuscle) {
                 const muscle = row.muscle_group || 'Other';
                 const exercise = row.exercise_name;
+                const weight = Number(row.best_weight);
+                const reps = Number(row.best_reps) || 0;
                 if (!grouped[muscle]) grouped[muscle] = {};
                 if (!grouped[muscle][exercise]) grouped[muscle][exercise] = [];
                 grouped[muscle][exercise].push({
-                  weight: Number(row.best_weight),
-                  reps: row.best_reps,
+                  weight,
+                  reps,
+                  volume: weight * reps,
                   achievedAt: row.achieved_at,
                 });
               }
-              // Preferred ordering; anything not listed goes to the end alphabetically.
+              // Re-sort each exercise's lifts by the active metric.
+              for (const muscle of Object.keys(grouped)) {
+                for (const ex of Object.keys(grouped[muscle])) {
+                  grouped[muscle][ex].sort((a, b) => sortKey(b) - sortKey(a));
+                }
+              }
               const preferredOrder = ['Chest', 'Back', 'Shoulders', 'Quads', 'Hamstrings', 'Glutes', 'Biceps', 'Triceps', 'Core', 'Calves', 'Forearms'];
               const muscles = Object.keys(grouped).sort((a, b) => {
                 const ai = preferredOrder.findIndex((m) => m.toLowerCase() === a.toLowerCase());
@@ -3910,30 +3972,77 @@ export default function Workouts() {
                 if (bi === -1) return -1;
                 return ai - bi;
               });
+              const toggleBtnBase = {
+                flex: 1, padding: '6px 0', borderRadius: '100px',
+                fontSize: '10px', fontWeight: 700, letterSpacing: '0.2em',
+                textTransform: 'uppercase', cursor: 'pointer',
+                border: 'none', transition: 'all 0.18s ease',
+              };
               return (
                 <div className="fade-slide-up" style={{
                   borderRadius: '20px', overflow: 'hidden',
                   background: '#111', border: '1px solid rgba(255,255,255,0.06)',
-                  maxHeight: '360px', overflowY: 'auto',
+                  maxHeight: '400px', overflowY: 'auto',
                 }}>
-                  <p style={{
-                    fontSize: '9px', color: 'rgba(255,255,255,0.3)',
-                    letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600,
-                    padding: '16px 20px 8px',
+                  <div style={{
+                    padding: '16px 20px 10px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    gap: '12px',
+                    position: 'sticky', top: 0, zIndex: 2, background: '#111',
+                    borderBottom: '1px solid rgba(255,255,255,0.04)',
                   }}>
-                    Personal Records
-                  </p>
+                    <p style={{
+                      fontSize: '9px', color: 'rgba(255,255,255,0.3)',
+                      letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600,
+                      margin: 0,
+                    }}>
+                      Personal Records
+                    </p>
+                    {/* Weight / Volume toggle */}
+                    <div style={{
+                      display: 'flex',
+                      background: 'rgba(255,255,255,0.04)',
+                      border: '1px solid rgba(255,255,255,0.06)',
+                      borderRadius: '100px',
+                      padding: '2px',
+                      gap: '2px',
+                      minWidth: '150px',
+                    }}>
+                      <button
+                        onClick={() => setPrSortMode('weight')}
+                        style={{
+                          ...toggleBtnBase,
+                          background: !byVolume ? 'rgba(239,68,68,0.9)' : 'transparent',
+                          color: !byVolume ? 'white' : 'rgba(255,255,255,0.45)',
+                          boxShadow: !byVolume ? '0 2px 8px rgba(239,68,68,0.3)' : 'none',
+                        }}
+                      >
+                        Weight
+                      </button>
+                      <button
+                        onClick={() => setPrSortMode('volume')}
+                        style={{
+                          ...toggleBtnBase,
+                          background: byVolume ? 'rgba(239,68,68,0.9)' : 'transparent',
+                          color: byVolume ? 'white' : 'rgba(255,255,255,0.45)',
+                          boxShadow: byVolume ? '0 2px 8px rgba(239,68,68,0.3)' : 'none',
+                        }}
+                      >
+                        Volume
+                      </button>
+                    </div>
+                  </div>
                   {muscles.map((muscle) => {
                     const exercises = Object.keys(grouped[muscle]).sort((a, b) => {
-                      // Rank exercises within a muscle by their heaviest lift desc.
-                      const aMax = grouped[muscle][a][0]?.weight || 0;
-                      const bMax = grouped[muscle][b][0]?.weight || 0;
-                      return bMax - aMax;
+                      // Rank exercises within a muscle by top lift of the active metric.
+                      const aTop = grouped[muscle][a][0] ? sortKey(grouped[muscle][a][0]) : 0;
+                      const bTop = grouped[muscle][b][0] ? sortKey(grouped[muscle][b][0]) : 0;
+                      return bTop - aTop;
                     });
                     return (
                       <div key={muscle}>
                         <div style={{
-                          position: 'sticky', top: 0, zIndex: 1,
+                          position: 'sticky', top: '46px', zIndex: 1,
                           background: '#1a1a1a',
                           padding: '8px 20px',
                           fontSize: '11px', fontWeight: 700,
@@ -3964,6 +4073,11 @@ export default function Workouts() {
                                   <div style={{ fontSize: '14px', color: 'white', fontWeight: 500 }}>{exercise}</div>
                                   <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '2px', fontVariantNumeric: 'tabular-nums' }}>
                                     Top: {topLift.weight} lbs × {topLift.reps}
+                                    {byVolume && (
+                                      <span style={{ color: 'rgba(239,68,68,0.7)', marginLeft: '8px', fontWeight: 700 }}>
+                                        = {topLift.volume.toLocaleString()} vol
+                                      </span>
+                                    )}
                                     {lifts.length > 1 && <span style={{ color: 'rgba(255,255,255,0.25)', marginLeft: '8px' }}>· {lifts.length} PRs</span>}
                                   </div>
                                 </div>
@@ -3995,6 +4109,11 @@ export default function Workouts() {
                                         </span>
                                         <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.85)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
                                           {lift.weight} lbs × {lift.reps}
+                                          {byVolume && (
+                                            <span style={{ color: 'rgba(239,68,68,0.7)', marginLeft: '8px', fontWeight: 700 }}>
+                                              = {lift.volume.toLocaleString()}
+                                            </span>
+                                          )}
                                         </span>
                                       </div>
                                       {lift.achievedAt && (
