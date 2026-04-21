@@ -3300,6 +3300,76 @@ export default function Workouts() {
             <p className="text-red-400 mb-3">{loadError}</p>
             <button onClick={() => window.location.reload()} className="text-wf-cyan text-sm">Tap to retry</button>
           </div>
+        ) : (myPrograms.length === 0 && !featuredEnrollment.enrolled) ? (
+          /* First-impression empty state for brand-new users */
+          <div className="space-y-4 pb-4 fade-slide-up">
+            <div
+              className="relative overflow-hidden"
+              style={{
+                background: 'linear-gradient(160deg, #1a0606 0%, #0a0a0a 55%, #08080c 100%)',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.6), 0 6px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)',
+                borderRadius: '4px',
+                minHeight: '360px',
+              }}
+            >
+              {/* Red accent line */}
+              <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25))' }} />
+              {/* Accent glows */}
+              <div className="absolute -top-16 -right-16 w-[320px] h-[320px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.18) 0%, transparent 65%)', filter: 'blur(50px)' }} />
+              <div className="absolute -bottom-16 -left-16 w-[280px] h-[280px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.10) 0%, transparent 65%)', filter: 'blur(40px)' }} />
+
+              <div className="relative p-7 pt-8">
+                <p className="text-[10px] text-white/35 uppercase font-light mb-4" style={{ letterSpacing: '0.35em' }}>
+                  Welcome to WillFit
+                </p>
+                <h2
+                  className="text-[52px] font-black text-white tracking-tight"
+                  style={{ fontFamily: 'system-ui', lineHeight: '0.9' }}
+                >
+                  LET'S BUILD<br />YOUR FIRST<br />PROGRAM.
+                </h2>
+                <p className="text-[14px] text-white/50 font-light mt-5 max-w-[340px] leading-snug">
+                  Start with Will's Hypertrophy — the coach-led program — or design your own from scratch.
+                </p>
+
+                <div className="mt-7 flex flex-col gap-3">
+                  <button
+                    onClick={() => navigate('/featured-session')}
+                    className="w-full py-4 rounded-full text-[12px] font-bold uppercase active:scale-[0.97] transition-all"
+                    style={{
+                      background: 'linear-gradient(135deg, #fff 0%, #e6e6e6 100%)',
+                      color: '#000',
+                      letterSpacing: '0.18em',
+                      boxShadow: '0 8px 24px rgba(255,255,255,0.12), 0 2px 6px rgba(0,0,0,0.3)',
+                    }}
+                  >
+                    Start Will's Hypertrophy
+                  </button>
+                  <button
+                    onClick={() => navigate('/programs/create')}
+                    className="w-full py-4 rounded-full border border-white/20 text-white/70 text-[12px] font-medium uppercase active:bg-white/5 transition-colors"
+                    style={{ letterSpacing: '0.18em' }}
+                  >
+                    Create my own
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Secondary context — browse library hint */}
+            <button
+              onClick={() => setSelectedGroup('browse')}
+              className="w-full text-left glass-card rounded-2xl px-5 py-4 flex items-center justify-between active:scale-[0.98] transition-all"
+            >
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-wf-gray-500 font-semibold mb-1">Or explore</p>
+                <span className="text-sm font-semibold text-white">Browse the workout library</span>
+              </div>
+              <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              </svg>
+            </button>
+          </div>
         ) : (
           <div className="space-y-4 pb-4">
             {/* Your Next Workout — Nike style */}
