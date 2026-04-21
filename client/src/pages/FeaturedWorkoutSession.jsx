@@ -411,7 +411,13 @@ const PROGRAM = {
   daysPerWeek: WEEKLY_SCHEDULE,
 };
 
-function ScoreboardTimer({ duration }) {
+// ============================================================================
+// PREVIOUS (static) ScoreboardTimer — preserved for revert.
+// To revert to this version: delete the animated `ScoreboardTimer` below, then
+// rename this function from `ScoreboardTimerBasic` back to `ScoreboardTimer`.
+// ============================================================================
+// eslint-disable-next-line no-unused-vars
+function ScoreboardTimerBasic({ duration }) {
   const [elapsedMs, setElapsedMs] = useState(0);
   const [running, setRunning] = useState(false);
   const rafRef = useRef(null);
@@ -453,12 +459,14 @@ function ScoreboardTimer({ duration }) {
     setElapsedMs(0);
   };
 
-  const remainingSec = Math.max(0, Math.ceil((duration * 1000 - elapsedMs) / 1000));
+  const totalSecRemaining = Math.max(0, (duration * 1000 - elapsedMs) / 1000);
+  const minutesPart = Math.floor(totalSecRemaining / 60);
+  const secondsPart = totalSecRemaining - minutesPart * 60;
+  const timerDisplay = `${minutesPart}:${secondsPart.toFixed(2).padStart(5, '0')}`;
   const progress = duration > 0 ? Math.min(1, elapsedMs / (duration * 1000)) : 0;
 
   return (
     <div style={{ marginBottom: '16px' }}>
-      {/* Card body — styled exactly like CardsTest card 28 */}
       <div style={{
         borderRadius: '20px',
         padding: '28px',
@@ -466,55 +474,257 @@ function ScoreboardTimer({ duration }) {
         background: 'linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%)',
         border: '1px solid rgba(255,255,255,0.06)',
       }}>
-        <p style={{
-          fontSize: '9px',
-          color: 'rgba(255,255,255,0.3)',
-          letterSpacing: '3px',
-          textTransform: 'uppercase',
-          fontWeight: 600,
-          marginBottom: '16px',
-        }}>
-          Countdown
-        </p>
-        <div style={{
-          fontSize: '56px',
-          fontWeight: 200,
-          color: 'white',
-          fontFamily: 'system-ui',
-          letterSpacing: '-4px',
-          lineHeight: 1,
-          fontVariantNumeric: 'tabular-nums',
-        }}>
-          {remainingSec}
+        <p style={{ fontSize: '9px', color: 'rgba(255,255,255,0.3)', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600, marginBottom: '16px' }}>Countdown</p>
+        <div style={{ fontSize: '56px', fontWeight: 200, color: 'white', fontFamily: 'system-ui', letterSpacing: '-3px', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{timerDisplay}</div>
+        <div style={{ fontSize: '10px', color: 'rgba(239,68,68,0.6)', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600, marginTop: '8px' }}>Minutes Remaining</div>
+        <div style={{ height: '4px', borderRadius: '2px', background: 'rgba(255,255,255,0.06)', marginTop: '20px', overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${progress * 100}%`, borderRadius: '2px', background: 'linear-gradient(90deg, #ef4444, #f97316)', transition: 'width 0.08s linear' }} />
         </div>
-        <div style={{
-          fontSize: '10px',
-          color: 'rgba(239,68,68,0.6)',
-          letterSpacing: '3px',
-          textTransform: 'uppercase',
-          fontWeight: 600,
-          marginTop: '8px',
-        }}>
-          Seconds Remaining
-        </div>
-        <div style={{
-          height: '4px',
-          borderRadius: '2px',
-          background: 'rgba(255,255,255,0.06)',
-          marginTop: '20px',
-          overflow: 'hidden',
-        }}>
+      </div>
+      <div className="flex gap-3 justify-center mt-3">
+        <button onClick={handleStart} disabled={running} className="active:bg-white/10 transition-colors" style={{ padding: '10px 30px', borderRadius: '100px', border: '1px solid rgba(255,255,255,0.7)', background: 'transparent', color: 'white', fontSize: '11px', fontWeight: 600, letterSpacing: '0.2em', textTransform: 'uppercase', cursor: running ? 'not-allowed' : 'pointer', opacity: running ? 0.4 : 1, boxShadow: '0 4px 15px rgba(0,0,0,0.3)' }}>Start</button>
+        <button onClick={handleReset} className="active:bg-white/10 transition-colors" style={{ padding: '10px 30px', borderRadius: '100px', border: '1px solid rgba(255,255,255,0.7)', background: 'transparent', color: 'white', fontSize: '11px', fontWeight: 600, letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer', boxShadow: '0 4px 15px rgba(0,0,0,0.3)' }}>Reset</button>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// ScoreboardTimer — animated version (items 1-6 + 8-10 from the menu):
+//   (1) color shift green → orange → red in final 10s
+//   (2) pulsing glow when ≤10s left (driven by halo filter ramp)
+//   (3) heartbeat scale bump on each whole-second crossing in final 3s
+//   (4) tick line sweep during final 10s
+//   (5) conic-gradient progress ring behind the number
+//   (6) number flick animation on whole-second crossings
+//   (8) done flash + "TIME" label when countdown hits zero
+//   (9) shimmer band sweeping the progress bar while running
+//  (10) ambient red halo while running, fades on pause
+// ============================================================================
+function ScoreboardTimer({ duration }) {
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const [running, setRunning] = useState(false);
+  const [completed, setCompleted] = useState(false);
+  const [showDoneFlash, setShowDoneFlash] = useState(false);
+  const [heartbeat, setHeartbeat] = useState(0);
+  const rafRef = useRef(null);
+  const startedAtRef = useRef(null);
+  const baseElapsedRef = useRef(0);
+  const lastWholeSecRef = useRef(null);
+
+  useEffect(() => {
+    if (!running) return;
+    startedAtRef.current = performance.now();
+    const tick = (now) => {
+      const next = baseElapsedRef.current + (now - startedAtRef.current);
+      const totalMs = duration * 1000;
+      if (next >= totalMs) {
+        setElapsedMs(totalMs);
+        setRunning(false);
+        setCompleted(true);
+        setShowDoneFlash(true);
+        setTimeout(() => setShowDoneFlash(false), 700);
+        return;
+      }
+      setElapsedMs(next);
+      // Trigger a heartbeat pulse on every whole-second crossing within the final 3s.
+      const remaining = (totalMs - next) / 1000;
+      if (remaining <= 3) {
+        const floor = Math.floor(remaining);
+        if (lastWholeSecRef.current !== floor) {
+          lastWholeSecRef.current = floor;
+          setHeartbeat((h) => h + 1);
+        }
+      } else {
+        lastWholeSecRef.current = null;
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(rafRef.current);
+      baseElapsedRef.current = elapsedMs;
+    };
+  }, [running, duration]);
+
+  const handleStart = () => {
+    if (elapsedMs >= duration * 1000) {
+      baseElapsedRef.current = 0;
+      setElapsedMs(0);
+      setCompleted(false);
+    }
+    setRunning(true);
+  };
+  const handleReset = () => {
+    cancelAnimationFrame(rafRef.current);
+    setRunning(false);
+    setCompleted(false);
+    baseElapsedRef.current = 0;
+    setElapsedMs(0);
+    lastWholeSecRef.current = null;
+  };
+
+  const totalSecRemaining = Math.max(0, (duration * 1000 - elapsedMs) / 1000);
+  const minutesPart = Math.floor(totalSecRemaining / 60);
+  const secondsPart = totalSecRemaining - minutesPart * 60;
+  const timerDisplay = `${minutesPart}:${secondsPart.toFixed(2).padStart(5, '0')}`;
+  const progress = duration > 0 ? Math.min(1, elapsedMs / (duration * 1000)) : 0;
+
+  const isUrgent = totalSecRemaining <= 10 && !completed && running;
+  const isFinal3 = totalSecRemaining <= 3 && !completed && running;
+  const urgencyT = Math.min(1, Math.max(0, (10 - totalSecRemaining) / 10));
+
+  // Urgency color: green (safe) → orange (warn) → red (urgent).
+  const lerp = (a, b, t) => a + (b - a) * t;
+  let r, g, b;
+  if (!isUrgent) {
+    [r, g, b] = [239, 68, 68];
+  } else if (urgencyT < 0.5) {
+    const t = urgencyT * 2;
+    [r, g, b] = [lerp(34, 249, t), lerp(197, 115, t), lerp(94, 22, t)];
+  } else {
+    const t = (urgencyT - 0.5) * 2;
+    [r, g, b] = [lerp(249, 239, t), lerp(115, 68, t), lerp(22, 68, t)];
+  }
+  const accentRGB = `${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}`;
+  const accent = (a = 1) => `rgba(${accentRGB}, ${a})`;
+
+  return (
+    <div style={{ marginBottom: '16px' }}>
+      {/* (10) Ambient halo — glow ramps up while running, stronger when urgent. */}
+      <div style={{
+        position: 'relative',
+        transition: 'filter 0.5s ease',
+        filter: running
+          ? `drop-shadow(0 0 ${isUrgent ? 36 : 18}px ${accent(isUrgent ? 0.55 : 0.22)})`
+          : 'drop-shadow(0 0 0 rgba(0,0,0,0))',
+      }}>
+        {/* (3) Heartbeat — key forces animation restart on each whole-second in final 3s. */}
+        <div
+          key={`hb-${heartbeat}`}
+          style={{
+            position: 'relative',
+            overflow: 'hidden',
+            borderRadius: '20px',
+            padding: '28px',
+            textAlign: 'center',
+            background: 'linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%)',
+            border: `1px solid ${isUrgent ? accent(0.35) : 'rgba(255,255,255,0.06)'}`,
+            transition: 'border-color 0.3s linear',
+            animation: isFinal3 ? 'timerHeartbeat 1s ease-out' : 'none',
+          }}
+        >
+          {/* (5) Conic ring — sweeps with progress behind the number. */}
           <div style={{
-            height: '100%',
-            width: `${progress * 100}%`,
-            borderRadius: '2px',
-            background: 'linear-gradient(90deg, #ef4444, #f97316)',
-            transition: 'width 0.08s linear',
+            position: 'absolute',
+            top: '50%', left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '240px', height: '240px',
+            borderRadius: '50%',
+            background: `conic-gradient(from -90deg, ${accent(1)} ${progress * 360}deg, rgba(255,255,255,0.03) 0deg)`,
+            mask: 'radial-gradient(circle, transparent 104px, black 106px, black 120px, transparent 122px)',
+            WebkitMask: 'radial-gradient(circle, transparent 104px, black 106px, black 120px, transparent 122px)',
+            opacity: 0.5,
+            pointerEvents: 'none',
+            transition: 'opacity 0.2s linear',
+            filter: isUrgent ? `drop-shadow(0 0 6px ${accent(0.7)})` : 'none',
           }} />
+
+          {/* (4) Tick sweep — vertical line moves across the card each second during urgency. */}
+          {isUrgent && (
+            <div style={{
+              position: 'absolute',
+              top: 0, bottom: 0, left: 0,
+              width: '1px',
+              background: accent(0.55),
+              animation: 'timerTickSweep 1s linear infinite',
+              pointerEvents: 'none',
+            }} />
+          )}
+
+          {/* Content layer */}
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <p style={{ fontSize: '9px', color: 'rgba(255,255,255,0.3)', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600, marginBottom: '16px' }}>
+              Countdown
+            </p>
+            {/* (1) Color shift on the number, (6) tick flick on whole-second crossings. */}
+            <div
+              key={`num-${heartbeat}`}
+              style={{
+                fontSize: '56px',
+                fontWeight: 200,
+                color: completed ? accent(1) : (isUrgent ? accent(1) : 'white'),
+                fontFamily: 'system-ui',
+                letterSpacing: '-3px',
+                lineHeight: 1,
+                fontVariantNumeric: 'tabular-nums',
+                transition: 'color 0.2s linear',
+                animation: isFinal3 ? 'timerNumberTick 1s ease-out' : 'none',
+                textShadow: isUrgent ? `0 0 22px ${accent(0.45)}` : 'none',
+              }}
+            >
+              {completed ? 'TIME' : timerDisplay}
+            </div>
+            <div style={{
+              fontSize: '10px',
+              color: accent(0.6),
+              letterSpacing: '3px',
+              textTransform: 'uppercase',
+              fontWeight: 600,
+              marginTop: '8px',
+              transition: 'color 0.2s linear',
+            }}>
+              {completed ? "That's Time" : 'Minutes Remaining'}
+            </div>
+            {/* Progress bar with (9) shimmer overlay. */}
+            <div style={{
+              position: 'relative',
+              height: '4px',
+              borderRadius: '2px',
+              background: 'rgba(255,255,255,0.06)',
+              marginTop: '20px',
+              overflow: 'hidden',
+            }}>
+              <div style={{
+                position: 'relative',
+                height: '100%',
+                width: `${progress * 100}%`,
+                borderRadius: '2px',
+                background: isUrgent
+                  ? `linear-gradient(90deg, ${accent(1)}, ${accent(0.75)})`
+                  : 'linear-gradient(90deg, #ef4444, #f97316)',
+                transition: 'width 0.08s linear, background 0.2s linear',
+                overflow: 'hidden',
+              }}>
+                {running && !completed && (
+                  <div style={{
+                    position: 'absolute',
+                    top: 0, bottom: 0, left: 0,
+                    width: '40%',
+                    background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.5) 50%, transparent 100%)',
+                    animation: 'timerShimmer 2.5s linear infinite',
+                    pointerEvents: 'none',
+                  }} />
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* (8) Done flash — white overlay fades out immediately on completion. */}
+          {showDoneFlash && (
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'white',
+              animation: 'timerDoneFlash 0.7s ease-out forwards',
+              pointerEvents: 'none',
+              zIndex: 2,
+            }} />
+          )}
         </div>
       </div>
 
-      {/* Controls — kept outside the card so the card itself matches #28 exactly */}
+      {/* Controls — same pill pair, kept outside the card. */}
       <div className="flex gap-3 justify-center mt-3">
         <button
           onClick={handleStart}

@@ -398,6 +398,44 @@ input[type="number"] {
   100% { transform: translateX(-50%); }
 }
 
+/* ============ Featured-session ScoreboardTimer animations ============ */
+/* Heartbeat scale bump retriggered on each whole-second crossing in the final 3s. */
+@keyframes timerHeartbeat {
+  0%   { transform: scale(1); }
+  12%  { transform: scale(1.045); }
+  24%  { transform: scale(1); }
+  40%  { transform: scale(1.02); }
+  55%  { transform: scale(1); }
+  100% { transform: scale(1); }
+}
+
+/* Thin vertical tick line sweeps right→left every second during the final 10s. */
+@keyframes timerTickSweep {
+  0%   { left: 100%; opacity: 0; }
+  10%  { opacity: 0.55; }
+  90%  { opacity: 0.55; }
+  100% { left: 0%; opacity: 0; }
+}
+
+/* Shimmer band glides across the progress fill while the timer is running. */
+@keyframes timerShimmer {
+  0%   { transform: translateX(-120%); }
+  100% { transform: translateX(350%); }
+}
+
+/* Completion flash — white overlay snaps on then fades out. */
+@keyframes timerDoneFlash {
+  0%   { opacity: 0.85; }
+  100% { opacity: 0; }
+}
+
+/* Number flick — subtle pop-up on whole-second crossings in the final 3s. */
+@keyframes timerNumberTick {
+  0%   { transform: translateY(0) scale(1); }
+  35%  { transform: translateY(-3px) scale(1.03); }
+  100% { transform: translateY(0) scale(1); }
+}
+
 /* Staggered card entrance animation */
 .fade-slide-up {
   opacity: 0;
