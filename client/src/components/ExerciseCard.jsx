@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useMemo, memo } from 'react';
+import { createPortal } from 'react-dom';
 import { getExerciseVideoId, getExerciseSearchUrl } from '../utils/exerciseVideos.js';
 import { useExercises, getSubstitutesFromList } from '../hooks/useExercises.js';
 import VideoPlayerModal from './VideoPlayerModal.jsx';
@@ -688,30 +689,61 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
 }
 
 function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelect, onClose, allWorkoutExercises }) {
-  // Ensure allExercises have required fields to prevent crashes
-  const safeExercises = useMemo(() =>
-    (allExercises || []).map(e => ({ ...e, muscle: e.muscle || '', tags: e.tags || [] })),
-    [allExercises]
-  );
+  // Ensure allExercises have required fields, AND dedupe by name.
+  // The library sometimes has the same exercise name tagged to multiple muscles,
+  // which produces React "duplicate key" warnings downstream. First occurrence wins.
+  const safeExercises = useMemo(() => {
+    const seen = new Set();
+    const result = [];
+    for (const e of (allExercises || [])) {
+      const key = (e.name || '').toLowerCase().trim();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      result.push({ ...e, muscle: e.muscle || '', tags: e.tags || [] });
+    }
+    return result;
+  }, [allExercises]);
   const substitutes = useMemo(() => getSubstitutesFromList(exerciseName, safeExercises), [exerciseName, safeExercises]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return substitutes;
     const q = search.toLowerCase().trim();
-    return substitutes.filter((e) =>
-      e.name.toLowerCase().includes(q) || (e.muscle || '').toLowerCase().includes(q)
-    );
+    // Score results by match quality so prefix/word-start matches rank above
+    // buried substring matches. Keeps "row" → "Barbell Row" above
+    // "Single-Arm Arrow Shoulder Fly" (contrived example).
+    return substitutes
+      .map((e) => {
+        const name = (e.name || '').toLowerCase();
+        const muscle = (e.muscle || '').toLowerCase();
+        const words = name.split(/\s+/);
+        let relevance = 0;
+        if (name === q) relevance = 100;
+        else if (name.startsWith(q)) relevance = 60;
+        else if (words.some((w) => w.startsWith(q))) relevance = 40;
+        else if (name.includes(q)) relevance = 25;
+        else if (muscle === q) relevance = 15;
+        else if (muscle.includes(q)) relevance = 10;
+        return { ...e, relevance };
+      })
+      .filter((e) => e.relevance > 0)
+      .sort((a, b) => b.relevance - a.relevance || a.name.localeCompare(b.name));
   }, [substitutes, search]);
 
-  // Group into suggested (high score, same muscle) and the rest
+  // Only used when NOT searching: group by same-muscle score.
+  // When searching, we render a single flat relevance-sorted list.
   const suggested = filtered.filter((e) => e.score >= 12);
   const others = filtered.filter((e) => !e.score || e.score < 12);
 
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col" onClick={onClose}>
+  // Portal to document.body to escape any transformed ancestor
+  // (e.g. the `.fade-slide-up` wrapper around each exercise card), which would
+  // otherwise trap our `position: fixed` inside the card.
+  // Guard against transient HMR / SSR states where document.body is not ready.
+  if (typeof document === 'undefined' || !document.body) return null;
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex flex-col items-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/80" />
       <div
-        className="relative flex-1 flex flex-col mt-12 bg-wf-gray-900 rounded-t-2xl overflow-hidden"
+        className="relative mt-auto mb-20 w-[calc(100%-32px)] max-w-md h-[75vh] flex flex-col bg-wf-gray-900 rounded-2xl overflow-hidden shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -745,8 +777,9 @@ function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelec
 
         {/* Exercise List */}
         <div className="flex-1 overflow-y-auto px-4 pb-20">
-          {/* Custom exercise option — show when search doesn't match exactly, or when few results remain */}
-          {search.trim() && (!allExercises.some((ex) => ex.name.toLowerCase() === search.trim().toLowerCase()) || filtered.length < 3) && (
+          {/* Custom exercise option — always the first option when user has typed something
+              and no exact match exists in the library. */}
+          {search.trim() && !allExercises.some((ex) => ex.name.toLowerCase() === search.trim().toLowerCase()) && (
             <>
               <button
                 onClick={() => onSelect(search.trim())}
@@ -775,7 +808,18 @@ function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelec
             );
           })()}
 
-          {suggested.length > 0 && !search.trim() && (
+          {/* When searching: flat list sorted by search relevance (no suggested/others split) */}
+          {search.trim() && filtered.length > 0 && (
+            <div className="mt-3">
+              <p className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-medium mb-2">Matches</p>
+              {filtered.map((ex) => (
+                <ExerciseOption key={ex.name} exercise={ex} onSelect={onSelect} />
+              ))}
+            </div>
+          )}
+
+          {/* When not searching: suggested (same muscle) + all exercises */}
+          {!search.trim() && suggested.length > 0 && (
             <>
               <p className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-medium mt-3 mb-2">Suggested Substitutes</p>
               {suggested.map((ex) => (
@@ -784,9 +828,9 @@ function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelec
             </>
           )}
 
-          {others.length > 0 && (
+          {!search.trim() && others.length > 0 && (
             <>
-              {!search.trim() && suggested.length > 0 && (
+              {suggested.length > 0 && (
                 <p className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-medium mt-4 mb-2">All Exercises</p>
               )}
               {others.map((ex) => (
@@ -802,7 +846,8 @@ function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelec
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

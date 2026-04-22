@@ -4674,7 +4674,7 @@ export default function Workouts() {
                     return (
                       <div key={muscle}>
                         <div style={{
-                          position: 'sticky', top: '46px', zIndex: 1,
+                          position: 'sticky', top: '54px', zIndex: 1,
                           background: '#1a1a1a',
                           padding: '8px 20px',
                           fontSize: '11px', fontWeight: 700,
