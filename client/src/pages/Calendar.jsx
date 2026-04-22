@@ -799,7 +799,7 @@ export default function Calendar() {
                       borderRadius: '2px',
                       background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
                       boxShadow: dayIsToday
-                        ? '0 12px 40px rgba(239,68,68,0.28), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05), inset 0 0 0 1px rgba(239,68,68,0.5)'
+                        ? '0 0 32px rgba(239,68,68,0.5), 0 12px 44px rgba(239,68,68,0.6), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08), inset 0 0 0 1.5px rgba(239,68,68,0.85), inset 0 0 24px rgba(239,68,68,0.18)'
                         : '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
                     }}
                     className={`w-full fade-slide-up transition-all ${hasWorkout ? 'active:scale-[0.98] cursor-pointer' : 'opacity-70'}`}

@@ -379,6 +379,19 @@ input[type="number"] {
   100% { background-position: -200% 0; }
 }
 
+/* Featured hero — slow Ken Burns zoom for hero photo.
+   Never shrinks below original size — zooms from scale(1) up to scale(1.03) and back. */
+@keyframes kenBurns {
+  0%, 100% { transform: scale(1) translate(0, 0); }
+  50% { transform: scale(1.03) translate(-0.5%, -0.5%); }
+}
+
+/* Featured hero — red accent bar shimmer sweep */
+@keyframes heroAccentShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
 /* Stat number landing pulse */
 @keyframes statPulse {
   0% { transform: scale(1); }

@@ -199,6 +199,26 @@ function ProgramCard({ program, idx, onSelect, onBegin, onDelete, onShare, dataT
   );
 }
 
+// Featured hero counter — tweens from 0 to target over `duration`ms when `visible` is true.
+// Remove along with the animated featured hero card if reverting.
+function AnimatedCounter({ target, visible, duration = 1200 }) {
+  const [val, setVal] = useState(0);
+  useEffect(() => {
+    if (!visible) return;
+    let rafId;
+    const start = performance.now();
+    function tick(now) {
+      const p = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setVal(Math.round(eased * target));
+      if (p < 1) rafId = requestAnimationFrame(tick);
+    }
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [target, visible, duration]);
+  return <>{val}</>;
+}
+
 export default function Workouts() {
   const { user } = useAuth();
   const { tutorial, startTutorial, completeTutorialAction, skipTutorial } = useTutorial();
@@ -236,6 +256,30 @@ export default function Workouts() {
   const [lastWorkout, setLastWorkout] = useState(null);
   const [currentProgram, setCurrentProgram] = useState(null); // { name, week }
   const [featuredEnrollment, setFeaturedEnrollment] = useState({ enrolled: false });
+  // Featured hero card — counter-roll visibility (animates once when card enters viewport)
+  // Uses a callback ref because the Featured view is conditionally rendered —
+  // useEffect with ref.current fires too early (before the node exists).
+  const [heroStatsVisible, setHeroStatsVisible] = useState(false);
+  const heroStatsObserverRef = useRef(null);
+  const setHeroStatsRef = useCallback((node) => {
+    if (heroStatsObserverRef.current) {
+      heroStatsObserverRef.current.disconnect();
+      heroStatsObserverRef.current = null;
+    }
+    if (!node) return;
+    // If already in viewport at mount (common for this hero), fire immediately.
+    const rect = node.getBoundingClientRect();
+    if (rect.top < window.innerHeight && rect.bottom > 0) {
+      setHeroStatsVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setHeroStatsVisible(true); },
+      { threshold: 0.3 }
+    );
+    observer.observe(node);
+    heroStatsObserverRef.current = observer;
+  }, []);
   // Swipeable PR stacked cards
   const [prCardIdx, setPrCardIdx] = useState(0);
   const [prCardDragX, setPrCardDragX] = useState(0);
@@ -2548,7 +2592,7 @@ export default function Workouts() {
   if (selectedGroup === 'featured') {
     return (
       <div>
-        <StickyHeader title="Featured Workouts" />
+        <StickyHeader title="FEATURED WORKOUTS" titleStyle={{ fontSize: '26.4px' }} />
 
         {/* Back button */}
         <div className="px-4 mb-3">
@@ -2564,7 +2608,8 @@ export default function Workouts() {
         </div>
 
         <div className="px-4 pb-4 space-y-3">
-          {/* Will's Hypertrophy Program — Nike-style floating photo */}
+          {/* ----- Original Will's Hypertrophy Program card — kept so you can swap back (flip `false` → `true` below, and flip the animated version off) ----- */}
+          {false && (
           <div
             onClick={() => {
               track('featured_program_viewed', {
@@ -2648,6 +2693,125 @@ export default function Workouts() {
               </div>
             </div>
           </div>
+          )}
+
+          {/* Will's Hypertrophy Program — Nike-style animated hero (Ken Burns photo + shimmer accent + counter roll) */}
+          <div
+            onClick={() => {
+              track('featured_program_viewed', {
+                program: 'wills_hypertrophy',
+                enrolled: !!featuredEnrollment.enrolled,
+                source: 'hero_card',
+              });
+              navigate('/featured-session');
+            }}
+            className="fade-slide-up cursor-pointer active:scale-[0.98] transition-transform"
+            style={{ position: 'relative', overflow: 'hidden', borderRadius: '4px' }}
+          >
+            {/* Shimmering red accent bar at top */}
+            <div style={{
+              position: 'absolute', top: 0, left: 0, right: 0, height: '3px', zIndex: 3,
+              background: 'linear-gradient(90deg, rgba(239,68,68,0.15) 0%, rgba(239,68,68,1) 45%, rgba(255,255,255,0.8) 50%, rgba(239,68,68,1) 55%, rgba(239,68,68,0.15) 100%)',
+              backgroundSize: '200% 100%',
+              animation: 'heroAccentShimmer 8s linear infinite',
+            }} />
+            {/* Studio backdrop gradient */}
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, #1a1a1a 0%, #252525 30%, #2a2a2a 50%, #1a1a1a 80%, #0d0d0d 100%)', borderRadius: '4px' }} />
+            {/* Spotlight glow behind subject */}
+            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '500px', height: '500px', background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 40%, transparent 70%)', filter: 'blur(20px)', pointerEvents: 'none' }} />
+            {/* Secondary warm glow */}
+            <div style={{ position: 'absolute', top: '30%', left: '20%', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(239,68,68,0.05) 0%, transparent 60%)', filter: 'blur(40px)', pointerEvents: 'none' }} />
+
+            <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: '24px', paddingBottom: '32px' }}>
+              {/* Program label */}
+              <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', letterSpacing: '0.3em', textTransform: 'uppercase', fontWeight: 300, marginBottom: '8px' }}>Featured Program</p>
+              <h2 style={{ fontSize: '26px', fontWeight: 900, color: 'white', lineHeight: 1, letterSpacing: '-0.5px', marginBottom: '24px', textAlign: 'center', textShadow: '0 2px 20px rgba(0,0,0,0.5)', fontFamily: 'system-ui' }}>
+                WILL'S HYPERTROPHY PROGRAM
+              </h2>
+
+              {/* Floating photo — Ken Burns slow zoom */}
+              <div style={{ position: 'relative' }}>
+                {/* Floor shadow */}
+                <div style={{ position: 'absolute', bottom: '-16px', left: '50%', transform: 'translateX(-50%)', width: '70%', height: '32px', background: 'radial-gradient(ellipse, rgba(0,0,0,0.6) 0%, transparent 70%)', filter: 'blur(8px)' }} />
+                <img
+                  src="/RepLabPhotoShoot.png"
+                  alt="Will training"
+                  style={{
+                    position: 'relative', width: '280px', maxWidth: '75vw', objectFit: 'contain',
+                    filter: 'drop-shadow(0 10px 30px rgba(0,0,0,0.5))',
+                    animation: 'kenBurns 18s ease-in-out infinite',
+                    transformOrigin: 'center center',
+                  }}
+                />
+              </div>
+
+              {/* Counter-roll stats row (replaces the static "12 weeks. 6 workouts per week" line) */}
+              <div ref={setHeroStatsRef} style={{ marginTop: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '20px' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '30px', fontWeight: 900, color: 'white', fontFamily: 'system-ui', letterSpacing: '-1px', lineHeight: '0.9' }}>
+                    <AnimatedCounter target={12} visible={heroStatsVisible} />
+                  </div>
+                  <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.4)', letterSpacing: '0.25em', textTransform: 'uppercase', fontWeight: 600, marginTop: '4px' }}>Weeks</div>
+                </div>
+                <div style={{ width: '1px', height: '28px', background: 'rgba(255,255,255,0.12)' }} />
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '30px', fontWeight: 900, color: 'white', fontFamily: 'system-ui', letterSpacing: '-1px', lineHeight: '0.9' }}>
+                    <AnimatedCounter target={6} visible={heroStatsVisible} />
+                  </div>
+                  <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.4)', letterSpacing: '0.25em', textTransform: 'uppercase', fontWeight: 600, marginTop: '4px' }}>Per Week</div>
+                </div>
+                <div style={{ width: '1px', height: '28px', background: 'rgba(255,255,255,0.12)' }} />
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '30px', fontWeight: 900, color: '#ef4444', fontFamily: 'system-ui', letterSpacing: '-1px', lineHeight: '0.9' }}>
+                    <AnimatedCounter target={72} visible={heroStatsVisible} />
+                  </div>
+                  <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.4)', letterSpacing: '0.25em', textTransform: 'uppercase', fontWeight: 600, marginTop: '4px' }}>Sessions</div>
+                </div>
+              </div>
+
+              {/* Text + CTA below counter row */}
+              <div style={{ marginTop: '20px', textAlign: 'center', padding: '0 32px' }}>
+                <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.25em', textTransform: 'uppercase', fontWeight: 500, marginBottom: '10px' }}>Built for growth</p>
+                <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.25)', fontWeight: 300, marginBottom: '20px' }}>
+                  Chest · Bis/RDs · Quads · Tris/Shoulders · Back/Traps · Glutes/Hams · Rest
+                </p>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (featuredEnrollment.enrolled && featuredEnrollment.nextDay) {
+                      navigate('/featured-session', { state: { week: featuredEnrollment.nextWeek, day: featuredEnrollment.nextDay } });
+                    } else if (featuredEnrollment.enrolled && !featuredEnrollment.nextDay) {
+                      const fp = enrichedPrograms.find(p => p.isFeatured);
+                      if (fp) openBeginProgram(e, fp);
+                      else navigate('/featured-session');
+                    } else {
+                      const fp = enrichedPrograms.find(p => p.isFeatured);
+                      if (fp) openBeginProgram(e, fp);
+                      else navigate('/featured-session');
+                    }
+                  }}
+                  className="active:bg-white/10 transition-colors"
+                  style={{ padding: '12px 40px', borderRadius: '100px', border: '1px solid rgba(255,255,255,0.7)', background: 'transparent', color: 'white', fontSize: '11px', fontWeight: 600, letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer', boxShadow: '0 4px 15px rgba(0,0,0,0.3)' }}
+                >
+                  {featuredEnrollment.enrolled
+                    ? (featuredEnrollment.nextDay ? 'Resume Program' : 'Restart Program')
+                    : 'Start Program'}
+                </button>
+                <div style={{ marginTop: '12px' }}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate('/featured-session');
+                    }}
+                    className="active:bg-white/10 transition-colors"
+                    style={{ padding: '12px 40px', borderRadius: '100px', border: '1px solid rgba(255,255,255,0.7)', background: 'transparent', color: 'white', fontSize: '11px', fontWeight: 600, letterSpacing: '0.2em', textTransform: 'uppercase', cursor: 'pointer', boxShadow: '0 4px 15px rgba(0,0,0,0.3)' }}
+                  >
+                    Program Overview
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
 
           {/* More coming soon */}
           <div className="fade-slide-up" style={{
@@ -2673,26 +2837,6 @@ export default function Workouts() {
 
         {renderBeginModals()}
 
-        {/* Inverted waveform bars at bottom — fixed to nav bar */}
-        <div style={{ position: 'fixed', bottom: '64px', left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: '2px', padding: '0 16px', overflow: 'hidden', transform: 'scaleY(-1)', zIndex: 10 }}>
-          {Array.from({ length: 60 }, (_, i) => {
-            const h = 4 + Math.sin((wavePhase + i * 2 + 30) * 0.1) * 12;
-            const t = (h - 4) / 12;
-            const r = Math.round(249 - t * 60);
-            const g = Math.round(115 - t * 90);
-            const b = Math.round(22 - t * 10);
-            return (
-              <div key={i} style={{
-                width: '100%',
-                maxWidth: '5px',
-                height: `${h}px`,
-                borderRadius: '2px',
-                background: `rgba(${r},${g},${b},${0.4 + t * 0.5})`,
-                transition: 'height 0.08s linear',
-              }} />
-            );
-          })}
-        </div>
       </div>
     );
   }
