@@ -47,67 +47,53 @@ export default function TestChallengeSection() {
         {/* Active Tab */}
         {challengeTab === 'active' && (
           <>
-            {/* Hero Section */}
+            {/* Hero Section — Nike style */}
             <div style={{
-              borderRadius: '20px', overflow: 'hidden', position: 'relative', marginBottom: '16px',
-              background: 'linear-gradient(135deg, #1a0a0a 0%, #0a0808 50%, #1a0505 100%)',
-              border: '1px solid rgba(239,68,68,0.15)',
+              position: 'relative', overflow: 'hidden', marginBottom: '16px',
+              borderRadius: '2px',
+              background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+              boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
             }}>
-              <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 30% 40%, rgba(239,68,68,0.2) 0%, transparent 60%)', filter: 'blur(20px)' }} />
-              <div style={{ position: 'relative', zIndex: 1, padding: '24px', textAlign: 'center' }}>
-                <div style={{ fontSize: '9px', color: 'rgba(239,68,68,0.7)', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 700, marginBottom: '8px' }}>Active Challenge</div>
-                <div style={{ fontSize: '24px', fontWeight: 800, color: 'white', marginBottom: '4px' }}>Max Push-Ups</div>
-                <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginBottom: '16px' }}>60 seconds — how many can you do?</div>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '24px', marginBottom: '16px' }}>
-                  <div>
-                    <span style={{ fontSize: '32px', fontWeight: 200, color: 'white', fontFamily: 'system-ui', letterSpacing: '-2px' }}>47</span>
-                    <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.3)', letterSpacing: '2px', textTransform: 'uppercase', marginTop: '2px' }}>Your Best</div>
+              {/* Red accent bar */}
+              <div style={{ height: '3px', background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.5), transparent)' }} />
+              {/* Red glow spotlight */}
+              <div style={{ position: 'absolute', top: '-30%', right: '-20%', width: '70%', height: '160%', background: 'radial-gradient(circle, rgba(239,68,68,0.12) 0%, transparent 60%)', filter: 'blur(40px)', pointerEvents: 'none' }} />
+
+              <div style={{ position: 'relative', padding: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <p className="text-[10px] uppercase font-light" style={{ color: 'rgba(239,68,68,0.7)', letterSpacing: '0.3em' }}>Active Challenge</p>
+                  <span style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(239,68,68,0.9)', letterSpacing: '0.2em', textTransform: 'uppercase', background: 'rgba(239,68,68,0.12)', padding: '3px 8px', borderRadius: '2px', border: '1px solid rgba(239,68,68,0.3)' }}>Live</span>
+                </div>
+                <h3 className="text-[32px] font-black text-white leading-[0.9] tracking-tight" style={{ fontFamily: 'system-ui', textShadow: '0 2px 20px rgba(0,0,0,0.5)' }}>
+                  MAX PUSH-UPS
+                </h3>
+                <p className="text-[12px] text-white/40 font-light mt-2 mb-5">60 seconds — how many can you do?</p>
+
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '28px', marginBottom: '18px' }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <span style={{ fontSize: '36px', fontWeight: 900, color: 'white', fontFamily: 'system-ui', letterSpacing: '-2px', lineHeight: '0.9' }}>47</span>
+                    <div className="text-[9px] text-white/30 uppercase font-semibold mt-1" style={{ letterSpacing: '0.25em' }}>Your Best</div>
                   </div>
-                  <div>
-                    <span style={{ fontSize: '32px', fontWeight: 200, color: '#ef4444', fontFamily: 'system-ui', letterSpacing: '-2px' }}>63</span>
-                    <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.3)', letterSpacing: '2px', textTransform: 'uppercase', marginTop: '2px' }}>#1 Spot</div>
+                  <div style={{ textAlign: 'center' }}>
+                    <span style={{ fontSize: '36px', fontWeight: 900, color: '#ef4444', fontFamily: 'system-ui', letterSpacing: '-2px', lineHeight: '0.9' }}>63</span>
+                    <div className="text-[9px] text-white/30 uppercase font-semibold mt-1" style={{ letterSpacing: '0.25em' }}>#1 Spot</div>
                   </div>
-                  <div>
-                    <span style={{ fontSize: '32px', fontWeight: 200, color: '#fbbf24', fontFamily: 'system-ui', letterSpacing: '-2px' }}>#3</span>
-                    <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.3)', letterSpacing: '2px', textTransform: 'uppercase', marginTop: '2px' }}>Your Rank</div>
+                  <div style={{ textAlign: 'center' }}>
+                    <span style={{ fontSize: '36px', fontWeight: 900, color: '#fbbf24', fontFamily: 'system-ui', letterSpacing: '-2px', lineHeight: '0.9' }}>#3</span>
+                    <div className="text-[9px] text-white/30 uppercase font-semibold mt-1" style={{ letterSpacing: '0.25em' }}>Your Rank</div>
                   </div>
                 </div>
+
                 {/* Countdown */}
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', paddingTop: '14px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                   {[{ val: '2', label: 'Days' }, { val: '14', label: 'Hours' }, { val: '23', label: 'Min' }].map((t, i) => (
-                    <div key={i} style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '10px', padding: '8px 14px', textAlign: 'center' }}>
-                      <div style={{ fontSize: '20px', fontWeight: 200, color: 'white', fontFamily: 'system-ui', letterSpacing: '-1px' }}>{t.val}</div>
-                      <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.3)', letterSpacing: '1px', textTransform: 'uppercase' }}>{t.label}</div>
+                    <div key={i} style={{ flex: 1, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '2px', padding: '10px 8px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '22px', fontWeight: 900, color: 'white', fontFamily: 'system-ui', letterSpacing: '-1px', lineHeight: '0.9' }}>{t.val}</div>
+                      <div className="text-[8px] text-white/30 uppercase font-semibold mt-1.5" style={{ letterSpacing: '0.2em' }}>{t.label}</div>
                     </div>
                   ))}
                 </div>
               </div>
-            </div>
-
-            {/* Accordion Sections */}
-            <div style={{ borderRadius: '16px', overflow: 'hidden', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', marginBottom: '16px' }}>
-              {[
-                { title: 'Rules & Scoring', icon: '📋', content: 'Complete as many push-ups as possible in 60 seconds. Must have full range of motion — chest to floor, arms fully extended at top. Record a video for verification. Top 3 win prizes.' },
-                { title: 'Submit Your Entry', icon: '🎯', content: 'Record yourself doing push-ups for 60 seconds. Count your total and submit below with video proof. You can submit multiple times — only your best counts.' },
-                { title: 'Prizes', icon: '🏆', content: '1st Place: $50 gift card + Gold badge\n2nd Place: $25 gift card + Silver badge\n3rd Place: $10 gift card + Bronze badge\nAll participants: Participation badge' },
-              ].map((row, i) => (
-                <div key={i}>
-                  <button onClick={() => setAccordionOpen(accordionOpen === i ? null : i)} style={{
-                    width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
-                    padding: '14px 20px', background: 'transparent', border: 'none',
-                    borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer',
-                  }}>
-                    <span style={{ fontSize: '18px' }}>{row.icon}</span>
-                    <span style={{ flex: 1, fontSize: '14px', fontWeight: 600, color: 'white', textAlign: 'left' }}>{row.title}</span>
-                    <svg style={{ width: '16px', height: '16px', color: 'rgba(255,255,255,0.4)', transform: accordionOpen === i ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
-                  </button>
-                  {accordionOpen === i && (
-                    <div style={{ padding: '12px 20px 16px 50px', fontSize: '13px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.7, whiteSpace: 'pre-line', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                      {row.content}
-                    </div>
-                  )}
-                </div>
-              ))}
             </div>
 
             {/* Leaderboard with Profile Avatars */}
@@ -187,6 +173,32 @@ export default function TestChallengeSection() {
               </div>
             </div>
 
+            {/* Accordion Sections */}
+            <div style={{ borderRadius: '16px', overflow: 'hidden', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', marginBottom: '16px' }}>
+              {[
+                { title: 'Rules & Scoring', icon: '📋', content: 'Complete as many push-ups as possible in 60 seconds. Must have full range of motion — chest to floor, arms fully extended at top. Record a video for verification. Top 3 win prizes.' },
+                { title: 'Submit Your Entry', icon: '🎯', content: 'Record yourself doing push-ups for 60 seconds. Count your total and submit below with video proof. You can submit multiple times — only your best counts.' },
+                { title: 'Prizes', icon: '🏆', content: '1st Place: $50 gift card + Gold badge\n2nd Place: $25 gift card + Silver badge\n3rd Place: $10 gift card + Bronze badge\nAll participants: Participation badge' },
+              ].map((row, i) => (
+                <div key={i}>
+                  <button onClick={() => setAccordionOpen(accordionOpen === i ? null : i)} style={{
+                    width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
+                    padding: '14px 20px', background: 'transparent', border: 'none',
+                    borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer',
+                  }}>
+                    <span style={{ fontSize: '18px' }}>{row.icon}</span>
+                    <span style={{ flex: 1, fontSize: '14px', fontWeight: 600, color: 'white', textAlign: 'left' }}>{row.title}</span>
+                    <svg style={{ width: '16px', height: '16px', color: 'rgba(255,255,255,0.4)', transform: accordionOpen === i ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                  </button>
+                  {accordionOpen === i && (
+                    <div style={{ padding: '12px 20px 16px 50px', fontSize: '13px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.7, whiteSpace: 'pre-line', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      {row.content}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
             {/* Submit Button */}
             <button
               style={{
@@ -202,38 +214,69 @@ export default function TestChallengeSection() {
           </>
         )}
 
-        {/* Upcoming Tab */}
+        {/* Upcoming Tab — Nike style */}
         {challengeTab === 'upcoming' && (
-          <div style={{ borderRadius: '20px', padding: '40px 20px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', textAlign: 'center' }}>
-            <div style={{ fontSize: '40px', marginBottom: '12px' }}>⏳</div>
-            <div style={{ fontSize: '18px', fontWeight: 700, color: 'white', marginBottom: '6px' }}>Plank Hold Challenge</div>
-            <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', marginBottom: '16px' }}>How long can you hold a plank?</div>
-            <div style={{ fontSize: '11px', color: 'rgba(239,68,68,0.6)', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600 }}>Starts next Monday</div>
+          <div style={{
+            position: 'relative', overflow: 'hidden',
+            borderRadius: '2px',
+            background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+          }}>
+            {/* Orange accent bar */}
+            <div style={{ height: '3px', background: 'linear-gradient(90deg, #f97316, rgba(249,115,22,0.5), transparent)' }} />
+            {/* Warm glow spotlight */}
+            <div style={{ position: 'absolute', top: '-30%', right: '-20%', width: '70%', height: '160%', background: 'radial-gradient(circle, rgba(249,115,22,0.10) 0%, transparent 60%)', filter: 'blur(40px)', pointerEvents: 'none' }} />
+
+            <div style={{ position: 'relative', padding: '28px 24px' }}>
+              <p className="text-[10px] uppercase font-light mb-3" style={{ color: 'rgba(249,115,22,0.75)', letterSpacing: '0.3em' }}>Coming Soon</p>
+              <h3 className="text-[28px] font-black text-white leading-[0.9] tracking-tight" style={{ fontFamily: 'system-ui', textShadow: '0 2px 20px rgba(0,0,0,0.5)' }}>
+                PLANK HOLD
+              </h3>
+              <p className="text-[11px] text-white/40 font-light mt-3 leading-relaxed">How long can you hold a plank?</p>
+              <div className="mt-5 pt-4 border-t border-white/10 flex items-center justify-between">
+                <span className="text-[10px] uppercase font-semibold" style={{ color: 'rgba(249,115,22,0.75)', letterSpacing: '0.25em' }}>Starts Next Monday</span>
+                <span className="text-[10px] text-white/30 uppercase font-medium" style={{ letterSpacing: '0.2em' }}>7 Days</span>
+              </div>
+            </div>
           </div>
         )}
 
-        {/* Completed Tab */}
+        {/* Completed Tab — Nike style */}
         {challengeTab === 'completed' && (
-          <div style={{ borderRadius: '20px', padding: '24px 20px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
-              <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>✓</div>
-              <div>
-                <div style={{ fontSize: '16px', fontWeight: 700, color: 'white' }}>1-Rep Max Week</div>
-                <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>Completed Oct 12, 2025</div>
+          <div style={{
+            position: 'relative', overflow: 'hidden',
+            borderRadius: '2px',
+            background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+          }}>
+            {/* Green accent bar */}
+            <div style={{ height: '3px', background: 'linear-gradient(90deg, #22c55e, rgba(34,197,94,0.5), transparent)' }} />
+            {/* Green glow spotlight */}
+            <div style={{ position: 'absolute', top: '-30%', right: '-20%', width: '70%', height: '160%', background: 'radial-gradient(circle, rgba(34,197,94,0.10) 0%, transparent 60%)', filter: 'blur(40px)', pointerEvents: 'none' }} />
+
+            <div style={{ position: 'relative', padding: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <p className="text-[10px] uppercase font-light" style={{ color: 'rgba(34,197,94,0.75)', letterSpacing: '0.3em' }}>Completed</p>
+                <span style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(34,197,94,0.9)', letterSpacing: '0.2em', textTransform: 'uppercase', background: 'rgba(34,197,94,0.12)', padding: '3px 8px', borderRadius: '2px', border: '1px solid rgba(34,197,94,0.3)' }}>Done</span>
               </div>
-            </div>
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <div style={{ flex: 1, padding: '12px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', textAlign: 'center' }}>
-                <div style={{ fontSize: '22px', fontWeight: 200, color: 'white', fontFamily: 'system-ui' }}>225</div>
-                <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.3)', letterSpacing: '2px', textTransform: 'uppercase', marginTop: '2px' }}>Your Max</div>
-              </div>
-              <div style={{ flex: 1, padding: '12px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', textAlign: 'center' }}>
-                <div style={{ fontSize: '22px', fontWeight: 200, color: '#fbbf24', fontFamily: 'system-ui' }}>#5</div>
-                <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.3)', letterSpacing: '2px', textTransform: 'uppercase', marginTop: '2px' }}>Final Rank</div>
-              </div>
-              <div style={{ flex: 1, padding: '12px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', textAlign: 'center' }}>
-                <div style={{ fontSize: '22px', fontWeight: 200, color: 'white', fontFamily: 'system-ui' }}>42</div>
-                <div style={{ fontSize: '8px', color: 'rgba(255,255,255,0.3)', letterSpacing: '2px', textTransform: 'uppercase', marginTop: '2px' }}>Participants</div>
+              <h3 className="text-[28px] font-black text-white leading-[0.9] tracking-tight" style={{ fontFamily: 'system-ui', textShadow: '0 2px 20px rgba(0,0,0,0.5)' }}>
+                1-REP MAX WEEK
+              </h3>
+              <p className="text-[11px] text-white/40 font-light mt-2">Completed Oct 12, 2025</p>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '20px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ flex: 1, padding: '12px 8px', borderRadius: '2px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '24px', fontWeight: 900, color: 'white', fontFamily: 'system-ui', letterSpacing: '-1px', lineHeight: '0.9' }}>225</div>
+                  <div className="text-[8px] text-white/30 uppercase font-semibold mt-1.5" style={{ letterSpacing: '0.25em' }}>Your Max</div>
+                </div>
+                <div style={{ flex: 1, padding: '12px 8px', borderRadius: '2px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '24px', fontWeight: 900, color: '#fbbf24', fontFamily: 'system-ui', letterSpacing: '-1px', lineHeight: '0.9' }}>#5</div>
+                  <div className="text-[8px] text-white/30 uppercase font-semibold mt-1.5" style={{ letterSpacing: '0.25em' }}>Final Rank</div>
+                </div>
+                <div style={{ flex: 1, padding: '12px 8px', borderRadius: '2px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '24px', fontWeight: 900, color: 'white', fontFamily: 'system-ui', letterSpacing: '-1px', lineHeight: '0.9' }}>42</div>
+                  <div className="text-[8px] text-white/30 uppercase font-semibold mt-1.5" style={{ letterSpacing: '0.25em' }}>Participants</div>
+                </div>
               </div>
             </div>
           </div>

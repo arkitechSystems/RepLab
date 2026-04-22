@@ -1192,29 +1192,43 @@ export default function Workouts() {
                     key={wIdx}
                     data-tutorial={wIdx === 0 ? 'week-card' : undefined}
                     onClick={() => { setSelectedWeek(weekNum); if (tutorial.active) completeTutorialAction('week-selected'); }}
-                    style={{ animationDelay: `${wIdx * 60}ms` }}
-                    className="w-full text-left glass-card rounded-2xl overflow-hidden active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
+                    style={{
+                      animationDelay: `${wIdx * 60}ms`,
+                      position: 'relative',
+                      overflow: 'hidden',
+                      borderRadius: '2px',
+                      background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                      boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+                    }}
+                    className="w-full text-left active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
                   >
-                    {/* Color strip from this week's unique workouts */}
-                    <div className="flex h-1.5">
+                    {/* Color strip showing workout palette for this week */}
+                    <div className="flex h-[3px]">
                       {uniqueNames.map((name, i) => {
                         const color = program.colorMap.get(name);
                         return <div key={i} className={`flex-1 ${color ? color.dot : 'bg-wf-orange'}`} />;
                       })}
                     </div>
-                    <div className="p-5">
-                      <div className="flex items-center justify-between">
+                    {/* Ambient red spotlight */}
+                    <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.06) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+
+                    <div className="relative px-6 py-5">
+                      <div className="flex items-start justify-between gap-4">
                         <div>
-                          <h3 className="text-lg font-bold text-white">Week {weekNum}</h3>
-                          <p className="text-wf-gray-400 text-sm mt-1">
-                            {weekWorkouts.length} workouts{weightBump > 0 ? ` · +${weightBump} lbs` : ''}
+                          <p className="text-[10px] text-white/40 uppercase font-light" style={{ letterSpacing: '0.3em' }}>Week</p>
+                          <div className="text-[44px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.9' }}>
+                            {weekNum}
+                          </div>
+                          <p className="text-[10px] text-white/30 uppercase font-semibold mt-1.5" style={{ letterSpacing: '0.3em' }}>
+                            {weekWorkouts.length} WORKOUT{weekWorkouts.length === 1 ? '' : 'S'}{weightBump > 0 ? ` · +${weightBump} LBS` : ''}
                           </p>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 shrink-0">
                           {selectedGroup === 'my' && weeks.length > 1 && (
                             <button
                               onClick={(e) => { e.stopPropagation(); handleDeleteWeek(program, wIdx); }}
-                              className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center active:bg-red-500/25 transition-colors"
+                              className="w-8 h-8 flex items-center justify-center active:bg-red-500/25 transition-colors"
+                              style={{ borderRadius: '2px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)' }}
                               title="Delete week"
                             >
                               <svg className="w-3.5 h-3.5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1222,19 +1236,19 @@ export default function Workouts() {
                               </svg>
                             </button>
                           )}
-                          <svg className="w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <svg className="w-4 h-4 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                           </svg>
                         </div>
                       </div>
-                      {/* Workout preview dots */}
-                      <div className="flex items-center gap-3 mt-3">
+                      {/* Workout preview row */}
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-4 pt-4 border-t border-white/10">
                         {uniqueNames.map((name, i) => {
                           const color = program.colorMap.get(name);
                           return (
                             <div key={i} className="flex items-center gap-1.5">
-                              <div className={`w-2 h-2 rounded-full ${color ? color.dot : 'bg-wf-orange'}`} />
-                              <span className="text-xs text-wf-gray-400 font-medium capitalize">{name}</span>
+                              <div className={`w-1.5 h-1.5 rounded-full ${color ? color.dot : 'bg-wf-orange'}`} />
+                              <span className="text-[10px] text-white/55 font-bold uppercase" style={{ letterSpacing: '0.15em' }}>{name}</span>
                             </div>
                           );
                         })}
@@ -1333,62 +1347,92 @@ export default function Workouts() {
               return (
                 <div
                   key={t.id}
-                  style={{ animationDelay: `${idx * 60}ms` }}
-                  className={`glass-card rounded-xl p-4 transition-transform fade-slide-up border-l-4 ${color.border}`}
+                  style={{
+                    animationDelay: `${idx * 60}ms`,
+                    position: 'relative',
+                    overflow: 'hidden',
+                    borderRadius: '2px',
+                    background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                    boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+                  }}
+                  className="transition-transform fade-slide-up"
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    {/* Edit mode: reorder arrows */}
-                    {editMode && (
-                      <div className="flex flex-col gap-0.5 shrink-0">
-                        <button
-                          onClick={() => handleMoveTemplate(program, idx, -1)}
-                          disabled={idx === 0}
-                          aria-label="Move up"
-                          className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center disabled:opacity-25 active:bg-white/20 transition-colors"
-                        >
-                          <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => handleMoveTemplate(program, idx, 1)}
-                          disabled={idx === weekTemplates.length - 1}
-                          aria-label="Move down"
-                          className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center disabled:opacity-25 active:bg-white/20 transition-colors"
-                        >
-                          <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                          </svg>
-                        </button>
-                      </div>
-                    )}
+                  {/* Top accent bar — workout color */}
+                  <div className={`h-[3px] ${color.dot}`} />
+                  {/* Ambient colored spotlight */}
+                  <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: `radial-gradient(circle, ${color.hex}14 0%, transparent 60%)`, filter: 'blur(40px)' }} />
 
-                    {/* Workout info — tap to expand */}
-                    <div
-                      className="flex-1 min-w-0 cursor-pointer"
+                  {/* Header row — workout name as tracked uppercase label (matches Browse Workout Library card) */}
+                  <div className="relative px-6 pt-5 pb-4 border-b border-white/10">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-2 h-2 rounded-full ${color.dot} shrink-0`} />
+                      <p className="text-[11px] uppercase font-light truncate flex-1" style={{ letterSpacing: '0.3em', color: `${color.hex}cc` }}>
+                        {t.name}
+                      </p>
+                      {editMode && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => handleMoveTemplate(program, idx, -1)}
+                            disabled={idx === 0}
+                            aria-label="Move up"
+                            className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center disabled:opacity-25 active:bg-white/20 transition-colors"
+                          >
+                            <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => handleMoveTemplate(program, idx, 1)}
+                            disabled={idx === weekTemplates.length - 1}
+                            aria-label="Move down"
+                            className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center disabled:opacity-25 active:bg-white/20 transition-colors"
+                          >
+                            <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                            </svg>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Content row — big display count + actions (matches Browse Workout Library) */}
+                  <div className="relative px-6 py-5 flex items-center justify-between gap-4">
+                    {/* Left: exercise count as big display number — clickable to expand */}
+                    <button
                       onClick={() => {
                         if (editMode || t.isRest) return;
                         setExpandedWorkoutCard(expandedWorkoutCard === t.id ? null : t.id);
                       }}
+                      disabled={editMode || t.isRest}
+                      className="text-left min-w-0 disabled:cursor-default"
                     >
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${color.dot}`} />
-                        <h3 className="text-lg font-semibold text-white">{t.name}</h3>
+                      <div style={{
+                        fontSize: '40.8px',
+                        fontWeight: 200,
+                        color: 'white',
+                        letterSpacing: '-1.7px',
+                        lineHeight: 1,
+                        fontFamily: 'system-ui',
+                      }}>
+                        {t.isRest ? '—' : (t.exercises || []).length}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[10px] text-white/30 uppercase font-semibold" style={{ letterSpacing: '0.3em' }}>
+                          {t.isRest ? 'Rest Day' : (t.exercises || []).length === 1 ? 'Exercise' : 'Exercises'}
+                        </span>
                         {!t.isRest && (
                           <svg
-                            className={`w-4 h-4 text-wf-gray-400 transition-transform duration-200 shrink-0 ${expandedWorkoutCard === t.id ? 'rotate-180' : ''}`}
+                            className={`w-3 h-3 text-white/40 transition-transform duration-200 shrink-0 ${expandedWorkoutCard === t.id ? 'rotate-180' : ''}`}
                             fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
                           >
                             <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
                           </svg>
                         )}
                       </div>
-                      <p className="text-wf-gray-500 text-xs mt-1 ml-4">
-                        {t.isRest ? 'Rest day' : `${(t.exercises || []).length} exercises · Tap to ${expandedWorkoutCard === t.id ? 'collapse' : 'expand'}`}
-                      </p>
-                    </div>
+                    </button>
 
-                    {/* Edit mode: delete button | Normal: add + edit buttons */}
+                    {/* Right: action buttons */}
                     {editMode ? (
                       <button
                         onClick={() => handleDeleteTemplate(t.id)}
@@ -1400,25 +1444,33 @@ export default function Workouts() {
                         </svg>
                       </button>
                     ) : !t.isRest ? (
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <button
                           data-tutorial={idx === weekTemplates.findIndex(w => !w.isRest) ? 'week-add-btn' : undefined}
                           onClick={() => openAddWorkout(t)}
-                          className="h-9 px-3 rounded-lg bg-green-500/20 flex items-center justify-center shrink-0 active:bg-green-500/40 transition-colors"
+                          className="active:scale-[0.97] transition-all text-white text-[11px] font-bold uppercase px-3.5 py-2 whitespace-nowrap shrink-0"
+                          style={{
+                            letterSpacing: '0.15em',
+                            borderRadius: '2px',
+                            background: 'linear-gradient(135deg, rgba(34,197,94,0.9) 0%, rgba(22,163,74,0.9) 100%)',
+                            boxShadow: '0 4px 14px rgba(34,197,94,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+                          }}
                         >
-                          <svg className="w-4 h-4 text-green-400 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                          </svg>
-                          <span className="text-xs font-semibold text-green-400">Add</span>
+                          + Add
                         </button>
                         {program.userId !== null ? (
                           <>
                             <button
                               onClick={() => { openShareModal(program); }}
-                              className="w-9 h-9 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0 active:bg-blue-500/40 transition-colors"
+                              className="w-9 h-9 flex items-center justify-center shrink-0 active:scale-[0.97] transition-all"
+                              style={{
+                                borderRadius: '2px',
+                                background: 'linear-gradient(135deg, rgba(59,130,246,0.9) 0%, rgba(37,99,235,0.9) 100%)',
+                                boxShadow: '0 4px 14px rgba(59,130,246,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+                              }}
                               title="Share workout"
                             >
-                              <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
                               </svg>
                             </button>
@@ -1435,7 +1487,12 @@ export default function Workouts() {
                         ) : (
                           <button
                             onClick={() => { openInviteModal(t); }}
-                            className="w-9 h-9 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0 active:bg-blue-500/40 transition-colors"
+                            className="w-9 h-9 flex items-center justify-center shrink-0 active:bg-blue-500/25 transition-colors"
+                            style={{
+                              borderRadius: '2px',
+                              background: 'rgba(59,130,246,0.12)',
+                              border: '1px solid rgba(59,130,246,0.3)',
+                            }}
                             title="Invite a friend"
                           >
                             <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -1449,7 +1506,7 @@ export default function Workouts() {
 
                   {/* Exercise accordion cards — primary accordion (hidden in edit mode, shown when card expanded) */}
                   {!editMode && !t.isRest && expandedWorkoutCard === t.id && (t.exercises || []).length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-white/10 space-y-2">
+                    <div className="relative border-t border-white/10 px-4 py-4 space-y-2">
                       {t.exercises.map((ex, exIdx) => {
                         if (ex.isSectionHeader) {
                           return (
@@ -1557,18 +1614,43 @@ export default function Workouts() {
         {/* Invite Workout Modal (week detail view) */}
         {inviteModal && (
           <div className="fixed inset-0 z-50 flex flex-col" onClick={() => setInviteModal(null)}>
-            <div className="absolute inset-0 bg-black/70" />
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             <div
-              className="relative flex-1 flex flex-col mt-12 bg-wf-gray-900 rounded-t-2xl shadow-2xl animate-drop-down overflow-hidden"
+              className="relative flex-1 flex flex-col mt-12 overflow-hidden animate-drop-down"
+              style={{
+                background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                borderRadius: '2px',
+                boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+              }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="shrink-0 pt-3 pb-2 px-5">
-                <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-3" />
-                <h3 className="text-lg font-black text-white">Invite to Workout</h3>
+              {/* Red accent line */}
+              <div className="h-[3px] shrink-0" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent)' }} />
+              {/* Ambient red spotlight */}
+              <div className="absolute top-0 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+
+              <div className="relative shrink-0 pt-5 pb-4 px-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-[11px] uppercase font-light mb-2" style={{ letterSpacing: '0.3em', color: 'rgba(239,68,68,0.8)' }}>Partner Up</p>
+                    <h3 className="text-[22px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>INVITE TO WORKOUT</h3>
+                  </div>
+                  <button
+                    onClick={() => setInviteModal(null)}
+                    aria-label="Close"
+                    className="w-7 h-7 flex items-center justify-center active:scale-90 transition-all shrink-0"
+                    style={{ color: 'rgba(255,255,255,0.3)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.8)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.3)'; }}
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               </div>
-              <div className="flex-1 overflow-y-auto px-5 pb-24">
-              <div className="mb-1" />
-              <p className="text-sm text-wf-gray-400 mb-4">
+              <div className="relative flex-1 overflow-y-auto px-6 pb-24">
+              <p className="text-[12px] text-white/50 font-light leading-relaxed mb-4">
                 Invite someone to do <span className="text-white font-semibold">{inviteModal.name}</span> with you today.
               </p>
               <input
@@ -1576,7 +1658,14 @@ export default function Workouts() {
                 value={shareUserSearch}
                 onChange={(e) => { setShareUserSearch(e.target.value); setInviteResult(null); }}
                 placeholder="Search users..."
-                className="w-full glass-input rounded-xl px-4 py-3 text-sm text-white placeholder:text-wf-gray-600 focus:outline-none mb-3"
+                className="w-full px-4 py-3 text-sm text-white placeholder:text-white/25 focus:outline-none mb-3"
+                style={{
+                  background: 'rgba(0,0,0,0.3)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '2px',
+                }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(239,68,68,0.6)'; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; }}
                 autoFocus
               />
               {inviteResult && (
@@ -1591,7 +1680,12 @@ export default function Workouts() {
                     <button
                       key={u.id}
                       onClick={() => { setInviteInput(u.username || u.name); setInviteResult(null); }}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${inviteInput === (u.username || u.name) ? 'bg-blue-500/20 border border-blue-500/40' : 'hover:bg-white/5 active:bg-white/10'}`}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 transition-colors ${inviteInput === (u.username || u.name) ? 'border' : 'hover:bg-white/5 active:bg-white/10 border border-transparent'}`}
+                      style={inviteInput === (u.username || u.name) ? {
+                        background: 'rgba(239,68,68,0.12)',
+                        borderColor: 'rgba(239,68,68,0.4)',
+                        borderRadius: '2px',
+                      } : { borderRadius: '2px' }}
                     >
                       {u.photo ? (
                         <img src={u.photo} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
@@ -1602,30 +1696,44 @@ export default function Workouts() {
                       )}
                       <div className="text-left min-w-0">
                         <p className="text-sm font-semibold text-white truncate">{u.name}</p>
-                        {u.username && <p className="text-xs text-wf-gray-500">@{u.username}</p>}
+                        {u.username && <p className="text-xs text-white/50">@{u.username}</p>}
                       </div>
                       {inviteInput === (u.username || u.name) && (
-                        <svg className="w-5 h-5 text-blue-400 shrink-0 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <svg className="w-5 h-5 shrink-0 ml-auto" style={{ color: '#ef4444' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                         </svg>
                       )}
                     </button>
                   ))}
                 {shareUsers.length === 0 && (
-                  <p className="text-center text-wf-gray-500 text-sm py-4">Loading users...</p>
+                  <p className="text-center text-white/50 text-sm py-4">Loading users...</p>
                 )}
               </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => setInviteModal(null)}
-                  className="flex-1 glass-card text-wf-gray-400 font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+                  className="flex-1 py-3 text-[11px] font-bold uppercase active:scale-[0.97] transition-all border"
+                  style={{
+                    background: 'transparent',
+                    borderColor: 'rgba(255,255,255,0.15)',
+                    color: 'rgba(255,255,255,0.5)',
+                    borderRadius: '2px',
+                    letterSpacing: '0.2em',
+                  }}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSendInvite}
                   disabled={inviteLoading || !inviteInput.trim()}
-                  className="flex-1 btn-gradient text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all disabled:opacity-50"
+                  className="flex-1 py-3 text-[11px] font-bold uppercase active:scale-[0.97] transition-all disabled:opacity-50"
+                  style={{
+                    background: 'linear-gradient(135deg, #fff 0%, #e0e0e0 100%)',
+                    color: '#000',
+                    borderRadius: '2px',
+                    letterSpacing: '0.2em',
+                    boxShadow: '0 4px 14px rgba(255,255,255,0.1)',
+                  }}
                 >
                   {inviteLoading ? 'Sending...' : 'Send Invite'}
                 </button>
@@ -1731,120 +1839,193 @@ export default function Workouts() {
       <>
         {beginModal && !conflictInfo && (
           <div className={`fixed inset-0 flex items-center justify-center px-5 ${tutorial.active ? 'z-[200]' : 'z-50'}`} onClick={closeBeginModal}>
-            <div className="absolute inset-0 bg-black/70" />
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             <div
               data-tutorial="begin-modal"
-              className="relative w-full max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
+              className="relative w-full max-w-sm overflow-hidden"
+              style={{
+                background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                borderRadius: '2px',
+                boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+              }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-start justify-between mb-1">
-                <h3 className="text-lg font-black text-white">Begin Program</h3>
-                <button
-                  onClick={closeBeginModal}
-                  aria-label="Close"
-                  className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90 transition-all shrink-0"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+              {/* Red accent line */}
+              <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent)' }} />
+              {/* Ambient red spotlight */}
+              <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+
+              <div className="relative p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <p className="text-[11px] uppercase font-light mb-2" style={{ letterSpacing: '0.3em', color: 'rgba(239,68,68,0.8)' }}>Schedule</p>
+                    <h3 className="text-[22px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>BEGIN PROGRAM</h3>
+                  </div>
+                  <button
+                    onClick={closeBeginModal}
+                    aria-label="Close"
+                    className="w-7 h-7 flex items-center justify-center active:scale-90 transition-all shrink-0"
+                    style={{ color: 'rgba(255,255,255,0.3)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.8)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.3)'; }}
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <p className="text-[12px] text-white/50 font-light leading-relaxed mb-5">
+                  {beginModal.isFeatured
+                    ? <>Schedule the full <span className="text-white font-semibold">{beginModal.weekCount}-week {beginModal.name}</span> to your calendar. This will add {beginModal.templates.length} days of workouts and rest days.</>
+                    : <>Schedule <span className="text-white font-semibold">{beginModal.name}</span> starting from a day of your choice.</>}
+                </p>
+                {!showDatePicker ? (
+                  <div className="flex gap-3">
+                    <button
+                      data-tutorial="start-today-btn"
+                      onClick={handleStartToday}
+                      disabled={beginSaving}
+                      className={`flex-1 py-3.5 text-[11px] font-bold uppercase active:scale-[0.97] transition-all ${beginSaving ? 'opacity-50 pointer-events-none' : ''}`}
+                      style={{
+                        background: 'linear-gradient(135deg, #fff 0%, #e0e0e0 100%)',
+                        color: '#000',
+                        borderRadius: '2px',
+                        letterSpacing: '0.2em',
+                        boxShadow: '0 4px 14px rgba(255,255,255,0.1)',
+                      }}
+                    >
+                      {beginSaving ? 'Saving...' : 'Start Today'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        // flushSync renders the input synchronously so showPicker()
+                        // still runs inside the user-gesture window the browser needs.
+                        flushSync(() => setShowDatePicker(true));
+                        const el = beginDateRef.current;
+                        if (el) {
+                          el.focus();
+                          try { el.showPicker?.(); } catch {}
+                        }
+                      }}
+                      className="flex-1 py-3.5 text-[11px] font-bold uppercase active:scale-[0.97] transition-all border"
+                      style={{
+                        background: 'transparent',
+                        borderColor: 'rgba(255,255,255,0.15)',
+                        color: 'rgba(255,255,255,0.5)',
+                        borderRadius: '2px',
+                        letterSpacing: '0.2em',
+                      }}
+                    >
+                      Choose Date
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2 mt-1">
+                    <input
+                      type="date"
+                      value={beginDateInput}
+                      min={new Date().toLocaleDateString('en-CA')}
+                      onChange={(e) => setBeginDateInput(e.target.value)}
+                      className="flex-1 px-3 py-3 text-white text-sm focus:outline-none"
+                      style={{
+                        background: 'rgba(0,0,0,0.3)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: '2px',
+                      }}
+                      onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(239,68,68,0.6)'; }}
+                      onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; }}
+                      ref={beginDateRef}
+                    />
+                    <button
+                      onClick={handleBeginDate}
+                      disabled={!beginDateInput || beginSaving}
+                      className="px-5 py-3 text-[11px] font-bold uppercase active:scale-[0.97] transition-all disabled:opacity-40"
+                      style={{
+                        background: 'linear-gradient(135deg, #fff 0%, #e0e0e0 100%)',
+                        color: '#000',
+                        borderRadius: '2px',
+                        letterSpacing: '0.2em',
+                        boxShadow: '0 4px 14px rgba(255,255,255,0.1)',
+                      }}
+                    >
+                      Schedule
+                    </button>
+                  </div>
+                )}
               </div>
-              <p className="text-wf-gray-400 text-sm mb-5">
-                {beginModal.isFeatured
-                  ? <>Schedule the full <span className="text-white font-semibold">{beginModal.weekCount}-week {beginModal.name}</span> to your calendar. This will add {beginModal.templates.length} days of workouts and rest days.</>
-                  : <>Schedule <span className="text-white font-semibold">{beginModal.name}</span> starting from a day of your choice.</>}
-              </p>
-              {!showDatePicker ? (
-                <div className="flex gap-3">
-                  <button
-                    data-tutorial="start-today-btn"
-                    onClick={handleStartToday}
-                    disabled={beginSaving}
-                    className={`flex-1 btn-gradient text-white font-semibold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-all ${beginSaving ? 'opacity-50 pointer-events-none' : ''}`}
-                  >
-                    {beginSaving ? 'Saving...' : 'Start Today'}
-                  </button>
-                  <button
-                    onClick={() => {
-                      // flushSync renders the input synchronously so showPicker()
-                      // still runs inside the user-gesture window the browser needs.
-                      flushSync(() => setShowDatePicker(true));
-                      const el = beginDateRef.current;
-                      if (el) {
-                        el.focus();
-                        try { el.showPicker?.(); } catch {}
-                      }
-                    }}
-                    className="flex-1 glass-card text-white font-semibold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-all"
-                  >
-                    Choose Date
-                  </button>
-                </div>
-              ) : (
-                <div className="flex gap-2 mt-1">
-                  <input
-                    type="date"
-                    value={beginDateInput}
-                    min={new Date().toLocaleDateString('en-CA')}
-                    onChange={(e) => setBeginDateInput(e.target.value)}
-                    className="flex-1 glass-input rounded-xl px-3 py-3 text-white text-sm focus:outline-none"
-                    ref={beginDateRef}
-                  />
-                  <button
-                    onClick={handleBeginDate}
-                    disabled={!beginDateInput || beginSaving}
-                    className="btn-gradient text-white font-semibold px-5 py-3 rounded-xl text-sm active:scale-[0.98] transition-all disabled:opacity-40"
-                  >
-                    Schedule
-                  </button>
-                </div>
-              )}
             </div>
           </div>
         )}
 
         {conflictInfo && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-5" onClick={() => setConflictInfo(null)}>
-            <div className="absolute inset-0 bg-black/70" />
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             <div
-              className="relative w-full max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
+              className="relative w-full max-w-sm overflow-hidden"
+              style={{
+                background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                borderRadius: '2px',
+                boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+              }}
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="text-base font-black text-white mb-2">Overwrite existing workouts?</h3>
-              <p className="text-wf-gray-400 text-sm mb-3">
-                {beginModal?.isFeatured
-                  ? 'You already have workouts for these dates. Beginning this program will remove them from the calendar:'
-                  : 'This will overwrite your current workout on:'}
-              </p>
-              <ul className="mb-5 space-y-2 max-h-48 overflow-y-auto">
-                {(conflictInfo.conflicts.length > 10 ? conflictInfo.conflicts.slice(0, 8) : conflictInfo.conflicts).map((c) => (
-                  <li key={c.dayLabel} className="flex items-start gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-wf-red mt-1.5 shrink-0" />
-                    <div>
-                      <span className="text-sm font-semibold text-wf-red">{c.dayLabel}</span>
-                      <span className="text-xs text-wf-gray-400 ml-1">({c.workoutName})</span>
-                    </div>
-                  </li>
-                ))}
-                {conflictInfo.conflicts.length > 10 && (
-                  <li className="text-xs text-wf-gray-400 pl-3.5">
-                    ...and {conflictInfo.conflicts.length - 8} more workouts
-                  </li>
-                )}
-              </ul>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setConflictInfo(null)}
-                  className="flex-1 glass-card text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => applyEntries(conflictInfo.pendingEntries)}
-                  className="flex-1 bg-wf-red/90 hover:bg-wf-red text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
-                >
-                  Overwrite
-                </button>
+              {/* Red accent line */}
+              <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent)' }} />
+              {/* Ambient red spotlight */}
+              <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+
+              <div className="relative p-6">
+                <p className="text-[11px] uppercase font-light mb-2" style={{ letterSpacing: '0.3em', color: 'rgba(239,68,68,0.8)' }}>Warning</p>
+                <h3 className="text-[22px] font-black text-white tracking-tight mb-3" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>OVERWRITE<br/>WORKOUTS?</h3>
+                <p className="text-[12px] text-white/50 font-light leading-relaxed mb-4">
+                  {beginModal?.isFeatured
+                    ? 'You already have workouts for these dates. Beginning this program will remove them from the calendar:'
+                    : 'This will overwrite your current workout on:'}
+                </p>
+                <ul className="mb-5 space-y-2 max-h-48 overflow-y-auto">
+                  {(conflictInfo.conflicts.length > 10 ? conflictInfo.conflicts.slice(0, 8) : conflictInfo.conflicts).map((c) => (
+                    <li key={c.dayLabel} className="flex items-start gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-wf-red mt-1.5 shrink-0" />
+                      <div>
+                        <span className="text-sm font-semibold text-wf-red">{c.dayLabel}</span>
+                        <span className="text-xs text-white/50 ml-1">({c.workoutName})</span>
+                      </div>
+                    </li>
+                  ))}
+                  {conflictInfo.conflicts.length > 10 && (
+                    <li className="text-xs text-white/50 pl-3.5">
+                      ...and {conflictInfo.conflicts.length - 8} more workouts
+                    </li>
+                  )}
+                </ul>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setConflictInfo(null)}
+                    className="flex-1 py-3 text-[11px] font-bold uppercase active:scale-[0.97] transition-all border"
+                    style={{
+                      background: 'transparent',
+                      borderColor: 'rgba(255,255,255,0.15)',
+                      color: 'rgba(255,255,255,0.5)',
+                      borderRadius: '2px',
+                      letterSpacing: '0.2em',
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => applyEntries(conflictInfo.pendingEntries)}
+                    className="flex-1 py-3 text-[11px] font-bold uppercase active:scale-[0.97] transition-all"
+                    style={{
+                      background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
+                      color: '#fff',
+                      borderRadius: '2px',
+                      letterSpacing: '0.2em',
+                      boxShadow: '0 4px 14px rgba(239,68,68,0.25)',
+                    }}
+                  >
+                    Overwrite
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1858,103 +2039,175 @@ export default function Workouts() {
       <>
         {addWorkoutModal && !addConflictInfo && (
           <div className={`fixed inset-0 flex ${tutorial.active ? 'z-[200] items-center justify-center px-5' : 'z-50 items-start justify-center pt-24 px-5'}`} onClick={closeAddWorkoutModal}>
-            <div className="absolute inset-0 bg-black/60" />
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             <div
-              className={`relative w-full bg-wf-gray-900 ${tutorial.active ? 'max-w-sm border border-white/10 rounded-2xl p-5 shadow-2xl' : 'max-w-sm border border-white/10 rounded-2xl p-5 shadow-2xl animate-drop-down'}`}
+              className={`relative w-full max-w-sm overflow-hidden ${tutorial.active ? '' : 'animate-drop-down'}`}
+              style={{
+                background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                borderRadius: '2px',
+                boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+              }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-5" />
-              <div className="flex items-start justify-between mb-1">
-                <h3 className="text-lg font-black text-white">Add Workout</h3>
-                <button
-                  onClick={closeAddWorkoutModal}
-                  aria-label="Close"
-                  className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90 transition-all shrink-0"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+              {/* Red accent line */}
+              <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent)' }} />
+              {/* Ambient red spotlight */}
+              <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+
+              <div className="relative p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <p className="text-[11px] uppercase font-light mb-2" style={{ letterSpacing: '0.3em', color: 'rgba(239,68,68,0.8)' }}>Calendar</p>
+                    <h3 className="text-[22px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>ADD WORKOUT</h3>
+                  </div>
+                  <button
+                    onClick={closeAddWorkoutModal}
+                    aria-label="Close"
+                    className="w-7 h-7 flex items-center justify-center active:scale-90 transition-all shrink-0"
+                    style={{ color: 'rgba(255,255,255,0.3)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.8)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.3)'; }}
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <p className="text-[12px] text-white/50 font-light leading-relaxed mb-5">
+                  Add <span className="text-white font-semibold">{addWorkoutModal.name}</span> to your calendar.
+                </p>
+                {!showAddDatePicker ? (
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleAddToday}
+                      className="flex-1 py-3.5 text-[11px] font-bold uppercase active:scale-[0.97] transition-all"
+                      style={{
+                        background: 'linear-gradient(135deg, #fff 0%, #e0e0e0 100%)',
+                        color: '#000',
+                        borderRadius: '2px',
+                        letterSpacing: '0.2em',
+                        boxShadow: '0 4px 14px rgba(255,255,255,0.1)',
+                      }}
+                    >
+                      Begin Today
+                    </button>
+                    <button
+                      onClick={() => {
+                        flushSync(() => setShowAddDatePicker(true));
+                        const el = addDateRef.current;
+                        if (el) {
+                          el.focus();
+                          try { el.showPicker?.(); } catch {}
+                        }
+                      }}
+                      className="flex-1 py-3.5 text-[11px] font-bold uppercase active:scale-[0.97] transition-all border"
+                      style={{
+                        background: 'transparent',
+                        borderColor: 'rgba(255,255,255,0.15)',
+                        color: 'rgba(255,255,255,0.5)',
+                        borderRadius: '2px',
+                        letterSpacing: '0.2em',
+                      }}
+                    >
+                      Choose Date
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2 mt-1">
+                    <input
+                      type="date"
+                      value={addDateInput}
+                      min={new Date().toLocaleDateString('en-CA')}
+                      onChange={(e) => setAddDateInput(e.target.value)}
+                      className="flex-1 px-3 py-3 text-white text-sm focus:outline-none"
+                      style={{
+                        background: 'rgba(0,0,0,0.3)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: '2px',
+                      }}
+                      onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(239,68,68,0.6)'; }}
+                      onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; }}
+                      ref={addDateRef}
+                    />
+                    <button
+                      onClick={handleAddDate}
+                      disabled={!addDateInput}
+                      className="px-5 py-3 text-[11px] font-bold uppercase active:scale-[0.97] transition-all disabled:opacity-40"
+                      style={{
+                        background: 'linear-gradient(135deg, #fff 0%, #e0e0e0 100%)',
+                        color: '#000',
+                        borderRadius: '2px',
+                        letterSpacing: '0.2em',
+                        boxShadow: '0 4px 14px rgba(255,255,255,0.1)',
+                      }}
+                    >
+                      Schedule
+                    </button>
+                  </div>
+                )}
               </div>
-              <p className="text-wf-gray-400 text-sm mb-5">
-                Add <span className="text-white font-semibold">{addWorkoutModal.name}</span> to your calendar.
-              </p>
-              {!showAddDatePicker ? (
-                <div className="flex gap-3">
-                  <button
-                    onClick={handleAddToday}
-                    className="flex-1 btn-gradient text-white font-semibold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-all"
-                  >
-                    Begin Today
-                  </button>
-                  <button
-                    onClick={() => {
-                      flushSync(() => setShowAddDatePicker(true));
-                      const el = addDateRef.current;
-                      if (el) {
-                        el.focus();
-                        try { el.showPicker?.(); } catch {}
-                      }
-                    }}
-                    className="flex-1 glass-card text-white font-semibold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-all"
-                  >
-                    Choose Date
-                  </button>
-                </div>
-              ) : (
-                <div className="flex gap-2 mt-1">
-                  <input
-                    type="date"
-                    value={addDateInput}
-                    min={new Date().toLocaleDateString('en-CA')}
-                    onChange={(e) => setAddDateInput(e.target.value)}
-                    className="flex-1 glass-input rounded-xl px-3 py-3 text-white text-sm focus:outline-none"
-                    ref={addDateRef}
-                  />
-                  <button
-                    onClick={handleAddDate}
-                    disabled={!addDateInput}
-                    className="btn-gradient text-white font-semibold px-5 py-3 rounded-xl text-sm active:scale-[0.98] transition-all disabled:opacity-40"
-                  >
-                    Schedule
-                  </button>
-                </div>
-              )}
             </div>
           </div>
         )}
 
         {addConflictInfo && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-5" onClick={() => setAddConflictInfo(null)}>
-            <div className="absolute inset-0 bg-black/70" />
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             <div
-              className="relative w-full max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
+              className="relative w-full max-w-sm overflow-hidden"
+              style={{
+                background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                borderRadius: '2px',
+                boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+              }}
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="text-base font-black text-white mb-2">Overwrite existing workout?</h3>
-              <p className="text-wf-gray-400 text-sm mb-3">
-                This will replace the current workout on:
-              </p>
-              <div className="flex items-start gap-2 mb-5">
-                <div className="w-1.5 h-1.5 rounded-full bg-wf-red mt-1.5 shrink-0" />
-                <div>
-                  <span className="text-sm font-semibold text-wf-red">{addConflictInfo.dayName}</span>
-                  <span className="text-xs text-wf-gray-400 ml-1">({addConflictInfo.workoutName})</span>
+              {/* Red accent line */}
+              <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent)' }} />
+              {/* Ambient red spotlight */}
+              <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+
+              <div className="relative p-6">
+                <p className="text-[11px] uppercase font-light mb-2" style={{ letterSpacing: '0.3em', color: 'rgba(239,68,68,0.8)' }}>Warning</p>
+                <h3 className="text-[22px] font-black text-white tracking-tight mb-3" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>OVERWRITE<br/>WORKOUT?</h3>
+                <p className="text-[12px] text-white/50 font-light leading-relaxed mb-3">
+                  This will replace the current workout on:
+                </p>
+                <div className="flex items-start gap-2 mb-5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-wf-red mt-1.5 shrink-0" />
+                  <div>
+                    <span className="text-sm font-semibold text-wf-red">{addConflictInfo.dayName}</span>
+                    <span className="text-xs text-white/50 ml-1">({addConflictInfo.workoutName})</span>
+                  </div>
                 </div>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setAddConflictInfo(null)}
-                  className="flex-1 glass-card text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => applyAddWorkout(addConflictInfo.entry)}
-                  className="flex-1 bg-wf-red/90 hover:bg-wf-red text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
-                >
-                  Overwrite
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setAddConflictInfo(null)}
+                    className="flex-1 py-3 text-[11px] font-bold uppercase active:scale-[0.97] transition-all border"
+                    style={{
+                      background: 'transparent',
+                      borderColor: 'rgba(255,255,255,0.15)',
+                      color: 'rgba(255,255,255,0.5)',
+                      borderRadius: '2px',
+                      letterSpacing: '0.2em',
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => applyAddWorkout(addConflictInfo.entry)}
+                    className="flex-1 py-3 text-[11px] font-bold uppercase active:scale-[0.97] transition-all"
+                    style={{
+                      background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
+                      color: '#fff',
+                      borderRadius: '2px',
+                      letterSpacing: '0.2em',
+                      boxShadow: '0 4px 14px rgba(239,68,68,0.25)',
+                    }}
+                  >
+                    Overwrite
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -2066,7 +2319,7 @@ export default function Workouts() {
   if (selectedGroup === 'challenges') {
     return (
       <div className="pb-24">
-        <StickyHeader title="Challenges" />
+        <StickyHeader title="CHALLENGES" titleStyle={{ fontSize: '26.4px' }} />
         <div className="px-4 mb-3">
           <button
             onClick={() => { setSelectedGroup(null); setChallengeTab('active'); setChallengeAccordion(null); }}
@@ -2080,16 +2333,36 @@ export default function Workouts() {
         </div>
 
         <div className="px-4">
-          {/* Segmented Control */}
-          <div style={{ display: 'flex', background: 'rgba(255,255,255,0.06)', borderRadius: '10px', padding: '3px', marginBottom: '16px' }}>
-            {['active', 'upcoming', 'completed'].map(tab => (
-              <button key={tab} onClick={() => { setChallengeTab(tab); setChallengeAccordion(null); }} style={{
-                flex: 1, padding: '10px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, textTransform: 'capitalize', border: 'none', cursor: 'pointer',
-                background: challengeTab === tab ? 'rgba(239,68,68,0.9)' : 'transparent',
-                color: challengeTab === tab ? 'white' : 'rgba(255,255,255,0.4)',
-                transition: 'all 0.2s ease',
-              }}>{tab}</button>
-            ))}
+          {/* Segmented Control — Nike style */}
+          <div
+            className="flex p-[3px] mb-4"
+            style={{
+              background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+              borderRadius: '2px',
+              boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+            }}
+          >
+            {['active', 'upcoming', 'completed'].map(tab => {
+              const isActive = challengeTab === tab;
+              return (
+                <button
+                  key={tab}
+                  onClick={() => { setChallengeTab(tab); setChallengeAccordion(null); }}
+                  className="flex-1 text-[11px] font-bold uppercase py-2.5 active:scale-[0.97] transition-all"
+                  style={{
+                    borderRadius: '2px',
+                    letterSpacing: '0.2em',
+                    background: isActive ? 'linear-gradient(135deg, #fff 0%, #e0e0e0 100%)' : 'transparent',
+                    color: isActive ? '#000' : 'rgba(255,255,255,0.45)',
+                    boxShadow: isActive ? '0 4px 14px rgba(255,255,255,0.1)' : 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {tab}
+                </button>
+              );
+            })}
           </div>
 
           {/* Active Tab */}
@@ -2162,13 +2435,15 @@ export default function Workouts() {
                     ))}
                   </div>
 
-                  {/* Submit button */}
+                  {/* Submit button — Nike dark variant */}
                   <button
                     style={{
-                      width: '100%', padding: '14px', borderRadius: '14px', border: 'none', marginTop: '16px',
-                      background: 'linear-gradient(135deg, rgba(239,68,68,0.9), rgba(249,115,22,0.9))',
-                      color: 'white', fontSize: '14px', fontWeight: 700, cursor: 'pointer',
-                      boxShadow: '0 0 16px rgba(239,68,68,0.3)',
+                      width: '100%', padding: '14px', borderRadius: '2px', border: 'none', marginTop: '16px',
+                      background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%)',
+                      color: '#9ca3af',
+                      fontSize: '11px', fontWeight: 700, cursor: 'pointer',
+                      letterSpacing: '0.2em', textTransform: 'uppercase',
+                      boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
                     }}
                     className="active:scale-[0.98] transition-all"
                   >
@@ -2844,74 +3119,128 @@ export default function Workouts() {
         {/* Share Program Modal */}
         {shareModal && (
           <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setShareModal(null)}>
-            <div className="absolute inset-0 bg-black/70" />
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             <div
-              className="relative w-full bg-wf-gray-900 border-t border-white/10 rounded-t-2xl p-5 pb-24 shadow-2xl animate-drop-down"
+              className="relative w-full overflow-hidden animate-drop-down"
+              style={{
+                background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                borderRadius: '2px',
+                boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+              }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4" />
-              <h3 className="text-lg font-black text-white mb-1">Share Program</h3>
-              <p className="text-sm text-wf-gray-400 mb-4">
-                Share <span className="text-white font-semibold">{shareModal.name}</span> with a friend.
-              </p>
-              <input
-                type="text"
-                value={shareUserSearch}
-                onChange={(e) => { setShareUserSearch(e.target.value); setShareResult(null); }}
-                placeholder="Search users..."
-                className="w-full glass-input rounded-xl px-4 py-3 text-sm text-white placeholder:text-wf-gray-600 focus:outline-none mb-3"
-                autoFocus
-              />
-              {shareResult && (
-                <p className={`text-sm mb-3 ${shareResult.success ? 'text-green-400' : 'text-red-400'}`}>
-                  {shareResult.message}
+              {/* Red accent line */}
+              <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent)' }} />
+              {/* Ambient red spotlight */}
+              <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+
+              <div className="relative p-6 pb-24">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <p className="text-[11px] uppercase font-light mb-2" style={{ letterSpacing: '0.3em', color: 'rgba(239,68,68,0.8)' }}>Share</p>
+                    <h3 className="text-[22px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>SHARE PROGRAM</h3>
+                  </div>
+                  <button
+                    onClick={() => setShareModal(null)}
+                    aria-label="Close"
+                    className="w-7 h-7 flex items-center justify-center active:scale-90 transition-all shrink-0"
+                    style={{ color: 'rgba(255,255,255,0.3)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.8)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.3)'; }}
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <p className="text-[12px] text-white/50 font-light leading-relaxed mb-4">
+                  Share <span className="text-white font-semibold">{shareModal.name}</span> with a friend.
                 </p>
-              )}
-              <div className="max-h-64 overflow-y-auto space-y-1 mb-3">
-                {shareUsers
-                  .filter(u => !shareUserSearch.trim() || u.name.toLowerCase().includes(shareUserSearch.toLowerCase()) || u.username.toLowerCase().includes(shareUserSearch.toLowerCase()))
-                  .map(u => (
-                    <button
-                      key={u.id}
-                      onClick={() => { setShareInput(u.username || u.name); setShareResult(null); }}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${shareInput === (u.username || u.name) ? 'bg-blue-500/20 border border-blue-500/40' : 'hover:bg-white/5 active:bg-white/10'}`}
-                    >
-                      {u.photo ? (
-                        <img src={u.photo} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
-                      ) : (
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-wf-red to-orange-500 flex items-center justify-center shrink-0">
-                          <span className="text-white text-sm font-bold">{(u.name || 'U')[0].toUpperCase()}</span>
-                        </div>
-                      )}
-                      <div className="text-left min-w-0">
-                        <p className="text-sm font-semibold text-white truncate">{u.name}</p>
-                        {u.username && <p className="text-xs text-wf-gray-500">@{u.username}</p>}
-                      </div>
-                      {shareInput === (u.username || u.name) && (
-                        <svg className="w-5 h-5 text-blue-400 shrink-0 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                        </svg>
-                      )}
-                    </button>
-                  ))}
-                {shareUsers.length === 0 && (
-                  <p className="text-center text-wf-gray-500 text-sm py-4">Loading users...</p>
+                <input
+                  type="text"
+                  value={shareUserSearch}
+                  onChange={(e) => { setShareUserSearch(e.target.value); setShareResult(null); }}
+                  placeholder="Search users..."
+                  className="w-full px-4 py-3 text-sm text-white placeholder:text-white/25 focus:outline-none mb-3"
+                  style={{
+                    background: 'rgba(0,0,0,0.3)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: '2px',
+                  }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(239,68,68,0.6)'; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; }}
+                  autoFocus
+                />
+                {shareResult && (
+                  <p className={`text-sm mb-3 ${shareResult.success ? 'text-green-400' : 'text-red-400'}`}>
+                    {shareResult.message}
+                  </p>
                 )}
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setShareModal(null)}
-                  className="flex-1 glass-card text-wf-gray-400 font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleShareProgram}
-                  disabled={shareLoading || !shareInput.trim()}
-                  className="flex-1 btn-gradient text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all disabled:opacity-50"
-                >
-                  {shareLoading ? 'Sharing...' : 'Share'}
-                </button>
+                <div className="max-h-64 overflow-y-auto space-y-1 mb-3">
+                  {shareUsers
+                    .filter(u => !shareUserSearch.trim() || u.name.toLowerCase().includes(shareUserSearch.toLowerCase()) || u.username.toLowerCase().includes(shareUserSearch.toLowerCase()))
+                    .map(u => (
+                      <button
+                        key={u.id}
+                        onClick={() => { setShareInput(u.username || u.name); setShareResult(null); }}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 transition-colors ${shareInput === (u.username || u.name) ? 'border' : 'hover:bg-white/5 active:bg-white/10 border border-transparent'}`}
+                        style={shareInput === (u.username || u.name) ? {
+                          background: 'rgba(239,68,68,0.12)',
+                          borderColor: 'rgba(239,68,68,0.4)',
+                          borderRadius: '2px',
+                        } : { borderRadius: '2px' }}
+                      >
+                        {u.photo ? (
+                          <img src={u.photo} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
+                        ) : (
+                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-wf-red to-orange-500 flex items-center justify-center shrink-0">
+                            <span className="text-white text-sm font-bold">{(u.name || 'U')[0].toUpperCase()}</span>
+                          </div>
+                        )}
+                        <div className="text-left min-w-0">
+                          <p className="text-sm font-semibold text-white truncate">{u.name}</p>
+                          {u.username && <p className="text-xs text-white/50">@{u.username}</p>}
+                        </div>
+                        {shareInput === (u.username || u.name) && (
+                          <svg className="w-5 h-5 shrink-0 ml-auto" style={{ color: '#ef4444' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                          </svg>
+                        )}
+                      </button>
+                    ))}
+                  {shareUsers.length === 0 && (
+                    <p className="text-center text-white/50 text-sm py-4">Loading users...</p>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShareModal(null)}
+                    className="flex-1 py-3 text-[11px] font-bold uppercase active:scale-[0.97] transition-all border"
+                    style={{
+                      background: 'transparent',
+                      borderColor: 'rgba(255,255,255,0.15)',
+                      color: 'rgba(255,255,255,0.5)',
+                      borderRadius: '2px',
+                      letterSpacing: '0.2em',
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleShareProgram}
+                    disabled={shareLoading || !shareInput.trim()}
+                    className="flex-1 py-3 text-[11px] font-bold uppercase active:scale-[0.97] transition-all disabled:opacity-50"
+                    style={{
+                      background: 'linear-gradient(135deg, #fff 0%, #e0e0e0 100%)',
+                      color: '#000',
+                      borderRadius: '2px',
+                      letterSpacing: '0.2em',
+                      boxShadow: '0 4px 14px rgba(255,255,255,0.1)',
+                    }}
+                  >
+                    {shareLoading ? 'Sharing...' : 'Share'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -2920,18 +3249,43 @@ export default function Workouts() {
         {/* Invite Workout Modal (browse library) */}
         {inviteModal && (
           <div className="fixed inset-0 z-50 flex flex-col" onClick={() => setInviteModal(null)}>
-            <div className="absolute inset-0 bg-black/70" />
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             <div
-              className="relative flex-1 flex flex-col mt-12 bg-wf-gray-900 rounded-t-2xl shadow-2xl animate-drop-down overflow-hidden"
+              className="relative flex-1 flex flex-col mt-12 overflow-hidden animate-drop-down"
+              style={{
+                background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                borderRadius: '2px',
+                boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+              }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="shrink-0 pt-3 pb-2 px-5">
-                <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-3" />
-                <h3 className="text-lg font-black text-white">Invite to Workout</h3>
+              {/* Red accent line */}
+              <div className="h-[3px] shrink-0" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent)' }} />
+              {/* Ambient red spotlight */}
+              <div className="absolute top-0 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+
+              <div className="relative shrink-0 pt-5 pb-4 px-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-[11px] uppercase font-light mb-2" style={{ letterSpacing: '0.3em', color: 'rgba(239,68,68,0.8)' }}>Partner Up</p>
+                    <h3 className="text-[22px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>INVITE TO WORKOUT</h3>
+                  </div>
+                  <button
+                    onClick={() => setInviteModal(null)}
+                    aria-label="Close"
+                    className="w-7 h-7 flex items-center justify-center active:scale-90 transition-all shrink-0"
+                    style={{ color: 'rgba(255,255,255,0.3)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.8)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.3)'; }}
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               </div>
-              <div className="flex-1 overflow-y-auto px-5 pb-24">
-              <div className="mb-1" />
-              <p className="text-sm text-wf-gray-400 mb-4">
+              <div className="relative flex-1 overflow-y-auto px-6 pb-24">
+              <p className="text-[12px] text-white/50 font-light leading-relaxed mb-4">
                 Invite someone to do <span className="text-white font-semibold">{inviteModal.name}</span> with you today.
               </p>
               <input
@@ -2939,7 +3293,14 @@ export default function Workouts() {
                 value={shareUserSearch}
                 onChange={(e) => { setShareUserSearch(e.target.value); setInviteResult(null); }}
                 placeholder="Search users..."
-                className="w-full glass-input rounded-xl px-4 py-3 text-sm text-white placeholder:text-wf-gray-600 focus:outline-none mb-3"
+                className="w-full px-4 py-3 text-sm text-white placeholder:text-white/25 focus:outline-none mb-3"
+                style={{
+                  background: 'rgba(0,0,0,0.3)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '2px',
+                }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(239,68,68,0.6)'; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; }}
                 autoFocus
               />
               {inviteResult && (
@@ -2954,7 +3315,12 @@ export default function Workouts() {
                     <button
                       key={u.id}
                       onClick={() => { setInviteInput(u.username || u.name); setInviteResult(null); }}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${inviteInput === (u.username || u.name) ? 'bg-blue-500/20 border border-blue-500/40' : 'hover:bg-white/5 active:bg-white/10'}`}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 transition-colors ${inviteInput === (u.username || u.name) ? 'border' : 'hover:bg-white/5 active:bg-white/10 border border-transparent'}`}
+                      style={inviteInput === (u.username || u.name) ? {
+                        background: 'rgba(239,68,68,0.12)',
+                        borderColor: 'rgba(239,68,68,0.4)',
+                        borderRadius: '2px',
+                      } : { borderRadius: '2px' }}
                     >
                       {u.photo ? (
                         <img src={u.photo} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
@@ -2965,30 +3331,44 @@ export default function Workouts() {
                       )}
                       <div className="text-left min-w-0">
                         <p className="text-sm font-semibold text-white truncate">{u.name}</p>
-                        {u.username && <p className="text-xs text-wf-gray-500">@{u.username}</p>}
+                        {u.username && <p className="text-xs text-white/50">@{u.username}</p>}
                       </div>
                       {inviteInput === (u.username || u.name) && (
-                        <svg className="w-5 h-5 text-blue-400 shrink-0 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <svg className="w-5 h-5 shrink-0 ml-auto" style={{ color: '#ef4444' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                         </svg>
                       )}
                     </button>
                   ))}
                 {shareUsers.length === 0 && (
-                  <p className="text-center text-wf-gray-500 text-sm py-4">Loading users...</p>
+                  <p className="text-center text-white/50 text-sm py-4">Loading users...</p>
                 )}
               </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => setInviteModal(null)}
-                  className="flex-1 glass-card text-wf-gray-400 font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+                  className="flex-1 py-3 text-[11px] font-bold uppercase active:scale-[0.97] transition-all border"
+                  style={{
+                    background: 'transparent',
+                    borderColor: 'rgba(255,255,255,0.15)',
+                    color: 'rgba(255,255,255,0.5)',
+                    borderRadius: '2px',
+                    letterSpacing: '0.2em',
+                  }}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSendInvite}
                   disabled={inviteLoading || !inviteInput.trim()}
-                  className="flex-1 btn-gradient text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all disabled:opacity-50"
+                  className="flex-1 py-3 text-[11px] font-bold uppercase active:scale-[0.97] transition-all disabled:opacity-50"
+                  style={{
+                    background: 'linear-gradient(135deg, #fff 0%, #e0e0e0 100%)',
+                    color: '#000',
+                    borderRadius: '2px',
+                    letterSpacing: '0.2em',
+                    boxShadow: '0 4px 14px rgba(255,255,255,0.1)',
+                  }}
                 >
                   {inviteLoading ? 'Sending...' : 'Send Invite'}
                 </button>
@@ -3115,7 +3495,7 @@ export default function Workouts() {
           </svg>
         </div>
       )}
-      <StickyHeader title="Workouts">
+      <StickyHeader title="WORKOUTS" titleStyle={{ fontSize: '26.4px' }}>
         <div className="flex items-center gap-2">
           <button
             onClick={() => { setShowSearch(!showSearch); setSearchQuery(''); }}
@@ -3698,53 +4078,6 @@ export default function Workouts() {
               </div>
             </div>
 
-            {/* Personal Records ticker — ported from NewHomepage */}
-            {bodyPartPRs.length > 0 && (() => {
-              const items = bodyPartPRs.map((pr) => {
-                const muscle = (pr.muscle_group || 'PR').toUpperCase();
-                const w = Number(pr.best_weight);
-                const reps = pr.best_reps;
-                return `${muscle} PR — ${pr.exercise_name} — ${w} LBS × ${reps}`;
-              });
-              return (
-                <div
-                  className="fade-slide-up"
-                  style={{
-                    position: 'relative',
-                    overflow: 'hidden',
-                    borderRadius: '2px',
-                    background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
-                    boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
-                  }}
-                >
-                  <div style={{ padding: '16px', overflow: 'hidden' }}>
-                    <p
-                      className="text-[9px] uppercase font-light mb-3"
-                      style={{ color: 'rgba(255,255,255,0.25)', letterSpacing: '0.25em' }}
-                    >
-                      Personal Records
-                    </p>
-                    <div style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                      <div style={{ display: 'inline-block', animation: 'prTicker 20s linear infinite', fontSize: '12px' }}>
-                        {items.map((pr, i) => (
-                          <span key={i}>
-                            <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 300 }}>{pr}</span>
-                            <span style={{ color: 'rgba(255,255,255,0.1)', margin: '0 16px' }}>|</span>
-                          </span>
-                        ))}
-                        {items.map((pr, i) => (
-                          <span key={`d-${i}`}>
-                            <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 300 }}>{pr}</span>
-                            <span style={{ color: 'rgba(255,255,255,0.1)', margin: '0 16px' }}>|</span>
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
-
             {/* Browse Workout Library card — Nike style */}
             <div
               data-tutorial="browse-library"
@@ -3759,14 +4092,14 @@ export default function Workouts() {
                 boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
               }}
             >
-              {/* Green accent line (matches "Leg Day" in NikeTestHomepage PROGRAMS carousel) */}
-              <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #22c55e, rgba(34,197,94,0.25))' }} />
-              {/* Ambient green spotlight */}
-              <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(34,197,94,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+              {/* Red accent line (matches Your Next Workout card) */}
+              <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25))' }} />
+              {/* Ambient red spotlight */}
+              <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
 
               {/* Header row — "Browse Workout Library" spans as a single tracked uppercase line */}
               <div className="relative px-6 pt-5 pb-4 border-b border-white/10">
-                <p className="text-[11px] text-white/40 uppercase font-light" style={{ letterSpacing: '0.3em' }}>
+                <p className="text-[14px] text-white uppercase font-bold text-center" style={{ letterSpacing: '0.3em' }}>
                   Browse Workout Library
                 </p>
               </div>
@@ -3788,7 +4121,7 @@ export default function Workouts() {
                     <span
                       key={type}
                       className="text-[10px] font-bold uppercase whitespace-nowrap"
-                      style={{ color: 'rgba(34,197,94,0.75)', letterSpacing: '0.25em' }}
+                      style={{ color: 'rgba(239,68,68,0.75)', letterSpacing: '0.25em' }}
                     >
                       {type}
                     </span>
@@ -3849,10 +4182,10 @@ export default function Workouts() {
                 boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
               }}
             >
-              {/* Purple accent line (matches "Arms & Shoulders" in NikeTestHomepage PROGRAMS carousel) */}
-              <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #a855f7, rgba(168,85,247,0.25))' }} />
-              {/* Ambient purple spotlight */}
-              <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(168,85,247,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+              {/* Red accent line (matches Your Next Workout card) */}
+              <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25))' }} />
+              {/* Ambient red spotlight */}
+              <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
 
               {/* Header row */}
               <div className="relative px-6 pt-5 pb-4 border-b border-white/10 flex items-center gap-2">
@@ -3860,11 +4193,11 @@ export default function Workouts() {
                   My Workouts
                 </p>
                 {pendingShares.length > 0 && (
-                  <span className="text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: '#a855f7' }}>{pendingShares.length}</span>
+                  <span className="text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: '#ef4444' }}>{pendingShares.length}</span>
                 )}
               </div>
 
-              <div className="relative px-6 py-5 flex items-center justify-between gap-5">
+              <div className="relative px-6 py-5 flex items-end justify-between gap-5">
                 <div>
                   <div className="text-[44px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.9' }}>
                     {myPrograms.length}
@@ -3873,18 +4206,78 @@ export default function Workouts() {
                     {myPrograms.length === 1 ? 'Program' : 'Programs'}
                   </div>
                 </div>
-                <div className="flex-1 text-right">
-                  <span className="text-[10px] font-bold uppercase" style={{ color: 'rgba(168,85,247,0.75)', letterSpacing: '0.25em' }}>
+                <div className="flex-1 flex flex-col items-end gap-3">
+                  <span className="text-[10px] font-bold uppercase" style={{ color: 'rgba(239,68,68,0.75)', letterSpacing: '0.25em' }}>
                     Your Custom Workouts
                   </span>
                   {myPrograms.length === 0 && (
-                    <div className="text-[11px] text-white/40 mt-1">
+                    <div className="text-[11px] text-white/40 -mt-2">
                       Create your first workout
                     </div>
                   )}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShowCreateMenu(true); }}
+                    className="active:scale-[0.97] transition-all text-white text-[11px] font-bold uppercase px-3.5 py-2 whitespace-nowrap"
+                    style={{
+                      letterSpacing: '0.15em',
+                      borderRadius: '2px',
+                      background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+                      boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+                    }}
+                  >
+                    + Create Workout
+                  </button>
                 </div>
               </div>
             </div>
+
+            {/* Personal Records ticker — ported from NewHomepage */}
+            {bodyPartPRs.length > 0 && (() => {
+              const items = bodyPartPRs.map((pr) => {
+                const muscle = (pr.muscle_group || 'PR').toUpperCase();
+                const w = Number(pr.best_weight);
+                const reps = pr.best_reps;
+                return `${muscle} PR — ${pr.exercise_name} — ${w} LBS × ${reps}`;
+              });
+              return (
+                <div
+                  className="fade-slide-up"
+                  style={{
+                    position: 'relative',
+                    overflow: 'hidden',
+                    borderRadius: '2px',
+                    background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                    boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+                  }}
+                >
+                  <div style={{ padding: '16px', overflow: 'hidden' }}>
+                    <p
+                      className="text-[9px] uppercase font-light mb-2"
+                      style={{ color: 'rgba(255,255,255,0.25)', letterSpacing: '0.25em' }}
+                    >
+                      Personal Records
+                    </p>
+                    <div style={{ borderBottom: '1px dotted rgba(255,255,255,0.15)', marginBottom: '12px' }} />
+                    <div style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                      <div style={{ display: 'inline-block', animation: 'prTicker 20s linear infinite', fontSize: '12px' }}>
+                        {items.map((pr, i) => (
+                          <span key={i}>
+                            <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 300 }}>{pr}</span>
+                            <span style={{ color: 'rgba(255,255,255,0.1)', margin: '0 16px' }}>|</span>
+                          </span>
+                        ))}
+                        {items.map((pr, i) => (
+                          <span key={`d-${i}`}>
+                            <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 300 }}>{pr}</span>
+                            <span style={{ color: 'rgba(255,255,255,0.1)', margin: '0 16px' }}>|</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* ----- Original Tutorial card (glass style) — kept so you can swap back ----- */}
             {/*
@@ -4031,116 +4424,6 @@ export default function Workouts() {
 
             {/* Stats & Streak card moved to Profile page. */}
 
-            {/* Stacked Paper PR Cards — swipeable */}
-            {(() => {
-              const muscleGroups = ['Chest', 'Back', 'Shoulders', 'Quads', 'Hamstrings', 'Glutes', 'Biceps', 'Triceps'];
-              const prCards = muscleGroups.map((muscle) => {
-                const pr = bodyPartPRs.find(p => p.muscle_group?.toLowerCase() === muscle.toLowerCase());
-                return {
-                  muscle,
-                  title: `${muscle} PR`,
-                  body: pr
-                    ? `${pr.exercise_name} — ${Number(pr.best_weight)} lbs × ${pr.best_reps} reps`
-                    : 'No PR set yet',
-                };
-              });
-              const total = prCards.length;
-
-              function handleStart(e) {
-                const x = e.touches ? e.touches[0].clientX : e.clientX;
-                prCardStartX.current = x;
-                setPrCardDragging(true);
-              }
-              function handleMove(e) {
-                if (!prCardDragging) return;
-                const x = e.touches ? e.touches[0].clientX : e.clientX;
-                setPrCardDragX(x - prCardStartX.current);
-              }
-              function handleEnd() {
-                if (!prCardDragging) return;
-                const threshold = 100;
-                if (Math.abs(prCardDragX) > threshold) {
-                  // Swipe off in current direction, then advance
-                  const dir = prCardDragX > 0 ? 1 : -1;
-                  setPrCardDragX(dir * 600);
-                  setTimeout(() => {
-                    setPrCardIdx((i) => (i + 1) % total);
-                    setPrCardDragX(0);
-                  }, 250);
-                } else {
-                  setPrCardDragX(0);
-                }
-                setPrCardDragging(false);
-              }
-
-              // Visible stack: top card + 2 behind
-              const visibleCount = Math.min(3, total);
-
-              return (
-                <div className="fade-slide-up" style={{ position: 'relative', height: '160px', animationDelay: '0ms', userSelect: 'none' }}>
-                  {Array.from({ length: visibleCount }).map((_, depth) => {
-                    const cardIdx = (prCardIdx + depth) % total;
-                    const card = prCards[cardIdx];
-                    const isTop = depth === 0;
-                    // Layered offsets — back cards peek out behind top
-                    const baseTransform = depth === 0
-                      ? 'translate(0, 0) rotate(0deg)'
-                      : depth === 1
-                        ? 'translate(6px, 6px) rotate(1.5deg)'
-                        : 'translate(12px, 10px) rotate(-1deg)';
-                    const dragTransform = isTop && (prCardDragX !== 0 || prCardDragging)
-                      ? `translate(${prCardDragX}px, 0) rotate(${prCardDragX * 0.05}deg)`
-                      : baseTransform;
-                    const opacity = depth === 0 ? 1 : depth === 1 ? 0.85 : 0.7;
-                    const zIndex = visibleCount - depth;
-                    return (
-                      <div
-                        key={`${cardIdx}-${depth}`}
-                        onTouchStart={isTop ? handleStart : undefined}
-                        onTouchMove={isTop ? handleMove : undefined}
-                        onTouchEnd={isTop ? handleEnd : undefined}
-                        onMouseDown={isTop ? handleStart : undefined}
-                        onMouseMove={isTop && prCardDragging ? handleMove : undefined}
-                        onMouseUp={isTop ? handleEnd : undefined}
-                        onMouseLeave={isTop && prCardDragging ? handleEnd : undefined}
-                        style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          background: depth === 0 ? '#111' : depth === 1 ? '#151515' : '#1a1a1a',
-                          borderRadius: '16px',
-                          border: '1px solid rgba(255,255,255,0.08)',
-                          padding: '20px',
-                          zIndex,
-                          opacity,
-                          transform: dragTransform,
-                          transition: prCardDragging && isTop ? 'none' : 'transform 0.25s ease-out',
-                          cursor: isTop ? 'grab' : 'default',
-                          touchAction: isTop ? 'pan-y' : 'auto',
-                        }}
-                      >
-                        <p style={{ fontSize: '9px', color: 'rgba(239,68,68,0.6)', letterSpacing: '4px', textTransform: 'uppercase', fontWeight: 700, marginBottom: '12px' }}>
-                          {card.title}
-                        </p>
-                        <div style={{ fontSize: '18px', fontWeight: 800, color: 'white', marginBottom: '6px' }}>
-                          {card.body.split(' — ')[0]}
-                        </div>
-                        <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>
-                          {card.body.includes(' — ') ? card.body.split(' — ')[1] : ''}
-                        </div>
-                        {isTop && (
-                          <div style={{ position: 'absolute', bottom: '12px', right: '16px', fontSize: '9px', color: 'rgba(255,255,255,0.25)', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600 }}>
-                            Swipe →
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })()}
-
             {/* Personal Records — sticky-header list (cards test #38 pattern) */}
             {allPRsByMuscle.length > 0 && (() => {
               // Group rows: muscle → exercise → [{ weight, reps, volume, ... }]
@@ -4201,7 +4484,7 @@ export default function Workouts() {
                       letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600,
                       margin: 0,
                     }}>
-                      Personal Records
+                      Personal Records by:
                     </p>
                     {/* Weight / Volume toggle */}
                     <div style={{
@@ -4333,6 +4616,116 @@ export default function Workouts() {
                             </div>
                           );
                         })}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+
+            {/* Stacked Paper PR Cards — swipeable */}
+            {(() => {
+              const muscleGroups = ['Chest', 'Back', 'Shoulders', 'Quads', 'Hamstrings', 'Glutes', 'Biceps', 'Triceps'];
+              const prCards = muscleGroups.map((muscle) => {
+                const pr = bodyPartPRs.find(p => p.muscle_group?.toLowerCase() === muscle.toLowerCase());
+                return {
+                  muscle,
+                  title: `${muscle} PR`,
+                  body: pr
+                    ? `${pr.exercise_name} — ${Number(pr.best_weight)} lbs × ${pr.best_reps} reps`
+                    : 'No PR set yet',
+                };
+              });
+              const total = prCards.length;
+
+              function handleStart(e) {
+                const x = e.touches ? e.touches[0].clientX : e.clientX;
+                prCardStartX.current = x;
+                setPrCardDragging(true);
+              }
+              function handleMove(e) {
+                if (!prCardDragging) return;
+                const x = e.touches ? e.touches[0].clientX : e.clientX;
+                setPrCardDragX(x - prCardStartX.current);
+              }
+              function handleEnd() {
+                if (!prCardDragging) return;
+                const threshold = 100;
+                if (Math.abs(prCardDragX) > threshold) {
+                  // Swipe off in current direction, then advance
+                  const dir = prCardDragX > 0 ? 1 : -1;
+                  setPrCardDragX(dir * 600);
+                  setTimeout(() => {
+                    setPrCardIdx((i) => (i + 1) % total);
+                    setPrCardDragX(0);
+                  }, 250);
+                } else {
+                  setPrCardDragX(0);
+                }
+                setPrCardDragging(false);
+              }
+
+              // Visible stack: top card + 2 behind
+              const visibleCount = Math.min(3, total);
+
+              return (
+                <div className="fade-slide-up" style={{ position: 'relative', height: '160px', animationDelay: '0ms', userSelect: 'none' }}>
+                  {Array.from({ length: visibleCount }).map((_, depth) => {
+                    const cardIdx = (prCardIdx + depth) % total;
+                    const card = prCards[cardIdx];
+                    const isTop = depth === 0;
+                    // Layered offsets — back cards peek out behind top
+                    const baseTransform = depth === 0
+                      ? 'translate(0, 0) rotate(0deg)'
+                      : depth === 1
+                        ? 'translate(6px, 6px) rotate(1.5deg)'
+                        : 'translate(12px, 10px) rotate(-1deg)';
+                    const dragTransform = isTop && (prCardDragX !== 0 || prCardDragging)
+                      ? `translate(${prCardDragX}px, 0) rotate(${prCardDragX * 0.05}deg)`
+                      : baseTransform;
+                    const opacity = depth === 0 ? 1 : depth === 1 ? 0.85 : 0.7;
+                    const zIndex = visibleCount - depth;
+                    return (
+                      <div
+                        key={`${cardIdx}-${depth}`}
+                        onTouchStart={isTop ? handleStart : undefined}
+                        onTouchMove={isTop ? handleMove : undefined}
+                        onTouchEnd={isTop ? handleEnd : undefined}
+                        onMouseDown={isTop ? handleStart : undefined}
+                        onMouseMove={isTop && prCardDragging ? handleMove : undefined}
+                        onMouseUp={isTop ? handleEnd : undefined}
+                        onMouseLeave={isTop && prCardDragging ? handleEnd : undefined}
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          background: depth === 0 ? '#111' : depth === 1 ? '#151515' : '#1a1a1a',
+                          borderRadius: '16px',
+                          border: '1px solid rgba(255,255,255,0.08)',
+                          padding: '20px',
+                          zIndex,
+                          opacity,
+                          transform: dragTransform,
+                          transition: prCardDragging && isTop ? 'none' : 'transform 0.25s ease-out',
+                          cursor: isTop ? 'grab' : 'default',
+                          touchAction: isTop ? 'pan-y' : 'auto',
+                        }}
+                      >
+                        <p style={{ fontSize: '9px', color: 'rgba(239,68,68,0.6)', letterSpacing: '4px', textTransform: 'uppercase', fontWeight: 700, marginBottom: '12px' }}>
+                          {card.title}
+                        </p>
+                        <div style={{ fontSize: '18px', fontWeight: 800, color: 'white', marginBottom: '6px' }}>
+                          {card.body.split(' — ')[0]}
+                        </div>
+                        <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>
+                          {card.body.includes(' — ') ? card.body.split(' — ')[1] : ''}
+                        </div>
+                        {isTop && (
+                          <div style={{ position: 'absolute', bottom: '12px', right: '16px', fontSize: '9px', color: 'rgba(255,255,255,0.25)', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600 }}>
+                            Swipe →
+                          </div>
+                        )}
                       </div>
                     );
                   })}

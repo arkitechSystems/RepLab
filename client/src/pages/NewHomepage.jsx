@@ -374,7 +374,8 @@ export default function NewHomepage() {
       <div className="relative z-10 mx-4 mb-6">
         <NikeCard>
           <div className="p-4 overflow-hidden">
-            <p className="text-[9px] text-white/20 uppercase tracking-[0.25em] font-light mb-3">Personal Records</p>
+            <p className="text-[9px] text-white/20 uppercase tracking-[0.25em] font-light mb-2">Personal Records</p>
+            <div className="mb-3" style={{ borderBottom: '1px dotted rgba(255,255,255,0.15)' }} />
             <div className="overflow-hidden whitespace-nowrap">
               <div className="inline-block" style={{ animation: 'prTicker 20s linear infinite', fontSize: '12px' }}>
                 {['Chest PR — Bench Press — 225 LBS x 8', 'Back PR — Barbell Row — 185 LBS x 10', 'Legs PR — Squat — 275 LBS x 6', 'Shoulders PR — OHP — 135 LBS x 8'].map((pr, i) => (

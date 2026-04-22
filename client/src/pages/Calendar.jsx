@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { startOfWeek, startOfMonth, endOfMonth, addDays, format, isToday, isSameWeek, isSameMonth, isSameDay, parseISO } from 'date-fns';
+import { startOfWeek, startOfMonth, endOfMonth, addDays, format, isToday, isSameWeek, isSameMonth, isSameDay, isBefore, parseISO } from 'date-fns';
 import { api } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { getWorkoutColor } from '../utils/workoutColors';
@@ -8,6 +8,14 @@ import StickyHeader from '../components/StickyHeader';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const FULL_DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+// Weekly view top-line color cycle — matches Nike test homepage carousel palette + extensions.
+// Order: red, blue, green, purple, orange, yellow, cyan (index into weekDays row).
+const WEEK_ACCENT_COLORS = ['#ef4444', '#3b82f6', '#22c55e', '#a855f7', '#f97316', '#eab308', '#06b6d4'];
+
+// When true, monthly calendar workouts render in red instead of per-workout palette colors.
+// Flip to false to revert to the original per-workout colors.
+const MONTHLY_ALL_RED = true;
 
 export default function Calendar() {
   const { user } = useAuth();
@@ -413,7 +421,8 @@ export default function Calendar() {
   return (
     <div className="pb-24">
       <StickyHeader
-        title="Schedule"
+        title="SCHEDULE"
+        titleStyle={{ fontSize: '26.4px' }}
         subtitle={viewMode === 'week'
           ? `Week of ${format(weekStart, 'MMM d')} — ${format(addDays(weekStart, 6), 'MMM d, yyyy')}`
           : format(monthDate, 'MMMM yyyy')
@@ -449,39 +458,52 @@ export default function Calendar() {
         </div>
       </StickyHeader>
 
-      {/* View Mode Toggle */}
+      {/* View Mode Toggle — Nike style */}
       <div className="px-4 mb-3">
-        <div className="flex rounded-xl bg-white/5 p-1">
-          <button
-            onClick={() => setViewMode('week')}
-            className={`flex-1 text-xs font-semibold py-2 rounded-lg transition-all ${
-              viewMode === 'week' ? 'bg-wf-red text-white' : 'text-wf-gray-400'
-            }`}
-          >
-            Weekly
-          </button>
-          <button
-            onClick={() => setViewMode('month')}
-            className={`flex-1 text-xs font-semibold py-2 rounded-lg transition-all ${
-              viewMode === 'month' ? 'bg-wf-red text-white' : 'text-wf-gray-400'
-            }`}
-          >
-            Monthly
-          </button>
+        <div
+          className="flex p-[3px]"
+          style={{
+            background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+            borderRadius: '2px',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+          }}
+        >
+          {[
+            { id: 'week', label: 'Weekly' },
+            { id: 'month', label: 'Monthly' },
+          ].map(({ id, label }) => {
+            const isActive = viewMode === id;
+            return (
+              <button
+                key={id}
+                onClick={() => setViewMode(id)}
+                className="flex-1 text-[11px] font-bold uppercase py-2.5 active:scale-[0.97] transition-all"
+                style={{
+                  borderRadius: '2px',
+                  letterSpacing: '0.2em',
+                  background: isActive ? 'linear-gradient(135deg, #fff 0%, #e0e0e0 100%)' : 'transparent',
+                  color: isActive ? '#000' : 'rgba(255,255,255,0.45)',
+                  boxShadow: isActive ? '0 4px 14px rgba(255,255,255,0.1)' : 'none',
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Monthly View */}
+      {/* Monthly View — Heatmap Blocks (NikeCardsTest M03) */}
       {viewMode === 'month' && !loading && !loadError && (
         <div className="px-4 pb-4">
           {/* Day name headers */}
-          <div className="grid grid-cols-7 gap-px mb-1">
+          <div className="grid grid-cols-7 gap-1 mb-2">
             {DAY_NAMES.map((d) => (
-              <div key={d} className="text-center text-[10px] text-wf-gray-500 uppercase tracking-wider font-medium py-1">{d}</div>
+              <div key={d} className="text-center text-[9px] uppercase font-light py-1" style={{ letterSpacing: '0.3em', color: 'rgba(239,68,68,0.9)' }}>{d}</div>
             ))}
           </div>
           {/* Calendar grid */}
-          <div className="grid grid-cols-7 gap-px">
+          <div className="grid grid-cols-7 gap-[3px]">
             {monthGridDays.map((date) => {
               const inMonth = isSameMonth(date, monthDate);
               const dayIsToday = isToday(date);
@@ -490,6 +512,24 @@ export default function Calendar() {
               const hasWorkout = workout && !workout.isRest && workout.templateId;
               const color = getWorkoutColor(workout?.templateName);
               const dateStr = format(date, 'yyyy-MM-dd');
+              const accentHex = MONTHLY_ALL_RED ? '#ef4444' : (color.hex || '#9ca3af');
+              const isSkipped = inMonth && hasWorkout && !dayCompleted && !dayIsToday && isBefore(date, new Date());
+
+              let bg = 'rgba(255,255,255,0.02)'; // empty / rest / out-of-month
+              if (inMonth && dayCompleted) bg = 'rgba(34,197,94,0.32)';
+              else if (inMonth && hasWorkout && !isSkipped) bg = `${accentHex}28`;
+              else if (inMonth && isSkipped) bg = 'rgba(255,255,255,0.03)';
+
+              const dateNumberColor = dayIsToday
+                ? '#ef4444'
+                : inMonth
+                  ? 'rgba(255,255,255,0.85)'
+                  : 'rgba(255,255,255,0.4)';
+              const labelColor = dayCompleted
+                ? 'rgba(34,197,94,0.9)'
+                : isSkipped
+                  ? 'rgba(255,255,255,0.3)'
+                  : `${accentHex}ee`;
 
               return (
                 <div
@@ -499,36 +539,35 @@ export default function Calendar() {
                       navigateToWorkout(workout.templateId, dateStr);
                     }
                   }}
-                  className={`relative min-h-[72px] p-1 transition-all ${
+                  className={`relative min-h-[56px] transition-all ${
                     !inMonth ? 'opacity-20' : ''
-                  } ${hasWorkout ? 'cursor-pointer active:scale-[0.97]' : ''} ${
-                    dayIsToday ? 'ring-2 ring-wf-red' : ''
-                  } ${dayCompleted ? 'bg-green-500/10' : 'bg-white/[0.02]'}`}
-                  style={{ borderRadius: '16px', boxShadow: '-4px 2px 8px rgba(0,0,0,0.5)' }}
+                  } ${hasWorkout ? 'cursor-pointer active:scale-[0.97]' : ''}`}
+                  style={{
+                    borderRadius: '4px',
+                    background: bg,
+                    boxShadow: dayIsToday
+                      ? 'inset 0 0 0 2px #ef4444, 0 0 20px rgba(239,68,68,0.3)'
+                      : 'inset 0 0 0 1px rgba(255,255,255,0.04)',
+                  }}
                 >
-                  {/* Date number */}
-                  <div className={`text-center text-xs font-bold mb-0.5 ${
-                    dayIsToday ? 'text-wf-red' : dayCompleted ? 'text-green-400' : inMonth ? 'text-white' : 'text-wf-gray-600'
-                  }`}>
+                  {/* Date number — top-left */}
+                  <div className="absolute top-1 left-1.5 text-[10px] font-black tracking-tight" style={{ color: dateNumberColor }}>
                     {format(date, 'd')}
                   </div>
-                  {/* Workout name */}
+                  {/* Workout abbreviation — bottom-right */}
                   {hasWorkout && inMonth && (
-                    <div className={`text-[10px] leading-tight font-medium text-center truncate px-0.5 ${
-                      dayCompleted ? 'text-green-400' : color.text || 'text-wf-gray-400'
-                    }`}>
-                      {workout.templateName}
+                    <div className="absolute bottom-1 right-1.5 text-[8px] font-bold uppercase truncate max-w-[70%] text-right" style={{ color: labelColor, letterSpacing: '0.05em' }}>
+                      {workout.templateName.slice(0, 3)}
                     </div>
                   )}
+                  {/* Skipped hairline strikethrough */}
+                  {isSkipped && (
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-px" style={{ background: 'rgba(255,255,255,0.3)' }} />
+                  )}
+                  {/* Rest indicator (only when explicitly scheduled as rest) */}
                   {workout?.isRest && inMonth && (
-                    <div className="text-[10px] leading-tight font-medium text-center text-wf-gray-500 px-0.5">
+                    <div className="absolute bottom-1 right-1.5 text-[8px] font-light uppercase text-white/25" style={{ letterSpacing: '0.15em' }}>
                       Rest
-                    </div>
-                  )}
-                  {/* Color dot indicator */}
-                  {hasWorkout && inMonth && (
-                    <div className="flex justify-center mt-0.5">
-                      <div className={`w-1.5 h-1.5 rounded-full ${dayCompleted ? 'bg-green-500' : color.dot}`} />
                     </div>
                   )}
                 </div>
@@ -639,88 +678,185 @@ export default function Calendar() {
             </div>
           </div>
         ) : (
-          <div className="space-y-3 pb-4">
-            {weekDays.map((date, idx) => {
-              const workout = getWorkoutForDay(date);
-              const dayIsToday = isToday(date);
-              const isRest = workout?.isRest;
-              const dayCompleted = isDayCompleted(date);
-              const color = getWorkoutColor(workout?.templateName);
+          <>
+            {/* ----- Original Weekly View (glass-card style) — kept so you can swap back ----- */}
+            {false && (
+              <div className="space-y-3 pb-4">
+                {weekDays.map((date, idx) => {
+                  const workout = getWorkoutForDay(date);
+                  const dayIsToday = isToday(date);
+                  const isRest = workout?.isRest;
+                  const dayCompleted = isDayCompleted(date);
+                  const color = getWorkoutColor(workout?.templateName);
 
-              const hasWorkout = workout && !isRest && workout.templateId;
+                  const hasWorkout = workout && !isRest && workout.templateId;
 
-              return (
-                <div
-                  key={date.toISOString()}
-                  onClick={() => handleDayTap(date)}
-                  role={hasWorkout ? 'button' : undefined}
-                  style={{ animationDelay: `${idx * 60}ms` }}
-                  className={`w-full text-left rounded-xl overflow-hidden transition-all fade-slide-up ${
-                    hasWorkout ? 'active:scale-[0.98] cursor-pointer' : 'opacity-60'
-                  } ${
-                    dayIsToday
-                      ? 'glass-card !border-2 !border-wf-red today-glow'
-                      : 'glass-card'
-                  }`}
-                >
-                  <div className="flex">
-                    {/* Color accent bar */}
-                    <div className={`w-1 shrink-0 ${dayCompleted ? 'bg-green-500' : color.dot}`} />
-                    <div className="flex-1 p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          {/* Day circle */}
-                          <div
-                            className={`w-12 h-12 rounded-full flex flex-col items-center justify-center shrink-0 ${
-                              dayIsToday ? 'btn-gradient text-white' : dayCompleted ? 'bg-green-500/15 text-green-400' : `${color.bg} text-wf-gray-400`
-                            }`}
-                          >
-                            <span className="text-[10px] font-medium uppercase leading-none">
-                              {DAY_NAMES[date.getDay()]}
-                            </span>
-                            <span className="text-lg font-bold leading-none mt-0.5">
-                              {format(date, 'd')}
-                            </span>
+                  return (
+                    <div
+                      key={date.toISOString()}
+                      onClick={() => handleDayTap(date)}
+                      role={hasWorkout ? 'button' : undefined}
+                      style={{ animationDelay: `${idx * 60}ms` }}
+                      className={`w-full text-left rounded-xl overflow-hidden transition-all fade-slide-up ${
+                        hasWorkout ? 'active:scale-[0.98] cursor-pointer' : 'opacity-60'
+                      } ${
+                        dayIsToday
+                          ? 'glass-card !border-2 !border-wf-red today-glow'
+                          : 'glass-card'
+                      }`}
+                    >
+                      <div className="flex">
+                        {/* Color accent bar */}
+                        <div className={`w-1 shrink-0 ${dayCompleted ? 'bg-green-500' : color.dot}`} />
+                        <div className="flex-1 p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              {/* Day circle */}
+                              <div
+                                className={`w-12 h-12 rounded-full flex flex-col items-center justify-center shrink-0 ${
+                                  dayIsToday ? 'btn-gradient text-white' : dayCompleted ? 'bg-green-500/15 text-green-400' : `${color.bg} text-wf-gray-400`
+                                }`}
+                              >
+                                <span className="text-[10px] font-medium uppercase leading-none">
+                                  {DAY_NAMES[date.getDay()]}
+                                </span>
+                                <span className="text-lg font-bold leading-none mt-0.5">
+                                  {format(date, 'd')}
+                                </span>
+                              </div>
+
+                              {/* Workout info */}
+                              <div>
+                                <h3 className="text-base font-semibold text-white">
+                                  {workout?.templateName || 'No workout'}
+                                </h3>
+                                {dayCompleted ? (
+                                  <span className="text-xs text-green-400 font-medium">Complete</span>
+                                ) : dayIsToday ? (
+                                  <span className="text-xs text-wf-red font-medium">Today</span>
+                                ) : null}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              {/* Edit button */}
+                              <div
+                                role="button"
+                                onClick={(e) => openEditor(e, date)}
+                                className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center shrink-0 active:bg-white/20 transition-colors"
+                              >
+                                <svg className="w-4 h-4 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L16.5 3 21 7.5 7.5 21H3v-4.5z" />
+                                </svg>
+                              </div>
+                              {/* Arrow */}
+                              {hasWorkout && (
+                                <svg className="w-5 h-5 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                                </svg>
+                              )}
+                            </div>
                           </div>
-
-                          {/* Workout info */}
-                          <div>
-                            <h3 className="text-base font-semibold text-white">
-                              {workout?.templateName || 'No workout'}
-                            </h3>
-                            {dayCompleted ? (
-                              <span className="text-xs text-green-400 font-medium">Complete</span>
-                            ) : dayIsToday ? (
-                              <span className="text-xs text-wf-red font-medium">Today</span>
-                            ) : null}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          {/* Edit button */}
-                          <div
-                            role="button"
-                            onClick={(e) => openEditor(e, date)}
-                            className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center shrink-0 active:bg-white/20 transition-colors"
-                          >
-                            <svg className="w-4 h-4 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L16.5 3 21 7.5 7.5 21H3v-4.5z" />
-                            </svg>
-                          </div>
-                          {/* Arrow */}
-                          {hasWorkout && (
-                            <svg className="w-5 h-5 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                            </svg>
-                          )}
                         </div>
                       </div>
                     </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Nike-style Weekly View */}
+            <div className="space-y-3 pb-4">
+              {weekDays.map((date, idx) => {
+                const workout = getWorkoutForDay(date);
+                const dayIsToday = isToday(date);
+                const isRest = workout?.isRest;
+                const dayCompleted = isDayCompleted(date);
+                const color = getWorkoutColor(workout?.templateName);
+                const hasWorkout = workout && !isRest && workout.templateId;
+                const accentHex = '#EF4444';
+
+                const statusLabel = dayCompleted
+                  ? 'Complete'
+                  : isRest
+                    ? 'Rest Day'
+                    : dayIsToday
+                      ? 'Today'
+                      : hasWorkout
+                        ? 'Scheduled'
+                        : 'No Workout';
+                const statusColor = 'rgba(239,68,68,0.9)';
+
+                return (
+                  <div
+                    key={date.toISOString()}
+                    onClick={() => handleDayTap(date)}
+                    role={hasWorkout ? 'button' : undefined}
+                    style={{
+                      animationDelay: `${idx * 60}ms`,
+                      position: 'relative',
+                      overflow: 'hidden',
+                      borderRadius: '2px',
+                      background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                      boxShadow: dayIsToday
+                        ? '0 12px 40px rgba(239,68,68,0.28), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05), inset 0 0 0 1px rgba(239,68,68,0.5)'
+                        : '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+                    }}
+                    className={`w-full fade-slide-up transition-all ${hasWorkout ? 'active:scale-[0.98] cursor-pointer' : 'opacity-70'}`}
+                  >
+                    {/* Shared accent for top bar + ambient spotlight — keep these linked so the card's right-side glow always matches the top line */}
+                    {(() => {
+                      const topHex = '#9ca3af';
+                      return (
+                        <>
+                          <div style={{ height: '3px', background: `linear-gradient(90deg, ${topHex}, ${topHex}80, transparent)` }} />
+                          <div style={{ position: 'absolute', top: '-40%', right: '-20%', width: '60%', height: '180%', background: `radial-gradient(circle, ${topHex}26 0%, transparent 60%)`, filter: 'blur(40px)', pointerEvents: 'none' }} />
+                        </>
+                      );
+                    })()}
+
+                    <div className="relative px-5 py-4 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-5 min-w-0 flex-1">
+                        {/* Date block */}
+                        <div className="shrink-0 text-center">
+                          <p className="text-[9px] text-white/40 uppercase font-light" style={{ letterSpacing: '0.3em' }}>{DAY_NAMES[date.getDay()]}</p>
+                          <div className="text-[32px] font-black tracking-tight leading-[0.9] mt-1" style={{ color: dayIsToday ? '#ef4444' : 'white' }}>{format(date, 'd')}</div>
+                        </div>
+                        {/* Workout info */}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[9px] uppercase font-light" style={{ letterSpacing: '0.25em', color: statusColor }}>
+                            {statusLabel}
+                          </p>
+                          <h3 className="text-[14px] font-black text-white tracking-tight leading-tight mt-1 truncate">
+                            {workout?.templateName || 'No Workout'}
+                          </h3>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {/* Edit button */}
+                        <div
+                          role="button"
+                          onClick={(e) => openEditor(e, date)}
+                          className="w-9 h-9 flex items-center justify-center active:bg-white/15 transition-colors"
+                          style={{ borderRadius: '2px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+                        >
+                          <svg className="w-4 h-4 text-white/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L16.5 3 21 7.5 7.5 21H3v-4.5z" />
+                          </svg>
+                        </div>
+                        {hasWorkout && (
+                          <svg className="w-4 h-4 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                          </svg>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
 

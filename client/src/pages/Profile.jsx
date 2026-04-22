@@ -245,83 +245,99 @@ export default function Profile() {
 
   return (
     <div>
-      <StickyHeader title="Profile" />
+      <StickyHeader title="PROFILE" titleStyle={{ fontSize: '26.4px' }} />
 
       <div className="px-4 pb-24">
-        {/* Member Info */}
-        <div className="glass-card rounded-xl p-6 mb-4 fade-slide-up">
-          {/* Avatar */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handlePhotoUpload}
-          />
-          <div className="flex items-center gap-4 mb-6">
-            <button
-              onClick={() => setShowPhotoMenu(true)}
-              aria-label="Change profile photo"
-              className="relative w-16 h-16 rounded-full overflow-hidden shrink-0 active:scale-95 transition-transform"
-            >
-              {user?.photoUrl ? (
-                <img src={user.photoUrl} alt="Profile" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full bg-wf-red/20 flex items-center justify-center">
-                  <span className="text-2xl font-bold text-wf-red">
-                    {(user?.firstName || user?.email || user?.phone || 'W')[0].toUpperCase()}
-                  </span>
-                </div>
-              )}
-              {uploadingPhoto ? (
-                <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                </div>
-              ) : (
-                <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-end pb-0.5 pr-0.5">
-                  <div className="w-5 h-5 rounded-full bg-wf-red flex items-center justify-center">
-                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
-                    </svg>
-                  </div>
-                </div>
-              )}
-            </button>
-            <div>
-              <h2 className="text-lg font-semibold text-white">
-                {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : (user?.email || user?.phone || 'User')}
-              </h2>
-              {user?.firstName && (
-                <p className="text-wf-gray-500 text-xs">{user?.email || user?.phone}</p>
-              )}
-              <p className="text-wf-gray-400 text-sm">REPLAB Member</p>
-            </div>
-          </div>
+        {/* Member Info — Nike style */}
+        <div
+          className="relative overflow-hidden mb-4 fade-slide-up"
+          style={{
+            background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+            borderRadius: '2px',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+          }}
+        >
+          {/* Red accent line */}
+          <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent)' }} />
+          {/* Ambient spotlight */}
+          <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
 
-          {/* Info */}
-          <div className="space-y-4 border-t border-white/10 pt-4">
-            {user?.username && (
-              <div className="flex justify-between items-center">
-                <span className="text-wf-gray-400 text-sm">Username</span>
-                <span className="text-white text-sm">@{user.username}</span>
+          <div className="relative p-6">
+            {/* Avatar */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handlePhotoUpload}
+            />
+            <div className="flex items-center gap-4 mb-6">
+              <button
+                onClick={() => setShowPhotoMenu(true)}
+                aria-label="Change profile photo"
+                className="relative w-16 h-16 rounded-full overflow-hidden shrink-0 active:scale-95 transition-transform"
+              >
+                {user?.photoUrl ? (
+                  <img src={user.photoUrl} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-wf-red/20 flex items-center justify-center">
+                    <span className="text-2xl font-bold text-wf-red">
+                      {(user?.firstName || user?.email || user?.phone || 'W')[0].toUpperCase()}
+                    </span>
+                  </div>
+                )}
+                {uploadingPhoto ? (
+                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  </div>
+                ) : (
+                  <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-end pb-0.5 pr-0.5">
+                    <div className="w-5 h-5 rounded-full bg-wf-red flex items-center justify-center">
+                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+                      </svg>
+                    </div>
+                  </div>
+                )}
+              </button>
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(239,68,68,0.8)', letterSpacing: '0.3em' }}>
+                  RepLab Member
+                </p>
+                <h2 className="text-[22px] font-black text-white tracking-tight leading-[0.95] truncate">
+                  {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : (user?.email || user?.phone || 'User')}
+                </h2>
+                {user?.firstName && (
+                  <p className="text-[12px] text-white/35 font-light mt-1 truncate">{user?.email || user?.phone}</p>
+                )}
               </div>
-            )}
-            {user?.email && (
-              <div className="flex justify-between items-center">
-                <span className="text-wf-gray-400 text-sm">Email</span>
-                <span className="text-white text-sm">{user.email}</span>
+            </div>
+
+            {/* Info */}
+            <div className="border-t border-white/10 pt-4 space-y-3">
+              {user?.username && (
+                <div className="flex justify-between items-center gap-3">
+                  <span className="text-[10px] uppercase font-semibold text-white/30" style={{ letterSpacing: '0.25em' }}>Username</span>
+                  <span className="text-white text-[13px] font-medium truncate">@{user.username}</span>
+                </div>
+              )}
+              {user?.email && (
+                <div className="flex justify-between items-center gap-3">
+                  <span className="text-[10px] uppercase font-semibold text-white/30" style={{ letterSpacing: '0.25em' }}>Email</span>
+                  <span className="text-white text-[13px] font-medium truncate">{user.email}</span>
+                </div>
+              )}
+              {user?.phone && (
+                <div className="flex justify-between items-center gap-3">
+                  <span className="text-[10px] uppercase font-semibold text-white/30" style={{ letterSpacing: '0.25em' }}>Phone</span>
+                  <span className="text-white text-[13px] font-medium truncate">{user.phone}</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center gap-3">
+                <span className="text-[10px] uppercase font-semibold text-white/30" style={{ letterSpacing: '0.25em' }}>Account ID</span>
+                <span className="text-white/50 text-[13px] font-medium tabular-nums">#{user?.id}</span>
               </div>
-            )}
-            {user?.phone && (
-              <div className="flex justify-between items-center">
-                <span className="text-wf-gray-400 text-sm">Phone</span>
-                <span className="text-white text-sm">{user.phone}</span>
-              </div>
-            )}
-            <div className="flex justify-between items-center">
-              <span className="text-wf-gray-400 text-sm">Account ID</span>
-              <span className="text-wf-gray-500 text-sm">#{user?.id}</span>
             </div>
           </div>
         </div>
@@ -600,41 +616,44 @@ export default function Profile() {
           ) : sessions.length === 0 ? (
             <p className="text-wf-gray-500 text-sm text-center py-4">No workouts logged yet</p>
           ) : (
-            <div className="space-y-2">
-              {sessions.slice(0, 10).map((session) => {
-                const color = getWorkoutColor(session.templateName);
-                return (
-                  <button
-                    key={session.id}
-                    onClick={() => navigate(`/history/${session.id}`)}
-                    className={`w-full text-left glass-card rounded-xl p-3 active:scale-[0.98] transition-transform border-l-4 ${color.border}`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ${color.dot}`} />
-                          <h4 className="text-sm font-semibold text-white">{session.templateName}</h4>
+            <>
+              {/* Scrollable list — sized to show ~4.5 workouts so the next row peeks as a scroll hint */}
+              <div className="space-y-2 overflow-y-auto pr-1" style={{ maxHeight: '260px' }}>
+                {sessions.slice(0, 10).map((session) => {
+                  const color = getWorkoutColor(session.templateName);
+                  return (
+                    <button
+                      key={session.id}
+                      onClick={() => navigate(`/history/${session.id}`)}
+                      className={`w-full text-left glass-card rounded-xl p-3 active:scale-[0.98] transition-transform border-l-4 ${color.border}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${color.dot}`} />
+                            <h4 className="text-sm font-semibold text-white">{session.templateName}</h4>
+                          </div>
+                          <p className="text-wf-gray-400 text-xs mt-0.5 ml-4">
+                            {format(parseISO(session.date), 'EEEE, MMM d, yyyy')}
+                          </p>
                         </div>
-                        <p className="text-wf-gray-400 text-xs mt-0.5 ml-4">
-                          {format(parseISO(session.date), 'EEEE, MMM d, yyyy')}
-                        </p>
+                        <svg className="w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                        </svg>
                       </div>
-                      <svg className="w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                      </svg>
-                    </div>
-                  </button>
-                );
-              })}
+                    </button>
+                  );
+                })}
+              </div>
               {sessions.length > 10 && (
                 <button
                   onClick={() => navigate('/history')}
-                  className="w-full text-center text-wf-red text-sm font-medium py-2 active:opacity-70"
+                  className="w-full text-center text-wf-red text-sm font-medium py-2 mt-2 active:opacity-70"
                 >
                   View all {sessions.length} sessions
                 </button>
               )}
-            </div>
+            </>
           )}
         </div>
 

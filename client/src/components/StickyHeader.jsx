@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 
-export default function StickyHeader({ title, subtitle, children, bottomContent }) {
+export default function StickyHeader({ title, subtitle, children, bottomContent, titleClassName = '', titleStyle }) {
   const [collapsed, setCollapsed] = useState(false);
   const sentinelRef = useRef(null);
 
@@ -32,7 +32,8 @@ export default function StickyHeader({ title, subtitle, children, bottomContent 
             <h1
               className={`font-black text-white tracking-tight transition-all duration-300 ${
                 collapsed ? 'text-lg' : 'text-3xl'
-              }`}
+              } ${titleClassName}`}
+              style={titleStyle}
             >
               {title}
             </h1>

@@ -41,11 +41,12 @@ const CardsTest = lazy(() => import('./pages/CardsTest'));
 const WorkoutSessionTest = lazy(() => import('./pages/WorkoutSessionTest'));
 const TutorialTest = lazy(() => import('./pages/TutorialTest'));
 const NewWorkoutSessionTest = lazy(() => import('./pages/NewWorkoutSessionTest'));
+const NikeWorkoutSessionTest = lazy(() => import('./pages/NikeWorkoutSessionTest'));
 const NeumorphicSessionTest = lazy(() => import('./pages/NeumorphicSessionTest'));
-const GradientMeshTest = lazy(() => import('./pages/GradientMeshTest'));
 const FeaturedWorkoutSession = lazy(() => import('./pages/FeaturedWorkoutSession'));
 const TestChallengeSection = lazy(() => import('./pages/TestChallengeSection'));
 const NikeTestHomepage = lazy(() => import('./pages/NikeTestHomepage'));
+const NikeCardsTest = lazy(() => import('./pages/NikeCardsTest'));
 const NewHomepage = lazy(() => import('./pages/NewHomepage'));
 
 function ProtectedRoute({ children }) {
@@ -154,10 +155,11 @@ export default function App() {
         <Route path="/test/workout-session" element={<TestRoute><WorkoutSessionTest /></TestRoute>} />
         <Route path="/test/tutorial" element={<TestRoute><TutorialTest /></TestRoute>} />
         <Route path="/test/new-session" element={<TestRoute><NewWorkoutSessionTest /></TestRoute>} />
+        <Route path="/test/nike-session" element={<TestRoute><NikeWorkoutSessionTest /></TestRoute>} />
         <Route path="/test/neumorphic-session" element={<TestRoute><NeumorphicSessionTest /></TestRoute>} />
-        <Route path="/test/gradient-mesh" element={<TestRoute><GradientMeshTest /></TestRoute>} />
         <Route path="/test/challenge-section" element={<TestRoute><TestChallengeSection /></TestRoute>} />
         <Route path="/test/nike" element={<TestRoute><NikeTestHomepage /></TestRoute>} />
+        <Route path="/test/nike-cards" element={<TestRoute><NikeCardsTest /></TestRoute>} />
         <Route path="/test/new-homepage" element={<TestRoute><NewHomepage /></TestRoute>} />
       </Route>
 

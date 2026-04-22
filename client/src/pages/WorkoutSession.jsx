@@ -11,7 +11,7 @@ import PBCelebration from '../components/PBCelebration';
 import UndoToast from '../components/UndoToast';
 import { iosFocusRef } from '../utils/iosFocus';
 import { getWeightSuggestion } from '../utils/weightSuggestion';
-import { beepCountdown, beepComplete, initAudio } from '../utils/sounds';
+import { beepCountdown, beepRestEnd, initAudio } from '../utils/sounds';
 import { track } from '../utils/analytics';
 
 // Build a unique key for each exercise card. The first occurrence of a name
@@ -249,6 +249,20 @@ export default function WorkoutSession() {
     try { localStorage.removeItem(timerStorageKey); } catch (_) {}
   }, [timerStorageKey]);
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Offline-safe in-session backup (survives tab crash, nav-away, lost signal)
+  // ─────────────────────────────────────────────────────────────────────────
+  // One key per session; parsed on mount to purge stale (>7d) keys.
+  const SESSION_BACKUP_PREFIX = 'replab:session:';
+  const sessionBackupKey = `${SESSION_BACKUP_PREFIX}${templateId}:${date}`;
+  const sessionBackupDebounceRef = useRef(null);
+  const sessionRestoredRef = useRef(false); // true once restore pass has run
+  const suppressBackupRef = useRef(false); // suppress writes during initial load / restore
+
+  const clearSessionBackup = useCallback(() => {
+    try { localStorage.removeItem(sessionBackupKey); } catch (_) {}
+  }, [sessionBackupKey]);
+
   // Start (or resume) the interval that updates elapsed every second.
   // `origin` is the Date.now() timestamp when the workout originally began.
   const runTimerInterval = useCallback((origin) => {
@@ -296,9 +310,15 @@ export default function WorkoutSession() {
     }
   }, [date, startTimer, tutorialMode]);
 
+  // Guard so the rest-end audio/vibration fires exactly once per countdown.
+  // Prevents double-firing if the user rapidly pauses/resumes, restarts,
+  // or otherwise re-triggers a state change while restRemaining is already 0.
+  const restEndFiredRef = useRef(false);
+
   function startRestTimer() {
     if (restTimerRef.current) clearInterval(restTimerRef.current);
     initAudio(); // ensure audio context is ready (iOS)
+    restEndFiredRef.current = false; // new countdown → arm the one-shot cue
     const duration = restDurationRef.current;
     setRestRemaining(duration);
     restTimerRef.current = setInterval(() => {
@@ -306,8 +326,13 @@ export default function WorkoutSession() {
         if (prev <= 1) {
           clearInterval(restTimerRef.current);
           restTimerRef.current = null;
-          beepComplete(); // alarm sound when rest is over
-          if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+          // Transition from positive → 0: fire the rest-over cue exactly once.
+          if (!restEndFiredRef.current) {
+            restEndFiredRef.current = true;
+            beepRestEnd(); // gentle two-beep (880 Hz → 1320 Hz)
+            // iOS Safari ignores vibrate; guard so other browsers still buzz.
+            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+          }
           return 0;
         }
         // Countdown beeps at 3, 2, 1
@@ -322,6 +347,7 @@ export default function WorkoutSession() {
   function stopRestTimer() {
     if (restTimerRef.current) clearInterval(restTimerRef.current);
     restTimerRef.current = null;
+    restEndFiredRef.current = false;
     setRestRemaining(null);
   }
 
@@ -330,8 +356,142 @@ export default function WorkoutSession() {
       if (timerRef.current) clearInterval(timerRef.current);
       if (restTimerRef.current) clearInterval(restTimerRef.current);
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+      if (sessionBackupDebounceRef.current) clearTimeout(sessionBackupDebounceRef.current);
     };
   }, []);
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Mount-time: purge stale session backups (>7 days) and attempt restore.
+  // Tutorial mode has no real session, so we skip it.
+  // ─────────────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (tutorialMode) return;
+    if (sessionRestoredRef.current) return;
+    // Suppress the backup-write effect until we've had a chance to restore.
+    suppressBackupRef.current = true;
+
+    // 1. Storage hygiene — purge keys older than 7 days.
+    try {
+      const cutoffMs = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      const stale = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k || !k.startsWith(SESSION_BACKUP_PREFIX)) continue;
+        // Key shape: replab:session:{templateId}:{YYYY-MM-DD}
+        const parts = k.slice(SESSION_BACKUP_PREFIX.length).split(':');
+        const dateStr = parts[1];
+        if (!dateStr) continue;
+        const t = Date.parse(dateStr);
+        if (!Number.isFinite(t) || t < cutoffMs) stale.push(k);
+      }
+      for (const k of stale) {
+        try { localStorage.removeItem(k); } catch (_) {}
+      }
+    } catch (_) { /* Safari private mode, etc. */ }
+
+    // 2. Attempt restore for THIS session (only if still active).
+    let restored = null;
+    try {
+      const raw = localStorage.getItem(sessionBackupKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object' && !parsed.submitted) {
+          restored = parsed;
+        }
+      }
+    } catch (_) { /* malformed json or storage disabled */ }
+
+    if (restored) {
+      // Apply silently — don't alarm the user. Individual fields are
+      // optional so partial backups are safe.
+      try {
+        if (restored.entries && typeof restored.entries === 'object') {
+          setEntries(restored.entries);
+        }
+        if (Array.isArray(restored.completedSets)) {
+          setCompletedSets(new Set(restored.completedSets));
+        }
+        if (restored.notes && typeof restored.notes === 'object') {
+          setNotes(restored.notes);
+        }
+        if (Array.isArray(restored.autoFilled)) {
+          setAutoFilled(new Set(restored.autoFilled));
+        }
+        if (typeof restored.timerStarted === 'boolean') {
+          setTimerStarted(restored.timerStarted);
+        }
+        if (Number.isFinite(restored.elapsed)) {
+          setElapsed(restored.elapsed);
+        }
+        if (Number.isFinite(restored.restDuration)) {
+          setRestDuration(restored.restDuration);
+          restDurationRef.current = restored.restDuration;
+        }
+        // Restore silently — per spec, the user shouldn't know anything
+        // went wrong. (A "Restored from earlier" toast would require a new
+        // non-undoable toast type in UndoToast, which is out of scope.)
+      } catch (_) { /* best-effort */ }
+    }
+
+    sessionRestoredRef.current = true;
+    // Release the write-suppression on the next tick so the initial server
+    // load (which also calls setEntries, etc.) can settle first — the server
+    // load should take precedence when it arrives, and its setState calls
+    // will then be captured by the backup effect normally.
+    const t = setTimeout(() => { suppressBackupRef.current = false; }, 50);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templateId, date, tutorialMode]);
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Debounced backup: persist live state to localStorage so a tab crash /
+  // navigation / dropped signal doesn't lose logged sets. ~200ms debounce.
+  // ─────────────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (tutorialMode) return;
+    if (!sessionRestoredRef.current) return; // wait until restore pass ran
+    if (suppressBackupRef.current) return;
+    if (isCompleted) return; // completed sessions are server-persisted
+
+    if (sessionBackupDebounceRef.current) {
+      clearTimeout(sessionBackupDebounceRef.current);
+    }
+    sessionBackupDebounceRef.current = setTimeout(() => {
+      try {
+        const payload = {
+          entries,
+          completedSets: Array.from(completedSets),
+          notes,
+          autoFilled: Array.from(autoFilled),
+          timerStarted,
+          elapsed,
+          restDuration,
+          restRemaining, // transient but useful if we restore mid-rest
+          updatedAt: Date.now(),
+          submitted: false,
+        };
+        localStorage.setItem(sessionBackupKey, JSON.stringify(payload));
+      } catch (_) { /* Safari private mode / quota exceeded */ }
+    }, 200);
+
+    return () => {
+      if (sessionBackupDebounceRef.current) {
+        clearTimeout(sessionBackupDebounceRef.current);
+      }
+    };
+  }, [
+    entries,
+    completedSets,
+    notes,
+    autoFilled,
+    timerStarted,
+    elapsed,
+    restDuration,
+    restRemaining,
+    isCompleted,
+    tutorialMode,
+    sessionBackupKey,
+  ]);
 
   function formatTime(secs) {
     const h = Math.floor(secs / 3600);
@@ -1189,6 +1349,7 @@ export default function WorkoutSession() {
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
         stopRestTimer();
         clearTimerStorage();
+        clearSessionBackup();
         if (navigator.vibrate) navigator.vibrate([50, 30, 50, 30, 100]);
         setShowSummary(true);
         track('workout_session_completed', {
@@ -1382,6 +1543,14 @@ export default function WorkoutSession() {
       if (saveResp && saveResp.error) {
         throw new Error(saveResp.error);
       }
+
+      // Save succeeded on the server — the local offline backup is no longer
+      // needed. Mark it submitted first (so a late restore pass won't pick it
+      // back up) then remove it.
+      try {
+        localStorage.setItem(sessionBackupKey, JSON.stringify({ submitted: true, updatedAt: Date.now() }));
+      } catch (_) {}
+      clearSessionBackup();
 
       // Post-save: refresh PBs and detect improvements. Best-effort — if this fails
       // the session IS saved, so log the failure but don't alarm the user with

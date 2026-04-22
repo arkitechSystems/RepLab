@@ -41,6 +41,23 @@ export default function Test() {
 
         <div className="space-y-4">
           <div
+            onClick={() => navigate('/test/nike-session')}
+            className="glass-card rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
+          >
+            <div className="p-5">
+              <h2 className="text-xl font-black text-white tracking-tight">Nike Workout Session</h2>
+            </div>
+          </div>
+          <div
+            onClick={() => navigate('/test/nike-cards')}
+            className="glass-card rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
+          >
+            <div className="p-5">
+              <h2 className="text-xl font-black text-white tracking-tight">Nike Cards</h2>
+              <p className="text-xs text-wf-gray-500 mt-1">20 reusable Nike-style card examples for use throughout the app</p>
+            </div>
+          </div>
+          <div
             onClick={() => navigate('/test/new-homepage')}
             className="glass-card rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
             style={{ border: '1px solid rgba(239,68,68,0.3)' }}
@@ -100,14 +117,6 @@ export default function Test() {
             <div className="p-5">
               <h2 className="text-xl font-black text-white tracking-tight">Neumorphic Workout Session</h2>
               <p className="text-xs text-wf-gray-500 mt-1">Chest One · Light neumorphic sandbox</p>
-            </div>
-          </div>
-          <div
-            onClick={() => navigate('/test/gradient-mesh')}
-            className="glass-card rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
-          >
-            <div className="p-5">
-              <h2 className="text-xl font-black text-white tracking-tight">Gradient Mesh Test Page</h2>
             </div>
           </div>
           <div

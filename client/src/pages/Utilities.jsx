@@ -830,7 +830,7 @@ export default function Utilities() {
 
   return (
     <div>
-      <StickyHeader title="Utilities" />
+      <StickyHeader title="UTILITIES" titleStyle={{ fontSize: '26.4px' }} />
 
       <div className="px-4 space-y-4 pb-4">
         {/* Personal Records card */}

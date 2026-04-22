@@ -68,6 +68,41 @@ export function beepPhaseChange() {
   osc2.stop(ctx.currentTime + 0.5);
 }
 
+/**
+ * Rest-over cue: two short beeps (880 Hz → 1320 Hz) with a brief gap.
+ * Modest volume (~0.15), short ramp in/out to avoid clicks. Designed to
+ * notify without startling. Safe no-op if AudioContext is unavailable or
+ * suspended (iOS requires a prior user gesture via initAudio()).
+ */
+export function beepRestEnd() {
+  const ctx = getCtx();
+  if (!ctx) return;
+  const vol = 0.15;
+  const fade = 0.008; // 8ms fade in/out
+
+  function schedule(freq, startOffset, duration) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    const t0 = ctx.currentTime + startOffset;
+    const t1 = t0 + duration;
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(vol, t0 + fade);
+    gain.gain.setValueAtTime(vol, t1 - fade);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t1);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t1 + 0.02);
+  }
+
+  // Beep 1: 880 Hz, 120ms
+  schedule(880, 0, 0.12);
+  // 50ms gap, then Beep 2: 1320 Hz, 150ms
+  schedule(1320, 0.12 + 0.05, 0.15);
+}
+
 /** Alarm sound for completion — repeating urgent tone */
 export function beepComplete() {
   const ctx = getCtx();
