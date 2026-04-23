@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Outlet, useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import BottomNav from './BottomNav';
 import Tutorial from './Tutorial';
+import InstallPrompt from './InstallPrompt';
 import { useTutorial } from '../context/TutorialContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -106,6 +107,7 @@ export default function Layout() {
       </main>
       {!isDashboardEmbed && <BottomNav />}
       {tutorial.active && <Tutorial />}
+      {!isDashboardEmbed && !tutorial.active && <InstallPrompt />}
     </div>
   );
 }

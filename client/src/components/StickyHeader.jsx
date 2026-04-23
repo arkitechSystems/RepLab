@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 
-export default function StickyHeader({ title, subtitle, children, bottomContent, titleClassName = '', titleStyle }) {
+export default function StickyHeader({ title, subtitle, children, bottomContent, titleClassName = '', titleStyle, titleCentered = false }) {
   const [collapsed, setCollapsed] = useState(false);
   const sentinelRef = useRef(null);
 
@@ -27,8 +27,11 @@ export default function StickyHeader({ title, subtitle, children, bottomContent,
           collapsed ? 'collapsed py-3' : 'pt-6 pb-4'
         }`}
       >
-        <div className="flex items-center justify-between gap-3">
-          {title ? <div className="min-w-0">
+        <div className={titleCentered
+          ? 'relative flex items-center justify-center gap-3'
+          : 'flex items-center justify-between gap-3'
+        }>
+          {title ? <div className={`min-w-0${titleCentered ? ' text-center' : ''}`}>
             <h1
               className={`font-black text-white tracking-tight transition-all duration-300 ${
                 collapsed ? 'text-lg' : 'text-3xl'
@@ -47,7 +50,9 @@ export default function StickyHeader({ title, subtitle, children, bottomContent,
               </p>
             )}
           </div> : null}
-          {children}
+          {children && (titleCentered ? (
+            <div className="absolute right-0 top-1/2 -translate-y-1/2">{children}</div>
+          ) : children)}
         </div>
         {typeof bottomContent === 'function' ? bottomContent(collapsed) : bottomContent}
       </div>

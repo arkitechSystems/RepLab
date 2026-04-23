@@ -357,7 +357,13 @@ export default function Profile() {
             {!showFeedback && (
               <button
                 onClick={() => setShowFeedback(true)}
-                className="btn-gradient text-white font-semibold text-xs px-3 py-2 rounded-xl active:scale-[0.97] transition-all shrink-0 self-center"
+                className="active:scale-[0.97] transition-all text-white text-[11px] font-bold uppercase px-3.5 py-2 whitespace-nowrap shrink-0 self-center"
+                style={{
+                  letterSpacing: '0.15em',
+                  borderRadius: '2px',
+                  background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+                  boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+                }}
               >
                 Send Feedback
               </button>
@@ -522,139 +528,180 @@ export default function Profile() {
           </div>
         )}
 
-        {/* App Settings */}
-        <div className="glass-card rounded-xl p-6 mb-4 fade-slide-up">
-          <div className="flex items-center gap-2 mb-4">
-            <svg className="w-5 h-5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <h3 className="text-base font-semibold text-white">App Settings</h3>
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {theme === 'dark' ? (
-                <svg className="w-4.5 h-4.5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
-                </svg>
-              ) : (
-                <svg className="w-4.5 h-4.5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
-                </svg>
-              )}
-              <span className="text-wf-gray-400 text-sm">{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
+        {/* App Settings — Nike style */}
+        <div
+          className="relative overflow-hidden mb-4 fade-slide-up"
+          style={{
+            background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+            borderRadius: '2px',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+          }}
+        >
+          <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #9ca3af, rgba(156,163,175,0.25), transparent)' }} />
+          <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(156,163,175,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+          <div className="relative p-6">
+            <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(156,163,175,0.85)', letterSpacing: '0.3em' }}>Preferences</p>
+            <h3 className="text-[22px] font-black text-white tracking-tight mb-4" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>APP SETTINGS</h3>
+            <div className="flex items-center justify-between pt-3 border-t border-white/10">
+              <div className="flex items-center gap-2">
+                {theme === 'dark' ? (
+                  <svg className="w-4.5 h-4.5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+                  </svg>
+                ) : (
+                  <svg className="w-4.5 h-4.5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+                  </svg>
+                )}
+                <span className="text-white/70 text-sm font-medium">{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
+              </div>
+              <button
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                className={`relative w-12 h-7 rounded-full transition-colors ${theme === 'light' ? 'bg-wf-red' : 'bg-white/15'}`}
+              >
+                <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${theme === 'light' ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              </button>
             </div>
-            <button
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-              className={`relative w-12 h-7 rounded-full transition-colors ${theme === 'light' ? 'bg-wf-red' : 'bg-white/15'}`}
-            >
-              <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${theme === 'light' ? 'translate-x-5' : 'translate-x-0.5'}`} />
-            </button>
           </div>
         </div>
 
-        {/* Body Metrics */}
-        <div className="glass-card rounded-xl p-6 mb-4 fade-slide-up" style={{ animationDelay: '60ms' }}>
-          <div className="flex items-center gap-2 mb-4">
-            <svg className="w-5 h-5 text-wf-green" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-            </svg>
-            <h3 className="text-base font-semibold text-white">Body Metrics</h3>
-          </div>
-          <div className="space-y-3">
-            <MetricInput label="Height" value={metrics.height} unit="in" onChange={(v) => updateMetric('height', v)} />
-            <MetricInput label="Weight" value={metrics.weight} unit="lbs" onChange={(v) => updateMetric('weight', v)} />
-            <MetricInput label="Body Fat" value={metrics.bodyFat} unit="%" onChange={(v) => updateMetric('bodyFat', v)} />
-          </div>
-        </div>
-
-        {/* Performance Metrics */}
-        <div className="glass-card rounded-xl p-6 mb-4 fade-slide-up" style={{ animationDelay: '120ms' }}>
-          <div className="flex items-center gap-2 mb-4">
-            <svg className="w-5 h-5 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
-            </svg>
-            <h3 className="text-base font-semibold text-white">Performance (1RM)</h3>
-          </div>
-          <div className="space-y-3">
-            <MetricInput label="Bench Press" value={metrics.maxBench} unit="lbs" onChange={(v) => updateMetric('maxBench', v)} />
-            <MetricInput label="Squat" value={metrics.maxSquat} unit="lbs" onChange={(v) => updateMetric('maxSquat', v)} />
-            <MetricInput label="Deadlift" value={metrics.maxDeadlift} unit="lbs" onChange={(v) => updateMetric('maxDeadlift', v)} />
+        {/* Body Metrics — Nike style */}
+        <div
+          className="relative overflow-hidden mb-4 fade-slide-up"
+          style={{
+            background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+            borderRadius: '2px',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+            animationDelay: '60ms',
+          }}
+        >
+          <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #22c55e, rgba(34,197,94,0.25), transparent)' }} />
+          <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(34,197,94,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+          <div className="relative p-6">
+            <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(34,197,94,0.85)', letterSpacing: '0.3em' }}>Your Body</p>
+            <h3 className="text-[22px] font-black text-white tracking-tight mb-4" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>BODY METRICS</h3>
+            <div className="space-y-3 pt-3 border-t border-white/10">
+              <MetricInput label="Height" value={metrics.height} unit="in" onChange={(v) => updateMetric('height', v)} />
+              <MetricInput label="Weight" value={metrics.weight} unit="lbs" onChange={(v) => updateMetric('weight', v)} />
+              <MetricInput label="Body Fat" value={metrics.bodyFat} unit="%" onChange={(v) => updateMetric('bodyFat', v)} />
+            </div>
           </div>
         </div>
 
-        {/* Save Metrics Button */}
+        {/* Performance Metrics — Nike style */}
+        <div
+          className="relative overflow-hidden mb-4 fade-slide-up"
+          style={{
+            background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+            borderRadius: '2px',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+            animationDelay: '120ms',
+          }}
+        >
+          <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent)' }} />
+          <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+          <div className="relative p-6">
+            <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.3em' }}>1 Rep Max</p>
+            <h3 className="text-[22px] font-black text-white tracking-tight mb-4" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>PERFORMANCE</h3>
+            <div className="space-y-3 pt-3 border-t border-white/10">
+              <MetricInput label="Bench Press" value={metrics.maxBench} unit="lbs" onChange={(v) => updateMetric('maxBench', v)} />
+              <MetricInput label="Squat" value={metrics.maxSquat} unit="lbs" onChange={(v) => updateMetric('maxSquat', v)} />
+              <MetricInput label="Deadlift" value={metrics.maxDeadlift} unit="lbs" onChange={(v) => updateMetric('maxDeadlift', v)} />
+            </div>
+          </div>
+        </div>
+
+        {/* Save Metrics Button — matches Send Feedback style */}
         <button
           onClick={handleSaveMetrics}
           disabled={saving}
-          className={`w-full font-semibold py-3.5 rounded-xl text-sm transition-all active:scale-[0.98] mb-4 fade-slide-up ${
-            saved
-              ? 'bg-green-600 text-white'
-              : 'btn-gradient text-white'
-          } disabled:opacity-50`}
-          style={{ animationDelay: '180ms' }}
+          className="w-full active:scale-[0.97] transition-all text-white text-[11px] font-bold uppercase py-3.5 mb-4 fade-slide-up disabled:opacity-50 whitespace-nowrap"
+          style={{
+            animationDelay: '180ms',
+            letterSpacing: '0.15em',
+            borderRadius: '2px',
+            background: saved
+              ? 'linear-gradient(135deg, rgba(34,197,94,0.9) 0%, rgba(22,163,74,0.9) 100%)'
+              : 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+            boxShadow: saved
+              ? '0 4px 14px rgba(34,197,94,0.35), inset 0 1px 0 rgba(255,255,255,0.15)'
+              : '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+          }}
         >
           {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Metrics'}
         </button>
 
-        {/* Workout History */}
-        <div className="glass-card rounded-xl p-6 mb-4 fade-slide-up" style={{ animationDelay: '180ms' }}>
-          <div className="flex items-center gap-2 mb-4">
-            <svg className="w-5 h-5 text-wf-orange" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <h3 className="text-base font-semibold text-white">Workout History</h3>
-          </div>
+        {/* Workout History — Nike style */}
+        <div
+          className="relative overflow-hidden mb-4 fade-slide-up"
+          style={{
+            background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+            borderRadius: '2px',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+            animationDelay: '180ms',
+          }}
+        >
+          <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #f97316, rgba(249,115,22,0.25), transparent)' }} />
+          <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(249,115,22,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+          <div className="relative p-6">
+            <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(249,115,22,0.85)', letterSpacing: '0.3em' }}>Sessions</p>
+            <h3 className="text-[22px] font-black text-white tracking-tight mb-4" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>WORKOUT HISTORY</h3>
 
-          {sessionsLoading ? (
-            <div className="space-y-2">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="glass-skeleton rounded-xl h-16" />
-              ))}
-            </div>
-          ) : sessions.length === 0 ? (
-            <p className="text-wf-gray-500 text-sm text-center py-4">No workouts logged yet</p>
-          ) : (
-            <>
-              {/* Scrollable list — sized to show ~4.5 workouts so the next row peeks as a scroll hint */}
-              <div className="space-y-2 overflow-y-auto pr-1" style={{ maxHeight: '260px' }}>
-                {sessions.slice(0, 10).map((session) => {
-                  const color = getWorkoutColor(session.templateName);
-                  return (
-                    <button
-                      key={session.id}
-                      onClick={() => navigate(`/history/${session.id}`)}
-                      className={`w-full text-left glass-card rounded-xl p-3 active:scale-[0.98] transition-transform border-l-4 ${color.border}`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full ${color.dot}`} />
-                            <h4 className="text-sm font-semibold text-white">{session.templateName}</h4>
-                          </div>
-                          <p className="text-wf-gray-400 text-xs mt-0.5 ml-4">
-                            {format(parseISO(session.date), 'EEEE, MMM d, yyyy')}
-                          </p>
-                        </div>
-                        <svg className="w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                        </svg>
-                      </div>
-                    </button>
-                  );
-                })}
+            {sessionsLoading ? (
+              <div className="space-y-2 pt-3 border-t border-white/10">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="glass-skeleton rounded-sm h-16" />
+                ))}
               </div>
-              {sessions.length > 10 && (
-                <button
-                  onClick={() => navigate('/history')}
-                  className="w-full text-center text-wf-red text-sm font-medium py-2 mt-2 active:opacity-70"
-                >
-                  View all {sessions.length} sessions
-                </button>
-              )}
-            </>
-          )}
+            ) : sessions.length === 0 ? (
+              <p className="text-white/40 text-sm text-center py-4 pt-3 border-t border-white/10">No workouts logged yet</p>
+            ) : (
+              <div className="pt-3 border-t border-white/10">
+                {/* Scrollable list — sized to show ~4.5 workouts so the next row peeks as a scroll hint */}
+                <div className="space-y-2 overflow-y-auto pr-1" style={{ maxHeight: '260px' }}>
+                  {sessions.slice(0, 10).map((session) => {
+                    const color = getWorkoutColor(session.templateName);
+                    return (
+                      <button
+                        key={session.id}
+                        onClick={() => navigate(`/history/${session.id}`)}
+                        className={`w-full text-left p-3 active:scale-[0.98] transition-transform border-l-[3px] ${color.border}`}
+                        style={{
+                          borderRadius: '2px',
+                          background: 'rgba(255,255,255,0.04)',
+                        }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <div className={`w-2 h-2 rounded-full ${color.dot}`} />
+                              <h4 className="text-sm font-semibold text-white">{session.templateName}</h4>
+                            </div>
+                            <p className="text-white/40 text-xs mt-0.5 ml-4">
+                              {format(parseISO(session.date), 'EEEE, MMM d, yyyy')}
+                            </p>
+                          </div>
+                          <svg className="w-4 h-4 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                          </svg>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                {sessions.length > 10 && (
+                  <button
+                    onClick={() => navigate('/history')}
+                    className="w-full text-center text-[10px] font-bold uppercase py-3 mt-2 active:opacity-70"
+                    style={{ color: 'rgba(249,115,22,0.9)', letterSpacing: '0.3em' }}
+                  >
+                    View all {sessions.length} sessions
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* App Info */}
@@ -688,117 +735,153 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Change Password */}
-        <div className="glass-card rounded-xl p-6 mb-4 fade-slide-up">
-          <button
-            onClick={() => { setShowChangePassword(!showChangePassword); setPasswordError(''); setPasswordChanged(false); setCurrentPassword(''); setNewPassword(''); setConfirmNewPassword(''); }}
-            className="flex items-center justify-between w-full"
-          >
-            <div className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+        {/* Change Password — Nike style */}
+        <div
+          className="relative overflow-hidden mb-4 fade-slide-up"
+          style={{
+            background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+            borderRadius: '2px',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+          }}
+        >
+          <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #9ca3af, rgba(156,163,175,0.25), transparent)' }} />
+          <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(156,163,175,0.06) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+          <div className="relative p-6">
+            <button
+              onClick={() => { setShowChangePassword(!showChangePassword); setPasswordError(''); setPasswordChanged(false); setCurrentPassword(''); setNewPassword(''); setConfirmNewPassword(''); }}
+              className="flex items-center justify-between w-full text-left"
+            >
+              <div>
+                <h3 className="text-[22px] font-black tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95', color: '#e5e7eb' }}>SECURITY</h3>
+                <p className="text-[10px] uppercase font-light mt-1" style={{ letterSpacing: '0.3em', color: 'rgba(239,68,68,0.9)' }}>Change Password</p>
+              </div>
+              <svg className={`w-5 h-5 text-white/40 transition-transform shrink-0 ml-3 ${showChangePassword ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
               </svg>
-              <h3 className="text-base font-semibold text-white">Change Password</h3>
-            </div>
-            <svg className={`w-5 h-5 text-wf-gray-400 transition-transform ${showChangePassword ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-            </svg>
-          </button>
+            </button>
 
-          {showChangePassword && (
-            <div className="mt-4 pt-4 border-t border-white/10 space-y-3">
-              {passwordError && (
-                <div className="bg-red-900/30 border border-red-800 rounded-lg px-4 py-3 text-red-300 text-sm">
-                  {passwordError}
+            {showChangePassword && (
+              <div className="mt-4 pt-4 border-t border-white/10 space-y-3">
+                {passwordError && (
+                  <div className="px-4 py-3 text-red-300 text-sm" style={{ background: 'rgba(127,29,29,0.3)', border: '1px solid rgba(153,27,27,0.6)', borderRadius: '2px' }}>
+                    {passwordError}
+                  </div>
+                )}
+                {passwordChanged && (
+                  <div className="px-4 py-3 text-green-300 text-sm" style={{ background: 'rgba(20,83,45,0.3)', border: '1px solid rgba(22,101,52,0.6)', borderRadius: '2px' }}>
+                    Password changed successfully!
+                  </div>
+                )}
+                <div>
+                  <label className="text-[10px] text-white/40 uppercase mb-1.5 block font-semibold" style={{ letterSpacing: '0.25em' }}>Current Password</label>
+                  <input
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Enter current password"
+                    className="w-full px-4 py-3 text-white text-sm placeholder:text-white/25 focus:outline-none transition-all"
+                    style={{
+                      background: 'rgba(0,0,0,0.3)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      borderRadius: '2px',
+                    }}
+                  />
                 </div>
-              )}
-              {passwordChanged && (
-                <div className="bg-green-900/30 border border-green-800 rounded-lg px-4 py-3 text-green-300 text-sm">
-                  Password changed successfully!
+                <div>
+                  <label className="text-[10px] text-white/40 uppercase mb-1.5 block font-semibold" style={{ letterSpacing: '0.25em' }}>New Password</label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter new password"
+                    className="w-full px-4 py-3 text-white text-sm placeholder:text-white/25 focus:outline-none transition-all"
+                    style={{
+                      background: 'rgba(0,0,0,0.3)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      borderRadius: '2px',
+                    }}
+                  />
                 </div>
-              )}
-              <div>
-                <label className="text-xs text-wf-gray-400 uppercase tracking-wider mb-1 block">Current Password</label>
-                <input
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Enter current password"
-                  className="w-full glass-input rounded-xl px-4 py-3 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none transition-all"
-                />
+                <div>
+                  <label className="text-[10px] text-white/40 uppercase mb-1.5 block font-semibold" style={{ letterSpacing: '0.25em' }}>Confirm New Password</label>
+                  <input
+                    type="password"
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    placeholder="Confirm new password"
+                    className="w-full px-4 py-3 text-white text-sm placeholder:text-white/25 focus:outline-none transition-all"
+                    style={{
+                      background: 'rgba(0,0,0,0.3)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      borderRadius: '2px',
+                    }}
+                  />
+                </div>
+                <button
+                  onClick={async () => {
+                    setPasswordError('');
+                    setPasswordChanged(false);
+                    const pe = [];
+                    if (newPassword.length < 8) pe.push('at least 8 characters');
+                    if (!/[A-Z]/.test(newPassword)) pe.push('at least 1 uppercase letter');
+                    if (!/[0-9]/.test(newPassword)) pe.push('at least 1 number');
+                    if (/\s/.test(newPassword)) pe.push('no spaces');
+                    if (pe.length > 0) {
+                      setPasswordError('Password must have: ' + pe.join(', '));
+                      return;
+                    }
+                    if (newPassword !== confirmNewPassword) {
+                      setPasswordError('New passwords do not match');
+                      return;
+                    }
+                    setPasswordSaving(true);
+                    try {
+                      const resp = await api('/auth/change-password', {
+                        method: 'POST',
+                        body: JSON.stringify({ currentPassword, newPassword }),
+                      });
+                      // Server bumps tokenVersion on password change, invalidating
+                      // every existing access + refresh JWT. The response includes
+                      // a fresh pair so THIS session stays signed in while other
+                      // sessions are kicked out on their next request.
+                      if (resp) setAuthTokens(resp);
+                      setPasswordChanged(true);
+                      setCurrentPassword('');
+                      setNewPassword('');
+                      setConfirmNewPassword('');
+                    } catch (err) {
+                      setPasswordError(err.message);
+                    } finally {
+                      setPasswordSaving(false);
+                    }
+                  }}
+                  disabled={passwordSaving || !currentPassword || !newPassword || !confirmNewPassword}
+                  className="w-full active:scale-[0.97] transition-all text-white text-[11px] font-bold uppercase py-3.5 disabled:opacity-50 whitespace-nowrap"
+                  style={{
+                    letterSpacing: '0.15em',
+                    borderRadius: '2px',
+                    background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+                    boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+                  }}
+                >
+                  {passwordSaving ? 'Changing...' : 'Change Password'}
+                </button>
               </div>
-              <div>
-                <label className="text-xs text-wf-gray-400 uppercase tracking-wider mb-1 block">New Password</label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter new password"
-                  className="w-full glass-input rounded-xl px-4 py-3 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none transition-all"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-wf-gray-400 uppercase tracking-wider mb-1 block">Confirm New Password</label>
-                <input
-                  type="password"
-                  value={confirmNewPassword}
-                  onChange={(e) => setConfirmNewPassword(e.target.value)}
-                  placeholder="Confirm new password"
-                  className="w-full glass-input rounded-xl px-4 py-3 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none transition-all"
-                />
-              </div>
-              <button
-                onClick={async () => {
-                  setPasswordError('');
-                  setPasswordChanged(false);
-                  const pe = [];
-                  if (newPassword.length < 8) pe.push('at least 8 characters');
-                  if (!/[A-Z]/.test(newPassword)) pe.push('at least 1 uppercase letter');
-                  if (!/[0-9]/.test(newPassword)) pe.push('at least 1 number');
-                  if (/\s/.test(newPassword)) pe.push('no spaces');
-                  if (pe.length > 0) {
-                    setPasswordError('Password must have: ' + pe.join(', '));
-                    return;
-                  }
-                  if (newPassword !== confirmNewPassword) {
-                    setPasswordError('New passwords do not match');
-                    return;
-                  }
-                  setPasswordSaving(true);
-                  try {
-                    const resp = await api('/auth/change-password', {
-                      method: 'POST',
-                      body: JSON.stringify({ currentPassword, newPassword }),
-                    });
-                    // Server bumps tokenVersion on password change, invalidating
-                    // every existing access + refresh JWT. The response includes
-                    // a fresh pair so THIS session stays signed in while other
-                    // sessions are kicked out on their next request.
-                    if (resp) setAuthTokens(resp);
-                    setPasswordChanged(true);
-                    setCurrentPassword('');
-                    setNewPassword('');
-                    setConfirmNewPassword('');
-                  } catch (err) {
-                    setPasswordError(err.message);
-                  } finally {
-                    setPasswordSaving(false);
-                  }
-                }}
-                disabled={passwordSaving || !currentPassword || !newPassword || !confirmNewPassword}
-                className="w-full btn-gradient text-white font-semibold py-3 rounded-xl text-sm transition-all active:scale-[0.98] disabled:opacity-50"
-              >
-                {passwordSaving ? 'Changing...' : 'Change Password'}
-              </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
-        {/* Logout */}
+        {/* Logout — matches Send Feedback button */}
         <button
           onClick={handleLogout}
-          className="w-full glass-card !border-red-800/50 hover:!border-red-700 text-wf-red font-semibold py-4 rounded-xl text-base transition-all active:scale-[0.98] mb-4 fade-slide-up"
-          style={{ animationDelay: '360ms' }}
+          className="w-full active:scale-[0.97] transition-all text-white text-[11px] font-bold uppercase py-3.5 mb-4 fade-slide-up whitespace-nowrap"
+          style={{
+            animationDelay: '360ms',
+            letterSpacing: '0.15em',
+            borderRadius: '2px',
+            background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+            boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+          }}
         >
           Sign Out
         </button>

@@ -800,13 +800,15 @@ export default function Calendar() {
                       background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
                       boxShadow: dayIsToday
                         ? '0 0 32px rgba(239,68,68,0.5), 0 12px 44px rgba(239,68,68,0.6), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08), inset 0 0 0 1.5px rgba(239,68,68,0.85), inset 0 0 24px rgba(239,68,68,0.18)'
-                        : '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+                        : dayCompleted
+                          ? '0 0 20px rgba(34,197,94,0.35), 0 12px 40px rgba(34,197,94,0.4), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06), inset 0 0 0 1px rgba(34,197,94,0.65), inset 0 0 18px rgba(34,197,94,0.12)'
+                          : '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
                     }}
                     className={`w-full fade-slide-up transition-all ${hasWorkout ? 'active:scale-[0.98] cursor-pointer' : 'opacity-70'}`}
                   >
-                    {/* Shared accent for top bar + ambient spotlight — keep these linked so the card's right-side glow always matches the top line */}
+                    {/* Shared accent for top bar + ambient spotlight — keep these linked so the card's right-side glow always matches the top line. Switches to green for completed days so they stand out. */}
                     {(() => {
-                      const topHex = '#9ca3af';
+                      const topHex = dayCompleted ? '#22c55e' : '#9ca3af';
                       return (
                         <>
                           <div style={{ height: '3px', background: `linear-gradient(90deg, ${topHex}, ${topHex}80, transparent)` }} />
@@ -820,7 +822,7 @@ export default function Calendar() {
                         {/* Date block */}
                         <div className="shrink-0 text-center">
                           <p className="text-[9px] text-white/40 uppercase font-light" style={{ letterSpacing: '0.3em' }}>{DAY_NAMES[date.getDay()]}</p>
-                          <div className="text-[32px] font-black tracking-tight leading-[0.9] mt-1" style={{ color: dayIsToday ? '#ef4444' : 'white' }}>{format(date, 'd')}</div>
+                          <div className="text-[32px] font-black tracking-tight leading-[0.9] mt-1" style={{ color: dayIsToday ? '#ef4444' : dayCompleted ? '#22c55e' : 'white' }}>{format(date, 'd')}</div>
                         </div>
                         {/* Workout info */}
                         <div className="min-w-0 flex-1">

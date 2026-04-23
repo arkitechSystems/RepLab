@@ -1689,7 +1689,7 @@ export default function WorkoutSession() {
     );
   }
 
-  const displayDate = date ? format(parseISO(date), 'EEEE, MMM d') : '';
+  const displayDate = date ? format(parseISO(date), 'EEE, MMM d') : '';
 
   const prevDate = date ? subDays(parseISO(date), 1) : null;
   const nextDate = date ? addDays(parseISO(date), 1) : null;
@@ -1711,7 +1711,7 @@ export default function WorkoutSession() {
             Back
           </button>
         </div>
-        <StickyHeader title={template.name} subtitle={displayDate} />
+        <StickyHeader title={template.name.toUpperCase()} titleStyle={{ fontSize: '26.4px' }} subtitle={displayDate} />
         <RestDayCard />
       </div>
     );
@@ -1802,7 +1802,7 @@ export default function WorkoutSession() {
       )}
       {/* Back button + Day navigation arrows */}
       <div className="px-4 pt-6 flex items-center justify-between">
-        <button onClick={() => tutorialMode ? navigate('/') : guardedNavigate(() => navigate(-1))} className="flex items-center gap-1 text-wf-red text-sm font-medium mb-2 active:opacity-70">
+        <button onClick={() => tutorialMode ? navigate('/') : guardedNavigate(() => navigate(-1))} className="flex items-center gap-1 text-[11px] uppercase font-bold mb-2 active:opacity-70" style={{ color: 'rgba(239,68,68,0.9)', letterSpacing: '0.2em' }}>
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>
@@ -1837,8 +1837,10 @@ export default function WorkoutSession() {
 
       {/* Sticky Header with Progress Bar */}
       <StickyHeader
-        title={`${template.name} — ${displayDate}`}
-        subtitle={template.description || null}
+        title={template.name.toUpperCase()}
+        titleStyle={{ fontSize: '26.4px' }}
+        titleCentered
+        subtitle={`${displayDate}${template.description ? ` · ${template.description}` : ''}`}
         bottomContent={(collapsed) =>
           <div className="mt-2 space-y-2">
             <div>
@@ -1848,53 +1850,15 @@ export default function WorkoutSession() {
                   <span className="text-xs text-wf-gray-400 font-medium tabular-nums">
                     {completedCount}/{totalSets} sets
                   </span>
-                  <div className="relative">
-                    <button
-                      data-tutorial="session-settings"
-                      onClick={() => setShowSessionMenu(!showSessionMenu)}
-                      aria-label="Session settings"
-                      className="w-6 h-6 rounded-full flex items-center justify-center text-wf-gray-400 active:bg-white/10 transition-colors"
-                    >
-                      <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                    </button>
-                    {showSessionMenu && (
-                      <>
-                        <div className="fixed inset-0 z-40" onClick={() => setShowSessionMenu(false)} />
-                        <div className="absolute right-0 top-8 z-50 w-52 rounded-xl bg-wf-gray-900 border border-white/10 shadow-2xl overflow-hidden">
-                          <div className="px-3 py-2 border-b border-white/5">
-                            <span className="text-[9px] text-wf-gray-500 uppercase tracking-wider font-semibold">Display</span>
-                          </div>
-                          <button
-                            onClick={() => { const v = !showGoals; setShowGoals(v); try { localStorage.setItem('replab_show_goals', JSON.stringify(v)); } catch {} }}
-                            className="w-full px-3 py-2.5 flex items-center justify-between text-sm text-white active:bg-white/5 transition-colors"
-                          >
-                            <span>Goal Weight / Reps</span>
-                            <div className={`w-8 h-5 rounded-full transition-colors ${showGoals ? 'bg-wf-red' : 'bg-wf-gray-600'}`}>
-                              <div className={`w-4 h-4 rounded-full bg-white mt-0.5 transition-transform ${showGoals ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
-                            </div>
-                          </button>
-                          <button
-                            onClick={() => { const v = !showSetType; setShowSetType(v); try { localStorage.setItem('replab_show_set_type', JSON.stringify(v)); } catch {} }}
-                            className="w-full px-3 py-2.5 flex items-center justify-between text-sm text-white active:bg-white/5 transition-colors"
-                          >
-                            <span>Set Type</span>
-                            <div className={`w-8 h-5 rounded-full transition-colors ${showSetType ? 'bg-wf-red' : 'bg-wf-gray-600'}`}>
-                              <div className={`w-4 h-4 rounded-full bg-white mt-0.5 transition-transform ${showSetType ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
-                            </div>
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
+                  <span className="text-xs font-semibold tabular-nums" style={{ color: 'rgba(239,68,68,0.9)' }}>
+                    {progressPct}%
+                  </span>
                 </div>
               </div>
-              <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+              <div className="h-1 overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '2px' }}>
                 <div
-                  className="h-full rounded-full bg-wf-red transition-all duration-300 ease-out"
-                  style={{ width: `${progressPct}%` }}
+                  className="h-full transition-all duration-500"
+                  style={{ width: `${progressPct}%`, background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.6))', borderRadius: '2px' }}
                 />
               </div>
             </div>
@@ -1902,19 +1866,35 @@ export default function WorkoutSession() {
               <button
                 data-tutorial="begin-workout-btn"
                 onClick={handleBeginWorkout}
-                className="w-full bg-wf-red/90 hover:bg-wf-red text-white text-xs font-semibold px-4 py-2 rounded-lg active:scale-[0.98] transition-all mt-1"
+                className="active:scale-[0.98] transition-all w-full mt-1"
+                style={{
+                  padding: '14px', borderRadius: '2px', border: 'none',
+                  background: 'linear-gradient(135deg, rgba(239,68,68,0.95) 0%, rgba(220,38,38,0.95) 100%)',
+                  color: 'white', fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+                  letterSpacing: '0.25em', textTransform: 'uppercase',
+                  boxShadow: '0 4px 20px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+                }}
               >
                 Begin Workout
               </button>
             ) : (
               <div className="mt-2">
-                <div data-tutorial="workout-timer" className={`rounded-t-lg overflow-hidden transition-all duration-300 ${collapsed && !pinWorkoutTimer ? 'hidden' : ''} bg-black`}>
-                  <div className="px-3 py-2.5 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-semibold">Workout Time</span>
-                      <span className="bg-black/60 rounded-md px-2.5 py-1">
-                        <span className="text-xl font-mono-stat font-bold text-white tracking-wider" style={{ letterSpacing: '2px' }}>{formatTime(elapsed)}</span>
-                      </span>
+                <div
+                  data-tutorial="workout-timer"
+                  className={`overflow-hidden relative transition-all duration-300 ${collapsed && !pinWorkoutTimer ? 'hidden' : ''}`}
+                  style={{
+                    borderRadius: '2px',
+                    background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                    boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+                  }}
+                >
+                  {/* Top accent bar — light gray fading right (matches weekly calendar day cards, distinguishes from red progress bar) */}
+                  <div style={{ height: '3px', background: 'linear-gradient(90deg, #9ca3af, #9ca3af80, transparent)' }} />
+                  <div className="relative px-4 py-1.5 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full" style={{ background: '#ef4444', boxShadow: '0 0 8px rgba(239,68,68,0.7)' }} />
+                      <span className="text-[10px] uppercase font-light" style={{ color: 'rgba(239,68,68,0.8)', letterSpacing: '0.3em' }}>Workout</span>
+                      <span style={{ fontSize: '22px', fontWeight: 200, color: 'white', fontFamily: 'system-ui', fontVariantNumeric: 'tabular-nums', letterSpacing: '-1px' }}>{formatTime(elapsed)}</span>
                     </div>
                     <div className="flex items-center gap-2">
                     <button
@@ -1928,89 +1908,185 @@ export default function WorkoutSession() {
                     </button>
                     <button
                       onClick={() => setPinWorkoutTimer(p => !p)}
-                      className={`relative w-8 h-[18px] rounded-full transition-all duration-200 ${pinWorkoutTimer ? '' : 'bg-wf-gray-700'}`}
-                      style={pinWorkoutTimer ? { background: 'linear-gradient(to right, rgba(239,68,68,0.8), rgba(239,68,68,0.3))' } : {}}
-                      title={pinWorkoutTimer ? 'Unpin timer' : 'Pin timer'}
+                      aria-label={pinWorkoutTimer ? 'Unlock timer' : 'Lock timer'}
+                      className="w-6 h-6 flex items-center justify-center active:scale-90 transition-all"
+                      style={{ color: pinWorkoutTimer ? 'rgba(239,68,68,0.9)' : 'rgba(255,255,255,0.4)' }}
                     >
-                      {pinWorkoutTimer && (
-                        <svg className="absolute left-[3px] top-[3px] w-[12px] h-[12px] text-white/70" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM9 8V6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9z"/>
+                      {pinWorkoutTimer ? (
+                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM9 8V6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9z" />
+                        </svg>
+                      ) : (
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
                         </svg>
                       )}
-                      <span className={`absolute top-[2px] left-[2px] w-[14px] h-[14px] rounded-full bg-white transition-transform duration-200 ${pinWorkoutTimer ? 'translate-x-[14px]' : 'translate-x-0'}`} />
                     </button>
                     </div>
                   </div>
                 </div>
-                <div data-tutorial="rest-timer" className={`rounded-b-lg overflow-hidden transition-all duration-300 ${collapsed && !pinRestTimer ? 'hidden' : ''} ${restRemaining !== null && restRemaining <= 0 ? 'border border-green-500/50' : ''} bg-black`}>
+                <div
+                  data-tutorial="rest-timer"
+                  className={`overflow-hidden relative transition-all duration-300 mt-1.5 ${collapsed && !pinRestTimer ? 'hidden' : ''}`}
+                  style={{
+                    borderRadius: '2px',
+                    background: 'linear-gradient(160deg, #1a1a1a 0%, #111111 100%)',
+                    // Green inset ring + soft green glow when rest has finished
+                    boxShadow: restRemaining !== null && restRemaining <= 0
+                      ? '0 8px 24px rgba(34,197,94,0.18), inset 0 1px 0 rgba(255,255,255,0.04), inset 0 0 0 1px rgba(34,197,94,0.5)'
+                      : '0 8px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)',
+                  }}
+                >
+                  {/* Progress bar at top — visible only while counting down (Nike style: subtle track, red gradient fill) */}
                   {restRemaining !== null && restRemaining > 0 && (
-                    <div className="h-1 bg-white/5">
-                      <div className="h-full bg-wf-red transition-all duration-1000 ease-linear" style={{ width: `${(restRemaining / restDuration) * 100}%` }} />
+                    <div className="h-[2px]" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                      <div
+                        className="h-full transition-all duration-1000 ease-linear"
+                        style={{
+                          width: `${(restRemaining / restDuration) * 100}%`,
+                          background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.6))',
+                        }}
+                      />
                     </div>
                   )}
-                  <div className="px-3 py-2.5 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {restRemaining !== null ? (
-                        restRemaining <= 0 ? (
-                          <>
-                            <span className="bg-green-500/20 rounded-md px-3 py-1 border border-green-500/30">
-                              <span className="text-lg font-mono-stat font-black text-green-400 tracking-wider" style={{ letterSpacing: '2px' }}>GO!</span>
-                            </span>
-                            <button onClick={stopRestTimer} className="text-xs text-wf-gray-500 px-2 py-1 rounded active:bg-white/10">Dismiss</button>
-                          </>
-                        ) : (
-                          <>
-                            <span className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-semibold">Rest</span>
-                            <span className="bg-black/60 rounded-md px-2.5 py-1 border border-wf-red/30">
-                              <span className="text-xl font-mono-stat font-black text-wf-red tracking-wider" style={{ letterSpacing: '2px' }}>{formatTime(restRemaining)}</span>
-                            </span>
-                            <button onClick={stopRestTimer} className="text-xs text-wf-gray-500 px-2 py-1 rounded active:bg-white/10">Skip</button>
-                          </>
-                        )
-                      ) : (
-                        <button onClick={startRestTimer} className="text-xs text-wf-red font-semibold px-3 py-1.5 rounded-lg bg-wf-red/10 active:bg-wf-red/20 transition-colors">
-                          Start Rest
-                        </button>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={restDuration}
-                        onChange={(e) => {
-                          const newDuration = Number(e.target.value);
-                          setRestDuration(newDuration);
-                          if (restRemaining !== null && restRemaining > 0) {
-                            restDurationRef.current = newDuration;
-                            startRestTimer();
-                          }
+                  <div className="relative px-4 py-1.5 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-2 h-2 rounded-full"
+                        style={{
+                          background: restRemaining !== null && restRemaining > 0 ? '#ef4444'
+                            : restRemaining !== null && restRemaining <= 0 ? '#22c55e'
+                            : '#333',
+                          boxShadow: restRemaining !== null && restRemaining > 0 ? '0 0 8px rgba(239,68,68,0.7)'
+                            : restRemaining !== null && restRemaining <= 0 ? '0 0 8px rgba(34,197,94,0.8)'
+                            : 'none',
                         }}
-                        className="text-xs font-semibold text-wf-gray-400 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 outline-none cursor-pointer"
-                      >
-                        {REST_OPTIONS.map((s) => (
-                          <option key={s} value={s} className="bg-wf-gray-900">{s >= 60 ? `${Math.floor(s/60)}m` : `${s}s`}{s >= 60 && s % 60 ? ` ${s%60}s` : ''}</option>
-                        ))}
-                      </select>
-                      <button
-                        onClick={() => setRestFloating(true)}
-                        className="p-1.5 rounded-md text-wf-gray-500 active:scale-90 hover:text-white/70 transition-colors"
-                        title="Pop out rest timer"
-                      >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      />
+                      <span className="text-[10px] uppercase font-light" style={{ color: 'rgba(255,255,255,0.45)', letterSpacing: '0.3em' }}>Rest</span>
+                    </div>
+                    <div className="flex items-center gap-2.5">
+                      {restRemaining !== null && restRemaining > 0 ? (
+                        <>
+                          <span style={{ fontSize: '18px', fontWeight: 200, color: 'white', fontFamily: 'system-ui', fontVariantNumeric: 'tabular-nums', letterSpacing: '-1px' }}>{formatTime(restRemaining)}</span>
+                          {/* Skip button — stops rest + brings dropdown back */}
+                          <button
+                            onClick={stopRestTimer}
+                            className="active:scale-[0.95] transition-all"
+                            style={{
+                              padding: '4px 10px', borderRadius: '2px',
+                              fontSize: '10px', fontWeight: 700, letterSpacing: '0.15em',
+                              textTransform: 'uppercase',
+                              border: '1px solid rgba(255,255,255,0.12)',
+                              background: 'rgba(255,255,255,0.04)',
+                              color: 'rgba(255,255,255,0.55)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Skip
+                          </button>
+                        </>
+                      ) : restRemaining !== null && restRemaining <= 0 ? (
+                        <>
+                          {/* Rest complete — GO badge + Dismiss */}
+                          <span
+                            style={{
+                              padding: '4px 14px', borderRadius: '2px',
+                              fontSize: '14px', fontWeight: 800, letterSpacing: '0.25em',
+                              textTransform: 'uppercase',
+                              border: '1px solid rgba(34,197,94,0.5)',
+                              background: 'rgba(34,197,94,0.15)',
+                              color: 'rgba(34,197,94,0.95)',
+                              textShadow: '0 0 10px rgba(34,197,94,0.5)',
+                            }}
+                          >
+                            Go
+                          </span>
+                          <button
+                            onClick={stopRestTimer}
+                            className="active:scale-[0.95] transition-all"
+                            style={{
+                              padding: '4px 10px', borderRadius: '2px',
+                              fontSize: '10px', fontWeight: 700, letterSpacing: '0.15em',
+                              textTransform: 'uppercase',
+                              border: '1px solid rgba(255,255,255,0.12)',
+                              background: 'rgba(255,255,255,0.04)',
+                              color: 'rgba(255,255,255,0.55)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Dismiss
+                          </button>
+                        </>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          {/* Nike-style duration dropdown — 15s to 3min in 15s increments */}
+                          <select
+                            value={restDuration}
+                            onChange={(e) => {
+                              const s = Number(e.target.value);
+                              setRestDuration(s);
+                              restDurationRef.current = s;
+                            }}
+                            className="active:scale-[0.95] transition-all"
+                            style={{
+                              padding: '4px 22px 4px 10px', borderRadius: '2px',
+                              fontSize: '10px', fontWeight: 700, letterSpacing: '0.15em',
+                              textTransform: 'uppercase',
+                              border: '1px solid rgba(239,68,68,0.4)',
+                              background: 'rgba(239,68,68,0.12)',
+                              color: 'rgba(239,68,68,0.9)',
+                              cursor: 'pointer',
+                              outline: 'none',
+                              appearance: 'none',
+                              WebkitAppearance: 'none',
+                              MozAppearance: 'none',
+                              backgroundImage: 'linear-gradient(45deg, transparent 50%, rgba(239,68,68,0.9) 50%), linear-gradient(135deg, rgba(239,68,68,0.9) 50%, transparent 50%)',
+                              backgroundPosition: 'calc(100% - 10px) 50%, calc(100% - 6px) 50%',
+                              backgroundSize: '4px 4px, 4px 4px',
+                              backgroundRepeat: 'no-repeat',
+                            }}
+                          >
+                            {REST_OPTIONS.map((s) => (
+                              <option key={s} value={s} className="bg-wf-gray-900">
+                                {s >= 60 ? `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}` : `${s}s`}
+                              </option>
+                            ))}
+                          </select>
+                          {/* Start button */}
+                          <button
+                            onClick={startRestTimer}
+                            className="active:scale-[0.95] transition-all"
+                            style={{
+                              padding: '4px 12px', borderRadius: '2px',
+                              fontSize: '10px', fontWeight: 700, letterSpacing: '0.15em',
+                              textTransform: 'uppercase', border: 'none',
+                              background: 'linear-gradient(135deg, rgba(239,68,68,0.95) 0%, rgba(220,38,38,0.95) 100%)',
+                              color: 'white',
+                              boxShadow: '0 2px 8px rgba(239,68,68,0.3), inset 0 1px 0 rgba(255,255,255,0.15)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Start
+                          </button>
+                        </div>
+                      )}
+                      {/* Pop-out */}
+                      <button onClick={() => setRestFloating(true)} aria-label="Pop out rest timer" className="w-6 h-6 flex items-center justify-center active:scale-90 transition-all" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M13 5H1v14h18v-6M15 3h6m0 0v6m0-6L10 14" />
                         </svg>
                       </button>
-                      <button
-                        onClick={() => setPinRestTimer(p => !p)}
-                        className={`relative w-8 h-[18px] rounded-full transition-all duration-200 ${pinRestTimer ? '' : 'bg-wf-gray-700'}`}
-                        style={pinRestTimer ? { background: 'linear-gradient(to right, rgba(239,68,68,0.8), rgba(239,68,68,0.3))' } : {}}
-                        title={pinRestTimer ? 'Unpin rest timer' : 'Pin rest timer'}
-                      >
-                        {pinRestTimer && (
-                          <svg className="absolute left-[3px] top-[3px] w-[12px] h-[12px] text-white/70" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM9 8V6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9z"/>
+                      {/* Lock toggle */}
+                      <button onClick={() => setPinRestTimer(p => !p)} aria-label={pinRestTimer ? 'Unlock rest timer' : 'Lock rest timer'} className="w-6 h-6 flex items-center justify-center active:scale-90 transition-all" style={{ color: pinRestTimer ? 'rgba(239,68,68,0.9)' : 'rgba(255,255,255,0.4)' }}>
+                        {pinRestTimer ? (
+                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM9 8V6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9z" />
+                          </svg>
+                        ) : (
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
                           </svg>
                         )}
-                        <span className={`absolute top-[2px] left-[2px] w-[14px] h-[14px] rounded-full bg-white transition-transform duration-200 ${pinRestTimer ? 'translate-x-[14px]' : 'translate-x-0'}`} />
                       </button>
                     </div>
                   </div>
@@ -2019,7 +2095,59 @@ export default function WorkoutSession() {
             )}
           </div>
         }
-      />
+      >
+        {/* Settings gear — sits in the header row on the same line as the date */}
+        <div className="relative shrink-0">
+          <button
+            data-tutorial="session-settings"
+            onClick={() => setShowSessionMenu(!showSessionMenu)}
+            aria-label="Session settings"
+            className="w-[35px] h-[35px] rounded-full flex items-center justify-center text-wf-gray-400 active:bg-white/10 transition-colors"
+          >
+            <svg className="w-[22px] h-[22px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </button>
+          {showSessionMenu && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowSessionMenu(false)} />
+              <div className="absolute right-0 top-10 z-50 w-52 rounded-xl bg-wf-gray-900 border border-white/10 shadow-2xl overflow-hidden">
+                <div className="px-3 py-2 border-b border-white/5 flex items-center justify-between">
+                  <span className="text-[9px] text-wf-gray-500 uppercase tracking-wider font-semibold">Display</span>
+                  <button
+                    onClick={() => setShowSessionMenu(false)}
+                    aria-label="Close display settings"
+                    className="w-5 h-5 rounded-full flex items-center justify-center text-wf-gray-500 active:bg-white/10 active:scale-90 transition-all"
+                  >
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <button
+                  onClick={() => { const v = !showGoals; setShowGoals(v); try { localStorage.setItem('replab_show_goals', JSON.stringify(v)); } catch {} }}
+                  className="w-full px-3 py-2.5 flex items-center justify-between text-sm text-white active:bg-white/5 transition-colors"
+                >
+                  <span>Goal Weight / Reps</span>
+                  <div className={`w-8 h-5 rounded-full transition-colors ${showGoals ? 'bg-wf-red' : 'bg-wf-gray-600'}`}>
+                    <div className={`w-4 h-4 rounded-full bg-white mt-0.5 transition-transform ${showGoals ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                  </div>
+                </button>
+                <button
+                  onClick={() => { const v = !showSetType; setShowSetType(v); try { localStorage.setItem('replab_show_set_type', JSON.stringify(v)); } catch {} }}
+                  className="w-full px-3 py-2.5 flex items-center justify-between text-sm text-white active:bg-white/5 transition-colors"
+                >
+                  <span>Set Type</span>
+                  <div className={`w-8 h-5 rounded-full transition-colors ${showSetType ? 'bg-wf-red' : 'bg-wf-gray-600'}`}>
+                    <div className={`w-4 h-4 rounded-full bg-white mt-0.5 transition-transform ${showSetType ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                  </div>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </StickyHeader>
 
       {/* Status Banner + View Summary */}
       {isCompleted && (
@@ -2081,28 +2209,30 @@ export default function WorkoutSession() {
             )}
             {exercise.isSectionHeader ? (
             <div className="fade-slide-up mb-3 mt-2" style={{ animationDelay: `${idx * 60}ms` }}>
-              <div className="rounded-lg overflow-hidden" style={{
-                background: '#c4c4c4',
-                border: '1px solid rgba(239,68,68,0.4)',
-                boxShadow: 'inset 4px 0 0 rgba(239,68,68,0.85)',
+              <div className="overflow-hidden" style={{
+                borderRadius: '2px',
+                background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)',
+                position: 'relative',
               }}>
-                <div className="px-5 py-3.5 flex items-center gap-3">
-                  <span className="text-[9px] uppercase font-bold shrink-0" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.2em' }}>Section</span>
-                  <span className="w-px h-3.5 shrink-0" style={{ background: 'rgba(0,0,0,0.15)' }} />
-                  <span className="text-[13px] font-black uppercase" style={{ color: '#111', letterSpacing: '0.12em' }}>{exercise.name}</span>
+                {/* Red top accent bar */}
+                <div style={{ height: '3px', background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.4), transparent)' }} />
+                {/* Ambient red spotlight */}
+                <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+
+                <div className="relative px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-[9px] uppercase font-light" style={{ color: 'rgba(239,68,68,0.7)', letterSpacing: '0.3em' }}>Section</span>
+                    <span className="text-[16px] font-black text-white uppercase tracking-tight" style={{ fontFamily: 'system-ui' }}>{exercise.name}</span>
+                  </div>
+                  {exercise.sectionNotes && (
+                    <p className="text-[11px] font-light mt-2" style={{ color: 'rgba(255,255,255,0.4)', lineHeight: 1.5 }}>{exercise.sectionNotes}</p>
+                  )}
                 </div>
-                {exercise.sectionNotes && (
-                  <>
-                    <div style={{ height: '1px', background: 'rgba(0,0,0,0.12)', marginLeft: '20px', marginRight: '20px' }} />
-                    <div className="px-5 py-3 pl-[3.5rem]">
-                      <p className="text-xs leading-relaxed" style={{ color: '#555' }}>{exercise.sectionNotes}</p>
-                    </div>
-                  </>
-                )}
               </div>
             </div>
           ) : (
-          <div ref={(el) => { exerciseRefs.current[eKey] = el; if (el && scrollToExercise.current === idx) { scrollToExercise.current = null; setTimeout(() => { const target = el.getBoundingClientRect().top + window.scrollY; const start = window.scrollY; const dist = target - start; const duration = 600; let t0 = null; function step(ts) { if (!t0) t0 = ts; const p = Math.min((ts - t0) / duration, 1); const ease = p < 0.5 ? 2 * p * p : -1 + (4 - 2 * p) * p; window.scrollTo(0, start + dist * ease); if (p < 1) requestAnimationFrame(step); } requestAnimationFrame(step); }, 50); } }} className="fade-slide-up" style={{ animationDelay: `${idx * 60}ms` }}>
+          <div ref={(el) => { exerciseRefs.current[eKey] = el; if (el && scrollToExercise.current === idx) { scrollToExercise.current = null; setTimeout(() => { const target = Math.max(0, el.getBoundingClientRect().top + window.scrollY - window.innerHeight / 2); const start = window.scrollY; const dist = target - start; const duration = 600; let t0 = null; function step(ts) { if (!t0) t0 = ts; const p = Math.min((ts - t0) / duration, 1); const ease = p < 0.5 ? 2 * p * p : -1 + (4 - 2 * p) * p; window.scrollTo(0, start + dist * ease); if (p < 1) requestAnimationFrame(step); } requestAnimationFrame(step); }, 50); } }} className="fade-slide-up" style={{ animationDelay: `${idx * 60}ms` }}>
             <ExerciseCard
               exercise={exercise}
               exerciseKey={eKey}
@@ -2207,15 +2337,6 @@ export default function WorkoutSession() {
           </button>
         )}
 
-        {/* Quick Add Buttons */}
-        {!structureLocked && <div className="flex gap-2 mb-3">
-          <button className="flex-1 glass-card rounded-xl py-3 text-wf-gray-400 text-xs font-semibold active:text-wf-red active:border-wf-red/30 transition-colors flex items-center justify-center gap-1.5">
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" />
-            </svg>
-            Add a Warm Up
-          </button>
-        </div>}
       </div>
 
       {/* Add Exercise Modal */}
@@ -2316,30 +2437,46 @@ export default function WorkoutSession() {
         );
       })()}
 
-      {/* Total Volume */}
+      {/* Total Volume — Nike "Your Stats" style */}
       {totalVolume > 0 && (
         <div className="px-4 mt-4 mb-2">
-          <div className="glass-card rounded-xl p-4 flex items-center justify-between">
-            <span className="text-sm text-wf-gray-400 font-medium">Total Volume</span>
-            <span className="text-lg font-black text-white tabular-nums">
-              {totalVolume.toLocaleString()} <span className="text-xs font-medium text-wf-gray-500">lbs</span>
-            </span>
+          <div
+            className="text-center py-3 px-2"
+            style={{
+              background: 'linear-gradient(145deg, #1e1e1e 0%, #141414 100%)',
+              boxShadow: '0 8px 30px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)',
+              borderRadius: '2px',
+            }}
+          >
+            <div className="text-[28px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', fontVariantNumeric: 'tabular-nums' }}>
+              {totalVolume.toLocaleString()}<span className="text-[12px] font-light text-white/30"> LBS</span>
+            </div>
+            <div className="text-[8px] text-white/25 uppercase tracking-[0.25em] font-light mt-1">Total Volume</div>
           </div>
         </div>
       )}
 
-      {/* Mark Complete */}
+      {/* Mark Complete — Nike style */}
       {timerStarted && (
         <div className="px-4 mb-24" data-tutorial="mark-complete">
           <button
             onClick={handleMarkComplete}
-            className={`w-full font-semibold py-3.5 rounded-xl text-sm transition-all active:scale-[0.98] ${
-              isCompleted
-                ? 'glass-card !border-wf-gray-500 text-wf-gray-400'
-                : 'bg-wf-red/90 hover:bg-wf-red text-white'
-            }`}
+            className="active:scale-[0.98] transition-all w-full"
+            style={isCompleted ? {
+              padding: '16px', borderRadius: '2px',
+              border: '1px solid rgba(255,255,255,0.15)',
+              background: 'rgba(255,255,255,0.04)',
+              color: 'rgba(255,255,255,0.55)', fontSize: '13px', fontWeight: 700, cursor: 'pointer',
+              letterSpacing: '0.25em', textTransform: 'uppercase',
+            } : {
+              padding: '16px', borderRadius: '2px', border: 'none',
+              background: 'linear-gradient(135deg, rgba(239,68,68,0.95) 0%, rgba(220,38,38,0.95) 100%)',
+              color: 'white', fontSize: '13px', fontWeight: 700, cursor: 'pointer',
+              letterSpacing: '0.25em', textTransform: 'uppercase',
+              boxShadow: '0 4px 20px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+            }}
           >
-            {isCompleted ? 'Undo Completion' : 'Mark Complete'}
+            {isCompleted ? 'Undo Completion' : `Mark Complete — ${completedCount}/${totalSets} Sets`}
           </button>
         </div>
       )}

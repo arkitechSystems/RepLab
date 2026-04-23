@@ -737,14 +737,19 @@ export default function Workouts() {
     );
   }
 
+  // Guard: api() can resolve to {} if the response is 2xx but empty/unparseable
+  // (e.g. Vite dev SPA-fallback HTML when the backend is briefly unreachable,
+  // or an empty 204). Coerce anything non-array to [] before storing.
+  const setShareUsersSafe = (v) => setShareUsers(Array.isArray(v) ? v : []);
+
   function openShareModal(program) {
     setShareResult(null); setShareInput(''); setShareUserSearch(''); setShareUsers([]); setShareModal(program);
-    api('/sharing/users').then(setShareUsers).catch(() => setShareUsers([]));
+    api('/sharing/users').then(setShareUsersSafe).catch(() => setShareUsers([]));
   }
 
   function openInviteModal(template) {
     setInviteResult(null); setInviteInput(''); setShareUserSearch(''); setShareUsers([]); setInviteModal(template);
-    api('/sharing/users').then(setShareUsers).catch(() => setShareUsers([]));
+    api('/sharing/users').then(setShareUsersSafe).catch(() => setShareUsers([]));
   }
 
   async function handleShareProgram() {
@@ -1496,8 +1501,8 @@ export default function Workouts() {
                           style={{
                             letterSpacing: '0.15em',
                             borderRadius: '2px',
-                            background: 'linear-gradient(135deg, rgba(34,197,94,0.9) 0%, rgba(22,163,74,0.9) 100%)',
-                            boxShadow: '0 4px 14px rgba(34,197,94,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+                            background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+                            boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
                           }}
                         >
                           + Add
@@ -1506,7 +1511,7 @@ export default function Workouts() {
                           <>
                             <button
                               onClick={() => { openShareModal(program); }}
-                              className="w-9 h-9 flex items-center justify-center shrink-0 active:scale-[0.97] transition-all"
+                              className="active:scale-[0.97] transition-all flex items-center justify-center px-3.5 py-2 whitespace-nowrap shrink-0"
                               style={{
                                 borderRadius: '2px',
                                 background: 'linear-gradient(135deg, rgba(59,130,246,0.9) 0%, rgba(37,99,235,0.9) 100%)',

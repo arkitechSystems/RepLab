@@ -5,6 +5,10 @@ import { useExercises, getSubstitutesFromList } from '../hooks/useExercises.js';
 import VideoPlayerModal from './VideoPlayerModal.jsx';
 import { iosFocusRef } from '../utils/iosFocus.js';
 
+// When true, exercise cards in workout sessions get a red->white->red gradient
+// border matching the Swap Exercise modal. Flip to false to revert.
+const EXERCISE_CARD_GRADIENT_BORDER = true;
+
 function addToRecent(name) {
   try {
     const recent = JSON.parse(localStorage.getItem('replab_recent_exercises') || '[]');
@@ -134,7 +138,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
 
   return (
     <>
-    <div data-tutorial={dataTutorial ? 'exercise-card' : undefined} className="exercise-card-light-test glass-card rounded-xl overflow-hidden mb-3">
+    <div data-tutorial={dataTutorial ? 'exercise-card' : undefined} className={`exercise-card-light-test glass-card rounded-xl overflow-hidden mb-3${EXERCISE_CARD_GRADIENT_BORDER ? ' exercise-card-gradient-border' : ''}`}>
       {/* Exercise Header — name + demo button */}
       <div data-tutorial={dataTutorial} className="px-4 py-3 flex items-center justify-between" style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '3px double rgba(255,255,255,0.15)' }}>
         <div className="min-w-0">
@@ -743,7 +747,17 @@ function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelec
     <div className="fixed inset-0 z-50 flex flex-col items-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/80" />
       <div
-        className="relative mt-auto mb-20 w-[calc(100%-32px)] max-w-md h-[75vh] flex flex-col bg-wf-gray-900 rounded-2xl overflow-hidden shadow-2xl"
+        className="relative mt-auto mb-20 w-[calc(100%-32px)] max-w-md h-[75vh] flex flex-col rounded-2xl overflow-hidden shadow-2xl"
+        style={{
+          // Static red -> white hotspot -> red gradient border, matching the
+          // top accent bar on the Will's Hypertrophy featured program card.
+          // background-clip trick keeps the rounded corners working:
+          // inner bg fills the padding-box, gradient fills the border-box.
+          border: '1px solid transparent',
+          background:
+            'linear-gradient(#111111, #111111) padding-box, ' +
+            'linear-gradient(90deg, rgba(239,68,68,0.15) 0%, rgba(239,68,68,1) 45%, rgba(255,255,255,0.8) 50%, rgba(239,68,68,1) 55%, rgba(239,68,68,0.15) 100%) border-box',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

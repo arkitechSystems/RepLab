@@ -47,6 +47,7 @@ const FeaturedWorkoutSession = lazy(() => import('./pages/FeaturedWorkoutSession
 const TestChallengeSection = lazy(() => import('./pages/TestChallengeSection'));
 const NikeTestHomepage = lazy(() => import('./pages/NikeTestHomepage'));
 const NikeCardsTest = lazy(() => import('./pages/NikeCardsTest'));
+const RepLabFeedTest = lazy(() => import('./pages/RepLabFeedTest'));
 const NewHomepage = lazy(() => import('./pages/NewHomepage'));
 
 function ProtectedRoute({ children }) {
@@ -160,6 +161,7 @@ export default function App() {
         <Route path="/test/challenge-section" element={<TestRoute><TestChallengeSection /></TestRoute>} />
         <Route path="/test/nike" element={<TestRoute><NikeTestHomepage /></TestRoute>} />
         <Route path="/test/nike-cards" element={<TestRoute><NikeCardsTest /></TestRoute>} />
+        <Route path="/test/feed" element={<TestRoute><RepLabFeedTest /></TestRoute>} />
         <Route path="/test/new-homepage" element={<TestRoute><NewHomepage /></TestRoute>} />
       </Route>
 
