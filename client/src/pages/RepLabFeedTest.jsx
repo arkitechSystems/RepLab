@@ -28,7 +28,9 @@ const REACTIONS = [
   { key: 'clap',  emoji: '👏', label: 'Clap' },
 ];
 
-// All uploadedDaysAgo values are relative to 2026-04-23.
+// Absolute ISO publish dates so "days ago" ages correctly over time.
+// Snapshot pulled from each channel's public RSS on 2026-04-23 — the dates
+// below are the real publishedAt values, not offsets from snapshot day.
 const YT_VIDEOS = [
   {
     videoId: 'EpvoiNFqka0',
@@ -36,7 +38,7 @@ const YT_VIDEOS = [
     creatorHandle: '@JeffNippard',
     creatorColor: '#0ea5e9',
     title: 'How I Cured My Body Dysmorphia',
-    uploadedDaysAgo: 56,
+    publishedAt: '2026-02-26T00:00:00Z',
     views: '4.5M',
   },
   {
@@ -45,7 +47,7 @@ const YT_VIDEOS = [
     creatorHandle: '@RenaissancePeriodization',
     creatorColor: '#8b5cf6',
     title: 'What Dr. Mike Takes Every Morning',
-    uploadedDaysAgo: 0,
+    publishedAt: '2026-04-23T00:00:00Z',
     views: '797',
   },
   {
@@ -54,7 +56,7 @@ const YT_VIDEOS = [
     creatorHandle: '@athleanx',
     creatorColor: '#dc2626',
     title: 'How to Lose Stubborn Belly Fat Much Faster (NO, SERIOUSLY!)',
-    uploadedDaysAgo: 4,
+    publishedAt: '2026-04-19T00:00:00Z',
     views: '189K',
   },
   {
@@ -63,7 +65,7 @@ const YT_VIDEOS = [
     creatorHandle: '@GregDoucette',
     creatorColor: '#f59e0b',
     title: 'Retatutride Wrecked Him',
-    uploadedDaysAgo: 0,
+    publishedAt: '2026-04-23T00:00:00Z',
     views: '2K',
   },
   {
@@ -72,11 +74,13 @@ const YT_VIDEOS = [
     creatorHandle: '@Team3DMJ',
     creatorColor: '#22c55e',
     title: '3DMJ Podcast #306: How Much Does Food Quality Matter?',
-    uploadedDaysAgo: 7,
+    publishedAt: '2026-04-16T00:00:00Z',
     views: '2.7K',
   },
 ];
 
+// Articles use absolute publishedAt too. Timestamp hidden when > 30 days old
+// (those sources publish slowly; "1y ago" chips make the feed look broken).
 const ARTICLES = [
   {
     source: 'BarBend',
@@ -84,7 +88,7 @@ const ARTICLES = [
     title: 'Best Vegan Creatine (2026): Plant-Based Picks for Every Athlete',
     url: 'https://barbend.com/best-vegan-creatine/',
     excerpt: 'Creatine is one of the most-studied, most effective supplements for muscle growth known to mankind. The supplement is naturally created in the body from specific amino acids and aids ATP production for intense muscle contractions.',
-    daysAgo: 230,
+    publishedAt: '2025-09-05T00:00:00Z',
     readTime: '6 min',
   },
   {
@@ -93,7 +97,7 @@ const ARTICLES = [
     title: 'Is DOMS a Sign of Muscle Growth?',
     url: 'https://outlift.com/how-muscle-soreness-affects-muscle-growth/',
     excerpt: 'Most people think delayed onset muscle soreness (DOMS) is a sign of muscle growth. The idea is that if you train a muscle hard enough to make it sore, then you\'ve trained it hard enough to stimulate muscle growth.',
-    daysAgo: 378,
+    publishedAt: '2025-04-10T00:00:00Z',
     readTime: '7 min',
   },
 ];
@@ -121,14 +125,27 @@ function initialsFrom(username, email) {
   return src.slice(0, 2).toUpperCase();
 }
 
+// Canonicalize article URLs so the same piece across protocol/www/trailing-slash
+// variants produces one stable item_id. Used for the `art-<key>` ID scheme.
+function canonicalizeUrl(raw) {
+  try {
+    const u = new URL(raw);
+    return `${u.host.replace(/^www\./, '').toLowerCase()}${u.pathname.replace(/\/+$/, '')}`;
+  } catch {
+    return raw;
+  }
+}
+
+const EMPTY_REACTIONS = { fire: 0, flex: 0, hundo: 0, clap: 0 };
+
 // ---------------------------------------------------------------------------
 
 export default function RepLabFeedTest() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [tab, setTab] = useState('firehose');
   const [filter, setFilter] = useState('all');
-  const [userReactions, setUserReactions] = useState({});
+  const [userReactions, setUserReactions] = useState({}); // { [itemId]: reactionKey }
+  const [reactionCounts, setReactionCounts] = useState({}); // { [itemId]: { fire, flex, hundo, clap } }
   const [sessions, setSessions] = useState([]);
   const [pbs, setPbs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -153,27 +170,49 @@ export default function RepLabFeedTest() {
     const initials = initialsFrom(user?.username, user?.email);
     const photoUrl = user?.photoUrl || null;
 
-    const prItems = pbs
-      .slice()
-      .sort((a, b) => new Date(b.achievedAt) - new Date(a.achievedAt))
+    // `/pbs` returns one row per (exercise, weight) pair — so a user with
+    // multiple bench PRs over time yields several rows for Bench Press.
+    // We dedupe by keeping only the most-recent PR per exercise, and compute
+    // a delta against the previous-highest weight on that same exercise.
+    const byExercise = new Map();
+    for (const pb of pbs) {
+      const key = pb.exerciseName;
+      const list = byExercise.get(key) || [];
+      list.push(pb);
+      byExercise.set(key, list);
+    }
+
+    const prItems = [...byExercise.entries()]
+      .map(([exerciseName, rows]) => {
+        const sorted = rows.slice().sort((a, b) => new Date(b.achievedAt) - new Date(a.achievedAt));
+        const latest = sorted[0];
+        const previousBest = rows
+          .filter((r) => r.id !== latest.id && r.bestWeight < latest.bestWeight)
+          .reduce((max, r) => (!max || r.bestWeight > max.bestWeight ? r : max), null);
+        const delta = previousBest ? latest.bestWeight - previousBest.bestWeight : null;
+        return { latest, previousBest, delta };
+      })
+      .sort((a, b) => new Date(b.latest.achievedAt) - new Date(a.latest.achievedAt))
       .slice(0, 6)
-      .map((pb) => ({
-        id: `pr-${pb.id}`,
+      .map(({ latest, previousBest, delta }) => ({
+        id: `pr-${latest.id}`,
         kind: 'pr',
         bucket: 'community',
-        sortDate: new Date(pb.achievedAt),
+        sortDate: new Date(latest.achievedAt),
         author,
         initials,
         photoUrl,
-        timeAgo: formatTimeAgo(daysBetween(pb.achievedAt, now)),
-        exercise: pb.exerciseName,
-        weight: pb.bestWeight,
-        reps: pb.bestReps,
-        reactions: { fire: 0, flex: 0, hundo: 0, clap: 0 },
+        timeAgo: formatTimeAgo(daysBetween(latest.achievedAt, now)),
+        exercise: latest.exerciseName,
+        weight: latest.bestWeight,
+        reps: latest.bestReps,
+        previousWeight: previousBest?.bestWeight ?? null,
+        previousReps:   previousBest?.bestReps ?? null,
+        delta,
       }));
 
     const workoutItems = sessions
-      .slice()
+      .filter((s) => s.completed)
       .sort((a, b) => new Date(b.date) - new Date(a.date))
       .slice(0, 6)
       .map((s) => ({
@@ -186,38 +225,83 @@ export default function RepLabFeedTest() {
         photoUrl,
         timeAgo: formatTimeAgo(daysBetween(s.date, now)),
         workoutName: s.templateName || 'Workout',
-        reactions: { fire: 0, flex: 0, hundo: 0, clap: 0 },
+        totalVolume: s.totalVolume || 0,
+        exerciseCount: s.exerciseCount || 0,
       }));
 
-    const ytItems = YT_VIDEOS.map((v, i) => ({
-      id: `yt-${v.videoId}`,
-      kind: 'youtube',
-      bucket: 'youtube',
-      sortDate: new Date(now.getTime() - v.uploadedDaysAgo * 86400000),
-      timeAgo: formatTimeAgo(v.uploadedDaysAgo),
-      ...v,
-      reactions: { fire: 0, flex: 0, hundo: 0, clap: 0 },
-    }));
+    const ytItems = YT_VIDEOS.map((v) => {
+      const sortDate = new Date(v.publishedAt);
+      return {
+        id: `yt-${v.videoId}`,
+        kind: 'youtube',
+        bucket: 'youtube',
+        sortDate,
+        timeAgo: formatTimeAgo(daysBetween(v.publishedAt, now)),
+        ...v,
+      };
+    });
 
-    const articleItems = ARTICLES.map((a) => ({
-      id: `art-${a.url}`,
-      kind: 'article',
-      bucket: 'article',
-      sortDate: new Date(now.getTime() - a.daysAgo * 86400000),
-      timeAgo: formatTimeAgo(a.daysAgo),
-      ...a,
-      reactions: { fire: 0, flex: 0, hundo: 0, clap: 0 },
-    }));
+    const articleItems = ARTICLES.map((a) => {
+      const sortDate = new Date(a.publishedAt);
+      const days = daysBetween(a.publishedAt, now);
+      return {
+        id: `art-${canonicalizeUrl(a.url)}`,
+        kind: 'article',
+        bucket: 'article',
+        sortDate,
+        timeAgo: days <= 30 ? formatTimeAgo(days) : null,
+        ...a,
+      };
+    });
 
     return [...prItems, ...workoutItems, ...ytItems, ...articleItems]
       .sort((a, b) => b.sortDate - a.sortDate);
   }, [sessions, pbs, user]);
 
-  const toggleReaction = (itemId, reactionKey) => {
-    setUserReactions((prev) => ({
-      ...prev,
-      [itemId]: prev[itemId] === reactionKey ? null : reactionKey,
-    }));
+  // Batch-fetch persisted reactions once the feed is built. Depends on the
+  // joined ID string so we only re-fetch if the item set actually changes.
+  const feedIdsKey = useMemo(() => feed.map((i) => i.id).join(','), [feed]);
+  useEffect(() => {
+    if (!feedIdsKey) return;
+    const controller = new AbortController();
+    api(`/feed/reactions?ids=${encodeURIComponent(feedIdsKey)}`, { signal: controller.signal })
+      .then((res) => {
+        setReactionCounts(res?.aggregates || {});
+        setUserReactions(res?.mine || {});
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [feedIdsKey]);
+
+  // Optimistic toggle: flip local state first, then PUT. Roll back on failure
+  // so a dropped request doesn't leave the UI lying to the user.
+  const toggleReaction = async (itemId, reactionKey) => {
+    const prev = userReactions[itemId] || null;
+    const next = prev === reactionKey ? null : reactionKey;
+
+    setUserReactions((r) => ({ ...r, [itemId]: next }));
+    setReactionCounts((c) => {
+      const curr = { ...EMPTY_REACTIONS, ...(c[itemId] || {}) };
+      if (prev) curr[prev] = Math.max(0, curr[prev] - 1);
+      if (next) curr[next] = curr[next] + 1;
+      return { ...c, [itemId]: curr };
+    });
+
+    try {
+      await api('/feed/reactions', {
+        method: 'PUT',
+        body: JSON.stringify({ itemId, reaction: next }),
+      });
+    } catch {
+      // Roll back
+      setUserReactions((r) => ({ ...r, [itemId]: prev }));
+      setReactionCounts((c) => {
+        const curr = { ...EMPTY_REACTIONS, ...(c[itemId] || {}) };
+        if (next) curr[next] = Math.max(0, curr[next] - 1);
+        if (prev) curr[prev] = curr[prev] + 1;
+        return { ...c, [itemId]: curr };
+      });
+    }
   };
 
   const visible = feed.filter((item) => filter === 'all' || item.bucket === filter);
@@ -243,27 +327,6 @@ export default function RepLabFeedTest() {
         <p className="text-[12px] text-white/40 font-light mb-6 leading-relaxed">
           Community + fitness news. Public fire hose of PRs, workouts, creators, and articles.
         </p>
-
-        {/* Tabs */}
-        <div className="flex gap-1 mb-4 border-b border-white/10">
-          {[
-            { key: 'firehose',  label: 'Fire Hose' },
-            { key: 'following', label: 'Following' },
-            { key: 'foryou',    label: 'For You' },
-          ].map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className="relative px-3 py-2.5 text-[11px] uppercase font-bold tracking-wider transition-colors"
-              style={{ color: tab === t.key ? '#fff' : 'rgba(255,255,255,0.4)', letterSpacing: '0.15em' }}
-            >
-              {t.label}
-              {tab === t.key && (
-                <span className="absolute left-0 right-0 bottom-[-1px] h-[2px]" style={{ background: '#ef4444' }} />
-              )}
-            </button>
-          ))}
-        </div>
 
         {/* Source filter chips */}
         <div className="flex gap-2 mb-5 overflow-x-auto scrollbar-hide -mx-4 px-4">
@@ -302,6 +365,7 @@ export default function RepLabFeedTest() {
                 key={item.id}
                 item={item}
                 userReaction={userReactions[item.id]}
+                counts={reactionCounts[item.id] || EMPTY_REACTIONS}
                 onReact={(rk) => toggleReaction(item.id, rk)}
                 onPlayVideo={playVideo}
               />
@@ -315,7 +379,7 @@ export default function RepLabFeedTest() {
 
 // ---------------------------------------------------------------------------
 
-function FeedCard({ item, userReaction, onReact, onPlayVideo }) {
+function FeedCard({ item, userReaction, counts, onReact, onPlayVideo }) {
   return (
     <div
       className="relative overflow-hidden"
@@ -331,7 +395,7 @@ function FeedCard({ item, userReaction, onReact, onPlayVideo }) {
       {item.kind === 'workout' && <WorkoutBody item={item} />}
       {item.kind === 'article' && <ArticleBody item={item} />}
 
-      <ReactionBar item={item} userReaction={userReaction} onReact={onReact} />
+      <ReactionBar userReaction={userReaction} counts={counts} onReact={onReact} />
     </div>
   );
 }
@@ -419,7 +483,17 @@ function PrBody({ item }) {
         <div className="flex items-baseline gap-2">
           <span className="text-3xl font-black text-white tracking-tight">{item.weight}</span>
           <span className="text-sm text-white/60 font-light">lb × {item.reps}</span>
+          {item.delta > 0 && (
+            <span className="ml-auto text-[11px] font-bold" style={{ color: '#22c55e' }}>
+              +{item.delta} lb
+            </span>
+          )}
         </div>
+        {item.previousWeight != null && (
+          <p className="text-[10px] text-white/35 font-light mt-1">
+            prev: {item.previousWeight} lb × {item.previousReps}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -470,6 +544,11 @@ function YouTubeBody({ item, onPlay }) {
 }
 
 function WorkoutBody({ item }) {
+  const hasStats = item.totalVolume > 0 || item.exerciseCount > 0;
+  const volumeDisplay =
+    item.totalVolume >= 1000
+      ? `${(item.totalVolume / 1000).toFixed(1)}k`
+      : String(Math.round(item.totalVolume));
   return (
     <div className="p-4">
       <CardHeader
@@ -484,7 +563,34 @@ function WorkoutBody({ item }) {
         }
         right={item.timeAgo}
       />
-      <p className="text-[16px] font-black text-white tracking-tight">{item.workoutName}</p>
+      <p className="text-[16px] font-black text-white tracking-tight mb-3">{item.workoutName}</p>
+      {hasStats && (
+        <div className="grid grid-cols-2 gap-2">
+          <Stat label="Volume" value={volumeDisplay} unit="lb" />
+          <Stat label="Lifts"  value={item.exerciseCount} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Stat({ label, value, unit }) {
+  return (
+    <div
+      className="px-2 py-2"
+      style={{
+        background: 'rgba(255,255,255,0.03)',
+        borderRadius: '3px',
+        border: '1px solid rgba(255,255,255,0.05)',
+      }}
+    >
+      <p className="text-[9px] uppercase font-bold text-white/40 tracking-wider mb-0.5" style={{ letterSpacing: '0.15em' }}>
+        {label}
+      </p>
+      <p className="text-[15px] font-black text-white tracking-tight">
+        {value}
+        {unit && <span className="text-[10px] text-white/40 font-light ml-0.5">{unit}</span>}
+      </p>
     </div>
   );
 }
@@ -494,7 +600,9 @@ function ArticleBody({ item }) {
     <a href={item.url} target="_blank" rel="noreferrer" className="block p-4">
       <div className="flex items-center justify-between mb-3">
         <SourceBadge label={item.source} color={item.sourceColor} />
-        <span className="text-[10px] text-white/35 font-light">{item.timeAgo}</span>
+        {item.timeAgo && (
+          <span className="text-[10px] text-white/35 font-light">{item.timeAgo}</span>
+        )}
       </div>
       <h3 className="text-[17px] font-black text-white tracking-tight leading-tight mb-2">
         {item.title}
@@ -507,38 +615,51 @@ function ArticleBody({ item }) {
   );
 }
 
-function ReactionBar({ item, userReaction, onReact }) {
-  const total = Object.values(item.reactions).reduce((a, b) => a + b, 0) + (userReaction ? 1 : 0);
+// Reaction model: one reaction per user per item, switchable. Tapping the
+// same reaction again clears it; tapping a different one replaces. Aggregate
+// "N reactions" is hidden until there's at least one, so fresh items don't
+// read as a ghost town.
+function ReactionBar({ userReaction, counts, onReact }) {
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
 
   return (
     <div
-      className="flex items-center gap-1 px-3 py-2"
+      className="flex items-center gap-1 px-2"
       style={{ borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.015)' }}
     >
       {REACTIONS.map((r) => {
-        const count = item.reactions[r.key] + (userReaction === r.key ? 1 : 0);
+        const count = counts[r.key] || 0;
         const active = userReaction === r.key;
         return (
           <button
             key={r.key}
+            type="button"
+            aria-label={`${r.label}${count ? ` (${count})` : ''}`}
+            aria-pressed={active}
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onReact(r.key); }}
-            className="flex items-center gap-1 px-2 py-1 rounded-full transition-all active:scale-90"
+            className="flex items-center justify-center gap-1.5 px-3 rounded-full transition-all active:scale-90"
             style={{
+              minHeight: 44,
+              minWidth: 44,
               background: active ? 'rgba(239,68,68,0.15)' : 'transparent',
               border: active ? '1px solid rgba(239,68,68,0.4)' : '1px solid transparent',
             }}
           >
-            <span className="text-[14px] leading-none">{r.emoji}</span>
-            <span
-              className="text-[11px] font-bold leading-none"
-              style={{ color: active ? '#ef4444' : 'rgba(255,255,255,0.5)' }}
-            >
-              {count}
-            </span>
+            <span className="text-[15px] leading-none">{r.emoji}</span>
+            {count > 0 && (
+              <span
+                className="text-[11px] font-bold leading-none"
+                style={{ color: active ? '#ef4444' : 'rgba(255,255,255,0.6)' }}
+              >
+                {count}
+              </span>
+            )}
           </button>
         );
       })}
-      <span className="ml-auto text-[10px] text-white/30 font-light">{total} reactions</span>
+      {total > 0 && (
+        <span className="ml-auto text-[10px] text-white/30 font-light pr-1">{total} reactions</span>
+      )}
     </div>
   );
 }

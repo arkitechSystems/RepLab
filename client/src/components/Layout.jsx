@@ -10,7 +10,7 @@ import { MiniPlayer, useVideoPlayer } from '../context/VideoPlayerContext';
 export default function Layout() {
   const { tutorial } = useTutorial();
   const { user } = useAuth();
-  const { video } = useVideoPlayer();
+  const { video, minimized } = useVideoPlayer();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const location = useLocation();
@@ -104,7 +104,20 @@ export default function Layout() {
       )}
       <main
         className={`grow shrink-0 basis-auto relative z-10 ${isDashboardEmbed ? 'pb-4' : ''}`}
-        style={!isDashboardEmbed ? { paddingBottom: video ? 380 : 96 } : undefined}
+        style={
+          !isDashboardEmbed
+            ? {
+                // Expanded player: video height (16:9 of viewport, capped at 480px wide)
+                //   + 48px chrome + 64px BottomNav + 24px buffer + safe-area.
+                // Minimized pill floats in the corner and doesn't push content,
+                // so only the standard nav clearance is needed.
+                paddingBottom:
+                  video && !minimized
+                    ? 'calc(min(100vw, 480px) * 0.5625 + 136px + env(safe-area-inset-bottom, 0px))'
+                    : 96,
+              }
+            : undefined
+        }
       >
         <div className="page-fade-in" key={location.pathname}>
           <Outlet />

@@ -590,10 +590,15 @@ const db = {
 
   async getSessions(userId) {
     const { rows } = await pool.query(
-      `SELECT s.id, s.date, s.template_id, s.created_at, COALESCE(t.name, 'Unknown') AS template_name
+      `SELECT s.id, s.date, s.template_id, s.created_at, s.completed,
+              COALESCE(t.name, 'Unknown') AS template_name,
+              COALESCE(SUM(se.weight * se.reps), 0)::NUMERIC AS total_volume,
+              COUNT(DISTINCT se.exercise_name) AS exercise_count
        FROM sessions s
        LEFT JOIN templates t ON t.id = s.template_id
+       LEFT JOIN session_entries se ON se.session_id = s.id
        WHERE s.user_id = $1
+       GROUP BY s.id, t.name
        ORDER BY s.date DESC, s.created_at DESC`,
       [userId]
     );
@@ -602,7 +607,10 @@ const db = {
       date: r.date,
       templateId: r.template_id,
       createdAt: r.created_at,
+      completed: r.completed,
       templateName: r.template_name,
+      totalVolume: Number(r.total_volume) || 0,
+      exerciseCount: Number(r.exercise_count) || 0,
     }));
   },
 
@@ -1362,6 +1370,54 @@ const db = {
       [shareId, userId]
     );
     return rowCount > 0;
+  },
+
+  // ---------------- Feed reactions ----------------
+
+  async getFeedReactions(userId, itemIds) {
+    if (!itemIds?.length) return { aggregates: {}, mine: {} };
+
+    // Aggregate counts per reaction per item.
+    const { rows: aggRows } = await pool.query(
+      `SELECT item_id, reaction, COUNT(*)::INT AS n
+         FROM feed_reactions
+        WHERE item_id = ANY($1::text[])
+        GROUP BY item_id, reaction`,
+      [itemIds]
+    );
+    const aggregates = {};
+    for (const r of aggRows) {
+      if (!aggregates[r.item_id]) aggregates[r.item_id] = { fire: 0, flex: 0, hundo: 0, clap: 0 };
+      aggregates[r.item_id][r.reaction] = r.n;
+    }
+
+    // Current user's own reaction per item.
+    const { rows: mineRows } = await pool.query(
+      `SELECT item_id, reaction FROM feed_reactions WHERE user_id = $1 AND item_id = ANY($2::text[])`,
+      [userId, itemIds]
+    );
+    const mine = {};
+    for (const r of mineRows) mine[r.item_id] = r.reaction;
+
+    return { aggregates, mine };
+  },
+
+  async setFeedReaction(userId, itemId, reaction) {
+    if (reaction === null || reaction === undefined) {
+      await pool.query(
+        `DELETE FROM feed_reactions WHERE user_id = $1 AND item_id = $2`,
+        [userId, itemId]
+      );
+      return null;
+    }
+    await pool.query(
+      `INSERT INTO feed_reactions (user_id, item_id, reaction)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (user_id, item_id)
+       DO UPDATE SET reaction = EXCLUDED.reaction, created_at = NOW()`,
+      [userId, itemId, reaction]
+    );
+    return reaction;
   },
 };
 

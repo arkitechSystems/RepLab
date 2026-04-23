@@ -95,6 +95,19 @@ CREATE TABLE IF NOT EXISTS personal_bests (
   achieved_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Feed reactions — one row per (user, item). Switching a reaction is an
+-- UPDATE; clearing it is a DELETE. item_id is a string key shared with the
+-- client (see normalizeUrl + prefix scheme in RepLabFeedTest.jsx).
+CREATE TABLE IF NOT EXISTS feed_reactions (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  item_id TEXT NOT NULL,
+  reaction TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, item_id)
+);
+CREATE INDEX IF NOT EXISTS idx_feed_reactions_item ON feed_reactions(item_id);
+
 CREATE TABLE IF NOT EXISTS user_metrics (
   user_id INT PRIMARY KEY REFERENCES users(id),
   height NUMERIC,
