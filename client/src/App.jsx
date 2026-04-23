@@ -4,6 +4,7 @@ import { useAuth } from './context/AuthContext';
 import { api } from './api';
 import SplashScreen from './components/SplashScreen';
 import { TutorialProvider } from './context/TutorialContext';
+import { VideoPlayerProvider } from './context/VideoPlayerContext';
 import Layout from './components/Layout';
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -114,6 +115,7 @@ export default function App() {
   return (
     <ErrorBoundary>
     <TutorialProvider>
+    <VideoPlayerProvider>
       <PageTracker />
       {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
     <Suspense fallback={<div className="min-h-screen bg-black" />}>
@@ -168,6 +170,7 @@ export default function App() {
       <Route path="*" element={<CatchAllRedirect />} />
     </Routes>
     </Suspense>
+    </VideoPlayerProvider>
     </TutorialProvider>
     </ErrorBoundary>
   );

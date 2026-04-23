@@ -5,10 +5,12 @@ import Tutorial from './Tutorial';
 import InstallPrompt from './InstallPrompt';
 import { useTutorial } from '../context/TutorialContext';
 import { useAuth } from '../context/AuthContext';
+import { MiniPlayer, useVideoPlayer } from '../context/VideoPlayerContext';
 
 export default function Layout() {
   const { tutorial } = useTutorial();
   const { user } = useAuth();
+  const { video } = useVideoPlayer();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const location = useLocation();
@@ -100,12 +102,16 @@ export default function Layout() {
           <span className="text-xs text-green-400 font-medium">All changes synced</span>
         </div>
       )}
-      <main className={`grow shrink-0 basis-auto relative z-10 ${isDashboardEmbed ? 'pb-4' : 'pb-24'}`}>
+      <main
+        className={`grow shrink-0 basis-auto relative z-10 ${isDashboardEmbed ? 'pb-4' : ''}`}
+        style={!isDashboardEmbed ? { paddingBottom: video ? 380 : 96 } : undefined}
+      >
         <div className="page-fade-in" key={location.pathname}>
           <Outlet />
         </div>
       </main>
       {!isDashboardEmbed && <BottomNav />}
+      {!isDashboardEmbed && <MiniPlayer />}
       {tutorial.active && <Tutorial />}
       {!isDashboardEmbed && !tutorial.active && <InstallPrompt />}
     </div>

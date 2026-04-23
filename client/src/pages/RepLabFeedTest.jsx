@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useVideoPlayer } from '../context/VideoPlayerContext';
 import { api } from '../api';
 
 // ---------------------------------------------------------------------------
@@ -131,6 +132,7 @@ export default function RepLabFeedTest() {
   const [sessions, setSessions] = useState([]);
   const [pbs, setPbs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { play: playVideo } = useVideoPlayer();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -149,6 +151,7 @@ export default function RepLabFeedTest() {
     const now = new Date();
     const author = user?.username || user?.email || 'You';
     const initials = initialsFrom(user?.username, user?.email);
+    const photoUrl = user?.photoUrl || null;
 
     const prItems = pbs
       .slice()
@@ -161,6 +164,7 @@ export default function RepLabFeedTest() {
         sortDate: new Date(pb.achievedAt),
         author,
         initials,
+        photoUrl,
         timeAgo: formatTimeAgo(daysBetween(pb.achievedAt, now)),
         exercise: pb.exerciseName,
         weight: pb.bestWeight,
@@ -179,6 +183,7 @@ export default function RepLabFeedTest() {
         sortDate: new Date(s.date),
         author,
         initials,
+        photoUrl,
         timeAgo: formatTimeAgo(daysBetween(s.date, now)),
         workoutName: s.templateName || 'Workout',
         reactions: { fire: 0, flex: 0, hundo: 0, clap: 0 },
@@ -298,6 +303,7 @@ export default function RepLabFeedTest() {
                 item={item}
                 userReaction={userReactions[item.id]}
                 onReact={(rk) => toggleReaction(item.id, rk)}
+                onPlayVideo={playVideo}
               />
             ))}
           </div>
@@ -309,7 +315,7 @@ export default function RepLabFeedTest() {
 
 // ---------------------------------------------------------------------------
 
-function FeedCard({ item, userReaction, onReact }) {
+function FeedCard({ item, userReaction, onReact, onPlayVideo }) {
   return (
     <div
       className="relative overflow-hidden"
@@ -321,7 +327,7 @@ function FeedCard({ item, userReaction, onReact }) {
       }}
     >
       {item.kind === 'pr'      && <PrBody item={item} />}
-      {item.kind === 'youtube' && <YouTubeBody item={item} />}
+      {item.kind === 'youtube' && <YouTubeBody item={item} onPlay={onPlayVideo} />}
       {item.kind === 'workout' && <WorkoutBody item={item} />}
       {item.kind === 'article' && <ArticleBody item={item} />}
 
@@ -346,19 +352,30 @@ function SourceBadge({ label, color }) {
   );
 }
 
-function Avatar({ initials, size = 36 }) {
+function Avatar({ initials, photoUrl, size = 36 }) {
+  const [broken, setBroken] = useState(false);
+  const showPhoto = photoUrl && !broken;
   return (
     <div
-      className="shrink-0 flex items-center justify-center font-black text-white text-[13px]"
+      className="shrink-0 flex items-center justify-center font-black text-white text-[13px] overflow-hidden"
       style={{
         width: size,
         height: size,
         borderRadius: '50%',
-        background: 'linear-gradient(135deg, #ef4444 0%, #991b1b 100%)',
+        background: showPhoto ? '#1a1a1a' : 'linear-gradient(135deg, #ef4444 0%, #991b1b 100%)',
         boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15)',
       }}
     >
-      {initials}
+      {showPhoto ? (
+        <img
+          src={photoUrl}
+          alt=""
+          className="w-full h-full object-cover"
+          onError={() => setBroken(true)}
+        />
+      ) : (
+        initials
+      )}
     </div>
   );
 }
@@ -378,7 +395,7 @@ function PrBody({ item }) {
       <CardHeader
         left={
           <>
-            <Avatar initials={item.initials} />
+            <Avatar initials={item.initials} photoUrl={item.photoUrl} />
             <div>
               <p className="text-[13px] text-white font-bold leading-tight">{item.author}</p>
               <p className="text-[10px] text-white/40 font-light">hit a new PR</p>
@@ -408,11 +425,11 @@ function PrBody({ item }) {
   );
 }
 
-function YouTubeBody({ item }) {
+function YouTubeBody({ item, onPlay }) {
   const thumb = `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`;
-  const watchUrl = `https://www.youtube.com/watch?v=${item.videoId}`;
+  const handlePlay = () => onPlay?.({ videoId: item.videoId, title: item.title, creator: item.creator });
   return (
-    <a href={watchUrl} target="_blank" rel="noreferrer" className="block">
+    <button type="button" onClick={handlePlay} className="block w-full text-left">
       <div className="relative w-full" style={{ aspectRatio: '16 / 9', background: '#000' }}>
         <img
           src={thumb}
@@ -448,7 +465,7 @@ function YouTubeBody({ item }) {
           {item.views} views · {item.timeAgo}
         </p>
       </div>
-    </a>
+    </button>
   );
 }
 
@@ -458,7 +475,7 @@ function WorkoutBody({ item }) {
       <CardHeader
         left={
           <>
-            <Avatar initials={item.initials} />
+            <Avatar initials={item.initials} photoUrl={item.photoUrl} />
             <div>
               <p className="text-[13px] text-white font-bold leading-tight">{item.author}</p>
               <p className="text-[10px] text-white/40 font-light">completed a workout</p>
