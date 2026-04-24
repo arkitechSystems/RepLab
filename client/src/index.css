@@ -225,6 +225,18 @@ body::before {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* Bottom nav clearance.
+   h-16 (64px) + safe-area-inset-bottom (≤34px on iPhones) = actual nav height.
+   Everywhere we need to keep content above the nav (page padding, popups,
+   toasts), use var(--rl-nav-clearance) — NEVER a hardcoded pixel value,
+   or devices with a home indicator will crop the last row of content. */
+:root {
+  --rl-nav-h: calc(4rem + env(safe-area-inset-bottom, 0px));
+  --rl-nav-clearance: calc(4rem + env(safe-area-inset-bottom, 0px) + 1rem);
+}
+.pb-nav { padding-bottom: var(--rl-nav-clearance); }
+.bottom-nav-offset { bottom: var(--rl-nav-h); }
+
 /* Logo glow */
 .logo-glow {
   text-shadow: 0 0 10px rgba(239, 68, 68, 0.4), 0 0 30px rgba(239, 68, 68, 0.2), 0 0 60px rgba(239, 68, 68, 0.1);

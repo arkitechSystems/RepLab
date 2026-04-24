@@ -20,21 +20,34 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   </React.StrictMode>
 );
 
-// Register service worker for offline support
+// Service worker — production only. In dev, Vite serves fast-changing modules
+// at stable URLs, and the SW's cache-first strategy would poison the bundle
+// across reloads. We also actively unregister any SW left over from a prior
+// run so dev users self-heal on next load.
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
-  });
-
-  // When coming back online, trigger sync
-  window.addEventListener('online', () => {
-    navigator.serviceWorker.ready.then((reg) => {
-      if (reg.sync) {
-        reg.sync.register('replab-sync');
-      } else {
-        // Fallback: message the SW directly
-        reg.active?.postMessage('process-sync-queue');
-      }
+  if (import.meta.env.PROD) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
     });
-  });
+
+    window.addEventListener('online', () => {
+      navigator.serviceWorker.ready.then((reg) => {
+        if (reg.sync) {
+          reg.sync.register('replab-sync');
+        } else {
+          reg.active?.postMessage('process-sync-queue');
+        }
+      });
+    });
+  } else {
+    // Dev kill-switch: unregister any previously-installed SW and drop its caches.
+    navigator.serviceWorker.getRegistrations().then((regs) => {
+      regs.forEach((r) => r.unregister());
+    }).catch(() => {});
+    if (typeof caches !== 'undefined') {
+      caches.keys().then((keys) => {
+        keys.forEach((k) => caches.delete(k));
+      }).catch(() => {});
+    }
+  }
 }

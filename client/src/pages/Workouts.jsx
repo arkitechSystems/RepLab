@@ -70,6 +70,71 @@ const CARD_BORDER_STYLE = {
   boxShadow: '0 0 20px rgba(255,255,255,0.07), 0 0 40px rgba(255,255,255,0.03)',
 };
 
+// Expandable program metadata card shown above the weekly grid on the
+// program-detail screen. Source of truth is `programs.program_details`
+// (JSONB) populated by per-program migrations from the workbook's
+// Program Description sheet. Keys are rendered in a stable order with
+// any extras appended.
+const PROGRAM_DETAIL_ORDER = [
+  'Source', 'Author', 'Main Goal', 'Training Level',
+  'Program Duration', 'Days Per Week', 'Time Per Workout', 'Equipment',
+  'Workout Link', 'Program',
+];
+
+function ProgramDetailsCard({ details }) {
+  const [expanded, setExpanded] = useState(false);
+  if (!details || typeof details !== 'object') return null;
+
+  const overview = details.Overview || details.overview || '';
+  const entries = Object.entries(details)
+    .filter(([k]) => k !== 'Overview' && k !== 'overview')
+    .sort(([a], [b]) => {
+      const ai = PROGRAM_DETAIL_ORDER.indexOf(a);
+      const bi = PROGRAM_DETAIL_ORDER.indexOf(b);
+      if (ai === -1 && bi === -1) return a.localeCompare(b);
+      if (ai === -1) return 1;
+      if (bi === -1) return -1;
+      return ai - bi;
+    });
+
+  return (
+    <div className="glass-card rounded-xl overflow-hidden mb-4" style={CARD_BORDER_STYLE}>
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full px-4 py-3 flex items-center justify-between active:bg-white/5 transition-colors"
+      >
+        <span className="text-[11px] uppercase font-bold tracking-widest text-wf-red">Program Details</span>
+        <svg className={`w-4 h-4 text-white/50 transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+        </svg>
+      </button>
+      {expanded && (
+        <div className="px-4 pb-4 space-y-3">
+          {overview && (
+            <p className="text-sm text-white/75 leading-relaxed">{overview}</p>
+          )}
+          {entries.length > 0 && (
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+              {entries.map(([k, v]) => (
+                <div key={k} className="flex flex-col">
+                  <dt className="text-[10px] uppercase tracking-wider text-white/40 font-semibold">{k}</dt>
+                  <dd className="text-xs text-white/80 mt-0.5 break-words">
+                    {typeof v === 'string' && /^https?:\/\//.test(v) ? (
+                      <a href={v} target="_blank" rel="noreferrer" className="text-wf-red underline">Open link</a>
+                    ) : (
+                      String(v)
+                    )}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ProgramCard({ program, idx, onSelect, onBegin, onDelete, onShare, dataTutorial, onNavigateFeatured }) {
   return (
     <div
@@ -88,18 +153,24 @@ function ProgramCard({ program, idx, onSelect, onBegin, onDelete, onShare, dataT
       <div className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-0.5">
+            <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
               {program.isFeatured && (
-                <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400">Featured</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">Featured</span>
               )}
               {program.programType && program.programType !== 'other' && (
-                <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                  program.programType === 'strength' ? 'bg-orange-500/15 text-orange-400' :
-                  program.programType === 'hypertrophy' ? 'bg-blue-500/15 text-blue-400' :
-                  program.programType === 'hybrid' ? 'bg-purple-500/15 text-purple-400' :
-                  program.programType === 'conditioning' ? 'bg-green-500/15 text-green-400' :
-                  'bg-white/10 text-wf-gray-400'
-                }`}>{program.programType}</span>
+                <span className={`text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${
+                  program.programType === 'strength' ? 'bg-orange-500/20 text-orange-300 border-orange-500/30' :
+                  program.programType === 'hypertrophy' ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' :
+                  program.programType === 'hybrid' ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' :
+                  program.programType === 'conditioning' ? 'bg-green-500/20 text-green-300 border-green-500/30' :
+                  program.programType === 'strength_conditioning' ? 'bg-teal-500/20 text-teal-300 border-teal-500/30' :
+                  program.programType === 'hypertrophy_strength' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' :
+                  'bg-white/10 text-wf-gray-400 border-white/10'
+                }`}>{
+                  program.programType === 'strength_conditioning' ? 'Strength & Conditioning'
+                  : program.programType === 'hypertrophy_strength' ? 'Hypertrophy & Strength'
+                  : program.programType
+                }</span>
               )}
             </div>
             <h2 className="text-xl font-black text-white tracking-tight">{program.name}</h2>
@@ -1221,14 +1292,22 @@ export default function Workouts() {
           </div>
 
           <div className="px-4">
+            {program.programDetails && Object.keys(program.programDetails).length > 0 && (
+              <ProgramDetailsCard details={program.programDetails} />
+            )}
             <p className="text-wf-gray-400 text-sm mb-4">
               {weeks.length} weeks &middot; {program.workoutCount} workouts &middot; Select a week to view
             </p>
             <div className="space-y-3 pb-4">
-              {weeks.map((weekTemplates, wIdx) => {
+              {(() => {
+                // Track which phases have already appeared so we only show a
+                // divider for their first occurrence. Programs whose phase
+                // alternates every week (e.g. M&F 5000's Blast/Cruise) would
+                // otherwise get a divider before every card.
+                const phaseFirstSeen = new Set();
+                return weeks.map((weekTemplates, wIdx) => {
                 const weekNum = wIdx + 1;
                 const weekWorkouts = weekTemplates.filter((t) => !t.isRest);
-                const weightBump = Math.floor(wIdx / 2) * 5;
                 // Get unique workout color dots for this week
                 const uniqueNames = [];
                 weekWorkouts.forEach((t) => {
@@ -1236,7 +1315,28 @@ export default function Workouts() {
                   if (!uniqueNames.includes(key)) uniqueNames.push(key);
                 });
 
+                // Phase label — surface as (a) an inline tag on every week
+                // card that has a phase and (b) a divider above the first
+                // week where this phase appears in the program.
+                const thisPhase = weekWorkouts.find((t) => t.phase)?.phase
+                  || weekTemplates.find((t) => t.phase)?.phase
+                  || null;
+                const showPhaseHeader = thisPhase && !phaseFirstSeen.has(thisPhase);
+                if (thisPhase) phaseFirstSeen.add(thisPhase);
+
                 return (
+                  <div key={`week-${wIdx}`} className="contents">
+                  {showPhaseHeader && (
+                    <div className={wIdx === 0 ? '' : 'pt-3'}>
+                      <div className="flex items-center gap-3 px-1">
+                        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-wf-red/50 to-wf-red/50" />
+                        <span className="text-[10px] font-black tracking-[0.3em] uppercase text-wf-red">
+                          {thisPhase}
+                        </span>
+                        <div className="h-px flex-1 bg-gradient-to-l from-transparent via-wf-red/50 to-wf-red/50" />
+                      </div>
+                    </div>
+                  )}
                   <div
                     key={wIdx}
                     data-tutorial={wIdx === 0 ? 'week-card' : undefined}
@@ -1268,8 +1368,14 @@ export default function Workouts() {
                           <div className="text-[44px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.9' }}>
                             {weekNum}
                           </div>
+                          {thisPhase && (
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-wf-red mt-1">
+                              {thisPhase}
+                            </p>
+                          )}
                           <p className="text-[10px] text-white/30 uppercase font-semibold mt-1.5" style={{ letterSpacing: '0.3em' }}>
-                            {weekWorkouts.length} WORKOUT{weekWorkouts.length === 1 ? '' : 'S'}{weightBump > 0 ? ` · +${weightBump} LBS` : ''}
+                            {weekWorkouts.length} WORKOUT{weekWorkouts.length === 1 ? '' : 'S'}
+                            {weekTemplates.length - weekWorkouts.length > 0 && ` · ${weekTemplates.length - weekWorkouts.length} REST DAY${weekTemplates.length - weekWorkouts.length === 1 ? '' : 'S'}`}
                           </p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
@@ -1290,22 +1396,12 @@ export default function Workouts() {
                           </svg>
                         </div>
                       </div>
-                      {/* Workout preview row */}
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-4 pt-4 border-t border-white/10">
-                        {uniqueNames.map((name, i) => {
-                          const color = program.colorMap.get(name);
-                          return (
-                            <div key={i} className="flex items-center gap-1.5">
-                              <div className={`w-1.5 h-1.5 rounded-full ${color ? color.dot : 'bg-wf-orange'}`} />
-                              <span className="text-[10px] text-white/55 font-bold uppercase" style={{ letterSpacing: '0.15em' }}>{name}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
                     </div>
                   </div>
+                  </div>
                 );
-              })}
+                });
+              })()}
             </div>
           </div>
 
@@ -3053,6 +3149,8 @@ export default function Workouts() {
               { value: 'strength', label: 'Strength' },
               { value: 'hybrid', label: 'Hybrid' },
               { value: 'conditioning', label: 'Conditioning' },
+              { value: 'strength_conditioning', label: 'Strength & Conditioning' },
+              { value: 'hypertrophy_strength', label: 'Hypertrophy & Strength' },
             ].map(f => (
               <button
                 key={f.value}

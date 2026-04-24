@@ -321,36 +321,41 @@ export default function RepLabFeedTest() {
           Back
         </button>
 
-        {/* Header */}
-        <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.3em' }}>The Feed</p>
-        <h1 className="text-3xl font-black text-white tracking-tight mb-1" style={{ fontFamily: 'system-ui' }}>REPLAB</h1>
-        <p className="text-[12px] text-white/40 font-light mb-6 leading-relaxed">
+        {/* Header + filter — sticky so both remain visible while scrolling.
+            Uses -mx-4/px-4 so the background bleeds full-width of the
+            narrow content column and the blur covers content behind it. */}
+        <div className="sticky top-0 z-20 -mx-4 px-4 pt-1 pb-3 bg-black/85 backdrop-blur-md border-b border-white/5">
+          <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.3em' }}>The Feed</p>
+          <h1 className="text-3xl font-black text-white tracking-tight mb-3" style={{ fontFamily: 'system-ui' }}>REPLAB</h1>
+
+          {/* Source filter chips */}
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-4 px-4">
+            {[
+              { key: 'all',       label: 'All' },
+              { key: 'community', label: 'Community' },
+              { key: 'youtube',   label: 'YouTube' },
+              { key: 'article',   label: 'Articles' },
+            ].map((f) => (
+              <button
+                key={f.key}
+                onClick={() => setFilter(f.key)}
+                className="shrink-0 px-3 py-1.5 text-[10px] uppercase font-bold tracking-wider rounded-full transition-all active:scale-95"
+                style={{
+                  background: filter === f.key ? '#ef4444' : 'rgba(255,255,255,0.06)',
+                  color: filter === f.key ? '#fff' : 'rgba(255,255,255,0.6)',
+                  border: filter === f.key ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.1)',
+                  letterSpacing: '0.15em',
+                }}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <p className="text-[12px] text-white/40 font-light mt-3 mb-5 leading-relaxed">
           Community + fitness news. Public fire hose of PRs, workouts, creators, and articles.
         </p>
-
-        {/* Source filter chips */}
-        <div className="flex gap-2 mb-5 overflow-x-auto scrollbar-hide -mx-4 px-4">
-          {[
-            { key: 'all',       label: 'All' },
-            { key: 'community', label: 'Community' },
-            { key: 'youtube',   label: 'YouTube' },
-            { key: 'article',   label: 'Articles' },
-          ].map((f) => (
-            <button
-              key={f.key}
-              onClick={() => setFilter(f.key)}
-              className="shrink-0 px-3 py-1.5 text-[10px] uppercase font-bold tracking-wider rounded-full transition-all active:scale-95"
-              style={{
-                background: filter === f.key ? '#ef4444' : 'rgba(255,255,255,0.06)',
-                color: filter === f.key ? '#fff' : 'rgba(255,255,255,0.6)',
-                border: filter === f.key ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.1)',
-                letterSpacing: '0.15em',
-              }}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
 
         {/* Feed */}
         {loading ? (

@@ -107,14 +107,14 @@ export default function Layout() {
         style={
           !isDashboardEmbed
             ? {
-                // Expanded player: video height (16:9 of viewport, capped at 480px wide)
-                //   + 48px chrome + 64px BottomNav + 24px buffer + safe-area.
-                // Minimized pill floats in the corner and doesn't push content,
-                // so only the standard nav clearance is needed.
+                // Expanded player: video height (16:9 of viewport, capped at
+                // 480px wide) + 48px chrome + nav clearance (see index.css
+                // --rl-nav-clearance). Minimized pill floats and doesn't push
+                // content, so only the standard nav clearance is needed.
                 paddingBottom:
                   video && !minimized
-                    ? 'calc(min(100vw, 480px) * 0.5625 + 136px + env(safe-area-inset-bottom, 0px))'
-                    : 96,
+                    ? 'calc(min(100vw, 480px) * 0.5625 + 72px + var(--rl-nav-clearance))'
+                    : 'var(--rl-nav-clearance)',
               }
             : undefined
         }

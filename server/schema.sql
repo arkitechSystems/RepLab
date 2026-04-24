@@ -33,6 +33,8 @@ CREATE TABLE IF NOT EXISTS programs (
   name TEXT NOT NULL,
   description TEXT DEFAULT '',
   sort_order INT DEFAULT 0,
+  cardio_acceleration_enabled BOOLEAN DEFAULT FALSE,
+  program_details JSONB,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -43,7 +45,8 @@ CREATE TABLE IF NOT EXISTS templates (
   name TEXT NOT NULL,
   description TEXT DEFAULT '',
   is_rest BOOLEAN DEFAULT FALSE,
-  sort_order INT DEFAULT 0
+  sort_order INT DEFAULT 0,
+  phase TEXT
 );
 
 CREATE TABLE IF NOT EXISTS template_exercises (
@@ -73,6 +76,8 @@ CREATE TABLE IF NOT EXISTS sessions (
   notes JSONB DEFAULT '{}',
   completed BOOLEAN DEFAULT FALSE,
   workout_data JSONB,
+  last_activity_at TIMESTAMPTZ,
+  reminder_sent_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

@@ -39,6 +39,7 @@ import pushRoutes from './routes/push.js';
 import feedReactionsRoutes from './routes/feedReactions.js';
 import db from './db.js';
 import { sendDailySummaryEmail } from './email.js';
+import { startIdleReminderScheduler } from './pushScheduler.js';
 
 // In-memory error log for admin dashboard
 export const errorLog = [];
@@ -238,6 +239,9 @@ if (process.env.NODE_ENV !== 'test') {
 
         tickDailySummary();
         setInterval(tickDailySummary, HEARTBEAT_MS);
+
+        // Idle-session push reminders. Dormant until FCM_SERVICE_ACCOUNT_JSON is set.
+        startIdleReminderScheduler();
       });
     })
     .catch((err) => {

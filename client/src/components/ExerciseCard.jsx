@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { getExerciseVideoId, getExerciseSearchUrl } from '../utils/exerciseVideos.js';
 import { useExercises, getSubstitutesFromList } from '../hooks/useExercises.js';
 import VideoPlayerModal from './VideoPlayerModal.jsx';
+import CardioAccelerationCard from './CardioAccelerationCard.jsx';
 import { iosFocusRef } from '../utils/iosFocus.js';
 
 // When true, exercise cards in workout sessions get a red->white->red gradient
@@ -38,7 +39,7 @@ function getSetTypeShort(value) {
 
 export { SET_TYPES };
 
-function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, note, onNoteChange, weightSuggestion, onApplySuggestion, allWorkoutExercises, lastEntries, forceShowDemo, mode = 'session', dataTutorial, showGoalWeight = true, showGoalReps = true, showSetType = true, exerciseNumber }) {
+function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, note, onNoteChange, weightSuggestion, onApplySuggestion, allWorkoutExercises, lastEntries, forceShowDemo, mode = 'session', dataTutorial, showGoalWeight = true, showGoalReps = true, showSetType = true, exerciseNumber, cardioEnabled = false, cardioSelections, onCardioChange }) {
   const isTemplate = mode === 'template';
   // Use exerciseKey (unique per card) for set-level keys; fall back to exercise.name
   const keyName = exerciseKey || exercise.name;
@@ -460,17 +461,30 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
             </div>
           ) : null;
 
+          // Between-set cardio card — only for cardio-acceleration programs,
+          // session mode, and slots with a following set inside this exercise.
+          const showCardio = cardioEnabled && !isTemplate && idx < exercise.sets.length - 1;
+          const cardioSlotKey = `${keyName}-${idx}`;
+          const cardioCard = showCardio ? (
+            <CardioAccelerationCard
+              value={cardioSelections?.[cardioSlotKey] || ''}
+              onChange={(v) => onCardioChange?.(keyName, idx, v)}
+              readOnly={readOnly}
+            />
+          ) : null;
+
           // In session mode, wrap with swipe support
           if (!isTemplate && !readOnly) {
             return (
               <div key={idx} className="relative overflow-hidden">
                 {rowContent}
                 {lastHint}
+                {cardioCard}
               </div>
             );
           }
 
-          return <div key={idx}>{rowContent}{lastHint}</div>;
+          return <div key={idx}>{rowContent}{lastHint}{cardioCard}</div>;
         })}
       </div>
 

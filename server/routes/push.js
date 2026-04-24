@@ -1,26 +1,30 @@
 import { Router } from 'express';
-import { Expo } from 'expo-server-sdk';
 import pool from '../dbPool.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { sendFcmToTokens, isFcmConfigured } from '../pushProvider.js';
 
 const router = Router();
-const expo = new Expo();
 
-// Register a push token for the authenticated user
+const VALID_PLATFORMS = new Set(['ios', 'android', 'web']);
+
+// Register a push token for the authenticated user.
+// Capacitor's @capacitor/push-notifications plugin returns platform-native tokens
+// (APNs raw token on iOS, FCM registration token on Android). When the app is
+// set up with the Firebase Messaging iOS SDK (added at app-store-prep time),
+// iOS also returns an FCM token — which is what the server expects for FCM sends.
 router.post('/register', authMiddleware, async (req, res) => {
   try {
     const { pushToken, platform } = req.body;
-    if (!pushToken) return res.status(400).json({ error: 'pushToken is required' });
-
-    if (!Expo.isExpoPushToken(pushToken)) {
-      return res.status(400).json({ error: 'Invalid Expo push token' });
+    if (!pushToken || typeof pushToken !== 'string') {
+      return res.status(400).json({ error: 'pushToken is required' });
     }
+    const normalizedPlatform = VALID_PLATFORMS.has(platform) ? platform : 'ios';
 
     await pool.query(
       `INSERT INTO device_tokens (user_id, push_token, platform)
        VALUES ($1, $2, $3)
        ON CONFLICT (push_token) DO UPDATE SET user_id = $1, platform = $3, updated_at = NOW()`,
-      [req.userId, pushToken, platform || 'ios']
+      [req.userId, pushToken, normalizedPlatform]
     );
 
     res.json({ success: true });
@@ -30,7 +34,6 @@ router.post('/register', authMiddleware, async (req, res) => {
   }
 });
 
-// Unregister a push token (e.g. on logout)
 router.delete('/unregister', authMiddleware, async (req, res) => {
   try {
     const { pushToken } = req.body;
@@ -48,35 +51,30 @@ router.delete('/unregister', authMiddleware, async (req, res) => {
   }
 });
 
-// Send push notification to a specific user (internal use)
+// Dormant until FCM credentials are wired — returns early with no-op so
+// callers (e.g. idle-reminder scheduler) don't have to branch on configuration.
 export async function sendPushToUser(userId, title, body, data = {}) {
+  if (!isFcmConfigured()) return { sent: 0, skipped: true };
+
   const { rows } = await pool.query(
-    'SELECT push_token FROM device_tokens WHERE user_id = $1',
+    'SELECT push_token, platform FROM device_tokens WHERE user_id = $1',
     [userId]
   );
+  if (rows.length === 0) return { sent: 0, skipped: false };
 
-  if (rows.length === 0) return;
+  const tokens = rows.map((r) => r.push_token);
+  const result = await sendFcmToTokens(tokens, { title, body, data });
 
-  const messages = rows
-    .filter((r) => Expo.isExpoPushToken(r.push_token))
-    .map((r) => ({
-      to: r.push_token,
-      sound: 'default',
-      title,
-      body,
-      data,
-    }));
-
-  if (messages.length === 0) return;
-
-  const chunks = expo.chunkPushNotifications(messages);
-  for (const chunk of chunks) {
-    try {
-      await expo.sendPushNotificationsAsync(chunk);
-    } catch (err) {
-      console.error('Push send error:', err);
-    }
+  // Clean up tokens the provider rejected as unregistered — they won't recover
+  // and will keep us wasting calls on every future send otherwise.
+  if (result.invalidTokens && result.invalidTokens.length > 0) {
+    await pool.query(
+      'DELETE FROM device_tokens WHERE push_token = ANY($1::text[])',
+      [result.invalidTokens]
+    );
   }
+
+  return { sent: result.sent, skipped: false };
 }
 
 export default router;

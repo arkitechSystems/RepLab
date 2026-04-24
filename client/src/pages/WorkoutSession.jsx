@@ -49,6 +49,13 @@ export default function WorkoutSession() {
   const { exercises: allExercisesFromDB, createCustom } = useExercises();
   const [template, setTemplate] = useState(null);
   const [programName, setProgramName] = useState('');
+  // Cardio-acceleration programs (Stoppani) render a dropdown + 60s timer
+  // between each pair of sets. Off unless the program opts in.
+  const [cardioEnabled, setCardioEnabled] = useState(false);
+  // Keyed by `${exerciseKey}-${setIdx}`, where setIdx is the 0-based index of
+  // the set that PRECEDES the cardio slot. Auto-filled forward within the
+  // same exercise on change. Persisted inside workout_data on auto-save.
+  const [cardioSelections, setCardioSelections] = useState({});
   const [pbs, setPbs] = useState({});
   const [entries, setEntries] = useState({});
   const [loading, setLoading] = useState(true);
@@ -649,7 +656,15 @@ export default function WorkoutSession() {
         const tmplInfo = tmplList.find(t => t.id === Number(templateId));
         if (tmplInfo?.programId && programs.length > 0) {
           const prog = programs.find(p => p.id === tmplInfo.programId);
-          if (prog) setProgramName(prog.name);
+          if (prog) {
+            setProgramName(prog.name);
+            setCardioEnabled(!!prog.cardioAccelerationEnabled);
+          }
+        }
+
+        // Restore cardio selections from workout_data if present.
+        if (wd && typeof wd === 'object' && wd.cardioSelections && typeof wd.cardioSelections === 'object') {
+          setCardioSelections(wd.cardioSelections);
         }
 
         // Restore entries from session_entries
@@ -1364,6 +1379,25 @@ export default function WorkoutSession() {
     }
   }
 
+  // Cardio-acceleration auto-fill: picking a cardio option at set-slot N
+  // (between set N and set N+1) applies to all later slots for the same
+  // exercise. Earlier slots and other exercises are left alone.
+  function handleCardioChange(exerciseKey, setIdx, value) {
+    if (!template) return;
+    const ex = template.exercises.find((e, i) =>
+      !e.isSectionHeader && exKey(template.exercises, e, i) === exerciseKey
+    );
+    const setCount = ex?.sets?.length || 0;
+    setCardioSelections((prev) => {
+      const next = { ...prev };
+      for (let i = setIdx; i < setCount - 1; i++) {
+        next[`${exerciseKey}-${i}`] = value;
+      }
+      return next;
+    });
+    autoSaveNeeded.current = true;
+  }
+
   function handleToggleComplete(exerciseKey, setIdx) {
     // Blur any focused input so the browser doesn't scroll it back into view on re-render
     if (document.activeElement && document.activeElement.tagName === 'INPUT') {
@@ -1379,7 +1413,10 @@ export default function WorkoutSession() {
         next.add(key);
         if (navigator.vibrate) navigator.vibrate([10, 30, 10]);
         startTimer();
-        startRestTimer();
+        // Cardio-acceleration programs run their own 60s between-set timer
+        // via the CardioAccelerationCard; don't spin up the generic rest
+        // timer on top of it.
+        if (!cardioEnabled) startRestTimer();
       }
       return next;
     });
@@ -1527,6 +1564,7 @@ export default function WorkoutSession() {
             }),
           };
         }),
+        cardioSelections: cardioEnabled ? cardioSelections : undefined,
       };
 
       const saveResp = await api('/sessions', {
@@ -2277,6 +2315,9 @@ export default function WorkoutSession() {
               showGoalReps={showGoals}
               showSetType={showSetType}
               exerciseNumber={exerciseNumber}
+              cardioEnabled={cardioEnabled}
+              cardioSelections={cardioSelections}
+              onCardioChange={wrapCb(handleCardioChange)}
             />
             {/* Inline undo toast for deleted set — show below this exercise */}
             {undoToast && undoToast.type === 'set' && undoToast.exerciseName === eKey && (

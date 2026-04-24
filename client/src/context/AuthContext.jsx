@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { api, setApiToken, getApiToken, setOnUnauthorized, setAuthTokens, clearAuthTokens, setRefreshToken } from '../api';
 import { identify as analyticsIdentify, reset as analyticsReset, track } from '../utils/analytics';
+import { initPushNotifications, teardownPushNotifications } from '../utils/push';
 
 const AuthContext = createContext(null);
 
@@ -22,7 +23,16 @@ export function AuthProvider({ children }) {
     setToken(null);
     setUser(null);
     analyticsReset();
+    teardownPushNotifications().catch(() => {});
   }, []);
+
+  // Boot push notifications once we have an authenticated user. Safe no-op on
+  // web (guarded by Capacitor.isNativePlatform). Idempotent — re-runs while
+  // already initialized return immediately.
+  useEffect(() => {
+    if (!user) return;
+    initPushNotifications().catch(() => {});
+  }, [user]);
 
   // Register 401 handler — clears auth state without page reload
   useEffect(() => {

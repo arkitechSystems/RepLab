@@ -261,7 +261,7 @@ const db = {
       'SELECT * FROM programs WHERE user_id IS NULL OR user_id = $1 ORDER BY sort_order, id',
       [userId]
     );
-    return rows.map((p) => ({ id: p.id, userId: p.user_id, name: p.name, description: p.description || '', sortOrder: p.sort_order || 0, programType: p.program_type || 'other', isFeatured: p.is_featured || false, createdAt: p.created_at }));
+    return rows.map((p) => ({ id: p.id, userId: p.user_id, name: p.name, description: p.description || '', sortOrder: p.sort_order || 0, programType: p.program_type || 'other', isFeatured: p.is_featured || false, cardioAccelerationEnabled: !!p.cardio_acceleration_enabled, programDetails: p.program_details || null, createdAt: p.created_at }));
   },
 
   async createProgram(userId, name, description = '') {
@@ -374,6 +374,7 @@ const db = {
         isRest: t.is_rest,
         sortOrder: t.sort_order,
         groupId: t.group_id || null,
+        phase: t.phase || null,
         exercises: grouped,
       };
     });
@@ -525,12 +526,12 @@ const db = {
         sessionId = existing[0].id;
         await client.query('DELETE FROM session_entries WHERE session_id = $1', [sessionId]);
         await client.query(
-          'UPDATE sessions SET notes = $1, workout_data = $2 WHERE id = $3',
+          'UPDATE sessions SET notes = $1, workout_data = $2, last_activity_at = NOW(), reminder_sent_at = NULL WHERE id = $3',
           [JSON.stringify(notes || {}), workoutData ? JSON.stringify(workoutData) : null, sessionId]
         );
       } else {
         const { rows: sessionRows } = await client.query(
-          'INSERT INTO sessions (user_id, template_id, date, notes, workout_data) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+          'INSERT INTO sessions (user_id, template_id, date, notes, workout_data, last_activity_at) VALUES ($1, $2, $3, $4, $5, NOW()) RETURNING id',
           [userId, templateId, date, JSON.stringify(notes || {}), workoutData ? JSON.stringify(workoutData) : null]
         );
         sessionId = sessionRows[0].id;

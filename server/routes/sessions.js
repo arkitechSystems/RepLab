@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import db from '../db.js';
+import pool from '../dbPool.js';
 import { authMiddleware } from '../middleware/auth.js';
 
 const router = Router();
@@ -149,6 +150,26 @@ router.get('/last-entries/:templateId', authMiddleware, async (req, res) => {
     res.json(entries);
   } catch (err) {
     console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Heartbeat fired on every set completion. Feeds the idle-reminder push
+// checker (server/pushScheduler.js) and clears any previously-sent reminder
+// flag so a rejoined session can earn a fresh reminder if they walk away again.
+router.post('/activity', authMiddleware, async (req, res) => {
+  try {
+    const { templateId, date } = req.body;
+    if (!templateId || !date) return res.status(400).json({ error: 'templateId and date required' });
+    await pool.query(
+      `UPDATE sessions
+       SET last_activity_at = NOW(), reminder_sent_at = NULL
+       WHERE user_id = $1 AND template_id = $2 AND date = $3 AND completed = FALSE`,
+      [req.userId, Number(templateId), date]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('sessions/activity error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

@@ -204,17 +204,16 @@ export const DASHBOARD_CSS = `
     .btn-pill-ghost:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.4); }
     .btn-pill-ghost:active { transform: scale(0.97); }
 
-    /* Login button (ported from admin/trainer login pages) */
+    /* Login button — matches Profile "Send Feedback" style */
     .btn-login {
-      width: 100%; padding: 14px; border: none; border-radius: 12px;
-      font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer;
-      color: #fff;
-      background: linear-gradient(135deg, #DC2626, #EF4444, #F97316);
-      background-size: 200% 200%; animation: gradShift 3s ease infinite;
-      box-shadow: 0 4px 20px rgba(239,68,68,0.3);
-      transition: all 0.2s; letter-spacing: 0.02em;
+      width: 100%; padding: 12px 14px; border: none; border-radius: 2px;
+      font-size: 11px; font-weight: 700; font-family: inherit; cursor: pointer;
+      color: #fff; text-transform: uppercase; letter-spacing: 0.15em;
+      white-space: nowrap;
+      background: linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%);
+      box-shadow: 0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15);
+      transition: all 0.2s;
     }
-    .btn-login:hover { box-shadow: 0 6px 30px rgba(239,68,68,0.45); transform: translateY(-1px); }
     .btn-login:active { transform: scale(0.97); }
 
     /* Delete button */

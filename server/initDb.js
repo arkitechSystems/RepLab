@@ -378,6 +378,30 @@ export default async function initDb() {
   // Video ID column for exercise YouTube videos
   await pool.query(`ALTER TABLE exercises ADD COLUMN IF NOT EXISTS video_id TEXT`);
 
+  // Programs that run cardio acceleration between sets (Jim Stoppani-style
+  // conditioning). Opt-in per program; the WorkoutSession UI reads this flag
+  // to decide whether to render between-set cardio cards.
+  await pool.query(`ALTER TABLE programs ADD COLUMN IF NOT EXISTS cardio_acceleration_enabled BOOLEAN DEFAULT FALSE`);
+
+  // Rich program description surfaced as an expandable card at the top of
+  // the Browse Library weekly view. Flexible JSON so different programs can
+  // carry different field sets (goal, duration, equipment, overview, etc).
+  await pool.query(`ALTER TABLE programs ADD COLUMN IF NOT EXISTS program_details JSONB`);
+
+  // Optional phase label on templates (e.g. "Phase 1" / "Phase 2"). Used by
+  // the Browse Library weekly view to group weeks by phase.
+  await pool.query(`ALTER TABLE templates ADD COLUMN IF NOT EXISTS phase TEXT`);
+
+  // Idle-session push reminder tracking.
+  // last_activity_at: updated each time the user completes a set (or otherwise
+  // interacts with an in-progress session). reminder_sent_at: set when we
+  // push "You forgot to mark your workout complete." to make the send
+  // idempotent per session.
+  await pool.query(`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS last_activity_at TIMESTAMPTZ`);
+  await pool.query(`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS reminder_sent_at TIMESTAMPTZ`);
+  // Partial index to make the reminder-checker sweep cheap.
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_sessions_idle_reminder ON sessions(last_activity_at) WHERE completed = FALSE AND reminder_sent_at IS NULL`);
+
   console.log('Database schema initialized');
 
   // Seed default program if none exist
