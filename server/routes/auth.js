@@ -45,7 +45,7 @@ function normalizePhone(value) {
 }
 
 function userResponse(user) {
-  return { id: user.id, email: user.email, phone: user.phone, firstName: user.firstName, lastName: user.lastName, username: user.username, role: user.role || 'client', plan: user.plan || 'Free', trialEnd: user.trialEnd || null, photoUrl: user.profilePhoto || null };
+  return { id: user.id, accountId: user.accountId ?? null, email: user.email, phone: user.phone, firstName: user.firstName, lastName: user.lastName, username: user.username, role: user.role || 'client', plan: user.plan || 'Free', trialEnd: user.trialEnd || null, photoUrl: user.profilePhoto || null };
 }
 
 // Build the standard auth response body. `token` remains for backwards

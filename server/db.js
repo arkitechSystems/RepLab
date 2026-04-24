@@ -227,7 +227,7 @@ const db = {
     const { rows } = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
     if (!rows[0]) return null;
     const u = rows[0];
-    return { id: u.id, email: u.email, phone: u.phone, passwordHash: u.password_hash, firstName: u.first_name, lastName: u.last_name, username: u.username, role: u.role || 'client', plan: u.plan || 'Free', trialEnd: u.trial_end || null, profilePhoto: u.profile_photo || null, timezone: u.timezone || 'UTC', tokenVersion: u.token_version ?? 0 };
+    return { id: u.id, accountId: u.account_id ?? null, email: u.email, phone: u.phone, passwordHash: u.password_hash, firstName: u.first_name, lastName: u.last_name, username: u.username, role: u.role || 'client', plan: u.plan || 'Free', trialEnd: u.trial_end || null, profilePhoto: u.profile_photo || null, timezone: u.timezone || 'UTC', tokenVersion: u.token_version ?? 0 };
   },
 
   async findUserByUsername(username) {
@@ -242,7 +242,7 @@ const db = {
     );
     if (!rows[0]) return null;
     const u = rows[0];
-    return { id: u.id, email: u.email, phone: u.phone, passwordHash: u.password_hash, firstName: u.first_name, lastName: u.last_name, username: u.username, role: u.role || 'client', plan: u.plan || 'Free', trialEnd: u.trial_end || null, profilePhoto: u.profile_photo || null, timezone: u.timezone || 'UTC', createdAt: u.created_at, tokenVersion: u.token_version ?? 0 };
+    return { id: u.id, accountId: u.account_id ?? null, email: u.email, phone: u.phone, passwordHash: u.password_hash, firstName: u.first_name, lastName: u.last_name, username: u.username, role: u.role || 'client', plan: u.plan || 'Free', trialEnd: u.trial_end || null, profilePhoto: u.profile_photo || null, timezone: u.timezone || 'UTC', createdAt: u.created_at, tokenVersion: u.token_version ?? 0 };
   },
 
   async createUser({ email, phone, passwordHash, firstName, lastName, gender, username, referralSource, referralCode, zipCode, timezone, signupCity, signupState, signupDevice, utmSource, utmMedium, utmCampaign, utmContent, utmTerm }) {

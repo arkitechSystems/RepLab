@@ -13,6 +13,13 @@ export default async function initDb() {
   await pool.query(schema);
 
   // Migrations
+  // Public 5-digit account identifier (distinct from the SERIAL id).
+  // Sequence seeded at 23231; existing users are backfilled by
+  // add-account-ids-starting-at-23231.js (idempotent).
+  await pool.query(`CREATE SEQUENCE IF NOT EXISTS users_account_id_seq START 23231`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS account_id INT UNIQUE`);
+  await pool.query(`ALTER TABLE users ALTER COLUMN account_id SET DEFAULT nextval('users_account_id_seq')`);
+
   await pool.query(`ALTER TABLE programs ADD COLUMN IF NOT EXISTS description TEXT DEFAULT ''`);
   await pool.query(`ALTER TABLE programs ADD COLUMN IF NOT EXISTS sort_order INT DEFAULT 0`);
   await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS set_type TEXT DEFAULT 'straight'`);
