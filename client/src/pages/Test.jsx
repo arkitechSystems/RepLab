@@ -41,6 +41,26 @@ export default function Test() {
 
         <div className="space-y-4">
           <div
+            onClick={() => navigate('/test/brainstorm')}
+            className="glass-card rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
+            style={{ border: '1px solid rgba(239,68,68,0.3)' }}
+          >
+            <div className="p-5">
+              <h2 className="text-xl font-black text-white tracking-tight">Brainstorm</h2>
+              <p className="text-xs text-wf-gray-500 mt-1">26 UI pattern sandbox — buttons, rings, sheets, charts, pickers, heatmaps, confetti</p>
+            </div>
+          </div>
+          <div
+            onClick={() => navigate('/test/bible-verses')}
+            className="glass-card rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
+            style={{ border: '1px solid rgba(239,68,68,0.3)' }}
+          >
+            <div className="p-5">
+              <h2 className="text-xl font-black text-white tracking-tight">Bible Verses</h2>
+              <p className="text-xs text-wf-gray-500 mt-1">Every-7-workout reflection screen — Georgia italic words reveal left-to-right</p>
+            </div>
+          </div>
+          <div
             onClick={() => navigate('/test/feed')}
             className="glass-card rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
             style={{ border: '1px solid rgba(239,68,68,0.3)' }}
@@ -48,14 +68,6 @@ export default function Test() {
             <div className="p-5">
               <h2 className="text-xl font-black text-white tracking-tight">RepLab Feed</h2>
               <p className="text-xs text-wf-gray-500 mt-1">Community sandbox — activity feed + fitness news/influencer feed</p>
-            </div>
-          </div>
-          <div
-            onClick={() => navigate('/test/nike-session')}
-            className="glass-card rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
-          >
-            <div className="p-5">
-              <h2 className="text-xl font-black text-white tracking-tight">Nike Workout Session</h2>
             </div>
           </div>
           <div

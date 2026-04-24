@@ -13,6 +13,8 @@ import { iosFocusRef } from '../utils/iosFocus';
 import { getWeightSuggestion } from '../utils/weightSuggestion';
 import { beepCountdown, beepRestEnd, initAudio } from '../utils/sounds';
 import { track } from '../utils/analytics';
+import { BibleVerseOverlay } from './BibleVerses';
+import { pickNextVerse } from '../utils/versePicker';
 
 // Build a unique key for each exercise card. The first occurrence of a name
 // keeps the plain name (backward-compatible with saved sessions). Subsequent
@@ -81,6 +83,7 @@ export default function WorkoutSession() {
   const [restFloating, setRestFloating] = useState(false);
   const [restFloatPos, setRestFloatPos] = useState({ x: 16, y: 140 });
   const [showSummary, setShowSummary] = useState(false);
+  const [pendingVerse, setPendingVerse] = useState(null); // set when this completion hits a 7-workout milestone
   const [showDateConfirm, setShowDateConfirm] = useState(false);
   const [tutorialTip, setTutorialTip] = useState(null); // tutorial workout tooltips
   const [tutorialReady, setTutorialReady] = useState(false); // true once element is scrolled + measured
@@ -1373,6 +1376,19 @@ export default function WorkoutSession() {
           elapsedSeconds: elapsed,
           source: 'standard',
         });
+        // Every-7th-workout Bible verse. Opt-out via Profile > App Settings.
+        // Kicked off in parallel — we don't need to block the summary on it.
+        if (localStorage.getItem('wf-bible-verses') !== 'off') {
+          api('/sessions/completed')
+            .then((completed) => {
+              const count = Array.isArray(completed) ? completed.length : 0;
+              if (count > 0 && count % 7 === 0) {
+                const { verse } = pickNextVerse();
+                setPendingVerse(verse);
+              }
+            })
+            .catch(() => { /* silent — no verse is fine */ });
+        }
       }
     } catch (err) {
       alert('Failed to update: ' + err.message);
@@ -2531,7 +2547,23 @@ export default function WorkoutSession() {
           completedSets={completedSets}
           elapsed={tutorialMode ? 2717 : elapsed}
           formatTime={formatTime}
-          onClose={() => { setShowSummary(false); navigate(tutorialMode ? '/' : '/calendar'); }}
+          onClose={() => {
+            setShowSummary(false);
+            // If this was a 7th-workout milestone, let the verse overlay take
+            // over instead of navigating away. Navigation happens on its close.
+            if (!pendingVerse) navigate(tutorialMode ? '/' : '/calendar');
+          }}
+        />
+      )}
+
+      {/* Bible verse overlay — shown after summary on every 7th completed workout */}
+      {pendingVerse && !showSummary && (
+        <BibleVerseOverlay
+          verse={pendingVerse}
+          onClose={() => {
+            setPendingVerse(null);
+            navigate(tutorialMode ? '/' : '/calendar');
+          }}
         />
       )}
 

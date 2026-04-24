@@ -42,7 +42,6 @@ const CardsTest = lazy(() => import('./pages/CardsTest'));
 const WorkoutSessionTest = lazy(() => import('./pages/WorkoutSessionTest'));
 const TutorialTest = lazy(() => import('./pages/TutorialTest'));
 const NewWorkoutSessionTest = lazy(() => import('./pages/NewWorkoutSessionTest'));
-const NikeWorkoutSessionTest = lazy(() => import('./pages/NikeWorkoutSessionTest'));
 const NeumorphicSessionTest = lazy(() => import('./pages/NeumorphicSessionTest'));
 const FeaturedWorkoutSession = lazy(() => import('./pages/FeaturedWorkoutSession'));
 const TestChallengeSection = lazy(() => import('./pages/TestChallengeSection'));
@@ -50,6 +49,8 @@ const NikeTestHomepage = lazy(() => import('./pages/NikeTestHomepage'));
 const NikeCardsTest = lazy(() => import('./pages/NikeCardsTest'));
 const RepLabFeedTest = lazy(() => import('./pages/RepLabFeedTest'));
 const NewHomepage = lazy(() => import('./pages/NewHomepage'));
+const Brainstorm = lazy(() => import('./pages/Brainstorm'));
+const BibleVerses = lazy(() => import('./pages/BibleVerses'));
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -158,13 +159,14 @@ export default function App() {
         <Route path="/test/workout-session" element={<TestRoute><WorkoutSessionTest /></TestRoute>} />
         <Route path="/test/tutorial" element={<TestRoute><TutorialTest /></TestRoute>} />
         <Route path="/test/new-session" element={<TestRoute><NewWorkoutSessionTest /></TestRoute>} />
-        <Route path="/test/nike-session" element={<TestRoute><NikeWorkoutSessionTest /></TestRoute>} />
         <Route path="/test/neumorphic-session" element={<TestRoute><NeumorphicSessionTest /></TestRoute>} />
         <Route path="/test/challenge-section" element={<TestRoute><TestChallengeSection /></TestRoute>} />
         <Route path="/test/nike" element={<TestRoute><NikeTestHomepage /></TestRoute>} />
         <Route path="/test/nike-cards" element={<TestRoute><NikeCardsTest /></TestRoute>} />
         <Route path="/test/feed" element={<TestRoute><RepLabFeedTest /></TestRoute>} />
         <Route path="/test/new-homepage" element={<TestRoute><NewHomepage /></TestRoute>} />
+        <Route path="/test/brainstorm" element={<TestRoute><Brainstorm /></TestRoute>} />
+        <Route path="/test/bible-verses" element={<TestRoute><BibleVerses /></TestRoute>} />
       </Route>
 
       <Route path="*" element={<CatchAllRedirect />} />

@@ -44,6 +44,7 @@ export default function Profile() {
   const [sessions, setSessions] = useState([]);
   const [sessionsLoading, setSessionsLoading] = useState(true);
   const [theme, setTheme] = useState(() => localStorage.getItem('wf-theme') || 'dark');
+  const [bibleVersesOn, setBibleVersesOn] = useState(() => localStorage.getItem('wf-bible-verses') !== 'off');
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackType, setFeedbackType] = useState('bug');
   const [feedbackMsg, setFeedbackMsg] = useState('');
@@ -70,6 +71,10 @@ export default function Profile() {
     localStorage.setItem('wf-theme', theme);
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem('wf-bible-verses', bibleVersesOn ? 'on' : 'off');
+  }, [bibleVersesOn]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -542,26 +547,43 @@ export default function Profile() {
           <div className="relative p-6">
             <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(156,163,175,0.85)', letterSpacing: '0.3em' }}>Preferences</p>
             <h3 className="text-[22px] font-black text-white tracking-tight mb-4" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>APP SETTINGS</h3>
-            <div className="flex items-center justify-between pt-3 border-t border-white/10">
-              <div className="flex items-center gap-2">
-                {theme === 'dark' ? (
+            <div className="pt-3 border-t border-white/10 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
                   <svg className="w-4.5 h-4.5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                   </svg>
-                ) : (
-                  <svg className="w-4.5 h-4.5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
-                  </svg>
-                )}
-                <span className="text-white/70 text-sm font-medium">{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
+                  <span className="text-white/70 text-sm font-medium">Bible Verses</span>
+                </div>
+                <button
+                  onClick={() => setBibleVersesOn(!bibleVersesOn)}
+                  aria-label={bibleVersesOn ? 'Turn off Bible verses' : 'Turn on Bible verses'}
+                  className={`relative w-12 h-7 rounded-full transition-colors ${bibleVersesOn ? 'bg-wf-red' : 'bg-white/15'}`}
+                >
+                  <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${bibleVersesOn ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                </button>
               </div>
-              <button
-                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-                className={`relative w-12 h-7 rounded-full transition-colors ${theme === 'light' ? 'bg-wf-red' : 'bg-white/15'}`}
-              >
-                <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${theme === 'light' ? 'translate-x-5' : 'translate-x-0.5'}`} />
-              </button>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {theme === 'dark' ? (
+                    <svg className="w-4.5 h-4.5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4.5 h-4.5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+                    </svg>
+                  )}
+                  <span className="text-white/70 text-sm font-medium">{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
+                </div>
+                <button
+                  onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                  aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                  className={`relative w-12 h-7 rounded-full transition-colors ${theme === 'light' ? 'bg-wf-red' : 'bg-white/15'}`}
+                >
+                  <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${theme === 'light' ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                </button>
+              </div>
             </div>
           </div>
         </div>
