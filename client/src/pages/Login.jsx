@@ -84,9 +84,24 @@ export default function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full btn-gradient active:scale-[0.98] text-white font-semibold py-3.5 rounded-[100px] text-base transition-all disabled:opacity-50"
+            className={`w-full active:scale-[0.98] text-white font-bold uppercase py-3.5 text-sm transition-transform ${loading ? 'btn-liquid' : ''}`}
+            style={loading ? {
+              letterSpacing: '0.15em',
+              borderRadius: '2px',
+            } : {
+              letterSpacing: '0.15em',
+              borderRadius: '2px',
+              background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+              boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+            }}
           >
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? (
+              <span className="inline-flex items-center justify-center h-5">
+                <span className="replab-spinner inline-block" style={{ width: 20, height: 20 }} />
+              </span>
+            ) : (
+              'Sign In'
+            )}
           </button>
         </form>
 

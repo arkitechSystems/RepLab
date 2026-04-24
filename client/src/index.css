@@ -167,6 +167,32 @@ html, body {
   overscroll-behavior: none;
 }
 
+/* Reusable loading spinner — matches the bs-spinner on /brainstorm. */
+@keyframes replab-spin { to { transform: rotate(360deg); } }
+.replab-spinner {
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: replab-spin 0.7s linear infinite;
+}
+
+/* Red → white → red gradient ring spinner. Color stops match the
+   Will's Hypertrophy featured-card accent bar. */
+.replab-spinner-gradient {
+  display: inline-block;
+  border-radius: 50%;
+  background: conic-gradient(
+    rgba(239, 68, 68, 0.15) 0%,
+    rgba(239, 68, 68, 1) 45%,
+    rgba(255, 255, 255, 0.95) 50%,
+    rgba(239, 68, 68, 1) 55%,
+    rgba(239, 68, 68, 0.15) 100%
+  );
+  -webkit-mask: radial-gradient(transparent 85%, black 88%);
+          mask: radial-gradient(transparent 85%, black 88%);
+  animation: replab-spin 0.7s linear infinite;
+}
+
 /* Monospace for stats/numbers */
 .font-mono-stat {
   font-family: system-ui, -apple-system, sans-serif;
@@ -344,6 +370,31 @@ input[type="number"] {
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
+}
+
+/* Liquid flowing red-to-light-gray gradient button — matches app red/white
+   palette. Peak capped at a very light gray (not pure white) so overlaid
+   white text stays legible as the highlight flows past. */
+.btn-liquid {
+  background: linear-gradient(90deg,
+    #dc2626 0%,
+    #ef4444 25%,
+    rgba(255, 255, 255, 0.7) 50%,
+    #ef4444 75%,
+    #dc2626 100%
+  );
+  background-size: 300% 100%;
+  animation: liquidFlow 5s linear infinite;
+  box-shadow: 0 8px 32px rgba(239, 68, 68, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+.btn-liquid:active {
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+@keyframes liquidFlow {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 300% 50%; }
 }
 
 /* Active nav glow */
@@ -785,3 +836,21 @@ input[type="number"] {
     opacity: 0;
   }
 }
+
+/* === PROFILE TRANSPARENT CARDS ===
+   Strip the dark card shell (standard #1e1e1e → #141414 gradient + drop
+   shadow + glass-card) from every card on the Profile page so they blend
+   into the page background, like the Brainstorm sandbox. Buttons and
+   other intentionally-styled gradients (red CTA, etc.) are NOT matched
+   by these selectors — their gradients use different color stops. */
+.profile-transparent .glass-card {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-color: transparent !important;
+}
+.profile-transparent [style*="linear-gradient(160deg, #1e1e1e"] {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+/* === END PROFILE TRANSPARENT CARDS === */

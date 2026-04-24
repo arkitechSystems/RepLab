@@ -8,6 +8,17 @@ import SplashScreen from '../components/SplashScreen';
 import { APP_VERSION } from '../version';
 import { getWorkoutColor } from '../utils/workoutColors';
 
+// Normalize a phone from the stored +1XXXXXXXXXX form (or any 10/11-digit
+// variant) to the user-friendly "(XXX) XXX-XXXX". Falls back to the raw
+// value for anything that doesn't look like a US 10-digit number.
+function formatPhoneDisplay(raw) {
+  if (!raw) return '';
+  const digits = String(raw).replace(/\D/g, '');
+  const ten = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;
+  if (ten.length !== 10) return raw;
+  return `(${ten.slice(0, 3)}) ${ten.slice(3, 6)}-${ten.slice(6)}`;
+}
+
 function MetricInput({ label, value, unit, onChange }) {
   return (
     <div className="flex items-center justify-between gap-3">
@@ -60,10 +71,7 @@ export default function Profile() {
   const [showPhotoMenu, setShowPhotoMenu] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const fileInputRef = useRef(null);
-  // Stats & Streak card data — moved from Workouts page.
-  const [prStats, setPrStats] = useState(null);
-  const [bodyPartPRs, setBodyPartPRs] = useState([]);
-  const [streakPhase, setStreakPhase] = useState(0);
+  // Stats & Streak card moved to /test/brainstorm.
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
@@ -86,37 +94,8 @@ export default function Profile() {
       .then(setSessions)
       .catch((err) => { if (err.name !== 'AbortError') console.error(err); })
       .finally(() => setSessionsLoading(false));
-    api('/pbs/stats', opts)
-      .then(setPrStats)
-      .catch(() => {});
-    api('/pbs/by-body-part', opts)
-      .then(setBodyPartPRs)
-      .catch(() => {});
     return () => controller.abort();
   }, []);
-
-  // Derive streak from sessions — consecutive days going back from today.
-  const streak = (() => {
-    if (!sessions || sessions.length === 0) return 0;
-    const sessionDates = new Set(sessions.map((s) => s.date));
-    const today = new Date();
-    const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    let cursor = new Date(today);
-    if (!sessionDates.has(fmt(today))) cursor.setDate(cursor.getDate() - 1);
-    let count = 0;
-    for (;; cursor.setDate(cursor.getDate() - 1)) {
-      if (sessionDates.has(fmt(cursor))) count++;
-      else break;
-    }
-    return count;
-  })();
-
-  // Breathing blob animation for the Stats card.
-  useEffect(() => {
-    if (streak <= 0 && !(prStats && prStats.totalPRs > 0)) return;
-    const interval = setInterval(() => setStreakPhase((p) => (p + 1) % 100), 80);
-    return () => clearInterval(interval);
-  }, [streak, prStats]);
 
   function updateMetric(field, value) {
     setMetrics((prev) => ({ ...prev, [field]: value }));
@@ -249,7 +228,7 @@ export default function Profile() {
   }
 
   return (
-    <div>
+    <div className="profile-transparent">
       <StickyHeader title="PROFILE" titleStyle={{ fontSize: '26.4px' }} />
 
       <div className="px-4 pb-24">
@@ -324,7 +303,7 @@ export default function Profile() {
               {user?.username && (
                 <div className="flex justify-between items-center gap-3">
                   <span className="text-[10px] uppercase font-semibold text-white/30" style={{ letterSpacing: '0.25em' }}>Username</span>
-                  <span className="text-white text-[13px] font-medium truncate">@{user.username}</span>
+                  <span className="text-white text-[13px] font-medium truncate">{user.username}</span>
                 </div>
               )}
               {user?.email && (
@@ -336,12 +315,12 @@ export default function Profile() {
               {user?.phone && (
                 <div className="flex justify-between items-center gap-3">
                   <span className="text-[10px] uppercase font-semibold text-white/30" style={{ letterSpacing: '0.25em' }}>Phone</span>
-                  <span className="text-white text-[13px] font-medium truncate">{user.phone}</span>
+                  <span className="text-white text-[13px] font-medium truncate">{formatPhoneDisplay(user.phone)}</span>
                 </div>
               )}
               <div className="flex justify-between items-center gap-3">
                 <span className="text-[10px] uppercase font-semibold text-white/30" style={{ letterSpacing: '0.25em' }}>Account ID</span>
-                <span className="text-white/50 text-[13px] font-medium tabular-nums">#{user?.id}</span>
+                <span className="text-white/50 text-[13px] font-medium tabular-nums">{user?.accountId ?? user?.id}</span>
               </div>
             </div>
           </div>
@@ -447,91 +426,7 @@ export default function Profile() {
           )}
         </div>
 
-        {/* Stats & Streak — Organic Blob Card (moved from Workouts page) */}
-        {(streak > 0 || (prStats && prStats.totalPRs > 0)) && (
-          <div className="fade-slide-up mb-4" style={{
-            background: 'linear-gradient(135deg, #0a0a0a 0%, #1a0a0e 50%, #0a0808 100%)',
-            borderRadius: '24px',
-            padding: '28px 24px',
-            position: 'relative',
-            overflow: 'hidden',
-          }}>
-            {/* Animated blob */}
-            <div style={{
-              position: 'absolute',
-              top: '40%',
-              left: '50%',
-              width: '180px',
-              height: '180px',
-              transform: `translate(-50%, -50%) scale(${0.8 + Math.sin(streakPhase * 0.063) * 0.2})`,
-              borderRadius: `${40 + Math.sin(streakPhase * 0.04) * 15}% ${60 - Math.sin(streakPhase * 0.04) * 15}% ${50 + Math.cos(streakPhase * 0.05) * 10}% ${50 - Math.cos(streakPhase * 0.05) * 10}%`,
-              background: 'radial-gradient(circle, rgba(249,115,22,0.4) 0%, rgba(239,68,68,0.2) 50%, transparent 70%)',
-              filter: 'blur(20px)',
-              transition: 'all 0.08s linear',
-            }} />
-            <div style={{ position: 'relative', zIndex: 1 }}>
-              {/* Streak + PRs row */}
-              <div style={{ display: 'flex', gap: '0', marginBottom: '20px' }}>
-                {streak > 0 && (
-                  <div style={{ flex: 1, textAlign: 'center' }}>
-                    <div style={{ fontSize: '42px', fontWeight: 200, color: 'white', letterSpacing: '-2px', lineHeight: 1, fontFamily: 'system-ui' }}>
-                      {streak}
-                    </div>
-                    <div style={{ fontSize: '10px', color: 'rgba(249,115,22,0.6)', marginTop: '4px', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600 }}>
-                      Day Streak
-                    </div>
-                  </div>
-                )}
-                {prStats && prStats.totalPRs > 0 && (
-                  <>
-                    {streak > 0 && <div style={{ width: '1px', background: 'rgba(255,255,255,0.08)', margin: '4px 0' }} />}
-                    <div style={{ flex: 1, textAlign: 'center' }}>
-                      <div style={{ fontSize: '42px', fontWeight: 200, color: 'white', letterSpacing: '-2px', lineHeight: 1, fontFamily: 'system-ui' }}>
-                        {prStats.totalPRs}
-                      </div>
-                      <div style={{ fontSize: '10px', color: 'rgba(239,68,68,0.6)', marginTop: '4px', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600 }}>
-                        Total PRs
-                      </div>
-                    </div>
-                    <div style={{ width: '1px', background: 'rgba(255,255,255,0.08)', margin: '4px 0' }} />
-                    <div style={{ flex: 1, textAlign: 'center' }}>
-                      <div style={{ fontSize: '42px', fontWeight: 200, color: 'white', letterSpacing: '-2px', lineHeight: 1, fontFamily: 'system-ui' }}>
-                        {prStats.prsThisMonth}
-                      </div>
-                      <div style={{ fontSize: '10px', color: 'rgba(34,197,94,0.6)', marginTop: '4px', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600 }}>
-                        This Month
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Heaviest Lifts by body part */}
-              <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '16px' }}>
-                <div style={{ textAlign: 'center', fontSize: '13px', fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '3px', textTransform: 'uppercase', marginBottom: '14px', textShadow: '0 0 8px rgba(255,255,255,0.3)' }}>
-                  Heaviest Lifts
-                </div>
-                {['Chest', 'Back', 'Shoulders', 'Quads', 'Biceps', 'Triceps'].map((muscle, i, arr) => {
-                  const pr = bodyPartPRs.find((p) => p.muscle_group?.toLowerCase() === muscle.toLowerCase());
-                  return (
-                    <div key={muscle} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: i < arr.length - 1 ? '10px' : '0' }}>
-                      <span style={{ flex: '0 0 33.333%', fontSize: '11px', color: 'rgba(255,255,255,0.3)', letterSpacing: '1px', textTransform: 'uppercase', paddingTop: '1px' }}>{muscle}</span>
-                      {pr ? (
-                        <span style={{ flex: 1, textAlign: 'right', fontSize: '13px', fontWeight: 700, color: 'white', textShadow: '0 0 8px rgba(239,68,68,0.5)', wordBreak: 'break-word' }}>
-                          {pr.exercise_name} — {Number(pr.best_weight)} lbs × {pr.best_reps} reps
-                        </span>
-                      ) : (
-                        <span style={{ flex: 1, textAlign: 'right', fontSize: '13px', fontWeight: 700, color: 'rgba(255,255,255,0.3)' }}>
-                          No PR set
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Stats & Streak card moved to /test/brainstorm. */}
 
         {/* App Settings — Nike style */}
         <div

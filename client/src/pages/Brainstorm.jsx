@@ -511,16 +511,21 @@ function BottomSheet() {
   const dragStart = useRef(null);
   const startSnap = useRef(0);
 
+  // Pointer capture — without it, the pointer leaves the small handle
+  // element as soon as the user starts dragging and the subsequent
+  // pointerup fires on whatever is under the cursor, never here.
   const onPointerDown = (e) => {
     dragStart.current = e.clientY;
     startSnap.current = snap;
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
   };
-  const onPointerUp = (e) => {
+  const finishDrag = (e) => {
     if (dragStart.current == null) return;
     const dy = e.clientY - dragStart.current;
     if (dy < -40) setSnap(Math.min(2, startSnap.current + 1));
     else if (dy > 40) setSnap(Math.max(0, startSnap.current - 1));
     dragStart.current = null;
+    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
   };
 
   return (
@@ -548,9 +553,11 @@ function BottomSheet() {
             }}
           >
             <div
-              className="py-3 cursor-grab"
+              className="py-3 cursor-grab select-none"
+              style={{ touchAction: 'none' }}
               onPointerDown={onPointerDown}
-              onPointerUp={onPointerUp}
+              onPointerUp={finishDrag}
+              onPointerCancel={finishDrag}
             >
               <div className="bs-handle" />
             </div>
@@ -570,6 +577,117 @@ function BottomSheet() {
         </div>
       )}
       <p className="text-[10px] text-white/40">Three snap points: peek → half → full. Drag handle to change.</p>
+    </div>
+  );
+}
+
+// ==========================================================
+// 27 — STACKED PAPER CARDS (swipe to advance)
+// Ported from Workouts.jsx. Mock PR data so the pattern is self-contained.
+// ==========================================================
+function StackedPaperCards() {
+  const SAMPLE = [
+    { title: 'Chest PR',     top: 'Barbell Bench Press',     body: '245 lbs × 5 reps' },
+    { title: 'Back PR',      top: 'Deadlift',                 body: '405 lbs × 3 reps' },
+    { title: 'Shoulders PR', top: 'Overhead Press',           body: '135 lbs × 5 reps' },
+    { title: 'Quads PR',     top: 'Back Squat',               body: '315 lbs × 5 reps' },
+    { title: 'Hamstrings PR',top: 'Romanian Deadlift',        body: '275 lbs × 8 reps' },
+    { title: 'Glutes PR',    top: 'Barbell Hip Thrust',       body: '365 lbs × 8 reps' },
+    { title: 'Biceps PR',    top: 'Barbell Curl',             body: '95 lbs × 8 reps' },
+    { title: 'Triceps PR',   top: 'Close-Grip Bench Press',   body: '185 lbs × 6 reps' },
+  ];
+  const [idx, setIdx] = useState(0);
+  const [dragX, setDragX] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const startX = useRef(0);
+  const total = SAMPLE.length;
+  const visibleCount = Math.min(3, total);
+
+  const start = (e) => {
+    const x = e.touches ? e.touches[0].clientX : e.clientX;
+    startX.current = x;
+    setDragging(true);
+  };
+  const move = (e) => {
+    if (!dragging) return;
+    const x = e.touches ? e.touches[0].clientX : e.clientX;
+    setDragX(x - startX.current);
+  };
+  const end = () => {
+    if (!dragging) return;
+    if (Math.abs(dragX) > 100) {
+      const dir = dragX > 0 ? 1 : -1;
+      setDragX(dir * 600);
+      setTimeout(() => {
+        setIdx((i) => (i + 1) % total);
+        setDragX(0);
+      }, 250);
+    } else {
+      setDragX(0);
+    }
+    setDragging(false);
+  };
+
+  return (
+    <div style={{ position: 'relative', height: '160px', userSelect: 'none' }}>
+      {Array.from({ length: visibleCount }).map((_, depth) => {
+        const cardIdx = (idx + depth) % total;
+        const card = SAMPLE[cardIdx];
+        const isTop = depth === 0;
+        const baseTransform = depth === 0
+          ? 'translate(0, 0) rotate(0deg)'
+          : depth === 1
+            ? 'translate(6px, 6px) rotate(1.5deg)'
+            : 'translate(12px, 10px) rotate(-1deg)';
+        const dragTransform = isTop && (dragX !== 0 || dragging)
+          ? `translate(${dragX}px, 0) rotate(${dragX * 0.05}deg)`
+          : baseTransform;
+        const opacity = depth === 0 ? 1 : depth === 1 ? 0.85 : 0.7;
+        const zIndex = visibleCount - depth;
+        return (
+          <div
+            key={`${cardIdx}-${depth}`}
+            onTouchStart={isTop ? start : undefined}
+            onTouchMove={isTop ? move : undefined}
+            onTouchEnd={isTop ? end : undefined}
+            onMouseDown={isTop ? start : undefined}
+            onMouseMove={isTop && dragging ? move : undefined}
+            onMouseUp={isTop ? end : undefined}
+            onMouseLeave={isTop && dragging ? end : undefined}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              background: depth === 0 ? '#111' : depth === 1 ? '#151515' : '#1a1a1a',
+              borderRadius: '16px',
+              border: '1px solid rgba(255,255,255,0.08)',
+              padding: '20px',
+              zIndex,
+              opacity,
+              transform: dragTransform,
+              transition: dragging && isTop ? 'none' : 'transform 0.25s ease-out',
+              cursor: isTop ? 'grab' : 'default',
+              touchAction: isTop ? 'pan-y' : 'auto',
+            }}
+          >
+            <p style={{ fontSize: '9px', color: 'rgba(239,68,68,0.6)', letterSpacing: '4px', textTransform: 'uppercase', fontWeight: 700, marginBottom: '12px' }}>
+              {card.title}
+            </p>
+            <div style={{ fontSize: '18px', fontWeight: 800, color: 'white', marginBottom: '6px' }}>
+              {card.top}
+            </div>
+            <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>
+              {card.body}
+            </div>
+            {isTop && (
+              <div style={{ position: 'absolute', bottom: '12px', right: '16px', fontSize: '9px', color: 'rgba(255,255,255,0.25)', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600 }}>
+                Swipe →
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -1109,6 +1227,61 @@ function IconMorph() {
 }
 
 // ==========================================================
+// 26 — STATS & STREAK CARD (Organic Blob)
+// Moved from the Profile page. Uses mocked values here so the
+// sandbox doesn't depend on real PR / session data.
+// ==========================================================
+function StatsStreakCard() {
+  const [phase, setPhase] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setPhase((p) => (p + 1) % 100), 80);
+    return () => clearInterval(t);
+  }, []);
+  const streak = 12;
+  const totalPRs = 34;
+  const prsThisMonth = 5;
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg, #0a0a0a 0%, #1a0a0e 50%, #0a0808 100%)',
+      borderRadius: '24px',
+      padding: '28px 24px',
+      position: 'relative',
+      overflow: 'hidden',
+    }}>
+      {/* Animated blob */}
+      <div style={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        width: '180px',
+        height: '180px',
+        transform: `translate(-50%, -50%) scale(${0.8 + Math.sin(phase * 0.063) * 0.2})`,
+        borderRadius: `${40 + Math.sin(phase * 0.04) * 15}% ${60 - Math.sin(phase * 0.04) * 15}% ${50 + Math.cos(phase * 0.05) * 10}% ${50 - Math.cos(phase * 0.05) * 10}%`,
+        background: 'radial-gradient(circle, rgba(249,115,22,0.4) 0%, rgba(239,68,68,0.2) 50%, transparent 70%)',
+        filter: 'blur(20px)',
+        transition: 'all 0.08s linear',
+      }} />
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', gap: '0' }}>
+        <div style={{ flex: 1, textAlign: 'center' }}>
+          <div style={{ fontSize: '42px', fontWeight: 200, color: 'white', letterSpacing: '-2px', lineHeight: 1, fontFamily: 'system-ui' }}>{streak}</div>
+          <div style={{ fontSize: '10px', color: 'rgba(249,115,22,0.6)', marginTop: '4px', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600 }}>Day Streak</div>
+        </div>
+        <div style={{ width: '1px', background: 'rgba(255,255,255,0.08)', margin: '4px 0' }} />
+        <div style={{ flex: 1, textAlign: 'center' }}>
+          <div style={{ fontSize: '42px', fontWeight: 200, color: 'white', letterSpacing: '-2px', lineHeight: 1, fontFamily: 'system-ui' }}>{totalPRs}</div>
+          <div style={{ fontSize: '10px', color: 'rgba(239,68,68,0.6)', marginTop: '4px', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600 }}>Total PRs</div>
+        </div>
+        <div style={{ width: '1px', background: 'rgba(255,255,255,0.08)', margin: '4px 0' }} />
+        <div style={{ flex: 1, textAlign: 'center' }}>
+          <div style={{ fontSize: '42px', fontWeight: 200, color: 'white', letterSpacing: '-2px', lineHeight: 1, fontFamily: 'system-ui' }}>{prsThisMonth}</div>
+          <div style={{ fontSize: '10px', color: 'rgba(34,197,94,0.6)', marginTop: '4px', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600 }}>This Month</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================================
 // NAVIGATION CHIPS (jump links)
 // ==========================================================
 function NavChips({ sections }) {
@@ -1162,7 +1335,9 @@ export default function Brainstorm() {
     { id: 23, name: 'Mesh Gradient',    desc: 'Drifting aurora blobs + noise',              el: <MeshGradient /> },
     { id: 24, name: 'PIN Input',        desc: 'Auto-advance 4-digit code',                  el: <PinInput /> },
     { id: 25, name: 'Icon Morph',       desc: 'Play ↔ pause smooth transform',             el: <IconMorph /> },
-    { id: 26, name: 'Bottom Sheet',     desc: 'Drag to snap between heights',               el: <BottomSheet /> },
+    { id: 26, name: 'Stats & Streak',   desc: 'Organic blob card with streak / PRs / this month (mocked)', el: <StatsStreakCard /> },
+    { id: 27, name: 'Bottom Sheet',     desc: 'Drag to snap between heights',               el: <BottomSheet /> },
+    { id: 27, name: 'Stacked Paper',    desc: 'Swipe to advance a deck of layered cards',   el: <StackedPaperCards /> },
   ];
 
   return (

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../api';
@@ -70,6 +70,42 @@ const CARD_BORDER_STYLE = {
   boxShadow: '0 0 20px rgba(255,255,255,0.07), 0 0 40px rgba(255,255,255,0.03)',
 };
 
+// Stat — cardless (sits directly on the page background, matching brainstorm demo #5).
+// A word above the number and another below it.
+function OdometerStat({ value, labelTop, labelBottom, delay = 0 }) {
+  const { value: n } = CountUp({ to: value, duration: 1400, delay });
+  const labelCls = 'text-[9px] text-white/40 uppercase font-bold';
+  const labelStyle = { letterSpacing: '0.25em' };
+  return (
+    <div className="text-center py-2">
+      <p className={labelCls} style={labelStyle}>{labelTop}</p>
+      <div
+        className="text-3xl font-black tabular-nums my-1.5"
+        style={{
+          fontFamily: 'system-ui',
+          lineHeight: 1,
+          background: 'linear-gradient(180deg, #fff, #fff 50%, #888)',
+          WebkitBackgroundClip: 'text',
+          backgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          color: 'transparent',
+        }}
+      >
+        {n.toLocaleString()}
+      </div>
+      <p className={labelCls} style={labelStyle}>{labelBottom}</p>
+    </div>
+  );
+}
+
+// Short names shown in the weekly-view StickyHeader (next to "Begin Program").
+// Full name is still used everywhere else — the ProgramOverviewHero, cards,
+// search, etc. Add mappings here when a program's full name is too long for
+// the narrow top bar.
+const PROGRAM_HEADER_SHORT_NAMES = {
+  'Muscle & Fitness 5000 Rep Arm Specialization': 'M&F 5000 Rep Arms',
+};
+
 // Expandable program metadata card shown above the weekly grid on the
 // program-detail screen. Source of truth is `programs.program_details`
 // (JSONB) populated by per-program migrations from the workbook's
@@ -86,8 +122,9 @@ function ProgramDetailsCard({ details }) {
   if (!details || typeof details !== 'object') return null;
 
   const overview = details.Overview || details.overview || '';
+  // PDF is rendered as the download button on the hero, not as a raw row.
   const entries = Object.entries(details)
-    .filter(([k]) => k !== 'Overview' && k !== 'overview')
+    .filter(([k]) => k !== 'Overview' && k !== 'overview' && k !== 'PDF')
     .sort(([a], [b]) => {
       const ai = PROGRAM_DETAIL_ORDER.indexOf(a);
       const bi = PROGRAM_DETAIL_ORDER.indexOf(b);
@@ -131,6 +168,124 @@ function ProgramDetailsCard({ details }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// Hero card shown at the top of a program's weekly view. Modeled after
+// "Category Banner" (card #17 on NikeCardsTest) — heavy display banner with
+// a kicker label, giant program name, inline metadata, and an overview
+// paragraph below. Red accent throughout (Stoppani uses the purple original
+// with red swapped in).
+function ProgramOverviewHero({ program, weekCount }) {
+  const workoutCount = program.workoutCount || 0;
+  const titleLines = program.name.split(' ');
+  // Break long names onto two lines for the banner feel (as in #17).
+  const mid = Math.ceil(titleLines.length / 2);
+  const line1 = titleLines.slice(0, mid).join(' ').toUpperCase();
+  const line2 = titleLines.slice(mid).join(' ').toUpperCase();
+
+  return (
+    <div
+      className="mb-4 fade-slide-up"
+      style={{
+        background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+        borderRadius: '2px',
+        position: 'relative',
+        overflow: 'hidden',
+        boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+      }}
+    >
+      {/* Diagonal hatch texture — same pattern as banner #17 */}
+      <div
+        className="absolute inset-0 opacity-[0.04] pointer-events-none"
+        style={{ backgroundImage: 'repeating-linear-gradient(45deg, #fff 0, #fff 1px, transparent 1px, transparent 8px)' }}
+      />
+      {/* Red spotlight */}
+      <div
+        className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none"
+        style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.14) 0%, transparent 60%)', filter: 'blur(40px)' }}
+      />
+
+      <div className="relative px-6 py-7">
+        <p className="text-[11px] uppercase font-light" style={{ letterSpacing: '0.3em', color: 'rgba(239,68,68,0.7)' }}>
+          Program Description
+        </p>
+        <h2 className="text-[40px] font-black text-white tracking-tight leading-[0.9] mt-2" style={{ fontFamily: 'system-ui' }}>
+          {line1}{line2 && <><br />{line2}</>}
+        </h2>
+        <div className="flex items-center gap-2 mt-4 flex-wrap">
+          <span className="text-[10px] font-bold uppercase" style={{ color: 'rgba(239,68,68,0.8)', letterSpacing: '0.25em' }}>
+            {weekCount} {weekCount === 1 ? 'Week' : 'Weeks'}
+          </span>
+          <span className="w-1 h-1 rounded-full bg-white/30" />
+          <span className="text-[10px] font-bold uppercase text-white/50" style={{ letterSpacing: '0.25em' }}>
+            {workoutCount} {workoutCount === 1 ? 'Workout' : 'Workouts'}
+          </span>
+        </div>
+      </div>
+
+      {/* Download PDF — anchors to the original workout PDF in public/Workouts/.
+          Styling mirrors the "+ Create Workout" button on the Workouts
+          homepage My Workouts card. Rendered only when programDetails.PDF
+          is set so the button stays hidden for programs without a source doc. */}
+      {program.programDetails?.PDF && (
+        <a
+          href={encodeURI(program.programDetails.PDF)}
+          download
+          target="_blank"
+          rel="noreferrer"
+          className="absolute bottom-4 right-4 active:scale-[0.97] transition-all text-white text-[11px] font-bold uppercase px-3.5 py-2 whitespace-nowrap"
+          style={{
+            letterSpacing: '0.15em',
+            borderRadius: '2px',
+            background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+            boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+          }}
+        >
+          ↓ Download PDF
+        </a>
+      )}
+    </div>
+  );
+}
+
+// Horizontal filter pills with static gradient fade affordances on both
+// edges — always visible as a scroll hint, regardless of overflow state.
+function FilterPillsRow({ filters, value, onChange }) {
+  return (
+    <div className="relative -mx-4 mb-3">
+      <div className="flex gap-2 overflow-x-auto pb-2 px-4 scrollbar-hide">
+        {filters.map((f) => (
+          <button
+            key={f.value}
+            onClick={() => onChange(f.value)}
+            className={`shrink-0 px-4 py-2 rounded-full text-xs font-semibold transition-all ${
+              value === f.value
+                ? 'bg-wf-red text-white'
+                : 'bg-white/5 text-wf-gray-400 active:bg-white/10'
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+      {/* Always-on fade affordances — rendered on both edges regardless of
+          overflow so the "continues off-screen" cue is persistent. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute top-0 bottom-2 left-0 w-8"
+        style={{ background: 'linear-gradient(to right, #000 0%, transparent 100%)' }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute top-0 bottom-2 right-0 w-8 flex items-center justify-end pr-1"
+        style={{ background: 'linear-gradient(to left, #000 0%, transparent 100%)' }}
+      >
+        <svg className="w-3 h-3 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+        </svg>
+      </div>
     </div>
   );
 }
@@ -351,11 +506,6 @@ export default function Workouts() {
     observer.observe(node);
     heroStatsObserverRef.current = observer;
   }, []);
-  // Swipeable PR stacked cards
-  const [prCardIdx, setPrCardIdx] = useState(0);
-  const [prCardDragX, setPrCardDragX] = useState(0);
-  const [prCardDragging, setPrCardDragging] = useState(false);
-  const prCardStartX = useRef(0);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editName, setEditName] = useState('');
@@ -1001,6 +1151,19 @@ export default function Workouts() {
   const browsePrograms = enrichedPrograms.filter((p) => p.userId === null);
   const myPrograms = enrichedPrograms.filter((p) => p.userId !== null);
 
+  // If the active browse-library filter no longer matches any program (e.g., the
+  // category was emptied), drop back to 'All' so the user isn't stuck on an
+  // invisible filter with zero results.
+  const browseAvailableTypes = useMemo(
+    () => new Set(browsePrograms.map((p) => p.programType).filter(Boolean)),
+    [browsePrograms],
+  );
+  useEffect(() => {
+    if (browseFilter !== 'all' && !browseAvailableTypes.has(browseFilter)) {
+      setBrowseFilter('all');
+    }
+  }, [browseFilter, browseAvailableTypes]);
+
   // Navigate to the right workout flow based on whether the template belongs to a featured program
   function navigateToWorkout(templateId, date) {
     const tmpl = templates.find(t => t.id === templateId);
@@ -1265,7 +1428,7 @@ export default function Workouts() {
     if (selectedWeek === null) {
       return (
         <div>
-          <StickyHeader title={program.name}>
+          <StickyHeader title={PROGRAM_HEADER_SHORT_NAMES[program.name] || program.name}>
             {program.workoutCount > 0 && (
               <button
                 data-tutorial="begin-program-btn"
@@ -1292,12 +1455,10 @@ export default function Workouts() {
           </div>
 
           <div className="px-4">
+            <ProgramOverviewHero program={program} weekCount={weeks.length} />
             {program.programDetails && Object.keys(program.programDetails).length > 0 && (
               <ProgramDetailsCard details={program.programDetails} />
             )}
-            <p className="text-wf-gray-400 text-sm mb-4">
-              {weeks.length} weeks &middot; {program.workoutCount} workouts &middot; Select a week to view
-            </p>
             <div className="space-y-3 pb-4">
               {(() => {
                 // Track which phases have already appeared so we only show a
@@ -3140,32 +3301,30 @@ export default function Workouts() {
           </div>
         )}
 
-        {/* Filter toggles (browse only) */}
-        {isBrowse && (
-          <div className="flex gap-2 overflow-x-auto pb-2 mb-3 px-4 -mx-4 scrollbar-hide">
-            {[
-              { value: 'all', label: 'All' },
-              { value: 'hypertrophy', label: 'Hypertrophy' },
-              { value: 'strength', label: 'Strength' },
-              { value: 'hybrid', label: 'Hybrid' },
-              { value: 'conditioning', label: 'Conditioning' },
-              { value: 'strength_conditioning', label: 'Strength & Conditioning' },
-              { value: 'hypertrophy_strength', label: 'Hypertrophy & Strength' },
-            ].map(f => (
-              <button
-                key={f.value}
-                onClick={() => setBrowseFilter(f.value)}
-                className={`shrink-0 px-4 py-2 rounded-full text-xs font-semibold transition-all ${
-                  browseFilter === f.value
-                    ? 'bg-wf-red text-white'
-                    : 'bg-white/5 text-wf-gray-400 active:bg-white/10'
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* Filter toggles (browse only) — dynamic: only show types with at least one program */}
+        {isBrowse && (() => {
+          const ALL_FILTERS = [
+            { value: 'hypertrophy',          label: 'Hypertrophy' },
+            { value: 'strength',             label: 'Strength' },
+            { value: 'hybrid',               label: 'Hybrid' },
+            { value: 'conditioning',         label: 'Conditioning' },
+            { value: 'strength_conditioning',label: 'Strength & Conditioning' },
+            { value: 'hypertrophy_strength', label: 'Hypertrophy & Strength' },
+          ];
+          const dynamicFilters = [
+            { value: 'all', label: 'All' },
+            ...ALL_FILTERS.filter((f) => browseAvailableTypes.has(f.value)),
+          ];
+          return (
+            <div className="px-4">
+              <FilterPillsRow
+                value={browseFilter}
+                onChange={setBrowseFilter}
+                filters={dynamicFilters}
+              />
+            </div>
+          );
+        })()}
 
         <div className="px-4">
           {(() => {
@@ -3948,74 +4107,11 @@ export default function Workouts() {
             <button onClick={() => window.location.reload()} className="text-wf-cyan text-sm">Tap to retry</button>
           </div>
         ) : (myPrograms.length === 0 && !featuredEnrollment.enrolled) ? (
-          /* First-impression empty state for brand-new users */
-          <div className="space-y-4 pb-4 fade-slide-up">
-            <div
-              className="relative overflow-hidden"
-              style={{
-                background: 'linear-gradient(160deg, #1a0606 0%, #0a0a0a 55%, #08080c 100%)',
-                boxShadow: '0 20px 60px rgba(0,0,0,0.6), 0 6px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)',
-                borderRadius: '4px',
-                minHeight: '360px',
-              }}
-            >
-              {/* Red accent line */}
-              <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25))' }} />
-              {/* Accent glows */}
-              <div className="absolute -top-16 -right-16 w-[320px] h-[320px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.18) 0%, transparent 65%)', filter: 'blur(50px)' }} />
-              <div className="absolute -bottom-16 -left-16 w-[280px] h-[280px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.10) 0%, transparent 65%)', filter: 'blur(40px)' }} />
-
-              <div className="relative p-7 pt-8">
-                <p className="text-[10px] text-white/35 uppercase font-light mb-4" style={{ letterSpacing: '0.35em' }}>
-                  Welcome to WillFit
-                </p>
-                <h2
-                  className="text-[52px] font-black text-white tracking-tight"
-                  style={{ fontFamily: 'system-ui', lineHeight: '0.9' }}
-                >
-                  LET'S BUILD<br />YOUR FIRST<br />PROGRAM.
-                </h2>
-                <p className="text-[14px] text-white/50 font-light mt-5 max-w-[340px] leading-snug">
-                  Start with Will's Hypertrophy — the coach-led program — or design your own from scratch.
-                </p>
-
-                <div className="mt-7 flex flex-col gap-3">
-                  <button
-                    onClick={() => navigate('/featured-session')}
-                    className="w-full py-4 rounded-full text-[12px] font-bold uppercase active:scale-[0.97] transition-all"
-                    style={{
-                      background: 'linear-gradient(135deg, #fff 0%, #e6e6e6 100%)',
-                      color: '#000',
-                      letterSpacing: '0.18em',
-                      boxShadow: '0 8px 24px rgba(255,255,255,0.12), 0 2px 6px rgba(0,0,0,0.3)',
-                    }}
-                  >
-                    Start Will's Hypertrophy
-                  </button>
-                  <button
-                    onClick={() => navigate('/programs/create')}
-                    className="w-full py-4 rounded-full border border-white/20 text-white/70 text-[12px] font-medium uppercase active:bg-white/5 transition-colors"
-                    style={{ letterSpacing: '0.18em' }}
-                  >
-                    Create my own
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Secondary context — browse library hint */}
-            <button
-              onClick={() => setSelectedGroup('browse')}
-              className="w-full text-left glass-card rounded-2xl px-5 py-4 flex items-center justify-between active:scale-[0.98] transition-all"
-            >
-              <div>
-                <p className="text-[10px] uppercase tracking-widest text-wf-gray-500 font-semibold mb-1">Or explore</p>
-                <span className="text-sm font-semibold text-white">Browse the workout library</span>
-              </div>
-              <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-              </svg>
-            </button>
+          /* Users with no programs yet — show a loading spinner (same style
+             as the Brainstorm /brainstorm page's Loading Button). Replaces
+             the old "Welcome to WillFit" empty-state card. */
+          <div className="flex justify-center items-center fade-slide-up" style={{ minHeight: '70vh' }}>
+            <span className="replab-spinner-gradient w-16 h-16" style={{ animationDuration: '0.91s' }} />
           </div>
         ) : (
           <div className="space-y-4 pb-4">
@@ -4066,8 +4162,10 @@ export default function Workouts() {
                           setSelectedGroup('browse');
                         }
                       }}
-                      className="flex-1 py-3.5 rounded-full text-[11px] font-bold uppercase active:scale-[0.97] transition-all"
-                      style={{ background: 'linear-gradient(135deg, #fff 0%, #e0e0e0 100%)', color: '#000', letterSpacing: '0.15em', boxShadow: '0 6px 20px rgba(255,255,255,0.1)' }}
+                      className={`${nextWorkoutInfo?.status === 'resume' ? 'btn-liquid' : ''} flex-1 py-3.5 rounded-full text-[11px] font-bold uppercase active:scale-[0.97] transition-transform`}
+                      style={nextWorkoutInfo?.status === 'resume'
+                        ? { letterSpacing: '0.15em' }
+                        : { background: 'linear-gradient(135deg, #fff 0%, #e0e0e0 100%)', color: '#000', letterSpacing: '0.15em', boxShadow: '0 6px 20px rgba(255,255,255,0.1)' }}
                     >
                       {nextWorkoutInfo?.templateId
                         ? (nextWorkoutInfo.status === 'resume' ? 'Resume' : nextWorkoutInfo.status === 'upcoming' ? 'Preview' : 'Start Now')
@@ -4085,22 +4183,15 @@ export default function Workouts() {
               </div>
             </div>
 
-            {/* Stats row — Nike style */}
+            {/* Stats row — Odometer style (matches brainstorm demo #5) */}
             {(streak > 0 || totalWorkouts > 0 || workoutsThisMonth > 0) && (
-              <div className="flex gap-3 fade-slide-up" style={{ animationDelay: '100ms' }}>
+              <div className="grid grid-cols-3 gap-4 fade-slide-up" style={{ animationDelay: '100ms' }}>
                 {[
-                  { value: streak, label: 'Day Streak', color: 'rgba(249,115,22,0.6)' },
-                  { value: totalWorkouts, label: 'Total', color: 'rgba(239,68,68,0.6)' },
-                  { value: workoutsThisMonth, label: 'This Month', color: 'rgba(34,197,94,0.6)' },
+                  { value: streak,            labelTop: 'Day',      labelBottom: 'Streak' },
+                  { value: totalWorkouts,     labelTop: 'Total',    labelBottom: 'Workouts' },
+                  { value: workoutsThisMonth, labelTop: 'Workouts', labelBottom: 'This Month' },
                 ].map((stat, i) => (
-                  <div key={i} className="flex-1 text-center py-4 px-2 relative overflow-hidden" style={{
-                    background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
-                    boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
-                    borderRadius: '2px',
-                  }}>
-                    <div className="text-[26px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', fontVariantNumeric: 'tabular-nums' }}>{stat.value}</div>
-                    <div className="text-[7px] uppercase font-light mt-1" style={{ color: stat.color, letterSpacing: '0.25em' }}>{stat.label}</div>
-                  </div>
+                  <OdometerStat key={i} value={stat.value} labelTop={stat.labelTop} labelBottom={stat.labelBottom} delay={100 + i * 80} />
                 ))}
               </div>
             )}
@@ -4478,199 +4569,6 @@ export default function Workouts() {
               </div>
             </div>
 
-            {/* Personal Records ticker — ported from NewHomepage */}
-            {bodyPartPRs.length > 0 && (() => {
-              const items = bodyPartPRs.map((pr) => {
-                const muscle = (pr.muscle_group || 'PR').toUpperCase();
-                const w = Number(pr.best_weight);
-                const reps = pr.best_reps;
-                return `${muscle} PR — ${pr.exercise_name} — ${w} LBS × ${reps}`;
-              });
-              return (
-                <div
-                  className="fade-slide-up"
-                  style={{
-                    position: 'relative',
-                    overflow: 'hidden',
-                    borderRadius: '2px',
-                    background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
-                    boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
-                  }}
-                >
-                  <div style={{ padding: '16px', overflow: 'hidden' }}>
-                    <p
-                      className="text-[9px] uppercase font-light mb-2"
-                      style={{ color: 'rgba(255,255,255,0.25)', letterSpacing: '0.25em' }}
-                    >
-                      Personal Records
-                    </p>
-                    <div style={{ borderBottom: '1px dotted rgba(255,255,255,0.15)', marginBottom: '12px' }} />
-                    <div style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                      <div style={{ display: 'inline-block', animation: 'prTicker 20s linear infinite', fontSize: '12px' }}>
-                        {items.map((pr, i) => (
-                          <span key={i}>
-                            <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 300 }}>{pr}</span>
-                            <span style={{ color: 'rgba(255,255,255,0.1)', margin: '0 16px' }}>|</span>
-                          </span>
-                        ))}
-                        {items.map((pr, i) => (
-                          <span key={`d-${i}`}>
-                            <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 300 }}>{pr}</span>
-                            <span style={{ color: 'rgba(255,255,255,0.1)', margin: '0 16px' }}>|</span>
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* ----- Original Tutorial card (glass style) — kept so you can swap back ----- */}
-            {/*
-            <div
-              onClick={() => startTutorial(null)}
-              className="w-full text-left glass-card rounded-2xl overflow-hidden fade-slide-up cursor-pointer active:scale-[0.98] transition-transform"
-              style={{ animationDelay: '240ms' }}
-            >
-              <div className="h-1.5 bg-gradient-to-r from-wf-cyan to-wf-blue" />
-              <div className="p-5">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-wf-cyan/10 flex items-center justify-center shrink-0">
-                    <svg className="w-5 h-5 text-wf-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.042 21.672L13.684 16.6m0 0l-2.51 2.225.569-9.47 5.227 7.917-3.286-.672zM12 2.25V4.5m5.834.166l-1.591 1.591M20.25 10.5H18M7.757 14.743l-1.59 1.59M6 10.5H3.75m4.007-4.243l-1.59-1.59" />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-base font-bold text-white">Tutorial</h3>
-                    <p className="text-xs text-wf-gray-400 mt-1">Step-by-step walkthrough to pick your first program, schedule workouts, and track your progress.</p>
-                  </div>
-                  <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-            */}
-
-            {/* Tutorial card — Nike style */}
-            <div
-              onClick={() => startTutorial(null)}
-              className="cursor-pointer active:scale-[0.98] transition-transform fade-slide-up"
-              style={{
-                position: 'relative',
-                overflow: 'hidden',
-                borderRadius: '2px',
-                background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
-                boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
-                animationDelay: '240ms',
-              }}
-            >
-              {/* Cyan accent bar */}
-              <div style={{ height: '3px', background: 'linear-gradient(90deg, #06b6d4, rgba(6,182,212,0.5), transparent)' }} />
-
-              {/* Cyan glow spotlight */}
-              <div style={{
-                position: 'absolute',
-                top: '-30%', right: '-20%',
-                width: '70%', height: '160%',
-                background: 'radial-gradient(circle, rgba(6,182,212,0.10) 0%, transparent 60%)',
-                filter: 'blur(40px)',
-                pointerEvents: 'none',
-              }} />
-
-              <div style={{ position: 'relative', padding: '24px' }}>
-                <p className="text-[10px] uppercase font-light mb-2" style={{ color: 'rgba(6,182,212,0.7)', letterSpacing: '0.3em' }}>
-                  Get Started
-                </p>
-                <h3
-                  className="text-[28px] font-black text-white leading-[0.9] tracking-tight"
-                  style={{ fontFamily: 'system-ui', textShadow: '0 2px 20px rgba(0,0,0,0.5)' }}
-                >
-                  TUTORIAL
-                </h3>
-                <p className="text-[11px] text-white/40 font-light mt-3 max-w-[300px] leading-relaxed">
-                  Step-by-step walkthrough to pick your first program, schedule workouts, and track your progress.
-                </p>
-                <div className="flex items-center gap-1.5 mt-4">
-                  <span className="text-[10px] text-white/40 uppercase font-medium" style={{ letterSpacing: '0.2em' }}>Begin</span>
-                  <svg className="w-3 h-3 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            {/* ----- Original Challenges card (glass style) — kept so you can swap back ----- */}
-            {/*
-            <div
-              onClick={() => setSelectedGroup('challenges')}
-              className="w-full text-left glass-card rounded-2xl overflow-hidden fade-slide-up cursor-pointer active:scale-[0.98] transition-transform"
-              style={{ animationDelay: '0ms' }}
-            >
-              <div className="h-1.5 bg-wf-orange" />
-              <div className="p-5">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-black text-white tracking-tight">Challenges</h2>
-                  <span className="px-2 py-0.5 rounded-full bg-orange-500/15 border border-orange-500/30 text-[10px] font-bold text-orange-400 uppercase tracking-wider">
-                    Coming Soon
-                  </span>
-                </div>
-                <p className="text-wf-gray-400 text-sm mt-1">Compete, push your limits, and earn rewards</p>
-              </div>
-            </div>
-            */}
-
-            {/* Challenges card — Nike style */}
-            <div
-              onClick={() => setSelectedGroup('challenges')}
-              className="cursor-pointer active:scale-[0.98] transition-transform fade-slide-up"
-              style={{
-                position: 'relative',
-                overflow: 'hidden',
-                borderRadius: '2px',
-                background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
-                boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
-                animationDelay: '0ms',
-              }}
-            >
-              {/* Orange accent bar */}
-              <div style={{ height: '3px', background: 'linear-gradient(90deg, #f97316, rgba(249,115,22,0.5), transparent)' }} />
-
-              {/* Warm glow spotlight */}
-              <div style={{
-                position: 'absolute',
-                top: '-30%', right: '-20%',
-                width: '70%', height: '160%',
-                background: 'radial-gradient(circle, rgba(249,115,22,0.10) 0%, transparent 60%)',
-                filter: 'blur(40px)',
-                pointerEvents: 'none',
-              }} />
-
-              <div style={{ position: 'relative', padding: '24px' }}>
-                <p className="text-[10px] uppercase font-light mb-2" style={{ color: 'rgba(249,115,22,0.7)', letterSpacing: '0.3em' }}>
-                  Coming Soon
-                </p>
-                <h3
-                  className="text-[28px] font-black text-white leading-[0.9] tracking-tight"
-                  style={{ fontFamily: 'system-ui', textShadow: '0 2px 20px rgba(0,0,0,0.5)' }}
-                >
-                  CHALLENGES
-                </h3>
-                <p className="text-[11px] text-white/40 font-light mt-3 max-w-[280px] leading-relaxed">
-                  Compete, push your limits, and earn rewards.
-                </p>
-                <div className="flex items-center gap-1.5 mt-4">
-                  <span className="text-[10px] text-white/40 uppercase font-medium" style={{ letterSpacing: '0.2em' }}>Explore</span>
-                  <svg className="w-3 h-3 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            {/* Stats & Streak card moved to Profile page. */}
-
             {/* Personal Records — sticky-header list (cards test #38 pattern) */}
             {allPRsByMuscle.length > 0 && (() => {
               // Group rows: muscle → exercise → [{ weight, reps, volume, ... }]
@@ -4870,115 +4768,253 @@ export default function Workouts() {
               );
             })()}
 
-            {/* Stacked Paper PR Cards — swipeable */}
-            {(() => {
-              const muscleGroups = ['Chest', 'Back', 'Shoulders', 'Quads', 'Hamstrings', 'Glutes', 'Biceps', 'Triceps'];
-              const prCards = muscleGroups.map((muscle) => {
-                const pr = bodyPartPRs.find(p => p.muscle_group?.toLowerCase() === muscle.toLowerCase());
-                return {
-                  muscle,
-                  title: `${muscle} PR`,
-                  body: pr
-                    ? `${pr.exercise_name} — ${Number(pr.best_weight)} lbs × ${pr.best_reps} reps`
-                    : 'No PR set yet',
-                };
+            {/* Personal Records ticker — ported from NewHomepage */}
+            {bodyPartPRs.length > 0 && (() => {
+              const items = bodyPartPRs.map((pr) => {
+                const muscle = (pr.muscle_group || 'PR').toUpperCase();
+                const w = Number(pr.best_weight);
+                const reps = pr.best_reps;
+                return `${muscle} PR — ${pr.exercise_name} — ${w} LBS × ${reps}`;
               });
-              const total = prCards.length;
-
-              function handleStart(e) {
-                const x = e.touches ? e.touches[0].clientX : e.clientX;
-                prCardStartX.current = x;
-                setPrCardDragging(true);
-              }
-              function handleMove(e) {
-                if (!prCardDragging) return;
-                const x = e.touches ? e.touches[0].clientX : e.clientX;
-                setPrCardDragX(x - prCardStartX.current);
-              }
-              function handleEnd() {
-                if (!prCardDragging) return;
-                const threshold = 100;
-                if (Math.abs(prCardDragX) > threshold) {
-                  // Swipe off in current direction, then advance
-                  const dir = prCardDragX > 0 ? 1 : -1;
-                  setPrCardDragX(dir * 600);
-                  setTimeout(() => {
-                    setPrCardIdx((i) => (i + 1) % total);
-                    setPrCardDragX(0);
-                  }, 250);
-                } else {
-                  setPrCardDragX(0);
-                }
-                setPrCardDragging(false);
-              }
-
-              // Visible stack: top card + 2 behind
-              const visibleCount = Math.min(3, total);
-
               return (
-                <div className="fade-slide-up" style={{ position: 'relative', height: '160px', animationDelay: '0ms', userSelect: 'none' }}>
-                  {Array.from({ length: visibleCount }).map((_, depth) => {
-                    const cardIdx = (prCardIdx + depth) % total;
-                    const card = prCards[cardIdx];
-                    const isTop = depth === 0;
-                    // Layered offsets — back cards peek out behind top
-                    const baseTransform = depth === 0
-                      ? 'translate(0, 0) rotate(0deg)'
-                      : depth === 1
-                        ? 'translate(6px, 6px) rotate(1.5deg)'
-                        : 'translate(12px, 10px) rotate(-1deg)';
-                    const dragTransform = isTop && (prCardDragX !== 0 || prCardDragging)
-                      ? `translate(${prCardDragX}px, 0) rotate(${prCardDragX * 0.05}deg)`
-                      : baseTransform;
-                    const opacity = depth === 0 ? 1 : depth === 1 ? 0.85 : 0.7;
-                    const zIndex = visibleCount - depth;
+                <div
+                  className="fade-slide-up"
+                  style={{
+                    position: 'relative',
+                    overflow: 'hidden',
+                    borderRadius: '2px',
+                    background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                    boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+                  }}
+                >
+                  <div style={{ padding: '16px', overflow: 'hidden' }}>
+                    <p
+                      className="text-[9px] uppercase font-light mb-2"
+                      style={{ color: 'rgba(255,255,255,0.25)', letterSpacing: '0.25em' }}
+                    >
+                      Personal Records
+                    </p>
+                    <div style={{ borderBottom: '1px dotted rgba(255,255,255,0.15)', marginBottom: '12px' }} />
+                    <div style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                      <div style={{ display: 'inline-block', animation: 'prTicker 20s linear infinite', fontSize: '12px' }}>
+                        {items.map((pr, i) => (
+                          <span key={i}>
+                            <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 300 }}>{pr}</span>
+                            <span style={{ color: 'rgba(255,255,255,0.1)', margin: '0 16px' }}>|</span>
+                          </span>
+                        ))}
+                        {items.map((pr, i) => (
+                          <span key={`d-${i}`}>
+                            <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 300 }}>{pr}</span>
+                            <span style={{ color: 'rgba(255,255,255,0.1)', margin: '0 16px' }}>|</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* ----- Original Tutorial card (glass style) — kept so you can swap back ----- */}
+            {/*
+            <div
+              onClick={() => startTutorial(null)}
+              className="w-full text-left glass-card rounded-2xl overflow-hidden fade-slide-up cursor-pointer active:scale-[0.98] transition-transform"
+              style={{ animationDelay: '240ms' }}
+            >
+              <div className="h-1.5 bg-gradient-to-r from-wf-cyan to-wf-blue" />
+              <div className="p-5">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-wf-cyan/10 flex items-center justify-center shrink-0">
+                    <svg className="w-5 h-5 text-wf-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.042 21.672L13.684 16.6m0 0l-2.51 2.225.569-9.47 5.227 7.917-3.286-.672zM12 2.25V4.5m5.834.166l-1.591 1.591M20.25 10.5H18M7.757 14.743l-1.59 1.59M6 10.5H3.75m4.007-4.243l-1.59-1.59" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-base font-bold text-white">Tutorial</h3>
+                    <p className="text-xs text-wf-gray-400 mt-1">Step-by-step walkthrough to pick your first program, schedule workouts, and track your progress.</p>
+                  </div>
+                  <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            */}
+
+            {/* Tutorial card — Nike style */}
+            <div
+              onClick={() => startTutorial(null)}
+              className="cursor-pointer active:scale-[0.98] transition-transform fade-slide-up"
+              style={{
+                position: 'relative',
+                overflow: 'hidden',
+                borderRadius: '2px',
+                background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+                animationDelay: '240ms',
+              }}
+            >
+              {/* Cyan accent bar */}
+              <div style={{ height: '3px', background: 'linear-gradient(90deg, #06b6d4, rgba(6,182,212,0.5), transparent)' }} />
+
+              {/* Cyan glow spotlight */}
+              <div style={{
+                position: 'absolute',
+                top: '-30%', right: '-20%',
+                width: '70%', height: '160%',
+                background: 'radial-gradient(circle, rgba(6,182,212,0.10) 0%, transparent 60%)',
+                filter: 'blur(40px)',
+                pointerEvents: 'none',
+              }} />
+
+              <div style={{ position: 'relative', padding: '24px' }}>
+                <p className="text-[10px] uppercase font-light mb-2" style={{ color: 'rgba(6,182,212,0.7)', letterSpacing: '0.3em' }}>
+                  Get Started
+                </p>
+                <h3
+                  className="text-[28px] font-black text-white leading-[0.9] tracking-tight"
+                  style={{ fontFamily: 'system-ui', textShadow: '0 2px 20px rgba(0,0,0,0.5)' }}
+                >
+                  TUTORIAL
+                </h3>
+                <p className="text-[11px] text-white/40 font-light mt-3 max-w-[300px] leading-relaxed">
+                  Step-by-step walkthrough to pick your first program, schedule workouts, and track your progress.
+                </p>
+                <div className="flex items-center gap-1.5 mt-4">
+                  <span className="text-[10px] text-white/40 uppercase font-medium" style={{ letterSpacing: '0.2em' }}>Begin</span>
+                  <svg className="w-3 h-3 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            {/* ----- Original Challenges card (glass style) — kept so you can swap back ----- */}
+            {/*
+            <div
+              onClick={() => setSelectedGroup('challenges')}
+              className="w-full text-left glass-card rounded-2xl overflow-hidden fade-slide-up cursor-pointer active:scale-[0.98] transition-transform"
+              style={{ animationDelay: '0ms' }}
+            >
+              <div className="h-1.5 bg-wf-orange" />
+              <div className="p-5">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-black text-white tracking-tight">Challenges</h2>
+                  <span className="px-2 py-0.5 rounded-full bg-orange-500/15 border border-orange-500/30 text-[10px] font-bold text-orange-400 uppercase tracking-wider">
+                    Coming Soon
+                  </span>
+                </div>
+                <p className="text-wf-gray-400 text-sm mt-1">Compete, push your limits, and earn rewards</p>
+              </div>
+            </div>
+            */}
+
+            {/* Challenges card — Nike style */}
+            <div
+              onClick={() => setSelectedGroup('challenges')}
+              className="cursor-pointer active:scale-[0.98] transition-transform fade-slide-up"
+              style={{
+                position: 'relative',
+                overflow: 'hidden',
+                borderRadius: '2px',
+                background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+                animationDelay: '0ms',
+              }}
+            >
+              {/* Orange accent bar */}
+              <div style={{ height: '3px', background: 'linear-gradient(90deg, #f97316, rgba(249,115,22,0.5), transparent)' }} />
+
+              {/* Warm glow spotlight */}
+              <div style={{
+                position: 'absolute',
+                top: '-30%', right: '-20%',
+                width: '70%', height: '160%',
+                background: 'radial-gradient(circle, rgba(249,115,22,0.10) 0%, transparent 60%)',
+                filter: 'blur(40px)',
+                pointerEvents: 'none',
+              }} />
+
+              <div style={{ position: 'relative', padding: '24px' }}>
+                <p className="text-[10px] uppercase font-light mb-2" style={{ color: 'rgba(249,115,22,0.7)', letterSpacing: '0.3em' }}>
+                  Coming Soon
+                </p>
+                <h3
+                  className="text-[28px] font-black text-white leading-[0.9] tracking-tight"
+                  style={{ fontFamily: 'system-ui', textShadow: '0 2px 20px rgba(0,0,0,0.5)' }}
+                >
+                  CHALLENGES
+                </h3>
+                <p className="text-[11px] text-white/40 font-light mt-3 max-w-[280px] leading-relaxed">
+                  Compete, push your limits, and earn rewards.
+                </p>
+                <div className="flex items-center gap-1.5 mt-4">
+                  <span className="text-[10px] text-white/40 uppercase font-medium" style={{ letterSpacing: '0.2em' }}>Explore</span>
+                  <svg className="w-3 h-3 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            {/* Stats & Streak card moved to Profile page. */}
+            {/* Stacked Paper PR Cards moved to the Brainstorm page. */}
+
+            {/* Heaviest Lifts — moved from Profile page */}
+            {bodyPartPRs.length > 0 && (
+              <div
+                className="fade-slide-up"
+                style={{
+                  position: 'relative',
+                  overflow: 'hidden',
+                  borderRadius: '2px',
+                  background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                  boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+                }}
+              >
+                {/* Red accent bar */}
+                <div style={{ height: '3px', background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.5), transparent)' }} />
+                {/* Red spotlight glow */}
+                <div style={{
+                  position: 'absolute',
+                  top: '-30%', right: '-20%',
+                  width: '70%', height: '160%',
+                  background: 'radial-gradient(circle, rgba(239,68,68,0.10) 0%, transparent 60%)',
+                  filter: 'blur(40px)',
+                  pointerEvents: 'none',
+                }} />
+                <div style={{ position: 'relative', padding: '24px' }}>
+                  <p className="text-[10px] uppercase font-light mb-2" style={{ color: 'rgba(239,68,68,0.7)', letterSpacing: '0.3em' }}>
+                    Personal Records
+                  </p>
+                  <h3
+                    className="text-[28px] font-black text-white leading-[0.9] tracking-tight mb-6"
+                    style={{ fontFamily: 'system-ui', textShadow: '0 2px 20px rgba(0,0,0,0.5)' }}
+                  >
+                    HEAVIEST LIFTS
+                  </h3>
+                  {['Chest', 'Back', 'Shoulders', 'Quads', 'Biceps', 'Triceps'].map((muscle, i, arr) => {
+                    const pr = bodyPartPRs.find((p) => p.muscle_group?.toLowerCase() === muscle.toLowerCase());
                     return (
-                      <div
-                        key={`${cardIdx}-${depth}`}
-                        onTouchStart={isTop ? handleStart : undefined}
-                        onTouchMove={isTop ? handleMove : undefined}
-                        onTouchEnd={isTop ? handleEnd : undefined}
-                        onMouseDown={isTop ? handleStart : undefined}
-                        onMouseMove={isTop && prCardDragging ? handleMove : undefined}
-                        onMouseUp={isTop ? handleEnd : undefined}
-                        onMouseLeave={isTop && prCardDragging ? handleEnd : undefined}
-                        style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          background: depth === 0 ? '#111' : depth === 1 ? '#151515' : '#1a1a1a',
-                          borderRadius: '16px',
-                          border: '1px solid rgba(255,255,255,0.08)',
-                          padding: '20px',
-                          zIndex,
-                          opacity,
-                          transform: dragTransform,
-                          transition: prCardDragging && isTop ? 'none' : 'transform 0.25s ease-out',
-                          cursor: isTop ? 'grab' : 'default',
-                          touchAction: isTop ? 'pan-y' : 'auto',
-                        }}
-                      >
-                        <p style={{ fontSize: '9px', color: 'rgba(239,68,68,0.6)', letterSpacing: '4px', textTransform: 'uppercase', fontWeight: 700, marginBottom: '12px' }}>
-                          {card.title}
-                        </p>
-                        <div style={{ fontSize: '18px', fontWeight: 800, color: 'white', marginBottom: '6px' }}>
-                          {card.body.split(' — ')[0]}
-                        </div>
-                        <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>
-                          {card.body.includes(' — ') ? card.body.split(' — ')[1] : ''}
-                        </div>
-                        {isTop && (
-                          <div style={{ position: 'absolute', bottom: '12px', right: '16px', fontSize: '9px', color: 'rgba(255,255,255,0.25)', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 600 }}>
-                            Swipe →
-                          </div>
+                      <div key={muscle} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: i < arr.length - 1 ? '10px' : '0' }}>
+                        <span style={{ flex: '0 0 33.333%', fontSize: '11px', color: 'rgba(255,255,255,0.3)', letterSpacing: '1px', textTransform: 'uppercase', paddingTop: '1px' }}>{muscle}</span>
+                        {pr ? (
+                          <span style={{ flex: 1, textAlign: 'right', fontSize: '13px', fontWeight: 700, color: 'white', textShadow: '0 0 8px rgba(239,68,68,0.5)', wordBreak: 'break-word' }}>
+                            {pr.exercise_name} — {Number(pr.best_weight)} lbs × {pr.best_reps} reps
+                          </span>
+                        ) : (
+                          <span style={{ flex: 1, textAlign: 'right', fontSize: '13px', fontWeight: 700, color: 'rgba(255,255,255,0.3)' }}>
+                            No PR set
+                          </span>
                         )}
                       </div>
                     );
                   })}
                 </div>
-              );
-            })()}
+              </div>
+            )}
 
           </div>
         )}

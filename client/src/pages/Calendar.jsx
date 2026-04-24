@@ -36,6 +36,7 @@ export default function Calendar() {
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [restDayPrompt, setRestDayPrompt] = useState(false); // show rest day options sub-modal
   const [clearCalendarConfirm, setClearCalendarConfirm] = useState(false); // confirm clear calendar modal
+  const [clearCalendarCompletedWarn, setClearCalendarCompletedWarn] = useState(false); // second confirm when cleared range contains completed sessions
   const [successMsg, setSuccessMsg] = useState(''); // brief success toast
   const [copySource, setCopySource] = useState(null); // { templateId, templateName, date }
   const [copyStep, setCopyStep] = useState(null); // 'pick-day' | 'confirm-overwrite' | 'use-reps'
@@ -169,6 +170,7 @@ export default function Calendar() {
     setEditError('');
     setRestDayPrompt(false);
     setClearCalendarConfirm(false);
+    setClearCalendarCompletedWarn(false);
     setEditingDay(date);
   }
 
@@ -268,6 +270,7 @@ export default function Calendar() {
       await api(`/schedule?from=${dateStr}`, { method: 'DELETE' });
       await refreshSchedule();
       setClearCalendarConfirm(false);
+      setClearCalendarCompletedWarn(false);
       setEditingDay(null);
       setSuccessMsg('Calendar cleared');
       setTimeout(() => setSuccessMsg(''), 2500);
@@ -276,6 +279,22 @@ export default function Calendar() {
       setEditError('Failed to save. Please try again.');
     } finally {
       setScheduleSaving(false);
+    }
+  }
+
+  // Intercept the clear action: if any completed session falls on/after the
+  // editing day, show a second warning before actually deleting.
+  function handleClearCalendarAttempt() {
+    if (!editingDay) return;
+    const fromStr = format(editingDay, 'yyyy-MM-dd');
+    const hasCompletedInRange = completedSessions.some(
+      (c) => c.date && c.date >= fromStr
+    );
+    if (hasCompletedInRange) {
+      setClearCalendarConfirm(false);
+      setClearCalendarCompletedWarn(true);
+    } else {
+      handleClearCalendar();
     }
   }
 
@@ -1204,11 +1223,49 @@ export default function Calendar() {
                 Cancel
               </button>
               <button
-                onClick={handleClearCalendar}
+                onClick={handleClearCalendarAttempt}
                 disabled={scheduleSaving}
                 className={`flex-1 py-3 rounded-xl bg-red-500 text-sm font-semibold text-white active:scale-[0.98] transition-all ${scheduleSaving ? 'opacity-50 pointer-events-none' : ''}`}
               >
                 {scheduleSaving ? 'Clearing...' : 'Clear'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Second confirmation — only shown when the cleared range contains completed sessions */}
+      {clearCalendarCompletedWarn && editingDay && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center px-4" onClick={() => setClearCalendarCompletedWarn(false)}>
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+          <div
+            className="relative w-full max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 pt-5 pb-4">
+              <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-3">
+                <svg className="w-6 h-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-white text-center">Remove Completed Sessions?</h3>
+              <p className="text-sm text-wf-gray-400 text-center mt-2">
+                Some of these days have completed workout sessions. Deleting this calendar or deleting these days will remove your saved workouts as well as recorded PRs. Do you still want to delete these?
+              </p>
+            </div>
+            <div className="px-5 pb-5 flex gap-3">
+              <button
+                onClick={() => setClearCalendarCompletedWarn(false)}
+                className="flex-1 py-3 rounded-xl bg-white/10 text-sm font-semibold text-white active:scale-[0.98] transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleClearCalendar}
+                disabled={scheduleSaving}
+                className={`flex-1 py-3 rounded-xl bg-red-500 text-sm font-semibold text-white active:scale-[0.98] transition-all ${scheduleSaving ? 'opacity-50 pointer-events-none' : ''}`}
+              >
+                {scheduleSaving ? 'Deleting...' : 'Delete'}
               </button>
             </div>
           </div>
