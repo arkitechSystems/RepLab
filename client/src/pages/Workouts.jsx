@@ -71,6 +71,204 @@ const CARD_BORDER_STYLE = {
   boxShadow: '0 0 20px rgba(255,255,255,0.07), 0 0 40px rgba(255,255,255,0.03)',
 };
 
+// Flip card for the Workout Library list. Combines Brainstorm demo #8
+// (flip card) with demo #7 (3D mouse-tilt + spotlight). Tap card to flip.
+// On desktop the card tilts toward the cursor with a moving highlight; on
+// mobile mousemove doesn't fire so only the flip animates.
+function LibraryFlipCard({ program, programColor, idx, isFlipped, onFlip, onView, navigate, openBeginProgram, dataTutorial }) {
+  const cardRef = useRef(null);
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const onMove = (e) => {
+    const r = cardRef.current?.getBoundingClientRect();
+    if (!r) return;
+    setTilt({
+      x: (e.clientX - r.left) / r.width - 0.5,
+      y: (e.clientY - r.top) / r.height - 0.5,
+    });
+  };
+  const reset = () => setTilt({ x: 0, y: 0 });
+
+  const TILT_MAX = 12;
+  const tiltX = -tilt.y * TILT_MAX;
+  const tiltY = tilt.x * TILT_MAX;
+  const flipY = isFlipped ? 180 : 0;
+  // Decoupled transforms: tilt lives on an outer wrapper with a fast (0.1s)
+  // transition for cursor-follow snappiness; flip lives on the inner wrapper
+  // with the slow (0.7s) transition that matches Brainstorm demo #8.
+  const tiltTransform = `rotateX(${tiltX}deg) rotateY(${tiltY}deg)`;
+  const flipTransform = `rotateY(${flipY}deg)`;
+  // Red mouse-follow spotlight on a near-black surface — matches the
+  // brainstorm tilt demo #7 aesthetic exactly.
+  const spotlight = `radial-gradient(circle at ${(tilt.x + 0.5) * 100}% ${(tilt.y + 0.5) * 100}%, rgba(239,68,68,0.25), transparent 50%)`;
+
+  const FACE_BG = 'linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%)';
+  const FACE_BORDER = '1px solid rgba(255,255,255,0.10)';
+  const FACE_SHADOW = '0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)';
+  const FlipHint = () => (
+    <span className="absolute bottom-2 right-3 text-[9px] text-white/60 uppercase tracking-wider pointer-events-none">
+      Tap to flip
+    </span>
+  );
+
+  return (
+    <div
+      ref={cardRef}
+      onMouseMove={onMove}
+      onMouseLeave={reset}
+      data-tutorial={dataTutorial}
+      className="snap-start shrink-0 w-full wf-flip-outer fade-slide-up"
+      style={{ animationDelay: `${idx * 60}ms`, height: '210px' }}
+    >
+      {/* Tilt wrapper — fast transition for cursor-follow. */}
+      <div
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: '100%',
+          transformStyle: 'preserve-3d',
+          transform: tiltTransform,
+          transition: 'transform 0.1s ease-out',
+        }}
+      >
+      <div
+        className="wf-flip-inner"
+        style={{
+          transform: flipTransform,
+          // 0.7s matches Brainstorm demo #8's flip animation.
+          transition: 'transform 0.7s cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+      >
+        {/* FRONT */}
+        <div
+          onClick={() => onFlip(program.id)}
+          className="wf-flip-face cursor-pointer"
+          style={{ background: FACE_BG, border: FACE_BORDER, boxShadow: FACE_SHADOW, borderRadius: '2px' }}
+        >
+          <div className="absolute inset-0 pointer-events-none" style={{ background: spotlight, borderRadius: '2px' }} />
+          <div className="h-[3px] relative" style={{ background: `linear-gradient(90deg, ${programColor}, ${programColor}40)` }} />
+          <div className="relative p-6 pb-7 h-full flex flex-col">
+            <h4 className="text-[24px] font-black text-white leading-[1.05] tracking-tight mb-3 uppercase" style={{ textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}>
+              {program.name}
+            </h4>
+            <div className="flex items-center justify-between gap-2 mb-5">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-white/80 font-light">{program.weekCount} {program.weekCount === 1 ? 'week' : 'weeks'}</span>
+                <span className="w-px h-2.5 bg-white/30" />
+                <span className="text-[11px] text-white/80 font-light">{program.workoutCount} workouts</span>
+              </div>
+              {program.programType && program.programType !== 'other' && (
+                <span
+                  className="shrink-0 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full text-black"
+                  style={{ background: '#e8eaed', boxShadow: '0 4px 12px rgba(255,255,255,0.10)' }}
+                >{
+                  program.programType === 'strength_conditioning' ? 'Shred'
+                  : program.programType === 'hypertrophy_strength' ? 'Hyp & Str'
+                  : program.programType
+                }</span>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (program.isFeatured) {
+                    navigate('/featured-session');
+                  } else {
+                    onView(program.id);
+                  }
+                }}
+                className="flex-1 py-2.5 rounded-full border border-white/40 text-[10px] text-white uppercase tracking-[0.2em] font-medium active:bg-white/10 transition-colors"
+              >
+                View Program
+              </button>
+              <button
+                data-tutorial={idx === 0 ? 'begin-program-btn' : undefined}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (program.isFeatured) {
+                    navigate('/featured-session');
+                  } else if (program.workoutCount > 0) {
+                    openBeginProgram(e, program);
+                  }
+                }}
+                className="flex-1 py-2.5 rounded-full border border-white/40 text-[10px] text-white uppercase tracking-[0.2em] font-medium active:bg-white/10 transition-colors"
+              >
+                Begin
+              </button>
+            </div>
+            <FlipHint />
+          </div>
+        </div>
+
+        {/* BACK */}
+        <div
+          onClick={() => onFlip(program.id)}
+          className="wf-flip-face wf-flip-back cursor-pointer"
+          style={{ background: FACE_BG, border: FACE_BORDER, boxShadow: FACE_SHADOW, borderRadius: '2px' }}
+        >
+          <div className="absolute inset-0 pointer-events-none" style={{ background: spotlight, borderRadius: '2px' }} />
+          <div className="h-[3px] relative" style={{ background: `linear-gradient(90deg, ${programColor}, ${programColor}40)` }} />
+          <div className="relative p-6 pb-7 h-full flex flex-col">
+            {/* Abbreviated program name as the heading on the back face.
+                Falls back to the full name when no shortName is set in the
+                abbreviations table. */}
+            <h4
+              className="text-[18px] font-black text-white leading-[1.1] tracking-tight uppercase mb-2"
+              style={{ textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}
+            >
+              {program.shortName || program.name}
+            </h4>
+            <p className="text-[10px] uppercase font-bold text-white/70 mb-2" style={{ letterSpacing: '0.25em' }}>
+              Program Description
+            </p>
+            <p
+              onClick={(e) => e.stopPropagation()}
+              className="text-[13px] text-white/90 leading-relaxed flex-1 mb-3 overflow-y-auto scrollbar-hide"
+              style={{
+                minHeight: 0,
+                textShadow: '0 1px 4px rgba(0,0,0,0.4)',
+                WebkitOverflowScrolling: 'touch',
+              }}
+            >
+              {program.description || 'No description available yet for this program.'}
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (program.isFeatured) {
+                    navigate('/featured-session');
+                  } else {
+                    onView(program.id);
+                  }
+                }}
+                className="flex-1 py-2.5 rounded-full border border-white/40 text-[10px] text-white uppercase tracking-[0.2em] font-medium active:bg-white/10 transition-colors"
+              >
+                View Program
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (program.isFeatured) {
+                    navigate('/featured-session');
+                  } else if (program.workoutCount > 0) {
+                    openBeginProgram(e, program);
+                  }
+                }}
+                className="flex-1 py-2.5 rounded-full border border-white/40 text-[10px] text-white uppercase tracking-[0.2em] font-medium active:bg-white/10 transition-colors"
+              >
+                Begin
+              </button>
+            </div>
+            <FlipHint />
+          </div>
+        </div>
+      </div>
+      </div>
+    </div>
+  );
+}
+
 // Stat — cardless (sits directly on the page background, matching brainstorm demo #5).
 // A word above the number and another below it.
 function OdometerStat({ value, labelTop, labelBottom, delay = 0 }) {
@@ -99,13 +297,157 @@ function OdometerStat({ value, labelTop, labelBottom, delay = 0 }) {
   );
 }
 
-// Short names shown in the weekly-view StickyHeader (next to "Begin Program").
-// Full name is still used everywhere else — the ProgramOverviewHero, cards,
-// search, etc. Add mappings here when a program's full name is too long for
-// the narrow top bar.
-const PROGRAM_HEADER_SHORT_NAMES = {
-  'Muscle & Fitness 5000 Rep Arm Specialization': 'M&F 5000 Rep Arms',
+// Weekly volume bar chart rendered at the bottom of the main Workouts page.
+// Ported from Brainstorm sandbox card #6. Each day column shows the
+// abbreviated workout name from the user's weekly schedule (or "REST" /
+// "OFF" if the day is a rest day or has nothing scheduled). Self-fetches
+// its own Sun→Sat range so callers don't need to widen the parent fetch.
+function abbrevTemplateName(name) {
+  if (!name) return '';
+  // First word, capped at 5 chars, all-caps. Good enough as a default;
+  // refine later if specific programs need a smarter mapping.
+  return name.trim().split(/\s+/)[0].slice(0, 5).toUpperCase();
+}
+
+// Per-day visual states. Mirrors the monthly Calendar legend so users see
+// the same conventions (completed, scheduled, missed, rest) on the weekly
+// strip. Today gets a red border on top of any of these.
+const STATE_BG = {
+  completed: 'rgba(34,197,94,0.18)',
+  scheduled: 'rgba(239,68,68,0.16)',
+  missed:    'rgba(239,68,68,0.10)',
+  rest:      'rgba(148,163,184,0.10)',
+  off:       'rgba(255,255,255,0.05)',
 };
+
+function WorkoutsWeeklyBarChart({ templates = [] }) {
+  const [mounted, setMounted] = useState(false);
+  const [weekSchedule, setWeekSchedule] = useState([]);
+  const [completedSessions, setCompletedSessions] = useState([]);
+  useEffect(() => { const t = setTimeout(() => setMounted(true), 100); return () => clearTimeout(t); }, []);
+
+  // Compute Sunday-of-current-week → Saturday range and fetch schedule.
+  const { weekDates, todayIdx, todayStr } = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const sunday = new Date(today);
+    sunday.setDate(today.getDate() - today.getDay());
+    const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const dates = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(sunday);
+      d.setDate(sunday.getDate() + i);
+      return fmt(d);
+    });
+    return { weekDates: dates, todayIdx: today.getDay(), todayStr: fmt(today) };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      api(`/schedule?from=${weekDates[0]}&to=${weekDates[6]}`).catch(() => []),
+      api('/sessions/completed').catch(() => []),
+    ]).then(([sched, completed]) => {
+      if (cancelled) return;
+      setWeekSchedule(sched || []);
+      setCompletedSessions(completed || []);
+    });
+    return () => { cancelled = true; };
+  }, [weekDates]);
+
+  const dayLetters = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+  return (
+    <div>
+      <div className="flex items-end gap-2 h-[640px]">
+        {weekDates.map((date, i) => {
+          const isToday = date === todayStr;
+          const isPast = date < todayStr;
+          const entry = weekSchedule.find((s) => s.date === date);
+          const completedHere = entry?.templateId
+            && completedSessions.some((c) => c.templateId === entry.templateId && c.date === date);
+
+          let state;
+          let label;
+          if (entry?.isRest) {
+            state = 'rest';
+            label = 'REST';
+          } else if (completedHere) {
+            state = 'completed';
+            const tmpl = templates.find((t) => t.id === entry.templateId);
+            label = abbrevTemplateName(entry.templateName || tmpl?.name);
+          } else if (!entry?.templateId) {
+            state = 'off';
+            label = 'OFF';
+          } else if (isPast) {
+            state = 'missed';
+            const tmpl = templates.find((t) => t.id === entry.templateId);
+            label = abbrevTemplateName(entry.templateName || tmpl?.name);
+          } else {
+            state = 'scheduled';
+            const tmpl = templates.find((t) => t.id === entry.templateId);
+            label = abbrevTemplateName(entry.templateName || tmpl?.name);
+          }
+
+          return (
+            <div key={date} className="flex-1 flex flex-col items-center gap-1.5">
+              <div
+                className="relative w-full flex-1 rounded flex items-center justify-center px-1 text-center"
+                style={{
+                  background: STATE_BG[state],
+                  // Today gets a red inset border ring; otherwise a subtle white edge.
+                  boxShadow: isToday ? 'inset 0 0 0 2px #ef4444' : 'inset 0 0 0 1px rgba(255,255,255,0.12)',
+                }}
+              >
+                <span
+                  className={`text-[9px] font-bold uppercase leading-tight tracking-tight break-all ${
+                    state === 'completed' ? 'text-white' : state === 'rest' ? 'text-white/45' : state === 'off' ? 'text-white/35' : 'text-white/75'
+                  }`}
+                  style={state === 'missed' ? { textDecoration: 'line-through', textDecorationColor: 'rgba(239,68,68,0.85)' } : undefined}
+                >
+                  {label}
+                </span>
+                {state === 'completed' && (
+                  <div
+                    style={{
+                      position: 'absolute', top: 2, right: 2,
+                      width: 12, height: 12, borderRadius: '50%',
+                      background: '#22c55e',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      boxShadow: '0 0 6px rgba(34,197,94,0.55)',
+                    }}
+                  >
+                    <svg width="8" height="8" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth={4.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+              {/* 4px marker bar — red + glow for today, dim white otherwise. */}
+              <div
+                className="w-full rounded origin-bottom"
+                style={{
+                  height: 4,
+                  background: isToday ? 'linear-gradient(180deg, #ef4444, #dc2626)' : 'rgba(255,255,255,0.25)',
+                  animation: mounted ? `wf-barRise 0.6s cubic-bezier(0.2,0.9,0.2,1) ${i * 80}ms both` : 'none',
+                  boxShadow: isToday ? '0 0 10px rgba(239,68,68,0.55)' : 'none',
+                }}
+              />
+              <span className={`text-[10px] font-bold ${isToday ? 'text-wf-red' : 'text-white/40'}`}>{dayLetters[i]}</span>
+            </div>
+          );
+        })}
+      </div>
+      <p className="text-[10px] text-white/40 mt-3 uppercase font-bold tracking-[0.25em] text-center">Week at a Glance</p>
+    </div>
+  );
+}
+
+// Short names shown in the weekly-view StickyHeader (next to "Begin Program").
+// Display short names now come from the program_name_abbreviations DB table
+// — populated by the seed in server/initDb.js. The API ships them as
+// program.shortName; render sites use `program.shortName || program.name`
+// so a missing row falls back to the full name. To change an abbreviation,
+// edit the seed in initDb.js and let it ON CONFLICT-update on next boot.
 
 // Expandable program metadata card shown above the weekly grid on the
 // program-detail screen. Source of truth is `programs.program_details`
@@ -124,8 +466,10 @@ function ProgramDetailsCard({ details }) {
 
   const overview = details.Overview || details.overview || '';
   // PDF is rendered as the download button on the hero, not as a raw row.
+  // "Main Goal" duplicates the program-type pill on the Browse Library card,
+  // so it's filtered out here too.
   const entries = Object.entries(details)
-    .filter(([k]) => k !== 'Overview' && k !== 'overview' && k !== 'PDF')
+    .filter(([k]) => k !== 'Overview' && k !== 'overview' && k !== 'PDF' && k !== 'Main Goal')
     .sort(([a], [b]) => {
       const ai = PROGRAM_DETAIL_ORDER.indexOf(a);
       const bi = PROGRAM_DETAIL_ORDER.indexOf(b);
@@ -180,6 +524,9 @@ function ProgramDetailsCard({ details }) {
 // with red swapped in).
 function ProgramOverviewHero({ program, weekCount }) {
   const workoutCount = program.workoutCount || 0;
+  // Description card uses the FULL program name. The sticky page title at the
+  // top still uses the abbreviated short name (program.shortName) so the
+  // header stays compact while the hero shows the canonical name.
   const titleLines = program.name.split(' ');
   // Break long names onto two lines for the banner feel (as in #17).
   const mid = Math.ceil(titleLines.length / 2);
@@ -215,6 +562,16 @@ function ProgramOverviewHero({ program, weekCount }) {
         <h2 className="text-[40px] font-black text-white tracking-tight leading-[0.9] mt-2" style={{ fontFamily: 'system-ui' }}>
           {line1}{line2 && <><br />{line2}</>}
         </h2>
+        {/* Program description — comes from programs.description in the DB
+            (set via per-program migrations). Falls back silently if empty. */}
+        {program.description && (
+          <p className="text-[13px] text-white/60 font-light mt-3 leading-relaxed">
+            {program.description}
+          </p>
+        )}
+        {/* Program-type badge removed — categories now live only on the
+            cards in the Workout Library (ProgramCard) so the description
+            card here doesn't repeat them. */}
         <div className="flex items-center gap-2 mt-4 flex-wrap">
           <span className="text-[10px] font-bold uppercase" style={{ color: 'rgba(239,68,68,0.8)', letterSpacing: '0.25em' }}>
             {weekCount} {weekCount === 1 ? 'Week' : 'Weeks'}
@@ -304,7 +661,7 @@ function ProgramCard({ program, idx, onSelect, onBegin, onDelete, onShare, dataT
                   program.programType === 'hypertrophy_strength' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' :
                   'bg-white/10 text-wf-gray-400 border-white/10'
                 }`}>{
-                  program.programType === 'strength_conditioning' ? 'Strength & Conditioning'
+                  program.programType === 'strength_conditioning' ? 'Shred'
                   : program.programType === 'hypertrophy_strength' ? 'Hypertrophy & Strength'
                   : program.programType
                 }</span>
@@ -452,6 +809,13 @@ export default function Workouts() {
   const [searchQuery, setSearchQuery] = useState('');
   const [browseSearch, setBrowseSearch] = useState('');
   const [browseFilter, setBrowseFilter] = useState('all');
+  // Set of programIds whose library card is showing its back face. Tap toggles.
+  const [flippedLibraryCards, setFlippedLibraryCards] = useState(() => new Set());
+  const toggleLibraryFlip = (id) => setFlippedLibraryCards((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [streak, setStreak] = useState(0);
@@ -1130,7 +1494,10 @@ export default function Workouts() {
   }
 
   const enrichedPrograms = getEnrichedPrograms();
-  const browsePrograms = enrichedPrograms.filter((p) => p.userId === null);
+  // Browse list excludes featured programs — Will's Hypertrophy lives in the
+  // dedicated Featured Workouts card on the homepage instead. Re-include later
+  // by dropping the !isFeatured guard.
+  const browsePrograms = enrichedPrograms.filter((p) => p.userId === null && !p.isFeatured);
   const myPrograms = enrichedPrograms.filter((p) => p.userId !== null);
 
   // If the active browse-library filter no longer matches any program (e.g., the
@@ -1296,7 +1663,7 @@ export default function Workouts() {
     const totalSets = pw.exercises?.reduce((sum, ex) => sum + (ex.sets?.length || 0), 0) || 0;
     return (
       <div>
-        <StickyHeader title={pw.name} />
+        <StickyHeader title={pw.name} titleStyle={{ fontSize: '26.4px' }} />
 
         {/* Back button — sticky below header */}
         <div className="sticky top-[52px] z-20 bg-black/80 backdrop-blur-xl px-4 py-2">
@@ -1410,7 +1777,7 @@ export default function Workouts() {
     if (selectedWeek === null) {
       return (
         <div>
-          <StickyHeader title={PROGRAM_HEADER_SHORT_NAMES[program.name] || program.name}>
+          <StickyHeader title={program.shortName || program.name} titleStyle={{ fontSize: '26.4px' }}>
             {program.workoutCount > 0 && (
               <button
                 data-tutorial="begin-program-btn"
@@ -1498,64 +1865,62 @@ export default function Workouts() {
                       </div>
                     </div>
                   )}
+                  {/*
+                    NEW (2026-04-25): week cards restyled to match the
+                    Featured Program (Will's Hypertrophy) week cards. Removed
+                    the colored top strip + ambient red spotlight + 44px week
+                    number block; replaced with the featured-style compact
+                    "WEEK X" header + workout-names list + chevron. The
+                    previous "classic" style is preserved in git history —
+                    revert this hunk on commit/branch to restore.
+                  */}
                   <div
                     key={wIdx}
                     data-tutorial={wIdx === 0 ? 'week-card' : undefined}
                     onClick={() => { setSelectedWeek(weekNum); if (tutorial.active) completeTutorialAction('week-selected'); }}
                     style={{
                       animationDelay: `${wIdx * 60}ms`,
+                      background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                      borderRadius: '2px',
+                      boxShadow: '0 8px 30px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)',
                       position: 'relative',
                       overflow: 'hidden',
-                      borderRadius: '2px',
-                      background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
-                      boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
                     }}
                     className="w-full text-left active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
                   >
-                    {/* Color strip showing workout palette for this week */}
-                    <div className="flex h-[3px]">
-                      {uniqueNames.map((name, i) => {
-                        const color = program.colorMap.get(name);
-                        return <div key={i} className={`flex-1 ${color ? color.dot : 'bg-wf-orange'}`} />;
-                      })}
-                    </div>
-                    {/* Ambient red spotlight */}
-                    <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.06) 0%, transparent 60%)', filter: 'blur(40px)' }} />
-
-                    <div className="relative px-6 py-5">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className="text-[10px] text-white/40 uppercase font-light" style={{ letterSpacing: '0.3em' }}>Week</p>
-                          <div className="text-[44px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.9' }}>
-                            {weekNum}
-                          </div>
-                          {thisPhase && (
-                            <p className="text-[11px] font-bold uppercase tracking-wider text-wf-red mt-1">
-                              {thisPhase}
-                            </p>
-                          )}
-                          <p className="text-[10px] text-white/30 uppercase font-semibold mt-1.5" style={{ letterSpacing: '0.3em' }}>
-                            {weekWorkouts.length} WORKOUT{weekWorkouts.length === 1 ? '' : 'S'}
-                            {weekTemplates.length - weekWorkouts.length > 0 && ` · ${weekTemplates.length - weekWorkouts.length} REST DAY${weekTemplates.length - weekWorkouts.length === 1 ? '' : 'S'}`}
+                    <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                      <div className="min-w-0">
+                        <div className="text-[18px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui' }}>
+                          WEEK {weekNum}
+                        </div>
+                        {thisPhase && (
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-wf-red mt-0.5" style={{ letterSpacing: '0.2em' }}>
+                            {thisPhase}
                           </p>
+                        )}
+                        <div className="text-[11px] text-white/25 font-light mt-1 truncate">
+                          {weekTemplates
+                            .filter((t) => !t.isRest)
+                            .map((t) => t.name.replace(/\s*\(week\s*\d+\)\s*/gi, '').trim())
+                            .join(' · ')}
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          {selectedGroup === 'my' && weeks.length > 1 && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleDeleteWeek(program, wIdx); }}
-                              className="w-8 h-8 flex items-center justify-center active:bg-red-500/25 transition-colors"
-                              style={{ borderRadius: '2px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)' }}
-                              title="Delete week"
-                            >
-                              <svg className="w-3.5 h-3.5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                              </svg>
-                            </button>
-                          )}
-                          <svg className="w-4 h-4 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                          </svg>
-                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {selectedGroup === 'my' && weeks.length > 1 && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDeleteWeek(program, wIdx); }}
+                            className="w-8 h-8 flex items-center justify-center active:bg-red-500/25 transition-colors"
+                            style={{ borderRadius: '2px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)' }}
+                            title="Delete week"
+                          >
+                            <svg className="w-3.5 h-3.5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                            </svg>
+                          </button>
+                        )}
+                        <svg className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.25)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                        </svg>
                       </div>
                     </div>
                   </div>
@@ -1573,11 +1938,11 @@ export default function Workouts() {
 
     // Show workouts for selected week
     const weekTemplates = weeks[selectedWeek - 1] || [];
-    const weekTitle = `${program.name} — Week ${selectedWeek}`;
+    const weekTitle = `${program.shortName || program.name} — Week ${selectedWeek}`;
 
     return (
       <div>
-        <StickyHeader title={editMode ? '' : weekTitle}>
+        <StickyHeader title={editMode ? '' : weekTitle} titleStyle={{ fontSize: '26.4px' }}>
           {editMode ? (
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <input
@@ -1642,14 +2007,14 @@ export default function Workouts() {
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
             </svg>
-            {program.name}
+            {program.shortName || program.name}
           </button>
         </div>
 
         <div className="px-4">
           <div className="space-y-3 pb-4">
             {weekTemplates.map((t, idx) => {
-              const color = getColorFromMap(program.colorMap, t.name, t.isRest);
+              const isExpanded = expandedWorkoutCard === t.id;
               return (
                 <div
                   key={t.id}
@@ -1659,86 +2024,61 @@ export default function Workouts() {
                     overflow: 'hidden',
                     borderRadius: '2px',
                     background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
-                    boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+                    boxShadow: '0 8px 30px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)',
                   }}
                   className="transition-transform fade-slide-up"
                 >
-                  {/* Top accent bar — workout color */}
-                  <div className={`h-[3px] ${color.dot}`} />
-                  {/* Ambient colored spotlight */}
-                  <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: `radial-gradient(circle, ${color.hex}14 0%, transparent 60%)`, filter: 'blur(40px)' }} />
-
-                  {/* Header row — workout name as tracked uppercase label (matches Browse Workout Library card) */}
-                  <div className="relative px-6 pt-5 pb-4 border-b border-white/10">
-                    <div className="flex items-center gap-2.5">
-                      <div className={`w-2 h-2 rounded-full ${color.dot} shrink-0`} />
-                      <p className="text-[11px] uppercase font-light truncate flex-1" style={{ letterSpacing: '0.3em', color: `${color.hex}cc` }}>
-                        {t.name}
-                      </p>
-                      {editMode && (
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            onClick={() => handleMoveTemplate(program, idx, -1)}
-                            disabled={idx === 0}
-                            aria-label="Move up"
-                            className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center disabled:opacity-25 active:bg-white/20 transition-colors"
-                          >
-                            <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={() => handleMoveTemplate(program, idx, 1)}
-                            disabled={idx === weekTemplates.length - 1}
-                            aria-label="Move down"
-                            className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center disabled:opacity-25 active:bg-white/20 transition-colors"
-                          >
-                            <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                            </svg>
-                          </button>
-                        </div>
-                      )}
+                  {/*
+                    NEW (2026-04-25): day cards restyled to match the
+                    Featured Program week-card aesthetic. Removed the
+                    workout-color top strip + ambient colored spotlight
+                    + 40px exercise-count number block. Action buttons
+                    (Add / Share / Edit / Invite / Delete) and the
+                    expand-to-show-exercises behavior are preserved.
+                  */}
+                  <div
+                    onClick={() => {
+                      if (editMode || t.isRest) return;
+                      setExpandedWorkoutCard(isExpanded ? null : t.id);
+                    }}
+                    className={(editMode || t.isRest) ? '' : 'cursor-pointer active:scale-[0.99] transition-transform'}
+                    style={{ padding: '16px 20px' }}
+                  >
+                    {/* Title spans the full card width — overlaps the buttons row below visually but truncates safely if too long. */}
+                    <div className="text-[17.1px] font-black text-white tracking-tight uppercase truncate" style={{ fontFamily: 'system-ui' }}>
+                      {t.name}
                     </div>
-                  </div>
-
-                  {/* Content row — big display count + actions (matches Browse Workout Library) */}
-                  <div className="relative px-6 py-5 flex items-center justify-between gap-4">
-                    {/* Left: exercise count as big display number — clickable to expand */}
-                    <button
-                      onClick={() => {
-                        if (editMode || t.isRest) return;
-                        setExpandedWorkoutCard(expandedWorkoutCard === t.id ? null : t.id);
-                      }}
-                      disabled={editMode || t.isRest}
-                      className="text-left min-w-0 disabled:cursor-default"
-                    >
-                      <div style={{
-                        fontSize: '40.8px',
-                        fontWeight: 200,
-                        color: 'white',
-                        letterSpacing: '-1.7px',
-                        lineHeight: 1,
-                        fontFamily: 'system-ui',
-                      }}>
-                        {t.isRest ? '—' : (t.exercises || []).length}
+                    {/* Bottom row — exercise-count subtitle on the left, action buttons on the right. */}
+                    <div className="flex items-center justify-between gap-3 mt-1">
+                      <div className="text-[11px] text-white/25 font-light shrink-0">
+                        {t.isRest ? 'Rest day' : `${(t.exercises || []).length} ${(t.exercises || []).length === 1 ? 'exercise' : 'exercises'}`}
                       </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[10px] text-white/30 uppercase font-semibold" style={{ letterSpacing: '0.3em' }}>
-                          {t.isRest ? 'Rest Day' : (t.exercises || []).length === 1 ? 'Exercise' : 'Exercises'}
-                        </span>
-                        {!t.isRest && (
-                          <svg
-                            className={`w-3 h-3 text-white/40 transition-transform duration-200 shrink-0 ${expandedWorkoutCard === t.id ? 'rotate-180' : ''}`}
-                            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-                          >
+                      <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    {editMode ? (
+                      <>
+                        <button
+                          onClick={() => handleMoveTemplate(program, idx, -1)}
+                          disabled={idx === 0}
+                          aria-label="Move up"
+                          className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center disabled:opacity-25 active:bg-white/20 transition-colors"
+                        >
+                          <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => handleMoveTemplate(program, idx, 1)}
+                          disabled={idx === weekTemplates.length - 1}
+                          aria-label="Move down"
+                          className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center disabled:opacity-25 active:bg-white/20 transition-colors"
+                        >
+                          <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
                           </svg>
-                        )}
-                      </div>
-                    </button>
-
-                    {/* Right: action buttons */}
+                        </button>
+                      </>
+                    ) : null}
+                    {/* Right: action buttons (only when not in editMode and not a rest day) */}
                     {editMode ? (
                       <button
                         onClick={() => handleDeleteTemplate(t.id)}
@@ -1808,6 +2148,8 @@ export default function Workouts() {
                         )}
                       </div>
                     ) : null}
+                      </div>
+                    </div>
                   </div>
 
                   {/* Exercise accordion cards — primary accordion (hidden in edit mode, shown when card expanded) */}
@@ -3244,7 +3586,7 @@ export default function Workouts() {
   if (selectedGroup && !selectedProgram) {
     const isBrowse = selectedGroup === 'browse';
     const groupPrograms = isBrowse ? browsePrograms : myPrograms;
-    const groupTitle = isBrowse ? 'BROWSE WORKOUT LIBRARY' : 'MY WORKOUTS';
+    const groupTitle = isBrowse ? 'WORKOUT LIBRARY' : 'MY WORKOUTS';
 
     return (
       <div>
@@ -3308,7 +3650,7 @@ export default function Workouts() {
             { value: 'strength',             label: 'Strength' },
             { value: 'hybrid',               label: 'Hybrid' },
             { value: 'conditioning',         label: 'Conditioning' },
-            { value: 'strength_conditioning',label: 'Strength & Conditioning' },
+            { value: 'strength_conditioning',label: 'Shred' },
             { value: 'hypertrophy_strength', label: 'Hypertrophy & Strength' },
           ];
           const dynamicFilters = [
@@ -3379,53 +3721,23 @@ export default function Workouts() {
                         const BROWSE_COLORS = ['#ef4444', '#3b82f6', '#22c55e', '#a855f7'];
                         const programColor = BROWSE_COLORS[idx % BROWSE_COLORS.length];
                         return (
-                          <div
+                          <LibraryFlipCard
                             key={program.id}
-                            data-tutorial={idx === 0 ? 'program-card' : undefined}
-                            onClick={() => {
-                              if (program.isFeatured) {
-                                navigate('/featured-session');
-                              } else {
-                                setSelectedProgram(program.id);
-                                setSelectedWeek(null);
-                                setBrowseSearch('');
-                                completeTutorialAction('program-selected');
-                              }
+                            program={program}
+                            programColor={programColor}
+                            idx={idx}
+                            isFlipped={flippedLibraryCards.has(program.id)}
+                            onFlip={toggleLibraryFlip}
+                            onView={(id) => {
+                              setSelectedProgram(id);
+                              setSelectedWeek(null);
+                              setBrowseSearch('');
+                              completeTutorialAction('program-selected');
                             }}
-                            className="snap-start shrink-0 w-full relative overflow-hidden fade-slide-up cursor-pointer active:scale-[0.98] transition-transform"
-                            style={{
-                              animationDelay: `${idx * 60}ms`,
-                              background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
-                              boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
-                              borderRadius: '2px',
-                            }}
-                          >
-                            <div className="h-[3px]" style={{ background: `linear-gradient(90deg, ${programColor}, ${programColor}40)` }} />
-                            <div className="p-6 pb-6">
-                              <h4 className="text-[24px] font-black text-white leading-[1.05] tracking-tight mb-3 uppercase">
-                                {program.name}
-                              </h4>
-                              <div className="flex items-center gap-2 mb-5">
-                                <span className="text-[11px] text-white/30 font-light">{program.weekCount} {program.weekCount === 1 ? 'week' : 'weeks'}</span>
-                                <span className="w-px h-2.5 bg-white/10" />
-                                <span className="text-[11px] text-white/30 font-light">{program.workoutCount} workouts</span>
-                              </div>
-                              <button
-                                data-tutorial={idx === 0 ? 'begin-program-btn' : undefined}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (program.isFeatured) {
-                                    navigate('/featured-session');
-                                  } else if (program.workoutCount > 0) {
-                                    openBeginProgram(e, program);
-                                  }
-                                }}
-                                className="w-full py-2.5 rounded-full border border-white/15 text-[10px] text-white/50 uppercase tracking-[0.2em] font-medium active:bg-white/5 transition-colors"
-                              >
-                                Begin
-                              </button>
-                            </div>
-                          </div>
+                            navigate={navigate}
+                            openBeginProgram={openBeginProgram}
+                            dataTutorial={idx === 0 ? 'program-card' : undefined}
+                          />
                         );
                       })}
                     </div>
@@ -4115,7 +4427,7 @@ export default function Workouts() {
         ) : (
           <div className="space-y-4 pb-4">
             {/* Your Next Workout — Nike style */}
-            <div className="fade-slide-up" style={{ animationDelay: '0ms' }}>
+            <div className="fade-slide-up mx-2" style={{ animationDelay: '0ms' }}>
               <div className="relative overflow-hidden" style={{
                 background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
                 boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
@@ -4126,14 +4438,14 @@ export default function Workouts() {
                 {/* Accent spotlight */}
                 <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
 
-                <div className="relative p-6">
+                <div className="relative p-3.5">
                   <p className="text-[10px] text-white/30 uppercase font-light mb-2" style={{ letterSpacing: '0.3em' }}>Up Next</p>
                   <h2 className="text-[28px] font-black text-white tracking-tight mb-1" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>
                     YOUR NEXT<br/>WORKOUT
                   </h2>
 
                   {/* Workout info */}
-                  <div className="mt-4 mb-5">
+                  <div className="mt-3 mb-4">
                     <div className="flex items-center gap-3 mb-1">
                       <span className="text-[15px] font-semibold text-white">
                         {nextWorkoutInfo?.templateName || (nextWorkoutInfo?.status === 'rest' ? 'Rest Day' : nextWorkoutInfo?.status === 'none' ? 'Nothing scheduled' : 'Loading...')}
@@ -4182,9 +4494,11 @@ export default function Workouts() {
               </div>
             </div>
 
-            {/* Stats row — Odometer style (matches brainstorm demo #5) */}
+            {/* Stats row — Odometer style (matches brainstorm demo #5).
+                Negative top/bottom margins cancel the parent's space-y-4 gap so
+                this row butts directly against the cards above and below. */}
             {(streak > 0 || totalWorkouts > 0 || workoutsThisMonth > 0) && (
-              <div className="grid grid-cols-3 gap-4 fade-slide-up" style={{ animationDelay: '100ms' }}>
+              <div className="grid grid-cols-3 gap-4 fade-slide-up -mt-4 -mb-4" style={{ animationDelay: '100ms' }}>
                 {[
                   { value: streak,            labelTop: 'Day',      labelBottom: 'Streak' },
                   { value: totalWorkouts,     labelTop: 'Total',    labelBottom: 'Workouts' },
@@ -4387,7 +4701,7 @@ export default function Workouts() {
                 setTimeout(() => { setFeaturedTransition(null); setFeaturedCardRect(null); setSelectedGroup('featured'); }, 3600);
               }}
               className="w-full rounded-2xl overflow-hidden fade-slide-up relative cursor-pointer active:scale-[0.98] transition-transform"
-              style={{ animationDelay: '0ms', minHeight: '119px' }}
+              style={{ animationDelay: '0ms', minHeight: '107px' }}
             >
               <video
                 ref={featuredVideoRef}
@@ -4401,7 +4715,7 @@ export default function Workouts() {
                 src="/Gym cinematic promotion video.mp4"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
-              <div className="relative z-10 p-5 flex flex-col justify-end h-full" style={{ minHeight: '140px' }}>
+              <div className="relative z-10 p-5 flex flex-col justify-end h-full" style={{ minHeight: '126px' }}>
                 <div className="mt-auto">
                   <h2 className="text-2xl font-black text-white tracking-tight drop-shadow-lg">Featured Workouts</h2>
                   <p className="text-white/60 text-xs mt-1 drop-shadow">Guided sessions · Custom coaching</p>
@@ -4796,53 +5110,7 @@ export default function Workouts() {
               );
             })()}
 
-            {/* Personal Records ticker — ported from NewHomepage */}
-            {bodyPartPRs.length > 0 && (() => {
-              const items = bodyPartPRs.map((pr) => {
-                const muscle = (pr.muscle_group || 'PR').toUpperCase();
-                const w = Number(pr.best_weight);
-                const reps = pr.best_reps;
-                return `${muscle} PR — ${pr.exercise_name} — ${w} LBS × ${reps}`;
-              });
-              return (
-                <div
-                  className="fade-slide-up"
-                  style={{
-                    position: 'relative',
-                    overflow: 'hidden',
-                    borderRadius: '2px',
-                    background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
-                    boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
-                  }}
-                >
-                  <div style={{ padding: '16px', overflow: 'hidden' }}>
-                    <p
-                      className="text-[9px] uppercase font-light mb-2"
-                      style={{ color: 'rgba(255,255,255,0.25)', letterSpacing: '0.25em' }}
-                    >
-                      Personal Records
-                    </p>
-                    <div style={{ borderBottom: '1px dotted rgba(255,255,255,0.15)', marginBottom: '12px' }} />
-                    <div style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                      <div style={{ display: 'inline-block', animation: 'prTicker 20s linear infinite', fontSize: '12px' }}>
-                        {items.map((pr, i) => (
-                          <span key={i}>
-                            <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 300 }}>{pr}</span>
-                            <span style={{ color: 'rgba(255,255,255,0.1)', margin: '0 16px' }}>|</span>
-                          </span>
-                        ))}
-                        {items.map((pr, i) => (
-                          <span key={`d-${i}`}>
-                            <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 300 }}>{pr}</span>
-                            <span style={{ color: 'rgba(255,255,255,0.1)', margin: '0 16px' }}>|</span>
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
+            {/* Personal Records ticker moved to Profile page (between Member Info and Alpha banner). */}
 
             {/* ----- Original Tutorial card (glass style) — kept so you can swap back ----- */}
             {/*
@@ -4990,8 +5258,10 @@ export default function Workouts() {
             {/* Stats & Streak card moved to Profile page. */}
             {/* Stacked Paper PR Cards moved to the Brainstorm page. */}
 
-            {/* Heaviest Lifts — mesh gradient card (drifting aurora blobs) */}
-            {bodyPartPRs.length > 0 && (
+            {/* Heaviest Lifts — mesh gradient card (drifting aurora blobs).
+                Always renders so brand-new users see the muscle structure +
+                a "set your first PR" prompt. */}
+            {(
               <div
                 className="fade-slide-up"
                 style={{
@@ -5046,6 +5316,14 @@ export default function Workouts() {
                   >
                     HEAVIEST LIFTS
                   </h3>
+                  {bodyPartPRs.length === 0 && (
+                    <p
+                      className="mb-4"
+                      style={{ color: 'rgba(255,255,255,0.65)', fontSize: '13px', fontWeight: 300, lineHeight: 1.5, textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}
+                    >
+                      You haven't set any PRs yet. Start your first workout to set some PRs!!
+                    </p>
+                  )}
                   {['Chest', 'Back', 'Shoulders', 'Quads', 'Biceps', 'Triceps'].map((muscle, i, arr) => {
                     const pr = bodyPartPRs.find((p) => p.muscle_group?.toLowerCase() === muscle.toLowerCase());
                     return (

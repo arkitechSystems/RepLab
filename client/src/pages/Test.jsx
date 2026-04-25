@@ -41,6 +41,16 @@ export default function Test() {
 
         <div className="space-y-4">
           <div
+            onClick={() => navigate('/test/parallax')}
+            className="glass-card rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
+            style={{ border: '1px solid rgba(239,68,68,0.3)' }}
+          >
+            <div className="p-5">
+              <h2 className="text-xl font-black text-white tracking-tight">Parallax Animation</h2>
+              <p className="text-xs text-wf-gray-500 mt-1">Will's Hypertrophy hero — scroll-driven layered animation, mouse-tilt photo, count-up stats, neon flicker quote</p>
+            </div>
+          </div>
+          <div
             onClick={() => navigate('/test/brainstorm')}
             className="glass-card rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
             style={{ border: '1px solid rgba(239,68,68,0.3)' }}

@@ -138,6 +138,65 @@ function canonicalizeUrl(raw) {
 
 const EMPTY_REACTIONS = { fire: 0, flex: 0, hundo: 0, clap: 0 };
 
+// Mock community activity events for the top ticker. Swap to a real feed
+// (e.g. /feed/activity) once the backend can stream cross-user events.
+// Keep the strings short — the ticker is single-line and runs ~20s loops.
+const ACTIVITY_MOCK = [
+  "Mike R. just started Will's Hypertrophy Program",
+  'Sarah K. completed Push Day · 12,540 lbs total volume',
+  'Alex T. hit a new PR on Deadlift — 405 lbs × 3',
+  'Jordan P. created a custom exercise: Single-Leg Donkey Kicks with Dumbbells',
+  'Chris W. created a custom workout: Saturday Glutes',
+  'Taylor S. is on a 12-day streak',
+  'Devon L. just finished Bench Press — 245 lbs × 6',
+  'Mia G. enrolled in Jeff Nippard Push Pull Legs',
+  'Ryan H. updated their bench 1RM to 315 lbs',
+  'Kevin B. logged 5 sets of Back Squats',
+  'Priya N. just started Stoppani Shortcut to Shred',
+  'Owen V. completed Pull A — Heavy Compound',
+];
+
+function ActivityTicker() {
+  return (
+    <div
+      className="fade-slide-up mb-5"
+      style={{
+        position: 'relative',
+        overflow: 'hidden',
+        borderRadius: '2px',
+        background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+        boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+      }}
+    >
+      <div style={{ padding: '16px', overflow: 'hidden' }}>
+        <p
+          className="text-[10px] uppercase font-light mb-2"
+          style={{ color: 'rgba(255,255,255,0.25)', letterSpacing: '0.25em' }}
+        >
+          User Activity
+        </p>
+        <div style={{ borderBottom: '1px dotted rgba(255,255,255,0.15)', marginBottom: '12px' }} />
+        <div style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
+          <div style={{ display: 'inline-block', animation: 'prTicker 60s linear infinite', fontSize: '12px' }}>
+            {ACTIVITY_MOCK.map((msg, i) => (
+              <span key={i}>
+                <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 300 }}>{msg}</span>
+                <span style={{ color: 'rgba(255,255,255,0.1)', margin: '0 16px' }}>|</span>
+              </span>
+            ))}
+            {ACTIVITY_MOCK.map((msg, i) => (
+              <span key={`d-${i}`}>
+                <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 300 }}>{msg}</span>
+                <span style={{ color: 'rgba(255,255,255,0.1)', margin: '0 16px' }}>|</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 
 export default function RepLabFeedTest() {
@@ -353,9 +412,15 @@ export default function RepLabFeedTest() {
           </div>
         </div>
 
-        <p className="text-[12px] text-white/40 font-light mt-3 mb-5 leading-relaxed">
+        <p className="text-[12px] text-white/40 font-light mt-3 mb-3 leading-relaxed">
           Community + fitness news. Public fire hose of PRs, workouts, creators, and articles.
         </p>
+
+        {/* User activity ticker — mocked for now. Same continuous-marquee
+            treatment as the Personal Records ticker on /profile. Swap
+            ACTIVITY_MOCK with a real /feed/activity endpoint when ready. */}
+        <ActivityTicker />
+
 
         {/* Feed */}
         {loading ? (

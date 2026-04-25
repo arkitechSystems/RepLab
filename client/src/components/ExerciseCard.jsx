@@ -10,6 +10,12 @@ import { iosFocusRef } from '../utils/iosFocus.js';
 // border matching the Swap Exercise modal. Flip to false to revert.
 const EXERCISE_CARD_GRADIENT_BORDER = true;
 
+// Test toggle: when true, exercise cards are fully transparent (page-bg shows
+// through) with white text. When false, falls back to the current light-card
+// (#e8e8e8) treatment. Flip to false to revert. Paired CSS rules live in
+// index.css under `.exercise-card-transparent-test`.
+const EXERCISE_CARD_TRANSPARENT_TEST = true;
+
 function addToRecent(name) {
   try {
     const recent = JSON.parse(localStorage.getItem('replab_recent_exercises') || '[]');
@@ -97,8 +103,6 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
       if (rowEl) {
         rowEl.style.transition = 'none';
         rowEl.style.transform = `translateX(${clamped}px)`;
-        rowEl.style.background = clamped > 30 ? `rgba(34,197,94,${Math.min(clamped/100*0.25, 0.25)})` :
-                                  clamped < -30 ? `rgba(239,68,68,${Math.min(Math.abs(clamped)/100*0.25, 0.25)})` : '';
       }
     }
   }, [isTemplate]);
@@ -119,9 +123,8 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
         } else if (currentX < -60 && onDeleteSet) {
           onDeleteSet(keyName, idx);
         }
-        rowEl.style.transition = 'transform 0.2s ease, background 0.2s ease';
+        rowEl.style.transition = 'transform 0.2s ease';
         rowEl.style.transform = 'translateX(0)';
-        rowEl.style.background = '';
       }
     }
 
@@ -139,7 +142,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
 
   return (
     <>
-    <div data-tutorial={dataTutorial ? 'exercise-card' : undefined} className={`exercise-card-light-test glass-card rounded-xl overflow-hidden mb-3${EXERCISE_CARD_GRADIENT_BORDER ? ' exercise-card-gradient-border' : ''}`}>
+    <div data-tutorial={dataTutorial ? 'exercise-card' : undefined} className={`${EXERCISE_CARD_TRANSPARENT_TEST ? 'exercise-card-transparent-test' : 'exercise-card-light-test'} glass-card rounded-xl overflow-hidden mb-3${EXERCISE_CARD_GRADIENT_BORDER && !EXERCISE_CARD_TRANSPARENT_TEST ? ' exercise-card-gradient-border' : ''}`}>
       {/* Exercise Header — name + demo button */}
       <div data-tutorial={dataTutorial} className="px-4 py-3 flex items-center justify-between" style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '3px double rgba(255,255,255,0.15)' }}>
         <div className="min-w-0">
@@ -288,16 +291,33 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
           const isAutoFill = !isTemplate && autoFilled?.has(setKey) && !isCompleted;
           const rowWeight = entry.weight ?? set.suggestedWeight;
           const pbReps = (rowWeight !== undefined && rowWeight !== '' && rowWeight !== null) ? exercisePbs[rowWeight] : undefined;
+          const isSwipeable = !isTemplate && !readOnly;
           const rowContent = (
             <div
               ref={!isTemplate ? (el) => { swipeRowRefs.current[idx] = el; } : undefined}
               data-tutorial={dataTutorial && idx === 0 ? 'set-row' : undefined}
-              className={`px-3 py-2.5 flex items-center gap-1.5 transition-colors duration-200 ${
-                isCompleted ? 'bg-green-500/10' : ''
+              className={`relative px-3 py-2.5 flex items-center gap-1.5 transition-colors duration-200 ${
+                !isSwipeable && isCompleted ? 'bg-green-500/10' : ''
               }`}
-              onTouchStart={!readOnly && !isTemplate ? (e) => handleTouchStart(idx, e) : undefined}
-              onTouchEnd={!readOnly && !isTemplate ? handleTouchEnd : undefined}
-              onTouchMove={!readOnly && !isTemplate ? handleTouchMove : undefined}
+              style={
+                // In session mode the row sits over swipe-action buttons —
+                // give it an opaque background so the buttons stay hidden
+                // until the row is dragged. Color matches the parent card:
+                //   • transparent-test mode: solid black (page bg)
+                //   • light-test mode:       #e8e8e8 (light card)
+                // Completed rows get a precomputed alpha-blend of green/10
+                // over the base so we keep the same visual cue.
+                isSwipeable
+                  ? {
+                      background: EXERCISE_CARD_TRANSPARENT_TEST
+                        ? (isCompleted ? 'rgb(3, 19, 9)' : '#000')
+                        : (isCompleted ? 'rgb(213, 228, 218)' : '#e8e8e8'),
+                    }
+                  : undefined
+              }
+              onTouchStart={isSwipeable ? (e) => handleTouchStart(idx, e) : undefined}
+              onTouchEnd={isSwipeable ? handleTouchEnd : undefined}
+              onTouchMove={isSwipeable ? handleTouchMove : undefined}
               onContextMenu={!readOnly && onDeleteSet ? (e) => { e.preventDefault(); setDeleteIdx(idx); } : undefined}
             >
               {/* Checkmark circle — session mode only */}
@@ -473,11 +493,42 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
             />
           ) : null;
 
-          // In session mode, wrap with swipe support
+          // In session mode, wrap with swipe support. Action backgrounds
+          // sit behind the row and are revealed as the row is dragged:
+          //   • swipe right → green Complete (left edge)
+          //   • swipe left  → red Delete (right edge)
           if (!isTemplate && !readOnly) {
             return (
-              <div key={idx} className="relative overflow-hidden">
-                {rowContent}
+              <div key={idx}>
+                <div className="relative overflow-hidden">
+                  {/* Green Complete — revealed when row is swiped right */}
+                  <div
+                    className="absolute inset-y-0 left-0 flex items-center justify-start pl-5"
+                    style={{ width: 100, background: '#22c55e', pointerEvents: 'none' }}
+                    aria-hidden="true"
+                  >
+                    <div className="flex flex-col items-center gap-0.5 text-white">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                      </svg>
+                      <span className="text-[10px] font-bold uppercase tracking-wider">Complete</span>
+                    </div>
+                  </div>
+                  {/* Red Delete — revealed when row is swiped left */}
+                  <div
+                    className="absolute inset-y-0 right-0 flex items-center justify-end pr-5"
+                    style={{ width: 100, background: '#ef4444', pointerEvents: 'none' }}
+                    aria-hidden="true"
+                  >
+                    <div className="flex flex-col items-center gap-0.5 text-white">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                      </svg>
+                      <span className="text-[10px] font-bold uppercase tracking-wider">Delete</span>
+                    </div>
+                  </div>
+                  {rowContent}
+                </div>
                 {lastHint}
                 {cardioCard}
               </div>

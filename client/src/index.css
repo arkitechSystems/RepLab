@@ -152,6 +152,66 @@
 }
 /* === END EXERCISE CARD LIGHT TEST === */
 
+/* === EXERCISE CARD TRANSPARENT TEST — flip EXERCISE_CARD_TRANSPARENT_TEST in
+   ExerciseCard.jsx to disable, or remove this whole block to revert. Cards
+   become fully see-through (page bg shows through) with white text. === */
+.exercise-card-transparent-test.glass-card {
+  background: transparent !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none !important;
+}
+.exercise-card-transparent-test * {
+  color: #ffffff !important;
+}
+/* Keep the set-type select content transparent — the overlay span shows the
+   shorthand label; the underlying <select> just provides the picker. */
+.exercise-card-transparent-test select {
+  color: transparent !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+.exercise-card-transparent-test select option {
+  background: #0a0a0a !important;
+  color: #ffffff !important;
+}
+/* Modals/portals open from inside the card render against a dark scrim and
+   should keep their normal palette — gray utility colors aren't overridden. */
+.exercise-card-transparent-test .fixed .text-wf-gray-400 { color: rgb(156, 163, 175) !important; }
+.exercise-card-transparent-test .fixed .text-wf-gray-500 { color: rgb(107, 114, 128) !important; }
+.exercise-card-transparent-test .fixed .text-wf-gray-600 { color: rgb(75, 85, 99) !important; }
+.exercise-card-transparent-test .fixed .text-wf-red,
+.exercise-card-transparent-test .fixed [class*="text-red"] { color: #ef4444 !important; }
+.exercise-card-transparent-test .fixed [class*="text-blue"] { color: rgb(96, 165, 250) !important; }
+.exercise-card-transparent-test .fixed [class*="text-green"] { color: rgb(34, 197, 94) !important; }
+/* Keep red accents red */
+.exercise-card-transparent-test .text-wf-red,
+.exercise-card-transparent-test [class*="text-red"] {
+  color: rgba(239, 68, 68, 0.95) !important;
+}
+/* Goal weight/reps boxes — subtle on transparent bg */
+.exercise-card-transparent-test .bg-black\/40 {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.10) !important;
+}
+/* LCD inputs (weight/reps) — dark glass on transparent card */
+.exercise-card-transparent-test .lcd-input {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(239, 68, 68, 0.30) !important;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.40) !important;
+  color: #ffffff !important;
+}
+.exercise-card-transparent-test .lcd-input:focus {
+  border-color: rgba(239, 68, 68, 0.7) !important;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.40), 0 0 0 2px rgba(239, 68, 68, 0.25) !important;
+}
+.exercise-card-transparent-test .lcd-input.completed {
+  background: rgba(34, 197, 94, 0.18) !important;
+  border-color: rgba(34, 197, 94, 0.55) !important;
+}
+/* === END EXERCISE CARD TRANSPARENT TEST === */
+
 * {
   -webkit-tap-highlight-color: transparent;
   box-sizing: border-box;
@@ -200,12 +260,45 @@ html, body {
   letter-spacing: -1px;
 }
 
+/* Hide scrollbars while keeping scroll behavior. Referenced from several
+   pages (RepLab Feed, Workouts library, NewHomepage, NikeTestHomepage,
+   CardsTest); previously a no-op because the class wasn't defined. */
+.scrollbar-hide {
+  -ms-overflow-style: none;          /* IE / old Edge */
+  scrollbar-width: none;             /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar { display: none; } /* Chromium / Safari */
+
+/* 3D flip card — used by the workout-library list cards. Mirrors the
+   bs-flip-* helpers on /test/brainstorm so look + feel stay consistent. */
+.wf-flip-outer { perspective: 1200px; }
+.wf-flip-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.wf-flip-inner.flipped { transform: rotateY(180deg); }
+.wf-flip-face {
+  position: absolute;
+  inset: 0;
+  -webkit-backface-visibility: hidden;
+          backface-visibility: hidden;
+  overflow: hidden;
+}
+.wf-flip-back { transform: rotateY(180deg); }
+
 /* Drifting mesh-gradient blobs — three slightly-different motions so the
    layered orbs feel organic. Used by the Heaviest Lifts card and
    anywhere else that wants the same aurora aesthetic. */
 @keyframes wf-meshDrift1 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(60px, -40px) scale(1.15); } }
 @keyframes wf-meshDrift2 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-50px, 40px) scale(1.1); } }
 @keyframes wf-meshDrift3 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(40px, 50px) scale(0.9); } }
+
+/* Staggered bar-rise animation. Used by the weekly volume bar chart at the
+   bottom of the Workouts page; mirrors the Brainstorm sandbox card #6. */
+@keyframes wf-barRise { from { transform: scaleY(0); } to { transform: scaleY(1); } }
 
 /* Hide number input spinners */
 input[type="number"]::-webkit-outer-spin-button,

@@ -65,7 +65,10 @@ export default function Layout() {
       <div className="ambient-bg" />
       {/* Top bar with logo + profile avatar — hidden when embedded from dashboard */}
       {!isDashboardEmbed && (
-        <div className="safe-top relative z-20 px-4 pt-4 pb-1 flex items-center justify-between">
+        <div
+          className="relative z-20 px-4 pb-1 flex items-center justify-between"
+          style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1.5rem)' }}
+        >
           <img src="/RepLabLogo3.jpg" alt="RepLab" className="h-7 rounded" />
           <button
             onClick={() => navigate('/profile')}

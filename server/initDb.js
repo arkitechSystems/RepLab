@@ -215,6 +215,27 @@ export default async function initDb() {
     updated_at TIMESTAMPTZ DEFAULT NOW()
   )`);
 
+  // Migration: short-name lookup for library programs. Display-only — the
+  // canonical full name stays on the programs row.
+  await pool.query(`CREATE TABLE IF NOT EXISTS program_name_abbreviations (
+    full_name TEXT PRIMARY KEY,
+    short_name TEXT NOT NULL
+  )`);
+  // Seed (idempotent — ON CONFLICT updates the short_name so editing a row
+  // here is the way to change a program's display abbreviation).
+  await pool.query(`
+    INSERT INTO program_name_abbreviations (full_name, short_name) VALUES
+      ('Will''s Hypertrophy Program',                              'Will''s Hypertrophy'),
+      ('Mike Mentzer Workout',                                     'Mentzer'),
+      ('Summer Shred',                                             'Summer Shred'),
+      ('Smolov Squat & Bench Program',                             'Smolov S&B'),
+      ('Muscle & Fitness 5000 Rep Arm Specialization',             'M&F 5000 Arms'),
+      ('Jim Stoppani''s Shortcut to Shred',                        'Shortcut to Shred'),
+      ('Robin Gallant''s Intensive Max Glute Hypertrophy',         'RG''s Max Glute'),
+      ('Jeff Nippard''s Push Pull Legs',                           'Nippard''s PPL')
+    ON CONFLICT (full_name) DO UPDATE SET short_name = EXCLUDED.short_name
+  `);
+
   // Migration: trainer_sessions DB-backed session table (replaces in-memory Map
   // so server restarts don't log every trainer out).
   await pool.query(`CREATE TABLE IF NOT EXISTS trainer_sessions (
@@ -411,6 +432,11 @@ export default async function initDb() {
 
   // Video ID column for exercise YouTube videos
   await pool.query(`ALTER TABLE exercises ADD COLUMN IF NOT EXISTS video_id TEXT`);
+
+  // Streak-reminder push de-dupe: track when we last pinged a given user so
+  // the scheduler doesn't double-send across overlapping ticks. 18h cooldown
+  // matches the daily-evening cadence.
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_streak_reminder_at TIMESTAMPTZ`);
 
   // Programs that run cardio acceleration between sets (Jim Stoppani-style
   // conditioning). Opt-in per program; the WorkoutSession UI reads this flag

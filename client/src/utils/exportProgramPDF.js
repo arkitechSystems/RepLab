@@ -2,7 +2,7 @@
 // Nike-inspired layout: cream/white pages, heavy black display type,
 // subtle RepLab logo watermark fills each page at low opacity.
 
-const WATERMARK_SRC = '/RepLaplogo3NoBG.jpg';
+const WATERMARK_SRC = '/RepLabLogo2.jpg';
 
 function escapeHTML(str) {
   if (str == null) return '';

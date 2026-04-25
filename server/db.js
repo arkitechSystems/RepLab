@@ -279,11 +279,19 @@ const db = {
 
   // Programs
   async getPrograms(userId) {
+    // LEFT JOIN against program_name_abbreviations so callers can use the
+    // short display name without a second round-trip. Programs without a
+    // matching abbreviation row get short_name = NULL and the client falls
+    // back to the full name.
     const { rows } = await pool.query(
-      'SELECT * FROM programs WHERE user_id IS NULL OR user_id = $1 ORDER BY sort_order, id',
+      `SELECT p.*, pna.short_name AS short_name
+         FROM programs p
+         LEFT JOIN program_name_abbreviations pna ON pna.full_name = p.name
+        WHERE p.user_id IS NULL OR p.user_id = $1
+        ORDER BY p.sort_order, p.id`,
       [userId]
     );
-    return rows.map((p) => ({ id: p.id, userId: p.user_id, name: p.name, description: p.description || '', sortOrder: p.sort_order || 0, programType: p.program_type || 'other', isFeatured: p.is_featured || false, cardioAccelerationEnabled: !!p.cardio_acceleration_enabled, programDetails: p.program_details || null, createdAt: p.created_at }));
+    return rows.map((p) => ({ id: p.id, userId: p.user_id, name: p.name, shortName: p.short_name || null, description: p.description || '', sortOrder: p.sort_order || 0, programType: p.program_type || 'other', isFeatured: p.is_featured || false, cardioAccelerationEnabled: !!p.cardio_acceleration_enabled, programDetails: p.program_details || null, createdAt: p.created_at }));
   },
 
   async createProgram(userId, name, description = '') {
@@ -639,9 +647,14 @@ const db = {
 
   async getSession(userId, sessionId) {
     const { rows: sessionRows } = await pool.query(
-      `SELECT s.id, s.date, s.template_id, s.created_at, s.workout_data, COALESCE(t.name, 'Unknown') AS template_name
+      `SELECT s.id, s.date, s.template_id, s.created_at, s.last_activity_at, s.workout_data,
+              s.completed,
+              COALESCE(t.name, 'Unknown') AS template_name,
+              p.name AS program_name,
+              EXTRACT(EPOCH FROM (s.last_activity_at - s.created_at))::INT AS elapsed_secs
        FROM sessions s
        LEFT JOIN templates t ON t.id = s.template_id
+       LEFT JOIN programs p ON p.id = t.program_id
        WHERE s.id = $1 AND s.user_id = $2`,
       [sessionId, userId]
     );
@@ -660,7 +673,14 @@ const db = {
       date: session.date,
       templateId: session.template_id,
       createdAt: session.created_at,
+      lastActivityAt: session.last_activity_at,
+      // First-save → last-save duration. Approximation, but it's the only
+      // duration we have for completed sessions (the live timer is in
+      // localStorage and isn't persisted).
+      elapsedSecs: Math.max(0, session.elapsed_secs || 0),
+      completed: !!session.completed,
       templateName: workoutData?.name || session.template_name,
+      programName: session.program_name || null,
       workoutData,
       entries: entries.map((e) => ({
         id: e.id,
@@ -791,10 +811,10 @@ const db = {
 
   async getCompletedSessions(userId) {
     const { rows } = await pool.query(
-      "SELECT template_id, date FROM sessions WHERE user_id = $1 AND completed = TRUE",
+      "SELECT id, template_id, date FROM sessions WHERE user_id = $1 AND completed = TRUE",
       [userId]
     );
-    return rows.map((r) => ({ templateId: r.template_id, date: r.date }));
+    return rows.map((r) => ({ id: r.id, templateId: r.template_id, date: r.date }));
   },
 
   // Exercise history (for smart weight suggestions)

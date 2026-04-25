@@ -534,10 +534,11 @@ export default function Calendar() {
               const accentHex = MONTHLY_ALL_RED ? '#ef4444' : (color.hex || '#9ca3af');
               const isSkipped = inMonth && hasWorkout && !dayCompleted && !dayIsToday && isBefore(date, new Date());
 
-              let bg = 'rgba(255,255,255,0.02)'; // empty / rest / out-of-month
+              let bg = 'rgba(255,255,255,0.02)'; // empty / out-of-month default
               if (inMonth && dayCompleted) bg = 'rgba(34,197,94,0.32)';
               else if (inMonth && hasWorkout && !isSkipped) bg = `${accentHex}28`;
-              else if (inMonth && isSkipped) bg = 'rgba(255,255,255,0.03)';
+              else if (inMonth && isSkipped) bg = 'rgba(239,68,68,0.10)'; // tinted red so skipped reads at a glance
+              else if (inMonth && workout?.isRest) bg = 'rgba(148,163,184,0.08)'; // muted blue-grey: visibly different from empty
 
               const dateNumberColor = dayIsToday
                 ? '#ef4444'
@@ -554,9 +555,20 @@ export default function Calendar() {
                 <div
                   key={dateStr}
                   onClick={() => {
-                    if (hasWorkout) {
-                      navigateToWorkout(workout.templateId, dateStr);
+                    if (!hasWorkout) return;
+                    // Completed day → open the saved session summary at
+                    // /history/:id. Otherwise fall back to the live workout
+                    // session (today / future / abandoned-but-not-complete).
+                    if (dayCompleted) {
+                      const session = completedSessions.find(
+                        (c) => c.templateId === workout.templateId && c.date === dateStr
+                      );
+                      if (session?.id) {
+                        navigate(`/summary/${session.id}`);
+                        return;
+                      }
                     }
+                    navigateToWorkout(workout.templateId, dateStr);
                   }}
                   className={`relative min-h-[56px] transition-all ${
                     !inMonth ? 'opacity-20' : ''
@@ -579,13 +591,41 @@ export default function Calendar() {
                       {workout.templateName.slice(0, 3)}
                     </div>
                   )}
-                  {/* Skipped hairline strikethrough */}
+                  {/* Completed badge — small filled green check, top-right */}
+                  {dayCompleted && inMonth && (
+                    <div
+                      aria-label="Completed"
+                      style={{
+                        position: 'absolute',
+                        top: '3px', right: '3px',
+                        width: '12px', height: '12px',
+                        borderRadius: '50%',
+                        background: '#22c55e',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: '0 0 6px rgba(34,197,94,0.55)',
+                      }}
+                    >
+                      <svg width="8" height="8" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth={4}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                      </svg>
+                    </div>
+                  )}
+                  {/* Skipped indicator — diagonal red slash, more visible than the prior hairline */}
                   {isSkipped && (
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-px" style={{ background: 'rgba(255,255,255,0.3)' }} />
+                    <div
+                      aria-label="Missed"
+                      style={{
+                        position: 'absolute',
+                        top: '50%', left: '50%',
+                        transform: 'translate(-50%, -50%) rotate(-20deg)',
+                        width: '70%', height: '1.5px',
+                        background: 'rgba(239,68,68,0.55)',
+                      }}
+                    />
                   )}
                   {/* Rest indicator (only when explicitly scheduled as rest) */}
                   {workout?.isRest && inMonth && (
-                    <div className="absolute bottom-1 right-1.5 text-[8px] font-light uppercase text-white/25" style={{ letterSpacing: '0.15em' }}>
+                    <div className="absolute bottom-1 right-1.5 text-[8px] font-medium uppercase" style={{ letterSpacing: '0.2em', color: 'rgba(148,163,184,0.7)' }}>
                       Rest
                     </div>
                   )}
@@ -593,6 +633,7 @@ export default function Calendar() {
               );
             })}
           </div>
+
         </div>
       )}
 
@@ -804,7 +845,13 @@ export default function Calendar() {
                       : hasWorkout
                         ? 'Scheduled'
                         : 'No Workout';
-                const statusColor = 'rgba(239,68,68,0.9)';
+                // Status text color: green for complete, red for today, faint
+                // white otherwise so it's clear at a glance which day is which.
+                const statusColor = dayCompleted
+                  ? 'rgba(34,197,94,0.95)'
+                  : dayIsToday
+                    ? 'rgba(239,68,68,0.95)'
+                    : 'rgba(255,255,255,0.45)';
 
                 return (
                   <div
@@ -835,6 +882,31 @@ export default function Calendar() {
                         </>
                       );
                     })()}
+
+                    {/* Completed badge — small green check in top-right corner */}
+                    {dayCompleted && (
+                      <div
+                        aria-label="Completed"
+                        style={{
+                          position: 'absolute',
+                          top: '10px',
+                          right: '10px',
+                          width: '20px',
+                          height: '20px',
+                          borderRadius: '50%',
+                          background: '#22c55e',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxShadow: '0 0 10px rgba(34,197,94,0.55), inset 0 1px 0 rgba(255,255,255,0.25)',
+                          zIndex: 2,
+                        }}
+                      >
+                        <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth={3.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                        </svg>
+                      </div>
+                    )}
 
                     <div className="relative px-5 py-4 flex items-center justify-between gap-3">
                       <div className="flex items-center gap-5 min-w-0 flex-1">
@@ -877,6 +949,66 @@ export default function Calendar() {
                 );
               })}
             </div>
+
+            {/* Legend — quick key for the weekly cell states */}
+            {(() => {
+              const items = [
+                { label: 'Today',     bg: 'transparent', boxShadow: 'inset 0 0 0 2px #ef4444', dateColor: '#ef4444' },
+                { label: 'Completed', bg: 'rgba(34,197,94,0.32)', dateColor: '#fff', badge: 'check' },
+                { label: 'Scheduled', bg: 'rgba(239,68,68,0.16)', dateColor: '#fff', abbr: 'WO' },
+                { label: 'Missed',    bg: 'rgba(239,68,68,0.10)', dateColor: '#fff', slash: true },
+                { label: 'Rest',      bg: 'rgba(148,163,184,0.08)', dateColor: '#fff', restLabel: true },
+              ];
+              return (
+                <div className="mt-5 px-2 py-3">
+                  <p className="text-[9px] uppercase font-bold tracking-[0.3em] text-white/40 text-center mb-3">Legend</p>
+                  <div className="flex items-start justify-around gap-1">
+                    {items.map((it) => (
+                      <div key={it.label} className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
+                        <div
+                          className="relative w-9 h-9"
+                          style={{
+                            background: it.bg,
+                            borderRadius: '4px',
+                            boxShadow: it.boxShadow,
+                          }}
+                        >
+                          <span className="absolute top-0.5 left-1 text-[9px] font-black" style={{ color: it.dateColor }}>1</span>
+                          {it.badge === 'check' && (
+                            <div style={{
+                              position: 'absolute', top: '2px', right: '2px',
+                              width: '10px', height: '10px', borderRadius: '50%',
+                              background: '#22c55e',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              boxShadow: '0 0 4px rgba(34,197,94,0.55)',
+                            }}>
+                              <svg width="7" height="7" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth={4.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                              </svg>
+                            </div>
+                          )}
+                          {it.abbr && (
+                            <span className="absolute bottom-0.5 right-1 text-[7px] font-bold uppercase" style={{ color: 'rgba(239,68,68,0.9)' }}>{it.abbr}</span>
+                          )}
+                          {it.slash && (
+                            <div style={{
+                              position: 'absolute', top: '50%', left: '50%',
+                              transform: 'translate(-50%, -50%) rotate(-20deg)',
+                              width: '70%', height: '1.5px',
+                              background: 'rgba(239,68,68,0.65)',
+                            }} />
+                          )}
+                          {it.restLabel && (
+                            <span className="absolute bottom-0 right-0.5 text-[6px] font-medium uppercase" style={{ letterSpacing: '0.15em', color: 'rgba(148,163,184,0.85)' }}>Rest</span>
+                          )}
+                        </div>
+                        <span className="text-[9px] uppercase font-medium text-white/55 tracking-wider text-center leading-tight">{it.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </>
         )}
       </div>

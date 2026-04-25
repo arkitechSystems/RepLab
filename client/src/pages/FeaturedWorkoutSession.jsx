@@ -1189,11 +1189,24 @@ export default function FeaturedWorkoutSession() {
         </div>
 
         <div className="relative z-10 px-5">
-          {/* Program header */}
+          {/* Program header — eyebrow + title styled to match the
+              Parallax Animation test page (/test/parallax). The title
+              uses the right-to-left shimmer (.replab-title-shimmer). */}
           <div style={{ marginBottom: '24px' }}>
-            <p className="text-[10px] text-white/30 uppercase tracking-[0.3em] font-light mb-2">Featured Program</p>
-            <h1 className="text-[28px] font-black text-white leading-[0.95] tracking-tight mb-2" style={{ fontFamily: 'system-ui' }}>
-              {PROGRAM.name.toUpperCase()}
+            <p className="text-[10px] uppercase font-light text-white/60 mb-2" style={{ letterSpacing: '0.5em' }}>
+              Featured Program
+            </p>
+            <h1
+              className="font-black tracking-tight replab-title-shimmer"
+              style={{
+                fontFamily: 'system-ui',
+                fontSize: 'clamp(40px, 11vw, 96px)',
+                lineHeight: '0.85',
+                letterSpacing: '-0.04em',
+                marginBottom: '12px',
+              }}
+            >
+              WILL'S<br />HYPERTROPHY<br />PROGRAM
             </h1>
             <p className="text-[13px] text-white/35 font-light">
               {PROGRAM.description}
@@ -1406,11 +1419,20 @@ export default function FeaturedWorkoutSession() {
 
         <div className="relative z-10 px-5">
           <div style={{ marginBottom: '24px' }}>
-            <p className="text-[10px] text-white/30 uppercase tracking-[0.3em] font-light mb-2">
+            <p className="text-[10px] uppercase font-light text-white/60 mb-2" style={{ letterSpacing: '0.5em' }}>
               Week {selectedWeek} of {PROGRAM.totalWeeks}
             </p>
-            <h1 className="text-[28px] font-black text-white leading-[0.95] tracking-tight mb-2" style={{ fontFamily: 'system-ui' }}>
-              {PROGRAM.name.toUpperCase()}
+            <h1
+              className="font-black tracking-tight replab-title-shimmer"
+              style={{
+                fontFamily: 'system-ui',
+                fontSize: 'clamp(40px, 11vw, 96px)',
+                lineHeight: '0.85',
+                letterSpacing: '-0.04em',
+                marginBottom: '12px',
+              }}
+            >
+              WILL'S<br />HYPERTROPHY<br />PROGRAM
             </h1>
             {weightBonus > 0 && (
               <p className="text-[12px] text-white/35 font-light">

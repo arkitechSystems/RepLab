@@ -8,6 +8,7 @@ import pool from '../dbPool.js';
 import { syncFromWger } from '../syncExercises.js';
 import { exerciseCardScript } from '../exerciseCardBuilder.js';
 import { DASHBOARD_CSS } from '../dashboardCSS.js';
+import { evaluateAndMaybeNotify as evaluateStreakReminder } from '../streakReminderScheduler.js';
 
 const router = Router();
 
@@ -5851,6 +5852,31 @@ router.post('/backup/restore', adminAuth, express.json({ limit: '50mb' }), async
     res.status(500).json({ error: 'Restore failed: ' + err.message });
   } finally {
     client.release();
+  }
+});
+
+// Streak-reminder debug runner — fires the same evaluation the scheduler uses
+// against a single user, with the time-window and cooldown gates bypassed so
+// you can test end-to-end any time of day. Returns a structured trace of
+// which gate the user hit so you can see exactly why a push did or didn't
+// land. Required only while wiring FCM credentials; can be removed later.
+//
+//   POST /admin/debug/streak-reminder
+//   { "userId": 42, "skipTimeWindow": true, "skipCooldown": true }
+router.post('/debug/streak-reminder', adminAuth, express.json(), async (req, res) => {
+  try {
+    const userId = Number(req.body?.userId);
+    if (!Number.isFinite(userId) || userId <= 0) {
+      return res.status(400).json({ error: 'userId (number) is required' });
+    }
+    const result = await evaluateStreakReminder(userId, {
+      skipTimeWindow: req.body?.skipTimeWindow !== false,
+      skipCooldown:   req.body?.skipCooldown   !== false,
+    });
+    res.json({ userId, ...result });
+  } catch (err) {
+    console.error('streak-reminder debug failed:', err);
+    res.status(500).json({ error: err.message || 'failed' });
   }
 });
 

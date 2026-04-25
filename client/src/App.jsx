@@ -21,6 +21,7 @@ const EditWorkout = lazy(() => import('./pages/EditWorkout'));
 const CreateProgram = lazy(() => import('./pages/CreateProgram'));
 const History = lazy(() => import('./pages/History'));
 const SessionDetail = lazy(() => import('./pages/SessionDetail'));
+const SessionSummary = lazy(() => import('./pages/SessionSummary'));
 const Profile = lazy(() => import('./pages/Profile'));
 const Utilities = lazy(() => import('./pages/Utilities'));
 const Welcome = lazy(() => import('./pages/Welcome'));
@@ -51,6 +52,7 @@ const RepLabFeedTest = lazy(() => import('./pages/RepLabFeedTest'));
 const NewHomepage = lazy(() => import('./pages/NewHomepage'));
 const Brainstorm = lazy(() => import('./pages/Brainstorm'));
 const BibleVerses = lazy(() => import('./pages/BibleVerses'));
+const ParallaxAnimation = lazy(() => import('./pages/ParallaxAnimation'));
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -148,6 +150,7 @@ export default function App() {
         <Route path="/clientworkouts/edit/:id" element={<EditWorkout />} />
         <Route path="/history" element={<History />} />
         <Route path="/history/:id" element={<SessionDetail />} />
+        <Route path="/summary/:id" element={<SessionSummary />} />
         <Route path="/utilities" element={<Utilities />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/upgrade" element={<Upgrade />} />
@@ -167,6 +170,7 @@ export default function App() {
         <Route path="/test/new-homepage" element={<TestRoute><NewHomepage /></TestRoute>} />
         <Route path="/test/brainstorm" element={<TestRoute><Brainstorm /></TestRoute>} />
         <Route path="/test/bible-verses" element={<TestRoute><BibleVerses /></TestRoute>} />
+        <Route path="/test/parallax" element={<TestRoute><ParallaxAnimation /></TestRoute>} />
       </Route>
 
       <Route path="*" element={<CatchAllRedirect />} />

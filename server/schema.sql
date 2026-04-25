@@ -239,6 +239,15 @@ CREATE TABLE IF NOT EXISTS shared_programs (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Display-only short names for library programs. Lookup table keyed on the
+-- exact program name; if a program has no row here it falls back to its full
+-- name. Used everywhere except the program list cards (which keep the full
+-- name for browse-time clarity).
+CREATE TABLE IF NOT EXISTS program_name_abbreviations (
+  full_name TEXT PRIMARY KEY,
+  short_name TEXT NOT NULL
+);
+
 -- Trainer dashboard session tokens. Stored hashed (token_hash) so a leaked
 -- DB row can't be replayed; the raw token only lives in the user's cookie.
 -- DB-backed (rather than in-memory) so server restarts don't log everyone out.

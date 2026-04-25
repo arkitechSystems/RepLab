@@ -56,6 +56,21 @@ export default function Profile() {
   const [sessionsLoading, setSessionsLoading] = useState(true);
   const [theme, setTheme] = useState(() => localStorage.getItem('wf-theme') || 'dark');
   const [bibleVersesOn, setBibleVersesOn] = useState(() => localStorage.getItem('wf-bible-verses') !== 'off');
+  // Workout-session defaults — keys shared with WorkoutSession.jsx so the
+  // toggle here is the same value the session reads on mount. Any in-session
+  // override (lock buttons, gear menu) writes back to the same key.
+  const [defaultPinWorkoutTimer, setDefaultPinWorkoutTimer] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('wf-default-pin-workout-timer')) ?? false; } catch { return false; }
+  });
+  const [defaultPinRestTimer, setDefaultPinRestTimer] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('wf-default-pin-rest-timer')) ?? true; } catch { return true; }
+  });
+  const [defaultShowGoalWeight, setDefaultShowGoalWeight] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('wf-default-show-goal-weight')) ?? true; } catch { return true; }
+  });
+  const [defaultShowGoalReps, setDefaultShowGoalReps] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('wf-default-show-goal-reps')) ?? true; } catch { return true; }
+  });
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackType, setFeedbackType] = useState('bug');
   const [feedbackMsg, setFeedbackMsg] = useState('');
@@ -72,6 +87,8 @@ export default function Profile() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const fileInputRef = useRef(null);
   // Stats & Streak card moved to /test/brainstorm.
+  // Body-part PRs feed the Personal Records ticker (between Member Info and the Alpha banner below).
+  const [bodyPartPRs, setBodyPartPRs] = useState([]);
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
@@ -84,6 +101,21 @@ export default function Profile() {
     localStorage.setItem('wf-bible-verses', bibleVersesOn ? 'on' : 'off');
   }, [bibleVersesOn]);
 
+  // Persist workout-session defaults. WorkoutSession.jsx reads these same
+  // keys at mount so each new session inherits the latest preference.
+  useEffect(() => {
+    localStorage.setItem('wf-default-pin-workout-timer', JSON.stringify(defaultPinWorkoutTimer));
+  }, [defaultPinWorkoutTimer]);
+  useEffect(() => {
+    localStorage.setItem('wf-default-pin-rest-timer', JSON.stringify(defaultPinRestTimer));
+  }, [defaultPinRestTimer]);
+  useEffect(() => {
+    localStorage.setItem('wf-default-show-goal-weight', JSON.stringify(defaultShowGoalWeight));
+  }, [defaultShowGoalWeight]);
+  useEffect(() => {
+    localStorage.setItem('wf-default-show-goal-reps', JSON.stringify(defaultShowGoalReps));
+  }, [defaultShowGoalReps]);
+
   useEffect(() => {
     const controller = new AbortController();
     const opts = { signal: controller.signal };
@@ -95,6 +127,9 @@ export default function Profile() {
       .then(setSessions)
       .catch((err) => { if (err.name !== 'AbortError' && import.meta.env.DEV) console.error(err); })
       .finally(() => setSessionsLoading(false));
+    api('/pbs/by-body-part', opts)
+      .then((data) => setBodyPartPRs(Array.isArray(data) ? data : []))
+      .catch((err) => { if (err.name !== 'AbortError' && import.meta.env.DEV) console.error(err); });
     return () => controller.abort();
   }, []);
 
@@ -327,6 +362,63 @@ export default function Profile() {
           </div>
         </div>
 
+        {/* Personal Records ticker — moved here from Workouts page (was above the Tutorial card). */}
+        {(() => {
+          const items = bodyPartPRs.map((pr) => {
+            const muscle = (pr.muscle_group || 'PR').toUpperCase();
+            const w = Number(pr.best_weight);
+            const reps = pr.best_reps;
+            return `${muscle} PR — ${pr.exercise_name} — ${w} LBS × ${reps}`;
+          });
+          const hasPRs = items.length > 0;
+          return (
+            <div
+              className="fade-slide-up mb-4"
+              style={{
+                position: 'relative',
+                overflow: 'hidden',
+                borderRadius: '2px',
+                background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+              }}
+            >
+              <div style={{ padding: '16px', overflow: 'hidden' }}>
+                <p
+                  className="text-[10px] uppercase font-light mb-2"
+                  style={{ color: 'rgba(255,255,255,0.25)', letterSpacing: '0.25em' }}
+                >
+                  Personal Records
+                </p>
+                <div style={{ borderBottom: '1px dotted rgba(255,255,255,0.15)', marginBottom: '12px' }} />
+                {hasPRs ? (
+                  <div style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                    <div style={{ display: 'inline-block', animation: 'prTicker 20s linear infinite', fontSize: '12px' }}>
+                      {items.map((pr, i) => (
+                        <span key={i}>
+                          <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 300 }}>{pr}</span>
+                          <span style={{ color: 'rgba(255,255,255,0.1)', margin: '0 16px' }}>|</span>
+                        </span>
+                      ))}
+                      {items.map((pr, i) => (
+                        <span key={`d-${i}`}>
+                          <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 300 }}>{pr}</span>
+                          <span style={{ color: 'rgba(255,255,255,0.1)', margin: '0 16px' }}>|</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p
+                    style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 300, lineHeight: 1.5 }}
+                  >
+                    You haven't set any PRs yet. Start your first workout to set some PRs!!
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Beta banner + feedback */}
         <div className="glass-card rounded-xl p-4 mb-4 fade-slide-up border border-wf-red/20 bg-wf-red/5">
           <div className="flex items-start gap-3">
@@ -459,6 +551,80 @@ export default function Profile() {
                   <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${bibleVersesOn ? 'translate-x-5' : 'translate-x-0.5'}`} />
                 </button>
               </div>
+
+              {/* Workout-session defaults — set the initial state of timers
+                  and goal columns when a session opens. The user can still
+                  flip each one inside the session via the lock icons / gear. */}
+              <div className="pt-3 border-t border-white/10 -mx-6 px-6 space-y-4">
+                <p className="text-[10px] uppercase font-bold" style={{ color: 'rgba(255,255,255,0.4)', letterSpacing: '0.2em' }}>
+                  Workout Session Defaults
+                </p>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4.5 h-4.5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="text-white/70 text-sm font-medium">Workout Timer Locked</span>
+                  </div>
+                  <button
+                    onClick={() => setDefaultPinWorkoutTimer(!defaultPinWorkoutTimer)}
+                    aria-label={defaultPinWorkoutTimer ? 'Default to unlocked workout timer' : 'Default to locked workout timer'}
+                    className={`relative w-12 h-7 rounded-full transition-colors ${defaultPinWorkoutTimer ? 'bg-wf-red' : 'bg-white/15'}`}
+                  >
+                    <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${defaultPinWorkoutTimer ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4.5 h-4.5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z M12 7v5l3 3" />
+                    </svg>
+                    <span className="text-white/70 text-sm font-medium">Rest Timer Locked</span>
+                  </div>
+                  <button
+                    onClick={() => setDefaultPinRestTimer(!defaultPinRestTimer)}
+                    aria-label={defaultPinRestTimer ? 'Default to unlocked rest timer' : 'Default to locked rest timer'}
+                    className={`relative w-12 h-7 rounded-full transition-colors ${defaultPinRestTimer ? 'bg-wf-red' : 'bg-white/15'}`}
+                  >
+                    <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${defaultPinRestTimer ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4.5 h-4.5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z M7 12h2m6 0h2" />
+                    </svg>
+                    <span className="text-white/70 text-sm font-medium">Show Goal Weight</span>
+                  </div>
+                  <button
+                    onClick={() => setDefaultShowGoalWeight(!defaultShowGoalWeight)}
+                    aria-label={defaultShowGoalWeight ? 'Hide goal weight by default' : 'Show goal weight by default'}
+                    className={`relative w-12 h-7 rounded-full transition-colors ${defaultShowGoalWeight ? 'bg-wf-red' : 'bg-white/15'}`}
+                  >
+                    <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${defaultShowGoalWeight ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4.5 h-4.5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 12h.01M7 12h.01M11 12h.01M15 12h.01M19 12h.01" />
+                    </svg>
+                    <span className="text-white/70 text-sm font-medium">Show Goal Reps</span>
+                  </div>
+                  <button
+                    onClick={() => setDefaultShowGoalReps(!defaultShowGoalReps)}
+                    aria-label={defaultShowGoalReps ? 'Hide goal reps by default' : 'Show goal reps by default'}
+                    className={`relative w-12 h-7 rounded-full transition-colors ${defaultShowGoalReps ? 'bg-wf-red' : 'bg-white/15'}`}
+                  >
+                    <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${defaultShowGoalReps ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  </button>
+                </div>
+              </div>
+
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   {theme === 'dark' ? (

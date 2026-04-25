@@ -120,11 +120,26 @@ export default function WorkoutSession() {
   const [restRemaining, setRestRemaining] = useState(null); // null = not running
   const restTimerRef = useRef(null);
   const REST_OPTIONS = [15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180];
-  const [pinWorkoutTimer, setPinWorkoutTimer] = useState(false);
-  const [pinRestTimer, setPinRestTimer] = useState(true);
+  // Initial state for the timer-pin/lock and goal-display toggles is sourced
+  // from Profile → App Settings (the user's chosen defaults). In-session
+  // changes write to the same keys so the most recent preference is what the
+  // next session inherits. localStorage keys (shared with Profile.jsx):
+  //   wf-default-pin-workout-timer
+  //   wf-default-pin-rest-timer
+  //   wf-default-show-goal-weight
+  //   wf-default-show-goal-reps
+  const [pinWorkoutTimer, setPinWorkoutTimer] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('wf-default-pin-workout-timer')) ?? false; } catch { return false; }
+  });
+  const [pinRestTimer, setPinRestTimer] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('wf-default-pin-rest-timer')) ?? true; } catch { return true; }
+  });
   const [undoToast, setUndoToast] = useState(null); // { message, undoFn }
-  const [showGoals, setShowGoals] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('replab_show_goals')) ?? true; } catch { return true; }
+  const [showGoalWeight, setShowGoalWeight] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('wf-default-show-goal-weight')) ?? true; } catch { return true; }
+  });
+  const [showGoalReps, setShowGoalReps] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('wf-default-show-goal-reps')) ?? true; } catch { return true; }
   });
   const [showSetType, setShowSetType] = useState(() => {
     try { return JSON.parse(localStorage.getItem('replab_show_set_type')) ?? true; } catch { return true; }
@@ -891,43 +906,36 @@ export default function WorkoutSession() {
     }
     if (!exercise) return;
 
-    // Read completedSets / autoFilled from refs so we see the LATEST values,
-    // not the closure-captured ones from when handleBlur was scheduled. This
-    // prevents the race where a set marked complete just before blur fires
-    // would still be auto-overwritten.
+    // Read completedSets from a ref so we see the LATEST value, not the
+    // closure-captured one from when handleBlur was scheduled. Prevents the
+    // race where a set marked complete just before blur fires would still
+    // be auto-overwritten.
     const completedNow = completedSetsRef.current;
-    const autoFilledNow = autoFilledRef.current;
 
+    // Cascade rule: every later set in this exercise is overwritten with
+    // the value that was just entered, except for sets the user has
+    // explicitly completed (those are locked-in results we never clobber).
+    // This means editing set 1 fills sets 2..N; later editing set 4 fills
+    // sets 5..N with the new value while leaving 2..3 alone.
     setEntries((prev) => {
       const updated = { ...prev };
       updated[exerciseName] = [...(updated[exerciseName] || [])];
       for (let i = setIdx + 1; i < exercise.sets.length; i++) {
         const key = `${exerciseName}-${i}`;
-        // Only fill if the set is not completed and the field is empty or auto-filled
-        if (!completedNow.has(key)) {
-          const current = updated[exerciseName][i]?.[field];
-          if (current === '' || current === undefined || current === null || autoFilledNow.has(key)) {
-            updated[exerciseName][i] = {
-              ...updated[exerciseName][i],
-              [field]: value,
-            };
-          }
-        }
+        if (completedNow.has(key)) continue;
+        updated[exerciseName][i] = {
+          ...updated[exerciseName][i],
+          [field]: value,
+        };
       }
       return updated;
     });
 
-    // Mark the auto-filled sets
     setAutoFilled((prev) => {
       const next = new Set(prev);
       for (let i = setIdx + 1; i < exercise.sets.length; i++) {
         const key = `${exerciseName}-${i}`;
-        if (!completedNow.has(key)) {
-          const current = exEntries[i]?.[field];
-          if (current === '' || current === undefined || current === null || prev.has(key)) {
-            next.add(key);
-          }
-        }
+        if (!completedNow.has(key)) next.add(key);
       }
       return next;
     });
@@ -2034,7 +2042,11 @@ export default function WorkoutSession() {
                       </svg>
                     </button>
                     <button
-                      onClick={() => setPinWorkoutTimer(p => !p)}
+                      onClick={() => setPinWorkoutTimer((p) => {
+                        const v = !p;
+                        try { localStorage.setItem('wf-default-pin-workout-timer', JSON.stringify(v)); } catch {}
+                        return v;
+                      })}
                       aria-label={pinWorkoutTimer ? 'Unlock timer' : 'Lock timer'}
                       className="w-6 h-6 flex items-center justify-center active:scale-90 transition-all"
                       style={{ color: pinWorkoutTimer ? 'rgba(239,68,68,0.9)' : 'rgba(255,255,255,0.4)' }}
@@ -2204,7 +2216,7 @@ export default function WorkoutSession() {
                         </svg>
                       </button>
                       {/* Lock toggle */}
-                      <button onClick={() => setPinRestTimer(p => !p)} aria-label={pinRestTimer ? 'Unlock rest timer' : 'Lock rest timer'} className="w-6 h-6 flex items-center justify-center active:scale-90 transition-all" style={{ color: pinRestTimer ? 'rgba(239,68,68,0.9)' : 'rgba(255,255,255,0.4)' }}>
+                      <button onClick={() => setPinRestTimer((p) => { const v = !p; try { localStorage.setItem('wf-default-pin-rest-timer', JSON.stringify(v)); } catch {} return v; })} aria-label={pinRestTimer ? 'Unlock rest timer' : 'Lock rest timer'} className="w-6 h-6 flex items-center justify-center active:scale-90 transition-all" style={{ color: pinRestTimer ? 'rgba(239,68,68,0.9)' : 'rgba(255,255,255,0.4)' }}>
                         {pinRestTimer ? (
                           <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM9 8V6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9z" />
@@ -2253,12 +2265,21 @@ export default function WorkoutSession() {
                   </button>
                 </div>
                 <button
-                  onClick={() => { const v = !showGoals; setShowGoals(v); try { localStorage.setItem('replab_show_goals', JSON.stringify(v)); } catch {} }}
+                  onClick={() => { const v = !showGoalWeight; setShowGoalWeight(v); try { localStorage.setItem('wf-default-show-goal-weight', JSON.stringify(v)); } catch {} }}
                   className="w-full px-3 py-2.5 flex items-center justify-between text-sm text-white active:bg-white/5 transition-colors"
                 >
-                  <span>Goal Weight / Reps</span>
-                  <div className={`w-8 h-5 rounded-full transition-colors ${showGoals ? 'bg-wf-red' : 'bg-wf-gray-600'}`}>
-                    <div className={`w-4 h-4 rounded-full bg-white mt-0.5 transition-transform ${showGoals ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                  <span>Goal Weight</span>
+                  <div className={`w-8 h-5 rounded-full transition-colors ${showGoalWeight ? 'bg-wf-red' : 'bg-wf-gray-600'}`}>
+                    <div className={`w-4 h-4 rounded-full bg-white mt-0.5 transition-transform ${showGoalWeight ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                  </div>
+                </button>
+                <button
+                  onClick={() => { const v = !showGoalReps; setShowGoalReps(v); try { localStorage.setItem('wf-default-show-goal-reps', JSON.stringify(v)); } catch {} }}
+                  className="w-full px-3 py-2.5 flex items-center justify-between text-sm text-white active:bg-white/5 transition-colors"
+                >
+                  <span>Goal Reps</span>
+                  <div className={`w-8 h-5 rounded-full transition-colors ${showGoalReps ? 'bg-wf-red' : 'bg-wf-gray-600'}`}>
+                    <div className={`w-4 h-4 rounded-full bg-white mt-0.5 transition-transform ${showGoalReps ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
                   </div>
                 </button>
                 <button
@@ -2400,8 +2421,8 @@ export default function WorkoutSession() {
               lastEntries={lastSession[exercise.name]}
               forceShowDemo={showAllDemos}
               dataTutorial={tutorialMode && idx === 1 ? 'exercise-header' : undefined}
-              showGoalWeight={showGoals}
-              showGoalReps={showGoals}
+              showGoalWeight={showGoalWeight}
+              showGoalReps={showGoalReps}
               showSetType={showSetType}
               exerciseNumber={exerciseNumber}
               cardioEnabled={cardioEnabled}

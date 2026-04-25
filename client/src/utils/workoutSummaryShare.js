@@ -129,15 +129,16 @@ export async function generateSummaryImage(opts) {
   ctx.font = `900 46px ${font}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  const willW = ctx.measureText('WILL').width;
-  const fitW = ctx.measureText('FIT').width;
-  const totalLogoW = willW + fitW + 4;
+  // Brand split: "REP" white, "LAB" red — mirrors the in-app REPLAB wordmark.
+  const repW = ctx.measureText('REP').width;
+  const labW = ctx.measureText('LAB').width;
+  const totalLogoW = repW + labW + 4;
   const logoStartX = W / 2 - totalLogoW / 2;
   ctx.textAlign = 'left';
   ctx.fillStyle = '#ffffff';
-  ctx.fillText('WILL', logoStartX, curY + 25);
+  ctx.fillText('REP', logoStartX, curY + 25);
   ctx.fillStyle = '#ef4444';
-  ctx.fillText('FIT', logoStartX + willW + 4, curY + 25);
+  ctx.fillText('LAB', logoStartX + repW + 4, curY + 25);
   curY += 50;
 
   curY += 10;
