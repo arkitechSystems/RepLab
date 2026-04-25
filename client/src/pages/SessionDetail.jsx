@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { api } from '../api';
 import StickyHeader from '../components/StickyHeader';
+import LoadingSpinnerOverlay from '../components/LoadingSpinnerOverlay';
 
 export default function SessionDetail() {
   const { id } = useParams();
@@ -27,6 +28,7 @@ export default function SessionDetail() {
         {[...Array(4)].map((_, i) => (
           <div key={i} className="glass-skeleton rounded-xl h-32 mb-3" />
         ))}
+        <LoadingSpinnerOverlay />
       </div>
     );
   }

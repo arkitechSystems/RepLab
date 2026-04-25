@@ -536,9 +536,9 @@ export default function Profile() {
             <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(156,163,175,0.85)', letterSpacing: '0.3em' }}>Preferences</p>
             <h3 className="text-[22px] font-black text-white tracking-tight mb-4" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>APP SETTINGS</h3>
             <div className="pt-3 border-t border-white/10 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <svg className="w-4.5 h-4.5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <div className="flex items-center justify-between gap-px">
+                <div className="flex items-center gap-px flex-1 min-w-0">
+                  <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                   </svg>
                   <span className="text-white/70 text-sm font-medium">Bible Verses</span>
@@ -546,7 +546,7 @@ export default function Profile() {
                 <button
                   onClick={() => setBibleVersesOn(!bibleVersesOn)}
                   aria-label={bibleVersesOn ? 'Turn off Bible verses' : 'Turn on Bible verses'}
-                  className={`relative w-12 h-7 rounded-full transition-colors ${bibleVersesOn ? 'bg-wf-red' : 'bg-white/15'}`}
+                  className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${bibleVersesOn ? 'bg-wf-red' : 'bg-white/15'}`}
                 >
                   <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${bibleVersesOn ? 'translate-x-5' : 'translate-x-0.5'}`} />
                 </button>
@@ -560,9 +560,9 @@ export default function Profile() {
                   Workout Session Defaults
                 </p>
 
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-4.5 h-4.5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <div className="flex items-center justify-between gap-px">
+                  <div className="flex items-center gap-px flex-1 min-w-0">
+                    <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <span className="text-white/70 text-sm font-medium">Workout Timer Locked</span>
@@ -570,15 +570,15 @@ export default function Profile() {
                   <button
                     onClick={() => setDefaultPinWorkoutTimer(!defaultPinWorkoutTimer)}
                     aria-label={defaultPinWorkoutTimer ? 'Default to unlocked workout timer' : 'Default to locked workout timer'}
-                    className={`relative w-12 h-7 rounded-full transition-colors ${defaultPinWorkoutTimer ? 'bg-wf-red' : 'bg-white/15'}`}
+                    className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${defaultPinWorkoutTimer ? 'bg-wf-red' : 'bg-white/15'}`}
                   >
                     <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${defaultPinWorkoutTimer ? 'translate-x-5' : 'translate-x-0.5'}`} />
                   </button>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-4.5 h-4.5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <div className="flex items-center justify-between gap-px">
+                  <div className="flex items-center gap-px flex-1 min-w-0">
+                    <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z M12 7v5l3 3" />
                     </svg>
                     <span className="text-white/70 text-sm font-medium">Rest Timer Locked</span>
@@ -586,15 +586,15 @@ export default function Profile() {
                   <button
                     onClick={() => setDefaultPinRestTimer(!defaultPinRestTimer)}
                     aria-label={defaultPinRestTimer ? 'Default to unlocked rest timer' : 'Default to locked rest timer'}
-                    className={`relative w-12 h-7 rounded-full transition-colors ${defaultPinRestTimer ? 'bg-wf-red' : 'bg-white/15'}`}
+                    className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${defaultPinRestTimer ? 'bg-wf-red' : 'bg-white/15'}`}
                   >
                     <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${defaultPinRestTimer ? 'translate-x-5' : 'translate-x-0.5'}`} />
                   </button>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-4.5 h-4.5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <div className="flex items-center justify-between gap-px">
+                  <div className="flex items-center gap-px flex-1 min-w-0">
+                    <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 8a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z M7 12h2m6 0h2" />
                     </svg>
                     <span className="text-white/70 text-sm font-medium">Show Goal Weight</span>
@@ -602,15 +602,15 @@ export default function Profile() {
                   <button
                     onClick={() => setDefaultShowGoalWeight(!defaultShowGoalWeight)}
                     aria-label={defaultShowGoalWeight ? 'Hide goal weight by default' : 'Show goal weight by default'}
-                    className={`relative w-12 h-7 rounded-full transition-colors ${defaultShowGoalWeight ? 'bg-wf-red' : 'bg-white/15'}`}
+                    className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${defaultShowGoalWeight ? 'bg-wf-red' : 'bg-white/15'}`}
                   >
                     <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${defaultShowGoalWeight ? 'translate-x-5' : 'translate-x-0.5'}`} />
                   </button>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-4.5 h-4.5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <div className="flex items-center justify-between gap-px">
+                  <div className="flex items-center gap-px flex-1 min-w-0">
+                    <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 12h.01M7 12h.01M11 12h.01M15 12h.01M19 12h.01" />
                     </svg>
                     <span className="text-white/70 text-sm font-medium">Show Goal Reps</span>
@@ -618,34 +618,13 @@ export default function Profile() {
                   <button
                     onClick={() => setDefaultShowGoalReps(!defaultShowGoalReps)}
                     aria-label={defaultShowGoalReps ? 'Hide goal reps by default' : 'Show goal reps by default'}
-                    className={`relative w-12 h-7 rounded-full transition-colors ${defaultShowGoalReps ? 'bg-wf-red' : 'bg-white/15'}`}
+                    className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${defaultShowGoalReps ? 'bg-wf-red' : 'bg-white/15'}`}
                   >
                     <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${defaultShowGoalReps ? 'translate-x-5' : 'translate-x-0.5'}`} />
                   </button>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {theme === 'dark' ? (
-                    <svg className="w-4.5 h-4.5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
-                    </svg>
-                  ) : (
-                    <svg className="w-4.5 h-4.5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
-                    </svg>
-                  )}
-                  <span className="text-white/70 text-sm font-medium">{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
-                </div>
-                <button
-                  onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                  aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-                  className={`relative w-12 h-7 rounded-full transition-colors ${theme === 'light' ? 'bg-wf-red' : 'bg-white/15'}`}
-                >
-                  <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${theme === 'light' ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                </button>
-              </div>
             </div>
           </div>
         </div>

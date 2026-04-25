@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useExercises } from '../hooks/useExercises';
+import LoadingSpinnerOverlay from '../components/LoadingSpinnerOverlay';
 import { getDetailSlugs } from '../data/exercises/index.js';
 
 // Auto-generated from registered exercise detail pages
@@ -162,11 +163,14 @@ export default function ExerciseLibrary() {
 
       {/* Loading */}
       {loading && (
-        <div className="space-y-2">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="glass-skeleton rounded-xl h-14" />
-          ))}
-        </div>
+        <>
+          <div className="space-y-2">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="glass-skeleton rounded-xl h-14" />
+            ))}
+          </div>
+          <LoadingSpinnerOverlay />
+        </>
       )}
 
       {/* Exercise List */}

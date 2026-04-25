@@ -5,6 +5,7 @@ import { api } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { getWorkoutColor } from '../utils/workoutColors';
 import StickyHeader from '../components/StickyHeader';
+import LoadingSpinnerOverlay from '../components/LoadingSpinnerOverlay';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const FULL_DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -671,11 +672,14 @@ export default function Calendar() {
           </div>
         )}
         {loading ? (
-          <div className="space-y-3">
-            {[...Array(7)].map((_, i) => (
-              <div key={i} className="glass-skeleton rounded-xl h-20" />
-            ))}
-          </div>
+          <>
+            <div className="space-y-3">
+              {[...Array(7)].map((_, i) => (
+                <div key={i} className="glass-skeleton rounded-xl h-20" />
+              ))}
+            </div>
+            <LoadingSpinnerOverlay />
+          </>
         ) : loadError ? (
           <div className="text-center py-16 fade-slide-up">
             <p className="text-red-400 mb-3">{loadError}</p>

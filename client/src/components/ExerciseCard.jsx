@@ -10,12 +10,6 @@ import { iosFocusRef } from '../utils/iosFocus.js';
 // border matching the Swap Exercise modal. Flip to false to revert.
 const EXERCISE_CARD_GRADIENT_BORDER = true;
 
-// Test toggle: when true, exercise cards are fully transparent (page-bg shows
-// through) with white text. When false, falls back to the current light-card
-// (#e8e8e8) treatment. Flip to false to revert. Paired CSS rules live in
-// index.css under `.exercise-card-transparent-test`.
-const EXERCISE_CARD_TRANSPARENT_TEST = true;
-
 function addToRecent(name) {
   try {
     const recent = JSON.parse(localStorage.getItem('replab_recent_exercises') || '[]');
@@ -45,7 +39,10 @@ function getSetTypeShort(value) {
 
 export { SET_TYPES };
 
-function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, note, onNoteChange, weightSuggestion, onApplySuggestion, allWorkoutExercises, lastEntries, forceShowDemo, mode = 'session', dataTutorial, showGoalWeight = true, showGoalReps = true, showSetType = true, exerciseNumber, cardioEnabled = false, cardioSelections, onCardioChange }) {
+function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, note, onNoteChange, weightSuggestion, onApplySuggestion, allWorkoutExercises, lastEntries, forceShowDemo, mode = 'session', dataTutorial, showGoalWeight = true, showGoalReps = true, showSetType = true, exerciseNumber, cardioEnabled = false, cardioSelections, onCardioChange, cardTheme = 'light' }) {
+  // 'light' = #e8e8e8 card with dark text (default)
+  // 'dark'  = transparent card, white text — page bg shows through
+  const isDarkTheme = cardTheme === 'dark';
   const isTemplate = mode === 'template';
   // Use exerciseKey (unique per card) for set-level keys; fall back to exercise.name
   const keyName = exerciseKey || exercise.name;
@@ -142,7 +139,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
 
   return (
     <>
-    <div data-tutorial={dataTutorial ? 'exercise-card' : undefined} className={`${EXERCISE_CARD_TRANSPARENT_TEST ? 'exercise-card-transparent-test' : 'exercise-card-light-test'} glass-card rounded-xl overflow-hidden mb-3${EXERCISE_CARD_GRADIENT_BORDER && !EXERCISE_CARD_TRANSPARENT_TEST ? ' exercise-card-gradient-border' : ''}`}>
+    <div data-tutorial={dataTutorial ? 'exercise-card' : undefined} className={`${isDarkTheme ? 'exercise-card-transparent-test' : 'exercise-card-light-test'} glass-card rounded-xl overflow-hidden mb-3${EXERCISE_CARD_GRADIENT_BORDER && !isDarkTheme ? ' exercise-card-gradient-border' : ''}`}>
       {/* Exercise Header — name + demo button */}
       <div data-tutorial={dataTutorial} className="px-4 py-3 flex items-center justify-between" style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '3px double rgba(255,255,255,0.15)' }}>
         <div className="min-w-0">
@@ -303,13 +300,13 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                 // In session mode the row sits over swipe-action buttons —
                 // give it an opaque background so the buttons stay hidden
                 // until the row is dragged. Color matches the parent card:
-                //   • transparent-test mode: solid black (page bg)
-                //   • light-test mode:       #e8e8e8 (light card)
+                //   • dark theme:  solid black (page bg)
+                //   • light theme: #e8e8e8 (light card)
                 // Completed rows get a precomputed alpha-blend of green/10
                 // over the base so we keep the same visual cue.
                 isSwipeable
                   ? {
-                      background: EXERCISE_CARD_TRANSPARENT_TEST
+                      background: isDarkTheme
                         ? (isCompleted ? 'rgb(3, 19, 9)' : '#000')
                         : (isCompleted ? 'rgb(213, 228, 218)' : '#e8e8e8'),
                     }

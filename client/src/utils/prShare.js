@@ -25,9 +25,22 @@ function formatDate(d) {
   });
 }
 
+// Cache the logo across multiple shares in the same session.
+let _logoPromise = null;
+function loadLogo() {
+  if (_logoPromise) return _logoPromise;
+  _logoPromise = new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = '/RepLabLogo2.jpg';
+  });
+  return _logoPromise;
+}
+
 // Build a square PR card. Black bg, red→orange gradient blob, big numbers,
-// RepLab wordmark in the corner. No external assets — fully canvas-painted.
-function drawPRCard({ muscle, exercise, weight, reps, achievedAt }) {
+// RepLab logo in the corner.
+async function drawPRCard({ muscle, exercise, weight, reps, achievedAt }) {
   const W = 1080;
   const H = 1080;
   const canvas = document.createElement('canvas');
@@ -70,18 +83,26 @@ function drawPRCard({ muscle, exercise, weight, reps, achievedAt }) {
   }
   ctx.restore();
 
-  // Top eyebrow
+  // Top eyebrow — tripled from 26px to 78px so it reads as the headline,
+  // not a tagline.
   ctx.fillStyle = 'rgba(239, 68, 68, 0.9)';
-  ctx.font = `700 26px ${font}`;
+  ctx.font = `700 78px ${font}`;
   ctx.textBaseline = 'top';
   ctx.fillText('PERSONAL RECORD', 80, 88);
 
-  // RepLab wordmark top-right
-  ctx.fillStyle = 'rgba(255,255,255,0.45)';
-  ctx.font = `900 24px ${font}`;
-  ctx.textAlign = 'right';
-  ctx.fillText('REPLAB', W - 80, 88);
-  ctx.textAlign = 'left';
+  // RepLab logo top-right (replaces the old REPLAB wordmark). Falls back to
+  // text if the logo failed to load — keeps the corner from looking empty.
+  const logo = await loadLogo();
+  const logoSize = 140;
+  if (logo) {
+    ctx.drawImage(logo, W - 80 - logoSize, 60, logoSize, logoSize);
+  } else {
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.font = `900 24px ${font}`;
+    ctx.textAlign = 'right';
+    ctx.fillText('REPLAB', W - 80, 88);
+    ctx.textAlign = 'left';
+  }
 
   // Muscle group label
   ctx.fillStyle = 'rgba(255,255,255,0.45)';
@@ -166,7 +187,7 @@ function drawPRCard({ muscle, exercise, weight, reps, achievedAt }) {
  * or the platform doesn't support sharing.
  */
 export async function sharePR(pr) {
-  const dataUrl = drawPRCard(pr);
+  const dataUrl = await drawPRCard(pr);
   const blob = dataURLtoBlob(dataUrl);
   const filename = `RepLab-PR-${pr.exercise}-${pr.weight}lb.png`
     .replace(/[^a-zA-Z0-9.\-]/g, '_');

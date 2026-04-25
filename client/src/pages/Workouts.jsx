@@ -11,6 +11,7 @@ import { useAuth } from '../context/AuthContext';
 import { sharePR } from '../utils/prShare';
 import { useTutorial } from '../context/TutorialContext';
 import UndoToast from '../components/UndoToast';
+import LoadingSpinnerOverlay from '../components/LoadingSpinnerOverlay';
 import { track } from '../utils/analytics';
 
 const DAY_NAMES_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -276,7 +277,7 @@ function OdometerStat({ value, labelTop, labelBottom, delay = 0 }) {
   const labelCls = 'text-[9px] text-white/40 uppercase font-bold';
   const labelStyle = { letterSpacing: '0.25em' };
   return (
-    <div className="text-center py-2">
+    <div className="text-center py-0">
       <p className={labelCls} style={labelStyle}>{labelTop}</p>
       <div
         className="text-3xl font-black tabular-nums my-1.5"
@@ -1179,9 +1180,13 @@ export default function Workouts() {
   }
 
   function buildEntries(program, startDate) {
-    // Featured programs schedule ALL templates (full program duration)
-    // Regular programs schedule first 7 (one week)
-    const templatesToSchedule = program.isFeatured ? program.templates : program.templates.slice(0, 7);
+    // Schedule every template in the program. Library programs ship with
+    // unique templates per week (e.g. Nippard PPL = 16 weeks × 7 days =
+    // 112 templates), so anything less than .templates clips the calendar
+    // to a partial program. User-built programs with only a handful of
+    // templates still get every template scheduled — same behavior as
+    // before for that case.
+    const templatesToSchedule = program.templates;
     return templatesToSchedule.map((t, i) => {
       const date = new Date(startDate);
       date.setDate(date.getDate() + i);
@@ -4399,19 +4404,22 @@ export default function Workouts() {
 
       <div className="px-4">
         {loading ? (
-          <div className="space-y-4 mt-4">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="glass-card rounded-2xl p-5 animate-pulse">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-white/10" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-5 w-2/3 rounded-lg bg-white/10" />
-                    <div className="h-3 w-1/2 rounded-lg bg-white/5" />
+          <>
+            <div className="space-y-4 mt-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="glass-card rounded-2xl p-5 animate-pulse">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-white/10" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-5 w-2/3 rounded-lg bg-white/10" />
+                      <div className="h-3 w-1/2 rounded-lg bg-white/5" />
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+            <LoadingSpinnerOverlay />
+          </>
         ) : loadError ? (
           <div className="text-center py-16 fade-slide-up">
             <p className="text-red-400 mb-3">{loadError}</p>

@@ -4,6 +4,7 @@ import { format, parseISO } from 'date-fns';
 import { api } from '../api';
 import { getWorkoutColor } from '../utils/workoutColors';
 import StickyHeader from '../components/StickyHeader';
+import LoadingSpinnerOverlay from '../components/LoadingSpinnerOverlay';
 import useCountUp from '../hooks/useCountUp';
 
 export default function History() {
@@ -44,11 +45,14 @@ export default function History() {
         )}
 
         {loading ? (
-          <div className="space-y-3">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="glass-skeleton rounded-xl h-20" />
-            ))}
-          </div>
+          <>
+            <div className="space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="glass-skeleton rounded-xl h-20" />
+              ))}
+            </div>
+            <LoadingSpinnerOverlay />
+          </>
         ) : loadError ? (
           <div className="text-center py-16">
             <p className="text-red-400 mb-3">{loadError}</p>

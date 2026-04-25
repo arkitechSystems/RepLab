@@ -66,8 +66,11 @@ export default function Layout() {
       {/* Top bar with logo + profile avatar — hidden when embedded from dashboard */}
       {!isDashboardEmbed && (
         <div
-          className="relative z-20 px-4 pb-1 flex items-center justify-between"
-          style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1.5rem)' }}
+          className="relative z-20 px-4 flex items-center justify-between"
+          style={{
+            paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.3rem)',
+            paddingBottom: '0.05rem',
+          }}
         >
           <img src="/RepLabLogo3.jpg" alt="RepLab" className="h-7 rounded" />
           <button

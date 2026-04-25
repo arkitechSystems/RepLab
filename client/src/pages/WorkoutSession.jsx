@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { format, isToday, addDays, subDays } from 'date-fns';
 import { api } from '../api';
@@ -8,7 +9,10 @@ import RestDayCard from '../components/RestDayCard';
 import StickyHeader from '../components/StickyHeader';
 import { useUnsavedGuard } from '../components/UnsavedGuard';
 import PBCelebration from '../components/PBCelebration';
+import BodyHeatmap from '../components/BodyHeatmap';
+import { buildMuscleAllocation } from '../utils/muscleAllocation';
 import UndoToast from '../components/UndoToast';
+import LoadingSpinnerOverlay from '../components/LoadingSpinnerOverlay';
 import { iosFocusRef } from '../utils/iosFocus';
 import { getWeightSuggestion } from '../utils/weightSuggestion';
 import { calculateOneRMSuggestion } from '../utils/oneRepMaxSuggestion';
@@ -143,6 +147,11 @@ export default function WorkoutSession() {
   });
   const [showSetType, setShowSetType] = useState(() => {
     try { return JSON.parse(localStorage.getItem('replab_show_set_type')) ?? true; } catch { return true; }
+  });
+  // 'light' (default, #e8e8e8 card) or 'dark' (transparent — page bg shows through).
+  // Persisted so the next session inherits the user's choice.
+  const [cardTheme, setCardTheme] = useState(() => {
+    try { return localStorage.getItem('wf-default-card-theme') || 'light'; } catch { return 'light'; }
   });
   const [showSessionMenu, setShowSessionMenu] = useState(false);
   const autoSaveRef = useRef(null);
@@ -1803,6 +1812,7 @@ export default function WorkoutSession() {
             </div>
           </div>
         ))}
+        <LoadingSpinnerOverlay />
       </div>
     );
   }
@@ -2291,6 +2301,22 @@ export default function WorkoutSession() {
                     <div className={`w-4 h-4 rounded-full bg-white mt-0.5 transition-transform ${showSetType ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
                   </div>
                 </button>
+                {/* Light/Dark card-theme toggle — switches the exercise-card
+                    background between the light (#e8e8e8) and dark (transparent
+                    over page bg) treatments. Off = light, on = dark. */}
+                <button
+                  onClick={() => {
+                    const v = cardTheme === 'dark' ? 'light' : 'dark';
+                    setCardTheme(v);
+                    try { localStorage.setItem('wf-default-card-theme', v); } catch {}
+                  }}
+                  className="w-full px-3 py-2.5 flex items-center justify-between text-sm text-white active:bg-white/5 transition-colors border-t border-white/5"
+                >
+                  <span>Dark Cards</span>
+                  <div className={`w-8 h-5 rounded-full transition-colors ${cardTheme === 'dark' ? 'bg-wf-red' : 'bg-wf-gray-600'}`}>
+                    <div className={`w-4 h-4 rounded-full bg-white mt-0.5 transition-transform ${cardTheme === 'dark' ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                  </div>
+                </button>
               </div>
             </>
           )}
@@ -2428,6 +2454,7 @@ export default function WorkoutSession() {
               cardioEnabled={cardioEnabled}
               cardioSelections={cardioSelections}
               onCardioChange={wrapCb(handleCardioChange)}
+              cardTheme={cardTheme}
             />
             {/* Inline undo toast for deleted set — show below this exercise */}
             {undoToast && undoToast.type === 'set' && undoToast.exerciseName === eKey && (
@@ -2917,6 +2944,13 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
   const [savedAsTemplate, setSavedAsTemplate] = useState(false);
   const [savingTemplate, setSavingTemplate] = useState(false);
 
+  // Append " program" after the program name unless the name already ends in
+  // "program" (case-insensitive) — guards against e.g. "Will's Hypertrophy
+  // Program" rendering as "...Program program".
+  const programLabel = programName
+    ? (/\bprogram\s*$/i.test(programName) ? programName : `${programName} program`)
+    : '';
+
   async function saveAsTemplate() {
     if (savingTemplate || savedAsTemplate) return;
     setSavingTemplate(true);
@@ -3046,6 +3080,14 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
 
   const totalGoalVolume = exerciseStats.reduce((s, ex) => s + ex.totalGoalVol, 0);
 
+  // Per-muscle work share for the segmented ring + body heatmap.
+  const muscleAllocation = buildMuscleAllocation({
+    exercises: template.exercises,
+    entries,
+    completedSets,
+    exKey,
+  });
+
   // Helper: draw rounded rectangle (fallback for browsers without ctx.roundRect)
   function drawRoundRect(ctx, x, y, w, h, r) {
     ctx.beginPath();
@@ -3093,7 +3135,7 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
     y += padding; // top padding
     y += 50; // logo
     y += 20; // spacing after logo
-    if (programName) y += 36; // program name
+    if (programLabel) y += 36; // program name
     y += 50; // workout name (base)
     // Measure workout name wrap
     ctx.canvas.width = W;
@@ -3174,11 +3216,11 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
     curY += 20;
 
     // --- Program name ---
-    if (programName) {
+    if (programLabel) {
       ctx.font = `500 24px ${font}`;
       ctx.fillStyle = 'rgba(255,255,255,0.4)';
       ctx.textAlign = 'center';
-      ctx.fillText(programName, W / 2, curY + 14);
+      ctx.fillText(programLabel, W / 2, curY + 14);
       curY += 36;
     }
 
@@ -3369,7 +3411,7 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
 
   async function handleShareText() {
     const lines = [];
-    if (programName) lines.push(programName);
+    if (programLabel) lines.push(programLabel);
     lines.push(`${template.name} \u2014 Workout Complete!`);
     lines.push(`Time: ${formatTime(elapsed)} | Sets: ${completedSets.size}/${totalSets} | Volume: ${totalVolume.toLocaleString()} lbs`);
     lines.push('');
@@ -3402,8 +3444,12 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-[60] flex flex-col">
+  // Portal to <body> so the modal escapes the Layout's <main> stacking
+  // context (which sits at z-10 and traps the avatar/header bar above
+  // anything inside it). Without this, scrolling up could let the share
+  // button slide behind the top avatar.
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex flex-col">
       {/* Confetti canvas */}
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none z-10" />
 
@@ -3451,9 +3497,9 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
             >
               {template.name.toUpperCase()}
             </h2>
-            {programName && (
+            {programLabel && (
               <p className="text-[10px] uppercase font-bold text-white/40 mt-3" style={{ letterSpacing: '0.3em' }}>
-                {programName}
+                {programLabel}
               </p>
             )}
           </div>
@@ -3500,6 +3546,71 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
               </div>
             );
           })()}
+
+          {/* Body Parts Worked — segmented ring + legend, then anatomical
+              figures. Hidden if no sets were completed (nothing to show). */}
+          {muscleAllocation.length > 0 && (
+            <div className="mb-6 px-4 py-5 rounded-sm" style={{
+              background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+              boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+            }}>
+              <p className="text-[10px] uppercase font-bold mb-4" style={{ color: '#ef4444', letterSpacing: '0.3em' }}>
+                Body Parts Worked
+              </p>
+              {(() => {
+                const r = 56;
+                const c = 2 * Math.PI * r;
+                let cumulative = 0;
+                return (
+                  <div className="flex items-center gap-5">
+                    <svg width="140" height="140" viewBox="0 0 140 140" className="shrink-0">
+                      {/* Track */}
+                      <circle cx="70" cy="70" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="14" />
+                      {/* Segments */}
+                      <g transform="rotate(-90 70 70)">
+                        {muscleAllocation.map((seg) => {
+                          const dash = c * seg.share;
+                          const offset = -c * cumulative;
+                          cumulative += seg.share;
+                          return (
+                            <circle
+                              key={seg.muscle}
+                              cx="70"
+                              cy="70"
+                              r={r}
+                              fill="none"
+                              stroke={seg.color}
+                              strokeWidth="14"
+                              strokeDasharray={`${dash} ${c - dash}`}
+                              strokeDashoffset={offset}
+                              style={{ filter: `drop-shadow(0 0 6px ${seg.color}80)` }}
+                            />
+                          );
+                        })}
+                      </g>
+                    </svg>
+                    <div className="flex-1 min-w-0 space-y-1.5">
+                      {muscleAllocation.map((seg) => (
+                        <div key={seg.muscle} className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: seg.color, boxShadow: `0 0 6px ${seg.color}` }} />
+                          <span className="text-xs font-bold uppercase tracking-wider" style={{ color: seg.color, letterSpacing: '0.12em' }}>
+                            {seg.muscle}
+                          </span>
+                          <span className="ml-auto text-sm font-black text-white tabular-nums">
+                            {Math.round(seg.share * 100)}%
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <div className="mt-5 pt-5 border-t border-white/5">
+                <BodyHeatmap allocation={muscleAllocation} />
+              </div>
+            </div>
+          )}
 
           {/* Exercise Breakdown */}
           <div className="space-y-2">
@@ -3605,12 +3716,13 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
         </div>
       </div>
 
-      {/* Bottom buttons — extra bottom padding so the Save as Template
-          button doesn't kiss the screen edge / nav bar. Save as Template
-          mirrors the "+ Create Workout" button on the My Workouts card. */}
+      {/* Bottom buttons — pads for the bottom nav + safe area via the
+          shared --rl-nav-clearance CSS var so the Done button isn't eaten
+          by the nav. Save as Template mirrors the "+ Create Workout"
+          button on the My Workouts card. */}
       <div
         className="relative z-20 px-4 pt-4 bg-gradient-to-t from-black via-black/95 to-transparent space-y-3"
-        style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom, 0px))' }}
+        style={{ paddingBottom: 'calc(1rem + var(--rl-nav-clearance))' }}
       >
         <button
           onClick={saveAsTemplate}
@@ -3705,6 +3817,7 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
           </div>
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 }
