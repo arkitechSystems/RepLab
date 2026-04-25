@@ -5,6 +5,25 @@ import { initPushNotifications, teardownPushNotifications } from '../utils/push'
 
 const AuthContext = createContext(null);
 
+// Returns the path to redirect to, or null if the input is unsafe (off-origin,
+// protocol-relative, or otherwise abusable). Used by the bridge-token flow,
+// where `?redirect=...` is taken from the URL and must not point off-site.
+function sanitizeRedirectPath(raw) {
+  if (!raw || typeof raw !== 'string') return null;
+  // Reject anything that isn't a normal absolute path on this origin.
+  // - Must start with a single "/" (not "//" — that's a protocol-relative URL).
+  // - Must NOT contain a "\" which some browsers normalize to "/" creating
+  //   bypass surface.
+  if (!raw.startsWith('/') || raw.startsWith('//') || raw.includes('\\')) return null;
+  try {
+    const u = new URL(raw, window.location.origin);
+    if (u.origin !== window.location.origin) return null;
+    return u.pathname + u.search + u.hash;
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     try {
@@ -57,8 +76,14 @@ export function AuthProvider({ children }) {
     setToken(bridgeToken);
     window.history.replaceState({}, '', '/');
 
-    // Fetch user data with the bridge token
-    fetch('/auth/me', { headers: { 'Authorization': 'Bearer ' + bridgeToken } })
+    // Fetch user data with the bridge token. AbortController prevents
+    // "set state on unmounted component" if the user navigates mid-fetch.
+    const controller = new AbortController();
+    let redirectTimer;
+    fetch('/auth/me', {
+      headers: { 'Authorization': 'Bearer ' + bridgeToken },
+      signal: controller.signal,
+    })
       .then(r => {
         if (!r.ok) throw new Error(`/auth/me returned ${r.status}`);
         return r.json();
@@ -70,17 +95,26 @@ export function AuthProvider({ children }) {
         }
       })
       .catch((err) => {
+        if (err.name === 'AbortError') return;
         // Bridge token was rejected — clear it so the user lands on login instead
         // of in a half-authenticated state with a token but no user object.
-        console.warn('Bridge token auth failed:', err);
+        if (import.meta.env.DEV) console.warn('Bridge token auth failed:', err);
         clearAuthTokens();
         setToken(null);
       });
 
-    // Navigate to target after a tick so React Router can mount
-    if (redirectPath) {
-      setTimeout(() => { window.location.replace(redirectPath); }, 50);
+    // Open-redirect guard: only allow same-origin paths. Strip absolute URLs,
+    // protocol-relative URLs (//evil.com), and anything that fails URL parse
+    // against the current origin.
+    const safePath = sanitizeRedirectPath(redirectPath);
+    if (safePath) {
+      redirectTimer = setTimeout(() => { window.location.replace(safePath); }, 50);
     }
+
+    return () => {
+      controller.abort();
+      if (redirectTimer) clearTimeout(redirectTimer);
+    };
   }, []);
 
   // Helper to set all auth state atomically, cleaning up on failure.

@@ -29,7 +29,7 @@ async function registerTokenOnServer(token, platform) {
     });
     currentToken = token;
   } catch (err) {
-    console.warn('[push] failed to register token with server:', err?.message || err);
+    if (import.meta.env.DEV) console.warn('[push] failed to register token with server:', err?.message || err);
   }
 }
 
@@ -43,7 +43,7 @@ export async function initPushNotifications() {
   try {
     ({ PushNotifications } = await import('@capacitor/push-notifications'));
   } catch (err) {
-    console.warn('[push] plugin not available:', err?.message || err);
+    if (import.meta.env.DEV) console.warn('[push] plugin not available:', err?.message || err);
     return;
   }
 
@@ -66,7 +66,7 @@ export async function initPushNotifications() {
     });
 
     PushNotifications.addListener('registrationError', (err) => {
-      console.warn('[push] registration error:', err?.error || err);
+      if (import.meta.env.DEV) console.warn('[push] registration error:', err?.error || err);
     });
 
     // Foreground receipt — no-op for now; we can wire an in-app toast later.
@@ -84,7 +84,7 @@ export async function initPushNotifications() {
 
     await PushNotifications.register();
   } catch (err) {
-    console.warn('[push] init failed:', err?.message || err);
+    if (import.meta.env.DEV) console.warn('[push] init failed:', err?.message || err);
   }
 }
 
@@ -103,7 +103,7 @@ export async function teardownPushNotifications() {
       });
     }
   } catch (err) {
-    console.warn('[push] unregister failed:', err?.message || err);
+    if (import.meta.env.DEV) console.warn('[push] unregister failed:', err?.message || err);
   }
 
   try {

@@ -464,11 +464,14 @@ router.post('/upgrade', authMiddleware, async (req, res) => {
 router.put('/profile-photo', authMiddleware, async (req, res) => {
   try {
     const { photo } = req.body;
-    if (!photo || !photo.startsWith('data:image/')) {
-      return res.status(400).json({ error: 'Invalid image data' });
+    // Strict MIME allowlist. Rejecting SVG and other types prevents both DB
+    // bloat (500KB strings) and any future XSS surface from inline SVG content.
+    const ALLOWED = ['data:image/jpeg;base64,', 'data:image/png;base64,', 'data:image/webp;base64,'];
+    if (!photo || typeof photo !== 'string' || !ALLOWED.some((p) => photo.startsWith(p))) {
+      return res.status(400).json({ error: 'Only JPEG, PNG, or WebP images are accepted' });
     }
     const base64Part = photo.split(',')[1];
-    if (!base64Part || !/^[A-Za-z0-9+/\n\r]+=*$/.test(base64Part)) {
+    if (!base64Part || !/^[A-Za-z0-9+/]+=*$/.test(base64Part)) {
       return res.status(400).json({ error: 'Invalid base64 image data' });
     }
     if (photo.length > 500000) {

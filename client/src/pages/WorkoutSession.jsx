@@ -11,6 +11,7 @@ import PBCelebration from '../components/PBCelebration';
 import UndoToast from '../components/UndoToast';
 import { iosFocusRef } from '../utils/iosFocus';
 import { getWeightSuggestion } from '../utils/weightSuggestion';
+import { calculateOneRMSuggestion } from '../utils/oneRepMaxSuggestion';
 import { beepCountdown, beepRestEnd, initAudio } from '../utils/sounds';
 import { track } from '../utils/analytics';
 import { BibleVerseOverlay } from './BibleVerses';
@@ -580,6 +581,13 @@ export default function WorkoutSession() {
       return;
     }
 
+    // Race-condition guard: when the user rapidly switches sessions, the in-flight
+    // fetches from the previous templateId/date can resolve AFTER the new session
+    // is loaded, mixing data across templates. The cleanup at the end of this
+    // useEffect flips `cancelled = true`; after each await we bail before any
+    // further setState, so stale data never lands on the new session.
+    let cancelled = false;
+
     // Step 1: Ensure a session copy exists (creates one from template if needed)
     // Step 2: Load everything from the session — never from the template directly
     async function loadSession() {
@@ -588,19 +596,47 @@ export default function WorkoutSession() {
         // Fetch schedule for a small window around the current date (for day nav arrows)
         const schedFrom = format(subDays(parseISO(date), 7), 'yyyy-MM-dd');
         const schedTo = format(addDays(parseISO(date), 7), 'yyyy-MM-dd');
-        const [pbList, scheduleData, lastEntries, programs] = await Promise.all([
+        const [pbList, scheduleData, lastEntries, programs, userMetrics] = await Promise.all([
           api(`/pbs?templateId=${templateId}`),
           api(`/schedule?from=${schedFrom}&to=${schedTo}`),
           api(`/sessions/last-entries/${templateId}`).catch((err) => {
-            console.warn('Failed to load last-session entries; weight suggestions may be stale:', err);
+            if (import.meta.env.DEV) console.warn('Failed to load last-session entries; weight suggestions may be stale:', err);
             return {};
           }),
           api('/programs').catch((err) => {
-            console.warn('Failed to load programs:', err);
+            if (import.meta.env.DEV) console.warn('Failed to load programs:', err);
             return [];
           }),
+          // 1RM maxes — used to auto-fill %1RM-prescribed suggested weights
+          // (see applyOneRMSuggestions below). Missing metrics = no-op.
+          api('/metrics').catch(() => ({})),
         ]);
+        if (cancelled) return;
         setLastSession(lastEntries || {});
+
+        // Client-side overlay: when an exercise's description prescribes a %
+        // of a tracked 1RM (bench/squat/deadlift) and the user has that max
+        // stored, replace the empty suggestedWeight with the computed value.
+        // Only fills in blanks — pre-set weights (from history or manual
+        // template entries) are left untouched so we don't clobber intent.
+        function applyOneRMSuggestions(exercises) {
+          if (!exercises) return exercises;
+          return exercises.map((ex) => {
+            if (ex.isSectionHeader || !ex.sets) return ex;
+            const computed = calculateOneRMSuggestion({
+              exerciseName: ex.name,
+              description: ex.exerciseDescription,
+              metrics: userMetrics,
+            });
+            if (!computed) return ex;
+            return {
+              ...ex,
+              sets: ex.sets.map((s) => (
+                Number(s.suggestedWeight) > 0 ? s : { ...s, suggestedWeight: computed }
+              )),
+            };
+          });
+        }
         const pbMap = {};
         for (const pb of pbList) {
           if (!pbMap[pb.exerciseName]) pbMap[pb.exerciseName] = {};
@@ -611,6 +647,7 @@ export default function WorkoutSession() {
 
         // Check for existing session
         let session = await api(`/sessions/by-template/${templateId}/${date}`);
+        if (cancelled) return;
 
         // If no session exists, initialize one from the template (creates independent copy)
         if (!session || !session.workoutData) {
@@ -618,21 +655,24 @@ export default function WorkoutSession() {
             method: 'POST',
             body: JSON.stringify({ templateId: Number(templateId), date }),
           });
+          if (cancelled) return;
         }
 
         // If still no workout data (shouldn't happen, but safety net)
         if (!session?.workoutData?.exercises) {
           // Fallback: load template directly (legacy behavior)
           const templates = await api('/templates');
+          if (cancelled) return;
           const tmpl = templates.find((t) => t.id === Number(templateId));
           if (tmpl) {
-            setTemplate(tmpl);
-            if (tmpl.isRest) return;
+            const enrichedTmpl = { ...tmpl, exercises: applyOneRMSuggestions(tmpl.exercises) };
+            setTemplate(enrichedTmpl);
+            if (enrichedTmpl.isRest) return;
             const initial = {};
-            for (let exIdx = 0; exIdx < tmpl.exercises.length; exIdx++) {
-              const ex = tmpl.exercises[exIdx];
+            for (let exIdx = 0; exIdx < enrichedTmpl.exercises.length; exIdx++) {
+              const ex = enrichedTmpl.exercises[exIdx];
               if (ex.isSectionHeader) continue;
-              const key = exKey(tmpl.exercises, ex, exIdx);
+              const key = exKey(enrichedTmpl.exercises, ex, exIdx);
               initial[key] = ex.sets.map((s) => ({
                 weight: s.suggestedWeight || '',
                 reps: '',
@@ -650,12 +690,13 @@ export default function WorkoutSession() {
           id: Number(templateId),
           name: wd.name || 'Workout',
           isRest: false,
-          exercises: wd.exercises,
+          exercises: applyOneRMSuggestions(wd.exercises),
         };
         setTemplate(sessionTemplate);
 
         // Look up program name
         const tmplList = await api('/templates').catch(() => []);
+        if (cancelled) return;
         const tmplInfo = tmplList.find(t => t.id === Number(templateId));
         if (tmplInfo?.programId && programs.length > 0) {
           const prog = programs.find(p => p.id === tmplInfo.programId);
@@ -745,14 +786,18 @@ export default function WorkoutSession() {
           }
         }
       } catch (err) {
+        if (cancelled) return;
         if (err.name !== 'AbortError') setLoadError('Failed to load workout — check your connection');
       } finally {
-        setLoading(false);
-        setDayNavDisabled(false);
+        if (!cancelled) {
+          setLoading(false);
+          setDayNavDisabled(false);
+        }
       }
     }
 
     loadSession();
+    return () => { cancelled = true; };
   }, [templateId, date]);
 
   // Keep the old useEffect structure reference for the rest of the file

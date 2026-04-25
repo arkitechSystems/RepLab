@@ -22,7 +22,7 @@ export function useExercises() {
       muscleGroupCache = muscles;
       setExercises(exs);
       setMuscleGroups(muscles);
-    }).catch(console.error)
+    }).catch((err) => { if (import.meta.env.DEV) console.error(err); })
     .finally(() => setLoading(false));
   }, []);
 

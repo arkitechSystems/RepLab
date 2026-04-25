@@ -11,6 +11,20 @@ import { DASHBOARD_CSS } from '../dashboardCSS.js';
 
 const router = Router();
 
+// Startup guard: if ADMIN_PASS / ADMIN_KEY is set but is NOT a bcrypt hash
+// ($2... prefix), the login flow silently rejects it forever. Surface the
+// misconfiguration loudly so it isn't a "why can't I log in?" mystery later.
+(() => {
+  const env = process.env.ADMIN_PASS || process.env.ADMIN_KEY;
+  if (env && !env.startsWith('$2')) {
+    console.error(
+      '[admin] WARNING: ADMIN_PASS/ADMIN_KEY is set but is not a bcrypt hash ' +
+      "(must start with '$2'). Plaintext env passwords are rejected. " +
+      "Generate a hash with: node -e \"console.log(require('bcryptjs').hashSync('yourPassword', 10))\""
+    );
+  }
+})();
+
 // CSRF defense-in-depth: reject state-changing requests whose Origin/Referer
 // doesn't match the host. SameSite=strict on the session cookie is the
 // primary defense; this catches edge cases (cookie-less browsers, relaxed
@@ -4932,7 +4946,7 @@ router.get('/audit', adminAuth, async (req, res) => {
     { id: 'h6', title: 'Console.log / .warn / .error left in prod paths',                 desc: 'Visible in Safari Web Inspector / Chrome DevTools. Gate with <code>if (import.meta.env.DEV)</code>.', loc: 'push.js, Calendar.jsx, AuthContext.jsx, useExercises.js, FeaturedWorkoutSession.jsx' },
     { id: 'h7', title: 'Touch targets below 44pt iOS minimum',                            desc: 'Utilities timer buttons <code>h-9 w-9</code>; ExerciseCard reorder/swap/delete <code>h-10 w-10</code>. Bump to <code>h-12 w-12</code>.', loc: 'Utilities.jsx:432-456, ExerciseCard.jsx:192-215' },
     { id: 'h8', title: 'Featured Workouts held back but UI still references it',          desc: 'Apple rejects visible-but-incomplete features. Confirm zero cards/links route to FeaturedWorkoutSession in v1.0.', loc: 'App.jsx, Workouts.jsx' },
-    { id: 'h9', title: 'Sentry disabled in prod (VITE_SENTRY_DSN unset)',                 desc: 'You\\\'ll be flying blind on launch errors. Set the env var on Render.', loc: 'client/src/sentry.js' },
+    { id: 'h9', title: 'Sentry disabled in prod (VITE_SENTRY_DSN unset)',                 desc: "Code-side fix DONE: app now logs a loud warning at boot if a production build was shipped without a DSN. <strong style=\"color:#fbbf24;\">Action still required:</strong> in the Render dashboard for the client build, add an environment variable <code>VITE_SENTRY_DSN</code> set to your Sentry project DSN (Sentry → Settings → Client Keys (DSN)), then trigger a redeploy. Once deployed, mark this DONE.", loc: 'client/src/sentry.js' },
   ];
   const MEDIUM = [
     { id: 'm1', title: 'Timezone mixing (parseISO UTC vs isToday local)',                 desc: 'Users near midnight in extreme timezones can see wrong day. Standardize on local YYYY-MM-DD.', loc: 'client/src/pages/WorkoutSession.jsx (multiple)' },
@@ -5144,12 +5158,45 @@ router.get('/audit', adminAuth, async (req, res) => {
   <p style="color:rgba(255,255,255,0.5);margin-bottom:24px;">Audit findings — newest first. Click any report to expand.</p>
 
   <style>
-    .audit-toggle { cursor:pointer; user-select:none; }
-    .audit-toggle:hover { background:rgba(255,255,255,0.03); }
-    .audit-body { display:none; }
-    .audit-body.open { display:block; }
+    /* Flat layout — strip the .glass card chrome (background, blur, border,
+       radius, left-accent). Audits separate via a thin bottom rule and
+       generous spacing instead of nested panels. Status pills, status
+       cycling, and collapsibility are unchanged. */
+    .audit-flat .glass {
+      background: transparent !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      border: 0 !important;
+      border-radius: 0 !important;
+      border-left: 0 !important;
+    }
+    /* Outer audit — divider line between reports */
+    .audit-flat > .glass {
+      padding-bottom: 12px !important;
+      margin-bottom: 32px !important;
+      border-bottom: 1px solid rgba(255,255,255,0.08) !important;
+    }
+    /* Inner severity blocks — keep top spacing for readability, no panel */
+    .audit-flat .glass .glass {
+      padding: 0 !important;
+      margin: 24px 0 0 !important;
+      border-bottom: 0 !important;
+    }
+    /* Section heading — colored bar on the left as the only severity cue */
+    .audit-flat .glass .glass h2 {
+      padding-left: 10px;
+      border-left: 3px solid currentColor;
+      line-height: 1.3;
+    }
+    /* Toggle + body padding adjustments */
+    .audit-toggle { cursor:pointer; user-select:none; padding:16px 0 !important; }
+    .audit-toggle:hover { background:rgba(255,255,255,0.02); }
+    .audit-flat .audit-body { display:none; padding:0 !important; }
+    .audit-flat .audit-body.open { display:block; }
     .audit-chevron { transition:transform 0.2s; }
     .audit-chevron.open { transform:rotate(180deg); }
+    /* Tables breathe when there's no card around them */
+    .audit-flat table { margin-top:8px; }
   </style>
   <script>
     function toggleAudit(id) {
@@ -5160,6 +5207,7 @@ router.get('/audit', adminAuth, async (req, res) => {
     }
   </script>
 
+  <div class="audit-flat">
   ${launchSection}
 
   <!-- ========== AUDIT #1: April 3, 2026 ========== -->
@@ -5390,6 +5438,7 @@ router.get('/audit', adminAuth, async (req, res) => {
   </div>
     </div><!-- /audit-body-1 -->
   </div><!-- /audit #1 -->
+  </div><!-- /audit-flat -->
 
   `));
 });

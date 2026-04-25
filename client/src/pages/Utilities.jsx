@@ -429,9 +429,9 @@ function HIITTimer({ onClose }) {
               <div className="flex items-center justify-between">
                 <span className="text-white font-medium">Sets</span>
                 <div className="flex items-center gap-3">
-                  <button onClick={() => setSets((s) => Math.max(1, s - 1))} className="w-9 h-9 rounded-full glass-card flex items-center justify-center text-white text-lg font-bold active:scale-90">−</button>
+                  <button onClick={() => setSets((s) => Math.max(1, s - 1))} className="w-12 h-12 rounded-full glass-card flex items-center justify-center text-white text-lg font-bold active:scale-90">−</button>
                   <span className="text-white text-xl font-black w-8 text-center tabular-nums">{sets}</span>
-                  <button onClick={() => setSets((s) => s + 1)} className="w-9 h-9 rounded-full glass-card flex items-center justify-center text-white text-lg font-bold active:scale-90">+</button>
+                  <button onClick={() => setSets((s) => s + 1)} className="w-12 h-12 rounded-full glass-card flex items-center justify-center text-white text-lg font-bold active:scale-90">+</button>
                 </div>
               </div>
 
@@ -440,9 +440,9 @@ function HIITTimer({ onClose }) {
               <div className="flex items-center justify-between">
                 <span className="text-white font-medium">Work Time</span>
                 <div className="flex items-center gap-3">
-                  <button onClick={() => setWorkTime((t) => Math.max(5, t - 5))} className="w-9 h-9 rounded-full glass-card flex items-center justify-center text-white text-lg font-bold active:scale-90">−</button>
+                  <button onClick={() => setWorkTime((t) => Math.max(5, t - 5))} className="w-12 h-12 rounded-full glass-card flex items-center justify-center text-white text-lg font-bold active:scale-90">−</button>
                   <span className="text-white text-xl font-black w-12 text-center tabular-nums">{workTime}s</span>
-                  <button onClick={() => setWorkTime((t) => t + 5)} className="w-9 h-9 rounded-full glass-card flex items-center justify-center text-white text-lg font-bold active:scale-90">+</button>
+                  <button onClick={() => setWorkTime((t) => t + 5)} className="w-12 h-12 rounded-full glass-card flex items-center justify-center text-white text-lg font-bold active:scale-90">+</button>
                 </div>
               </div>
 
@@ -451,9 +451,9 @@ function HIITTimer({ onClose }) {
               <div className="flex items-center justify-between">
                 <span className="text-white font-medium">Rest Time</span>
                 <div className="flex items-center gap-3">
-                  <button onClick={() => setRestTime((t) => Math.max(5, t - 5))} className="w-9 h-9 rounded-full glass-card flex items-center justify-center text-white text-lg font-bold active:scale-90">−</button>
+                  <button onClick={() => setRestTime((t) => Math.max(5, t - 5))} className="w-12 h-12 rounded-full glass-card flex items-center justify-center text-white text-lg font-bold active:scale-90">−</button>
                   <span className="text-white text-xl font-black w-12 text-center tabular-nums">{restTime}s</span>
-                  <button onClick={() => setRestTime((t) => t + 5)} className="w-9 h-9 rounded-full glass-card flex items-center justify-center text-white text-lg font-bold active:scale-90">+</button>
+                  <button onClick={() => setRestTime((t) => t + 5)} className="w-12 h-12 rounded-full glass-card flex items-center justify-center text-white text-lg font-bold active:scale-90">+</button>
                 </div>
               </div>
             </div>

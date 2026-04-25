@@ -2043,7 +2043,7 @@ export default function FeaturedWorkoutSession() {
               const img = await generateSummaryImage(shareOpts);
               setShareImage(img);
             } catch (err) {
-              console.error('Failed to generate share image:', err);
+              if (import.meta.env.DEV) console.error('Failed to generate share image:', err);
             }
             setGeneratingImage(false);
           }
@@ -2115,7 +2115,7 @@ export default function FeaturedWorkoutSession() {
             });
             setSavedAsTemplate(true);
           } catch (err) {
-            console.error('Failed to save template:', err);
+            if (import.meta.env.DEV) console.error('Failed to save template:', err);
           } finally {
             setSavingTemplate(false);
           }

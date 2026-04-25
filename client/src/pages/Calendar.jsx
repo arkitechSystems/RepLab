@@ -185,7 +185,7 @@ export default function Calendar() {
       await refreshSchedule();
       setEditingDay(null);
     } catch (err) {
-      console.error(err);
+      if (import.meta.env.DEV) console.error(err);
       setEditError('Failed to save. Please try again.');
     } finally {
       setScheduleSaving(false);
@@ -203,7 +203,7 @@ export default function Calendar() {
       await refreshSchedule();
       setEditingDay(null);
     } catch (err) {
-      console.error(err);
+      if (import.meta.env.DEV) console.error(err);
       setEditError('Failed to save. Please try again.');
     } finally {
       setScheduleSaving(false);
@@ -223,7 +223,7 @@ export default function Calendar() {
       setRestDayPrompt(false);
       setEditingDay(null);
     } catch (err) {
-      console.error(err);
+      if (import.meta.env.DEV) console.error(err);
       setEditError('Failed to save. Please try again.');
     } finally {
       setScheduleSaving(false);
@@ -256,7 +256,7 @@ export default function Calendar() {
       setRestDayPrompt(false);
       setEditingDay(null);
     } catch (err) {
-      console.error(err);
+      if (import.meta.env.DEV) console.error(err);
       setEditError('Failed to save. Please try again.');
     } finally {
       setScheduleSaving(false);
@@ -275,7 +275,7 @@ export default function Calendar() {
       setSuccessMsg('Calendar cleared');
       setTimeout(() => setSuccessMsg(''), 2500);
     } catch (err) {
-      console.error(err);
+      if (import.meta.env.DEV) console.error(err);
       setEditError('Failed to save. Please try again.');
     } finally {
       setScheduleSaving(false);
@@ -430,7 +430,7 @@ export default function Calendar() {
       await refreshSchedule();
       cancelCopy();
     } catch (err) {
-      console.error('Copy failed:', err);
+      if (import.meta.env.DEV) console.error('Copy failed:', err);
       cancelCopy();
     }
   }

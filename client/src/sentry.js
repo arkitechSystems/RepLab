@@ -21,6 +21,12 @@ if (SENTRY_DSN) {
       'AbortError',
     ],
   });
+} else if (import.meta.env.PROD) {
+  // Production build shipped without a DSN — error tracking is OFF. Make this
+  // loud once at boot so a forgotten env var doesn't go unnoticed for weeks.
+  // To fix: set VITE_SENTRY_DSN in the Render build environment.
+  // eslint-disable-next-line no-console
+  console.warn('[sentry] VITE_SENTRY_DSN is not set — error tracking is disabled.');
 }
 
 export { Sentry };
