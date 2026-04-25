@@ -9,20 +9,54 @@ import { generateToken, generateAccessToken, generateRefreshToken } from '../mid
 
 const router = Router();
 
-// Session management
-const trainerSessions = new Map(); // token -> { userId, email, firstName, lastName }
+// Session management — DB-backed so server restarts don't log trainers out.
+// Cookies hold the raw token; the DB stores only its sha256 hash so a leaked
+// row can't be replayed. Sessions expire after 24 hours.
+const TRAINER_SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 
-function trainerAuth(req, res, next) {
+function hashTrainerToken(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+async function trainerAuth(req, res, next) {
   const sessionToken = req.cookies?.trainer_session;
-  if (sessionToken && trainerSessions.has(sessionToken)) {
-    req.trainer = trainerSessions.get(sessionToken);
-    return next();
+  if (sessionToken) {
+    try {
+      const tokenHash = hashTrainerToken(sessionToken);
+      const { rows } = await pool.query(
+        `SELECT u.id AS user_id, u.email, u.first_name, u.last_name, u.role, u.plan
+           FROM trainer_sessions ts
+           JOIN users u ON u.id = ts.user_id
+          WHERE ts.token_hash = $1 AND ts.expires_at > NOW()
+          LIMIT 1`,
+        [tokenHash]
+      );
+      if (rows[0]) {
+        req.trainer = {
+          userId: rows[0].user_id,
+          email: rows[0].email,
+          firstName: rows[0].first_name,
+          lastName: rows[0].last_name,
+          role: rows[0].role || 'client',
+          plan: rows[0].plan || 'Free',
+        };
+        return next();
+      }
+    } catch {
+      // Fall through to unauthorized response.
+    }
   }
   if (req.headers.accept?.includes('text/html') || req.query.format === 'html') {
     return res.redirect('/trainer/login');
   }
   return res.status(401).json({ error: 'Unauthorized' });
 }
+
+// Best-effort cleanup of expired rows. Runs hourly so the table doesn't grow
+// unbounded for inactive sessions.
+setInterval(() => {
+  pool.query(`DELETE FROM trainer_sessions WHERE expires_at <= NOW()`).catch(() => {});
+}, 60 * 60 * 1000).unref?.();
 
 // CSS is now shared via dashboardCSS.js
 
@@ -180,20 +214,18 @@ router.post('/login', express.urlencoded({ extended: false }), async (req, res) 
     } catch {}
 
     const token = crypto.randomBytes(32).toString('hex');
-    trainerSessions.set(token, {
-      userId: user.id,
-      email: user.email,
-      firstName: user.first_name,
-      lastName: user.last_name,
-      role: user.role || 'client',
-      plan: user.plan || 'Free',
-    });
+    const tokenHash = hashTrainerToken(token);
+    const expiresAt = new Date(Date.now() + TRAINER_SESSION_TTL_MS);
+    await pool.query(
+      `INSERT INTO trainer_sessions (token_hash, user_id, expires_at) VALUES ($1, $2, $3)`,
+      [tokenHash, user.id, expiresAt]
+    );
 
     res.cookie('trainer_session', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 24 * 60 * 60 * 1000,
+      maxAge: TRAINER_SESSION_TTL_MS,
     });
     return res.redirect('/trainer');
   } catch (err) {
@@ -556,10 +588,14 @@ router.get('/guide', (req, res) => {
 });
 
 // GET /trainer/logout
-router.get('/logout', (req, res) => {
+router.get('/logout', async (req, res) => {
   const sessionToken = req.cookies?.trainer_session;
   if (sessionToken) {
-    trainerSessions.delete(sessionToken);
+    try {
+      await pool.query(`DELETE FROM trainer_sessions WHERE token_hash = $1`, [hashTrainerToken(sessionToken)]);
+    } catch {
+      // Best-effort — clear cookie regardless so the user is logged out client-side.
+    }
     res.clearCookie('trainer_session');
   }
   res.redirect('/trainer/login');
@@ -1786,5 +1822,4 @@ router.post('/api/clients/:clientId/programs', trainerAuth, express.json(), asyn
   }
 });
 
-export { trainerSessions };
 export default router;

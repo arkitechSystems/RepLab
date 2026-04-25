@@ -215,6 +215,33 @@ export default async function initDb() {
     updated_at TIMESTAMPTZ DEFAULT NOW()
   )`);
 
+  // Migration: trainer_sessions DB-backed session table (replaces in-memory Map
+  // so server restarts don't log every trainer out).
+  await pool.query(`CREATE TABLE IF NOT EXISTS trainer_sessions (
+    id SERIAL PRIMARY KEY,
+    token_hash TEXT UNIQUE NOT NULL,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL
+  )`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_trainer_sessions_token ON trainer_sessions(token_hash)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_trainer_sessions_expires ON trainer_sessions(expires_at)`);
+
+  // Migration: password reset audit log. One row per reset request; used_at
+  // is populated when the token is consumed.
+  await pool.query(`CREATE TABLE IF NOT EXISTS password_reset_log (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    token_hash TEXT NOT NULL,
+    requested_at TIMESTAMPTZ DEFAULT NOW(),
+    used_at TIMESTAMPTZ,
+    request_ip TEXT,
+    use_ip TEXT,
+    user_agent TEXT
+  )`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_password_reset_log_user ON password_reset_log(user_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_password_reset_log_token ON password_reset_log(token_hash)`);
+
   // Add WARM UP section header to "Leg 1 (anterior chain)" before Leg Press (one-time migration)
   const { rows: leg1Templates } = await pool.query(
     `SELECT t.id FROM templates t JOIN programs p ON t.program_id = p.id WHERE t.name ILIKE '%Leg 1%' AND p.name ILIKE '%Upper/Lower/PPL%' LIMIT 1`

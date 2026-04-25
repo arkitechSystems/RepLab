@@ -329,7 +329,7 @@ router.post('/request-reset', async (req, res) => {
 
     const token = crypto.randomBytes(32).toString('hex');
     const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-    await db.setResetToken(user.id, token, expires);
+    await db.setResetToken(user.id, token, expires, req.ip || null, req.get('user-agent') || null);
     await sendPasswordResetEmail(user.email, token);
 
     res.json({ message: 'If an account exists with that email, a reset link has been sent.' });
@@ -356,6 +356,9 @@ router.post('/reset-password', async (req, res) => {
 
     const passwordHash = bcrypt.hashSync(password, 10);
     await db.updatePassword(user.id, passwordHash);
+    // Audit: stamp the log row for this token as used. Non-blocking — never
+    // surface a logging failure as a reset failure.
+    await db.markResetTokenUsed(token, req.ip || null);
 
     res.json({ message: 'Password updated successfully. You can now sign in.' });
   } catch (err) {

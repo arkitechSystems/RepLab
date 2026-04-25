@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { format, parseISO, isToday, addDays, subDays } from 'date-fns';
+import { format, isToday, addDays, subDays } from 'date-fns';
 import { api } from '../api';
 import ExerciseCard from '../components/ExerciseCard';
 import { useExercises } from '../hooks/useExercises';
@@ -16,6 +16,19 @@ import { beepCountdown, beepRestEnd, initAudio } from '../utils/sounds';
 import { track } from '../utils/analytics';
 import { BibleVerseOverlay } from './BibleVerses';
 import { pickNextVerse } from '../utils/versePicker';
+
+// Parse a 'YYYY-MM-DD' string as a LOCAL date (not UTC). parseISO('2026-04-24')
+// returns midnight UTC, which is the wrong calendar day for any user with a
+// negative UTC offset near midnight — they'd see "today's" workout flagged as
+// tomorrow's. Constructing via the year/month/day constructor keeps everything
+// in the user's local timezone, matching how date-fns isToday() and format()
+// already think about dates.
+function parseDateLocal(yyyymmdd) {
+  if (!yyyymmdd || typeof yyyymmdd !== 'string') return new Date(NaN);
+  const [y, m, d] = yyyymmdd.split('-').map(Number);
+  if (!y || !m || !d) return new Date(NaN);
+  return new Date(y, m - 1, d);
+}
 
 // Build a unique key for each exercise card. The first occurrence of a name
 // keeps the plain name (backward-compatible with saved sessions). Subsequent
@@ -313,7 +326,7 @@ export default function WorkoutSession() {
       setTimeout(() => setTutorialTip('timer'), 600);
       return;
     }
-    const sessionDate = parseISO(date);
+    const sessionDate = parseDateLocal(date);
     if (!isToday(sessionDate)) {
       setShowDateConfirm(true);
     } else {
@@ -594,8 +607,8 @@ export default function WorkoutSession() {
       try {
         // Fetch PBs, schedule, last session entries, and programs in parallel
         // Fetch schedule for a small window around the current date (for day nav arrows)
-        const schedFrom = format(subDays(parseISO(date), 7), 'yyyy-MM-dd');
-        const schedTo = format(addDays(parseISO(date), 7), 'yyyy-MM-dd');
+        const schedFrom = format(subDays(parseDateLocal(date), 7), 'yyyy-MM-dd');
+        const schedTo = format(addDays(parseDateLocal(date), 7), 'yyyy-MM-dd');
         const [pbList, scheduleData, lastEntries, programs, userMetrics] = await Promise.all([
           api(`/pbs?templateId=${templateId}`),
           api(`/schedule?from=${schedFrom}&to=${schedTo}`),
@@ -1535,7 +1548,7 @@ export default function WorkoutSession() {
   async function handleShare() {
     if (!template) return;
 
-    const lines = [`${template.name} — ${format(parseISO(date), 'EEEE, MMM d')}\n`];
+    const lines = [`${template.name} — ${format(parseDateLocal(date), 'EEEE, MMM d')}\n`];
 
     for (let exIdx = 0; exIdx < template.exercises.length; exIdx++) {
       const ex = template.exercises[exIdx];
@@ -1788,10 +1801,10 @@ export default function WorkoutSession() {
     );
   }
 
-  const displayDate = date ? format(parseISO(date), 'EEE, MMM d') : '';
+  const displayDate = date ? format(parseDateLocal(date), 'EEE, MMM d') : '';
 
-  const prevDate = date ? subDays(parseISO(date), 1) : null;
-  const nextDate = date ? addDays(parseISO(date), 1) : null;
+  const prevDate = date ? subDays(parseDateLocal(date), 1) : null;
+  const nextDate = date ? addDays(parseDateLocal(date), 1) : null;
   const prevDateStr = prevDate ? format(prevDate, 'yyyy-MM-dd') : null;
   const nextDateStr = nextDate ? format(nextDate, 'yyyy-MM-dd') : null;
   const prevScheduled = prevDateStr && schedule ? schedule.find(s => s.date === prevDateStr) : null;
@@ -1851,7 +1864,7 @@ export default function WorkoutSession() {
           >
             <h3 className="text-base font-bold text-white text-center mb-1">Different Date</h3>
             <p className="text-wf-gray-400 text-sm text-center mb-5">
-              This workout is scheduled for {format(parseISO(date), 'MMMM d, yyyy')}. Are you sure you want to start it now?
+              This workout is scheduled for {format(parseDateLocal(date), 'MMMM d, yyyy')}. Are you sure you want to start it now?
             </p>
             <div className="flex flex-col gap-2">
               <button

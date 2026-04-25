@@ -171,9 +171,14 @@ const db = {
     }));
   },
 
-  async setResetToken(userId, token, expires) {
+  async setResetToken(userId, token, expires, requestIp = null, userAgent = null) {
     const tokenHash = hashResetToken(token);
     await pool.query('UPDATE users SET reset_token = $1, reset_token_expires = $2 WHERE id = $3', [tokenHash, expires, userId]);
+    // Audit: one row per request. used_at stays NULL until the token is consumed.
+    await pool.query(
+      `INSERT INTO password_reset_log (user_id, token_hash, request_ip, user_agent) VALUES ($1, $2, $3, $4)`,
+      [userId, tokenHash, requestIp, userAgent]
+    ).catch(() => { /* logging failure must not block reset flow */ });
   },
 
   async findUserByResetToken(token) {
@@ -181,6 +186,23 @@ const db = {
     const { rows } = await pool.query('SELECT * FROM users WHERE reset_token = $1 AND reset_token_expires > NOW()', [tokenHash]);
     if (!rows[0]) return null;
     return { id: rows[0].id, email: rows[0].email, phone: rows[0].phone, passwordHash: rows[0].password_hash, tokenVersion: rows[0].token_version ?? 0 };
+  },
+
+  async markResetTokenUsed(token, useIp = null) {
+    // Mark the most recent unused log row for this token as used.
+    // No-op if no matching row (e.g. log table didn't exist when the token
+    // was issued).
+    const tokenHash = hashResetToken(token);
+    await pool.query(
+      `UPDATE password_reset_log
+         SET used_at = NOW(), use_ip = $2
+       WHERE id = (
+         SELECT id FROM password_reset_log
+          WHERE token_hash = $1 AND used_at IS NULL
+          ORDER BY requested_at DESC LIMIT 1
+       )`,
+      [tokenHash, useIp]
+    ).catch(() => { /* never block the reset flow on audit-log failure */ });
   },
 
   async updatePassword(userId, passwordHash) {

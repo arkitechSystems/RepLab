@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/node';
+import crypto from 'crypto';
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -113,11 +114,26 @@ app.use('/auth/login', authLimiter);
 app.use('/auth/signup', authLimiter);
 app.use('/auth/request-reset', authLimiter);
 app.use('/admin/login', authLimiter);
-// Refresh gets the general api limiter, not authLimiter — a healthy session
-// legitimately refreshes every ~15 minutes, and concurrent 401s on a fresh
-// page load can burst a few refreshes in quick succession. A valid refresh
-// token is required, so this endpoint is not an auth-bypass surface.
-app.use('/auth/refresh', apiLimiter);
+// Refresh limiter is keyed on the refresh token (hashed) rather than IP.
+// Per-token = effectively per-user-per-device, which is what we want — a heavy
+// multi-device user behind a shared IP (coffee shop / VPN / family) won't get
+// throttled by another user's traffic. A valid refresh token is required, so
+// this endpoint is not an auth-bypass surface.
+const refreshLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: process.env.NODE_ENV === 'production' ? 30 : 200,
+  message: { error: 'Too many refresh attempts. Please log in again.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    const token = req.body?.refreshToken;
+    if (typeof token === 'string' && token.length > 10) {
+      return 'rf:' + crypto.createHash('sha256').update(token).digest('hex').slice(0, 32);
+    }
+    return 'ip:' + req.ip;
+  },
+});
+app.use('/auth/refresh', refreshLimiter);
 // Data export is expensive (many joined queries) and nothing legitimate runs
 // it more than a handful of times per day — cap it aggressively.
 app.use('/auth/export-data', rateLimit({

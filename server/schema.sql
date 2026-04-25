@@ -238,3 +238,32 @@ CREATE TABLE IF NOT EXISTS shared_programs (
   status TEXT DEFAULT 'pending',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Trainer dashboard session tokens. Stored hashed (token_hash) so a leaked
+-- DB row can't be replayed; the raw token only lives in the user's cookie.
+-- DB-backed (rather than in-memory) so server restarts don't log everyone out.
+CREATE TABLE IF NOT EXISTS trainer_sessions (
+  id SERIAL PRIMARY KEY,
+  token_hash TEXT UNIQUE NOT NULL,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_trainer_sessions_token ON trainer_sessions(token_hash);
+CREATE INDEX IF NOT EXISTS idx_trainer_sessions_expires ON trainer_sessions(expires_at);
+
+-- Audit trail for password reset requests. One row per request; used_at is
+-- populated when the token is consumed. Lets us trace abuse patterns and
+-- detect tokens that were generated but never used (probe vs real reset).
+CREATE TABLE IF NOT EXISTS password_reset_log (
+  id SERIAL PRIMARY KEY,
+  user_id INT REFERENCES users(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL,
+  requested_at TIMESTAMPTZ DEFAULT NOW(),
+  used_at TIMESTAMPTZ,
+  request_ip TEXT,
+  use_ip TEXT,
+  user_agent TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_password_reset_log_user ON password_reset_log(user_id);
+CREATE INDEX IF NOT EXISTS idx_password_reset_log_token ON password_reset_log(token_hash);

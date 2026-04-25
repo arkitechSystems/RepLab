@@ -4953,7 +4953,7 @@ router.get('/audit', adminAuth, async (req, res) => {
     { id: 'm2', title: 'Trainer sessions stored in in-memory Map',                        desc: 'Every server deploy logs out all trainers. Move to DB-backed sessions.', loc: 'server/routes/trainer.js:13' },
     { id: 'm3', title: 'Password reset token has no audit trail',                         desc: 'Token cleared on use which prevents reuse, but no <code>used_at</code> log for forensics.', loc: 'server/db.js' },
     { id: 'm4', title: 'Rate limit on /auth/refresh is IP-based, general limiter',        desc: 'Multi-device users could theoretically hit the cap. Move to per-userId.', loc: 'server/index.js:120' },
-    { id: 'm5', title: 'Landscape orientation permitted on iPhone',                       desc: 'Layouts are portrait-only. Either lock to portrait in Info.plist or design landscape.', loc: 'ios/App/App/Info.plist:35-40' },
+    { id: 'm5', title: 'Landscape orientation permitted on iPhone',                       desc: '<strong style="color:rgba(255,255,255,0.6);">Decision: keep landscape support.</strong> Verified working on Safari. No code change required.', loc: 'ios/App/App/Info.plist:35-40' },
     { id: 'm6', title: 'No deep-link / universal-link config',                            desc: "External 'open in app' links won't deep-link to specific sessions/programs.", loc: 'apple-app-site-association / assetlinks.json (missing)' },
     { id: 'm7', title: 'Stale closure risk in WorkoutSession auto-fill',                  desc: 'handleBlur reads completedSets/autoFilled from outer scope; can overwrite a just-completed set.', loc: 'client/src/pages/WorkoutSession.jsx:833-836' },
   ];
