@@ -41,6 +41,7 @@ import feedReactionsRoutes from './routes/feedReactions.js';
 import db from './db.js';
 import { sendDailySummaryEmail } from './email.js';
 import { startIdleReminderScheduler } from './pushScheduler.js';
+import { startStreakReminderScheduler } from './streakReminderScheduler.js';
 
 // In-memory error log for admin dashboard
 export const errorLog = [];
@@ -76,7 +77,38 @@ app.use((req, res, next) => {
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   if (process.env.NODE_ENV === 'production') {
-    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+    // Content Security Policy. Skipped on /admin and /trainer because those
+    // are server-rendered pages with inline <style> + <script> blocks that
+    // would trip strict CSP. The user-facing SPA gets the policy below.
+    //
+    // Allowed sources, with reason:
+    //   - 'self' for same-origin assets
+    //   - data: + blob: for canvas-generated PR share cards (prShare.js) and
+    //     base64 profile photos
+    //   - https://*.stripe.com for Stripe checkout/redirect
+    //   - https://*.youtube.com / *.ytimg.com for the feed's video embeds + thumbnails
+    //   - https://*.posthog.com for analytics
+    //   - https://*.ingest.sentry.io for error reporting
+    //   - https://i.ytimg.com (specifically) for thumbnails
+    //   - 'unsafe-inline' on style — required by Tailwind's runtime-injected styles
+    //     and inline style attributes; can be tightened with nonces later.
+    if (!req.path.startsWith('/admin') && !req.path.startsWith('/trainer')) {
+      res.setHeader('Content-Security-Policy', [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline' https://*.stripe.com https://js.stripe.com https://*.youtube.com https://*.posthog.com",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' https://fonts.gstatic.com data:",
+        "img-src 'self' data: blob: https: ",
+        "media-src 'self' blob: https:",
+        "connect-src 'self' https://*.stripe.com https://*.posthog.com https://*.ingest.sentry.io https://*.sentry.io https://ip-api.com https://api.resend.com https://api.anthropic.com",
+        "frame-src https://*.stripe.com https://js.stripe.com https://*.youtube.com https://www.youtube-nocookie.com",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self' https://*.stripe.com",
+        "frame-ancestors 'none'",
+      ].join('; '));
+    }
   }
   next();
 });
@@ -306,6 +338,8 @@ if (process.env.NODE_ENV !== 'test') {
 
         // Idle-session push reminders. Dormant until FCM_SERVICE_ACCOUNT_JSON is set.
         startIdleReminderScheduler();
+        // Streak-protection reminder. Same dormancy rule.
+        startStreakReminderScheduler();
       });
     })
     .catch((err) => {

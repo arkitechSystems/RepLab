@@ -89,10 +89,11 @@ export default function Profile() {
     const opts = { signal: controller.signal };
     api('/metrics', opts)
       .then(setMetrics)
-      .catch((err) => { if (err.name !== 'AbortError') console.error(err); });
+      .catch((err) => { if (err.name !== 'AbortError' && import.meta.env.DEV) console.error(err); });
+
     api('/sessions', opts)
       .then(setSessions)
-      .catch((err) => { if (err.name !== 'AbortError') console.error(err); })
+      .catch((err) => { if (err.name !== 'AbortError' && import.meta.env.DEV) console.error(err); })
       .finally(() => setSessionsLoading(false));
     return () => controller.abort();
   }, []);
@@ -112,7 +113,7 @@ export default function Profile() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
-      console.error(err);
+      if (import.meta.env.DEV) console.error(err);
     } finally {
       setSaving(false);
     }
@@ -137,7 +138,7 @@ export default function Profile() {
         setShowFeedback(false);
       }, 2500);
     } catch (err) {
-      console.error(err);
+      if (import.meta.env.DEV) console.error(err);
     } finally {
       setFeedbackSending(false);
     }
@@ -208,7 +209,7 @@ export default function Profile() {
       });
       updateUser({ ...user, photoUrl: result.photoUrl });
     } catch (err) {
-      console.error('Failed to upload photo:', err);
+      if (import.meta.env.DEV) console.error('Failed to upload photo:', err);
     } finally {
       setUploadingPhoto(false);
     }
@@ -221,7 +222,7 @@ export default function Profile() {
       await api('/auth/profile-photo', { method: 'DELETE' });
       updateUser({ ...user, photoUrl: null });
     } catch (err) {
-      console.error('Failed to remove photo:', err);
+      if (import.meta.env.DEV) console.error('Failed to remove photo:', err);
     } finally {
       setUploadingPhoto(false);
     }

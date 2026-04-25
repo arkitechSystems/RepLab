@@ -33,7 +33,7 @@ function parseDateLocal(yyyymmdd) {
 // Build a unique key for each exercise card. The first occurrence of a name
 // keeps the plain name (backward-compatible with saved sessions). Subsequent
 // duplicates get "::1", "::2", etc.
-function exKey(exercises, exerciseOrName, idx) {
+export function exKey(exercises, exerciseOrName, idx) {
   const name = typeof exerciseOrName === 'string' ? exerciseOrName : exerciseOrName.name;
   let occurrence = 0;
   for (let i = 0; i < idx; i++) {
@@ -254,7 +254,7 @@ export default function WorkoutSession() {
     if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
     autoSaveRef.current = setTimeout(() => {
       if (!savingRef.current && template && !template.isRest) {
-        handleSave().catch(console.error);
+        handleSave().catch((err) => { if (import.meta.env.DEV) console.error(err); });
       }
     }, 500);
     return () => { if (autoSaveRef.current) clearTimeout(autoSaveRef.current); };
@@ -268,7 +268,7 @@ export default function WorkoutSession() {
     if (structureSaveRef.current) clearTimeout(structureSaveRef.current);
     structureSaveRef.current = setTimeout(() => {
       if (!savingRef.current && template && !template.isRest) {
-        handleSave().catch(console.error);
+        handleSave().catch((err) => { if (import.meta.env.DEV) console.error(err); });
       }
     }, 1500);
     return () => { if (structureSaveRef.current) clearTimeout(structureSaveRef.current); };
@@ -1594,7 +1594,7 @@ export default function WorkoutSession() {
       try {
         await navigator.share({ title: `${template.name} Workout`, text });
       } catch (err) {
-        if (err.name !== 'AbortError') console.error(err);
+        if (err.name !== 'AbortError' && import.meta.env.DEV) console.error(err);
       }
     } else {
       await navigator.clipboard.writeText(text);
@@ -1714,7 +1714,7 @@ export default function WorkoutSession() {
           navigator.vibrate?.([40, 30, 80]);
         }
       } catch (postSaveErr) {
-        console.warn('Post-save PB refresh failed (session was saved):', postSaveErr);
+        if (import.meta.env.DEV) console.warn('Post-save PB refresh failed (session was saved):', postSaveErr);
       }
 
       // Auto-save any custom exercises not in the library
@@ -2888,7 +2888,7 @@ export default function WorkoutSession() {
   );
 }
 
-function WorkoutSummary({ template, programName, entries, completedSets, elapsed, formatTime, onClose }) {
+export function WorkoutSummary({ template, programName, entries, completedSets, elapsed, formatTime, onClose }) {
   const canvasRef = useRef(null);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [shareImage, setShareImage] = useState(null);
@@ -2921,7 +2921,7 @@ function WorkoutSummary({ template, programName, entries, completedSets, elapsed
       });
       setSavedAsTemplate(true);
     } catch (err) {
-      console.error('Failed to save template:', err);
+      if (import.meta.env.DEV) console.error('Failed to save template:', err);
     } finally {
       setSavingTemplate(false);
     }
@@ -3309,7 +3309,7 @@ function WorkoutSummary({ template, programName, entries, completedSets, elapsed
         const img = await generateSummaryImage();
         setShareImage(img);
       } catch (err) {
-        console.error('Failed to generate share image:', err);
+        if (import.meta.env.DEV) console.error('Failed to generate share image:', err);
       }
       setGeneratingImage(false);
     }
@@ -3414,38 +3414,71 @@ function WorkoutSummary({ template, programName, entries, completedSets, elapsed
             </button>
           </div>
 
-          {/* Header */}
-          <div className="text-center mb-8">
-            <div className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
-              <svg className="w-10 h-10 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-              </svg>
-            </div>
-            <h2 className="text-2xl font-black text-white mb-1">Workout Complete!</h2>
-            <p className="text-wf-gray-400 text-sm">{template.name}</p>
+          {/* Header — Nike style */}
+          <div className="mb-8">
+            <p className="text-[10px] uppercase font-bold mb-3" style={{ color: '#ef4444', letterSpacing: '0.4em' }}>
+              Workout Complete
+            </p>
+            <h2
+              className="text-white font-black tracking-tight"
+              style={{
+                fontFamily: 'system-ui',
+                fontSize: 'clamp(40px, 11vw, 88px)',
+                lineHeight: '0.85',
+                letterSpacing: '-0.03em',
+              }}
+            >
+              {template.name.toUpperCase()}
+            </h2>
+            {programName && (
+              <p className="text-[10px] uppercase font-bold text-white/40 mt-3" style={{ letterSpacing: '0.3em' }}>
+                {programName}
+              </p>
+            )}
           </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <div className="glass-card rounded-xl p-3 text-center">
-              <p className="text-xs text-wf-gray-500 uppercase tracking-wider mb-1">Time</p>
-              <p className="text-lg font-black text-white tabular-nums">{formatTime(elapsed)}</p>
-            </div>
-            <div className="glass-card rounded-xl p-3 text-center">
-              <p className="text-xs text-wf-gray-500 uppercase tracking-wider mb-1">Sets</p>
-              <p className="text-lg font-black text-white tabular-nums">{completedSets.size}<span className="text-xs font-medium text-wf-gray-500">/{totalSets}</span></p>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            <div className="glass-card rounded-xl p-3 text-center">
-              <p className="text-xs text-wf-gray-500 uppercase tracking-wider mb-1">Actual Vol</p>
-              <p className="text-lg font-black text-white tabular-nums">{totalVolume.toLocaleString()}<span className="text-xs font-medium text-wf-gray-500"> lbs</span></p>
-            </div>
-            <div className="glass-card rounded-xl p-3 text-center">
-              <p className="text-xs text-wf-gray-500 uppercase tracking-wider mb-1">Goal Vol</p>
-              <p className="text-lg font-black text-white tabular-nums">{totalGoalVolume.toLocaleString()}<span className="text-xs font-medium text-wf-gray-500"> lbs</span></p>
-            </div>
-          </div>
+          {/* Stats Grid — Nike style: dark gradient panel + colored top
+              accent stripe + tiny labels + heavy display numerics */}
+          {(() => {
+            const panel = {
+              background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+              borderRadius: '2px',
+              boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+              position: 'relative',
+              overflow: 'hidden',
+            };
+            const stripe = (color) => ({
+              position: 'absolute', top: 0, left: 0, right: 0, height: '3px',
+              background: `linear-gradient(90deg, ${color}, ${color}40 60%, transparent)`,
+            });
+            const stats = [
+              { label: 'Time',       color: '#ef4444', main: formatTime(elapsed),                  suffix: null },
+              { label: 'Sets',       color: '#f97316', main: String(completedSets.size),           suffix: ` / ${totalSets}` },
+              { label: 'Actual Vol', color: '#22c55e', main: totalVolume.toLocaleString(),         suffix: ' lbs' },
+              { label: 'Goal Vol',   color: 'rgba(255,255,255,0.5)', main: totalGoalVolume.toLocaleString(), suffix: ' lbs' },
+            ];
+            return (
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                {stats.map((s) => (
+                  <div key={s.label} className="px-4 py-4" style={panel}>
+                    <div style={stripe(s.color)} />
+                    <p className="text-[9px] uppercase font-bold mt-1 mb-2" style={{ color: s.color, letterSpacing: '0.25em' }}>
+                      {s.label}
+                    </p>
+                    <p
+                      className="font-black text-white tabular-nums"
+                      style={{ fontFamily: 'system-ui', fontSize: '28px', lineHeight: '1', letterSpacing: '-0.02em' }}
+                    >
+                      {s.main}
+                      {s.suffix && (
+                        <span className="text-xs font-semibold text-white/40">{s.suffix}</span>
+                      )}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
 
           {/* Exercise Breakdown */}
           <div className="space-y-2">
@@ -3551,18 +3584,29 @@ function WorkoutSummary({ template, programName, entries, completedSets, elapsed
         </div>
       </div>
 
-      {/* Bottom buttons */}
-      <div className="relative z-20 p-4 bg-gradient-to-t from-black via-black/95 to-transparent safe-bottom space-y-2">
+      {/* Bottom buttons — extra bottom padding so the Save as Template
+          button doesn't kiss the screen edge / nav bar. Save as Template
+          mirrors the "+ Create Workout" button on the My Workouts card. */}
+      <div
+        className="relative z-20 px-4 pt-4 bg-gradient-to-t from-black via-black/95 to-transparent space-y-3"
+        style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom, 0px))' }}
+      >
         <button
           onClick={saveAsTemplate}
           disabled={savingTemplate || savedAsTemplate}
-          className={`w-full py-3 rounded-xl text-sm font-semibold active:scale-[0.98] transition-all ${
-            savedAsTemplate
-              ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-              : 'bg-white/10 text-white border border-white/15 active:bg-white/15'
-          }`}
+          className="w-full active:scale-[0.97] transition-all text-white text-[11px] font-bold uppercase whitespace-nowrap py-3 disabled:opacity-70"
+          style={{
+            letterSpacing: '0.15em',
+            borderRadius: '2px',
+            background: savedAsTemplate
+              ? 'linear-gradient(135deg, rgba(34,197,94,0.85) 0%, rgba(22,163,74,0.85) 100%)'
+              : 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+            boxShadow: savedAsTemplate
+              ? '0 4px 14px rgba(34,197,94,0.35), inset 0 1px 0 rgba(255,255,255,0.15)'
+              : '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+          }}
         >
-          {savedAsTemplate ? 'Saved to My Workouts' : savingTemplate ? 'Saving...' : 'Save as Template'}
+          {savedAsTemplate ? '✓ Saved to My Workouts' : savingTemplate ? 'Saving…' : '+ Save as Template'}
         </button>
         <button
           onClick={onClose}

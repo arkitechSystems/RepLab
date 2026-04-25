@@ -202,7 +202,7 @@ router.post('/login', express.urlencoded({ extended: false }), async (req, res) 
       let city = null, state = null;
       if (loginIp) {
         try {
-          const geoRes = await fetch(`http://ip-api.com/json/${loginIp}?fields=city,regionName,status`);
+          const geoRes = await fetch(`https://ip-api.com/json/${loginIp}?fields=city,regionName,status`);
           const geo = await geoRes.json();
           if (geo.status === 'success') { city = geo.city || null; state = geo.regionName || null; }
         } catch {}

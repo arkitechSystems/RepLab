@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { api } from '../api';
 
 const TOUR_STEPS = [
   {
@@ -40,13 +41,23 @@ const TOUR_STEPS = [
   },
 ];
 
+// Phase marker — TOUR_STEPS.length means "show the 1RM collection screen
+// after the tour finishes, before dropping the user on the main page."
+const MAXES_STEP = TOUR_STEPS.length;
+
 export default function Welcome() {
   const [step, setStep] = useState(-1); // -1 = intro screen
+  const [maxBench, setMaxBench] = useState('');
+  const [maxSquat, setMaxSquat] = useState('');
+  const [maxDeadlift, setMaxDeadlift] = useState('');
+  const [savingMaxes, setSavingMaxes] = useState(false);
   const navigate = useNavigate();
 
   function handleNext() {
     if (step < TOUR_STEPS.length - 1) {
       setStep(step + 1);
+    } else if (step === TOUR_STEPS.length - 1) {
+      setStep(MAXES_STEP);
     } else {
       navigate('/');
     }
@@ -54,6 +65,29 @@ export default function Welcome() {
 
   function handleSkip() {
     navigate('/');
+  }
+
+  async function handleSaveMaxes() {
+    const payload = {};
+    const bench = Number(maxBench);
+    const squat = Number(maxSquat);
+    const deadlift = Number(maxDeadlift);
+    if (bench > 0) payload.maxBench = bench;
+    if (squat > 0) payload.maxSquat = squat;
+    if (deadlift > 0) payload.maxDeadlift = deadlift;
+    if (Object.keys(payload).length === 0) {
+      navigate('/');
+      return;
+    }
+    setSavingMaxes(true);
+    try {
+      await api('/metrics', { method: 'PUT', body: JSON.stringify(payload) });
+    } catch (err) {
+      if (import.meta.env.DEV) console.warn('Failed to save maxes during onboarding:', err);
+    } finally {
+      setSavingMaxes(false);
+      navigate('/');
+    }
   }
 
   // Intro screen
@@ -79,6 +113,78 @@ export default function Welcome() {
             className="text-wf-gray-500 text-sm hover:text-wf-gray-300 transition-colors"
           >
             skip
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 1RM collection screen — final step of onboarding, right before the
+  // user lands on the main Workouts page. Optional: skip drops them on /
+  // without saving anything.
+  if (step === MAXES_STEP) {
+    const maxInput = (label, value, setValue) => (
+      <label className="w-full flex items-center justify-between gap-3">
+        <span className="text-wf-gray-300 text-sm font-medium">{label}</span>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            inputMode="decimal"
+            min="0"
+            max="2000"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="—"
+            className="w-24 glass-input rounded-lg px-3 py-2 text-white text-sm text-right font-medium focus:outline-none placeholder:text-wf-gray-600"
+          />
+          <span className="text-wf-gray-500 text-xs w-6">lbs</span>
+        </div>
+      </label>
+    );
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-between px-6 py-12 relative">
+        <div className="ambient-bg" />
+
+        <div className="w-full max-w-sm relative z-10 flex justify-end">
+          <button
+            onClick={handleSkip}
+            className="text-wf-gray-500 text-sm hover:text-wf-gray-300 transition-colors"
+          >
+            skip
+          </button>
+        </div>
+
+        <div className="w-full max-w-sm relative z-10 flex flex-col items-center text-center gap-6 flex-1 justify-center">
+          <h2 className="text-2xl font-bold text-white">Your one-rep maxes</h2>
+          <p className="text-wf-gray-400 text-sm leading-relaxed">
+            Optional — fill in as many as you know.
+          </p>
+          <p className="text-wf-gray-500 text-xs leading-relaxed -mt-3">
+            Some programs prescribe a percentage of your 1RM (e.g. "75% 1RM").
+            If we know your bench, squat, or deadlift max, we'll auto-fill the
+            suggested weight for those sets so you don't have to do the math.
+          </p>
+
+          <div className="w-full flex flex-col gap-4 mt-2">
+            {maxInput('Bench Press', maxBench, setMaxBench)}
+            {maxInput('Squat', maxSquat, setMaxSquat)}
+            {maxInput('Deadlift', maxDeadlift, setMaxDeadlift)}
+          </div>
+        </div>
+
+        <div className="w-full max-w-sm relative z-10 flex flex-col items-center gap-3">
+          <button
+            onClick={handleSaveMaxes}
+            disabled={savingMaxes}
+            className="w-full btn-gradient active:scale-[0.98] text-white font-semibold py-3.5 rounded-xl text-base transition-all disabled:opacity-60"
+          >
+            {savingMaxes ? 'Saving…' : "Save & continue"}
+          </button>
+          <button
+            onClick={handleSkip}
+            className="text-wf-gray-500 text-sm hover:text-wf-gray-300 transition-colors"
+          >
+            I'll add these later
           </button>
         </div>
       </div>

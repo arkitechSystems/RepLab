@@ -47,5 +47,13 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<!-- Permission usage descriptions. Each must be present BEFORE the system
+	     prompt fires, or iOS aborts the request and Apple Review will reject. -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>RepLab uses your photo library to set or update your profile photo.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>RepLab saves shared workout and PR cards to your photos.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>RepLab uses your camera if you choose to take a new profile photo.</string>
 </dict>
 </plist>

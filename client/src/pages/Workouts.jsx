@@ -226,27 +226,8 @@ function ProgramOverviewHero({ program, weekCount }) {
         </div>
       </div>
 
-      {/* Download PDF — anchors to the original workout PDF in public/Workouts/.
-          Styling mirrors the "+ Create Workout" button on the Workouts
-          homepage My Workouts card. Rendered only when programDetails.PDF
-          is set so the button stays hidden for programs without a source doc. */}
-      {program.programDetails?.PDF && (
-        <a
-          href={encodeURI(program.programDetails.PDF)}
-          download
-          target="_blank"
-          rel="noreferrer"
-          className="absolute bottom-4 right-4 active:scale-[0.97] transition-all text-white text-[11px] font-bold uppercase px-3.5 py-2 whitespace-nowrap"
-          style={{
-            letterSpacing: '0.15em',
-            borderRadius: '2px',
-            background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
-            boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
-          }}
-        >
-          ↓ Download PDF
-        </a>
-      )}
+      {/* Download PDF moved out of the hero — now lives in the back-button
+          row above so it doesn't overlap any of the hero copy. */}
     </div>
   );
 }
@@ -329,7 +310,7 @@ function ProgramCard({ program, idx, onSelect, onBegin, onDelete, onShare, dataT
                 }</span>
               )}
             </div>
-            <h2 className="text-xl font-black text-white tracking-tight">{program.name}</h2>
+            <h2 className="text-xl font-black text-white tracking-tight uppercase">{program.name}</h2>
             <p className="text-wf-gray-400 text-sm mt-1">
               {program.weekCount} {program.weekCount === 1 ? 'week' : 'weeks'} &middot; {program.workoutCount} workouts
             </p>
@@ -784,7 +765,7 @@ export default function Workouts() {
       });
       await fetchData();
     } catch (err) {
-      console.error('Failed to mark rest day:', err);
+      if (import.meta.env.DEV) console.error('Failed to mark rest day:', err);
     }
   }
 
@@ -1205,7 +1186,7 @@ export default function Workouts() {
         });
         setPrograms((prev) => prev.map((p) => p.id === program.id ? { ...p, name: editName.trim() } : p));
       } catch (err) {
-        console.error(err);
+        if (import.meta.env.DEV) console.error(err);
       }
     }
     setEditMode(false);
@@ -1442,8 +1423,9 @@ export default function Workouts() {
             )}
           </StickyHeader>
 
-          {/* Back button */}
-          <div className="px-4 mb-3">
+          {/* Back button row — Download PDF (when available) sits on the right
+              edge so it doesn't overlap any hero copy. */}
+          <div className="px-4 mb-3 flex items-center justify-between gap-3">
             <button
               onClick={() => { setSelectedProgram(null); setSelectedWeek(null); }}
               className="inline-flex items-center gap-1 text-sm text-wf-gray-400 active:text-white transition-colors"
@@ -1451,8 +1433,25 @@ export default function Workouts() {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
               </svg>
-              {selectedGroup === 'browse' ? 'Browse Workout Library' : selectedGroup === 'my' ? 'My Workouts' : 'All Workouts'}
+              {selectedGroup === 'browse' ? 'Workout Library' : selectedGroup === 'my' ? 'My Workouts' : 'All Workouts'}
             </button>
+            {program.programDetails?.PDF && (
+              <a
+                href={encodeURI(program.programDetails.PDF)}
+                download
+                target="_blank"
+                rel="noreferrer"
+                className="active:scale-[0.97] transition-all text-white text-[11px] font-bold uppercase px-3.5 py-2 whitespace-nowrap"
+                style={{
+                  letterSpacing: '0.15em',
+                  borderRadius: '2px',
+                  background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+                  boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+                }}
+              >
+                ↓ Download PDF
+              </a>
+            )}
           </div>
 
           <div className="px-4">
@@ -1460,7 +1459,7 @@ export default function Workouts() {
             {program.programDetails && Object.keys(program.programDetails).length > 0 && (
               <ProgramDetailsCard details={program.programDetails} />
             )}
-            <div className="space-y-3 pb-4">
+            <div className="space-y-4 pb-4">
               {(() => {
                 // Track which phases have already appeared so we only show a
                 // divider for their first occurrence. Programs whose phase
@@ -1487,7 +1486,7 @@ export default function Workouts() {
                 if (thisPhase) phaseFirstSeen.add(thisPhase);
 
                 return (
-                  <div key={`week-${wIdx}`} className="contents">
+                  <div key={`week-${wIdx}`} className="space-y-3">
                   {showPhaseHeader && (
                     <div className={wIdx === 0 ? '' : 'pt-3'}>
                       <div className="flex items-center gap-3 px-1">
@@ -2541,7 +2540,7 @@ export default function Workouts() {
         });
         templateId = res.id;
       } catch (err) {
-        console.error(err);
+        if (import.meta.env.DEV) console.error(err);
         return;
       }
       // User-local "today" so a user in Asia logging at 11pm doesn't roll over to tomorrow (UTC).
@@ -2577,7 +2576,7 @@ export default function Workouts() {
         });
         templateId = res.id;
       } catch (err) {
-        console.error(err);
+        if (import.meta.env.DEV) console.error(err);
         return;
       }
       const date = new Date(addDateInput + 'T00:00:00');
@@ -3245,11 +3244,11 @@ export default function Workouts() {
   if (selectedGroup && !selectedProgram) {
     const isBrowse = selectedGroup === 'browse';
     const groupPrograms = isBrowse ? browsePrograms : myPrograms;
-    const groupTitle = isBrowse ? 'Browse Workout Library' : 'My Workouts';
+    const groupTitle = isBrowse ? 'BROWSE WORKOUT LIBRARY' : 'MY WORKOUTS';
 
     return (
       <div>
-        <StickyHeader title={groupTitle}>
+        <StickyHeader title={groupTitle} titleStyle={{ fontSize: '26.4px' }}>
           {!isBrowse && (
             <button
               onClick={() => setShowCreateMenu(true)}

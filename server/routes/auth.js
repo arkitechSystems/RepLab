@@ -119,7 +119,7 @@ router.post('/signup', async (req, res) => {
     try {
       const ip = req.ip === '::1' || req.ip === '127.0.0.1' ? '' : req.ip;
       if (ip) {
-        const geoRes = await fetch(`http://ip-api.com/json/${ip}?fields=city,regionName,status`);
+        const geoRes = await fetch(`https://ip-api.com/json/${ip}?fields=city,regionName,status`);
         const geo = await geoRes.json();
         if (geo.status === 'success') {
           signupCity = geo.city || null;
@@ -203,7 +203,7 @@ router.post('/login', async (req, res) => {
       let city = null, state = null;
       if (loginIp) {
         try {
-          const geoRes = await fetch(`http://ip-api.com/json/${loginIp}?fields=city,regionName,status`);
+          const geoRes = await fetch(`https://ip-api.com/json/${loginIp}?fields=city,regionName,status`);
           const geo = await geoRes.json();
           if (geo.status === 'success') { city = geo.city || null; state = geo.regionName || null; }
         } catch (geoErr) { console.error('Login history geo error:', geoErr); }

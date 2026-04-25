@@ -8,8 +8,11 @@
 
 function dataURLtoBlob(dataURL) {
   const parts = dataURL.split(',');
-  const mime = parts[0].match(/:(.*?);/)[1];
-  const binary = atob(parts[1]);
+  // Defensive: malformed data URL falls back to PNG instead of crashing on
+  // a null match. canvas.toDataURL() should always produce a valid header,
+  // but this protects against any future caller passing untrusted input.
+  const mime = parts[0]?.match(/:(.*?);/)?.[1] || 'image/png';
+  const binary = atob(parts[1] || '');
   const arr = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) arr[i] = binary.charCodeAt(i);
   return new Blob([arr], { type: mime });

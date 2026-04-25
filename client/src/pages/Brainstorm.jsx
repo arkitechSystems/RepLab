@@ -770,6 +770,9 @@ function WheelPicker() {
     setSelected(values[i]);
   };
 
+  // Mount-only: snap the wheel to the initial selection. Intentionally does
+  // not depend on `selected` — subsequent picks come from user scrolling, not
+  // programmatic resets.
   useEffect(() => {
     if (ref.current) ref.current.scrollTop = values.indexOf(selected) * itemH;
     // eslint-disable-next-line react-hooks/exhaustive-deps
