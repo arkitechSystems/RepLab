@@ -4862,11 +4862,286 @@ router.delete('/exercise-library/delete/:id', adminAuth, async (req, res) => {
 });
 
 // ─── Audit Reports ──────────────────────────────────────────────────
+// Persisted status for the launch-readiness audit (2026-04-24).
+// Stored as JSON in admin_settings under a single key so the admin can mark
+// items todo / in-progress / done / N/A and have it survive across sessions
+// and devices. Manual-verification items use the same statuses.
+const LAUNCH_AUDIT_KEY = 'audit_launch_2026_04_24_status';
+
+router.post('/audit/status', adminAuth, express.json(), async (req, res) => {
+  try {
+    const { id, status } = req.body || {};
+    if (typeof id !== 'string' || !/^[a-z0-9_-]+$/i.test(id)) {
+      return res.status(400).json({ error: 'Invalid id' });
+    }
+    const valid = ['todo', 'inprogress', 'done', 'na'];
+    if (!valid.includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+    const raw = await db.getAdminSetting(LAUNCH_AUDIT_KEY);
+    let state = {};
+    try { state = raw ? JSON.parse(raw) : {}; } catch { state = {}; }
+    state[id] = status;
+    await db.setAdminSetting(LAUNCH_AUDIT_KEY, JSON.stringify(state));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('audit status update failed', err);
+    res.status(500).json({ error: 'Update failed' });
+  }
+});
+
 router.get('/audit', adminAuth, async (req, res) => {
+  // Load saved statuses for the launch-readiness audit
+  const rawStatus = await db.getAdminSetting(LAUNCH_AUDIT_KEY);
+  let auditState = {};
+  try { auditState = rawStatus ? JSON.parse(rawStatus) : {}; } catch { auditState = {}; }
+  const STATUS_LABEL = { todo: 'TO DO', inprogress: 'IN PROGRESS', done: 'DONE', na: 'N/A' };
+  const STATUS_STYLE = {
+    todo:        'background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);',
+    inprogress:  'background:rgba(59,130,246,0.18);color:#3b82f6;border:1px solid rgba(59,130,246,0.4);',
+    done:        'background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3);',
+    na:          'background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.45);border:1px solid rgba(255,255,255,0.12);',
+  };
+  const pill = (id) => {
+    const s = auditState[id] || 'todo';
+    return `<button onclick="cycleStatus('${id}')" id="pill-${id}" style="cursor:pointer;padding:3px 10px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:0.05em;${STATUS_STYLE[s]}">${STATUS_LABEL[s]}</button>`;
+  };
+  const checkbox = (id) => {
+    const s = auditState[id] || 'todo';
+    const checked = s === 'done' ? 'checked' : '';
+    return `<input type="checkbox" id="cb-${id}" ${checked} onchange="toggleManual('${id}')" style="width:18px;height:18px;cursor:pointer;accent-color:#22c55e;" />`;
+  };
+
+  // Build category sections — array of { id, title, location } for each severity
+  const BLOCKERS = [
+    { id: 'bk1', title: "Bundle ID still <code>com.willfit.app</code>",                                      desc: 'App is branded RepLab. Decide final ID (e.g. <code>com.replab.fitness</code>) before first TestFlight or Play upload — bundle IDs cannot be changed once shipped.', loc: 'capacitor.config.json:2' },
+    { id: 'bk2', title: 'Info.plist has zero usage-description strings',                                   desc: 'Apple will reject. Add NSUserNotificationUsageDescription, NSPhotoLibraryAddUsageDescription / NSPhotoLibraryUsageDescription / NSCameraUsageDescription as applicable.', loc: 'ios/App/App/Info.plist' },
+    { id: 'bk3', title: 'AndroidManifest missing POST_NOTIFICATIONS permission',                          desc: 'Android 13+ users will silently never get push.', loc: 'android/app/src/main/AndroidManifest.xml' },
+    { id: 'bk4', title: '<code>android:allowBackup="true"</code> on fitness data',                         desc: 'Privacy risk + Play Store data-safety red flag. Set to false unless implementing BackupAgent + encryption.', loc: 'AndroidManifest.xml:5' },
+    { id: 'bk5', title: 'iOS push will never deliver — FCM/APNs not wired',                               desc: 'push.js explicitly notes "until FCM is added, iOS registrations sit in DB but never receive sends." Either wire FCM/APNs or strip push UI for v1.0 iOS.', loc: 'client/src/utils/push.js:14' },
+    { id: 'bk6', title: 'Account-deletion discoverability (Apple 5.1.1(v))',                              desc: 'Delete-account exists but is buried at bottom of Profile with low contrast. Reviewers specifically test this. Verify server cascade actually wipes sessions/PBs/templates/metrics/tokens/etc.', loc: 'client/src/pages/Profile.jsx:830' },
+    { id: 'bk7', title: 'Stripe-only payment will trigger iOS rejection (Apple 3.1.1)',                   desc: 'IAP required for digital content. Three options: implement Capacitor IAP, hide upgrade CTA on iOS builds, or strip premium tiers for v1.0.', loc: 'client/src/pages/Upgrade.jsx, Terms.jsx:34' },
+    { id: 'bk8', title: 'No root <code>&lt;ErrorBoundary&gt;</code> wrapping Routes',                      desc: "Any unhandled render error = white screen forever. Component exists, just isn't used at root.", loc: 'client/src/App.jsx' },
+  ];
+  const HIGH = [
+    { id: 'h1', title: 'Open redirect in bridge-token flow',                              desc: '<code>redirectPath</code> from URL goes straight into <code>window.location.replace()</code>. Validate same-origin first.', loc: 'client/src/context/AuthContext.jsx:48,81-82' },
+    { id: 'h2', title: 'Admin password fallback accepts plaintext',                       desc: "If <code>ADMIN_PASS</code> doesn't start with <code>$2</code>, comparison silently runs anyway. Reject non-bcrypt at startup.", loc: 'server/routes/admin.js:82-85' },
+    { id: 'h3', title: 'Profile photo: no MIME validation',                               desc: 'Accepts <code>data:image/svg+xml</code>, bloats DB with 500KB strings. Restrict to JPEG/PNG; consider object storage instead of base64-in-DB.', loc: 'server/routes/auth.js:464-483' },
+    { id: 'h4', title: 'Race condition in WorkoutSession Promise.all',                    desc: 'Rapid session switching can mix data across templates (PBs from A + entries from B). Add AbortController keyed on templateId+date.', loc: 'client/src/pages/WorkoutSession.jsx:591-598' },
+    { id: 'h5', title: 'Missing AbortController on bridge-token fetch chain',             desc: '"Set state on unmounted component" if user navigates mid-fetch.', loc: 'client/src/context/AuthContext.jsx:61-78' },
+    { id: 'h6', title: 'Console.log / .warn / .error left in prod paths',                 desc: 'Visible in Safari Web Inspector / Chrome DevTools. Gate with <code>if (import.meta.env.DEV)</code>.', loc: 'push.js, Calendar.jsx, AuthContext.jsx, useExercises.js, FeaturedWorkoutSession.jsx' },
+    { id: 'h7', title: 'Touch targets below 44pt iOS minimum',                            desc: 'Utilities timer buttons <code>h-9 w-9</code>; ExerciseCard reorder/swap/delete <code>h-10 w-10</code>. Bump to <code>h-12 w-12</code>.', loc: 'Utilities.jsx:432-456, ExerciseCard.jsx:192-215' },
+    { id: 'h8', title: 'Featured Workouts held back but UI still references it',          desc: 'Apple rejects visible-but-incomplete features. Confirm zero cards/links route to FeaturedWorkoutSession in v1.0.', loc: 'App.jsx, Workouts.jsx' },
+    { id: 'h9', title: 'Sentry disabled in prod (VITE_SENTRY_DSN unset)',                 desc: 'You\\\'ll be flying blind on launch errors. Set the env var on Render.', loc: 'client/src/sentry.js' },
+  ];
+  const MEDIUM = [
+    { id: 'm1', title: 'Timezone mixing (parseISO UTC vs isToday local)',                 desc: 'Users near midnight in extreme timezones can see wrong day. Standardize on local YYYY-MM-DD.', loc: 'client/src/pages/WorkoutSession.jsx (multiple)' },
+    { id: 'm2', title: 'Trainer sessions stored in in-memory Map',                        desc: 'Every server deploy logs out all trainers. Move to DB-backed sessions.', loc: 'server/routes/trainer.js:13' },
+    { id: 'm3', title: 'Password reset token has no audit trail',                         desc: 'Token cleared on use which prevents reuse, but no <code>used_at</code> log for forensics.', loc: 'server/db.js' },
+    { id: 'm4', title: 'Rate limit on /auth/refresh is IP-based, general limiter',        desc: 'Multi-device users could theoretically hit the cap. Move to per-userId.', loc: 'server/index.js:120' },
+    { id: 'm5', title: 'Landscape orientation permitted on iPhone',                       desc: 'Layouts are portrait-only. Either lock to portrait in Info.plist or design landscape.', loc: 'ios/App/App/Info.plist:35-40' },
+    { id: 'm6', title: 'No deep-link / universal-link config',                            desc: "External 'open in app' links won't deep-link to specific sessions/programs.", loc: 'apple-app-site-association / assetlinks.json (missing)' },
+    { id: 'm7', title: 'Stale closure risk in WorkoutSession auto-fill',                  desc: 'handleBlur reads completedSets/autoFilled from outer scope; can overwrite a just-completed set.', loc: 'client/src/pages/WorkoutSession.jsx:833-836' },
+  ];
+  const LOW = [
+    { id: 'l1', title: 'ip-api.com over HTTP not HTTPS',                                  desc: 'Minor MITM exposure during signup geolocation.', loc: 'server/routes/auth.js:122, trainer.js:171' },
+    { id: 'l2', title: 'Missing Content-Security-Policy header',                          desc: 'Defense in depth.', loc: 'server/index.js' },
+    { id: 'l3', title: 'HSTS missing <code>preload</code> directive',                     desc: 'Add <code>; preload</code> if you submit to the HSTS preload list.', loc: 'server/index.js:78' },
+    { id: 'l4', title: 'Android minSdkVersion = 24 (Android 7)',                          desc: 'Modern apps target 26+. Bump if dependencies allow.', loc: 'client/android/variables.gradle:2' },
+    { id: 'l5', title: 'No version sync automation across files',                         desc: 'Manual bumps in package.json, Info.plist MARKETING_VERSION, and build.gradle. Easy to mis-sync.', loc: 'multiple' },
+    { id: 'l6', title: 'Splash <code>launchAutoHide: false</code>',                       desc: 'OK only if SplashScreen.hide() is called on mount. Verify or flip to true.', loc: 'client/capacitor.config.json:7' },
+    { id: 'l7', title: 'Adaptive icon assets incomplete for Android',                     desc: 'Generate foreground/background/monochrome layers via capacitor-assets.', loc: 'android/app/src/main/res/' },
+    { id: 'l8', title: 'Many <code>// eslint-disable-next-line</code> on hooks deps',     desc: 'Hidden bug surface. Audit each one when time permits.', loc: 'multiple' },
+  ];
+  const MANUAL = [
+    { id: 'mv1',  title: 'Privacy policy URL live and reachable without an account',                  desc: 'Test in incognito.' },
+    { id: 'mv2',  title: 'Terms URL live and matches Terms.jsx content',                              desc: 'Same incognito check.' },
+    { id: 'mv3',  title: 'Account deletion actually removes all data server-side',                    desc: 'Create test account → log session → set PB → delete → verify zero rows in psql for that user across sessions/PBs/templates/metrics/tokens.' },
+    { id: 'mv4',  title: 'App Privacy "nutrition labels" filled out (App Store Connect)',             desc: 'Email, phone, fitness data, photos, usage data (PostHog), diagnostics (Sentry).' },
+    { id: 'mv5',  title: 'Google Play Data Safety form completed',                                    desc: 'Same disclosures as App Privacy.' },
+    { id: 'mv6',  title: 'Sign in with Apple — only required if you add other social logins',         desc: 'Currently email/phone only, so likely N/A. Mark N/A if sticking with that.' },
+    { id: 'mv7',  title: 'Privacy Policy mentions PostHog + Sentry data collection',                  desc: 'Required for Play Data Safety honesty.' },
+    { id: 'mv8',  title: 'Screenshots + preview video prepared per spec',                             desc: 'iPhone 6.7", iPad 12.9", Android phone, Android tablet.' },
+    { id: 'mv9',  title: 'Icon set complete (1024×1024 iOS, adaptive Android)',                       desc: 'Generate with capacitor-assets.' },
+    { id: 'mv10', title: 'FCM / APNs credentials uploaded',                                           desc: 'Firebase console for FCM, Apple Dev portal for APNs.' },
+    { id: 'mv11', title: 'All /test/* URLs 404 in production build',                                  desc: 'Verify no sandbox links escape.' },
+  ];
+
+  const renderRow = (idx, item) => `
+    <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+      <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;width:32px;">${idx}</td>
+      <td style="padding:10px 12px;color:#fff;font-size:13px;"><strong>${item.title}</strong><br><span style="color:rgba(255,255,255,0.45);font-size:11px;">${item.desc}</span></td>
+      <td style="padding:10px 12px;color:rgba(255,255,255,0.4);font-size:11px;font-family:monospace;white-space:nowrap;">${item.loc}</td>
+      <td style="padding:10px 12px;text-align:right;">${pill(item.id)}</td>
+    </tr>
+  `;
+
+  const renderManualRow = (idx, item) => `
+    <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+      <td style="padding:10px 12px;text-align:center;width:48px;">${checkbox(item.id)}</td>
+      <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;width:32px;">${idx}</td>
+      <td style="padding:10px 12px;color:#fff;font-size:13px;"><strong>${item.title}</strong><br><span style="color:rgba(255,255,255,0.45);font-size:11px;">${item.desc}</span></td>
+      <td style="padding:10px 12px;text-align:right;">${pill(item.id)}</td>
+    </tr>
+  `;
+
+  const renderTable = (rows, manual = false) => `
+    <table style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.1);">
+          ${manual ? '<th style="text-align:center;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);">Done</th>' : ''}
+          <th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);">#</th>
+          <th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);">Issue</th>
+          ${manual ? '' : '<th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);">Location</th>'}
+          <th style="text-align:right;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map((r, i) => manual ? renderManualRow(i + 1, r) : renderRow(i + 1, r)).join('')}
+      </tbody>
+    </table>
+  `;
+
+  const launchSection = `
+    <!-- ========== AUDIT: April 24, 2026 — Launch Readiness ========== -->
+    <div class="glass" style="margin-bottom:16px;overflow:hidden;border-left:4px solid #ef4444;">
+      <div class="audit-toggle" onclick="toggleAudit(0)" style="padding:16px 20px;display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <span style="font-size:15px;font-weight:700;color:#fff;">Launch Readiness Audit — April 24, 2026</span>
+          <span style="padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);">${BLOCKERS.length} Blockers</span>
+          <span style="padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;background:rgba(249,115,22,0.15);color:#f97316;border:1px solid rgba(249,115,22,0.3);">${HIGH.length} High</span>
+          <span style="padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);">${MEDIUM.length} Med</span>
+          <span style="padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.1);">${LOW.length} Low</span>
+          <span style="padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;background:rgba(168,85,247,0.15);color:#a855f7;border:1px solid rgba(168,85,247,0.3);">${MANUAL.length} Manual</span>
+        </div>
+        <svg id="audit-chev-0" class="audit-chevron open" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+      </div>
+      <div id="audit-body-0" class="audit-body open" style="padding:0 20px 20px;">
+
+        <p style="color:rgba(255,255,255,0.5);font-size:13px;line-height:1.6;margin:0 0 20px;">
+          Pre-submission audit for v1.0 ship to App Store + Google Play. Click any status pill to cycle: <strong style="color:#fbbf24;">TO DO</strong> →
+          <strong style="color:#3b82f6;">IN PROGRESS</strong> → <strong style="color:#22c55e;">DONE</strong> → <strong style="color:rgba(255,255,255,0.6);">N/A</strong>. Manual-verify items have a checkbox.
+          Status persists in the database.
+        </p>
+
+        <!-- BLOCKERS -->
+        <div class="glass" style="padding:24px;margin-bottom:20px;border-left:4px solid #ef4444;">
+          <h2 style="margin:0 0 16px;font-size:16px;color:#ef4444;display:flex;align-items:center;gap:8px;">
+            <span style="width:24px;height:24px;border-radius:50%;background:rgba(239,68,68,0.15);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;">${BLOCKERS.length}</span>
+            Blockers — will be rejected / broken at launch
+          </h2>
+          ${renderTable(BLOCKERS)}
+        </div>
+
+        <!-- HIGH -->
+        <div class="glass" style="padding:24px;margin-bottom:20px;border-left:4px solid #f97316;">
+          <h2 style="margin:0 0 16px;font-size:16px;color:#f97316;display:flex;align-items:center;gap:8px;">
+            <span style="width:24px;height:24px;border-radius:50%;background:rgba(249,115,22,0.15);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;">${HIGH.length}</span>
+            High — real bugs / polish reviewers will notice
+          </h2>
+          ${renderTable(HIGH)}
+        </div>
+
+        <!-- MEDIUM -->
+        <div class="glass" style="padding:24px;margin-bottom:20px;border-left:4px solid #fbbf24;">
+          <h2 style="margin:0 0 16px;font-size:16px;color:#fbbf24;display:flex;align-items:center;gap:8px;">
+            <span style="width:24px;height:24px;border-radius:50%;background:rgba(251,191,36,0.15);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;">${MEDIUM.length}</span>
+            Medium — fix within first weeks after launch
+          </h2>
+          ${renderTable(MEDIUM)}
+        </div>
+
+        <!-- LOW -->
+        <div class="glass" style="padding:24px;margin-bottom:20px;border-left:4px solid rgba(255,255,255,0.2);">
+          <h2 style="margin:0 0 16px;font-size:16px;color:rgba(255,255,255,0.7);display:flex;align-items:center;gap:8px;">
+            <span style="width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;">${LOW.length}</span>
+            Low — polish / tech debt
+          </h2>
+          ${renderTable(LOW)}
+        </div>
+
+        <!-- MANUAL VERIFICATION -->
+        <div class="glass" style="padding:24px;margin-bottom:20px;border-left:4px solid #a855f7;">
+          <h2 style="margin:0 0 16px;font-size:16px;color:#a855f7;display:flex;align-items:center;gap:8px;">
+            <span style="width:24px;height:24px;border-radius:50%;background:rgba(168,85,247,0.15);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;">${MANUAL.length}</span>
+            Manual Verification — check off as you confirm
+          </h2>
+          ${renderTable(MANUAL, true)}
+        </div>
+
+      </div>
+    </div>
+
+    <script>
+      const STATUS_LABELS = ${JSON.stringify(STATUS_LABEL)};
+      const STATUS_STYLES = ${JSON.stringify(STATUS_STYLE)};
+      const STATUS_CYCLE = ['todo', 'inprogress', 'done', 'na'];
+
+      async function setAuditStatus(id, status) {
+        try {
+          const res = await fetch('/admin/audit/status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, status }),
+            credentials: 'same-origin',
+          });
+          if (!res.ok) throw new Error('save failed');
+          return true;
+        } catch (e) {
+          alert('Could not save status — please retry.');
+          return false;
+        }
+      }
+
+      function applyPillStyle(pill, status) {
+        pill.textContent = STATUS_LABELS[status];
+        pill.setAttribute('style',
+          'cursor:pointer;padding:3px 10px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:0.05em;' + STATUS_STYLES[status]
+        );
+        pill.dataset.status = status;
+      }
+
+      async function cycleStatus(id) {
+        const pill = document.getElementById('pill-' + id);
+        if (!pill) return;
+        const cur = pill.dataset.status || (pill.textContent || '').toLowerCase().replace(' ', '').replace('/', '');
+        const norm = STATUS_CYCLE.includes(cur) ? cur : 'todo';
+        const next = STATUS_CYCLE[(STATUS_CYCLE.indexOf(norm) + 1) % STATUS_CYCLE.length];
+        const ok = await setAuditStatus(id, next);
+        if (ok) {
+          applyPillStyle(pill, next);
+          const cb = document.getElementById('cb-' + id);
+          if (cb) cb.checked = next === 'done';
+        }
+      }
+
+      async function toggleManual(id) {
+        const cb = document.getElementById('cb-' + id);
+        const pill = document.getElementById('pill-' + id);
+        if (!cb || !pill) return;
+        const next = cb.checked ? 'done' : 'todo';
+        const ok = await setAuditStatus(id, next);
+        if (ok) {
+          applyPillStyle(pill, next);
+        } else {
+          cb.checked = !cb.checked;
+        }
+      }
+
+      // Initialize each pill's data-status from its current label
+      document.querySelectorAll('[id^="pill-"]').forEach((p) => {
+        const txt = (p.textContent || '').trim();
+        for (const k of Object.keys(STATUS_LABELS)) {
+          if (STATUS_LABELS[k] === txt) { p.dataset.status = k; break; }
+        }
+      });
+    </script>
+  `;
+
   res.send(adminPage('Audit Reports', `
   <div class="breadcrumb"><a href="/admin">Dashboard</a> / Audit Reports</div>
   <h1>Audit Reports</h1>
-  <p style="color:rgba(255,255,255,0.5);margin-bottom:24px;">Historical UX audit findings. Click a report to expand.</p>
+  <p style="color:rgba(255,255,255,0.5);margin-bottom:24px;">Audit findings — newest first. Click any report to expand.</p>
 
   <style>
     .audit-toggle { cursor:pointer; user-select:none; }
@@ -4884,6 +5159,8 @@ router.get('/audit', adminAuth, async (req, res) => {
       chev.classList.toggle('open');
     }
   </script>
+
+  ${launchSection}
 
   <!-- ========== AUDIT #1: April 3, 2026 ========== -->
   <div class="glass" style="margin-bottom:16px;overflow:hidden;">
