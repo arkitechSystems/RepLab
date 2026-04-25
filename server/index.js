@@ -144,6 +144,54 @@ app.use('/auth/export-data', rateLimit({
   legacyHeaders: false,
 }));
 
+// Universal Link / App Link discovery files. Both iOS and Android verify
+// these endpoints are reachable (no auth, plain JSON, no redirect) before
+// they'll route external HTTPS links into the app.
+//
+// PRE-LAUNCH TODO (tied to audit B1 — bundle ID):
+//   1. Replace TEAMID with your Apple Developer Team ID (App Store Connect →
+//      Membership). Example: ABCD1234XY.
+//   2. Replace `com.willfit.app` with the final bundle ID once B1 is decided.
+//   3. Replace the Android sha256_cert_fingerprints placeholder with the
+//      SHA-256 of your release signing key. Generate with:
+//        keytool -list -v -keystore your-upload-key.keystore | grep SHA256
+//      (Or grab it from Play Console → App signing → App signing key
+//      certificate.)
+//   4. Confirm the AndroidManifest <data android:host="..."/> entries match
+//      your real hosts.
+app.get('/.well-known/apple-app-site-association', (_req, res) => {
+  res.type('application/json').json({
+    applinks: {
+      apps: [],
+      details: [{
+        // TODO: TEAMID + final bundle ID — see audit B1.
+        appID: 'TEAMID.com.willfit.app',
+        paths: [
+          '/session/*',
+          '/featured-session/*',
+          '/exercises/*',
+          '/history/*',
+        ],
+      }],
+    },
+  });
+});
+
+app.get('/.well-known/assetlinks.json', (_req, res) => {
+  res.type('application/json').json([{
+    relation: ['delegate_permission/common.handle_all_urls'],
+    target: {
+      namespace: 'android_app',
+      // TODO: final bundle ID — see audit B1.
+      package_name: 'com.willfit.app',
+      sha256_cert_fingerprints: [
+        // TODO: paste the SHA-256 of your Android release signing key.
+        '00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00',
+      ],
+    },
+  }]);
+});
+
 // Apply general limiter to all API routes
 app.use('/programs', apiLimiter);
 app.use('/templates', apiLimiter);

@@ -85,6 +85,12 @@ export default function WorkoutSession() {
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [addExerciseSearch, setAddExerciseSearch] = useState('');
   const [autoFilled, setAutoFilled] = useState(new Set()); // tracks predicted entries
+  // Refs that always mirror the latest completedSets / autoFilled. handleBlur
+  // can fire after a set was just marked complete (focus loss races completion);
+  // reading state via these refs avoids the stale-closure overwrite where
+  // auto-fill clobbers a freshly-completed set.
+  const completedSetsRef = useRef(new Set());
+  const autoFilledRef = useRef(new Set());
   const [isCompleted, setIsCompleted] = useState(false);
   const [weightSuggestions, setWeightSuggestions] = useState({});
   const [lastSession, setLastSession] = useState({});
@@ -237,6 +243,8 @@ export default function WorkoutSession() {
 
   // Keep ref in sync with state
   useEffect(() => { restDurationRef.current = restDuration; }, [restDuration]);
+  useEffect(() => { completedSetsRef.current = completedSets; }, [completedSets]);
+  useEffect(() => { autoFilledRef.current = autoFilled; }, [autoFilled]);
 
   // Auto-save after checkmark toggle (debounced 1.5s) — skip in tutorial mode
   useEffect(() => {
@@ -883,15 +891,22 @@ export default function WorkoutSession() {
     }
     if (!exercise) return;
 
+    // Read completedSets / autoFilled from refs so we see the LATEST values,
+    // not the closure-captured ones from when handleBlur was scheduled. This
+    // prevents the race where a set marked complete just before blur fires
+    // would still be auto-overwritten.
+    const completedNow = completedSetsRef.current;
+    const autoFilledNow = autoFilledRef.current;
+
     setEntries((prev) => {
       const updated = { ...prev };
       updated[exerciseName] = [...(updated[exerciseName] || [])];
       for (let i = setIdx + 1; i < exercise.sets.length; i++) {
         const key = `${exerciseName}-${i}`;
         // Only fill if the set is not completed and the field is empty or auto-filled
-        if (!completedSets.has(key)) {
+        if (!completedNow.has(key)) {
           const current = updated[exerciseName][i]?.[field];
-          if (current === '' || current === undefined || current === null || autoFilled.has(key)) {
+          if (current === '' || current === undefined || current === null || autoFilledNow.has(key)) {
             updated[exerciseName][i] = {
               ...updated[exerciseName][i],
               [field]: value,
@@ -907,7 +922,7 @@ export default function WorkoutSession() {
       const next = new Set(prev);
       for (let i = setIdx + 1; i < exercise.sets.length; i++) {
         const key = `${exerciseName}-${i}`;
-        if (!completedSets.has(key)) {
+        if (!completedNow.has(key)) {
           const current = exEntries[i]?.[field];
           if (current === '' || current === undefined || current === null || prev.has(key)) {
             next.add(key);
