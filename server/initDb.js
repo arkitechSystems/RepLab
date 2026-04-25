@@ -460,35 +460,14 @@ export default async function initDb() {
   await pool.query("DELETE FROM programs WHERE name = $1 AND user_id IS NULL", ['Bro Split Workout']);
   await pool.query("DELETE FROM programs WHERE name = $1 AND user_id IS NULL", ['Glute Hypertrophy']);
 
-  // Seed Will's PPL if not already present
-  const { rows: wpplRows } = await pool.query("SELECT id FROM programs WHERE name = $1 AND user_id IS NULL", ["Will's PPL"]);
-  if (wpplRows.length === 0) {
-    await seedWillsPPL();
-  }
-
-  // Seed Will's Legs 2 into existing Will's PPL if not already present
-  if (wpplRows.length > 0) {
-    const pplId = wpplRows[0].id;
-    const { rows: legs2Rows } = await pool.query(
-      "SELECT id FROM templates WHERE name = $1 AND program_id = $2",
-      ["Will's Legs 2", pplId]
-    );
-    if (legs2Rows.length === 0) {
-      await seedWillsLegs2(pplId);
-    }
-  }
-
-  // Seed Will's Push 1 into existing Will's PPL if not already present
-  if (wpplRows.length > 0) {
-    const pplId = wpplRows[0].id;
-    const { rows: push1Rows } = await pool.query(
-      "SELECT id FROM templates WHERE name = $1 AND program_id = $2",
-      ["Will's Push 1", pplId]
-    );
-    if (push1Rows.length === 0) {
-      await seedWillsPush1(pplId);
-    }
-  }
+  // Will's PPL was moved out of the public library and into Will Martin's
+  // personal workouts (user_id=37) on 2026-04-24 via
+  // server/migrations/move-wills-programs-to-wmartin23.js. Seeding it here
+  // would resurrect a library copy on a fresh DB, so the seed/expand calls
+  // below are intentionally left dormant. Helper functions (seedWillsPPL,
+  // seedWillsLegs2, seedWillsPush1, expandPPLto7Days, expandPPLto4Weeks)
+  // are kept so the original program can still be re-imported manually
+  // into a user's own workouts later if needed.
 
   // Challenge entries table
   await pool.query(`CREATE TABLE IF NOT EXISTS challenge_entries (
@@ -499,31 +478,9 @@ export default async function initDb() {
     created_at TIMESTAMPTZ DEFAULT NOW()
   )`);
 
-  // Expand Will's PPL to 7-day cycle and 4 weeks (non-fatal if it fails)
-  try {
-    const { rows: pplRows } = await pool.query("SELECT id FROM programs WHERE name = $1 AND user_id IS NULL", ["Will's PPL"]);
-    if (pplRows.length > 0) {
-      const pplId = pplRows[0].id;
-      // Expand to 7-day cycle
-      const { rows: expandedCheck } = await pool.query(
-        "SELECT id FROM templates WHERE program_id = $1 AND name IN ($2, $3)",
-        [pplId, "Will's Push 2", "Rest Day"]
-      );
-      if (expandedCheck.length === 0) {
-        await expandPPLto7Days(pplId);
-      }
-      // Expand to 4 weeks
-      const { rows: week2Check } = await pool.query(
-        "SELECT id FROM templates WHERE program_id = $1 AND name LIKE '%(Week 2)%'",
-        [pplId]
-      );
-      if (week2Check.length === 0) {
-        await expandPPLto4Weeks(pplId);
-      }
-    }
-  } catch (err) {
-    console.error('PPL expansion migration failed (non-fatal):', err.message);
-  }
+  // PPL expansion migration removed — Will's PPL is no longer in the public
+  // library (see comment above near the seed block). The user_id IS NULL
+  // lookup wouldn't match the migrated program anyway.
 
   // ZJ's Workout removed from library — no longer seeded
 
