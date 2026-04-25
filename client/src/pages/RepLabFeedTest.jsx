@@ -360,29 +360,128 @@ export default function RepLabFeedTest() {
         {/* Feed */}
         {loading ? (
           <p className="text-[12px] text-white/40 font-light py-8 text-center">Loading your activity…</p>
-        ) : (
-          <div className="space-y-3">
-            {visible.length === 0 && (
-              <p className="text-[12px] text-white/40 font-light py-8 text-center">Nothing here yet.</p>
-            )}
-            {visible.map((item) => (
-              <FeedCard
-                key={item.id}
-                item={item}
-                userReaction={userReactions[item.id]}
-                counts={reactionCounts[item.id] || EMPTY_REACTIONS}
-                onReact={(rk) => toggleReaction(item.id, rk)}
-                onPlayVideo={playVideo}
-              />
-            ))}
-          </div>
-        )}
+        ) : (() => {
+          // User-activity items (PRs and completed workouts) render as a
+          // see-through vertical timeline at the top — matches Brainstorm
+          // demo #22. Everything else (YouTube creators, articles) stays as
+          // a card below.
+          // Newest first across all users — when the feed eventually pulls
+          // activity from multiple users, items will interleave by recency.
+          const userItems = visible
+            .filter((it) => it.kind === 'pr' || it.kind === 'workout')
+            .slice()
+            .sort((a, b) => (b.sortDate?.getTime?.() ?? 0) - (a.sortDate?.getTime?.() ?? 0));
+          const otherItems = visible.filter((it) => it.kind !== 'pr' && it.kind !== 'workout');
+
+          if (visible.length === 0) {
+            return <p className="text-[12px] text-white/40 font-light py-8 text-center">Nothing here yet.</p>;
+          }
+
+          return (
+            <div className="space-y-6">
+              {userItems.length > 0 && <UserActivityTimeline items={userItems} />}
+              {otherItems.length > 0 && (
+                <div className="space-y-3">
+                  {otherItems.map((item) => (
+                    <FeedCard
+                      key={item.id}
+                      item={item}
+                      userReaction={userReactions[item.id]}
+                      counts={reactionCounts[item.id] || EMPTY_REACTIONS}
+                      onReact={(rk) => toggleReaction(item.id, rk)}
+                      onPlayVideo={playVideo}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
+
+// Vertical activity timeline for the user's own PRs + completed workouts.
+// Matches Brainstorm demo #22: vertical line, colored dots, see-through
+// (no card surface) so the page background shows through.
+function UserActivityTimeline({ items }) {
+  if (!items || items.length === 0) return null;
+  const formatVolume = (v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(Math.round(v)));
+  return (
+    <div>
+      <p className="text-[10px] uppercase font-bold mb-4" style={{ letterSpacing: '0.25em', color: 'rgba(239,68,68,0.7)' }}>
+        User Activity
+      </p>
+      <div className="relative pl-6">
+        {/* Continuous vertical line tying the entries together */}
+        <div className="absolute left-2 top-2 bottom-2 w-px" style={{ background: 'rgba(255,255,255,0.10)' }} />
+        <div className="space-y-5">
+          {items.map((item) => {
+            const isPR = item.kind === 'pr';
+            const dotColor = isPR ? '#ef4444' : '#22c55e';
+            return (
+              <div key={item.id} className="relative">
+                {/* Glowing dot on the line */}
+                <div
+                  className="absolute -left-[22px] top-1.5 w-3 h-3 rounded-full"
+                  style={{ background: dotColor, boxShadow: `0 0 10px ${dotColor}88` }}
+                />
+                {/* Top row: time-ago + author (right-aligned). Author shown so
+                    multi-user feeds make it obvious whose activity each entry is. */}
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[10px] uppercase font-bold" style={{ color: 'rgba(255,255,255,0.4)', letterSpacing: '0.15em' }}>
+                    {item.timeAgo}
+                  </p>
+                  {item.author && (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Avatar initials={item.initials} photoUrl={item.photoUrl} size={18} />
+                      <span className="text-[11px] font-semibold" style={{ color: 'rgba(255,255,255,0.65)' }}>{item.author}</span>
+                    </div>
+                  )}
+                </div>
+                {isPR ? (
+                  <>
+                    <p className="text-[14px] font-bold text-white mt-1">{item.exercise} PR</p>
+                    <p className="text-[12px] mt-1" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                      <span className="text-white font-semibold">{item.weight}</span> lb × {item.reps}
+                      {item.delta > 0 && (
+                        <span style={{ color: '#22c55e', marginLeft: 8, fontWeight: 700 }}>+{item.delta} lb</span>
+                      )}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-[14px] font-bold text-white mt-1">{item.workoutName}</p>
+                    {(item.totalVolume > 0 || item.exerciseCount > 0) && (
+                      <p className="text-[12px] mt-1" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                        {item.totalVolume > 0 && (
+                          <>
+                            <span className="text-white font-semibold">{formatVolume(item.totalVolume)}</span> lb volume
+                          </>
+                        )}
+                        {item.totalVolume > 0 && item.exerciseCount > 0 && (
+                          <span style={{ color: 'rgba(255,255,255,0.25)', margin: '0 6px' }}>·</span>
+                        )}
+                        {item.exerciseCount > 0 && (
+                          <>
+                            <span className="text-white font-semibold">{item.exerciseCount}</span> {item.exerciseCount === 1 ? 'lift' : 'lifts'}
+                          </>
+                        )}
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function FeedCard({ item, userReaction, counts, onReact, onPlayVideo }) {
   return (

@@ -8,6 +8,7 @@ import { iosFocusRef } from '../utils/iosFocus';
 import TrainerProfile from '../components/TrainerProfile';
 import { getTrainers, getTrainerById } from '../data/trainers';
 import { useAuth } from '../context/AuthContext';
+import { sharePR } from '../utils/prShare';
 import { useTutorial } from '../context/TutorialContext';
 import UndoToast from '../components/UndoToast';
 import { track } from '../utils/analytics';
@@ -3914,13 +3915,12 @@ export default function Workouts() {
           <button
             data-tutorial="create-btn"
             onClick={() => setShowCreateMenu(true)}
-            className="active:scale-[0.98] text-white font-medium px-4 py-2.5 rounded-xl text-sm transition-all shrink-0"
+            className="active:scale-[0.97] transition-all text-white text-[11px] font-bold uppercase px-3.5 py-2 whitespace-nowrap shrink-0"
             style={{
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%)',
-              backdropFilter: 'blur(12px)',
-              WebkitBackdropFilter: 'blur(12px)',
-              border: '1px solid rgba(255,255,255,0.2)',
-              boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.2), 0 4px 12px rgba(0,0,0,0.2)',
+              letterSpacing: '0.15em',
+              borderRadius: '2px',
+              background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+              boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
             }}
           >
             + Create
@@ -4749,11 +4749,40 @@ export default function Workouts() {
                                           )}
                                         </span>
                                       </div>
-                                      {lift.achievedAt && (
-                                        <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', letterSpacing: '1px', textTransform: 'uppercase' }}>
-                                          {new Date(lift.achievedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}
-                                        </span>
-                                      )}
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        {lift.achievedAt && (
+                                          <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                                            {new Date(lift.achievedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}
+                                          </span>
+                                        )}
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            sharePR({
+                                              muscle,
+                                              exercise,
+                                              weight: lift.weight,
+                                              reps: lift.reps,
+                                              achievedAt: lift.achievedAt,
+                                            });
+                                          }}
+                                          title="Share PR"
+                                          aria-label="Share PR"
+                                          style={{
+                                            width: '28px', height: '28px',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            borderRadius: '6px',
+                                            background: 'rgba(239,68,68,0.12)',
+                                            border: '1px solid rgba(239,68,68,0.3)',
+                                            color: '#ef4444',
+                                            cursor: 'pointer',
+                                          }}
+                                        >
+                                          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
+                                          </svg>
+                                        </button>
+                                      </div>
                                     </div>
                                   ))}
                                 </div>
@@ -4962,7 +4991,7 @@ export default function Workouts() {
             {/* Stats & Streak card moved to Profile page. */}
             {/* Stacked Paper PR Cards moved to the Brainstorm page. */}
 
-            {/* Heaviest Lifts — moved from Profile page */}
+            {/* Heaviest Lifts — mesh gradient card (drifting aurora blobs) */}
             {bodyPartPRs.length > 0 && (
               <div
                 className="fade-slide-up"
@@ -4970,28 +4999,51 @@ export default function Workouts() {
                   position: 'relative',
                   overflow: 'hidden',
                   borderRadius: '2px',
-                  background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                  background: '#0a0a0a',
                   boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
                 }}
               >
-                {/* Red accent bar */}
-                <div style={{ height: '3px', background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.5), transparent)' }} />
-                {/* Red spotlight glow */}
+                {/* Red accent bar (kept for category continuity with the rest of the page) */}
+                <div style={{ height: '3px', background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.5), transparent)', position: 'relative', zIndex: 2 }} />
+
+                {/* Drifting mesh gradient blobs */}
                 <div style={{
-                  position: 'absolute',
-                  top: '-30%', right: '-20%',
-                  width: '70%', height: '160%',
-                  background: 'radial-gradient(circle, rgba(239,68,68,0.10) 0%, transparent 60%)',
-                  filter: 'blur(40px)',
+                  position: 'absolute', top: '-10%', left: '-10%',
+                  width: '320px', height: '320px', borderRadius: '50%',
+                  background: '#ef4444', filter: 'blur(60px)', opacity: 0.55,
+                  animation: 'wf-meshDrift1 14s ease-in-out infinite',
                   pointerEvents: 'none',
                 }} />
-                <div style={{ position: 'relative', padding: '24px' }}>
-                  <p className="text-[10px] uppercase font-light mb-2" style={{ color: 'rgba(239,68,68,0.7)', letterSpacing: '0.3em' }}>
+                <div style={{
+                  position: 'absolute', top: '40%', right: '-20%',
+                  width: '380px', height: '380px', borderRadius: '50%',
+                  background: '#3b82f6', filter: 'blur(60px)', opacity: 0.45,
+                  animation: 'wf-meshDrift2 16s ease-in-out infinite',
+                  pointerEvents: 'none',
+                }} />
+                <div style={{
+                  position: 'absolute', bottom: '-15%', left: '30%',
+                  width: '320px', height: '320px', borderRadius: '50%',
+                  background: '#a855f7', filter: 'blur(60px)', opacity: 0.40,
+                  animation: 'wf-meshDrift3 18s ease-in-out infinite',
+                  pointerEvents: 'none',
+                }} />
+
+                {/* Dark scrim overlay so the body-parts list stays readable
+                    against the bright drifting blobs. */}
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  background: 'linear-gradient(180deg, rgba(0,0,0,0.20) 0%, rgba(0,0,0,0.45) 100%)',
+                  pointerEvents: 'none',
+                }} />
+
+                <div style={{ position: 'relative', zIndex: 1, padding: '24px' }}>
+                  <p className="text-[10px] uppercase font-light mb-2" style={{ color: 'rgba(255,255,255,0.7)', letterSpacing: '0.3em', textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>
                     Personal Records
                   </p>
                   <h3
                     className="text-[28px] font-black text-white leading-[0.9] tracking-tight mb-6"
-                    style={{ fontFamily: 'system-ui', textShadow: '0 2px 20px rgba(0,0,0,0.5)' }}
+                    style={{ fontFamily: 'system-ui', textShadow: '0 2px 20px rgba(0,0,0,0.6)' }}
                   >
                     HEAVIEST LIFTS
                   </h3>
@@ -4999,13 +5051,13 @@ export default function Workouts() {
                     const pr = bodyPartPRs.find((p) => p.muscle_group?.toLowerCase() === muscle.toLowerCase());
                     return (
                       <div key={muscle} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: i < arr.length - 1 ? '10px' : '0' }}>
-                        <span style={{ flex: '0 0 33.333%', fontSize: '11px', color: 'rgba(255,255,255,0.3)', letterSpacing: '1px', textTransform: 'uppercase', paddingTop: '1px' }}>{muscle}</span>
+                        <span style={{ flex: '0 0 33.333%', fontSize: '11px', color: 'rgba(255,255,255,0.55)', letterSpacing: '1px', textTransform: 'uppercase', paddingTop: '1px', textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>{muscle}</span>
                         {pr ? (
-                          <span style={{ flex: 1, textAlign: 'right', fontSize: '13px', fontWeight: 700, color: 'white', textShadow: '0 0 8px rgba(239,68,68,0.5)', wordBreak: 'break-word' }}>
+                          <span style={{ flex: 1, textAlign: 'right', fontSize: '13px', fontWeight: 700, color: 'white', textShadow: '0 0 10px rgba(239,68,68,0.5), 0 1px 4px rgba(0,0,0,0.7)', wordBreak: 'break-word' }}>
                             {pr.exercise_name} — {Number(pr.best_weight)} lbs × {pr.best_reps} reps
                           </span>
                         ) : (
-                          <span style={{ flex: 1, textAlign: 'right', fontSize: '13px', fontWeight: 700, color: 'rgba(255,255,255,0.3)' }}>
+                          <span style={{ flex: 1, textAlign: 'right', fontSize: '13px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
                             No PR set
                           </span>
                         )}

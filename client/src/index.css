@@ -200,6 +200,13 @@ html, body {
   letter-spacing: -1px;
 }
 
+/* Drifting mesh-gradient blobs — three slightly-different motions so the
+   layered orbs feel organic. Used by the Heaviest Lifts card and
+   anywhere else that wants the same aurora aesthetic. */
+@keyframes wf-meshDrift1 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(60px, -40px) scale(1.15); } }
+@keyframes wf-meshDrift2 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-50px, 40px) scale(1.1); } }
+@keyframes wf-meshDrift3 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(40px, 50px) scale(0.9); } }
+
 /* Hide number input spinners */
 input[type="number"]::-webkit-outer-spin-button,
 input[type="number"]::-webkit-inner-spin-button {
@@ -854,3 +861,19 @@ input[type="number"] {
   box-shadow: none !important;
 }
 /* === END PROFILE TRANSPARENT CARDS === */
+
+/* Reusable program-title shimmer — white text with a red highlight
+   sweeping right → left. Matches the styling used on the Parallax
+   Animation test page (/test/parallax). */
+@keyframes replab-title-shimmer {
+  0%   { background-position:  300% 0; }
+  100% { background-position: -300% 0; }
+}
+.replab-title-shimmer {
+  background: linear-gradient(90deg, #fff 0%, #fff 35%, #ef4444 50%, #fff 65%, #fff 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: replab-title-shimmer 6s linear infinite;
+}
