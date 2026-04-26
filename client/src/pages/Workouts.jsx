@@ -5010,16 +5010,34 @@ export default function Workouts() {
                   const visible = TYPE_ORDER.filter((t) => browseAvailableTypes.has(t));
                   if (visible.length === 0) return null;
                   return (
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 flex-1 justify-items-end text-right">
-                      {visible.map((type) => (
-                        <span
-                          key={type}
-                          className="text-[10px] font-bold uppercase whitespace-nowrap"
-                          style={{ color: 'rgba(239,68,68,0.75)', letterSpacing: '0.25em' }}
-                        >
-                          {TYPE_DISPLAY[type] || type}
-                        </span>
-                      ))}
+                    // 2-col grid: left column aligns left, right column
+                    // aligns right, so the type labels read in towards the
+                    // page rather than colliding in the middle. Each cell
+                    // is its own block so long labels (e.g. "Glute-Focused"
+                    // or future multi-word types) wrap within their cell
+                    // instead of overlapping the neighbor. Each tag is
+                    // followed by a · so the boundary stays visible even
+                    // if a label wraps mid-word.
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-1 flex-1">
+                      {visible.map((type, i) => {
+                        const label = TYPE_DISPLAY[type] || type;
+                        const isLeftCol = i % 2 === 0;
+                        return (
+                          <span
+                            key={type}
+                            className="text-[10px] font-bold uppercase block"
+                            style={{
+                              color: 'rgba(239,68,68,0.75)',
+                              letterSpacing: '0.25em',
+                              textAlign: isLeftCol ? 'left' : 'right',
+                              minWidth: 0,
+                              overflowWrap: 'anywhere',
+                            }}
+                          >
+                            {label} ·
+                          </span>
+                        );
+                      })}
                     </div>
                   );
                 })()}

@@ -1878,11 +1878,13 @@ export default function WorkoutSession() {
   }, 0);
 
   return (
-    <div className="pb-24">
+    <div className={`pb-24${cardTheme === 'dark' ? ' wf-dark-cards' : ''}`}>
       {/* Dark-card mode swaps the page bg to the same gray (#e8e8e8) that
           light-mode cards use, so the surface and the cards trade places.
           Fixed + pointer-events-none so it sits behind everything in this
-          page without intercepting taps. */}
+          page without intercepting taps. The wf-dark-cards class on the
+          root scopes overrides for sticky-header chrome and exercise name
+          text color (see index.css). */}
       {cardTheme === 'dark' && (
         <div
           className="fixed inset-0 pointer-events-none"
@@ -3752,8 +3754,19 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
               <div className="absolute -top-10 -right-10 w-[300px] h-[300px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.10) 0%, transparent 60%)', filter: 'blur(40px)' }} />
 
               <div className="shrink-0 pt-4 pb-3 px-6 relative">
-                {/* Drag handle + close affordance */}
+                {/* Drag handle */}
                 <div className="w-10 h-1 bg-white/15 rounded-full mx-auto mb-4" />
+                {/* X close button — top-right; tapping the backdrop also
+                    closes, but the explicit X is what users reach for. */}
+                <button
+                  onClick={() => setShowShareMenu(false)}
+                  aria-label="Close share menu"
+                  className="absolute top-3 right-4 w-9 h-9 rounded-full flex items-center justify-center text-white/60 active:text-white active:bg-white/10 active:scale-90 transition-all"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
                 <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.4em' }}>
                   Share
                 </p>

@@ -224,6 +224,10 @@ export default function CreateWorkout() {
     }
   }
 
+  const inputClass = 'w-full glass-input rounded-[2px] px-4 py-3.5 text-white text-base placeholder:text-wf-gray-500 focus:outline-none transition-all';
+  const labelClass = 'text-[10px] uppercase font-bold mb-1.5 block';
+  const labelStyle = { color: 'rgba(255,255,255,0.5)', letterSpacing: '0.2em' };
+
   return (
     <div className="px-4 pt-6 pb-24">
       {UnsavedModal}
@@ -232,73 +236,99 @@ export default function CreateWorkout() {
         if (from === 'trainer') { window.location.href = '/trainer/workouts'; }
         else if (from === 'admin') { window.location.href = '/admin/workout-manager/workouts'; }
         else { navigate(-1); }
-      })} className="flex items-center gap-1 text-wf-red text-sm font-medium mb-4 active:opacity-70">
+      })} className="inline-flex items-center gap-1 text-sm text-wf-gray-400 active:text-white transition-colors mb-5">
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
         </svg>
         {searchParams.get('from') === 'trainer' ? 'Back to Dashboard' : searchParams.get('from') === 'admin' ? 'Back to Admin' : 'Back'}
       </button>
 
-      <h1 className="text-3xl font-black text-white tracking-tight mb-1">
-        {isQuickCreate ? 'Quick Create' : 'Create Workout'}
-      </h1>
-      {isQuickCreate && (
-        <p className="text-sm text-wf-gray-400 mb-6">
-          Just name it, add exercises, and go. Saved to <span className="text-white font-medium">My Workouts</span>.
-        </p>
-      )}
-      {!isQuickCreate && <div className="mb-6" />}
+      {/* Nike-style panel: black gradient, red accent stripe, ambient
+          spotlight, eyebrow + heavy display title. Top form fields live
+          inside the panel; the exercise list (and its swap modals) sits
+          below the panel, untouched. */}
+      <div
+        className="relative overflow-hidden mb-5"
+        style={{
+          background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+          borderRadius: '2px',
+          boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+        }}
+      >
+        <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent)' }} />
+        <div className="absolute -top-10 -right-10 w-[280px] h-[280px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.10) 0%, transparent 60%)', filter: 'blur(40px)' }} />
 
-      {error && (
-        <div className="bg-red-900/30 border border-red-800 rounded-lg px-4 py-3 text-red-300 text-sm mb-4">
-          {error}
+        <div className="relative p-6">
+          <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.4em' }}>
+            {isQuickCreate ? 'Workouts' : 'Programs'}
+          </p>
+          <h1 className="text-[28px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95', letterSpacing: '-0.02em' }}>
+            {isQuickCreate ? 'QUICK CREATE' : 'CREATE WORKOUT'}
+          </h1>
+          {isQuickCreate && (
+            <p className="text-sm text-wf-gray-400 mt-2 leading-relaxed">
+              Just name it, add exercises, and go. Saved to <span className="text-white font-medium">My Workouts</span>.
+            </p>
+          )}
+
+          {error && (
+            <div className="mt-4 px-4 py-3 text-red-300 text-sm" style={{ background: 'rgba(127,29,29,0.30)', border: '1px solid rgba(153,27,27,0.6)', borderRadius: '2px' }}>
+              {error}
+            </div>
+          )}
+
+          <div className="mt-5 pt-4 border-t border-white/5 space-y-4">
+            {/* Program Picker — hidden in quick-create mode */}
+            {!isQuickCreate && (
+              <div>
+                <label className={labelClass} style={labelStyle}>Add to Program</label>
+                <select
+                  value={selectedProgramId}
+                  onChange={(e) => setSelectedProgramId(e.target.value)}
+                  className={`${inputClass} bg-transparent appearance-none cursor-pointer`}
+                >
+                  {programs.map((p) => (
+                    <option key={p.id} value={p.id} className="bg-wf-gray-900">
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div>
+              <label className={labelClass} style={labelStyle}>Workout Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Upper Body"
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass} style={labelStyle}>
+                Description{' '}
+                <span className="text-wf-gray-600 normal-case font-normal" style={{ letterSpacing: '0' }}>(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="e.g. Chest and Back focus"
+                className={inputClass}
+              />
+            </div>
+          </div>
         </div>
-      )}
-
-      {/* Program Picker — hidden in quick-create mode */}
-      {!isQuickCreate && (
-        <div className="mb-4">
-          <label className="text-xs text-wf-gray-400 uppercase tracking-wider mb-1 block">Add to Program</label>
-          <select
-            value={selectedProgramId}
-            onChange={(e) => setSelectedProgramId(e.target.value)}
-            className="w-full glass-input rounded-xl px-4 py-3.5 text-white text-base bg-transparent focus:outline-none appearance-none cursor-pointer transition-all"
-          >
-            {programs.map((p) => (
-              <option key={p.id} value={p.id} className="bg-wf-gray-900">
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {/* Workout Name */}
-      <div className="mb-4">
-        <label className="text-xs text-wf-gray-400 uppercase tracking-wider mb-1 block">Workout Name</label>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Upper Body"
-          className="w-full glass-input rounded-xl px-4 py-3.5 text-white text-base placeholder:text-wf-gray-500 focus:outline-none transition-all"
-        />
-      </div>
-
-      <div className="mb-6">
-        <label className="text-xs text-wf-gray-400 uppercase tracking-wider mb-1 block">Description (optional)</label>
-        <input
-          type="text"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="e.g. Chest and Back focus"
-          className="w-full glass-input rounded-xl px-4 py-3.5 text-white text-base placeholder:text-wf-gray-500 focus:outline-none transition-all"
-        />
       </div>
 
       {/* Exercises */}
       <div className="mb-4">
-        <h2 className="text-lg font-semibold text-white mb-3">Exercises</h2>
+        <p className="text-[10px] uppercase font-bold mb-3" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.3em' }}>
+          Exercises
+        </p>
 
         {exercises.map((ex, exIdx) => (
           <TemplateExerciseWrapper
@@ -337,15 +367,33 @@ export default function CreateWorkout() {
         </div>
       </div>
 
-      {/* Save Button */}
+      {/* Save Button — red gradient default, flips to btn-liquid + spinner
+          while saving. Matches the Sign In / Sign Up CTA. */}
       <div className="fixed bottom-20 left-0 right-0 p-4 bg-gradient-to-t from-black via-black/95 to-transparent safe-bottom z-40">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="w-full btn-gradient active:scale-[0.98] text-white font-semibold py-4 rounded-xl text-base transition-all disabled:opacity-50"
-        >
-          {saving ? 'Saving...' : 'Create Workout'}
-        </button>
+        <div className="max-w-lg mx-auto">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className={`w-full active:scale-[0.98] text-white font-bold uppercase py-4 text-sm transition-transform ${saving ? 'btn-liquid' : ''}`}
+            style={saving ? {
+              letterSpacing: '0.2em',
+              borderRadius: '2px',
+            } : {
+              letterSpacing: '0.2em',
+              borderRadius: '2px',
+              background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+              boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+            }}
+          >
+            {saving ? (
+              <span className="inline-flex items-center justify-center h-5">
+                <span className="replab-spinner inline-block" style={{ width: 20, height: 20 }} />
+              </span>
+            ) : (
+              'Create Workout'
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );

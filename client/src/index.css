@@ -498,10 +498,12 @@ input[type="number"] {
   100% { background-position: 300% 50%; }
 }
 
-/* One-shot left-to-right white flash across the active bottom-nav icon.
+/* One-shot left-to-right white flash across the active bottom-nav cell.
    Mounted only when a tab becomes active, so the animation fires once per
    selection. The sweep is an inset child of an overflow-hidden wrapper so
-   it's masked to the icon's bounding box. */
+   it's masked to the cell's bounding box. Sits over the icon + label as
+   an opaque pass — not blended through them — so it reads as a sheen
+   sweeping past, not a brightness boost. */
 .nav-icon-flash {
   position: absolute;
   top: 0;
@@ -512,17 +514,17 @@ input[type="number"] {
   background: linear-gradient(90deg,
     transparent 0%,
     rgba(255, 255, 255, 0) 30%,
-    rgba(255, 255, 255, 0.85) 50%,
+    rgba(255, 255, 255, 0.95) 50%,
     rgba(255, 255, 255, 0) 70%,
     transparent 100%
   );
-  transform: translateX(-100%);
-  animation: navIconFlash 0.65s cubic-bezier(0.4, 0, 0.2, 1) 1 forwards;
-  mix-blend-mode: plus-lighter;
+  transform: translateX(-95%);
+  animation: navIconFlash 0.6825s cubic-bezier(0.4, 0, 0.2, 1) 1 forwards;
+  z-index: 5;
 }
 @keyframes navIconFlash {
-  0%   { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0%   { transform: translateX(-95%); }
+  100% { transform: translateX(95%); }
 }
 
 /* Active nav glow */
@@ -680,6 +682,24 @@ input[type="number"] {
   -webkit-backdrop-filter: blur(20px);
   background: rgba(0, 0, 0, 0.85);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Dark-cards mode overrides for the workout-session page. The page bg
+   flips to light gray (#e8e8e8); these rules keep the sticky header in
+   the same light tone when it collapses on scroll (was turning black —
+   visually jarring against the light page) and flip the exercise name
+   text to black so it stays legible on the lighter surface. */
+.wf-dark-cards .sticky-header.collapsed {
+  background: rgba(232, 232, 232, 0.92);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.10);
+}
+.wf-dark-cards .sticky-header.collapsed h1,
+.wf-dark-cards .sticky-header.collapsed p {
+  color: #111 !important;
+}
+.wf-dark-cards .exercise-card-transparent-test .text-white,
+.wf-dark-cards [data-exercise-name] {
+  color: #111 !important;
 }
 
 /* PB Celebration Toast */
