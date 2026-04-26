@@ -41,14 +41,20 @@ export const MUSCLE_COLORS = {
   Other: '#6b7280',
 };
 
-// Build per-muscle work share from completed sets.
+// Build per-muscle work share from worked sets.
 //   exercises:     template.exercises (the list as rendered in the session)
 //   entries:       Record<exerciseKey, Array<{weight, reps, ...}>>
-//   completedSets: Set<string> — "exerciseKey-setIdx" for each completed set
+//   completedSets: Set<string> — "exerciseKey-setIdx" tapped as complete
 //   exKey:         the same exKey() helper WorkoutSession uses (handles dupes)
 //
+// A set counts as "worked" if EITHER it was tapped complete OR it has logged
+// data (weight > 0, weight = -1 for bodyweight, or reps > 0). Tapping each
+// checkmark is optional in the regular flow — most users just fill in
+// weight/reps and hit Mark Complete — so we widen the signal here so the
+// summary's body-parts ring + heatmap render whenever real data was logged.
+//
 // Returns an array of { muscle, share, count, color } sorted by share desc,
-// where share is 0..1 and sums to ~1. Returns [] if no sets were completed.
+// where share is 0..1 and sums to ~1. Returns [] if no sets were worked.
 export function buildMuscleAllocation({ exercises, entries, completedSets, exKey }) {
   const counts = {};
   let total = 0;
@@ -58,13 +64,22 @@ export function buildMuscleAllocation({ exercises, entries, completedSets, exKey
     const muscle = ex.muscle || inferMuscle(ex.name);
     const key = exKey(exercises, ex, exIdx);
     const setCount = ex.sets?.length || 0;
-    let completed = 0;
+    const exEntries = entries?.[key] || [];
+    let worked = 0;
     for (let i = 0; i < setCount; i++) {
-      if (completedSets?.has(`${key}-${i}`)) completed++;
+      if (completedSets?.has(`${key}-${i}`)) {
+        worked++;
+        continue;
+      }
+      const e = exEntries[i];
+      if (!e) continue;
+      const w = Number(e.weight);
+      const r = Number(e.reps);
+      if (w > 0 || w === -1 || r > 0) worked++;
     }
-    if (completed > 0) {
-      counts[muscle] = (counts[muscle] || 0) + completed;
-      total += completed;
+    if (worked > 0) {
+      counts[muscle] = (counts[muscle] || 0) + worked;
+      total += worked;
     }
   }
   if (total === 0) return [];
