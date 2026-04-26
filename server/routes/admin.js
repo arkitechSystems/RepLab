@@ -4983,39 +4983,206 @@ router.get('/audit', adminAuth, async (req, res) => {
     { id: 'mv11', title: 'All /test/* URLs 404 in production build',                                  desc: 'Verify no sandbox links escape.' },
   ];
 
+  // ─── 2026-04-25 Comprehensive audit ────────────────────────────────
+  // Code quality, UX polish, bugs/edge cases, and App Store readiness as of
+  // 2026-04-25. The launch-readiness blockers from 2026-04-24 are referenced
+  // by ID where still relevant — re-listed here only when status has shifted.
+  const A25_CODE = [
+    { id: 'a25c1', title: 'Workouts.jsx is ~5,400 lines',                                            desc: 'Single file mixes Browse Library, My Workouts, weekly view, modals, ticker, sticky-header PR list, and ~10 sandbox renderers. Hard to navigate; refactor risk grows weekly. Split into <code>WorkoutsHome.jsx</code>, <code>BrowseLibrary.jsx</code>, <code>WorkoutDetail.jsx</code> as a starter cut.', loc: 'client/src/pages/Workouts.jsx', sev: 'high' },
+    { id: 'a25c2', title: 'WorkoutSession.jsx is ~3,700 lines',                                      desc: 'Same problem. The session, summary, share-image generator, swap-exercise modal, and tutorial overlay all live here. <code>WorkoutSummary</code> is already exported — extract it next, then the share-image canvas code, then the swap modal.', loc: 'client/src/pages/WorkoutSession.jsx', sev: 'high' },
+    { id: 'a25c3', title: 'Dead code: Original Weekly View + Original My Workouts',                  desc: 'Both gated behind <code>{false &amp;&amp;</code> in Calendar.jsx and Workouts.jsx with "kept so you can swap back" comments. Source of stale-text drift — a "No workout" string was missed in the recent rename because of this. Either delete or move into a documented test page.', loc: 'Calendar.jsx:746-831, Workouts.jsx:4584-4618', sev: 'medium' },
+    { id: 'a25c4', title: 'Untracked binary directories in repo root',                               desc: '<code>replab-videos/</code> (5MB) and <code>server/VidLib/</code> (8.5MB) are ignored on every commit. Add to <code>.gitignore</code> so git stops nagging, or move under Git LFS if you want them versioned. Not a real problem but pollutes <code>git status</code>.', loc: '.gitignore', sev: 'low' },
+    { id: 'a25c5', title: 'EXERCISE_CARD_TRANSPARENT_TEST renamed but CSS class still says "test"',  desc: 'Toggle is now driven by <code>cardTheme</code> prop; the <code>.exercise-card-transparent-test</code> class in index.css is the dark-mode rule set, not a test. Rename to <code>.exercise-card-dark</code> when you have ten free minutes.', loc: 'client/src/index.css, client/src/components/ExerciseCard.jsx', sev: 'low' },
+    { id: 'a25c6', title: 'Browse Library order pinned client-side',                                  desc: 'Hardcoded <code>BROWSE_LIBRARY_ORDER</code> in Workouts.jsx works for today\'s 7-program list. Move to <code>programs.sort_order</code> in the DB before adding the next program — or admin can\'t reorder without a code deploy.', loc: 'client/src/pages/Workouts.jsx:~1509', sev: 'medium' },
+    { id: 'a25c7', title: 'WorkoutsWeeklyBarChart component kept but unmounted',                     desc: 'User asked to remove the chart "for now" — component definition + helpers + <code>wf-barRise</code> keyframe still in Workouts.jsx and index.css. Either re-mount or delete the dead code.', loc: 'Workouts.jsx, index.css', sev: 'low' },
+    { id: 'a25c8', title: 'seedSummerShred.js is a standalone script not auto-run',                   desc: 'Migrations folder is the canonical place. Either move <code>seedSummerShred.js</code> under <code>server/migrations/</code> with the rest, or document that it must be run manually post-deploy.', loc: 'server/seedSummerShred.js', sev: 'low' },
+    { id: 'a25c9', title: 'No automated test suite',                                                  desc: 'Recent changes to cascade autofill, Begin Program scheduling, and migration renaming were ship-and-test-on-phone. A handful of Vitest cases on the autofill/cascade/scheduling logic would catch regressions without leaving the laptop.', loc: '(none)', sev: 'medium' },
+    { id: 'a25c10', title: 'Mixed line endings (LF ↔ CRLF) on commits',                              desc: 'Every git commit warns "LF will be replaced by CRLF". Add a <code>.gitattributes</code> with <code>* text=auto eol=lf</code> so collaborators on macOS/Linux don\'t see noise diffs.', loc: '.gitattributes', sev: 'low' },
+  ];
+
+  const A25_UX = [
+    { id: 'a25u1', title: 'Featured Workouts is a partial feature behind visible UI',                desc: 'User confirmed they\'re "done with the app except Featured Workouts." Apple rejects visible-but-incomplete features. Either hide all entry points (homepage card, Workouts page references) until shipped, or finish before submission. Same root issue as H8 from 2026-04-24.', loc: 'App.jsx, Workouts.jsx, FeaturedWorkoutSession.jsx', sev: 'high' },
+    { id: 'a25u2', title: 'Cascade autofill now overwrites manually-entered later sets',             desc: 'Recent change: editing set 4 always overwrites sets 5..N regardless of whether the user manually entered different values earlier. Documented behavior — but if a user does drop sets / pyramid sets, an early-set blur clobbers their plan. Consider undo toast on blur, or skip already-edited sets.', loc: 'WorkoutSession.jsx handleBlur', sev: 'medium' },
+    { id: 'a25u3', title: 'Done button visually similar to Save as Template',                        desc: 'Both are full-width, same height tier, and the bottom one (Done) sits just below a red CTA. Users may tap Save thinking it dismisses. Differentiate weight: Save = primary red, Done = ghost/transparent (already done) — verify on phone that hierarchy reads.', loc: 'WorkoutSession.jsx WorkoutSummary', sev: 'low' },
+    { id: 'a25u4', title: 'Loading spinner sits on top of skeleton shimmer',                          desc: 'Recent <code>LoadingSpinnerOverlay</code> component renders a center spinner over the skeleton. Some users find the duplication "noisy." Consider dropping the skeleton when the spinner shows, or vice versa.', loc: 'LoadingSpinnerOverlay.jsx + 6 pages', sev: 'low' },
+    { id: 'a25u5', title: 'AI "Coming Soon" pill — no tap feedback',                                 desc: 'Disabled button has no onClick, so taps just do nothing. Some users will tap repeatedly assuming it\'s broken. Add a brief toast ("AI coach launches soon") on tap, or give the disabled button a clear visual press feedback.', loc: 'Workouts.jsx renderCreateMenu', sev: 'low' },
+    { id: 'a25u6', title: 'Calendar weekly view "Rest Day" for any unscheduled day',                  desc: 'Every empty day now reads "Rest Day". Semantically correct in fitness UX, but a brand-new user with zero schedule sees a full week of "Rest Day" labels — could be confusing onboarding. Consider "Tap to schedule" prompt if user has no programs.', loc: 'Calendar.jsx weekly view', sev: 'low' },
+    { id: 'a25u7', title: 'Dark Cards mode page bg is gray (#e8e8e8); BottomNav stays dark',          desc: 'Workout-session toggles to "Dark Cards" → page bg flips to light gray. Bottom nav and sticky header keep dark backgrounds. Visual cohesion is OK but the contrast bands look harsh on iPhone OLED. Consider tinting nav slightly when in dark-card mode, or limit dark-card to within the scrollable content area.', loc: 'WorkoutSession.jsx, Layout.jsx', sev: 'low' },
+    { id: 'a25u8', title: 'Profile App Settings split across two subsections',                       desc: 'After moving Bible Verses to "Other Settings", the section is split: Workout Session Defaults (4 toggles) + Other Settings (1 toggle). Looks anemic. Consider folding all toggles into one list, or adding more "Other Settings" candidates (haptics, units, sound).', loc: 'Profile.jsx App Settings card', sev: 'low' },
+    { id: 'a25u9', title: 'Workout summary share image: 1080×variable height',                        desc: 'Generated image height grows with exercise count. Long sessions (16-week Nippard week) produce 3000+px tall images that crash some Instagram Story uploads. Cap at 1920px and overflow into "+ N more sets" tail.', loc: 'WorkoutSession.jsx generateSummaryImage', sev: 'medium' },
+    { id: 'a25u10', title: '"Personal Records by:" sticky header — only fix is on Workouts page',     desc: '1px sub-pixel sliver fix (top:-1px) was applied to one card. Audit other sticky-headers on the page (StickyHeader component, schedule cards) for the same issue.', loc: 'StickyHeader.jsx, multiple', sev: 'low' },
+  ];
+
+  const A25_BUG = [
+    { id: 'a25b1', title: 'Athlean-X Summer Shred rename migration not yet run on prod',              desc: 'Migration <code>rename-summer-shred-to-athlean-x.js</code> committed and pushed. Until run against the Render Postgres, prod still shows "Summer Shred" as the program full name. Run: <code>node --env-file=server/.env server/migrations/rename-summer-shred-to-athlean-x.js</code>.', loc: 'server/migrations/rename-summer-shred-to-athlean-x.js', sev: 'blocker' },
+    { id: 'a25b2', title: 'Begin Program now schedules every template — conflict modal grows huge',   desc: 'For Nippard 16×7 = 112 days, conflict-detection modal lists every existing scheduled day in that window. If the user already has months of scheduled workouts, the modal becomes unusable. Cap conflict list at first 10 + "and N more".', loc: 'Workouts.jsx tryApply', sev: 'medium' },
+    { id: 'a25b3', title: 'Dark-mode swipe-row bg overrides completed-row green tint',                desc: 'Swipe-row in dark mode uses solid <code>#0a0a0a</code> (or dark green for completed). Verify on iPhone Safari that the green completed cue is still visible — the tint is subtle (rgb(11,32,18)).', loc: 'ExerciseCard.jsx isSwipeable', sev: 'low' },
+    { id: 'a25b4', title: 'Stale closure risk in cascade autofill (M7 — open from 2026-04-24)',       desc: 'Recent simplification (always overwrite later non-completed sets) reduced surface but the underlying ref pattern still relies on <code>completedSetsRef.current</code>. Verify with rapid blur+complete sequence.', loc: 'WorkoutSession.jsx handleBlur', sev: 'low' },
+    { id: 'a25b5', title: 'Profile App Settings icon size — Tailwind w-4.5 was a no-op',              desc: 'Recently fixed: <code>w-4.5</code> isn\'t a Tailwind step, so SVGs were rendering at native size. Audit the rest of the codebase for other w-4.5 / h-4.5 / m-N.5 strings that aren\'t valid steps.', loc: 'codebase-wide grep', sev: 'low' },
+    { id: 'a25b6', title: 'replab-spinner-gradient animation duration hardcoded inconsistently',      desc: 'Different pages use 0.91s, 0.8s, defaults — quick standardize prevents subtle visual jank when navigating mid-load.', loc: 'multiple', sev: 'low' },
+    { id: 'a25b7', title: 'No production smoke test for Begin Program flow',                          desc: 'Recently fixed bug (slice(0,7) limiting all programs to one week) shipped without a regression test. Recommend a manual checklist or one Playwright test on the next push.', loc: '(test infra)', sev: 'medium' },
+    { id: 'a25b8', title: 'Auto-fill toggle behavior on rep range exercises',                          desc: 'Programs prescribe rep ranges (e.g., 8-12 reps). Cascade fill copies the entered value to later sets, but a user might want progressive overload (8, 10, 12). Document the new behavior in onboarding so users know to type each set.', loc: '(docs)', sev: 'low' },
+    { id: 'a25b9', title: 'Workout-session settings menu position recalculated on every render',      desc: '<code>document.querySelector</code> + <code>getBoundingClientRect</code> inside style={() => ...}. Works but recomputes the dropdown anchor on every state change. Move into useEffect on showSessionMenu toggle.', loc: 'WorkoutSession.jsx settings menu', sev: 'low' },
+    { id: 'a25b10', title: 'Card theme persists across sessions but not across users',                desc: '<code>wf-default-card-theme</code> in localStorage is per-device, not per-account. If a user logs out / logs in another account on the same phone, they inherit the previous user\'s theme. Sync to user record OR clear on logout.', loc: 'WorkoutSession.jsx + AuthContext', sev: 'low' },
+  ];
+
+  const A25_STORE = [
+    { id: 'a25s1', title: 'Bundle ID still <code>com.willfit.app</code> — must change before TestFlight', desc: 'Same as BK1 from 2026-04-24. Bundle IDs cannot be changed after first upload. Decision blocker — once submitted, you\'re married to it. Recommend <code>com.replab.fitness</code> to match the brand.', loc: 'capacitor.config.json', sev: 'blocker' },
+    { id: 'a25s2', title: 'Featured Workouts incomplete UI still surfaces in app',                    desc: 'User explicitly noted Featured Workouts isn\'t done. Hide ALL entry points until shipped. Apple Guideline 2.3.7 — "Show your app in its final form." Inspect homepage card, Workouts page, deep links, push CTAs.', loc: 'codebase-wide', sev: 'blocker' },
+    { id: 'a25s3', title: 'IAP not implemented — Stripe-only payment will trigger Apple 3.1.1',       desc: 'Same as BK7. Until IAP via Capacitor or hidden upgrade CTA on iOS builds, App Review will reject. If Featured Workouts is the only premium content, deferring IAP = deferring premium = launch as free-tier-only.', loc: 'Upgrade.jsx', sev: 'blocker' },
+    { id: 'a25s4', title: 'Push notifications not delivered on iOS — FCM/APNs not wired',             desc: 'Same as BK5. Code path exists, registrations sit in DB, no sends ever fire on iOS. Either wire APNs or hide push UI for v1.0 iOS build (web/Android still work).', loc: 'client/src/utils/push.js', sev: 'blocker' },
+    { id: 'a25s5', title: 'Info.plist usage descriptions — still empty',                              desc: 'Apple rejects on missing NSPhotoLibraryAddUsageDescription / NSCameraUsageDescription / NSUserNotificationUsageDescription. 5-minute fix.', loc: 'ios/App/App/Info.plist', sev: 'blocker' },
+    { id: 'a25s6', title: 'AndroidManifest POST_NOTIFICATIONS permission missing',                    desc: 'Same as BK3. Android 13+ silently never gets push without it.', loc: 'android/app/src/main/AndroidManifest.xml', sev: 'blocker' },
+    { id: 'a25s7', title: '<code>android:allowBackup="true"</code> still set',                        desc: 'Same as BK4. Privacy + Play Store data-safety red flag. Set to false unless you implement BackupAgent + encryption.', loc: 'AndroidManifest.xml', sev: 'blocker' },
+    { id: 'a25s8', title: 'Account deletion — discoverability check still pending',                    desc: 'Same as BK6. Apple 5.1.1(v) requires obvious deletion UX. Verify the Profile delete-account button is visible (low-contrast was the prior concern) and that the server-side cascade actually wipes everything.', loc: 'Profile.jsx', sev: 'blocker' },
+    { id: 'a25s9', title: 'No root <code>&lt;ErrorBoundary&gt;</code>',                              desc: 'Same as BK8. Component exists; just isn\'t wrapped around <code>&lt;Outlet/&gt;</code> at App.jsx root. White-screen-of-death on any unhandled render error.', loc: 'client/src/App.jsx', sev: 'blocker' },
+    { id: 'a25s10', title: 'Sentry DSN missing in Render env — H9 not yet closed',                    desc: 'Code-side fix is in (loud warning if missing). Action still required: add <code>VITE_SENTRY_DSN</code> in Render dashboard for the client build, redeploy. Without it you\'re shipping without crash reporting.', loc: 'Render dashboard', sev: 'high' },
+    { id: 'a25s11', title: '/test/* sandbox routes still served in prod build',                       desc: 'Same as MV11. Verify <code>/test/brainstorm</code>, <code>/test/parallax</code>, <code>/test/cards</code>, etc. all 404 in the deployed bundle. Reviewers (and curious users) will find them.', loc: 'App.jsx routes', sev: 'high' },
+    { id: 'a25s12', title: 'Privacy policy + Terms URLs reachable without an account',                desc: 'Same as MV1/MV2. Test in incognito. App Review will visit these URLs from a fresh browser.', loc: 'Privacy.jsx, Terms.jsx routes', sev: 'high' },
+    { id: 'a25s13', title: 'Privacy policy must mention PostHog + Sentry + push',                    desc: 'Same as MV7. Required for Play Data Safety honesty + Apple App Privacy form. Walk through the policy line-by-line and confirm every external service is named.', loc: 'Privacy.jsx', sev: 'high' },
+    { id: 'a25s14', title: 'Screenshots + preview video not yet prepared',                           desc: 'iPhone 6.7" + iPad 12.9" + Android phone + Android tablet. Use the in-app workout-summary share image as a starting point.', loc: '(asset prep)', sev: 'medium' },
+    { id: 'a25s15', title: 'Universal links / deep links not yet finalized',                          desc: 'M6 scaffolding is done. Still needed: real production hostname, real Apple Team ID, real Android signing fingerprint in <code>.well-known/</code> files, then call <code>initDeepLinks(navigate)</code> in App.jsx mount.', loc: 'multiple', sev: 'medium' },
+    { id: 'a25s16', title: 'App icon set incomplete (1024×1024 iOS, adaptive Android)',              desc: 'Use <code>capacitor-assets</code> or generate manually. Adaptive Android needs foreground/background/monochrome layers.', loc: 'ios/, android/', sev: 'medium' },
+    { id: 'a25s17', title: 'App Store Connect / Play Console listings not drafted',                   desc: 'Title, subtitle, keywords (iOS), short + full description, category, age rating, content rights, advertising-id flag (Android), tax forms, banking. Plan a half-day for this.', loc: '(stores)', sev: 'medium' },
+    { id: 'a25s18', title: 'TestFlight / Internal Track release pipeline never run',                  desc: 'No prior ipa or aab has been uploaded. First upload often surfaces signing/provisioning issues. Allow 1-2 days buffer.', loc: '(release tooling)', sev: 'medium' },
+  ];
+
+  const sevPill = (sev) => {
+    const map = {
+      blocker: 'background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);',
+      high:    'background:rgba(249,115,22,0.15);color:#f97316;border:1px solid rgba(249,115,22,0.3);',
+      medium:  'background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);',
+      low:     'background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.55);border:1px solid rgba(255,255,255,0.12);',
+    };
+    return `<span style="padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;${map[sev] || map.low}">${sev}</span>`;
+  };
+
+  // For the new audit we want a Severity pill INSIDE the title cell.
+  // Pre-decorate items so renderRow doesn't need a separate code path.
+  const a25Decorate = (items) => items.map((it) => ({
+    ...it,
+    title: `${it.title}  ${sevPill(it.sev)}`,
+  }));
+
+  const a25CountBy = (sev, ...lists) => lists.flat().filter((i) => i.sev === sev).length;
+  const A25_ALL = [...A25_CODE, ...A25_UX, ...A25_BUG, ...A25_STORE];
+  const a25Counts = {
+    blocker: a25CountBy('blocker', A25_ALL),
+    high:    a25CountBy('high',    A25_ALL),
+    medium:  a25CountBy('medium',  A25_ALL),
+    low:     a25CountBy('low',     A25_ALL),
+  };
+
+  // Grid-based rendering — replaces the previous <table> layout. Strict
+  // columns guarantee the Status pill is always on-screen; long location
+  // paths or descriptions wrap inside their own column instead of pushing
+  // the status off the page. Mobile stacks loc/status under the issue.
   const renderRow = (idx, item) => `
-    <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
-      <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;width:32px;">${idx}</td>
-      <td style="padding:10px 12px;color:#fff;font-size:13px;"><strong>${item.title}</strong><br><span style="color:rgba(255,255,255,0.45);font-size:11px;">${item.desc}</span></td>
-      <td style="padding:10px 12px;color:rgba(255,255,255,0.4);font-size:11px;font-family:monospace;white-space:nowrap;">${item.loc}</td>
-      <td style="padding:10px 12px;text-align:right;">${pill(item.id)}</td>
-    </tr>
+    <div class="audit-row">
+      <div class="audit-num">${idx}</div>
+      <div class="audit-body">
+        <div class="audit-title">${item.title}</div>
+        <div class="audit-desc">${item.desc}</div>
+      </div>
+      <div class="audit-loc">${item.loc || ''}</div>
+      <div class="audit-status">${pill(item.id)}</div>
+    </div>
   `;
 
   const renderManualRow = (idx, item) => `
-    <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
-      <td style="padding:10px 12px;text-align:center;width:48px;">${checkbox(item.id)}</td>
-      <td style="padding:10px 12px;color:rgba(255,255,255,0.3);font-size:13px;width:32px;">${idx}</td>
-      <td style="padding:10px 12px;color:#fff;font-size:13px;"><strong>${item.title}</strong><br><span style="color:rgba(255,255,255,0.45);font-size:11px;">${item.desc}</span></td>
-      <td style="padding:10px 12px;text-align:right;">${pill(item.id)}</td>
-    </tr>
+    <div class="audit-row audit-row-manual">
+      <div class="audit-cb">${checkbox(item.id)}</div>
+      <div class="audit-num">${idx}</div>
+      <div class="audit-body">
+        <div class="audit-title">${item.title}</div>
+        <div class="audit-desc">${item.desc}</div>
+      </div>
+      <div class="audit-status">${pill(item.id)}</div>
+    </div>
   `;
 
   const renderTable = (rows, manual = false) => `
-    <table style="width:100%;border-collapse:collapse;">
-      <thead>
-        <tr style="border-bottom:1px solid rgba(255,255,255,0.1);">
-          ${manual ? '<th style="text-align:center;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);">Done</th>' : ''}
-          <th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);">#</th>
-          <th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);">Issue</th>
-          ${manual ? '' : '<th style="text-align:left;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);">Location</th>'}
-          <th style="text-align:right;padding:8px 12px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);">Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${rows.map((r, i) => manual ? renderManualRow(i + 1, r) : renderRow(i + 1, r)).join('')}
-      </tbody>
-    </table>
+    <div class="audit-list ${manual ? 'audit-list-manual' : ''}">
+      <div class="audit-row audit-head ${manual ? 'audit-row-manual' : ''}">
+        ${manual ? '<div class="audit-cb">Done</div>' : ''}
+        <div class="audit-num">#</div>
+        <div class="audit-body">Issue</div>
+        ${manual ? '' : '<div class="audit-loc">Location</div>'}
+        <div class="audit-status">Status</div>
+      </div>
+      ${rows.map((r, i) => manual ? renderManualRow(i + 1, r) : renderRow(i + 1, r)).join('')}
+    </div>
+  `;
+
+  // ─── 2026-04-25 Comprehensive audit section ────────────────────────
+  const a25Section = `
+    <!-- ========== AUDIT: April 25, 2026 — Comprehensive (Code · UX · Bug · App Store) ========== -->
+    <div class="glass" style="margin-bottom:16px;overflow:hidden;border-left:4px solid #ef4444;">
+      <div class="audit-toggle" onclick="toggleAudit(99)" style="padding:16px 20px;display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <span style="font-size:15px;font-weight:700;color:#fff;">Comprehensive Audit — April 25, 2026</span>
+          <span style="padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);">${a25Counts.blocker} Blockers</span>
+          <span style="padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;background:rgba(249,115,22,0.15);color:#f97316;border:1px solid rgba(249,115,22,0.3);">${a25Counts.high} High</span>
+          <span style="padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);">${a25Counts.medium} Med</span>
+          <span style="padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.1);">${a25Counts.low} Low</span>
+        </div>
+        <svg id="audit-chev-99" class="audit-chevron open" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+      </div>
+      <div id="audit-body-99" class="audit-body open" style="padding:0 20px 20px;">
+
+        <p style="color:rgba(255,255,255,0.5);font-size:13px;line-height:1.6;margin:0 0 24px;">
+          Full-app audit covering code quality, UX, bugs/edge cases, and App Store readiness.
+          User explicitly noted Featured Workouts is the one remaining feature in development.
+          Severity pill is inside each row's title; status pill on the right cycles
+          <strong style="color:#fbbf24;">TO DO</strong> →
+          <strong style="color:#3b82f6;">IN PROGRESS</strong> →
+          <strong style="color:#22c55e;">DONE</strong> →
+          <strong style="color:rgba(255,255,255,0.6);">N/A</strong>.
+          Items still open from the 2026-04-24 launch readiness audit are referenced by ID.
+        </p>
+
+        <!-- CODE -->
+        <div class="glass" style="padding:24px;margin-bottom:24px;border-left:4px solid #3b82f6;">
+          <h2 style="margin:0 0 8px;font-size:16px;color:#3b82f6;display:flex;align-items:center;gap:8px;">
+            <span style="width:24px;height:24px;border-radius:50%;background:rgba(59,130,246,0.15);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;">${A25_CODE.length}</span>
+            Code Quality
+          </h2>
+          <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0 0 12px;">File structure, dead code, dependencies, tech debt.</p>
+          ${renderTable(a25Decorate(A25_CODE))}
+        </div>
+
+        <!-- UX -->
+        <div class="glass" style="padding:24px;margin-bottom:24px;border-left:4px solid #a855f7;">
+          <h2 style="margin:0 0 8px;font-size:16px;color:#a855f7;display:flex;align-items:center;gap:8px;">
+            <span style="width:24px;height:24px;border-radius:50%;background:rgba(168,85,247,0.15);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;">${A25_UX.length}</span>
+            UX & Polish
+          </h2>
+          <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0 0 12px;">Layout, hierarchy, copy, onboarding clarity, mobile fit.</p>
+          ${renderTable(a25Decorate(A25_UX))}
+        </div>
+
+        <!-- BUG -->
+        <div class="glass" style="padding:24px;margin-bottom:24px;border-left:4px solid #fbbf24;">
+          <h2 style="margin:0 0 8px;font-size:16px;color:#fbbf24;display:flex;align-items:center;gap:8px;">
+            <span style="width:24px;height:24px;border-radius:50%;background:rgba(251,191,36,0.15);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;">${A25_BUG.length}</span>
+            Bugs & Edge Cases
+          </h2>
+          <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0 0 12px;">Things that may surface in real user sessions or recent regressions.</p>
+          ${renderTable(a25Decorate(A25_BUG))}
+        </div>
+
+        <!-- APP STORE -->
+        <div class="glass" style="padding:24px;margin-bottom:0;border-left:4px solid #ef4444;">
+          <h2 style="margin:0 0 8px;font-size:16px;color:#ef4444;display:flex;align-items:center;gap:8px;">
+            <span style="width:24px;height:24px;border-radius:50%;background:rgba(239,68,68,0.15);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;">${A25_STORE.length}</span>
+            App Store / Play Store Readiness
+          </h2>
+          <p style="color:rgba(255,255,255,0.4);font-size:11px;margin:0 0 12px;">Bundle ID, IAP, push, privacy disclosure, store listings, signing.</p>
+          ${renderTable(a25Decorate(A25_STORE))}
+        </div>
+
+      </div>
+    </div>
   `;
 
   const launchSection = `
@@ -5199,6 +5366,88 @@ router.get('/audit', adminAuth, async (req, res) => {
     .audit-chevron.open { transform:rotate(180deg); }
     /* Tables breathe when there's no card around them */
     .audit-flat table { margin-top:8px; }
+
+    /* ===== Grid-based audit rows (replaces &lt;table&gt;) =====
+       Strict columns: # (32px) · Issue (1fr) · Location (220px) · Status (110px).
+       overflow-wrap:anywhere on every cell so long descriptions or paths
+       wrap inside their own column instead of shoving Status off-screen. */
+    .audit-list { width:100%; margin-top:8px; }
+    .audit-row {
+      display: grid;
+      grid-template-columns: 32px 1fr 220px 110px;
+      gap: 14px;
+      padding: 12px 4px;
+      align-items: start;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .audit-row.audit-row-manual {
+      grid-template-columns: 48px 32px 1fr 110px;
+    }
+    .audit-row > div {
+      min-width: 0;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .audit-row .audit-num {
+      color: rgba(255,255,255,0.3);
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+    }
+    .audit-row .audit-cb { display:flex; align-items:center; justify-content:center; }
+    .audit-row .audit-title {
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+    .audit-row .audit-desc {
+      color: rgba(255,255,255,0.45);
+      font-size: 11px;
+      line-height: 1.5;
+      margin-top: 2px;
+    }
+    .audit-row .audit-loc {
+      color: rgba(255,255,255,0.4);
+      font-size: 11px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      line-height: 1.5;
+    }
+    .audit-row .audit-status {
+      text-align: right;
+      align-self: start;
+    }
+    /* Header row */
+    .audit-row.audit-head {
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      padding: 8px 4px;
+    }
+    .audit-row.audit-head > div {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: rgba(255,255,255,0.4);
+      font-weight: 600;
+    }
+    .audit-row.audit-head .audit-status,
+    .audit-row.audit-head .audit-cb {
+      text-align: right;
+    }
+    .audit-row.audit-head .audit-cb { text-align: center; }
+    /* Mobile: drop loc/status under the issue cell — keep status visible */
+    @media (max-width: 720px) {
+      .audit-row {
+        grid-template-columns: 28px 1fr 90px;
+      }
+      .audit-row.audit-row-manual {
+        grid-template-columns: 32px 28px 1fr 90px;
+      }
+      .audit-row .audit-loc {
+        grid-column: 2 / -1;
+        margin-top: 4px;
+        font-size: 10px;
+      }
+      .audit-row.audit-head .audit-loc { display:none; }
+    }
   </style>
   <script>
     function toggleAudit(id) {
@@ -5210,6 +5459,7 @@ router.get('/audit', adminAuth, async (req, res) => {
   </script>
 
   <div class="audit-flat">
+  ${a25Section}
   ${launchSection}
 
   <!-- ========== AUDIT #1: April 3, 2026 ========== -->

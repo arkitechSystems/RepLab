@@ -2963,7 +2963,6 @@ export default function WorkoutSession() {
 }
 
 export function WorkoutSummary({ template, programName, entries, completedSets, elapsed, formatTime, onClose }) {
-  const canvasRef = useRef(null);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [shareImage, setShareImage] = useState(null);
   const [generatingImage, setGeneratingImage] = useState(false);
@@ -3008,63 +3007,6 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
     }
   }
 
-  // Confetti
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    const colors = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#ec4899', '#ffffff'];
-    const pieces = Array.from({ length: 120 }, () => ({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height * -1,
-      w: Math.random() * 8 + 4,
-      h: Math.random() * 6 + 2,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      vy: Math.random() * 3 + 2,
-      vx: (Math.random() - 0.5) * 2,
-      rot: Math.random() * 360,
-      rotSpeed: (Math.random() - 0.5) * 10,
-      opacity: 1,
-    }));
-
-    let frame;
-    let fadeStart = null;
-    const duration = 3500;
-
-    function animate(ts) {
-      if (!fadeStart) fadeStart = ts;
-      const progress = ts - fadeStart;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      const globalFade = progress > duration ? Math.max(0, 1 - (progress - duration) / 1000) : 1;
-
-      for (const p of pieces) {
-        p.y += p.vy;
-        p.x += p.vx;
-        p.rot += p.rotSpeed;
-        p.vy += 0.04;
-        p.opacity = globalFade;
-
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate((p.rot * Math.PI) / 180);
-        ctx.globalAlpha = p.opacity;
-        ctx.fillStyle = p.color;
-        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
-        ctx.restore();
-      }
-
-      if (globalFade > 0) {
-        frame = requestAnimationFrame(animate);
-      }
-    }
-
-    frame = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(frame);
-  }, []);
 
   // Stats
   const realExercises = template.exercises.filter(ex => !ex.isSectionHeader);
@@ -3477,9 +3419,6 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
   // button slide behind the top avatar.
   return createPortal(
     <div className="fixed inset-0 z-[100] flex flex-col">
-      {/* Confetti canvas */}
-      <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none z-10" />
-
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/90" />
 
@@ -3517,7 +3456,7 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
               className="text-white font-black tracking-tight"
               style={{
                 fontFamily: 'system-ui',
-                fontSize: 'clamp(40px, 11vw, 88px)',
+                fontSize: 'clamp(34px, 9.35vw, 74.8px)',
                 lineHeight: '0.85',
                 letterSpacing: '-0.03em',
               }}
@@ -3770,7 +3709,7 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
         </button>
         <button
           onClick={onClose}
-          className="w-full btn-gradient text-white font-bold py-4 rounded-xl text-base active:scale-[0.98] transition-all"
+          className="w-full bg-black text-wf-gray-400 border border-wf-gray-600 font-bold py-3.5 rounded-xl text-base active:scale-[0.98] transition-all"
         >
           Done
         </button>
