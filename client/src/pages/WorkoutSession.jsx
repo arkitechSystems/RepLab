@@ -1879,6 +1879,17 @@ export default function WorkoutSession() {
 
   return (
     <div className="pb-24">
+      {/* Dark-card mode swaps the page bg to the same gray (#e8e8e8) that
+          light-mode cards use, so the surface and the cards trade places.
+          Fixed + pointer-events-none so it sits behind everything in this
+          page without intercepting taps. */}
+      {cardTheme === 'dark' && (
+        <div
+          className="fixed inset-0 pointer-events-none"
+          style={{ background: '#e8e8e8', zIndex: 0 }}
+          aria-hidden="true"
+        />
+      )}
       {/* PB Celebration */}
       {newPBs && (
         <PBCelebration
@@ -2258,10 +2269,24 @@ export default function WorkoutSession() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
           </button>
-          {showSessionMenu && (
+          {showSessionMenu && createPortal(
             <>
-              <div className="fixed inset-0 z-40" onClick={() => setShowSessionMenu(false)} />
-              <div className="absolute right-0 top-10 z-50 w-52 rounded-xl bg-wf-gray-900 border border-white/10 shadow-2xl overflow-hidden">
+              {/* Backdrop + menu portaled to body so they escape the
+                  .sticky-header (z-30) stacking context — otherwise the
+                  floating workout/rest timers (fixed z-50 in body's context)
+                  would sit on top of the menu. Position the menu off the
+                  gear's bounding rect since we're no longer the gear's
+                  positioned ancestor. */}
+              <div className="fixed inset-0 z-[80]" onClick={() => setShowSessionMenu(false)} />
+              <div
+                className="fixed z-[81] w-52 rounded-xl bg-wf-gray-900 border border-white/10 shadow-2xl overflow-hidden"
+                style={(() => {
+                  const btn = document.querySelector('[data-tutorial="session-settings"]');
+                  if (!btn) return { top: 64, right: 16 };
+                  const r = btn.getBoundingClientRect();
+                  return { top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) };
+                })()}
+              >
                 <div className="px-3 py-2 border-b border-white/5 flex items-center justify-between">
                   <span className="text-[9px] text-wf-gray-500 uppercase tracking-wider font-semibold">Display</span>
                   <button
@@ -2279,8 +2304,8 @@ export default function WorkoutSession() {
                   className="w-full px-3 py-2.5 flex items-center justify-between text-sm text-white active:bg-white/5 transition-colors"
                 >
                   <span>Goal Weight</span>
-                  <div className={`w-8 h-5 rounded-full transition-colors ${showGoalWeight ? 'bg-wf-red' : 'bg-wf-gray-600'}`}>
-                    <div className={`w-4 h-4 rounded-full bg-white mt-0.5 transition-transform ${showGoalWeight ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                  <div className={`w-[37px] h-[23px] rounded-full transition-colors ${showGoalWeight ? 'bg-wf-red' : 'bg-wf-gray-600'}`}>
+                    <div className={`w-[19px] h-[19px] rounded-full bg-white mt-0.5 transition-transform ${showGoalWeight ? 'translate-x-4' : 'translate-x-0.5'}`} />
                   </div>
                 </button>
                 <button
@@ -2288,8 +2313,8 @@ export default function WorkoutSession() {
                   className="w-full px-3 py-2.5 flex items-center justify-between text-sm text-white active:bg-white/5 transition-colors"
                 >
                   <span>Goal Reps</span>
-                  <div className={`w-8 h-5 rounded-full transition-colors ${showGoalReps ? 'bg-wf-red' : 'bg-wf-gray-600'}`}>
-                    <div className={`w-4 h-4 rounded-full bg-white mt-0.5 transition-transform ${showGoalReps ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                  <div className={`w-[37px] h-[23px] rounded-full transition-colors ${showGoalReps ? 'bg-wf-red' : 'bg-wf-gray-600'}`}>
+                    <div className={`w-[19px] h-[19px] rounded-full bg-white mt-0.5 transition-transform ${showGoalReps ? 'translate-x-4' : 'translate-x-0.5'}`} />
                   </div>
                 </button>
                 <button
@@ -2297,8 +2322,8 @@ export default function WorkoutSession() {
                   className="w-full px-3 py-2.5 flex items-center justify-between text-sm text-white active:bg-white/5 transition-colors"
                 >
                   <span>Set Type</span>
-                  <div className={`w-8 h-5 rounded-full transition-colors ${showSetType ? 'bg-wf-red' : 'bg-wf-gray-600'}`}>
-                    <div className={`w-4 h-4 rounded-full bg-white mt-0.5 transition-transform ${showSetType ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                  <div className={`w-[37px] h-[23px] rounded-full transition-colors ${showSetType ? 'bg-wf-red' : 'bg-wf-gray-600'}`}>
+                    <div className={`w-[19px] h-[19px] rounded-full bg-white mt-0.5 transition-transform ${showSetType ? 'translate-x-4' : 'translate-x-0.5'}`} />
                   </div>
                 </button>
                 {/* Light/Dark card-theme toggle — switches the exercise-card
@@ -2312,13 +2337,14 @@ export default function WorkoutSession() {
                   }}
                   className="w-full px-3 py-2.5 flex items-center justify-between text-sm text-white active:bg-white/5 transition-colors border-t border-white/5"
                 >
-                  <span>Dark Cards</span>
-                  <div className={`w-8 h-5 rounded-full transition-colors ${cardTheme === 'dark' ? 'bg-wf-red' : 'bg-wf-gray-600'}`}>
-                    <div className={`w-4 h-4 rounded-full bg-white mt-0.5 transition-transform ${cardTheme === 'dark' ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+                  <span>{cardTheme === 'dark' ? 'Light Cards' : 'Dark Cards'}</span>
+                  <div className={`w-[37px] h-[23px] rounded-full transition-colors ${cardTheme === 'dark' ? 'bg-wf-red' : 'bg-wf-gray-600'}`}>
+                    <div className={`w-[19px] h-[19px] rounded-full bg-white mt-0.5 transition-transform ${cardTheme === 'dark' ? 'translate-x-4' : 'translate-x-0.5'}`} />
                   </div>
                 </button>
               </div>
-            </>
+            </>,
+            document.body
           )}
         </div>
       </StickyHeader>
@@ -3190,19 +3216,20 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
 
     let curY = padding;
 
-    // --- Logo: "WILL" in white, "FIT" in red ---
+    // --- Logo: "REP" in white, "LAB" in red — matches the in-app REPLAB
+    //     wordmark and the shared workoutSummaryShare util. ---
     ctx.font = `900 46px ${font}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    const willW = ctx.measureText('WILL').width;
-    const fitW = ctx.measureText('FIT').width;
-    const totalLogoW = willW + fitW + 4;
+    const repW = ctx.measureText('REP').width;
+    const labW = ctx.measureText('LAB').width;
+    const totalLogoW = repW + labW + 4;
     const logoStartX = W / 2 - totalLogoW / 2;
     ctx.textAlign = 'left';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText('WILL', logoStartX, curY + 25);
+    ctx.fillText('REP', logoStartX, curY + 25);
     ctx.fillStyle = '#ef4444';
-    ctx.fillText('FIT', logoStartX + willW + 4, curY + 25);
+    ctx.fillText('LAB', logoStartX + repW + 4, curY + 25);
     curY += 50;
 
     // Thin separator line

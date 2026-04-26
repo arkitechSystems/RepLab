@@ -307,7 +307,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                 isSwipeable
                   ? {
                       background: isDarkTheme
-                        ? (isCompleted ? 'rgb(3, 19, 9)' : '#000')
+                        ? (isCompleted ? 'rgb(11, 32, 18)' : '#0a0a0a')
                         : (isCompleted ? 'rgb(213, 228, 218)' : '#e8e8e8'),
                     }
                   : undefined

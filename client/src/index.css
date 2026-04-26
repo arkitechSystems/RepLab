@@ -152,15 +152,16 @@
 }
 /* === END EXERCISE CARD LIGHT TEST === */
 
-/* === EXERCISE CARD TRANSPARENT TEST — flip EXERCISE_CARD_TRANSPARENT_TEST in
-   ExerciseCard.jsx to disable, or remove this whole block to revert. Cards
-   become fully see-through (page bg shows through) with white text. === */
+/* === EXERCISE CARD DARK MODE — flip cardTheme = 'dark' in WorkoutSession to
+   activate, or remove this whole block to revert. Cards get a solid dark
+   background and the surrounding page is painted #e8e8e8 (the same gray
+   that light-mode exercise cards use), inverting the light-mode treatment. */
 .exercise-card-transparent-test.glass-card {
-  background: transparent !important;
+  background: #0a0a0a !important;
   border-color: rgba(255, 255, 255, 0.08) !important;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  box-shadow: none !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35) !important;
 }
 .exercise-card-transparent-test * {
   color: #ffffff !important;

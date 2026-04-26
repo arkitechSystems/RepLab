@@ -7,7 +7,7 @@ async function seed() {
 
     const { rows: [program] } = await client.query(
       "INSERT INTO programs (user_id, name, description, sort_order) VALUES (NULL, $1, $2, (SELECT COALESCE(MAX(sort_order),0)+1 FROM programs WHERE user_id IS NULL)) RETURNING id",
-      ['Summer Shred', '4-week fat loss & conditioning hybrid. 4-5 days/week. Strength + burst training + circuits.']
+      ['Athlean-X Summer Shred', '4-week fat loss & conditioning hybrid. 4-5 days/week. Strength + burst training + circuits.']
     );
     const pid = program.id;
 

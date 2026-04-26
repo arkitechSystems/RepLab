@@ -8,6 +8,138 @@ import SplashScreen from '../components/SplashScreen';
 import { APP_VERSION } from '../version';
 import { getWorkoutColor } from '../utils/workoutColors';
 
+// Touch-reactive ticker for the Personal Records strip. Scrolls left at a
+// steady speed; while a finger is down it freezes and the user can drag the
+// strip left/right to read it. On release we pause for 1s, then ramp the
+// scroll speed from 0 back to full over the next 2s so the resume feels
+// gentle rather than snapping back into motion.
+//
+// Driven entirely by requestAnimationFrame + transform — no React state in
+// the hot path, so it doesn't re-render every frame.
+function PRTicker({ items }) {
+  const containerRef = useRef(null);
+  const trackRef = useRef(null);
+  const posRef = useRef(0);            // current translateX in px (negative = scrolled left)
+  const pausedRef = useRef(false);     // true while finger is down
+  const rampStartRef = useRef(0);      // timestamp when speed ramp began (0 = at full speed)
+  const lastFrameRef = useRef(0);      // last rAF timestamp
+  const halfWidthRef = useRef(0);      // width of one copy of `items` (track has two)
+  const dragStartXRef = useRef(0);
+  const dragStartPosRef = useRef(0);
+  const resumeTimerRef = useRef(null);
+
+  const SPEED = 50;          // px/sec — full scroll speed
+  const PAUSE_AFTER_MS = 1000; // wait this long after release before ramping
+  const RAMP_MS = 2000;        // ramp from 0 to full over this period
+
+  // Measure one copy's width whenever items change so the wrap-around point
+  // is right after layout.
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+    halfWidthRef.current = track.scrollWidth / 2;
+  }, [items]);
+
+  useEffect(() => {
+    let raf;
+    const tick = (now) => {
+      const last = lastFrameRef.current || now;
+      const dt = (now - last) / 1000;
+      lastFrameRef.current = now;
+
+      if (!pausedRef.current && halfWidthRef.current > 0) {
+        let speedFactor = 1;
+        if (rampStartRef.current) {
+          const elapsed = now - rampStartRef.current;
+          if (elapsed >= RAMP_MS) {
+            rampStartRef.current = 0;
+            speedFactor = 1;
+          } else {
+            // ease-out: starts slow, accelerates smoothly
+            const t = elapsed / RAMP_MS;
+            speedFactor = t * t;
+          }
+        }
+        posRef.current -= SPEED * speedFactor * dt;
+        // Wrap: when we've scrolled one full copy off the left, jump forward
+        // by one copy so the second copy seamlessly takes the lead.
+        if (posRef.current <= -halfWidthRef.current) {
+          posRef.current += halfWidthRef.current;
+        }
+      }
+
+      const track = trackRef.current;
+      if (track) track.style.transform = `translateX(${posRef.current}px)`;
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  const onPointerDown = (e) => {
+    pausedRef.current = true;
+    rampStartRef.current = 0; // cancel any in-progress ramp
+    dragStartXRef.current = e.clientX;
+    dragStartPosRef.current = posRef.current;
+    if (resumeTimerRef.current) {
+      clearTimeout(resumeTimerRef.current);
+      resumeTimerRef.current = null;
+    }
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  };
+
+  const onPointerMove = (e) => {
+    if (!pausedRef.current) return;
+    const dx = e.clientX - dragStartXRef.current;
+    let next = dragStartPosRef.current + dx;
+    // Keep position within one half-width window so the seamless loop holds
+    // even after big drags.
+    const half = halfWidthRef.current || 1;
+    while (next <= -half) next += half;
+    while (next > 0) next -= half;
+    posRef.current = next;
+    const track = trackRef.current;
+    if (track) track.style.transform = `translateX(${posRef.current}px)`;
+  };
+
+  const onPointerUp = (e) => {
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
+    // Hold position for PAUSE_AFTER_MS, then begin the speed ramp.
+    if (resumeTimerRef.current) clearTimeout(resumeTimerRef.current);
+    resumeTimerRef.current = setTimeout(() => {
+      pausedRef.current = false;
+      rampStartRef.current = performance.now();
+      resumeTimerRef.current = null;
+    }, PAUSE_AFTER_MS);
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      style={{ overflow: 'hidden', whiteSpace: 'nowrap', touchAction: 'pan-y', cursor: 'grab' }}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+    >
+      <div
+        ref={trackRef}
+        style={{ display: 'inline-block', fontSize: '12px', willChange: 'transform' }}
+      >
+        {[...items, ...items].map((pr, i) => (
+          <span key={i}>
+            <span style={{ color: '#ef4444', fontWeight: 700 }}>{pr.muscle} PR</span>
+            <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 300 }}>
+              {` — ${pr.exercise} — ${pr.weight} LBS × ${pr.reps}`}
+            </span>
+            <span style={{ color: 'rgba(255,255,255,0.1)', margin: '0 16px' }}>|</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // Normalize a phone from the stored +1XXXXXXXXXX form (or any 10/11-digit
 // variant) to the user-friendly "(XXX) XXX-XXXX". Falls back to the raw
 // value for anything that doesn't look like a US 10-digit number.
@@ -33,6 +165,64 @@ function MetricInput({ label, value, unit, onChange }) {
           className="w-20 glass-input rounded-lg px-2 py-1.5 text-white text-sm text-right font-medium focus:outline-none transition-all placeholder:text-wf-gray-600"
         />
         {unit && <span className="text-wf-gray-500 text-xs w-6">{unit}</span>}
+      </div>
+    </div>
+  );
+}
+
+// Split height entry: two boxes for feet + inches that combine into a single
+// total-inches number (the on-disk format). Local string state lets the user
+// blank a box while editing without us forcing it back to "0".
+function HeightInput({ label, value, onChange }) {
+  const totalInches = value ?? null;
+  const derivedFeet = totalInches != null ? Math.floor(totalInches / 12) : '';
+  const derivedInches = totalInches != null ? totalInches % 12 : '';
+  const [feetStr, setFeetStr] = useState(String(derivedFeet));
+  const [inchesStr, setInchesStr] = useState(String(derivedInches));
+
+  // Sync local state when the parent value changes (e.g., metrics fetched
+  // from the server after first render).
+  useEffect(() => {
+    setFeetStr(totalInches != null ? String(Math.floor(totalInches / 12)) : '');
+    setInchesStr(totalInches != null ? String(totalInches % 12) : '');
+  }, [totalInches]);
+
+  const commit = (nextFeetStr, nextInchesStr) => {
+    if (nextFeetStr === '' && nextInchesStr === '') {
+      onChange(null);
+      return;
+    }
+    const f = Number(nextFeetStr) || 0;
+    const i = Number(nextInchesStr) || 0;
+    onChange(f * 12 + i);
+  };
+
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-wf-gray-400 text-sm">{label}</span>
+      <div className="flex items-center gap-1.5">
+        <input
+          type="number"
+          inputMode="numeric"
+          min="0"
+          max="9"
+          value={feetStr}
+          onChange={(e) => { const v = e.target.value; setFeetStr(v); commit(v, inchesStr); }}
+          placeholder="—"
+          className="w-12 glass-input rounded-lg px-2 py-1.5 text-white text-sm text-right font-medium focus:outline-none transition-all placeholder:text-wf-gray-600"
+        />
+        <span className="text-wf-gray-500 text-xs">ft</span>
+        <input
+          type="number"
+          inputMode="numeric"
+          min="0"
+          max="11"
+          value={inchesStr}
+          onChange={(e) => { const v = e.target.value; setInchesStr(v); commit(feetStr, v); }}
+          placeholder="—"
+          className="w-12 glass-input rounded-lg px-2 py-1.5 text-white text-sm text-right font-medium focus:outline-none transition-all placeholder:text-wf-gray-600"
+        />
+        <span className="text-wf-gray-500 text-xs">in</span>
       </div>
     </div>
   );
@@ -364,12 +554,12 @@ export default function Profile() {
 
         {/* Personal Records ticker — moved here from Workouts page (was above the Tutorial card). */}
         {(() => {
-          const items = bodyPartPRs.map((pr) => {
-            const muscle = (pr.muscle_group || 'PR').toUpperCase();
-            const w = Number(pr.best_weight);
-            const reps = pr.best_reps;
-            return `${muscle} PR — ${pr.exercise_name} — ${w} LBS × ${reps}`;
-          });
+          const items = bodyPartPRs.map((pr) => ({
+            muscle: (pr.muscle_group || 'PR').toUpperCase(),
+            exercise: pr.exercise_name,
+            weight: Number(pr.best_weight),
+            reps: pr.best_reps,
+          }));
           const hasPRs = items.length > 0;
           return (
             <div
@@ -391,22 +581,7 @@ export default function Profile() {
                 </p>
                 <div style={{ borderBottom: '1px dotted rgba(255,255,255,0.15)', marginBottom: '12px' }} />
                 {hasPRs ? (
-                  <div style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                    <div style={{ display: 'inline-block', animation: 'prTicker 20s linear infinite', fontSize: '12px' }}>
-                      {items.map((pr, i) => (
-                        <span key={i}>
-                          <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 300 }}>{pr}</span>
-                          <span style={{ color: 'rgba(255,255,255,0.1)', margin: '0 16px' }}>|</span>
-                        </span>
-                      ))}
-                      {items.map((pr, i) => (
-                        <span key={`d-${i}`}>
-                          <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 300 }}>{pr}</span>
-                          <span style={{ color: 'rgba(255,255,255,0.1)', margin: '0 16px' }}>|</span>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
+                  <PRTicker items={items} />
                 ) : (
                   <p
                     style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px', fontWeight: 300, lineHeight: 1.5 }}
@@ -535,23 +710,7 @@ export default function Profile() {
           <div className="relative p-6">
             <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(156,163,175,0.85)', letterSpacing: '0.3em' }}>Preferences</p>
             <h3 className="text-[22px] font-black text-white tracking-tight mb-4" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>APP SETTINGS</h3>
-            <div className="pt-3 border-t border-white/10 space-y-4">
-              <div className="flex items-center justify-between gap-px">
-                <div className="flex items-center gap-px flex-1 min-w-0">
-                  <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                  <span className="text-white/70 text-sm font-medium">Bible Verses</span>
-                </div>
-                <button
-                  onClick={() => setBibleVersesOn(!bibleVersesOn)}
-                  aria-label={bibleVersesOn ? 'Turn off Bible verses' : 'Turn on Bible verses'}
-                  className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${bibleVersesOn ? 'bg-wf-red' : 'bg-white/15'}`}
-                >
-                  <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${bibleVersesOn ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                </button>
-              </div>
-
+            <div className="space-y-4">
               {/* Workout-session defaults — set the initial state of timers
                   and goal columns when a session opens. The user can still
                   flip each one inside the session via the lock icons / gear. */}
@@ -625,6 +784,31 @@ export default function Profile() {
                 </div>
               </div>
 
+              {/* Other settings — non-session preferences (Bible verses,
+                  future misc toggles). Same wrapper pattern as Workout
+                  Session Defaults so the divider extends to the card edges. */}
+              <div className="pt-3 border-t border-white/10 -mx-6 px-6 space-y-4">
+                <p className="text-[10px] uppercase font-bold" style={{ color: 'rgba(255,255,255,0.4)', letterSpacing: '0.2em' }}>
+                  Other Settings
+                </p>
+
+                <div className="flex items-center justify-between gap-px">
+                  <div className="flex items-center gap-px flex-1 min-w-0">
+                    <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                    <span className="text-white/70 text-sm font-medium">Bible Verses</span>
+                  </div>
+                  <button
+                    onClick={() => setBibleVersesOn(!bibleVersesOn)}
+                    aria-label={bibleVersesOn ? 'Turn off Bible verses' : 'Turn on Bible verses'}
+                    className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${bibleVersesOn ? 'bg-wf-red' : 'bg-white/15'}`}
+                  >
+                    <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${bibleVersesOn ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  </button>
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
@@ -645,7 +829,7 @@ export default function Profile() {
             <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(34,197,94,0.85)', letterSpacing: '0.3em' }}>Your Body</p>
             <h3 className="text-[22px] font-black text-white tracking-tight mb-4" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>BODY METRICS</h3>
             <div className="space-y-3 pt-3 border-t border-white/10">
-              <MetricInput label="Height" value={metrics.height} unit="in" onChange={(v) => updateMetric('height', v)} />
+              <HeightInput label="Height" value={metrics.height} onChange={(v) => updateMetric('height', v)} />
               <MetricInput label="Weight" value={metrics.weight} unit="lbs" onChange={(v) => updateMetric('weight', v)} />
               <MetricInput label="Body Fat" value={metrics.bodyFat} unit="%" onChange={(v) => updateMetric('bodyFat', v)} />
             </div>
@@ -728,7 +912,7 @@ export default function Profile() {
                     return (
                       <button
                         key={session.id}
-                        onClick={() => navigate(`/history/${session.id}`)}
+                        onClick={() => navigate(`/summary/${session.id}`)}
                         className={`w-full text-left p-3 active:scale-[0.98] transition-transform border-l-[3px] ${color.border}`}
                         style={{
                           borderRadius: '2px',

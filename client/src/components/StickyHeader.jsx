@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 
-export default function StickyHeader({ title, subtitle, children, bottomContent, titleClassName = '', titleStyle, titleCentered = false }) {
+export default function StickyHeader({ title, subtitle, children, bottomContent, titleClassName = '', titleStyle, titleCentered = false, rightSlotWidth = 35 }) {
   const [collapsed, setCollapsed] = useState(false);
   const sentinelRef = useRef(null);
 
@@ -28,15 +28,29 @@ export default function StickyHeader({ title, subtitle, children, bottomContent,
         }`}
       >
         <div className={titleCentered
-          ? 'relative flex items-center justify-center gap-3'
+          ? 'flex items-center justify-between gap-3'
           : 'flex items-center justify-between gap-3'
         }>
-          {title ? <div className={`min-w-0${titleCentered ? ' text-center' : ''}`}>
+          {/* Left spacer in centered mode reserves the same width as the
+              right-side children (typically a settings gear) so the title
+              sits visually centered while still respecting the gear's
+              footprint — this also forces long titles to wrap before
+              reaching the gear instead of floating over it. We use a
+              dummy-sized div (not a clone of children) so duplicated DOM
+              ids/data-attributes don't confuse selectors. */}
+          {titleCentered && children ? (
+            <div
+              className="shrink-0"
+              style={{ width: rightSlotWidth, height: rightSlotWidth }}
+              aria-hidden="true"
+            />
+          ) : null}
+          {title ? <div className={`min-w-0 flex-1${titleCentered ? ' text-center' : ''}`}>
             <h1
               className={`font-black text-white tracking-tight transition-all duration-300 ${
                 collapsed ? 'text-lg' : 'text-3xl'
               } ${titleClassName}`}
-              style={titleStyle}
+              style={{ overflowWrap: 'break-word', ...titleStyle }}
             >
               {title}
             </h1>
@@ -50,9 +64,7 @@ export default function StickyHeader({ title, subtitle, children, bottomContent,
               </p>
             )}
           </div> : null}
-          {children && (titleCentered ? (
-            <div className="absolute right-0 top-1/2 -translate-y-1/2">{children}</div>
-          ) : children)}
+          {children ? <div className="shrink-0">{children}</div> : null}
         </div>
         {typeof bottomContent === 'function' ? bottomContent(collapsed) : bottomContent}
       </div>

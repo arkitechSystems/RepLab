@@ -792,7 +792,7 @@ export default function Calendar() {
                               {/* Workout info */}
                               <div>
                                 <h3 className="text-base font-semibold text-white">
-                                  {workout?.templateName || 'No workout'}
+                                  {workout?.templateName || 'Rest Day'}
                                 </h3>
                                 {dayCompleted ? (
                                   <span className="text-xs text-green-400 font-medium">Complete</span>
@@ -848,7 +848,7 @@ export default function Calendar() {
                       ? 'Today'
                       : hasWorkout
                         ? 'Scheduled'
-                        : 'No Workout';
+                        : 'Rest Day';
                 // Status text color: green for complete, red for today, faint
                 // white otherwise so it's clear at a glance which day is which.
                 const statusColor = dayCompleted
@@ -925,7 +925,7 @@ export default function Calendar() {
                             {statusLabel}
                           </p>
                           <h3 className="text-[14px] font-black text-white tracking-tight leading-tight mt-1 truncate">
-                            {workout?.templateName || 'No Workout'}
+                            {workout?.templateName || 'Rest Day'}
                           </h3>
                         </div>
                       </div>
@@ -1408,9 +1408,14 @@ export default function Calendar() {
         </div>
       )}
 
-      {/* Success Toast */}
+      {/* Success Toast — centered on screen, styled to match the
+          light-gray-pill / black-text "type tag" treatment used on Browse
+          Workout Library cards. */}
       {successMsg && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[200] px-5 py-2.5 rounded-full bg-green-500/90 text-white text-sm font-semibold shadow-lg animate-fade-in">
+        <div
+          className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[200] text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full text-black animate-fade-in"
+          style={{ background: '#e8eaed', boxShadow: '0 4px 12px rgba(255,255,255,0.10)', letterSpacing: '0.08em' }}
+        >
           {successMsg}
         </div>
       )}

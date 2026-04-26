@@ -151,21 +151,22 @@ function LibraryFlipCard({ program, programColor, idx, isFlipped, onFlip, onView
             <h4 className="text-[24px] font-black text-white leading-[1.05] tracking-tight mb-3 uppercase" style={{ textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}>
               {program.name}
             </h4>
-            <div className="flex items-center justify-between gap-2 mb-5">
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] text-white/80 font-light">{program.weekCount} {program.weekCount === 1 ? 'week' : 'weeks'}</span>
-                <span className="w-px h-2.5 bg-white/30" />
-                <span className="text-[11px] text-white/80 font-light">{program.workoutCount} workouts</span>
-              </div>
+            <div className="flex items-center justify-center flex-wrap gap-x-2 gap-y-1 mb-5">
+              <span className="text-[11px] text-white/80 font-light">{program.weekCount} {program.weekCount === 1 ? 'week' : 'weeks'}</span>
+              <span className="text-white/40 text-[11px] leading-none select-none">·</span>
+              <span className="text-[11px] text-white/80 font-light">{program.workoutCount} workouts</span>
               {program.programType && program.programType !== 'other' && (
-                <span
-                  className="shrink-0 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full text-black"
-                  style={{ background: '#e8eaed', boxShadow: '0 4px 12px rgba(255,255,255,0.10)' }}
-                >{
-                  program.programType === 'strength_conditioning' ? 'Shred'
-                  : program.programType === 'hypertrophy_strength' ? 'Hyp & Str'
-                  : program.programType
-                }</span>
+                <>
+                  <span className="text-white/40 text-[11px] leading-none select-none">·</span>
+                  <span
+                    className="text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full text-black"
+                    style={{ background: '#e8eaed', boxShadow: '0 4px 12px rgba(255,255,255,0.10)' }}
+                  >{
+                    program.programType === 'strength_conditioning' ? 'Shred'
+                    : program.programType === 'hypertrophy_strength' ? 'Hyp & Str'
+                    : program.programType
+                  }</span>
+                </>
               )}
             </div>
             <div className="flex gap-2">
@@ -1502,7 +1503,34 @@ export default function Workouts() {
   // Browse list excludes featured programs — Will's Hypertrophy lives in the
   // dedicated Featured Workouts card on the homepage instead. Re-include later
   // by dropping the !isFeatured guard.
-  const browsePrograms = enrichedPrograms.filter((p) => p.userId === null && !p.isFeatured);
+  // Client-side ordering pin for the Browse Library. Programs not listed
+  // here fall to the bottom and keep their existing sort_order. Match by
+  // case-insensitive substring so quote/character variants don't break the
+  // mapping.
+  const BROWSE_LIBRARY_ORDER = [
+    'nippard',          // Jeff Nippard's Push Pull Legs
+    '5000 rep',         // Muscle & Fitness 5000 Rep Arm Specialization
+    'stoppani',         // Jim Stoppani's Shortcut to Shred
+    'smolov',           // Smolov Squat & Bench Program
+    'mentzer',          // Mike Mentzer Workout
+    'summer shred',     // Summer Shred
+    'gallant',          // Robin Gallant's Intensive Max Glute Hypertrophy
+  ];
+  const browseLibraryRank = (p) => {
+    const n = (p.name || '').toLowerCase();
+    const idx = BROWSE_LIBRARY_ORDER.findIndex((needle) => n.includes(needle));
+    return idx === -1 ? Number.MAX_SAFE_INTEGER : idx;
+  };
+  const browsePrograms = enrichedPrograms
+    .filter((p) => p.userId === null && !p.isFeatured)
+    .slice()
+    .sort((a, b) => {
+      const ra = browseLibraryRank(a);
+      const rb = browseLibraryRank(b);
+      if (ra !== rb) return ra - rb;
+      // Tie-break for unlisted programs: preserve existing sort_order, then id.
+      return (a.sortOrder || 0) - (b.sortOrder || 0) || (a.id - b.id);
+    });
   const myPrograms = enrichedPrograms.filter((p) => p.userId !== null);
 
   // If the active browse-library filter no longer matches any program (e.g., the
@@ -2409,76 +2437,100 @@ export default function Workouts() {
           className="absolute top-16 right-4 left-4 max-w-sm ml-auto animate-drop-down"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="bg-wf-gray-900 border border-white/10 rounded-2xl shadow-2xl shadow-black/60 overflow-hidden">
-            <div className="p-3 space-y-1.5">
+          {/* Nike-style card — sharp 2px corners, dark gradient, red accent
+              line, ambient red spotlight, big tracked eyebrow + title.
+              Mirrors the "Your Next Workout" / "My Workouts" cards. */}
+          <div
+            className="relative overflow-hidden"
+            style={{
+              background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+              borderRadius: '2px',
+              boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+            }}
+          >
+            <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25))' }} />
+            <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+
+            <div className="relative px-5 pt-5 pb-3">
+              <p className="text-[10px] text-white/30 uppercase font-light" style={{ letterSpacing: '0.3em' }}>Create</p>
+              <h2 className="text-[26px] font-black text-white tracking-tight mt-1" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>
+                NEW WORKOUT
+              </h2>
+            </div>
+            <div className="border-t border-white/10" />
+
+            <div className="relative p-2 space-y-0.5">
               <button
                 onClick={() => { setShowCreateMenu(false); navigate('/clientworkouts/create?quick=1'); }}
-                className="w-full text-left rounded-xl p-3.5 flex items-center gap-3.5 active:scale-[0.98] transition-all hover:bg-white/5 active:bg-white/10"
+                className="w-full text-left p-3 flex items-center gap-3.5 active:scale-[0.98] transition-all hover:bg-white/5 active:bg-white/10"
+                style={{ borderRadius: '2px' }}
               >
-                <div className="w-10 h-10 rounded-xl btn-gradient flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 flex items-center justify-center shrink-0" style={{ borderRadius: '2px', background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)', boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)' }}>
                   <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                    {/* A-frame rack legs */}
                     <path d="M8 20L11 4h2l3 16" />
-                    {/* Rack shelves */}
                     <line x1="9.5" y1="12" x2="14.5" y2="12" />
                     <line x1="8.8" y1="16" x2="15.2" y2="16" />
-                    {/* Top dumbbell */}
                     <circle cx="12" cy="8" r="1.8" />
-                    {/* Middle dumbbells */}
                     <circle cx="10" cy="12" r="1.8" />
                     <circle cx="14" cy="12" r="1.8" />
-                    {/* Bottom dumbbells */}
                     <circle cx="8.8" cy="16.5" r="2" />
                     <circle cx="15.2" cy="16.5" r="2" />
-                    {/* Base barbell */}
                     <line x1="3" y1="21" x2="21" y2="21" />
                     <circle cx="3" cy="21" r="1" fill="currentColor" />
                     <circle cx="21" cy="21" r="1" fill="currentColor" />
                   </svg>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-semibold text-white">Create a Workout</h4>
-                  <p className="text-xs text-wf-gray-400 mt-0.5">Build a standalone workout</p>
+                  <h4 className="text-[11.05px] font-bold uppercase text-white tracking-wider" style={{ letterSpacing: '0.1em' }}>Create a Workout</h4>
+                  <p className="text-[9.35px] text-white/40 font-light mt-0.5">Build a standalone workout</p>
                 </div>
                 <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                 </svg>
               </button>
-              <div className="border-t border-white/5 mx-2" />
+              <div className="border-t border-white/5 mx-3" />
               <button
                 onClick={() => { setShowCreateMenu(false); navigate('/programs/create'); }}
-                className="w-full text-left rounded-xl p-3.5 flex items-center gap-3.5 active:scale-[0.98] transition-all hover:bg-white/5 active:bg-white/10"
+                className="w-full text-left p-3 flex items-center gap-3.5 active:scale-[0.98] transition-all hover:bg-white/5 active:bg-white/10"
+                style={{ borderRadius: '2px' }}
               >
-                <div className="w-10 h-10 rounded-xl bg-wf-blue/20 flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 bg-wf-blue/20 flex items-center justify-center shrink-0" style={{ borderRadius: '2px' }}>
                   <svg className="w-5 h-5 text-wf-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
                   </svg>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-semibold text-white">New Program</h4>
-                  <p className="text-xs text-wf-gray-400 mt-0.5">Create a group of workouts</p>
+                  <h4 className="text-[11.05px] font-bold uppercase text-white tracking-wider" style={{ letterSpacing: '0.1em' }}>New Program</h4>
+                  <p className="text-[9.35px] text-white/40 font-light mt-0.5">Create a group of workouts</p>
                 </div>
                 <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                 </svg>
               </button>
-              <div className="border-t border-white/5 mx-2" />
+              <div className="border-t border-white/5 mx-3" />
+              {/* AI workout generation is shipped behind "Coming soon" until
+                  the backend is ready — disabled + grayed out for now.
+                  Heroicons cpu-chip used as the AI/circuit-board icon. */}
               <button
-                onClick={() => { setShowCreateMenu(false); navigate('/clientworkouts/ai'); }}
-                className="w-full text-left rounded-xl p-3.5 flex items-center gap-3.5 active:scale-[0.98] transition-all hover:bg-white/5 active:bg-white/10"
+                disabled
+                aria-disabled="true"
+                className="w-full text-left p-3 flex items-center gap-3.5 opacity-50 cursor-not-allowed"
+                style={{ borderRadius: '2px' }}
               >
-                <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center shrink-0">
-                  <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+                <div className="btn-liquid w-10 h-10 flex items-center justify-center shrink-0" style={{ borderRadius: '2px' }}>
+                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" />
                   </svg>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-semibold text-white">Create a Workout for Me</h4>
-                  <p className="text-xs text-wf-gray-400 mt-0.5">AI-powered personalized workout</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="text-[11.05px] font-bold uppercase text-white/60 tracking-wider" style={{ letterSpacing: '0.1em' }}>Create a Workout for Me</h4>
+                    <span className="btn-liquid text-[7.65px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded whitespace-nowrap">
+                      Coming Soon
+                    </span>
+                  </div>
+                  <p className="text-[9.35px] text-white/40 font-light mt-0.5">AI-powered personalized workout</p>
                 </div>
-                <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                </svg>
               </button>
             </div>
           </div>
@@ -3648,19 +3700,30 @@ export default function Workouts() {
           </div>
         )}
 
-        {/* Filter toggles (browse only) — dynamic: only show types with at least one program */}
+        {/* Filter toggles (browse only) — fully dynamic: pills are derived
+            from the programType values that actually exist in the DB. Any
+            new type added server-side appears here automatically.
+            LABEL_OVERRIDES only handles cases where the snake_case key reads
+            poorly (e.g. "strength_conditioning" → "Shred"); anything else is
+            auto-titlecased on display. */}
         {isBrowse && (() => {
-          const ALL_FILTERS = [
-            { value: 'hypertrophy',          label: 'Hypertrophy' },
-            { value: 'strength',             label: 'Strength' },
-            { value: 'hybrid',               label: 'Hybrid' },
-            { value: 'conditioning',         label: 'Conditioning' },
-            { value: 'strength_conditioning',label: 'Shred' },
-            { value: 'hypertrophy_strength', label: 'Hypertrophy & Strength' },
-          ];
+          const LABEL_OVERRIDES = {
+            strength_conditioning: 'Shred',
+            hypertrophy_strength: 'Hypertrophy & Strength',
+          };
+          const titleCase = (s) =>
+            String(s)
+              .split('_')
+              .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+              .join(' ');
           const dynamicFilters = [
             { value: 'all', label: 'All' },
-            ...ALL_FILTERS.filter((f) => browseAvailableTypes.has(f.value)),
+            ...Array.from(browseAvailableTypes)
+              .sort()
+              .map((value) => ({
+                value,
+                label: LABEL_OVERRIDES[value] || titleCase(value),
+              })),
           ];
           return (
             <div className="px-4">
@@ -4772,20 +4835,40 @@ export default function Workouts() {
                     Programs
                   </div>
                 </div>
-                {/* Fixed 2x2 grid in the user's preferred order:
-                    Hypertrophy | Strength
-                    Hybrid      | Conditioning */}
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 flex-1 justify-items-end text-right">
-                  {['Hypertrophy', 'Strength', 'Hybrid', 'Conditioning'].map((type) => (
-                    <span
-                      key={type}
-                      className="text-[10px] font-bold uppercase whitespace-nowrap"
-                      style={{ color: 'rgba(239,68,68,0.75)', letterSpacing: '0.25em' }}
-                    >
-                      {type}
-                    </span>
-                  ))}
-                </div>
+                {/* 2x2 grid driven by the programType values that actually
+                    exist in browsePrograms (browseAvailableTypes). Labels
+                    are mapped to display strings; 'other' is skipped. The
+                    preferred-order array fixes the visual sequence so the
+                    grid layout is stable across DB additions/removals. */}
+                {(() => {
+                  const TYPE_DISPLAY = {
+                    hypertrophy: 'Hypertrophy',
+                    strength: 'Strength',
+                    hybrid: 'Hybrid',
+                    conditioning: 'Conditioning',
+                    strength_conditioning: 'Shred',
+                    hypertrophy_strength: 'Hyp & Str',
+                  };
+                  const TYPE_ORDER = [
+                    'hypertrophy', 'strength', 'hybrid', 'conditioning',
+                    'strength_conditioning', 'hypertrophy_strength',
+                  ];
+                  const visible = TYPE_ORDER.filter((t) => browseAvailableTypes.has(t));
+                  if (visible.length === 0) return null;
+                  return (
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 flex-1 justify-items-end text-right">
+                      {visible.map((type) => (
+                        <span
+                          key={type}
+                          className="text-[10px] font-bold uppercase whitespace-nowrap"
+                          style={{ color: 'rgba(239,68,68,0.75)', letterSpacing: '0.25em' }}
+                        >
+                          {TYPE_DISPLAY[type] || type}
+                        </span>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
@@ -4939,10 +5022,14 @@ export default function Workouts() {
                   maxHeight: '400px', overflowY: 'auto',
                 }}>
                   <div style={{
-                    padding: '16px 20px 10px',
+                    // top: -1px overshoots the scroll port by 1px so content
+                    // that's about to slide under the sticky doesn't peek
+                    // through a sub-pixel gap above it. Padding bumped by 1px
+                    // so the visible inner spacing stays the same.
+                    padding: '17px 20px 10px',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     gap: '12px',
-                    position: 'sticky', top: 0, zIndex: 2, background: '#111',
+                    position: 'sticky', top: '-1px', zIndex: 2, background: '#111',
                     borderBottom: '1px solid rgba(255,255,255,0.04)',
                   }}>
                     <p style={{

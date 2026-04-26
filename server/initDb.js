@@ -227,7 +227,7 @@ export default async function initDb() {
     INSERT INTO program_name_abbreviations (full_name, short_name) VALUES
       ('Will''s Hypertrophy Program',                              'Will''s Hypertrophy'),
       ('Mike Mentzer Workout',                                     'Mentzer'),
-      ('Summer Shred',                                             'Summer Shred'),
+      ('Athlean-X Summer Shred',                                   'Summer Shred'),
       ('Smolov Squat & Bench Program',                             'Smolov S&B'),
       ('Muscle & Fitness 5000 Rep Arm Specialization',             'M&F 5000 Arms'),
       ('Jim Stoppani''s Shortcut to Shred',                        'Shortcut to Shred'),
