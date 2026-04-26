@@ -2,13 +2,21 @@ import { useState, useEffect } from 'react';
 
 // Show the install prompt after the user has been around long enough to
 // have a reason to install. Not immediately — that's annoying for new visitors.
-const SHOW_DELAY_MS = 30_000;
+const SHOW_DELAY_MS = 5_000;
 const DISMISS_COOLDOWN_DAYS = 14;
 const DISMISS_KEY = 'replab:install-dismissed-at';
 
 function isIOSDevice() {
   if (typeof navigator === 'undefined') return false;
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  // iPhone/iPod still report literally in the UA. iPad on iOS 13+ ships a
+  // desktop-Mac UA by default, but it's still WebKit + touch-capable, so
+  // we second-test for that combo. `MSStream` rejects old IE on Windows
+  // Phone which spoofs iPhone in some cases.
+  if (window.MSStream) return false;
+  if (/iPad|iPhone|iPod/.test(navigator.userAgent)) return true;
+  const isMacUA = /Macintosh/.test(navigator.userAgent);
+  const hasTouch = (navigator.maxTouchPoints || 0) > 1;
+  return isMacUA && hasTouch;
 }
 
 function isStandalone() {
