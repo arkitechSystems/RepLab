@@ -3715,74 +3715,140 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
         </button>
       </div>
 
-      {/* Share menu bottom sheet */}
-      {showShareMenu && (
-        <div className="fixed inset-0 z-[70] flex flex-col" onClick={() => setShowShareMenu(false)}>
-          <div className="absolute inset-0 bg-black/60" />
-          <div className="relative flex-1 flex flex-col mt-12 bg-wf-gray-900 rounded-t-2xl shadow-2xl animate-drop-down overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="shrink-0 pt-3 pb-2 px-5">
-              <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-3" />
-              <h3 className="text-lg font-black text-white">Share Workout</h3>
-            </div>
-            <div className="flex-1 overflow-y-auto px-5 pb-24">
+      {/* Share menu bottom sheet — Nike style: black gradient panel with
+          colored top stripe, eyebrow + heavy display title, and square
+          (2px corner) icon blocks instead of glass pills. */}
+      {showShareMenu && (() => {
+        const NIKE_PANEL = {
+          background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+          boxShadow: '0 -12px 40px rgba(0,0,0,0.5), 0 -4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+        };
+        const ROW = (color) => ({
+          background: 'rgba(255,255,255,0.03)',
+          borderRadius: '2px',
+          borderLeft: `3px solid ${color}`,
+        });
+        const ICON_BLOCK = (color) => ({
+          background: `linear-gradient(135deg, ${color}30 0%, ${color}15 100%)`,
+          borderRadius: '2px',
+          boxShadow: `inset 0 1px 0 rgba(255,255,255,0.08), 0 4px 12px ${color}25`,
+        });
+        const ACCENT = {
+          image: '#ef4444',  // red — share image
+          save:  '#22c55e',  // green — save / download
+          text:  '#a855f7',  // purple — share as text
+        };
+        return (
+          <div className="fixed inset-0 z-[70] flex flex-col" onClick={() => setShowShareMenu(false)}>
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+            <div
+              className="relative flex-1 flex flex-col mt-12 animate-drop-down overflow-hidden"
+              style={{ ...NIKE_PANEL, borderTopLeftRadius: '2px', borderTopRightRadius: '2px' }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Red accent stripe — matches the Begin Program / summary cards */}
+              <div className="h-[3px] shrink-0" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent)' }} />
+              {/* Ambient red spotlight */}
+              <div className="absolute -top-10 -right-10 w-[300px] h-[300px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.10) 0%, transparent 60%)', filter: 'blur(40px)' }} />
 
-            {/* Image preview */}
-            {generatingImage && (
-              <div className="mb-4 rounded-xl border border-white/10 p-8 flex items-center justify-center">
-                <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                <span className="text-sm text-wf-gray-400 ml-3">Generating image...</span>
+              <div className="shrink-0 pt-4 pb-3 px-6 relative">
+                {/* Drag handle + close affordance */}
+                <div className="w-10 h-1 bg-white/15 rounded-full mx-auto mb-4" />
+                <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.4em' }}>
+                  Share
+                </p>
+                <h3 className="text-[26px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>
+                  WORKOUT SUMMARY
+                </h3>
               </div>
-            )}
-            {shareImage && !generatingImage && (
-              <div className="mb-4 rounded-xl overflow-hidden border border-white/10">
-                <img src={shareImage} alt="Workout summary" className="w-full" />
+
+              <div className="flex-1 overflow-y-auto px-6 pb-24 relative">
+                {/* Image preview */}
+                {generatingImage && (
+                  <div className="mb-5 p-8 flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '2px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                    <span className="text-xs uppercase tracking-[0.25em] text-white/50 ml-3 font-bold">Generating image…</span>
+                  </div>
+                )}
+                {shareImage && !generatingImage && (
+                  <div className="mb-5 overflow-hidden" style={{ borderRadius: '2px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <img src={shareImage} alt="Workout summary" className="w-full block" />
+                  </div>
+                )}
+
+                {/* Tiny section eyebrow */}
+                <p className="text-[9px] uppercase font-bold mb-3 pt-1" style={{ color: 'rgba(255,255,255,0.35)', letterSpacing: '0.3em' }}>
+                  Choose a destination
+                </p>
+
+                <div className="space-y-2">
+                  {/* Share Image */}
+                  <button
+                    onClick={handleShareImage}
+                    disabled={!shareImage}
+                    className="w-full flex items-center gap-3.5 p-3 active:scale-[0.98] active:bg-white/[0.06] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={ROW(ACCENT.image)}
+                  >
+                    <div className="w-10 h-10 flex items-center justify-center shrink-0" style={ICON_BLOCK(ACCENT.image)}>
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="#ef4444" strokeWidth={1.7}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0 text-left">
+                      <span className="text-[13px] font-bold uppercase text-white block" style={{ letterSpacing: '0.1em' }}>Share Image</span>
+                      <span className="text-[11px] text-white/40 font-light mt-0.5 block">Send via Instagram, Messages, etc.</span>
+                    </div>
+                    <svg className="w-4 h-4 text-white/30 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                    </svg>
+                  </button>
+
+                  {/* Save to Camera Roll */}
+                  <button
+                    onClick={handleSaveImage}
+                    disabled={!shareImage}
+                    className="w-full flex items-center gap-3.5 p-3 active:scale-[0.98] active:bg-white/[0.06] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={ROW(ACCENT.save)}
+                  >
+                    <div className="w-10 h-10 flex items-center justify-center shrink-0" style={ICON_BLOCK(ACCENT.save)}>
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="#22c55e" strokeWidth={1.7}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0 text-left">
+                      <span className="text-[13px] font-bold uppercase text-white block" style={{ letterSpacing: '0.1em' }}>Save to Camera Roll</span>
+                      <span className="text-[11px] text-white/40 font-light mt-0.5 block">Download image to your device</span>
+                    </div>
+                    <svg className="w-4 h-4 text-white/30 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                    </svg>
+                  </button>
+
+                  {/* Share as Text */}
+                  <button
+                    onClick={handleShareText}
+                    className="w-full flex items-center gap-3.5 p-3 active:scale-[0.98] active:bg-white/[0.06] transition-all"
+                    style={ROW(ACCENT.text)}
+                  >
+                    <div className="w-10 h-10 flex items-center justify-center shrink-0" style={ICON_BLOCK(ACCENT.text)}>
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="#a855f7" strokeWidth={1.7}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0 text-left">
+                      <span className="text-[13px] font-bold uppercase text-white block" style={{ letterSpacing: '0.1em' }}>Share as Text</span>
+                      <span className="text-[11px] text-white/40 font-light mt-0.5 block">Copy or share text summary</span>
+                    </div>
+                    <svg className="w-4 h-4 text-white/30 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                    </svg>
+                  </button>
+                </div>
               </div>
-            )}
-
-            <div className="space-y-2">
-              {/* Share Image */}
-              <button onClick={handleShareImage} disabled={!shareImage} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 active:bg-white/10 transition-colors disabled:opacity-40">
-                <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
-                  <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
-                  </svg>
-                </div>
-                <div className="text-left">
-                  <span className="text-sm font-semibold text-white block">Share Image</span>
-                  <span className="text-xs text-wf-gray-500">Share via Instagram, Messages, etc.</span>
-                </div>
-              </button>
-
-              {/* Save to Camera Roll */}
-              <button onClick={handleSaveImage} disabled={!shareImage} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 active:bg-white/10 transition-colors disabled:opacity-40">
-                <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
-                  <svg className="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                  </svg>
-                </div>
-                <div className="text-left">
-                  <span className="text-sm font-semibold text-white block">Save to Camera Roll</span>
-                  <span className="text-xs text-wf-gray-500">Download image to your device</span>
-                </div>
-              </button>
-
-              {/* Share as Text */}
-              <button onClick={handleShareText} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 active:bg-white/10 transition-colors">
-                <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center shrink-0">
-                  <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
-                  </svg>
-                </div>
-                <div className="text-left">
-                  <span className="text-sm font-semibold text-white block">Share as Text</span>
-                  <span className="text-xs text-wf-gray-500">Copy or share text summary</span>
-                </div>
-              </button>
-            </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>,
     document.body
   );

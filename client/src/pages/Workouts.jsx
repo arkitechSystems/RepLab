@@ -160,10 +160,15 @@ function LibraryFlipCard({ program, programColor, idx, isFlipped, onFlip, onView
                   <span className="text-white/40 text-[11px] leading-none select-none">·</span>
                   <span
                     className="text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full text-black"
-                    style={{ background: '#e8eaed', boxShadow: '0 4px 12px rgba(255,255,255,0.10)' }}
+                    style={
+                      program.programType === 'glute_focused'
+                        ? { background: '#f9a8d4', boxShadow: '0 4px 12px rgba(244,114,182,0.25)' }
+                        : { background: '#e8eaed', boxShadow: '0 4px 12px rgba(255,255,255,0.10)' }
+                    }
                   >{
                     program.programType === 'strength_conditioning' ? 'Shred'
                     : program.programType === 'hypertrophy_strength' ? 'Hyp & Str'
+                    : program.programType === 'glute_focused' ? 'Glute-Focused'
                     : program.programType
                   }</span>
                 </>
@@ -661,10 +666,12 @@ function ProgramCard({ program, idx, onSelect, onBegin, onDelete, onShare, dataT
                   program.programType === 'conditioning' ? 'bg-green-500/20 text-green-300 border-green-500/30' :
                   program.programType === 'strength_conditioning' ? 'bg-teal-500/20 text-teal-300 border-teal-500/30' :
                   program.programType === 'hypertrophy_strength' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' :
+                  program.programType === 'glute_focused' ? 'bg-pink-500/20 text-pink-300 border-pink-500/30' :
                   'bg-white/10 text-wf-gray-400 border-white/10'
                 }`}>{
                   program.programType === 'strength_conditioning' ? 'Shred'
                   : program.programType === 'hypertrophy_strength' ? 'Hypertrophy & Strength'
+                  : program.programType === 'glute_focused' ? 'Glute-Focused'
                   : program.programType
                 }</span>
               )}
@@ -3710,6 +3717,7 @@ export default function Workouts() {
           const LABEL_OVERRIDES = {
             strength_conditioning: 'Shred',
             hypertrophy_strength: 'Hypertrophy & Strength',
+            glute_focused: 'Glute-Focused',
           };
           const titleCase = (s) =>
             String(s)
@@ -4848,10 +4856,12 @@ export default function Workouts() {
                     conditioning: 'Conditioning',
                     strength_conditioning: 'Shred',
                     hypertrophy_strength: 'Hyp & Str',
+                    glute_focused: 'Glute-Focused',
                   };
                   const TYPE_ORDER = [
                     'hypertrophy', 'strength', 'hybrid', 'conditioning',
                     'strength_conditioning', 'hypertrophy_strength',
+                    'glute_focused',
                   ];
                   const visible = TYPE_ORDER.filter((t) => browseAvailableTypes.has(t));
                   if (visible.length === 0) return null;

@@ -5080,10 +5080,8 @@ router.get('/audit', adminAuth, async (req, res) => {
   const renderRow = (idx, item) => `
     <div class="audit-row">
       <div class="audit-num">${idx}</div>
-      <div class="audit-body">
-        <div class="audit-title">${item.title}</div>
-        <div class="audit-desc">${item.desc}</div>
-      </div>
+      <div class="audit-title">${item.title}</div>
+      <div class="audit-desc">${item.desc}</div>
       <div class="audit-loc">${item.loc || ''}</div>
       <div class="audit-status">${pill(item.id)}</div>
     </div>
@@ -5093,10 +5091,8 @@ router.get('/audit', adminAuth, async (req, res) => {
     <div class="audit-row audit-row-manual">
       <div class="audit-cb">${checkbox(item.id)}</div>
       <div class="audit-num">${idx}</div>
-      <div class="audit-body">
-        <div class="audit-title">${item.title}</div>
-        <div class="audit-desc">${item.desc}</div>
-      </div>
+      <div class="audit-title">${item.title}</div>
+      <div class="audit-desc">${item.desc}</div>
       <div class="audit-status">${pill(item.id)}</div>
     </div>
   `;
@@ -5106,7 +5102,8 @@ router.get('/audit', adminAuth, async (req, res) => {
       <div class="audit-row audit-head ${manual ? 'audit-row-manual' : ''}">
         ${manual ? '<div class="audit-cb">Done</div>' : ''}
         <div class="audit-num">#</div>
-        <div class="audit-body">Issue</div>
+        <div class="audit-title">Issue</div>
+        <div class="audit-desc">Description</div>
         ${manual ? '' : '<div class="audit-loc">Location</div>'}
         <div class="audit-status">Status</div>
       </div>
@@ -5368,25 +5365,27 @@ router.get('/audit', adminAuth, async (req, res) => {
     .audit-flat table { margin-top:8px; }
 
     /* ===== Grid-based audit rows (replaces &lt;table&gt;) =====
-       Strict columns: # (32px) · Issue (1fr) · Location (220px) · Status (110px).
-       overflow-wrap:anywhere on every cell so long descriptions or paths
-       wrap inside their own column instead of shoving Status off-screen. */
+       Strict columns: # (32px) · Issue (220px) · Description (1fr) ·
+       Location (200px) · Status (110px). overflow-wrap:anywhere on every
+       cell so long titles, descriptions, or paths wrap inside their own
+       column instead of shoving Status off-screen. */
     .audit-list { width:100%; margin-top:8px; }
     .audit-row {
       display: grid;
-      grid-template-columns: 32px 1fr 220px 110px;
+      grid-template-columns: 32px 220px 1fr 200px 110px;
       gap: 14px;
       padding: 12px 4px;
       align-items: start;
       border-bottom: 1px solid rgba(255,255,255,0.05);
     }
     .audit-row.audit-row-manual {
-      grid-template-columns: 48px 32px 1fr 110px;
+      grid-template-columns: 48px 32px 220px 1fr 110px;
     }
     .audit-row > div {
       min-width: 0;
       overflow-wrap: anywhere;
       word-break: break-word;
+      white-space: normal;
     }
     .audit-row .audit-num {
       color: rgba(255,255,255,0.3);
@@ -5401,10 +5400,9 @@ router.get('/audit', adminAuth, async (req, res) => {
       line-height: 1.35;
     }
     .audit-row .audit-desc {
-      color: rgba(255,255,255,0.45);
-      font-size: 11px;
-      line-height: 1.5;
-      margin-top: 2px;
+      color: rgba(255,255,255,0.6);
+      font-size: 12px;
+      line-height: 1.55;
     }
     .audit-row .audit-loc {
       color: rgba(255,255,255,0.4);
@@ -5433,7 +5431,9 @@ router.get('/audit', adminAuth, async (req, res) => {
       text-align: right;
     }
     .audit-row.audit-head .audit-cb { text-align: center; }
-    /* Mobile: drop loc/status under the issue cell — keep status visible */
+    /* Mobile: collapse title + description + location into the second
+       column, leaving just # · stacked-content · status. Each piece keeps
+       its own row so they stay readable. */
     @media (max-width: 720px) {
       .audit-row {
         grid-template-columns: 28px 1fr 90px;
@@ -5441,11 +5441,16 @@ router.get('/audit', adminAuth, async (req, res) => {
       .audit-row.audit-row-manual {
         grid-template-columns: 32px 28px 1fr 90px;
       }
+      .audit-row .audit-desc {
+        grid-column: 2 / -1;
+        margin-top: 4px;
+      }
       .audit-row .audit-loc {
         grid-column: 2 / -1;
         margin-top: 4px;
         font-size: 10px;
       }
+      .audit-row.audit-head .audit-desc,
       .audit-row.audit-head .audit-loc { display:none; }
     }
   </style>

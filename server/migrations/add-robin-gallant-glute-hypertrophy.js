@@ -25,7 +25,7 @@ import pool from '../dbPool.js';
 
 const PROGRAM_NAME = "Robin Gallant's Intensive Max Glute Hypertrophy";
 const SORT_ORDER = 19;
-const PROGRAM_TYPE = 'hypertrophy';
+const PROGRAM_TYPE = 'glute_focused';
 
 const DETAILS = {
   Program: 'Intensive Max Glute Hypertrophy',
