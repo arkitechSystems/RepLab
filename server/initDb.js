@@ -253,7 +253,8 @@ export default async function initDb() {
       ('Muscle & Fitness 5000 Rep Arm Specialization',             'M&F 5000 Arms'),
       ('Jim Stoppani''s Shortcut to Shred',                        'Shortcut to Shred'),
       ('Robin Gallant''s Intensive Max Glute Hypertrophy',         'RG''s Max Glute'),
-      ('Jeff Nippard''s Push Pull Legs',                           'Nippard''s PPL')
+      ('Jeff Nippard''s Push Pull Legs',                           'Nippard''s PPL'),
+      ('Katie Sonier''s 6-Week Glute Building Program',            'Katie''s Glutes')
     ON CONFLICT (full_name) DO UPDATE SET short_name = EXCLUDED.short_name
   `);
 

@@ -1572,6 +1572,7 @@ export default function Workouts() {
     'mentzer',          // Mike Mentzer Workout
     'summer shred',     // Summer Shred
     'gallant',          // Robin Gallant's Intensive Max Glute Hypertrophy
+    'katie sonier',     // Katie Sonier's 6-Week Glute Building Program
   ];
   const browseLibraryRank = (p) => {
     const n = (p.name || '').toLowerCase();

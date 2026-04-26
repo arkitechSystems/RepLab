@@ -97,11 +97,17 @@ function PRsSection() {
     return Object.keys(grouped[g]).some((ex) => ex.toLowerCase().includes(q));
   });
 
+  const NIKE_PANEL = {
+    background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+    borderRadius: '2px',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+  };
+
   return (
     <div className="space-y-2">
       {/* Search bar */}
       {hasAny && (
-        <div className="relative mb-2">
+        <div className="relative mb-3">
           <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
           </svg>
@@ -117,7 +123,7 @@ function PRsSection() {
             }}
             onFocus={() => { if (!isPremium) navigate('/upgrade'); }}
             placeholder="Search exercises..."
-            className="w-full glass-input rounded-xl pl-10 pr-20 py-2.5 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none"
+            className="w-full glass-input rounded-[2px] pl-10 pr-20 py-3 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none"
             readOnly={!isPremium}
           />
           {isPremium && prSearch ? (
@@ -131,24 +137,38 @@ function PRsSection() {
               </svg>
             </button>
           ) : (
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-yellow-400 bg-yellow-500/15 px-1.5 py-0.5 rounded-full">PRO</span>
+            <span
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold uppercase"
+              style={{
+                background: 'rgba(234,179,8,0.18)',
+                color: '#facc15',
+                border: '1px solid rgba(234,179,8,0.4)',
+                borderRadius: '2px',
+                padding: '2px 6px',
+                letterSpacing: '0.2em',
+              }}
+            >Pro</span>
           )}
         </div>
       )}
 
       {!hasAny && (
-        <div className="glass-card rounded-xl p-6 flex flex-col items-center text-center">
-          <div className="w-14 h-14 rounded-2xl bg-yellow-500/10 flex items-center justify-center mb-3">
-            <svg className="w-7 h-7 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <div className="p-6 flex flex-col items-center text-center" style={NIKE_PANEL}>
+          <div className="w-14 h-14 flex items-center justify-center mb-3" style={{
+            background: 'linear-gradient(135deg, rgba(245,158,11,0.25) 0%, rgba(245,158,11,0.10) 100%)',
+            borderRadius: '2px',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), 0 4px 12px rgba(245,158,11,0.20)',
+          }}>
+            <svg className="w-7 h-7 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-4.5A3.375 3.375 0 0012.75 10.5h-1.5A3.375 3.375 0 007.5 14.25v4.5m9-9V6a3 3 0 00-3-3h-3a3 3 0 00-3 3v3.75" />
             </svg>
           </div>
-          <h3 className="text-white font-bold text-base mb-1">No Personal Records Yet</h3>
+          <h3 className="text-[14px] font-bold uppercase text-white tracking-wider mb-1.5" style={{ letterSpacing: '0.15em' }}>No Personal Records Yet</h3>
           <p className="text-wf-gray-400 text-sm">Complete workouts to start tracking your personal bests for each exercise.</p>
         </div>
       )}
       {q && filteredGroups.length === 0 && (
-        <div className="glass-card rounded-xl p-6 text-center">
+        <div className="p-6 text-center" style={NIKE_PANEL}>
           <p className="text-wf-gray-400 text-sm">No exercises matching "{prSearch}"</p>
         </div>
       )}
@@ -163,24 +183,28 @@ function PRsSection() {
         const totalPRs = exerciseNames.reduce((s, ex) => s + exercises[ex].length, 0);
 
         return (
-          <div key={group} className="glass-card rounded-xl overflow-hidden">
+          <div key={group} className="overflow-hidden" style={{ ...NIKE_PANEL, borderLeft: '3px solid #f59e0b' }}>
             <button
               onClick={() => { setExpandedGroup(isExpanded ? null : group); setExpandedExercise(null); }}
-              className="w-full px-4 py-3.5 flex items-center justify-between active:bg-white/5 transition-colors"
+              className="w-full px-5 py-4 flex items-center justify-between active:bg-white/5 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-wf-red/15 flex items-center justify-center shrink-0">
-                  <svg className="w-5 h-5 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M18.75 4.236c.982.143 1.954.317 2.916.52A6.003 6.003 0 0016.27 9.728M18.75 4.236V4.5c0 2.108-.966 3.99-2.48 5.228m0 0a6.66 6.66 0 01-2.077 1.07m-2.386 0a6.66 6.66 0 01-2.077-1.07" />
+                <div className="w-10 h-10 flex items-center justify-center shrink-0" style={{
+                  background: 'linear-gradient(135deg, rgba(245,158,11,0.25) 0%, rgba(245,158,11,0.10) 100%)',
+                  borderRadius: '2px',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), 0 4px 12px rgba(245,158,11,0.20)',
+                }}>
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="#fbbf24">
+                    <path fillRule="evenodd" d="M5.166 2.621v.858c-1.035.148-2.059.33-3.071.543a.75.75 0 00-.584.859 6.753 6.753 0 006.138 5.6 6.73 6.73 0 002.743 1.346A6.707 6.707 0 019.279 15H8.54c-1.036 0-1.875.84-1.875 1.875V19.5h-.75a.75.75 0 000 1.5h12.75a.75.75 0 000-1.5h-.75v-2.625c0-1.036-.84-1.875-1.875-1.875h-.739a6.707 6.707 0 01-1.112-3.173 6.73 6.73 0 002.743-1.347 6.753 6.753 0 006.139-5.6.75.75 0 00-.585-.858 47.077 47.077 0 00-3.07-.543V2.62a.75.75 0 00-.658-.744 49.22 49.22 0 00-6.093-.377c-2.063 0-4.096.128-6.093.377a.75.75 0 00-.657.744z" clipRule="evenodd" />
                   </svg>
                 </div>
                 <div className="text-left">
-                  <h4 className="text-sm font-semibold text-white">{group}</h4>
-                  <p className="text-xs text-wf-gray-500">{exerciseNames.length} exercise{exerciseNames.length !== 1 ? 's' : ''} &middot; {totalPRs} PR{totalPRs !== 1 ? 's' : ''}</p>
+                  <h4 className="text-[13px] font-bold uppercase text-white tracking-wider" style={{ letterSpacing: '0.1em' }}>{group}</h4>
+                  <p className="text-[11px] text-white/40 font-light mt-0.5">{exerciseNames.length} exercise{exerciseNames.length !== 1 ? 's' : ''} · {totalPRs} PR{totalPRs !== 1 ? 's' : ''}</p>
                 </div>
               </div>
               <svg
-                className={`w-5 h-5 text-wf-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                className={`w-5 h-5 text-white/40 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
                 fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
               >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
@@ -387,20 +411,26 @@ function HIITTimer({ onClose }) {
   const overallPct = Math.round((completedSets / totalSets) * 100);
 
   if (setup) {
+    const NIKE_PANEL = {
+      background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+      borderRadius: '2px',
+      boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+    };
+    const stepperBtn = "w-11 h-11 flex items-center justify-center text-white text-lg font-bold active:scale-90 transition-transform";
+    const stepperBtnStyle = { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '2px' };
     return (
       <div className="fixed inset-x-0 top-[40px] bottom-0 z-50 bg-black flex flex-col safe-bottom">
         {/* Header */}
         <div className="px-4 pt-3 pb-2 flex items-center justify-between">
-          <button onClick={onClose} className="text-wf-red text-sm font-medium flex items-center gap-1 active:opacity-70">
+          <button onClick={onClose} className="inline-flex items-center gap-1 text-sm text-wf-gray-400 active:text-white transition-colors">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
             </svg>
             Back
           </button>
-          <h2 className="text-lg font-black text-white">HIIT Timer</h2>
           <button
             onClick={() => setSoundEnabled(!soundEnabled)}
-            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all active:scale-90 ${soundEnabled ? 'bg-white/10 text-white' : 'bg-white/5 text-wf-gray-600'}`}
+            className={`w-10 h-10 rounded-[2px] flex items-center justify-center transition-all active:scale-90 ${soundEnabled ? 'bg-white/10 text-white' : 'bg-white/5 text-wf-gray-600'}`}
             title={soundEnabled ? 'Sound on' : 'Sound off'}
           >
             {soundEnabled ? (
@@ -415,59 +445,77 @@ function HIITTimer({ onClose }) {
           </button>
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center px-6">
-          {/* Timer icon */}
-          <div className="w-20 h-20 rounded-full bg-green-500/10 flex items-center justify-center mb-8">
-            <svg className="w-10 h-10 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-
-          {/* Settings */}
-          <div className="w-full max-w-sm space-y-6">
-            <div className="glass-card rounded-xl p-5 space-y-5">
-              <div className="flex items-center justify-between">
-                <span className="text-white font-medium">Sets</span>
-                <div className="flex items-center gap-3">
-                  <button onClick={() => setSets((s) => Math.max(1, s - 1))} className="w-12 h-12 rounded-full glass-card flex items-center justify-center text-white text-lg font-bold active:scale-90">−</button>
-                  <span className="text-white text-xl font-black w-8 text-center tabular-nums">{sets}</span>
-                  <button onClick={() => setSets((s) => s + 1)} className="w-12 h-12 rounded-full glass-card flex items-center justify-center text-white text-lg font-bold active:scale-90">+</button>
-                </div>
-              </div>
-
-              <div className="border-t border-white/10" />
-
-              <div className="flex items-center justify-between">
-                <span className="text-white font-medium">Work Time</span>
-                <div className="flex items-center gap-3">
-                  <button onClick={() => setWorkTime((t) => Math.max(5, t - 5))} className="w-12 h-12 rounded-full glass-card flex items-center justify-center text-white text-lg font-bold active:scale-90">−</button>
-                  <span className="text-white text-xl font-black w-12 text-center tabular-nums">{workTime}s</span>
-                  <button onClick={() => setWorkTime((t) => t + 5)} className="w-12 h-12 rounded-full glass-card flex items-center justify-center text-white text-lg font-bold active:scale-90">+</button>
-                </div>
-              </div>
-
-              <div className="border-t border-white/10" />
-
-              <div className="flex items-center justify-between">
-                <span className="text-white font-medium">Rest Time</span>
-                <div className="flex items-center gap-3">
-                  <button onClick={() => setRestTime((t) => Math.max(5, t - 5))} className="w-12 h-12 rounded-full glass-card flex items-center justify-center text-white text-lg font-bold active:scale-90">−</button>
-                  <span className="text-white text-xl font-black w-12 text-center tabular-nums">{restTime}s</span>
-                  <button onClick={() => setRestTime((t) => t + 5)} className="w-12 h-12 rounded-full glass-card flex items-center justify-center text-white text-lg font-bold active:scale-90">+</button>
-                </div>
-              </div>
-            </div>
-
-            {/* Total time preview */}
-            <div className="text-center text-wf-gray-400 text-sm">
-              Total: <span className="text-white font-semibold">{formatTime(totalTime)}</span>
+        <div className="flex-1 overflow-y-auto px-4 pt-1 pb-6">
+          {/* Nike intro panel */}
+          <div className="relative overflow-hidden mb-4 fade-slide-up" style={NIKE_PANEL}>
+            <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #22c55e, rgba(34,197,94,0.25), transparent)' }} />
+            <div className="absolute -top-10 -right-10 w-[280px] h-[280px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(34,197,94,0.10) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+            <div className="relative p-6">
+              <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(34,197,94,0.85)', letterSpacing: '0.4em' }}>
+                Interval Timer
+              </p>
+              <h1 className="text-[28px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95', letterSpacing: '-0.02em' }}>
+                HIIT TIMER
+              </h1>
+              <p className="text-[12px] text-white/40 font-light mt-2 leading-relaxed">
+                Set your sets, work seconds, and rest seconds. Tap start when you're ready.
+              </p>
             </div>
           </div>
 
-          {/* Start button */}
+          {/* Settings panel */}
+          <div className="p-5 mb-4 fade-slide-up" style={{ ...NIKE_PANEL, animationDelay: '60ms' }}>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] uppercase font-bold" style={{ color: 'rgba(255,255,255,0.6)', letterSpacing: '0.2em' }}>Sets</span>
+                <div className="flex items-center gap-3">
+                  <button onClick={() => setSets((s) => Math.max(1, s - 1))} className={stepperBtn} style={stepperBtnStyle}>−</button>
+                  <span className="text-white text-2xl font-black w-10 text-center tabular-nums">{sets}</span>
+                  <button onClick={() => setSets((s) => s + 1)} className={stepperBtn} style={stepperBtnStyle}>+</button>
+                </div>
+              </div>
+
+              <div className="border-t border-white/5" />
+
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] uppercase font-bold" style={{ color: 'rgba(255,255,255,0.6)', letterSpacing: '0.2em' }}>Work Time</span>
+                <div className="flex items-center gap-3">
+                  <button onClick={() => setWorkTime((t) => Math.max(5, t - 5))} className={stepperBtn} style={stepperBtnStyle}>−</button>
+                  <span className="text-white text-2xl font-black w-14 text-center tabular-nums">{workTime}<span className="text-base text-white/40 ml-0.5">s</span></span>
+                  <button onClick={() => setWorkTime((t) => t + 5)} className={stepperBtn} style={stepperBtnStyle}>+</button>
+                </div>
+              </div>
+
+              <div className="border-t border-white/5" />
+
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] uppercase font-bold" style={{ color: 'rgba(255,255,255,0.6)', letterSpacing: '0.2em' }}>Rest Time</span>
+                <div className="flex items-center gap-3">
+                  <button onClick={() => setRestTime((t) => Math.max(5, t - 5))} className={stepperBtn} style={stepperBtnStyle}>−</button>
+                  <span className="text-white text-2xl font-black w-14 text-center tabular-nums">{restTime}<span className="text-base text-white/40 ml-0.5">s</span></span>
+                  <button onClick={() => setRestTime((t) => t + 5)} className={stepperBtn} style={stepperBtnStyle}>+</button>
+                </div>
+              </div>
+
+              <div className="border-t border-white/5" />
+
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] uppercase font-bold" style={{ color: 'rgba(255,255,255,0.6)', letterSpacing: '0.2em' }}>Total</span>
+                <span className="text-white text-2xl font-black tabular-nums">{formatTime(totalTime)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Start button — Nike CTA pattern */}
           <button
             onClick={startTimer}
-            className="mt-8 w-full max-w-sm btn-gradient text-white font-bold py-4 rounded-xl text-lg active:scale-[0.98] transition-all"
+            className="w-full active:scale-[0.98] text-white font-bold uppercase py-4 text-sm transition-transform"
+            style={{
+              letterSpacing: '0.2em',
+              borderRadius: '2px',
+              background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+              boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+            }}
           >
             Start
           </button>
@@ -667,25 +715,51 @@ function OneRepMaxEstimator({ onClose }) {
     ),
   })).filter((cat) => cat.exercises.length > 0);
 
+  const NIKE_PANEL = {
+    background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+    borderRadius: '2px',
+    boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+  };
+  const labelClass = 'text-[10px] uppercase font-bold mb-1.5 block';
+  const labelStyle = { color: 'rgba(255,255,255,0.5)', letterSpacing: '0.2em' };
+  const inputClass = 'w-full glass-input rounded-[2px] px-4 py-3 text-white text-base font-semibold focus:outline-none placeholder:text-wf-gray-600 transition-all';
+
   return (
     <div className="fixed inset-x-0 top-[40px] bottom-0 z-50 bg-black flex flex-col safe-bottom">
       <div className="px-4 pt-3 pb-2 flex items-center justify-between">
-        <button onClick={onClose} className="text-wf-red text-sm font-medium flex items-center gap-1 active:opacity-70">
+        <button onClick={onClose} className="inline-flex items-center gap-1 text-sm text-wf-gray-400 active:text-white transition-colors">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>
           Back
         </button>
-        <h2 className="text-lg font-black text-white">1 Rep Max Estimator</h2>
         <div className="w-12" />
       </div>
-      <div className="flex-1 overflow-y-auto px-4 pb-6 pt-2">
+
+      <div className="flex-1 overflow-y-auto px-4 pb-6 pt-1">
+        {/* Nike intro panel — eyebrow + heavy display title. */}
+        <div className="relative overflow-hidden mb-4 fade-slide-up" style={NIKE_PANEL}>
+          <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #06b6d4, rgba(6,182,212,0.25), transparent)' }} />
+          <div className="absolute -top-10 -right-10 w-[280px] h-[280px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(6,182,212,0.10) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+          <div className="relative p-6">
+            <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(6,182,212,0.85)', letterSpacing: '0.4em' }}>
+              Calculator
+            </p>
+            <h1 className="text-[28px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95', letterSpacing: '-0.02em' }}>
+              1 REP MAX ESTIMATOR
+            </h1>
+            <p className="text-[12px] text-white/40 font-light mt-2 leading-relaxed">
+              Average of five peer-reviewed 1RM formulas — pick a lift, plug in your last set, and get training-zone breakdowns.
+            </p>
+          </div>
+        </div>
+
         {/* Exercise selector */}
-        <div className="glass-card rounded-xl p-5 mb-4 fade-slide-up">
-          <label className="text-xs text-wf-gray-400 uppercase tracking-wider mb-2 block">Select Exercise</label>
+        <div className="p-5 mb-4 fade-slide-up" style={NIKE_PANEL}>
+          <label className={labelClass} style={labelStyle}>Select Exercise</label>
           <button
             onClick={() => setShowExerciseList(!showExerciseList)}
-            className="w-full glass-input rounded-xl px-4 py-3 text-left flex items-center justify-between focus:outline-none"
+            className="w-full glass-input rounded-[2px] px-4 py-3 text-left flex items-center justify-between focus:outline-none"
           >
             <span className={selectedExercise ? 'text-white font-semibold' : 'text-wf-gray-600'}>
               {selectedExercise || 'Choose an exercise...'}
@@ -697,15 +771,14 @@ function OneRepMaxEstimator({ onClose }) {
 
           {/* Exercise dropdown */}
           {showExerciseList && (
-            <div className="mt-3 rounded-xl border border-white/10 bg-wf-gray-900 overflow-hidden">
-              {/* Search */}
+            <div className="mt-3 overflow-hidden" style={{ background: '#0a0a0a', borderRadius: '2px', border: '1px solid rgba(255,255,255,0.08)' }}>
               <div className="p-3 border-b border-white/10">
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search exercises..."
-                  className="w-full bg-white/5 rounded-lg px-3 py-2 text-sm text-white placeholder:text-wf-gray-600 focus:outline-none"
+                  className="w-full bg-white/5 rounded-[2px] px-3 py-2 text-sm text-white placeholder:text-wf-gray-600 focus:outline-none"
                   autoFocus
                 />
               </div>
@@ -713,7 +786,7 @@ function OneRepMaxEstimator({ onClose }) {
                 {filteredCategories.map((cat) => (
                   <div key={cat.category}>
                     <div className="px-3 py-2 bg-white/[0.03]">
-                      <span className="text-[10px] uppercase tracking-widest text-wf-gray-500 font-semibold">{cat.category}</span>
+                      <span className="text-[10px] uppercase font-bold text-white/40" style={{ letterSpacing: '0.25em' }}>{cat.category}</span>
                     </div>
                     {cat.exercises.map((ex) => (
                       <button
@@ -740,32 +813,30 @@ function OneRepMaxEstimator({ onClose }) {
           )}
         </div>
 
-        {/* Weight & Reps inputs — only show after exercise selected */}
+        {/* Weight & Reps inputs */}
         {selectedExercise && (
-          <div className="glass-card rounded-xl p-5 mb-4 fade-slide-up">
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs text-wf-gray-400 uppercase tracking-wider mb-1.5 block">Weight Lifted (lbs)</label>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  value={weight}
-                  onChange={(e) => setWeight(e.target.value)}
-                  placeholder="e.g. 225"
-                  className="w-full glass-input rounded-xl px-4 py-3 text-white text-lg font-semibold focus:outline-none placeholder:text-wf-gray-600"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-wf-gray-400 uppercase tracking-wider mb-1.5 block">Reps Performed</label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  value={reps}
-                  onChange={(e) => setReps(e.target.value)}
-                  placeholder="e.g. 5"
-                  className="w-full glass-input rounded-xl px-4 py-3 text-white text-lg font-semibold focus:outline-none placeholder:text-wf-gray-600"
-                />
-              </div>
+          <div className="p-5 mb-4 fade-slide-up space-y-4" style={NIKE_PANEL}>
+            <div>
+              <label className={labelClass} style={labelStyle}>Weight Lifted (lbs)</label>
+              <input
+                type="number"
+                inputMode="decimal"
+                value={weight}
+                onChange={(e) => setWeight(e.target.value)}
+                placeholder="e.g. 225"
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className={labelClass} style={labelStyle}>Reps Performed</label>
+              <input
+                type="number"
+                inputMode="numeric"
+                value={reps}
+                onChange={(e) => setReps(e.target.value)}
+                placeholder="e.g. 5"
+                className={inputClass}
+              />
             </div>
           </div>
         )}
@@ -773,41 +844,57 @@ function OneRepMaxEstimator({ onClose }) {
         {/* Result */}
         {valid && (
           <>
-            <div className="glass-card rounded-xl p-5 mb-4 fade-slide-up border border-wf-red/20 bg-wf-red/5 text-center">
-              <p className="text-xs text-wf-gray-400 uppercase tracking-wider mb-1">Estimated 1 Rep Max</p>
-              <p className="text-4xl font-black text-white">{oneRM} <span className="text-lg text-wf-gray-400">lbs</span></p>
-              <p className="text-sm text-white/80 font-semibold mt-1">{selectedExercise}</p>
-              <p className="text-xs text-wf-gray-500 mt-1">Average of Epley, Brzycki, Lombardi, Mayhew & Wathan formulas</p>
+            <div className="relative overflow-hidden mb-4 fade-slide-up" style={NIKE_PANEL}>
+              <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent)' }} />
+              <div className="absolute -top-10 -right-10 w-[280px] h-[280px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.10) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+              <div className="relative p-6 text-center">
+                <p className="text-[10px] uppercase font-bold mb-2" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.3em' }}>
+                  Estimated 1 Rep Max
+                </p>
+                <p className="text-[64px] font-black text-white tabular-nums" style={{ fontFamily: 'system-ui', lineHeight: '0.95', letterSpacing: '-0.03em' }}>
+                  {oneRM}<span className="text-[24px] font-bold text-white/40 ml-2">LBS</span>
+                </p>
+                <p className="text-[11px] uppercase font-bold text-white/60 mt-2" style={{ letterSpacing: '0.2em' }}>
+                  {selectedExercise}
+                </p>
+                <p className="text-[10px] text-wf-gray-500 mt-3 leading-relaxed">
+                  Average of Epley, Brzycki, Lombardi, Mayhew & Wathan formulas
+                </p>
+              </div>
             </div>
 
             {/* Percentage breakdown */}
-            <div className="glass-card rounded-xl overflow-hidden fade-slide-up" style={{ animationDelay: '60ms' }}>
-              <div className="px-4 py-3 border-b border-white/10">
-                <h4 className="text-sm font-semibold text-white">Percentage Breakdown</h4>
-                <p className="text-xs text-wf-gray-500 mt-0.5">Training zones for {selectedExercise}</p>
+            <div className="overflow-hidden fade-slide-up" style={{ ...NIKE_PANEL, animationDelay: '60ms' }}>
+              <div className="px-5 py-4 border-b border-white/5">
+                <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.3em' }}>
+                  Training Zones
+                </p>
+                <h4 className="text-[18px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95', letterSpacing: '-0.02em' }}>
+                  PERCENTAGE BREAKDOWN
+                </h4>
               </div>
               <div className="px-4 py-2">
                 <div className="flex items-center gap-2 py-1.5 mb-1">
-                  <span className="w-14 text-[10px] uppercase tracking-widest text-wf-gray-600">%</span>
-                  <span className="flex-1 text-[10px] uppercase tracking-widest text-wf-gray-600 text-center">Weight</span>
-                  <span className="w-20 text-[10px] uppercase tracking-widest text-wf-gray-600 text-right">Rep Range</span>
+                  <span className="w-14 text-[9px] uppercase font-bold text-white/35" style={{ letterSpacing: '0.25em' }}>%</span>
+                  <span className="flex-1 text-[9px] uppercase font-bold text-white/35 text-center" style={{ letterSpacing: '0.25em' }}>Weight</span>
+                  <span className="w-20 text-[9px] uppercase font-bold text-white/35 text-right" style={{ letterSpacing: '0.25em' }}>Rep Range</span>
                 </div>
                 {percentages.map((pct) => {
                   const pctWeight = Math.round(oneRM * pct / 100);
                   const displayReps = pct === 100 ? '1' : pct >= 95 ? '2–3' : pct >= 90 ? '3–5' : pct >= 85 ? '5–7' : pct >= 80 ? '7–10' : pct >= 75 ? '10–12' : pct >= 70 ? '12–15' : pct >= 65 ? '15–18' : '18–22';
                   const zone = pct >= 90 ? 'Strength' : pct >= 75 ? 'Hypertrophy' : 'Endurance';
-                  const zoneColor = pct >= 90 ? 'text-red-400' : pct >= 75 ? 'text-blue-400' : 'text-green-400';
+                  const zoneColor = pct >= 90 ? '#ef4444' : pct >= 75 ? '#3b82f6' : '#22c55e';
                   return (
                     <div
                       key={pct}
                       className={`flex items-center gap-2 py-2.5 border-t border-white/5 ${pct === 100 ? 'bg-wf-red/5' : ''}`}
                     >
                       <div className="w-14">
-                        <span className={`text-sm font-mono-stat ${pct === 100 ? 'text-wf-red font-bold' : 'text-wf-gray-400'}`}>{pct}%</span>
-                        <span className={`block text-[9px] ${zoneColor}`}>{zone}</span>
+                        <span className={`text-sm font-mono-stat ${pct === 100 ? 'text-wf-red font-bold' : 'text-white/60'}`}>{pct}%</span>
+                        <span className="block text-[9px] uppercase font-bold mt-0.5" style={{ color: zoneColor, letterSpacing: '0.15em' }}>{zone}</span>
                       </div>
-                      <span className={`flex-1 text-center text-sm font-mono-stat ${pct === 100 ? 'text-white font-bold' : 'text-wf-gray-400'}`}>{pctWeight} lbs</span>
-                      <span className="w-20 text-sm font-mono-stat text-wf-gray-500 text-right">{displayReps}</span>
+                      <span className={`flex-1 text-center text-base font-mono-stat tabular-nums ${pct === 100 ? 'text-white font-bold' : 'text-white/55'}`}>{pctWeight} <span className="text-[10px] text-white/30">LBS</span></span>
+                      <span className="w-20 text-sm font-mono-stat text-white/40 text-right">{displayReps}</span>
                     </div>
                   );
                 })}
@@ -817,6 +904,81 @@ function OneRepMaxEstimator({ onClose }) {
         )}
       </div>
     </div>
+  );
+}
+
+// Single Nike-style row used by every utility entry on the page. Renders as
+// <button>, <a>, or locked <div> based on the props. Color drives the left
+// accent stripe, the icon block tint, and the soft glow shadow on the icon
+// block — same color identity each card had in the old glass-card design,
+// just expressed in the Nike pattern (2px corners, square icon block,
+// uppercase letterspaced title).
+function UtilityRow({ color, icon, title, subtitle, onClick, href, locked = false, animationDelay = 0 }) {
+  const cardStyle = {
+    background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+    borderRadius: '2px',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+    borderLeft: `3px solid ${color}`,
+    animationDelay: `${animationDelay}ms`,
+  };
+  const iconBlock = {
+    background: `linear-gradient(135deg, ${color}25 0%, ${color}10 100%)`,
+    borderRadius: '2px',
+    boxShadow: `inset 0 1px 0 rgba(255,255,255,0.06), 0 4px 12px ${color}20`,
+  };
+  const inner = (
+    <div className="p-5 flex items-center gap-4">
+      <div className="w-12 h-12 flex items-center justify-center shrink-0" style={iconBlock}>
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <h3 className="text-[13px] font-bold uppercase text-white tracking-wider" style={{ letterSpacing: '0.1em' }}>
+          {title}
+        </h3>
+        <p className="text-[11px] text-white/40 font-light mt-0.5 leading-relaxed">
+          {subtitle}
+        </p>
+      </div>
+      {locked ? (
+        <span
+          className="text-[10px] font-bold uppercase tracking-wider shrink-0"
+          style={{
+            background: 'rgba(234,179,8,0.18)',
+            color: '#facc15',
+            border: '1px solid rgba(234,179,8,0.4)',
+            borderRadius: '2px',
+            padding: '2px 8px',
+            letterSpacing: '0.2em',
+          }}
+        >
+          Pro
+        </span>
+      ) : (
+        <svg className="w-4 h-4 text-white/30 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+        </svg>
+      )}
+    </div>
+  );
+
+  if (locked) {
+    return (
+      <div className="w-full overflow-hidden fade-slide-up text-left opacity-60" style={cardStyle}>
+        {inner}
+      </div>
+    );
+  }
+  if (href) {
+    return (
+      <a href={href} className="w-full overflow-hidden fade-slide-up text-left block active:scale-[0.98] transition-transform" style={cardStyle}>
+        {inner}
+      </a>
+    );
+  }
+  return (
+    <button onClick={onClick} className="w-full overflow-hidden fade-slide-up text-left active:scale-[0.98] transition-transform" style={cardStyle}>
+      {inner}
+    </button>
   );
 }
 
@@ -832,205 +994,139 @@ export default function Utilities() {
     <div>
       <StickyHeader title="UTILITIES" titleStyle={{ fontSize: '26.4px' }} />
 
-      <div className="px-4 space-y-4 pb-4">
-        {/* Personal Records card */}
-        <button
-          onClick={() => setShowPRs(true)}
-          className="w-full glass-card rounded-xl p-5 active:scale-[0.98] transition-transform fade-slide-up text-left"
+      <div className="px-4 pb-4">
+        {/* Nike-style intro panel — eyebrow + heavy display title with the
+            same red accent stripe + ambient spotlight pattern used on the
+            Profile and Workouts pages. */}
+        <div
+          className="relative overflow-hidden mb-4 fade-slide-up"
+          style={{
+            background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+            borderRadius: '2px',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+          }}
         >
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-amber-500/15 flex items-center justify-center shrink-0">
-              <svg className="w-6 h-6 text-amber-400" viewBox="0 0 24 24" fill="currentColor">
+          <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent)' }} />
+          <div className="absolute -top-10 -right-10 w-[280px] h-[280px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.10) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+          <div className="relative p-6">
+            <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.4em' }}>
+              Toolkit
+            </p>
+            <h1 className="text-[28px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95', letterSpacing: '-0.02em' }}>
+              UTILITIES
+            </h1>
+            <p className="text-[12px] text-white/40 font-light mt-2 leading-relaxed">
+              Calculators, timers, and quick references that live alongside your workouts.
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-2.5">
+          <UtilityRow
+            color="#f59e0b"
+            onClick={() => setShowPRs(true)}
+            animationDelay={20}
+            title="Personal Records"
+            subtitle="View your PRs by muscle group"
+            icon={(
+              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="#fbbf24">
                 <path fillRule="evenodd" d="M5.166 2.621v.858c-1.035.148-2.059.33-3.071.543a.75.75 0 00-.584.859 6.753 6.753 0 006.138 5.6 6.73 6.73 0 002.743 1.346A6.707 6.707 0 019.279 15H8.54c-1.036 0-1.875.84-1.875 1.875V19.5h-.75a.75.75 0 000 1.5h12.75a.75.75 0 000-1.5h-.75v-2.625c0-1.036-.84-1.875-1.875-1.875h-.739a6.707 6.707 0 01-1.112-3.173 6.73 6.73 0 002.743-1.347 6.753 6.753 0 006.139-5.6.75.75 0 00-.585-.858 47.077 47.077 0 00-3.07-.543V2.62a.75.75 0 00-.658-.744 49.22 49.22 0 00-6.093-.377c-2.063 0-4.096.128-6.093.377a.75.75 0 00-.657.744z" clipRule="evenodd" />
               </svg>
-            </div>
-            <div className="flex-1">
-              <h3 className="text-base font-semibold text-white">Personal Records</h3>
-              <p className="text-wf-gray-400 text-sm mt-0.5">View your PRs by muscle group</p>
-            </div>
-            <svg className="w-5 h-5 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-            </svg>
-          </div>
-        </button>
+            )}
+          />
 
-        {/* HIIT Timer card */}
-        <button
-          onClick={() => setShowHIIT(true)}
-          className="w-full glass-card rounded-xl p-5 active:scale-[0.98] transition-transform fade-slide-up text-left"
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-green-500/15 flex items-center justify-center shrink-0">
-              <svg className="w-6 h-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <UtilityRow
+            color="#22c55e"
+            onClick={() => setShowHIIT(true)}
+            animationDelay={60}
+            title="HIIT Timer"
+            subtitle="Interval timer for high-intensity workouts"
+            icon={(
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="#4ade80" strokeWidth={1.7}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-            </div>
-            <div className="flex-1">
-              <h3 className="text-base font-semibold text-white">HIIT Timer</h3>
-              <p className="text-wf-gray-400 text-sm mt-0.5">Interval timer for high-intensity workouts</p>
-            </div>
-            <svg className="w-5 h-5 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-            </svg>
-          </div>
-        </button>
+            )}
+          />
 
-        {/* Exercise Library card */}
-        <button
-          onClick={() => navigate('/exercises')}
-          className="w-full glass-card rounded-xl p-5 active:scale-[0.98] transition-transform fade-slide-up text-left"
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-blue-500/15 flex items-center justify-center shrink-0">
-              <svg className="w-6 h-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <UtilityRow
+            color="#3b82f6"
+            onClick={() => navigate('/exercises')}
+            animationDelay={100}
+            title="Exercise Library"
+            subtitle="Browse exercises and add custom ones"
+            icon={(
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="#60a5fa" strokeWidth={1.7}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
               </svg>
-            </div>
-            <div className="flex-1">
-              <h3 className="text-base font-semibold text-white">Exercise Library</h3>
-              <p className="text-wf-gray-400 text-sm mt-0.5">Browse exercises and add custom ones</p>
-            </div>
-            <svg className="w-5 h-5 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-            </svg>
-          </div>
-        </button>
+            )}
+          />
 
-        {/* 1 Rep Max Estimator card */}
-        <button
-          onClick={() => setShow1RM(true)}
-          className="w-full glass-card rounded-xl p-5 active:scale-[0.98] transition-transform fade-slide-up text-left"
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-wf-blue/15 flex items-center justify-center shrink-0">
-              <svg className="w-6 h-6 text-wf-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <UtilityRow
+            color="#06b6d4"
+            onClick={() => setShow1RM(true)}
+            animationDelay={140}
+            title="1 Rep Max Estimator"
+            subtitle="Estimate your max from any rep range"
+            icon={(
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="#22d3ee" strokeWidth={1.7}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 15.75V18m-7.5-6.75h.008v.008H8.25v-.008zm0 2.25h.008v.008H8.25V13.5zm0 2.25h.008v.008H8.25v-.008zm0 2.25h.008v.008H8.25V18zm2.498-6.75h.007v.008h-.007v-.008zm0 2.25h.007v.008h-.007V13.5zm0 2.25h.007v.008h-.007v-.008zm0 2.25h.007v.008h-.007V18zm2.504-6.75h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V13.5zm0 2.25h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V18zm2.498-6.75h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V13.5zM8.25 6h7.5v2.25h-7.5V6zM12 2.25c-1.892 0-3.758.11-5.593.322C5.307 2.7 4.5 3.65 4.5 4.757V19.5a2.25 2.25 0 002.25 2.25h10.5a2.25 2.25 0 002.25-2.25V4.757c0-1.108-.806-2.057-1.907-2.185A48.507 48.507 0 0012 2.25z" />
               </svg>
-            </div>
-            <div className="flex-1">
-              <h3 className="text-base font-semibold text-white">1 Rep Max Estimator</h3>
-              <p className="text-wf-gray-400 text-sm mt-0.5">Estimate your max from any rep range</p>
-            </div>
-            <svg className="w-5 h-5 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-            </svg>
-          </div>
-        </button>
+            )}
+          />
 
-        {/* BMR / Calorie Calculator card */}
-        <div className="w-full glass-card rounded-xl p-5 fade-slide-up text-left opacity-60">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-orange-500/15 flex items-center justify-center shrink-0">
-              <svg className="w-6 h-6 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 18a3.75 3.75 0 00.495-7.467 5.99 5.99 0 00-1.925 3.546 5.974 5.974 0 01-2.133-1.001A3.75 3.75 0 0012 18z" />
-              </svg>
-            </div>
-            <div className="flex-1">
-              <h3 className="text-base font-semibold text-white">BMR / Calorie Calculator</h3>
-              <p className="text-wf-gray-400 text-sm mt-0.5">Estimate your daily calorie needs based on your stats and activity level</p>
-            </div>
-            <span className="px-2 py-0.5 rounded-full bg-yellow-500/20 border border-yellow-500/40 text-[10px] font-bold text-yellow-400 uppercase tracking-wider shrink-0">Pro</span>
-          </div>
-        </div>
-
-        {/* Macro Calculator card */}
-        <div className="w-full glass-card rounded-xl p-5 fade-slide-up text-left opacity-60">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-purple-500/15 flex items-center justify-center shrink-0">
-              <svg className="w-6 h-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" />
-              </svg>
-            </div>
-            <div className="flex-1">
-              <h3 className="text-base font-semibold text-white">Macro Calculator</h3>
-              <p className="text-wf-gray-400 text-sm mt-0.5">Break down your calories into protein, carbs, and fat for any goal</p>
-            </div>
-            <span className="px-2 py-0.5 rounded-full bg-yellow-500/20 border border-yellow-500/40 text-[10px] font-bold text-yellow-400 uppercase tracking-wider shrink-0">Pro</span>
-          </div>
-        </div>
-
-        {/* Body Fat Calculator card */}
-        <div className="w-full glass-card rounded-xl p-5 fade-slide-up text-left opacity-60">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-cyan-500/15 flex items-center justify-center shrink-0">
-              <svg className="w-6 h-6 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-              </svg>
-            </div>
-            <div className="flex-1">
-              <h3 className="text-base font-semibold text-white">Body Fat Calculator</h3>
-              <p className="text-wf-gray-400 text-sm mt-0.5">Estimate your body fat percentage using the U.S. Navy method</p>
-            </div>
-            <span className="px-2 py-0.5 rounded-full bg-yellow-500/20 border border-yellow-500/40 text-[10px] font-bold text-yellow-400 uppercase tracking-wider shrink-0">Pro</span>
-          </div>
-        </div>
-
-        {/* Plate Calculator card */}
-        <a href="/platecalc/" className="w-full glass-card rounded-xl p-5 fade-slide-up text-left block active:scale-[0.98] transition-transform">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-rose-500/15 flex items-center justify-center shrink-0">
-              <svg className="w-6 h-6 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <UtilityRow
+            color="#f43f5e"
+            href="/platecalc/"
+            animationDelay={180}
+            title="Plate Calculator"
+            subtitle="See which plates to load on each side of the bar"
+            icon={(
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="#fb7185" strokeWidth={1.7}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v17.25m0 0c-1.472 0-2.882.265-4.185.75M12 20.25c1.472 0 2.882.265 4.185.75M18.75 4.97A48.416 48.416 0 0012 4.5c-2.291 0-4.545.16-6.75.47m13.5 0c1.01.143 2.01.317 3 .52m-3-.52l2.62 10.726c.122.499-.106 1.028-.589 1.202a5.988 5.988 0 01-2.031.352 5.988 5.988 0 01-2.031-.352c-.483-.174-.711-.703-.59-1.202L18.75 4.971zm-16.5.52c.99-.203 1.99-.377 3-.52m0 0l2.62 10.726c.122.499-.106 1.028-.589 1.202a5.989 5.989 0 01-2.031.352 5.989 5.989 0 01-2.031-.352c-.483-.174-.711-.703-.59-1.202L5.25 4.971z" />
               </svg>
-            </div>
-            <div className="flex-1">
-              <h3 className="text-base font-semibold text-white">Plate Calculator</h3>
-              <p className="text-wf-gray-400 text-sm mt-0.5">See which plates to load on each side of the bar</p>
-            </div>
-            <svg className="w-5 h-5 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-            </svg>
-          </div>
-        </a>
+            )}
+          />
 
-        {/* Ideal Body Proportions card */}
-        <div className="w-full glass-card rounded-xl p-5 fade-slide-up text-left opacity-60">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-yellow-500/15 flex items-center justify-center shrink-0">
-              <svg className="w-6 h-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-              </svg>
-            </div>
-            <div className="flex-1">
-              <h3 className="text-base font-semibold text-white">Ideal Body Proportions</h3>
-              <p className="text-wf-gray-400 text-sm mt-0.5">Calculate your ideal muscle proportions based on bone structure</p>
-            </div>
-            <span className="px-2 py-0.5 rounded-full bg-yellow-500/20 border border-yellow-500/40 text-[10px] font-bold text-yellow-400 uppercase tracking-wider shrink-0">Pro</span>
-          </div>
-        </div>
-
-        {/* RPE / RIR Calculator card */}
-        <div className="w-full glass-card rounded-xl p-5 fade-slide-up text-left opacity-60">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
-              <svg className="w-6 h-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5m.75-9l3-3 2.148 2.148A12.061 12.061 0 0116.5 7.605" />
-              </svg>
-            </div>
-            <div className="flex-1">
-              <h3 className="text-base font-semibold text-white">RPE / RIR Calculator</h3>
-              <p className="text-wf-gray-400 text-sm mt-0.5">Convert between Rate of Perceived Exertion and Reps in Reserve</p>
-            </div>
-            <span className="px-2 py-0.5 rounded-full bg-yellow-500/20 border border-yellow-500/40 text-[10px] font-bold text-yellow-400 uppercase tracking-wider shrink-0">Pro</span>
-          </div>
+          {/* Pro-tier rows (BMR, Macros, Body Fat, Ideal Proportions, RPE/RIR)
+              are hidden until the calculators are built and Pro is offered. */}
         </div>
       </div>
 
       {showPRs && (
         <div className="fixed inset-x-0 top-[40px] bottom-0 z-50 bg-black flex flex-col safe-bottom">
           <div className="px-4 pt-3 pb-2 flex items-center justify-between">
-            <button onClick={() => setShowPRs(false)} className="text-wf-red text-sm font-medium flex items-center gap-1 active:opacity-70">
+            <button onClick={() => setShowPRs(false)} className="inline-flex items-center gap-1 text-sm text-wf-gray-400 active:text-white transition-colors">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
               </svg>
               Back
             </button>
-            <h2 className="text-lg font-black text-white">Personal Records</h2>
             <div className="w-12" />
           </div>
-          <div className="flex-1 overflow-y-auto px-4 pb-6 pt-2">
+          <div className="flex-1 overflow-y-auto px-4 pb-6 pt-1">
+            {/* Nike intro panel */}
+            <div
+              className="relative overflow-hidden mb-4 fade-slide-up"
+              style={{
+                background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                borderRadius: '2px',
+                boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+              }}
+            >
+              <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #f59e0b, rgba(245,158,11,0.25), transparent)' }} />
+              <div className="absolute -top-10 -right-10 w-[280px] h-[280px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.10) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+              <div className="relative p-6">
+                <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(245,158,11,0.85)', letterSpacing: '0.4em' }}>
+                  Records
+                </p>
+                <h1 className="text-[28px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95', letterSpacing: '-0.02em' }}>
+                  PERSONAL RECORDS
+                </h1>
+                <p className="text-[12px] text-white/40 font-light mt-2 leading-relaxed">
+                  Your best lift at every weight, grouped by muscle.
+                </p>
+              </div>
+            </div>
             <PRsSection />
           </div>
         </div>
