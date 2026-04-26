@@ -159,11 +159,11 @@ function LibraryFlipCard({ program, programColor, idx, isFlipped, onFlip, onView
                 <>
                   <span className="text-white/40 text-[11px] leading-none select-none">·</span>
                   <span
-                    className="text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full text-black"
+                    className="text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full"
                     style={
                       program.programType === 'glute_focused'
-                        ? { background: '#f9a8d4', boxShadow: '0 4px 12px rgba(244,114,182,0.25)' }
-                        : { background: '#e8eaed', boxShadow: '0 4px 12px rgba(255,255,255,0.10)' }
+                        ? { background: '#ec4899', color: '#ffffff', boxShadow: '0 4px 12px rgba(236,72,153,0.35)' }
+                        : { background: '#e8eaed', color: '#000000', boxShadow: '0 4px 12px rgba(255,255,255,0.10)' }
                     }
                   >{
                     program.programType === 'strength_conditioning' ? 'Shred'
@@ -598,23 +598,40 @@ function ProgramOverviewHero({ program, weekCount }) {
 
 // Horizontal filter pills with static gradient fade affordances on both
 // edges — always visible as a scroll hint, regardless of overflow state.
+//
+// Pill visuals mirror the type pills on the library cards:
+//   • glute_focused → pink (#ec4899) background with white letters
+//   • everything else → white background with black letters
+// Selected state pops contrast: deeper pink for glute, black-on-white
+// inverts to white-on-black, so the active filter is unambiguous.
 function FilterPillsRow({ filters, value, onChange }) {
   return (
     <div className="relative -mx-4 mb-3">
       <div className="flex gap-2 overflow-x-auto pb-2 px-4 scrollbar-hide">
-        {filters.map((f) => (
-          <button
-            key={f.value}
-            onClick={() => onChange(f.value)}
-            className={`shrink-0 px-4 py-2 rounded-full text-xs font-semibold transition-all ${
-              value === f.value
-                ? 'bg-wf-red text-white'
-                : 'bg-white/5 text-wf-gray-400 active:bg-white/10'
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
+        {filters.map((f) => {
+          const isGlute = f.value === 'glute_focused';
+          const isActive = value === f.value;
+          let style;
+          if (isGlute) {
+            style = isActive
+              ? { background: '#000000', color: '#ec4899', boxShadow: '0 4px 14px rgba(236,72,153,0.35)' }
+              : { background: '#ec4899', color: '#ffffff', boxShadow: '0 4px 12px rgba(236,72,153,0.35)' };
+          } else {
+            style = isActive
+              ? { background: '#000000', color: '#ffffff', boxShadow: '0 4px 12px rgba(0,0,0,0.35)' }
+              : { background: '#ffffff', color: '#000000', boxShadow: '0 4px 12px rgba(255,255,255,0.10)' };
+          }
+          return (
+            <button
+              key={f.value}
+              onClick={() => onChange(f.value)}
+              style={style}
+              className="shrink-0 px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all active:scale-[0.97]"
+            >
+              {f.label}
+            </button>
+          );
+        })}
       </div>
       {/* Always-on fade affordances — rendered on both edges regardless of
           overflow so the "continues off-screen" cue is persistent. */}
@@ -3724,14 +3741,22 @@ export default function Workouts() {
               .split('_')
               .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
               .join(' ');
+          // Explicit display order: All → Hypertrophy → Glute-Focused →
+          // Strength → Shred → anything else (alphabetical fallback for new
+          // types that haven't been pinned yet).
+          const PINNED_ORDER = ['hypertrophy', 'glute_focused', 'strength', 'strength_conditioning'];
+          const orderedTypes = [
+            ...PINNED_ORDER.filter((t) => browseAvailableTypes.has(t)),
+            ...Array.from(browseAvailableTypes)
+              .filter((t) => !PINNED_ORDER.includes(t))
+              .sort(),
+          ];
           const dynamicFilters = [
             { value: 'all', label: 'All' },
-            ...Array.from(browseAvailableTypes)
-              .sort()
-              .map((value) => ({
-                value,
-                label: LABEL_OVERRIDES[value] || titleCase(value),
-              })),
+            ...orderedTypes.map((value) => ({
+              value,
+              label: LABEL_OVERRIDES[value] || titleCase(value),
+            })),
           ];
           return (
             <div className="px-4">

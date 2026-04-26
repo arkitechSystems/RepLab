@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
+import { BibleVerseOverlay } from './BibleVerses';
+import { pickNextVerse } from '../utils/versePicker';
 
 const TOUR_STEPS = [
   {
@@ -51,7 +53,32 @@ export default function Welcome() {
   const [maxSquat, setMaxSquat] = useState('');
   const [maxDeadlift, setMaxDeadlift] = useState('');
   const [savingMaxes, setSavingMaxes] = useState(false);
+  // Verse shown as the final beat of onboarding regardless of which exit
+  // path the user took (skip from any step, or "Save & continue" from
+  // the maxes screen). Lazily picked the first time we need it so the
+  // user's verse rotation only burns one entry per onboarding completion.
+  const [exitVerse, setExitVerse] = useState(null);
   const navigate = useNavigate();
+
+  // Single funnel for "we're done with onboarding" — every exit goes through
+  // here. Respects the wf-bible-verses preference (default on for new users
+  // since the key is unset).
+  function exitToApp() {
+    const versesEnabled = (() => {
+      try { return localStorage.getItem('wf-bible-verses') !== 'off'; }
+      catch { return true; }
+    })();
+    if (!versesEnabled) {
+      navigate('/');
+      return;
+    }
+    try {
+      const { verse } = pickNextVerse();
+      setExitVerse(verse);
+    } catch {
+      navigate('/');
+    }
+  }
 
   function handleNext() {
     if (step < TOUR_STEPS.length - 1) {
@@ -59,12 +86,12 @@ export default function Welcome() {
     } else if (step === TOUR_STEPS.length - 1) {
       setStep(MAXES_STEP);
     } else {
-      navigate('/');
+      exitToApp();
     }
   }
 
   function handleSkip() {
-    navigate('/');
+    exitToApp();
   }
 
   async function handleSaveMaxes() {
@@ -76,7 +103,7 @@ export default function Welcome() {
     if (squat > 0) payload.maxSquat = squat;
     if (deadlift > 0) payload.maxDeadlift = deadlift;
     if (Object.keys(payload).length === 0) {
-      navigate('/');
+      exitToApp();
       return;
     }
     setSavingMaxes(true);
@@ -86,8 +113,20 @@ export default function Welcome() {
       if (import.meta.env.DEV) console.warn('Failed to save maxes during onboarding:', err);
     } finally {
       setSavingMaxes(false);
-      navigate('/');
+      exitToApp();
     }
+  }
+
+  // Verse takeover — the very last screen before the user sees the app.
+  // Closing it (X or any keypress on the overlay's close button) drops the
+  // user on the home route.
+  if (exitVerse) {
+    return (
+      <BibleVerseOverlay
+        verse={exitVerse}
+        onClose={() => navigate('/')}
+      />
+    );
   }
 
   // Intro screen
