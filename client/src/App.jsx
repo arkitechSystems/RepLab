@@ -54,6 +54,7 @@ const Brainstorm = lazy(() => import('./pages/Brainstorm'));
 const BibleVerses = lazy(() => import('./pages/BibleVerses'));
 const ParallaxAnimation = lazy(() => import('./pages/ParallaxAnimation'));
 const NavbarsTest = lazy(() => import('./pages/NavbarsTest'));
+const PlateCalculator = lazy(() => import('./pages/PlateCalculator'));
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -153,6 +154,7 @@ export default function App() {
         <Route path="/history/:id" element={<SessionDetail />} />
         <Route path="/summary/:id" element={<SessionSummary />} />
         <Route path="/utilities" element={<Utilities />} />
+        <Route path="/plate-calculator" element={<PlateCalculator />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/upgrade" element={<Upgrade />} />
         <Route path="/tutorial/workout" element={<TutorialWorkout />} />

@@ -2351,31 +2351,66 @@ export default function WorkoutSession() {
         </div>
       </StickyHeader>
 
-      {/* Status Banner + View Summary */}
+      {/* Status Banner + View Summary — Nike panels with their own opaque
+          black-gradient backgrounds so they stay legible in both light-card
+          and dark-card modes (the previous translucent red/10 + green/10
+          tints washed out when the page bg flipped to light gray). */}
       {isCompleted && (
         <div className="px-4 mb-3 space-y-2">
           <button
             onClick={() => setShowSummary(true)}
-            className="w-full rounded-xl bg-wf-red/10 border border-wf-red/20 px-4 py-3 flex items-center justify-between active:bg-wf-red/20 transition-colors"
+            className="w-full px-4 py-3 flex items-center justify-between active:scale-[0.98] transition-transform"
+            style={{
+              background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+              borderRadius: '2px',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+              borderLeft: '3px solid #ef4444',
+            }}
           >
-            <div className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-wf-red shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-              </svg>
-              <span className="text-sm text-wf-red font-semibold">View Workout Summary</span>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 flex items-center justify-center shrink-0" style={{
+                background: 'linear-gradient(135deg, rgba(239,68,68,0.25) 0%, rgba(239,68,68,0.10) 100%)',
+                borderRadius: '2px',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), 0 4px 12px rgba(239,68,68,0.20)',
+              }}>
+                <svg className="w-5 h-5 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                </svg>
+              </div>
+              <span className="text-[13px] font-bold uppercase text-white tracking-wider" style={{ letterSpacing: '0.1em' }}>
+                View Workout Summary
+              </span>
             </div>
-            <svg className="w-4 h-4 text-wf-red/60 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-4 h-4 text-white/40 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
             </svg>
           </button>
-          <div className="rounded-xl bg-green-500/10 border border-green-500/20 px-4 py-3">
-            <div className="flex items-center gap-2 mb-1">
-              <svg className="w-5 h-5 text-green-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="text-sm text-green-400 font-semibold">Workout Complete</span>
+          <div
+            className="px-4 py-3"
+            style={{
+              background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+              borderRadius: '2px',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+              borderLeft: '3px solid #22c55e',
+            }}
+          >
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-9 h-9 flex items-center justify-center shrink-0" style={{
+                background: 'linear-gradient(135deg, rgba(34,197,94,0.25) 0%, rgba(34,197,94,0.10) 100%)',
+                borderRadius: '2px',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), 0 4px 12px rgba(34,197,94,0.20)',
+              }}>
+                <svg className="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <span className="text-[13px] font-bold uppercase text-white tracking-wider" style={{ letterSpacing: '0.1em' }}>
+                Workout Complete
+              </span>
             </div>
-            <p className="text-xs text-green-400/50 ml-7">Scroll down and tap Undo Completion to edit.</p>
+            <p className="text-[11px] text-white/40 font-light mt-0.5 ml-12 leading-relaxed">
+              Scroll down and tap Undo Completion to edit.
+            </p>
           </div>
         </div>
       )}
