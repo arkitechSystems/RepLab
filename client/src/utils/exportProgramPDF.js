@@ -177,13 +177,15 @@ export function exportProgramPDF({ program, workouts, weeklySchedule }) {
     z-index: 2;
   }
 
-  /* Subtle RepLab watermark — fills each workout page at low opacity.
-     Cover page does not render this element, so it only appears on content pages. */
+  /* RepLab watermark — fills the entire workout page edge-to-edge at low
+     opacity. Cover page does not render this element, so it only appears
+     on content pages. background-size: contain keeps the logo's aspect
+     ratio; with full 8.5in × 11in coverage the logo scales to whichever
+     dimension is the limiting axis (height for portrait pages). */
   .watermark {
     position: absolute;
-    top: 50%; left: 50%;
-    width: 7.5in; height: 7.5in;
-    transform: translate(-50%, -50%);
+    top: 0; left: 0;
+    width: 8.5in; height: 11in;
     background-image: url("${WATERMARK_SRC}");
     background-repeat: no-repeat;
     background-position: center;
