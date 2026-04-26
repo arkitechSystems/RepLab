@@ -65,6 +65,17 @@ export default async function initDb() {
 
   await pool.query(`ALTER TABLE programs ADD COLUMN IF NOT EXISTS program_type TEXT DEFAULT 'other'`);
 
+  // One-shot backfill: Robin Gallant's program was originally seeded as
+  // 'hypertrophy'; reclassified to 'glute_focused' so it picks up the pink
+  // pill + dedicated filter on the library card. Idempotent — only updates
+  // the row if it's still on the old value.
+  await pool.query(
+    `UPDATE programs
+     SET program_type = 'glute_focused'
+     WHERE name = $1 AND program_type = 'hypertrophy'`,
+    ["Robin Gallant's Intensive Max Glute Hypertrophy"]
+  );
+
   // Role column for trainer/client designation (admin-set)
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'client'`);
 
