@@ -472,11 +472,20 @@ function ProgramDetailsCard({ details }) {
   if (!details || typeof details !== 'object') return null;
 
   const overview = details.Overview || details.overview || '';
+  // Long-form Description paragraphs (xlsx Program Description sheet rows
+  // "Description 1".."Description 5"). Stored as `details.Descriptions`
+  // array. Falls back to single Overview if not present.
+  const descriptions = Array.isArray(details.Descriptions) ? details.Descriptions : [];
+  // Schedule paragraphs ("Schedule 1".."Schedule 6") rendered under their
+  // own subsection.
+  const schedule = Array.isArray(details.Schedule) ? details.Schedule : [];
   // PDF is rendered as the download button on the hero, not as a raw row.
   // "Main Goal" duplicates the program-type pill on the Browse Library card,
-  // so it's filtered out here too.
+  // so it's filtered out here too. "Descriptions" / "Schedule" arrays are
+  // rendered above as their own blocks so don't duplicate them in the grid.
+  const SKIP = new Set(['Overview', 'overview', 'PDF', 'Main Goal', 'Descriptions', 'Schedule']);
   const entries = Object.entries(details)
-    .filter(([k]) => k !== 'Overview' && k !== 'overview' && k !== 'PDF' && k !== 'Main Goal')
+    .filter(([k]) => !SKIP.has(k))
     .sort(([a], [b]) => {
       const ai = PROGRAM_DETAIL_ORDER.indexOf(a);
       const bi = PROGRAM_DETAIL_ORDER.indexOf(b);
@@ -499,8 +508,25 @@ function ProgramDetailsCard({ details }) {
       </button>
       {expanded && (
         <div className="px-4 pb-4 space-y-3">
-          {overview && (
+          {/* Long-form description: paragraphs 1-5 from the xlsx Program
+              Description sheet. Falls back to the legacy single Overview
+              field for programs that haven't been migrated to the new shape. */}
+          {descriptions.length > 0 ? (
+            descriptions.map((p, i) => (
+              <p key={i} className="text-sm text-white/75 leading-relaxed">{p}</p>
+            ))
+          ) : overview && (
             <p className="text-sm text-white/75 leading-relaxed">{overview}</p>
+          )}
+          {schedule.length > 0 && (
+            <div className="pt-2 border-t border-white/5">
+              <p className="text-[11px] uppercase font-bold tracking-widest text-wf-red mb-2">Schedule</p>
+              <div className="space-y-2">
+                {schedule.map((s, i) => (
+                  <p key={i} className="text-xs text-white/70 leading-relaxed">{s}</p>
+                ))}
+              </div>
+            </div>
           )}
           {entries.length > 0 && (
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
@@ -834,6 +860,7 @@ export default function Workouts() {
   const [expandedExercises, setExpandedExercises] = useState(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [browseSearch, setBrowseSearch] = useState('');
+  const [browseSearchOpen, setBrowseSearchOpen] = useState(false);
   const [browseFilter, setBrowseFilter] = useState('all');
   // Set of programIds whose library card is showing its back face. Tap toggles.
   const [flippedLibraryCards, setFlippedLibraryCards] = useState(() => new Set());
@@ -888,6 +915,10 @@ export default function Workouts() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [conflictInfo, setConflictInfo] = useState(null); // { conflicts: string[], pendingEntries: [] }
   const [beginSaving, setBeginSaving] = useState(false);
+  // Optional warm-up prompt state. When non-null we ask the user if they
+  // want to run the program's prehab template before the actual workout.
+  // Shape: { templateId, date, prehabTemplateId }.
+  const [prehabPrompt, setPrehabPrompt] = useState(null);
   // Add Workout modal state
   const [addWorkoutModal, setAddWorkoutModal] = useState(null); // template object
   const [addDateInput, setAddDateInput] = useState('');
@@ -1506,8 +1537,10 @@ export default function Workouts() {
   // Build enriched program list by matching templates to their programId
   function getEnrichedPrograms() {
     return programs.map((p) => {
+      // Hide prehab templates from the weekly grid — they're optional
+      // warm-ups invoked via the Begin Workout popup, not standalone days.
       const programTemplates = (templates || [])
-        .filter((t) => t.programId === p.id)
+        .filter((t) => t.programId === p.id && !t.isPrehab)
         .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
       const nonRest = programTemplates.filter((t) => !t.isRest);
       const totalExercises = nonRest.reduce((sum, t) => sum + (t.exercises?.length || 0), 0);
@@ -1571,8 +1604,23 @@ export default function Workouts() {
   }, [browseFilter, browseAvailableTypes]);
 
   // Navigate to the right workout flow based on whether the template belongs to a featured program
-  function navigateToWorkout(templateId, date) {
+  function navigateToWorkout(templateId, date, opts = {}) {
+    const { skipPrehab = false } = opts;
     const tmpl = templates.find(t => t.id === templateId);
+
+    // Optional warm-up gate: if the workout's program has a prehab template
+    // attached (Robin Gallant lower/upper body prehab), prompt the user
+    // before launching the actual session. Yes → run prehab session at the
+    // same date; No → proceed straight to the workout.
+    if (!skipPrehab && tmpl && tmpl.prehabTemplateId) {
+      setPrehabPrompt({
+        templateId,
+        date,
+        prehabTemplateId: tmpl.prehabTemplateId,
+      });
+      return;
+    }
+
     if (tmpl && tmpl.programId) {
       const prog = programs.find(p => p.id === tmpl.programId);
       if (prog && prog.isFeatured) {
@@ -2566,6 +2614,62 @@ export default function Workouts() {
   function renderBeginModals() {
     return (
       <>
+        {/* Optional warm-up prompt — fires when navigating to a workout
+            whose program has a prehab template attached (Robin Gallant).
+            Yes routes to the prehab session; No skips straight to the
+            real workout via skipPrehab=true. */}
+        {prehabPrompt && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center px-5" onClick={() => setPrehabPrompt(null)}>
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+            <div
+              className="relative w-full max-w-sm overflow-hidden"
+              style={{
+                background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                borderRadius: '2px',
+                boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25))' }} />
+              <div className="p-5">
+                <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.3em' }}>Optional</p>
+                <h3 className="text-[20px] font-black text-white tracking-tight mb-2">WARM-UP</h3>
+                <p className="text-[13px] text-white/65 leading-relaxed mb-5">
+                  Would you like to do the prehabilitation warm-up before this workout?
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      const p = prehabPrompt;
+                      setPrehabPrompt(null);
+                      navigateToWorkout(p.templateId, p.date, { skipPrehab: true });
+                    }}
+                    className="flex-1 py-3 text-[11px] font-bold uppercase active:scale-[0.97] transition-all text-white/80"
+                    style={{ letterSpacing: '0.2em', borderRadius: '2px', border: '1px solid rgba(255,255,255,0.2)', background: 'transparent' }}
+                  >
+                    No
+                  </button>
+                  <button
+                    onClick={() => {
+                      const p = prehabPrompt;
+                      setPrehabPrompt(null);
+                      navigate(`/session/${p.prehabTemplateId}/${p.date}`);
+                    }}
+                    className="flex-1 py-3 text-[11px] font-bold uppercase active:scale-[0.97] transition-all text-white"
+                    style={{
+                      letterSpacing: '0.2em',
+                      borderRadius: '2px',
+                      background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+                      boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+                    }}
+                  >
+                    Yes
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         {beginModal && !conflictInfo && (
           <div className={`fixed inset-0 flex items-center justify-center px-5 ${tutorial.active ? 'z-[200]' : 'z-50'}`} onClick={closeBeginModal}>
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
@@ -3682,47 +3786,62 @@ export default function Workouts() {
           )}
         </StickyHeader>
 
-        {/* Back button */}
+        {/* Back row — "All Workouts" on the left, collapsible search on the
+            right (browse only). Closed = magnifying-glass icon button.
+            Tapping expands into a full-width input that pushes the back
+            label off the row; tapping the X collapses + clears the term. */}
         <div className="px-4 mb-3">
-          <button
-            onClick={() => setSelectedGroup(null)}
-            className="inline-flex items-center gap-1 text-sm text-wf-gray-400 active:text-white transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-            </svg>
-            All Workouts
-          </button>
-        </div>
+          <div className="flex items-center gap-3 h-9">
+            {!browseSearchOpen && (
+              <button
+                onClick={() => setSelectedGroup(null)}
+                className="inline-flex items-center gap-1 text-sm text-wf-gray-400 active:text-white transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                </svg>
+                All Workouts
+              </button>
+            )}
 
-        {/* Search bar (browse only) */}
-        {isBrowse && groupPrograms.length > 0 && (
-          <div className="px-4 mb-3">
-            <div className="relative">
-              <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-              </svg>
-              <input
-                type="text"
-                value={browseSearch}
-                onChange={(e) => setBrowseSearch(e.target.value)}
-                placeholder="Search programs..."
-                className="w-full glass-input rounded-xl pl-10 pr-9 py-2.5 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none"
-              />
-              {browseSearch && (
+            {isBrowse && groupPrograms.length > 0 && (
+              browseSearchOpen ? (
+                <div className="relative flex-1">
+                  <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                  </svg>
+                  <input
+                    type="text"
+                    value={browseSearch}
+                    onChange={(e) => setBrowseSearch(e.target.value)}
+                    placeholder="Search programs..."
+                    autoFocus
+                    className="w-full glass-input rounded-xl pl-10 pr-9 py-2 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none"
+                  />
+                  <button
+                    onClick={() => { setBrowseSearchOpen(false); setBrowseSearch(''); }}
+                    aria-label="Close search"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-wf-gray-500 active:text-white"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ) : (
                 <button
-                  onClick={() => setBrowseSearch('')}
-                  aria-label="Clear search"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-wf-gray-500 active:text-white"
+                  onClick={() => setBrowseSearchOpen(true)}
+                  aria-label="Search programs"
+                  className="ml-auto w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center active:scale-90 transition-all shrink-0"
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  <svg className="w-4 h-4 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
                   </svg>
                 </button>
-              )}
-            </div>
+              )
+            )}
           </div>
-        )}
+        </div>
 
         {/* Filter toggles (browse only) — fully dynamic: pills are derived
             from the programType values that actually exist in the DB. Any

@@ -134,253 +134,294 @@ export default function Signup() {
     }
   }
 
-  const inputClass = 'w-full glass-input rounded-xl px-4 py-3.5 text-white text-base placeholder:text-wf-gray-500 focus:outline-none transition-all';
-  const labelClass = 'text-xs text-wf-gray-400 uppercase tracking-wider mb-1 block';
+  const inputClass = 'w-full glass-input rounded-[2px] px-4 py-3.5 text-white text-base placeholder:text-wf-gray-500 focus:outline-none transition-all';
+  const labelClass = 'text-[10px] uppercase font-bold mb-1.5 block';
+  const labelStyle = { color: 'rgba(255,255,255,0.5)', letterSpacing: '0.2em' };
+  const sectionEyebrow = 'text-[10px] uppercase font-bold mb-3 pt-2 block';
+  const sectionEyebrowStyle = { color: 'rgba(239,68,68,0.85)', letterSpacing: '0.3em' };
 
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-center px-6 safe-top safe-bottom relative">
+    <div className="min-h-screen bg-black flex flex-col items-center px-4 safe-top safe-bottom relative">
       <div className="ambient-bg" />
-      <div className="w-full max-w-sm relative z-10 py-10">
+      <div className="w-full max-w-sm relative z-10 py-8">
         <button
           onClick={() => navigate('/login')}
-          className="inline-flex items-center gap-1 text-sm text-wf-gray-400 active:text-white transition-colors mb-6"
+          className="inline-flex items-center gap-1 text-sm text-wf-gray-400 active:text-white transition-colors mb-5"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>
           Back
         </button>
-        <div className="text-center mb-10">
-          <h1 className="text-4xl font-black tracking-wide text-white logo-glow">
-            REP<span className="text-wf-red">LAB</span>
-          </h1>
-          <p className="text-wf-gray-400 text-sm mt-2">Create your account</p>
-        </div>
 
-        <form onSubmit={handleSubmit} noValidate className="space-y-4">
-          {error && (
-            <div ref={errorRef} className="bg-red-900/30 border border-red-800 rounded-[2px] px-4 py-3 text-red-300 text-sm">
-              {error}
+        {/* Nike-style panel: black gradient, red accent stripe, ambient
+            spotlight, eyebrow + heavy display title. */}
+        <div
+          className="relative overflow-hidden"
+          style={{
+            background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+            borderRadius: '2px',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+          }}
+        >
+          <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent)' }} />
+          <div className="absolute -top-10 -right-10 w-[280px] h-[280px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.10) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+
+          <div className="relative p-6">
+            {/* Header — REPLAB wordmark + heavy display title */}
+            <div className="mb-6">
+              <h1 className="text-[20px] font-black tracking-wide text-white logo-glow mb-3">
+                REP<span className="text-wf-red">LAB</span>
+              </h1>
+              <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.4em' }}>
+                Welcome
+              </p>
+              <h2 className="text-[28px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95', letterSpacing: '-0.02em' }}>
+                CREATE ACCOUNT
+              </h2>
             </div>
-          )}
 
-          {/* Email */}
-          <div>
-            <label className={labelClass}>Email *</label>
-            <input
-              type="email"
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
-              placeholder="Email address"
-              required
-              autoComplete="email"
-              className={inputClass}
-            />
-          </div>
+            <form onSubmit={handleSubmit} noValidate className="space-y-4">
+              {error && (
+                <div ref={errorRef} className="bg-red-900/30 border border-red-800 rounded-[2px] px-4 py-3 text-red-300 text-sm">
+                  {error}
+                </div>
+              )}
 
-          {/* Password */}
-          <div>
-            <label className={labelClass}>Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Create password"
-              required
-              autoComplete="new-password"
-              className={inputClass}
-            />
-          </div>
+              <span className={sectionEyebrow} style={sectionEyebrowStyle}>Account</span>
 
-          {/* Confirm Password */}
-          <div>
-            <label className={labelClass}>Confirm Password</label>
-            <input
-              type="password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              placeholder="Confirm password"
-              required
-              autoComplete="new-password"
-              className={inputClass}
-            />
-          </div>
+              {/* Email */}
+              <div>
+                <label className={labelClass} style={labelStyle}>Email *</label>
+                <input
+                  type="email"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  placeholder="Email address"
+                  required
+                  autoComplete="email"
+                  className={inputClass}
+                />
+              </div>
 
-          {/* Divider */}
-          <div className="flex items-center gap-3 pt-2">
-            <div className="flex-1 h-px bg-wf-gray-700" />
-            <span className="text-wf-gray-500 text-xs uppercase tracking-wider">About You</span>
-            <div className="flex-1 h-px bg-wf-gray-700" />
-          </div>
+              {/* Password */}
+              <div>
+                <label className={labelClass} style={labelStyle}>Password *</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Create password"
+                  required
+                  autoComplete="new-password"
+                  className={inputClass}
+                />
+              </div>
 
-          {/* First Name & Last Name */}
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <label className={labelClass}>First Name *</label>
-              <input
-                type="text"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                placeholder="First name"
-                required
-                autoComplete="given-name"
-                className={inputClass}
-              />
-            </div>
-            <div className="flex-1">
-              <label className={labelClass}>Last Name *</label>
-              <input
-                type="text"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                placeholder="Last name"
-                required
-                autoComplete="family-name"
-                className={inputClass}
-              />
-            </div>
-          </div>
+              {/* Confirm Password */}
+              <div>
+                <label className={labelClass} style={labelStyle}>Confirm Password *</label>
+                <input
+                  type="password"
+                  value={confirm}
+                  onChange={(e) => setConfirm(e.target.value)}
+                  placeholder="Confirm password"
+                  required
+                  autoComplete="new-password"
+                  className={inputClass}
+                />
+              </div>
 
-          {/* Phone (optional) */}
-          <div>
-            <label className={labelClass}>Phone Number <span className="text-wf-gray-600">(optional)</span></label>
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="(555) 123-4567"
-              autoComplete="tel"
-              className={inputClass}
-            />
-          </div>
+              <div className="pt-2 border-t border-white/5">
+                <span className={sectionEyebrow} style={sectionEyebrowStyle}>About You</span>
+              </div>
 
-          {/* Zip Code (optional) */}
-          <div>
-            <label className={labelClass}>Zip Code *</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={zipCode}
-              onChange={(e) => setZipCode(e.target.value)}
-              placeholder="e.g. 02101"
-              required
-              maxLength={10}
-              autoComplete="postal-code"
-              className={inputClass}
-            />
-          </div>
+              {/* First Name & Last Name */}
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className={labelClass} style={labelStyle}>First Name *</label>
+                  <input
+                    type="text"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="First name"
+                    required
+                    autoComplete="given-name"
+                    className={inputClass}
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className={labelClass} style={labelStyle}>Last Name *</label>
+                  <input
+                    type="text"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="Last name"
+                    required
+                    autoComplete="family-name"
+                    className={inputClass}
+                  />
+                </div>
+              </div>
 
-          {/* Gender (optional) */}
-          <div>
-            <label className={labelClass}>Gender <span className="text-wf-gray-600">(optional)</span></label>
-            <div className="flex gap-2">
-              {['Male', 'Female', 'Other'].map((g) => (
-                <button
-                  key={g}
-                  type="button"
-                  onClick={() => setGender(gender === g ? '' : g)}
-                  className={`flex-1 py-3 rounded-[2px] text-sm font-medium transition-all ${
-                    gender === g
-                      ? 'bg-wf-red text-white'
-                      : 'glass-input text-wf-gray-400'
-                  }`}
+              {/* Phone (optional) */}
+              <div>
+                <label className={labelClass} style={labelStyle}>Phone <span className="text-wf-gray-600 normal-case font-normal" style={{ letterSpacing: '0' }}>(optional)</span></label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="(555) 123-4567"
+                  autoComplete="tel"
+                  className={inputClass}
+                />
+              </div>
+
+              {/* Zip Code */}
+              <div>
+                <label className={labelClass} style={labelStyle}>Zip Code *</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={zipCode}
+                  onChange={(e) => setZipCode(e.target.value)}
+                  placeholder="e.g. 02101"
+                  required
+                  maxLength={10}
+                  autoComplete="postal-code"
+                  className={inputClass}
+                />
+              </div>
+
+              {/* Gender */}
+              <div>
+                <label className={labelClass} style={labelStyle}>Gender <span className="text-wf-gray-600 normal-case font-normal" style={{ letterSpacing: '0' }}>(optional)</span></label>
+                <div className="flex gap-2">
+                  {['Male', 'Female', 'Other'].map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => setGender(gender === g ? '' : g)}
+                      className={`flex-1 py-3 rounded-[2px] text-[11px] font-bold uppercase tracking-wider transition-all ${
+                        gender === g
+                          ? 'text-white'
+                          : 'glass-input text-wf-gray-400'
+                      }`}
+                      style={gender === g ? {
+                        background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+                        boxShadow: '0 4px 12px rgba(239,68,68,0.3), inset 0 1px 0 rgba(255,255,255,0.15)',
+                      } : undefined}
+                    >
+                      {g}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Username */}
+              <div>
+                <label className={labelClass} style={labelStyle}>Username <span className="text-wf-gray-600 normal-case font-normal" style={{ letterSpacing: '0' }}>(optional)</span></label>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Auto-generated if left blank"
+                  autoComplete="username"
+                  className={inputClass}
+                />
+              </div>
+
+              <div className="pt-2 border-t border-white/5">
+                <span className={sectionEyebrow} style={sectionEyebrowStyle}>Referral</span>
+              </div>
+
+              {/* How did you hear about us */}
+              <div>
+                <label className={labelClass} style={labelStyle}>How did you hear about us?</label>
+                <select
+                  value={referralSource}
+                  onChange={(e) => setReferralSource(e.target.value)}
+                  className={`${inputClass} bg-transparent appearance-none cursor-pointer`}
                 >
-                  {g}
-                </button>
-              ))}
-            </div>
+                  {REFERRAL_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value} className="bg-wf-gray-900">
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {referralSource === 'other' && (
+                <div>
+                  <label className={labelClass} style={labelStyle}>Please specify</label>
+                  <input
+                    type="text"
+                    value={referralOther}
+                    onChange={(e) => setReferralOther(e.target.value)}
+                    placeholder="How did you find us?"
+                    className={inputClass}
+                  />
+                </div>
+              )}
+
+              {referralSource === 'friend' && (
+                <div>
+                  <label className={labelClass} style={labelStyle}>Referral Name <span className="text-wf-gray-600 normal-case font-normal" style={{ letterSpacing: '0' }}>(optional)</span></label>
+                  <input
+                    type="text"
+                    value={referralOther}
+                    onChange={(e) => setReferralOther(e.target.value)}
+                    placeholder="Who referred you?"
+                    className={inputClass}
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className={labelClass} style={labelStyle}>Referral Code <span className="text-wf-gray-600 normal-case font-normal" style={{ letterSpacing: '0' }}>(optional)</span></label>
+                <input
+                  type="text"
+                  value={referralCode}
+                  onChange={(e) => setReferralCode(e.target.value)}
+                  placeholder="Enter referral code"
+                  className={inputClass}
+                />
+              </div>
+
+              {/* Sign Up button — matches Sign In: red gradient default,
+                  flips to btn-liquid + spinner while submitting. */}
+              <button
+                type="submit"
+                disabled={loading}
+                className={`w-full active:scale-[0.98] text-white font-bold uppercase py-3.5 text-sm transition-transform mt-2 ${loading ? 'btn-liquid' : ''}`}
+                style={loading ? {
+                  letterSpacing: '0.15em',
+                  borderRadius: '2px',
+                } : {
+                  letterSpacing: '0.15em',
+                  borderRadius: '2px',
+                  background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+                  boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+                }}
+              >
+                {loading ? (
+                  <span className="inline-flex items-center justify-center h-5">
+                    <span className="replab-spinner inline-block" style={{ width: 20, height: 20 }} />
+                  </span>
+                ) : (
+                  'Sign Up'
+                )}
+              </button>
+
+              <p className="text-center text-wf-gray-500 text-[11px] leading-relaxed mt-3">
+                By signing up, you agree to our{' '}
+                <Link to="/terms" className="text-wf-gray-300 underline">Terms of Service</Link>
+                {' '}and{' '}
+                <Link to="/privacy" className="text-wf-gray-300 underline">Privacy Policy</Link>.
+              </p>
+            </form>
           </div>
-
-          {/* Username */}
-          <div>
-            <label className={labelClass}>Username <span className="text-wf-gray-600">(optional)</span></label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Auto-generated if left blank"
-              autoComplete="username"
-              className={inputClass}
-            />
-          </div>
-
-          {/* How did you hear about us */}
-          <div>
-            <label className={labelClass}>How did you hear about us?</label>
-            <select
-              value={referralSource}
-              onChange={(e) => setReferralSource(e.target.value)}
-              className={`${inputClass} bg-transparent appearance-none cursor-pointer`}
-            >
-              {REFERRAL_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value} className="bg-wf-gray-900">
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Other referral input */}
-          {referralSource === 'other' && (
-            <div>
-              <label className={labelClass}>Please specify</label>
-              <input
-                type="text"
-                value={referralOther}
-                onChange={(e) => setReferralOther(e.target.value)}
-                placeholder="How did you find us?"
-                className={inputClass}
-              />
-            </div>
-          )}
-
-          {/* Friend referral name */}
-          {referralSource === 'friend' && (
-            <div>
-              <label className={labelClass}>Referral Name <span className="text-wf-gray-600">(optional)</span></label>
-              <input
-                type="text"
-                value={referralOther}
-                onChange={(e) => setReferralOther(e.target.value)}
-                placeholder="Who referred you?"
-                className={inputClass}
-              />
-            </div>
-          )}
-
-          {/* Referral Code */}
-          <div>
-            <label className={labelClass}>Referral Code <span className="text-wf-gray-600">(optional)</span></label>
-            <input
-              type="text"
-              value={referralCode}
-              onChange={(e) => setReferralCode(e.target.value)}
-              placeholder="Enter referral code"
-              className={inputClass}
-            />
-          </div>
-
-          {error && (
-            <div className="bg-red-900/30 border border-red-800 rounded-[2px] px-4 py-3 text-red-300 text-sm">
-              {error}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full btn-gradient active:scale-[0.98] text-white font-semibold py-3.5 rounded-[100px] text-base transition-all disabled:opacity-50"
-          >
-            {loading ? 'Creating account...' : 'Sign Up'}
-          </button>
-
-          <p className="text-center text-wf-gray-500 text-xs mt-3">
-            By signing up, you agree to our{' '}
-            <Link to="/terms" className="text-wf-gray-300 underline">Terms of Service</Link>
-            {' '}and{' '}
-            <Link to="/privacy" className="text-wf-gray-300 underline">Privacy Policy</Link>.
-          </p>
-        </form>
+        </div>
 
         <p className="text-center text-wf-gray-400 text-sm mt-6">
           Already have an account?{' '}

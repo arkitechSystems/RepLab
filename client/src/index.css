@@ -498,6 +498,33 @@ input[type="number"] {
   100% { background-position: 300% 50%; }
 }
 
+/* One-shot left-to-right white flash across the active bottom-nav icon.
+   Mounted only when a tab becomes active, so the animation fires once per
+   selection. The sweep is an inset child of an overflow-hidden wrapper so
+   it's masked to the icon's bounding box. */
+.nav-icon-flash {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0) 30%,
+    rgba(255, 255, 255, 0.85) 50%,
+    rgba(255, 255, 255, 0) 70%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  animation: navIconFlash 0.65s cubic-bezier(0.4, 0, 0.2, 1) 1 forwards;
+  mix-blend-mode: plus-lighter;
+}
+@keyframes navIconFlash {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
 /* Active nav glow */
 .nav-glow {
   position: relative;

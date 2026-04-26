@@ -129,33 +129,104 @@ export default function Welcome() {
     );
   }
 
-  // Intro screen
-  if (step === -1) {
-    return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center px-6 relative">
-        <div className="ambient-bg" />
-        <div className="w-full max-w-sm relative z-10 flex flex-col items-center gap-8">
-          <h1 className="text-4xl font-black tracking-wide text-white logo-glow">
-            REP<span className="text-wf-red">LAB</span>
-          </h1>
-          <p className="text-wf-gray-400 text-center">Welcome! Get to know the app.</p>
-
-          <button
-            onClick={() => setStep(0)}
-            className="w-full btn-gradient active:scale-[0.98] text-white font-semibold py-3.5 rounded-xl text-base transition-all"
-          >
-            Take a Tour
-          </button>
-
-          <button
-            onClick={handleSkip}
-            className="text-wf-gray-500 text-sm hover:text-wf-gray-300 transition-colors"
-          >
-            skip
-          </button>
+  // Shared Nike panel wrapper — black gradient + red accent stripe +
+  // ambient spotlight. Caller supplies eyebrow / title / body / CTA.
+  const renderPanel = ({ eyebrow, title, body, footer, showSkip = false }) => (
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center px-4 py-8 safe-top safe-bottom relative">
+      <div className="ambient-bg" />
+      <div className="w-full max-w-sm relative z-10">
+        {showSkip && (
+          <div className="flex justify-end mb-3">
+            <button
+              onClick={handleSkip}
+              className="text-[10px] uppercase font-bold text-white/40 active:text-white/80 transition-colors"
+              style={{ letterSpacing: '0.2em' }}
+            >
+              Skip
+            </button>
+          </div>
+        )}
+        <div
+          className="relative overflow-hidden"
+          style={{
+            background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+            borderRadius: '2px',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+          }}
+        >
+          <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent)' }} />
+          <div className="absolute -top-10 -right-10 w-[280px] h-[280px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.10) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+          <div className="relative p-6">
+            <div className="mb-5">
+              <h1 className="text-[20px] font-black tracking-wide text-white logo-glow mb-3">
+                REP<span className="text-wf-red">LAB</span>
+              </h1>
+              <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.4em' }}>
+                {eyebrow}
+              </p>
+              <h2 className="text-[28px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95', letterSpacing: '-0.02em' }}>
+                {title}
+              </h2>
+            </div>
+            {body}
+            {footer}
+          </div>
         </div>
       </div>
-    );
+    </div>
+  );
+
+  // Red gradient CTA matching the Sign In / Sign Up button. `loading` flips
+  // it to btn-liquid + spinner; `solid` keeps it static (used for non-async
+  // step buttons like "Take a Tour" / "Next").
+  const renderCta = ({ label, onClick, loading = false, type = 'button' }) => (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={loading}
+      className={`w-full active:scale-[0.98] text-white font-bold uppercase py-3.5 text-sm transition-transform ${loading ? 'btn-liquid' : ''}`}
+      style={loading ? {
+        letterSpacing: '0.15em',
+        borderRadius: '2px',
+      } : {
+        letterSpacing: '0.15em',
+        borderRadius: '2px',
+        background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+        boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+      }}
+    >
+      {loading ? (
+        <span className="inline-flex items-center justify-center h-5">
+          <span className="replab-spinner inline-block" style={{ width: 20, height: 20 }} />
+        </span>
+      ) : label}
+    </button>
+  );
+
+  // Intro screen
+  if (step === -1) {
+    return renderPanel({
+      eyebrow: 'Welcome',
+      title: 'GET TO KNOW THE APP',
+      body: (
+        <p className="text-wf-gray-400 text-sm leading-relaxed mb-6">
+          Quick four-step tour of how RepLab works — programs, scheduling,
+          tracking PRs, and the built-in tools. Skip anytime.
+        </p>
+      ),
+      footer: (
+        <div className="space-y-3">
+          {renderCta({ label: 'Take a Tour', onClick: () => setStep(0) })}
+          <button
+            onClick={handleSkip}
+            className="w-full text-[11px] uppercase font-bold text-white/40 active:text-white/80 py-2 transition-colors"
+            style={{ letterSpacing: '0.2em' }}
+          >
+            Skip
+          </button>
+        </div>
+      ),
+    });
   }
 
   // 1RM collection screen — final step of onboarding, right before the
@@ -164,7 +235,7 @@ export default function Welcome() {
   if (step === MAXES_STEP) {
     const maxInput = (label, value, setValue) => (
       <label className="w-full flex items-center justify-between gap-3">
-        <span className="text-wf-gray-300 text-sm font-medium">{label}</span>
+        <span className="text-[11px] uppercase font-bold" style={{ color: 'rgba(255,255,255,0.6)', letterSpacing: '0.2em' }}>{label}</span>
         <div className="flex items-center gap-2">
           <input
             type="number"
@@ -174,110 +245,79 @@ export default function Welcome() {
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="—"
-            className="w-24 glass-input rounded-lg px-3 py-2 text-white text-sm text-right font-medium focus:outline-none placeholder:text-wf-gray-600"
+            className="w-24 glass-input rounded-[2px] px-3 py-2 text-white text-sm text-right font-medium focus:outline-none placeholder:text-wf-gray-600"
           />
-          <span className="text-wf-gray-500 text-xs w-6">lbs</span>
+          <span className="text-wf-gray-500 text-[10px] uppercase font-bold w-6" style={{ letterSpacing: '0.15em' }}>lbs</span>
         </div>
       </label>
     );
-    return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-between px-6 py-12 relative">
-        <div className="ambient-bg" />
-
-        <div className="w-full max-w-sm relative z-10 flex justify-end">
-          <button
-            onClick={handleSkip}
-            className="text-wf-gray-500 text-sm hover:text-wf-gray-300 transition-colors"
-          >
-            skip
-          </button>
-        </div>
-
-        <div className="w-full max-w-sm relative z-10 flex flex-col items-center text-center gap-6 flex-1 justify-center">
-          <h2 className="text-2xl font-bold text-white">Your one-rep maxes</h2>
-          <p className="text-wf-gray-400 text-sm leading-relaxed">
+    return renderPanel({
+      eyebrow: 'Final Step',
+      title: 'YOUR 1RMs',
+      showSkip: true,
+      body: (
+        <>
+          <p className="text-wf-gray-400 text-sm leading-relaxed mb-2">
             Optional — fill in as many as you know.
           </p>
-          <p className="text-wf-gray-500 text-xs leading-relaxed -mt-3">
+          <p className="text-wf-gray-500 text-xs leading-relaxed mb-5">
             Some programs prescribe a percentage of your 1RM (e.g. "75% 1RM").
             If we know your bench, squat, or deadlift max, we'll auto-fill the
             suggested weight for those sets so you don't have to do the math.
           </p>
-
-          <div className="w-full flex flex-col gap-4 mt-2">
+          <div className="w-full flex flex-col gap-3 pt-3 border-t border-white/5">
             {maxInput('Bench Press', maxBench, setMaxBench)}
             {maxInput('Squat', maxSquat, setMaxSquat)}
             {maxInput('Deadlift', maxDeadlift, setMaxDeadlift)}
           </div>
-        </div>
-
-        <div className="w-full max-w-sm relative z-10 flex flex-col items-center gap-3">
-          <button
-            onClick={handleSaveMaxes}
-            disabled={savingMaxes}
-            className="w-full btn-gradient active:scale-[0.98] text-white font-semibold py-3.5 rounded-xl text-base transition-all disabled:opacity-60"
-          >
-            {savingMaxes ? 'Saving…' : "Save & continue"}
-          </button>
+        </>
+      ),
+      footer: (
+        <div className="space-y-3 mt-6">
+          {renderCta({ label: 'Save & Continue', onClick: handleSaveMaxes, loading: savingMaxes })}
           <button
             onClick={handleSkip}
-            className="text-wf-gray-500 text-sm hover:text-wf-gray-300 transition-colors"
+            className="w-full text-[11px] uppercase font-bold text-white/40 active:text-white/80 py-2 transition-colors"
+            style={{ letterSpacing: '0.2em' }}
           >
             I'll add these later
           </button>
         </div>
-      </div>
-    );
+      ),
+    });
   }
 
   // Tour steps
   const current = TOUR_STEPS[step];
   const isLast = step === TOUR_STEPS.length - 1;
 
-  return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-between px-6 py-12 relative">
-      <div className="ambient-bg" />
-
-      {/* Skip button */}
-      <div className="w-full max-w-sm relative z-10 flex justify-end">
-        <button
-          onClick={handleSkip}
-          className="text-wf-gray-500 text-sm hover:text-wf-gray-300 transition-colors"
-        >
-          skip
-        </button>
-      </div>
-
-      {/* Content */}
-      <div className="w-full max-w-sm relative z-10 flex flex-col items-center text-center gap-6 flex-1 justify-center">
-        <div className="w-28 h-28 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mb-2">
+  return renderPanel({
+    eyebrow: `Step ${step + 1} of ${TOUR_STEPS.length}`,
+    title: current.title.toUpperCase(),
+    showSkip: true,
+    body: (
+      <div className="flex flex-col items-center text-center gap-5 mb-2">
+        <div className="w-24 h-24 rounded-[2px] flex items-center justify-center" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.18)' }}>
           {current.icon}
         </div>
-        <h2 className="text-2xl font-bold text-white">{current.title}</h2>
-        <p className="text-wf-gray-400 text-base leading-relaxed">{current.description}</p>
+        <p className="text-wf-gray-400 text-sm leading-relaxed">{current.description}</p>
       </div>
-
-      {/* Bottom section: dots + button */}
-      <div className="w-full max-w-sm relative z-10 flex flex-col items-center gap-6">
+    ),
+    footer: (
+      <div className="flex flex-col items-center gap-5 mt-6">
         {/* Progress dots */}
-        <div className="flex gap-2">
+        <div className="flex gap-1.5">
           {TOUR_STEPS.map((_, i) => (
             <div
               key={i}
-              className={`w-2 h-2 rounded-full transition-all ${
-                i === step ? 'bg-wf-red w-6' : 'bg-white/20'
+              className={`h-1 rounded-full transition-all ${
+                i === step ? 'bg-wf-red w-6' : 'bg-white/20 w-1'
               }`}
             />
           ))}
         </div>
-
-        <button
-          onClick={handleNext}
-          className="w-full btn-gradient active:scale-[0.98] text-white font-semibold py-3.5 rounded-xl text-base transition-all"
-        >
-          {isLast ? "Let's Go" : 'Next'}
-        </button>
+        {renderCta({ label: isLast ? "Let's Go" : 'Next', onClick: handleNext })}
       </div>
-    </div>
-  );
+    ),
+  });
 }

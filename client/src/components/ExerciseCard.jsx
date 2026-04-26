@@ -49,7 +49,15 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
   const exercisePbs = pbs?.[exercise.name] || {};
   const { exercises: allExercises } = useExercises();
   const dbExercise = allExercises.find(e => e.name.toLowerCase() === exercise.name.toLowerCase());
-  const videoId = getExerciseVideoId(exercise.name, dbExercise?.videoId);
+  // Per-template video override (template_exercises.video_url). YouTube URLs
+  // are converted to bare IDs so the iframe renderer works; non-YouTube URLs
+  // (e.g. mp4 paths) pass through as-is and render via <video src>.
+  const overrideVideoUrl = exercise.videoUrl || '';
+  const ytIdMatch = overrideVideoUrl
+    ? overrideVideoUrl.match(/(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?v=|embed\/|v\/))([A-Za-z0-9_-]{6,})/)
+    : null;
+  const overrideVideoId = ytIdMatch ? ytIdMatch[1] : (overrideVideoUrl || null);
+  const videoId = overrideVideoId || getExerciseVideoId(exercise.name, dbExercise?.videoId);
   const [showVideo, setShowVideo] = useState(false);
   const [showDemoLocal, setShowDemoLocal] = useState(false);
   const showDemo = forceShowDemo || showDemoLocal;
@@ -535,6 +543,19 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
           return <div key={idx}>{rowContent}{lastHint}{cardioCard}</div>;
         })}
       </div>
+
+      {/* Program-provided note (xlsx column Q — "Failure / Workout Note").
+          Renders as a static italic block above the user-editable notes
+          area so users see it but can't edit it. Distinct from the
+          per-set exerciseDescription which lives in the header row. */}
+      {exercise.programNotes && (
+        <div className="px-3 py-2 border-t border-white/5">
+          <p className="text-[10px] uppercase tracking-wider font-bold mb-1" style={{ color: 'rgba(239,68,68,0.7)', letterSpacing: '0.2em' }}>
+            Program Note
+          </p>
+          <p className="text-xs italic text-wf-gray-300 leading-relaxed">{exercise.programNotes}</p>
+        </div>
+      )}
 
       {/* Notes */}
       {!readOnly && onNoteChange && (

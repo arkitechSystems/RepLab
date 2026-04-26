@@ -25,6 +25,16 @@ export default async function initDb() {
   await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS set_type TEXT DEFAULT 'straight'`);
   await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS rep_range TEXT DEFAULT ''`);
   await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS exercise_description TEXT DEFAULT ''`);
+  // Per-exercise overrides for Robin Gallant program (and future xlsx imports):
+  // video_url overrides the demo-button target; program_notes renders below the
+  // exercise card as a static program-provided note (separate from user notes).
+  await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS video_url TEXT DEFAULT ''`);
+  await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS program_notes TEXT DEFAULT ''`);
+  // Optional warm-up template attached to a workout. When set, the Begin
+  // Workout flow asks the user if they want to run the prehab routine first.
+  // is_prehab marks the template as a warm-up so the weekly view can hide it.
+  await pool.query(`ALTER TABLE templates ADD COLUMN IF NOT EXISTS prehab_template_id INT`);
+  await pool.query(`ALTER TABLE templates ADD COLUMN IF NOT EXISTS is_prehab BOOLEAN DEFAULT FALSE`);
   await pool.query(`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS notes JSONB DEFAULT '{}'`);
   await pool.query(`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS completed BOOLEAN DEFAULT FALSE`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT UNIQUE`);

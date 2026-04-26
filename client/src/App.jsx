@@ -53,6 +53,7 @@ const NewHomepage = lazy(() => import('./pages/NewHomepage'));
 const Brainstorm = lazy(() => import('./pages/Brainstorm'));
 const BibleVerses = lazy(() => import('./pages/BibleVerses'));
 const ParallaxAnimation = lazy(() => import('./pages/ParallaxAnimation'));
+const NavbarsTest = lazy(() => import('./pages/NavbarsTest'));
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -171,6 +172,7 @@ export default function App() {
         <Route path="/test/brainstorm" element={<TestRoute><Brainstorm /></TestRoute>} />
         <Route path="/test/bible-verses" element={<TestRoute><BibleVerses /></TestRoute>} />
         <Route path="/test/parallax" element={<TestRoute><ParallaxAnimation /></TestRoute>} />
+        <Route path="/test/navbars" element={<TestRoute><NavbarsTest /></TestRoute>} />
       </Route>
 
       <Route path="*" element={<CatchAllRedirect />} />

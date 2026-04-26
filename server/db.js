@@ -385,7 +385,16 @@ const db = {
         const key = `${ex.name}::${ex.sort_order}`;
         if (!seen.has(key)) {
           seen.set(key, grouped.length);
-          grouped.push({ name: ex.name, setType: ex.set_type || 'straight', sortOrder: ex.sort_order, repRange: ex.rep_range || '', exerciseDescription: ex.exercise_description || '', sets: [] });
+          grouped.push({
+            name: ex.name,
+            setType: ex.set_type || 'straight',
+            sortOrder: ex.sort_order,
+            repRange: ex.rep_range || '',
+            exerciseDescription: ex.exercise_description || '',
+            videoUrl: ex.video_url || '',
+            programNotes: ex.program_notes || '',
+            sets: [],
+          });
         }
         grouped[seen.get(key)].sets.push({
           setNumber: ex.set_number,
@@ -402,6 +411,8 @@ const db = {
         name: t.name,
         description: t.description,
         isRest: t.is_rest,
+        isPrehab: !!t.is_prehab,
+        prehabTemplateId: t.prehab_template_id || null,
         sortOrder: t.sort_order,
         groupId: t.group_id || null,
         phase: t.phase || null,
