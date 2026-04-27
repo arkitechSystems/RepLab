@@ -197,12 +197,16 @@ export default function EditWorkout() {
     }
   }
 
+  const inputClass = 'w-full glass-input rounded-[2px] px-4 py-3.5 text-white text-base placeholder:text-wf-gray-500 focus:outline-none transition-all';
+  const labelClass = 'text-[10px] uppercase font-bold mb-1.5 block';
+  const labelStyle = { color: 'rgba(255,255,255,0.5)', letterSpacing: '0.2em' };
+
   if (loading) {
     return (
       <div className="px-4 pt-6">
-        <div className="glass-skeleton rounded-xl h-12 w-48 mb-4" />
+        <div className="glass-skeleton rounded-[2px] h-12 w-48 mb-4" />
         {[...Array(3)].map((_, i) => (
-          <div key={i} className="glass-skeleton rounded-xl h-32 mb-3" />
+          <div key={i} className="glass-skeleton rounded-[2px] h-32 mb-3" />
         ))}
       </div>
     );
@@ -216,47 +220,72 @@ export default function EditWorkout() {
         if (from === 'trainer') { window.location.href = '/trainer/workouts'; }
         else if (from === 'admin') { window.location.href = '/admin/workout-manager/workouts'; }
         else { navigate(-1); }
-      })} className="flex items-center gap-1 text-wf-red text-sm font-medium mb-4 active:opacity-70">
+      })} className="inline-flex items-center gap-1 text-sm text-wf-gray-400 active:text-white transition-colors mb-5">
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
         </svg>
         {searchParams.get('from') === 'trainer' ? 'Back to Dashboard' : searchParams.get('from') === 'admin' ? 'Back to Admin' : 'Back'}
       </button>
 
-      <h1 className="text-3xl font-black text-white tracking-tight mb-6">Edit Workout</h1>
+      <div
+        className="relative overflow-hidden mb-5"
+        style={{
+          background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+          borderRadius: '2px',
+          boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+        }}
+      >
+        <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent)' }} />
+        <div className="absolute -top-10 -right-10 w-[280px] h-[280px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.10) 0%, transparent 60%)', filter: 'blur(40px)' }} />
 
-      {error && (
-        <div className="bg-red-900/30 border border-red-800 rounded-lg px-4 py-3 text-red-300 text-sm mb-4">
-          {error}
+        <div className="relative p-6">
+          <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.4em' }}>
+            Workout
+          </p>
+          <h1 className="text-[28px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95', letterSpacing: '-0.02em' }}>
+            EDIT WORKOUT
+          </h1>
+
+          {error && (
+            <div className="mt-4 px-4 py-3 text-red-300 text-sm" style={{ background: 'rgba(127,29,29,0.30)', border: '1px solid rgba(153,27,27,0.6)', borderRadius: '2px' }}>
+              {error}
+            </div>
+          )}
+
+          <div className="mt-5 pt-4 border-t border-white/5 space-y-4">
+            <div>
+              <label className={labelClass} style={labelStyle}>Workout Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Upper Body"
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass} style={labelStyle}>
+                Description{' '}
+                <span className="text-wf-gray-600 normal-case font-normal" style={{ letterSpacing: '0' }}>(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="e.g. Chest and Back focus"
+                className={inputClass}
+              />
+            </div>
+          </div>
         </div>
-      )}
-
-      {/* Workout Name */}
-      <div className="mb-4">
-        <label className="text-xs text-wf-gray-400 uppercase tracking-wider mb-1 block">Workout Name</label>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Upper Body"
-          className="w-full glass-input rounded-xl px-4 py-3.5 text-white text-base placeholder:text-wf-gray-500 focus:outline-none transition-all"
-        />
-      </div>
-
-      <div className="mb-6">
-        <label className="text-xs text-wf-gray-400 uppercase tracking-wider mb-1 block">Description (optional)</label>
-        <input
-          type="text"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="e.g. Chest and Back focus"
-          className="w-full glass-input rounded-xl px-4 py-3.5 text-white text-base placeholder:text-wf-gray-500 focus:outline-none transition-all"
-        />
       </div>
 
       {/* Exercises */}
       <div className="mb-4">
-        <h2 className="text-lg font-semibold text-white mb-3">Exercises</h2>
+        <p className="text-[10px] uppercase font-bold mb-3" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.3em' }}>
+          Exercises
+        </p>
 
         {exercises.map((ex, exIdx) => (
           <TemplateExerciseWrapper
@@ -282,13 +311,13 @@ export default function EditWorkout() {
         <div className="flex gap-2">
           <button
             onClick={addExercise}
-            className="flex-1 border border-dashed border-white/15 rounded-xl py-3 text-wf-gray-400 text-sm font-medium active:border-wf-red active:text-wf-red transition-colors"
+            className="flex-1 border border-dashed border-white/15 rounded-[2px] py-3 text-wf-gray-400 text-sm font-medium active:border-wf-red active:text-wf-red transition-colors"
           >
             + Add Exercise
           </button>
           <button
             onClick={addSectionHeader}
-            className="flex-1 border border-dashed border-wf-red/30 rounded-xl py-3 text-wf-red/60 text-sm font-medium active:border-wf-red active:text-wf-red transition-colors"
+            className="flex-1 border border-dashed border-wf-red/30 rounded-[2px] py-3 text-wf-red/60 text-sm font-medium active:border-wf-red active:text-wf-red transition-colors"
           >
             + Add Section
           </button>
@@ -300,7 +329,8 @@ export default function EditWorkout() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="w-full btn-gradient active:scale-[0.98] text-white font-semibold py-4 rounded-xl text-base transition-all disabled:opacity-50"
+          className="w-full active:scale-[0.98] text-white font-bold py-4 rounded-[2px] text-base transition-all disabled:opacity-50 uppercase"
+          style={{ background: '#ef4444', letterSpacing: '0.1em' }}
         >
           {saving ? 'Saving...' : 'Save Changes'}
         </button>

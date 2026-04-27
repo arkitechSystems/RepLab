@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-// Sample workout template — not saved to the database or workout library
 export const TUTORIAL_TEMPLATE = {
   id: 'tutorial',
   name: 'Tutorial Workout',
@@ -67,7 +66,6 @@ export const TUTORIAL_TEMPLATE = {
   ],
 };
 
-// Redirects to the WorkoutSession component in tutorial mode
 export default function TutorialWorkout() {
   const navigate = useNavigate();
 
@@ -76,5 +74,65 @@ export default function TutorialWorkout() {
     navigate(`/session/tutorial/${today}`, { replace: true, state: { tutorialTemplate: TUTORIAL_TEMPLATE } });
   }, [navigate]);
 
-  return null;
+  return (
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center px-4 py-8 safe-top safe-bottom relative">
+      <div className="ambient-bg" />
+      <div className="w-full max-w-sm relative z-10">
+        <div
+          className="relative overflow-hidden"
+          style={{
+            background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+            borderRadius: '2px',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+          }}
+        >
+          <div
+            className="h-[3px]"
+            style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent)' }}
+          />
+          <div
+            className="absolute -top-10 -right-10 w-[280px] h-[280px] pointer-events-none"
+            style={{
+              background: 'radial-gradient(circle, rgba(239,68,68,0.10) 0%, transparent 60%)',
+              filter: 'blur(40px)',
+            }}
+          />
+          <div className="relative p-6">
+            <div className="mb-5">
+              <h1 className="text-[20px] font-black tracking-wide text-white logo-glow mb-3">
+                REP<span className="text-wf-red">LAB</span>
+              </h1>
+              <p
+                className="text-[10px] uppercase font-light mb-1"
+                style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.4em' }}
+              >
+                Tutorial
+              </p>
+              <h2
+                className="text-[28px] font-black text-white tracking-tight"
+                style={{ fontFamily: 'system-ui', lineHeight: '0.95', letterSpacing: '-0.02em' }}
+              >
+                LOADING SESSION
+              </h2>
+            </div>
+            <div className="pt-4 border-t border-white/5">
+              <p className="text-wf-gray-400 text-sm leading-relaxed mb-5">
+                Spinning up a sample workout so you can see how RepLab tracks
+                sets, reps, and weight. Nothing here will be saved.
+              </p>
+              <div className="flex items-center gap-3">
+                <span className="replab-spinner inline-block" style={{ width: 18, height: 18 }} />
+                <span
+                  className="text-[10px] uppercase font-bold text-white/50"
+                  style={{ letterSpacing: '0.3em' }}
+                >
+                  Preparing
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }

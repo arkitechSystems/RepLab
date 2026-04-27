@@ -46,7 +46,6 @@ export default function Upgrade() {
   const isSuccess = searchParams.get('success') === 'true';
   const isCanceled = searchParams.get('canceled') === 'true';
 
-  // Refresh user plan after successful checkout
   useEffect(() => {
     if (!isSuccess) return;
     let attempts = 0;
@@ -64,7 +63,6 @@ export default function Upgrade() {
     return () => clearInterval(poll);
   }, [isSuccess]);
 
-  // Fetch current subscription
   useEffect(() => {
     api('/billing/subscription').then(setSubscription).catch(() => {});
   }, []);
@@ -99,59 +97,104 @@ export default function Upgrade() {
     }
   }
 
-  // Success state
   if (isSuccess) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center px-6 relative">
         <div className="ambient-bg" />
-        <div className="w-full max-w-sm relative z-10 flex flex-col items-center gap-6 text-center">
-          <div className="w-20 h-20 rounded-full bg-green-500/15 flex items-center justify-center">
-            <svg className="w-10 h-10 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-            </svg>
+        <div
+          className="w-full max-w-sm relative z-10 overflow-hidden"
+          style={{
+            background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+            borderRadius: '2px',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+          }}
+        >
+          <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent)' }} />
+          <div className="absolute -top-10 -right-10 w-[280px] h-[280px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.10) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+          <div className="relative p-8 flex flex-col items-center gap-5 text-center">
+            <div className="w-16 h-16 flex items-center justify-center" style={{ background: 'rgba(239,68,68,0.12)', borderRadius: '2px' }}>
+              <svg className="w-8 h-8" style={{ color: '#ef4444' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+              </svg>
+            </div>
+            <p className="text-[10px] uppercase font-light" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.4em' }}>
+              Membership Active
+            </p>
+            <h1 className="text-[28px] font-black text-white tracking-tight" style={{ lineHeight: '0.95', letterSpacing: '-0.02em' }}>
+              WELCOME TO {(user?.plan || 'PRO').toUpperCase()}
+            </h1>
+            <p className="text-white/60 text-sm leading-relaxed">
+              Your plan is now active. Unlock every feature and start training.
+            </p>
+            <button
+              onClick={() => navigate('/')}
+              className="w-full active:scale-[0.98] text-white font-bold uppercase py-4 transition-all"
+              style={{
+                background: '#ef4444',
+                borderRadius: '2px',
+                letterSpacing: '0.2em',
+                fontSize: '13px',
+                boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+              }}
+            >
+              Start Training
+            </button>
           </div>
-          <h1 className="text-2xl font-black text-white">Welcome to {user?.plan || 'Pro'}!</h1>
-          <p className="text-wf-gray-400 text-sm">
-            Your plan is now active. Enjoy all the premium features.
-          </p>
-          <button
-            onClick={() => navigate('/')}
-            className="w-full btn-gradient active:scale-[0.98] text-white font-semibold py-3.5 rounded-xl text-base transition-all"
-          >
-            Start Training
-          </button>
         </div>
       </div>
     );
   }
 
-  // Canceled state
   if (isCanceled) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center px-6 relative">
         <div className="ambient-bg" />
-        <div className="w-full max-w-sm relative z-10 flex flex-col items-center gap-6 text-center">
-          <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center">
-            <svg className="w-8 h-8 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+        <div
+          className="w-full max-w-sm relative z-10 overflow-hidden"
+          style={{
+            background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+            borderRadius: '2px',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+          }}
+        >
+          <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent)' }} />
+          <div className="absolute -top-10 -right-10 w-[280px] h-[280px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.10) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+          <div className="relative p-8 flex flex-col items-center gap-5 text-center">
+            <div className="w-16 h-16 flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '2px' }}>
+              <svg className="w-8 h-8 text-white/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <p className="text-[10px] uppercase font-light" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.4em' }}>
+              Checkout Canceled
+            </p>
+            <h1 className="text-[28px] font-black text-white tracking-tight" style={{ lineHeight: '0.95', letterSpacing: '-0.02em' }}>
+              NO CHANGES MADE
+            </h1>
+            <p className="text-white/60 text-sm leading-relaxed">
+              Your checkout was canceled. No charges were made.
+            </p>
+            <button
+              onClick={() => navigate('/upgrade')}
+              className="w-full active:scale-[0.98] text-white font-bold uppercase py-4 transition-all"
+              style={{
+                background: '#ef4444',
+                borderRadius: '2px',
+                letterSpacing: '0.2em',
+                fontSize: '13px',
+                boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+              }}
+            >
+              Try Again
+            </button>
+            <button
+              onClick={() => navigate(-1)}
+              className="text-[11px] uppercase text-white/40 active:text-white transition-colors font-semibold"
+              style={{ letterSpacing: '0.25em' }}
+            >
+              Go Back
+            </button>
           </div>
-          <h1 className="text-2xl font-black text-white">No Changes Made</h1>
-          <p className="text-wf-gray-400 text-sm">
-            Your checkout was canceled. No charges were made.
-          </p>
-          <button
-            onClick={() => navigate('/upgrade')}
-            className="w-full btn-gradient active:scale-[0.98] text-white font-semibold py-3.5 rounded-xl text-base transition-all"
-          >
-            Try Again
-          </button>
-          <button
-            onClick={() => navigate(-1)}
-            className="text-sm text-wf-gray-500 active:text-white transition-colors"
-          >
-            Go Back
-          </button>
         </div>
       </div>
     );
@@ -162,11 +205,10 @@ export default function Upgrade() {
       <StickyHeader title="Upgrade Plan" />
 
       <div className="px-4 pb-8">
-        {/* Back button */}
         <div className="mb-4">
           <button
             onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-1 text-sm text-wf-gray-400 active:text-white transition-colors"
+            className="inline-flex items-center gap-1 text-sm text-white/50 active:text-white transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
@@ -175,74 +217,134 @@ export default function Upgrade() {
           </button>
         </div>
 
-        {/* Already subscribed — show manage option */}
+        {/* Hero panel — always shown */}
+        <div
+          className="relative overflow-hidden mb-5"
+          style={{
+            background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+            borderRadius: '2px',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+          }}
+        >
+          <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent)' }} />
+          <div className="absolute -top-10 -right-10 w-[280px] h-[280px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.10) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+
+          <div className="relative p-6">
+            <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.4em' }}>
+              Membership
+            </p>
+            <h1 className="text-[28px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95', letterSpacing: '-0.02em' }}>
+              {isPremium ? 'YOUR PLAN' : 'GO PRO'}
+            </h1>
+            {!isPremium && (
+              <p className="text-sm text-white/55 mt-3 leading-relaxed">
+                Unlock featured trainer programs, AI workout generation, and the full RepLab toolkit.
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Already subscribed — Nike-styled manage card */}
         {isPremium && subscription && (
-          <div className="glass-card rounded-2xl p-5 mb-5 border-l-4 border-green-500">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <p className="text-white font-bold text-base">{user.plan} Plan</p>
-                <p className="text-sm text-wf-gray-400 mt-0.5">
-                  {subscription.billing === 'year' ? 'Annual' : 'Monthly'} billing
-                  {subscription.cancelAtPeriodEnd && ' — cancels at period end'}
-                </p>
-                {subscription.currentPeriodEnd && (
-                  <p className="text-xs text-wf-gray-500 mt-1">
-                    {subscription.cancelAtPeriodEnd ? 'Access until' : 'Renews'}{' '}
-                    {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
+          <div
+            className="relative overflow-hidden mb-5"
+            style={{
+              background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+              borderRadius: '2px',
+              boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+            }}
+          >
+            <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, #ef4444, rgba(239,68,68,0.4))' }} />
+            <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.10) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+
+            <div className="relative p-6">
+              <div className="flex items-start justify-between mb-5 gap-4">
+                <div className="min-w-0">
+                  <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.35em' }}>
+                    Active Plan
                   </p>
-                )}
+                  <h2 className="text-[24px] font-black text-white tracking-tight uppercase" style={{ lineHeight: '0.95', letterSpacing: '-0.01em' }}>
+                    {user.plan}
+                  </h2>
+                  <p className="text-[11px] uppercase text-white/40 font-semibold mt-2" style={{ letterSpacing: '0.25em' }}>
+                    {subscription.billing === 'year' ? 'Annual Billing' : 'Monthly Billing'}
+                    {subscription.cancelAtPeriodEnd && ' • Cancels at period end'}
+                  </p>
+                  {subscription.currentPeriodEnd && (
+                    <p className="text-[11px] text-white/35 mt-1.5">
+                      {subscription.cancelAtPeriodEnd ? 'Access until' : 'Renews'}{' '}
+                      <span className="text-white/70 font-medium">
+                        {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
+                      </span>
+                    </p>
+                  )}
+                </div>
+                <div className="w-11 h-11 flex items-center justify-center shrink-0" style={{ background: 'rgba(239,68,68,0.12)', borderRadius: '2px' }}>
+                  <svg className="w-5 h-5" style={{ color: '#ef4444' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                  </svg>
+                </div>
               </div>
-              <div className="w-10 h-10 rounded-full bg-green-500/15 flex items-center justify-center">
-                <svg className="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                </svg>
-              </div>
+              <button
+                onClick={handleManageSubscription}
+                disabled={portalLoading}
+                className="w-full text-white font-bold uppercase py-3.5 active:scale-[0.98] transition-all disabled:opacity-50"
+                style={{
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  borderRadius: '2px',
+                  letterSpacing: '0.25em',
+                  fontSize: '12px',
+                }}
+              >
+                {portalLoading ? 'Opening...' : 'Manage Subscription'}
+              </button>
             </div>
-            <button
-              onClick={handleManageSubscription}
-              disabled={portalLoading}
-              className="w-full glass-card text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all disabled:opacity-50"
-            >
-              {portalLoading ? 'Opening...' : 'Manage Subscription'}
-            </button>
           </div>
         )}
 
         {/* Plan selection — hide if already subscribed */}
         {!isPremium && (
           <>
-            {/* Billing toggle */}
-            <div className="flex items-center justify-center gap-1 mb-5">
+            {/* Billing toggle — sharp pill row */}
+            <div className="flex items-center mb-5" style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '2px', padding: '4px' }}>
               <button
                 onClick={() => setBilling('monthly')}
-                className={`px-4 py-2 rounded-l-xl text-sm font-semibold transition-all ${
-                  billing === 'monthly'
-                    ? 'bg-white/15 text-white'
-                    : 'bg-white/5 text-wf-gray-500'
+                className={`flex-1 py-2.5 text-[11px] font-bold uppercase transition-all ${
+                  billing === 'monthly' ? 'text-white' : 'text-white/40'
                 }`}
+                style={{
+                  letterSpacing: '0.25em',
+                  borderRadius: '2px',
+                  background: billing === 'monthly' ? '#ef4444' : 'transparent',
+                  boxShadow: billing === 'monthly' ? '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)' : 'none',
+                }}
               >
                 Monthly
               </button>
               <button
                 onClick={() => setBilling('yearly')}
-                className={`px-4 py-2 rounded-r-xl text-sm font-semibold transition-all ${
-                  billing === 'yearly'
-                    ? 'bg-white/15 text-white'
-                    : 'bg-white/5 text-wf-gray-500'
+                className={`flex-1 py-2.5 text-[11px] font-bold uppercase transition-all relative ${
+                  billing === 'yearly' ? 'text-white' : 'text-white/40'
                 }`}
+                style={{
+                  letterSpacing: '0.25em',
+                  borderRadius: '2px',
+                  background: billing === 'yearly' ? '#ef4444' : 'transparent',
+                  boxShadow: billing === 'yearly' ? '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)' : 'none',
+                }}
               >
                 Yearly
-                <span className="ml-1 text-[10px] text-green-400 font-bold">Save $$$</span>
+                <span className={`ml-1.5 text-[9px] font-black ${billing === 'yearly' ? 'text-white' : 'text-white/55'}`} style={{ letterSpacing: '0.15em' }}>
+                  −17%
+                </span>
               </button>
             </div>
 
-            {/* Plan Cards */}
+            {/* Plan Cards — Nike product tiles */}
             <div className="space-y-3 mb-6">
               {PLANS.map((plan) => {
                 const isSelected = selectedPlan === plan.name;
-                const borderColor = plan.name === 'Pro' ? 'border-wf-blue' : 'border-purple-400';
-                const textColor = plan.name === 'Pro' ? 'text-wf-blue' : 'text-purple-400';
-                const bgColor = plan.name === 'Pro' ? 'bg-wf-blue/10' : 'bg-purple-400/10';
                 const planPrice = billing === 'yearly' ? plan.yearly : plan.monthly;
                 const perMonth = billing === 'yearly' ? (plan.yearly / 12).toFixed(2) : plan.monthly;
 
@@ -250,53 +352,123 @@ export default function Upgrade() {
                   <button
                     key={plan.name}
                     onClick={() => setSelectedPlan(plan.name)}
-                    className={`w-full text-left rounded-2xl p-4 border-2 transition-all ${
-                      isSelected ? `${borderColor} ${bgColor}` : 'border-white/10 bg-white/5'
-                    }`}
+                    className="w-full text-left relative overflow-hidden active:scale-[0.99] transition-all"
+                    style={{
+                      background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                      borderRadius: '2px',
+                      boxShadow: isSelected
+                        ? '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(239,68,68,0.25), inset 0 1px 0 rgba(255,255,255,0.05), inset 0 0 0 1.5px rgba(239,68,68,0.6)'
+                        : '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05), inset 0 0 0 1px rgba(255,255,255,0.06)',
+                    }}
                   >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-lg font-bold ${isSelected ? textColor : 'text-white'}`}>
-                          {plan.name}
-                        </span>
-                        {plan.badge && (
-                          <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300">
-                            {plan.badge}
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <span className={`text-lg font-black ${isSelected ? textColor : 'text-white'}`}>
-                          ${perMonth}
-                        </span>
-                        <span className="text-xs text-wf-gray-500">/mo</span>
-                        {billing === 'yearly' && (
-                          <span className="block text-[10px] text-green-400">
-                            ${planPrice}/yr — save ${Math.round(plan.monthly * 12 - plan.yearly)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                    <div
+                      className="h-[3px]"
+                      style={{
+                        background: isSelected
+                          ? 'linear-gradient(90deg, #ef4444, #ef4444, rgba(239,68,68,0.4))'
+                          : 'linear-gradient(90deg, rgba(239,68,68,0.5), rgba(239,68,68,0.15), transparent)',
+                      }}
+                    />
+                    {isSelected && (
+                      <div className="absolute -top-10 -right-10 w-[280px] h-[280px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.12) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+                    )}
 
-                    <div className="space-y-1.5">
-                      {plan.features.map((f) => (
-                        <div key={f} className="flex items-center gap-2">
-                          <svg className={`w-3.5 h-3.5 shrink-0 ${isSelected ? textColor : 'text-wf-gray-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                          </svg>
-                          <span className="text-sm text-wf-gray-400">{f}</span>
+                    <div className="relative p-5">
+                      <div className="flex items-start justify-between mb-4 gap-3">
+                        <div className="min-w-0">
+                          <p
+                            className="text-[10px] uppercase font-light mb-1"
+                            style={{
+                              color: isSelected ? 'rgba(239,68,68,0.95)' : 'rgba(255,255,255,0.35)',
+                              letterSpacing: '0.4em',
+                            }}
+                          >
+                            {plan.name === 'Pro' ? 'Athlete' : 'Performance'}
+                          </p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3
+                              className="text-[26px] font-black text-white tracking-tight uppercase"
+                              style={{ lineHeight: '0.95', letterSpacing: '-0.02em' }}
+                            >
+                              {plan.name}
+                            </h3>
+                            {plan.badge && (
+                              <span
+                                className="text-[9px] font-black uppercase text-white px-2 py-1"
+                                style={{
+                                  background: '#ef4444',
+                                  borderRadius: '2px',
+                                  letterSpacing: '0.2em',
+                                  boxShadow: '0 2px 8px rgba(239,68,68,0.4), inset 0 1px 0 rgba(255,255,255,0.15)',
+                                }}
+                              >
+                                {plan.badge}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      ))}
-                    </div>
+                        <div className="text-right shrink-0">
+                          <div className="flex items-baseline justify-end gap-0.5">
+                            <span className="text-[28px] font-black text-white tracking-tight" style={{ lineHeight: '1', letterSpacing: '-0.02em' }}>
+                              ${perMonth}
+                            </span>
+                            <span className="text-[11px] text-white/40 font-medium">/mo</span>
+                          </div>
+                          {billing === 'yearly' && (
+                            <p className="text-[10px] uppercase font-bold mt-1" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.2em' }}>
+                              ${planPrice}/yr • Save ${Math.round(plan.monthly * 12 - plan.yearly)}
+                            </p>
+                          )}
+                        </div>
+                      </div>
 
-                    {/* Radio */}
-                    <div className="flex justify-end mt-3">
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                        isSelected ? borderColor : 'border-white/20'
-                      }`}>
-                        {isSelected && (
-                          <div className={`w-2.5 h-2.5 rounded-full ${plan.name === 'Pro' ? 'bg-wf-blue' : 'bg-purple-400'}`} />
-                        )}
+                      <div className="border-t border-white/10 pt-4 space-y-2.5">
+                        {plan.features.map((f) => (
+                          <div key={f} className="flex items-center gap-2.5">
+                            <div
+                              className="w-4 h-4 shrink-0 flex items-center justify-center"
+                              style={{ background: 'rgba(239,68,68,0.15)', borderRadius: '2px' }}
+                            >
+                              <svg
+                                className="w-2.5 h-2.5"
+                                style={{ color: '#ef4444' }}
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={3}
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                              </svg>
+                            </div>
+                            <span className="text-[13px] text-white/75 font-medium">{f}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/5">
+                        <span
+                          className="text-[10px] uppercase font-bold"
+                          style={{
+                            color: isSelected ? 'rgba(239,68,68,0.95)' : 'rgba(255,255,255,0.35)',
+                            letterSpacing: '0.3em',
+                          }}
+                        >
+                          {isSelected ? 'Selected' : 'Tap to Select'}
+                        </span>
+                        <div
+                          className="w-5 h-5 flex items-center justify-center"
+                          style={{
+                            border: isSelected ? '2px solid #ef4444' : '2px solid rgba(255,255,255,0.2)',
+                            borderRadius: '2px',
+                            background: isSelected ? '#ef4444' : 'transparent',
+                          }}
+                        >
+                          {isSelected && (
+                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                            </svg>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </button>
@@ -304,24 +476,43 @@ export default function Upgrade() {
               })}
             </div>
 
-            {/* Checkout Button */}
             {error && (
-              <p className="text-red-400 text-sm text-center mb-3">{error}</p>
+              <div
+                className="mb-4 px-4 py-3 text-red-300 text-sm"
+                style={{
+                  background: 'rgba(127,29,29,0.30)',
+                  border: '1px solid rgba(153,27,27,0.6)',
+                  borderRadius: '2px',
+                }}
+              >
+                {error}
+              </div>
             )}
 
             <button
               onClick={handleCheckout}
               disabled={loading}
-              className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-bold py-3.5 rounded-xl text-base transition-all active:scale-[0.98] disabled:opacity-50 mb-4"
+              className="w-full text-white font-bold uppercase py-4 transition-all active:scale-[0.98] disabled:opacity-50 mb-4"
+              style={{
+                background: '#ef4444',
+                borderRadius: '2px',
+                letterSpacing: '0.25em',
+                fontSize: '13px',
+                boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+              }}
             >
-              {loading ? 'Redirecting...' : `Subscribe to ${selectedPlan} — $${price}${billing === 'yearly' ? '/yr' : '/mo'}`}
+              {loading
+                ? 'Redirecting...'
+                : `Subscribe to ${selectedPlan} • $${price}${billing === 'yearly' ? '/yr' : '/mo'}`}
             </button>
 
             <div className="flex items-center justify-center gap-2 mb-2">
-              <svg className="w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <svg className="w-3.5 h-3.5 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
               </svg>
-              <span className="text-xs text-wf-gray-500">Secure payment via Stripe. Cancel anytime.</span>
+              <span className="text-[10px] uppercase text-white/35 font-semibold" style={{ letterSpacing: '0.2em' }}>
+                Secure Stripe Checkout • Cancel Anytime
+              </span>
             </div>
           </>
         )}
