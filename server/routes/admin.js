@@ -415,6 +415,7 @@ function adminPage(title, body) {
     <a href="/admin/page-visits"${title === 'Page Visits' ? ' class="active"' : ''}>Page Visits</a>
     <a href="/admin/backup"${title === 'Database Backup' ? ' class="active"' : ''}>Database Backup</a>
     <a href="/admin/audit"${title === 'Audit Reports' ? ' class="active"' : ''}>Audit Reports</a>
+    <a href="/admin/url-conversion"${title === 'URL Conversion' ? ' class="active"' : ''}>URL Conversion</a>
   </div>
 </div>
 <script>
@@ -731,6 +732,11 @@ router.get('/', adminAuth, async (req, res) => {
       <div class="card-icon">🔍</div>
       <div class="card-title">Audit Reports</div>
       <div class="card-desc">UX audit findings, bugs, and fix priorities.</div>
+    </a>
+    <a class="card glass" href="/admin/url-conversion" style="border-color:rgba(239,68,68,0.25);">
+      <div class="card-icon">🔗</div>
+      <div class="card-title">URL Conversion</div>
+      <div class="card-desc">Migration checklist: will-fit.shop &rarr; replab-fitness.com.</div>
     </a>
   </div>
 
@@ -5697,6 +5703,283 @@ router.get('/audit', adminAuth, async (req, res) => {
   </div><!-- /audit #1 -->
   </div><!-- /audit-flat -->
 
+  `));
+});
+
+// ─── URL Conversion ─────────────────────────────────────────────────
+// Migration checklist for switching the public domain from will-fit.shop
+// to replab-fitness.com, moving the GitHub repo to the company account,
+// and the App-Store-related downstream changes (bundle ID, deep links,
+// Resend/Stripe/Render config). Status reuses the same admin_settings
+// JSON blob as Audit Reports — IDs are namespaced with `urc_` so they
+// don't collide with `bk*` / `a25*`.
+router.get('/url-conversion', adminAuth, async (req, res) => {
+  const rawStatus = await db.getAdminSetting(LAUNCH_AUDIT_KEY);
+  let state = {};
+  try { state = rawStatus ? JSON.parse(rawStatus) : {}; } catch { state = {}; }
+
+  const STATUS_LABEL = { todo: 'TO DO', inprogress: 'IN PROGRESS', done: 'DONE', na: 'N/A' };
+  const STATUS_STYLE = {
+    todo:        'background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);',
+    inprogress:  'background:rgba(59,130,246,0.18);color:#3b82f6;border:1px solid rgba(59,130,246,0.4);',
+    done:        'background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3);',
+    na:          'background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.45);border:1px solid rgba(255,255,255,0.12);',
+  };
+  const pill = (id) => {
+    const s = state[id] || 'todo';
+    return `<button onclick="cycleStatus('${id}')" id="pill-${id}" data-status="${s}" style="cursor:pointer;padding:3px 10px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:0.05em;${STATUS_STYLE[s]}">${STATUS_LABEL[s]}</button>`;
+  };
+
+  const SECTIONS = [
+    {
+      title: 'A · Code references — replace will-fit.shop with replab-fitness.com',
+      items: [
+        { id: 'urc_a1', title: 'server/email.js — 5 <code>from:</code> addresses + 4 hardcoded link URLs',                                              loc: 'server/email.js (lines 45, 69, 77, 90, 108, 112, 149, 213, 283)' },
+        { id: 'urc_a2', title: 'server/routes/trainer.js — 6 dashboard link instances in copy/HTML',                                                    loc: 'server/routes/trainer.js (lines 277, 329, 513, 520, 575, 583)' },
+        { id: 'urc_a3', title: 'server/routes/admin.js:166 — admin password-reset link uses <code>https://will-fit.shop/admin</code>',                  loc: 'server/routes/admin.js:166' },
+        { id: 'urc_a4', title: 'server/routes/admin.js:170 — admin email <code>from:</code> address <code>noreply@will-fit.shop</code>',                loc: 'server/routes/admin.js:170' },
+        { id: 'urc_a5', title: 'server/routes/billing.js — Stripe Checkout success/cancel URL fallback when <code>APP_URL</code> env unset',           loc: 'server/routes/billing.js:46, 166' },
+        { id: 'urc_a6', title: 'client/src/pages/Workouts.jsx — share-text default + Messenger share link both reference will-fit.shop',                loc: 'client/src/pages/Workouts.jsx:1458, 1485' },
+        { id: 'urc_a7', title: 'README.md — currently titled "WillFit"; rebrand and update URLs',                                                       loc: 'README.md' },
+      ],
+    },
+    {
+      title: 'B · Bundle ID — change from com.willfit.app (must change before first TestFlight upload)',
+      items: [
+        { id: 'urc_b1', title: 'Decide final bundle ID (recommendation: <code>com.replab.fitness</code>)',                                              loc: 'decision' },
+        { id: 'urc_b2', title: 'client/capacitor.config.json:2 — <code>appId</code>',                                                                   loc: 'client/capacitor.config.json:2' },
+        { id: 'urc_b3', title: 'iOS — <code>PRODUCT_BUNDLE_IDENTIFIER</code> on both Debug + Release configs',                                          loc: 'client/ios/App/App.xcodeproj/project.pbxproj:308, 329' },
+        { id: 'urc_b4', title: 'Android — <code>namespace</code> + <code>applicationId</code>',                                                         loc: 'client/android/app/build.gradle:4, 7' },
+        { id: 'urc_b5', title: 'Android — rename <code>com/willfit/app</code> directory + <code>package</code> declaration in MainActivity.java',       loc: 'client/android/app/src/main/java/com/willfit/app/MainActivity.java' },
+        { id: 'urc_b6', title: 'Android — <code>package_name</code> + <code>custom_url_scheme</code> in strings.xml',                                   loc: 'client/android/app/src/main/res/values/strings.xml:5, 6' },
+        { id: 'urc_b7', title: 'Expo mobile/ — <code>bundleIdentifier</code> + Android <code>package</code> (only relevant if Expo build still used)',  loc: 'mobile/app.json:18, 24' },
+      ],
+    },
+    {
+      title: 'C · Resend (transactional email) — DNS + sender addresses',
+      items: [
+        { id: 'urc_c1', title: 'Decide sender domain — <code>email.replab-fitness.com</code> (subdomain) or apex (<code>replab-fitness.com</code>)',    loc: 'decision' },
+        { id: 'urc_c2', title: 'Resend dashboard — Add Domain → enter chosen domain → record the SPF + DKIM + DMARC values it shows',                  loc: 'resend.com/domains' },
+        { id: 'urc_c3', title: 'New domain DNS — add SPF TXT (<code>v=spf1 include:_spf.resend.com ~all</code> or per Resend instructions)',           loc: 'DNS at registrar' },
+        { id: 'urc_c4', title: 'New domain DNS — add 3 DKIM CNAME/TXT records from Resend',                                                            loc: 'DNS at registrar' },
+        { id: 'urc_c5', title: 'New domain DNS — add DMARC TXT (<code>_dmarc</code> with policy <code>p=none</code> to start)',                        loc: 'DNS at registrar' },
+        { id: 'urc_c6', title: 'Resend dashboard — click Verify; wait for green checks on all DNS records',                                            loc: 'resend.com/domains' },
+        { id: 'urc_c7', title: 'Update sender addresses in code — all 5 instances in server/email.js + the 1 in server/routes/admin.js:170',           loc: 'server/email.js + server/routes/admin.js' },
+        { id: 'urc_c8', title: 'Send a test email from each function (welcome, reset, signup notification, daily summary, push) and verify deliverability', loc: 'manual test' },
+      ],
+    },
+    {
+      title: 'D · DNS records at the new domain registrar (replab-fitness.com)',
+      items: [
+        { id: 'urc_d1', title: 'A or CNAME for the apex pointing at Render',                                                                            loc: 'DNS at registrar' },
+        { id: 'urc_d2', title: 'CNAME <code>www</code> → Render (or apex CNAME flattening)',                                                            loc: 'DNS at registrar' },
+        { id: 'urc_d3', title: 'CNAME for email subdomain (if using <code>email.replab-fitness.com</code>) — typically points at Resend',                loc: 'DNS at registrar' },
+        { id: 'urc_d4', title: 'TTL low (300s) during cutover so you can roll back quickly',                                                            loc: 'DNS at registrar' },
+      ],
+    },
+    {
+      title: 'E · Render configuration',
+      items: [
+        { id: 'urc_e1', title: 'Render dashboard → Web Service → Settings → Custom Domains → Add <code>replab-fitness.com</code> + <code>www.replab-fitness.com</code>', loc: 'render.com' },
+        { id: 'urc_e2', title: 'Wait for SSL cert provisioning (Let&apos;s Encrypt issuance — usually under 10 min once DNS resolves)',                  loc: 'render.com' },
+        { id: 'urc_e3', title: 'Render env vars → set <code>APP_URL=https://replab-fitness.com</code> (overrides will-fit.shop fallback in billing.js)', loc: 'render.com env' },
+        { id: 'urc_e4', title: 'Trigger a manual deploy after env var change',                                                                          loc: 'render.com' },
+        { id: 'urc_e5', title: 'Smoke-test login, reset, Stripe Checkout, deep link, /admin and /trainer dashboards on the new domain',                  loc: 'manual test' },
+        { id: 'urc_e6', title: 'Optional: 301 redirect from will-fit.shop → replab-fitness.com (keep alive 6+ months for old email links)',              loc: 'Render redirect rules' },
+      ],
+    },
+    {
+      title: 'F · Stripe',
+      items: [
+        { id: 'urc_f1', title: 'Stripe dashboard → Webhooks → update endpoint URL to <code>https://replab-fitness.com/billing/webhook</code>',          loc: 'dashboard.stripe.com' },
+        { id: 'urc_f2', title: 'Verify <code>STRIPE_WEBHOOK_SECRET</code> in Render env still matches the (unchanged) signing secret',                  loc: 'render.com env' },
+        { id: 'urc_f3', title: 'Test Checkout flow on new domain — confirm success and cancel URLs land back on replab-fitness.com',                    loc: 'manual test' },
+        { id: 'urc_f4', title: 'Stripe Customer Portal — confirm return URL points to new domain (set in code via APP_URL — verify after deploy)',      loc: 'manual test' },
+      ],
+    },
+    {
+      title: 'G · Deep links / Universal Links (App Store readiness)',
+      items: [
+        { id: 'urc_g1', title: 'server/index.js:200 — replace <code>TEAMID</code> with real Apple Team ID + new bundle ID in apple-app-site-association', loc: 'server/index.js:194-205' },
+        { id: 'urc_g2', title: 'server/index.js:218 — update <code>package_name</code> + Android signing SHA-256 fingerprint',                          loc: 'server/index.js:212-225' },
+        { id: 'urc_g3', title: 'client/src/utils/deepLink.js:17 — add <code>replab-fitness.com</code> to <code>APP_HOSTS</code>',                       loc: 'client/src/utils/deepLink.js' },
+        { id: 'urc_g4', title: 'AndroidManifest.xml — App Link intent-filter <code>&lt;data android:host=&quot;replab-fitness.com&quot;/&gt;</code>',   loc: 'client/android/app/src/main/AndroidManifest.xml' },
+        { id: 'urc_g5', title: 'Xcode → Signing &amp; Capabilities → Associated Domains → add <code>applinks:replab-fitness.com</code>',                loc: 'Xcode' },
+        { id: 'urc_g6', title: 'Get real Android signing SHA-256 (Play Console → App signing) and replace placeholder',                                  loc: 'play.google.com/console' },
+        { id: 'urc_g7', title: 'Verify <code>https://replab-fitness.com/.well-known/apple-app-site-association</code> returns valid JSON over HTTPS',    loc: 'manual test' },
+        { id: 'urc_g8', title: 'Verify <code>https://replab-fitness.com/.well-known/assetlinks.json</code> returns valid JSON over HTTPS',                loc: 'manual test' },
+      ],
+    },
+    {
+      title: 'H · GitHub repo migration (Wmartin23/WillFit → company account)',
+      items: [
+        { id: 'urc_h1', title: 'Create new repo under company GitHub org/user',                                                                          loc: 'github.com' },
+        { id: 'urc_h2', title: 'Local — <code>git remote set-url origin https://github.com/&lt;NEW_OWNER&gt;/&lt;NEW_REPO&gt;.git</code>',               loc: 'local repo' },
+        { id: 'urc_h3', title: 'Local — <code>git config user.name &quot;&lt;Company Name&gt;&quot;</code>',                                            loc: 'local repo' },
+        { id: 'urc_h4', title: 'Local — <code>git config user.email &quot;&lt;Company Email&gt;&quot;</code>',                                          loc: 'local repo' },
+        { id: 'urc_h5', title: 'Push all branches — <code>git push --all origin</code>',                                                                loc: 'local repo' },
+        { id: 'urc_h6', title: 'Push all tags — <code>git push --tags origin</code>',                                                                   loc: 'local repo' },
+        { id: 'urc_h7', title: 'Render → Service → Settings → Build &amp; Deploy → reconnect to new GitHub repo',                                       loc: 'render.com' },
+        { id: 'urc_h8', title: 'Re-add deploy keys / fine-grained tokens / SSH keys for the new GitHub account',                                         loc: 'github.com / local' },
+        { id: 'urc_h9', title: 'Update any GitHub Actions secrets / workflow secrets in the new repo',                                                   loc: 'github.com' },
+        { id: 'urc_h10', title: 'Archive (or transfer) the old <code>Wmartin23/WillFit</code> repo so future contributors can&apos;t push to it accidentally', loc: 'github.com' },
+        { id: 'urc_h11', title: 'Update any documentation / bookmarks / shared links pointing at the old repo URL',                                      loc: 'docs / external' },
+      ],
+    },
+    {
+      title: 'I · PostHog / Sentry (analytics + crash reporting)',
+      items: [
+        { id: 'urc_i1', title: 'PostHog → Project Settings → Authorized URLs / Allowed Domains → add replab-fitness.com',                                loc: 'app.posthog.com' },
+        { id: 'urc_i2', title: 'Sentry → Project Settings → Allowed Domains → add replab-fitness.com',                                                   loc: 'sentry.io' },
+        { id: 'urc_i3', title: '(Pending audit item h9 / a25s10) — set <code>VITE_SENTRY_DSN</code> in Render env, redeploy',                            loc: 'render.com env' },
+      ],
+    },
+    {
+      title: 'J · App Store Connect / Google Play Console listing URLs',
+      items: [
+        { id: 'urc_j1', title: 'App Store Connect → App Information → <strong>Privacy Policy URL</strong> → <code>https://replab-fitness.com/privacy</code>', loc: 'appstoreconnect.apple.com' },
+        { id: 'urc_j2', title: 'App Store Connect → App Information → <strong>Marketing URL</strong> (optional) → <code>https://replab-fitness.com</code>',  loc: 'appstoreconnect.apple.com' },
+        { id: 'urc_j3', title: 'App Store Connect → App Information → <strong>Support URL</strong> → <code>https://replab-fitness.com/support</code> (or contact page)', loc: 'appstoreconnect.apple.com' },
+        { id: 'urc_j4', title: 'Play Console → Store Listing → <strong>Privacy Policy URL</strong> → <code>https://replab-fitness.com/privacy</code>',    loc: 'play.google.com/console' },
+        { id: 'urc_j5', title: 'Play Console → Store Listing → <strong>Website</strong> → <code>https://replab-fitness.com</code>',                       loc: 'play.google.com/console' },
+        { id: 'urc_j6', title: 'Both stores — <strong>Terms URL</strong> if requested → <code>https://replab-fitness.com/terms</code>',                  loc: 'both stores' },
+      ],
+    },
+  ];
+
+  // Render checklist sections
+  const renderSection = (s, idx) => {
+    const rows = s.items.map((it, i) => `
+      <div class="urc-row">
+        <div class="urc-num">${i + 1}</div>
+        <div class="urc-title">${it.title}</div>
+        <div class="urc-loc"><code>${it.loc}</code></div>
+        <div class="urc-status">${pill(it.id)}</div>
+      </div>
+    `).join('');
+    return `
+      <section class="urc-section glass" style="margin-bottom:18px;">
+        <div class="urc-section-head" onclick="toggleUrcSection(${idx})" style="cursor:pointer;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:14px;font-weight:700;color:#fff;">${s.title}</span>
+          <svg id="urc-chev-${idx}" class="urc-chev open" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+        </div>
+        <div id="urc-body-${idx}" class="urc-body open" style="padding:0 18px 16px;">
+          <div class="urc-list">
+            <div class="urc-row urc-head">
+              <div class="urc-num">#</div>
+              <div class="urc-title">Action</div>
+              <div class="urc-loc">Location</div>
+              <div class="urc-status">Status</div>
+            </div>
+            ${rows}
+          </div>
+        </div>
+      </section>
+    `;
+  };
+
+  res.send(adminPage('URL Conversion', `
+  <div class="breadcrumb"><a href="/admin">Dashboard</a> / URL Conversion</div>
+  <div class="urc-print-area">
+    <div class="urc-header glass" style="padding:20px 24px;margin-bottom:20px;border-left:3px solid #ef4444;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+        <div>
+          <h1 style="font-size:22px;font-weight:800;color:#fff;margin:0 0 6px 0;letter-spacing:-0.01em;">URL Conversion Checklist</h1>
+          <p style="font-size:13px;color:rgba(255,255,255,0.6);margin:0;line-height:1.5;">
+            <strong style="color:#ef4444;">will-fit.shop</strong> &rarr; <strong style="color:#22c55e;">replab-fitness.com</strong> · GitHub repo migration · Resend / Render / Stripe / Deep-Link reconfiguration · App Store submission prep
+          </p>
+        </div>
+        <div class="urc-no-print" style="display:flex;gap:8px;">
+          <button onclick="urcPrint()" style="background:#ef4444;color:#fff;border:none;padding:9px 16px;border-radius:6px;font-size:12px;font-weight:700;letter-spacing:0.05em;cursor:pointer;text-transform:uppercase;">Export PDF</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="urc-print-only" style="display:none;font-size:11px;color:#444;margin-bottom:14px;">
+      Generated: <span id="urc-gen-date"></span> · RepLab admin · /admin/url-conversion
+    </div>
+
+    ${SECTIONS.map(renderSection).join('')}
+  </div>
+
+  <style>
+    .urc-list { display:flex; flex-direction:column; gap:0; }
+    .urc-row {
+      display:grid;
+      grid-template-columns: 32px 1fr 200px 110px;
+      gap:14px;
+      align-items:center;
+      padding:11px 4px;
+      border-bottom:1px solid rgba(255,255,255,0.05);
+    }
+    .urc-row:last-child { border-bottom:none; }
+    .urc-row.urc-head {
+      font-size:10px;
+      text-transform:uppercase;
+      letter-spacing:0.08em;
+      color:rgba(255,255,255,0.4);
+      padding:8px 4px;
+      border-bottom:1px solid rgba(255,255,255,0.1);
+    }
+    .urc-num { color:rgba(255,255,255,0.4); font-size:11px; font-variant-numeric:tabular-nums; text-align:right; }
+    .urc-title { color:#fff; font-size:13px; line-height:1.45; }
+    .urc-title code { background:rgba(255,255,255,0.06); padding:1px 5px; border-radius:3px; font-size:11px; }
+    .urc-loc { color:rgba(255,255,255,0.45); font-size:10.5px; font-family:ui-monospace,Menlo,monospace; word-break:break-all; }
+    .urc-loc code { background:none; padding:0; }
+    .urc-status { text-align:right; }
+    .urc-chev { transition: transform 0.2s ease; }
+    .urc-chev.open { transform: rotate(0deg); }
+    .urc-body { transition: max-height 0.25s ease; }
+    .urc-body:not(.open) { display:none; }
+    .urc-section-head:hover { background:rgba(255,255,255,0.02); }
+
+    @media (max-width:720px) {
+      .urc-row { grid-template-columns: 28px 1fr 110px; }
+      .urc-row .urc-loc { display:none; }
+      .urc-row.urc-head .urc-loc { display:none; }
+    }
+
+    @media print {
+      body { background:#fff !important; color:#000 !important; }
+      .admin-sidebar, .admin-header, .breadcrumb, .urc-no-print { display:none !important; }
+      .main-with-sidebar { margin-left:0 !important; padding:0 !important; }
+      .urc-print-only { display:block !important; }
+      .urc-print-area { color:#000 !important; }
+      .urc-header, .urc-section { background:#fff !important; border:1px solid #ddd !important; box-shadow:none !important; page-break-inside:avoid; }
+      .urc-header h1, .urc-section-head span, .urc-title { color:#000 !important; }
+      .urc-header p, .urc-loc, .urc-num, .urc-row.urc-head { color:#555 !important; }
+      .urc-body { display:block !important; }
+      .urc-chev { display:none !important; }
+      .urc-row { border-bottom:1px solid #eee !important; page-break-inside:avoid; }
+      .urc-title code { background:#f0f0f0 !important; color:#000 !important; }
+      [id^="pill-"] {
+        background:#fff !important;
+        color:#000 !important;
+        border:1px solid #999 !important;
+      }
+      [id^="pill-"][data-status="done"] { background:#dcfce7 !important; border-color:#22c55e !important; color:#15803d !important; }
+      [id^="pill-"][data-status="inprogress"] { background:#dbeafe !important; border-color:#3b82f6 !important; color:#1d4ed8 !important; }
+      [id^="pill-"][data-status="todo"] { background:#fef3c7 !important; border-color:#fbbf24 !important; color:#92400e !important; }
+      [id^="pill-"][data-status="na"] { background:#f3f4f6 !important; border-color:#9ca3af !important; color:#4b5563 !important; }
+      a[href]::after { content:""; }
+    }
+  </style>
+
+  <script>
+    function toggleUrcSection(idx) {
+      const body = document.getElementById('urc-body-' + idx);
+      const chev = document.getElementById('urc-chev-' + idx);
+      const open = body.classList.toggle('open');
+      chev.style.transform = open ? '' : 'rotate(-90deg)';
+    }
+    function urcPrint() {
+      // Expand every collapsed section so the export captures everything.
+      document.querySelectorAll('.urc-body').forEach(b => b.classList.add('open'));
+      const dateEl = document.getElementById('urc-gen-date');
+      if (dateEl) dateEl.textContent = new Date().toLocaleString();
+      window.print();
+    }
+  </script>
   `));
 });
 
