@@ -33,14 +33,72 @@ export default function SessionSummary() {
 
   if (error) {
     return (
-      <div className="px-4 pt-12 text-center">
-        <p className="text-red-400 mb-3">{error}</p>
-        <button onClick={() => navigate(-1)} className="text-wf-cyan text-sm">Back</button>
+      <div className="min-h-screen bg-black px-4 pt-12 pb-24">
+        <div
+          className="relative overflow-hidden fade-slide-up"
+          style={{
+            background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+            borderRadius: '2px',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+          }}
+        >
+          <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent)' }} />
+          <div
+            className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none"
+            style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.10) 0%, transparent 60%)', filter: 'blur(40px)' }}
+          />
+          <div className="relative p-6 text-center">
+            <p className="text-[10px] uppercase font-light mb-2" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.4em' }}>
+              Error
+            </p>
+            <h2 className="text-[28px] font-black text-white tracking-tight mb-4" style={{ letterSpacing: '-0.02em', lineHeight: '0.95' }}>
+              {error}
+            </h2>
+            <button
+              onClick={() => navigate(-1)}
+              className="inline-flex items-center justify-center px-6 py-3 text-[11px] uppercase font-bold text-wf-red border border-wf-red/40 hover:bg-wf-red/10 active:scale-95 transition"
+              style={{ borderRadius: '2px', letterSpacing: '0.25em' }}
+            >
+              Back
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
 
-  if (!data) return null;
+  if (!data) {
+    return (
+      <div className="min-h-screen bg-black px-4 pt-12 pb-24">
+        <div
+          className="relative overflow-hidden"
+          style={{
+            background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+            borderRadius: '2px',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+          }}
+        >
+          <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent)' }} />
+          <div
+            className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none"
+            style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.10) 0%, transparent 60%)', filter: 'blur(40px)' }}
+          />
+          <div className="relative p-6">
+            <p className="text-[10px] uppercase font-light mb-2" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.4em' }}>
+              Summary
+            </p>
+            <div className="h-8 w-2/3 mb-6 animate-pulse" style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '2px' }} />
+            <div className="border-t border-white/10 pt-4 space-y-3">
+              <div className="h-4 w-1/2 animate-pulse" style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '2px' }} />
+              <div className="h-4 w-3/4 animate-pulse" style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '2px' }} />
+              <div className="h-4 w-2/5 animate-pulse" style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '2px' }} />
+              <div className="h-4 w-3/5 animate-pulse" style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '2px' }} />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const wd = data.workoutData || { name: data.templateName || 'Workout', exercises: [] };
 

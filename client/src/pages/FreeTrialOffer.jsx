@@ -7,7 +7,6 @@ import { useTutorial } from '../context/TutorialContext';
 const PLANS = [
   {
     name: 'Pro',
-    color: 'wf-blue',
     price: '$9.99/mo',
     features: [
       'Featured trainer workouts',
@@ -18,7 +17,6 @@ const PLANS = [
   },
   {
     name: 'Elite',
-    color: 'purple-400',
     price: '$19.99/mo',
     features: [
       'Everything in Pro',
@@ -62,109 +60,144 @@ export default function FreeTrialOffer() {
   }
 
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-center px-6 py-12 relative">
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center px-4 py-8 safe-top safe-bottom relative">
       <div className="ambient-bg" />
-      <div className="w-full max-w-sm relative z-10 flex flex-col items-center gap-6">
+      <div className="w-full max-w-sm relative z-10">
+        <div
+          className="relative overflow-hidden"
+          style={{
+            background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+            borderRadius: '2px',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+          }}
+        >
+          <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent)' }} />
+          <div className="absolute -top-10 -right-10 w-[280px] h-[280px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.10) 0%, transparent 60%)', filter: 'blur(40px)' }} />
 
-        {/* Header */}
-        <div className="text-center">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-black text-white">Try Premium Free</h1>
-          <p className="text-wf-gray-400 text-sm mt-2">
-            Get 7 days free — no credit card required. Cancel anytime.
-          </p>
-        </div>
+          <div className="relative p-6">
+            <div className="mb-6">
+              <h1 className="text-[20px] font-black tracking-wide text-white logo-glow mb-3">
+                REP<span className="text-wf-red">LAB</span>
+              </h1>
+              <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.4em' }}>
+                Limited Offer
+              </p>
+              <h2 className="text-[28px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95', letterSpacing: '-0.02em' }}>
+                7 DAYS FREE.<br />NO CARD.
+              </h2>
+              <p className="text-wf-gray-400 text-sm mt-3 leading-relaxed">
+                Unlock every premium feature. Cancel anytime — we won't charge you a cent during the trial.
+              </p>
+            </div>
 
-        {/* Plan Cards */}
-        <div className="w-full space-y-3">
-          {PLANS.map((plan) => {
-            const isSelected = selectedPlan === plan.name;
-            const borderColor = plan.name === 'Pro' ? 'border-wf-blue' : 'border-purple-400';
-            const textColor = plan.name === 'Pro' ? 'text-wf-blue' : 'text-purple-400';
-            const bgColor = plan.name === 'Pro' ? 'bg-wf-blue/10' : 'bg-purple-400/10';
+            <div className="w-full space-y-3 pt-4 border-t border-white/5">
+              {PLANS.map((plan) => {
+                const isSelected = selectedPlan === plan.name;
+                return (
+                  <button
+                    key={plan.name}
+                    onClick={() => setSelectedPlan(plan.name)}
+                    className="w-full text-left relative overflow-hidden transition-all active:scale-[0.99]"
+                    style={{
+                      borderRadius: '2px',
+                      background: isSelected
+                        ? 'linear-gradient(160deg, rgba(239,68,68,0.10) 0%, rgba(239,68,68,0.04) 100%)'
+                        : 'rgba(255,255,255,0.03)',
+                      border: isSelected
+                        ? '1px solid rgba(239,68,68,0.55)'
+                        : '1px solid rgba(255,255,255,0.08)',
+                      boxShadow: isSelected
+                        ? '0 4px 14px rgba(239,68,68,0.18), inset 0 1px 0 rgba(255,255,255,0.04)'
+                        : 'inset 0 1px 0 rgba(255,255,255,0.03)',
+                    }}
+                  >
+                    <div className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] uppercase font-light" style={{ color: isSelected ? 'rgba(239,68,68,0.85)' : 'rgba(255,255,255,0.45)', letterSpacing: '0.35em' }}>
+                            {plan.name}
+                          </span>
+                          {plan.name === 'Elite' && (
+                            <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 text-white" style={{ background: 'rgba(239,68,68,0.85)', letterSpacing: '0.2em', borderRadius: '2px' }}>
+                              Best
+                            </span>
+                          )}
+                        </div>
+                        <div
+                          className="w-4 h-4 flex items-center justify-center"
+                          style={{
+                            borderRadius: '999px',
+                            border: isSelected ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.25)',
+                          }}
+                        >
+                          {isSelected && <div className="w-2 h-2 rounded-full" style={{ background: '#ef4444' }} />}
+                        </div>
+                      </div>
 
-            return (
-              <button
-                key={plan.name}
-                onClick={() => setSelectedPlan(plan.name)}
-                className={`w-full text-left rounded-2xl p-4 border-2 transition-all ${
-                  isSelected
-                    ? `${borderColor} ${bgColor}`
-                    : 'border-white/10 bg-white/5'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-lg font-bold ${isSelected ? textColor : 'text-white'}`}>
-                      {plan.name}
-                    </span>
-                    {plan.name === 'Elite' && (
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300">
-                        Best Value
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xs text-wf-gray-500 line-through">{plan.price}</span>
-                    <span className={`block text-sm font-bold ${isSelected ? textColor : 'text-white'}`}>
-                      Free for 7 days
-                    </span>
-                  </div>
-                </div>
+                      <div className="flex items-baseline gap-2 mb-3">
+                        <span className="text-[22px] font-black text-white tracking-tight" style={{ letterSpacing: '-0.02em' }}>FREE</span>
+                        <span className="text-[11px] uppercase font-bold text-white/40" style={{ letterSpacing: '0.2em' }}>7 days</span>
+                        <span className="text-[11px] text-wf-gray-500 line-through ml-auto">{plan.price}</span>
+                      </div>
 
-                <div className="space-y-2">
-                  {plan.features.map((f) => (
-                    <div key={f} className="flex items-center gap-2">
-                      <svg className={`w-4 h-4 shrink-0 ${isSelected ? textColor : 'text-wf-gray-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                      </svg>
-                      <span className="text-sm text-wf-gray-400">{f}</span>
+                      <div className="space-y-1.5 pt-3 border-t border-white/5">
+                        {plan.features.map((f) => (
+                          <div key={f} className="flex items-center gap-2">
+                            <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} style={{ color: isSelected ? '#ef4444' : 'rgba(255,255,255,0.35)' }}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                            </svg>
+                            <span className="text-[13px] text-wf-gray-400">{f}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  ))}
-                </div>
+                  </button>
+                );
+              })}
+            </div>
 
-                {/* Radio indicator */}
-                <div className="flex justify-end mt-3">
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                    isSelected ? borderColor : 'border-white/20'
-                  }`}>
-                    {isSelected && (
-                      <div className={`w-2.5 h-2.5 rounded-full ${plan.name === 'Pro' ? 'bg-wf-blue' : 'bg-purple-400'}`} />
-                    )}
-                  </div>
-                </div>
+            {error && (
+              <div className="mt-4 px-4 py-3 text-red-300 text-sm" style={{ background: 'rgba(127,29,29,0.30)', border: '1px solid rgba(153,27,27,0.6)', borderRadius: '2px' }}>
+                {error}
+              </div>
+            )}
+
+            <div className="mt-6 space-y-3">
+              <button
+                onClick={handleStartTrial}
+                disabled={loading}
+                className={`w-full active:scale-[0.98] text-white font-bold uppercase py-3.5 text-sm transition-transform ${loading ? 'btn-liquid' : ''}`}
+                style={loading ? {
+                  letterSpacing: '0.15em',
+                  borderRadius: '2px',
+                } : {
+                  letterSpacing: '0.15em',
+                  borderRadius: '2px',
+                  background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+                  boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+                }}
+              >
+                {loading ? (
+                  <span className="inline-flex items-center justify-center h-5">
+                    <span className="replab-spinner inline-block" style={{ width: 20, height: 20 }} />
+                  </span>
+                ) : `Start Free ${selectedPlan} Trial`}
               </button>
-            );
-          })}
+
+              <p className="text-[11px] text-white/30 text-center leading-relaxed px-2">
+                Trial begins immediately. No charge during the 7-day window.
+              </p>
+
+              <button
+                onClick={handleSkip}
+                className="w-full text-[11px] uppercase font-bold text-white/40 active:text-white/80 py-2 transition-colors"
+                style={{ letterSpacing: '0.2em' }}
+              >
+                No Thanks, Continue Free
+              </button>
+            </div>
+          </div>
         </div>
-
-        {error && (
-          <p className="text-red-400 text-sm text-center">{error}</p>
-        )}
-
-        {/* CTA */}
-        <button
-          onClick={handleStartTrial}
-          disabled={loading}
-          className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-bold py-3.5 rounded-xl text-base transition-all active:scale-[0.98] disabled:opacity-50"
-        >
-          {loading ? 'Starting...' : `Start Free ${selectedPlan} Trial`}
-        </button>
-
-        <p className="text-wf-gray-500 text-xs text-center leading-relaxed">
-          Your 7-day free trial begins immediately. You won't be charged during the trial period.
-        </p>
-
-        <button
-          onClick={handleSkip}
-          className="text-wf-gray-500 text-sm hover:text-wf-gray-300 transition-colors"
-        >
-          No thanks, continue with Free
-        </button>
       </div>
     </div>
   );
