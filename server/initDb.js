@@ -86,6 +86,23 @@ export default async function initDb() {
     ["Robin Gallant's Intensive Max Glute Hypertrophy"]
   );
 
+  // Backfill the master `exercises` table with any exercise that's referenced
+  // by a program template but isn't yet in the library. Several earlier
+  // migrations (notably add-hypertrophy-programs.js) inserted into
+  // template_exercises only — so those names had no muscle_group, didn't
+  // appear in the admin Exercise Library, and PRs against them got bucketed
+  // as "Other" in the body-part summary. This call is idempotent: once every
+  // referenced name has a row, it's a no-op. See
+  // server/migrations/backfill-exercise-library.js for details.
+  try {
+    const { backfillExerciseLibrary } = await import('./migrations/backfill-exercise-library.js');
+    await backfillExerciseLibrary(pool);
+  } catch (err) {
+    // Don't block server boot on the backfill — log and continue. The
+    // standalone migration can be re-run manually if this misfires.
+    console.error('[initDb] backfillExerciseLibrary failed (non-fatal):', err.message);
+  }
+
   // Role column for trainer/client designation (admin-set)
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'client'`);
 

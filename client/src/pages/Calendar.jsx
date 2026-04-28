@@ -211,8 +211,10 @@ export default function Calendar() {
     }
   }
 
-  async function handleSkipWorkout() {
-    // Replace this day's workout with nothing (rest)
+  async function handleInsertRestDay() {
+    // Replace this day's workout with a rest day. No shifting — just clear
+    // the day's templateId so the calendar reads it as rest. Future and
+    // past workouts stay exactly where they were.
     const dateStr = format(editingDay, 'yyyy-MM-dd');
     setScheduleSaving(true);
     try {
@@ -231,23 +233,36 @@ export default function Calendar() {
     }
   }
 
-  async function handleInsertRestDay() {
-    // Shift all workouts from this day onward forward by one day
-    // The edited day becomes empty (rest)
+  async function handleSkipWorkout() {
+    // Skip this day's workout and pull all future workouts UP by one day.
+    // Day N (the skipped day) becomes empty; the workout that was on N+1
+    // moves to N, N+2's workout moves to N+1, etc. Rest days / open days
+    // stay where they were — only days that actually had a workout shift
+    // backward. Reverse of handleInsertRestDay's old (forward-shift)
+    // behavior.
     const dateStr = format(editingDay, 'yyyy-MM-dd');
     setScheduleSaving(true);
     try {
-      // Get all scheduled workouts from this date onward
       const futureWorkouts = schedule
-        .filter((s) => s.date >= dateStr && s.templateId)
+        .filter((s) => s.date > dateStr && s.templateId)
         .sort((a, b) => a.date.localeCompare(b.date));
 
-      // Build updates: each workout moves to the next day, edited day is cleared
-      const updates = [{ date: dateStr, templateId: null }];
+      // Build updates via a Map so each date ends up with exactly one
+      // entry. Process in two passes so the "place workout on prev day"
+      // step always wins over the "clear original date" step when those
+      // dates overlap (consecutive workouts).
+      const updateMap = new Map();
+      updateMap.set(dateStr, null); // skipped day clears
       for (const w of futureWorkouts) {
-        const nextDay = format(addDays(parseISO(w.date), 1), 'yyyy-MM-dd');
-        updates.push({ date: nextDay, templateId: w.templateId });
+        updateMap.set(w.date, null); // each original date clears
       }
+      for (const w of futureWorkouts) {
+        const prevDay = format(addDays(parseISO(w.date), -1), 'yyyy-MM-dd');
+        updateMap.set(prevDay, w.templateId); // workout claims its new (prev) date
+      }
+      const updates = Array.from(updateMap.entries()).map(
+        ([date, templateId]) => ({ date, templateId })
+      );
 
       await api('/schedule', {
         method: 'PUT',
@@ -1297,7 +1312,28 @@ export default function Calendar() {
 
             {/* Options */}
             <div className="p-5 space-y-3">
-              {/* Skip Workout */}
+              {/* Insert Rest Day — replaces this day's workout with rest,
+                  no shifting. */}
+              <button
+                onClick={handleInsertRestDay}
+                disabled={scheduleSaving}
+                className={`w-full text-left rounded-xl px-4 py-4 bg-white/5 active:bg-white/10 active:scale-[0.98] transition-all ${scheduleSaving ? 'opacity-50 pointer-events-none' : ''}`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+                    <svg className="w-5 h-5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-white">Insert Rest Day</p>
+                    <p className="text-xs text-wf-gray-500 mt-0.5">Replace this workout with a rest day. Other days stay the same.</p>
+                  </div>
+                </div>
+              </button>
+
+              {/* Skip Workout — drops this day's workout and pulls all
+                  future workouts up by one day. */}
               <button
                 onClick={handleSkipWorkout}
                 disabled={scheduleSaving}
@@ -1311,26 +1347,7 @@ export default function Calendar() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-white">Skip Workout</p>
-                    <p className="text-xs text-wf-gray-500 mt-0.5">Replace this day with a rest day. Other days stay the same.</p>
-                  </div>
-                </div>
-              </button>
-
-              {/* Insert Rest Day */}
-              <button
-                onClick={handleInsertRestDay}
-                disabled={scheduleSaving}
-                className={`w-full text-left rounded-xl px-4 py-4 bg-white/5 active:bg-white/10 active:scale-[0.98] transition-all ${scheduleSaving ? 'opacity-50 pointer-events-none' : ''}`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center shrink-0">
-                    <svg className="w-5 h-5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-white">Insert Rest Day</p>
-                    <p className="text-xs text-wf-gray-500 mt-0.5">Push this and all later workouts forward by one day.</p>
+                    <p className="text-xs text-wf-gray-500 mt-0.5">Drop this workout and pull all future workouts up by one day.</p>
                   </div>
                 </div>
               </button>

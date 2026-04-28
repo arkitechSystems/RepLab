@@ -449,6 +449,150 @@ function WorkoutsWeeklyBarChart({ templates = [] }) {
   );
 }
 
+// Horizontal-scroll carousel that mirrors the Calendar weekly view: one
+// card per day Sun→Sat. Visual is a 1:1 port of the Nike test homepage
+// "THIS WEEK" carousel — same 190px card width, same heavy display
+// title + subtitle row + outlined Begin button, same section spotlight
+// + eyebrow / heading. Cards are non-interactive for now so the user can
+// dial in the styling before wiring routing.
+function WeekAtAGlanceCarousel({ templates = [] }) {
+  const [weekSchedule, setWeekSchedule] = useState([]);
+  const [completedSessions, setCompletedSessions] = useState([]);
+
+  const { weekDates, todayStr } = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const sunday = new Date(today);
+    sunday.setDate(today.getDate() - today.getDay());
+    const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const dates = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(sunday);
+      d.setDate(sunday.getDate() + i);
+      return fmt(d);
+    });
+    return { weekDates: dates, todayStr: fmt(today) };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      api(`/schedule?from=${weekDates[0]}&to=${weekDates[6]}`).catch(() => []),
+      api('/sessions/completed').catch(() => []),
+    ]).then(([sched, completed]) => {
+      if (cancelled) return;
+      setWeekSchedule(sched || []);
+      setCompletedSessions(completed || []);
+    });
+    return () => { cancelled = true; };
+  }, [weekDates]);
+
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const monthShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  // Per-day color cycle — gives each card its own accent, matching the
+  // Nike test page where each card has a distinct stripe color.
+  const DAY_COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#a855f7', '#ec4899'];
+
+  return (
+    // Section wrapper mirrors NikeTestHomepage section #3: relative, py
+    // padding, subtle blue spotlight blob in the corner, eyebrow + heavy
+    // title + See All link header row, then the snap-scroll carousel.
+    <div className="relative py-10 mt-4 fade-slide-up" style={{ animationDelay: '120ms' }}>
+      <div
+        className="absolute top-0 right-0 w-[400px] h-[400px] pointer-events-none"
+        style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.04) 0%, transparent 60%)', filter: 'blur(50px)' }}
+      />
+      <div className="flex items-end justify-between px-1 mb-6">
+        <div>
+          <p className="text-[10px] text-white/25 uppercase font-light mb-1" style={{ letterSpacing: '0.3em' }}>
+            Schedule
+          </p>
+          <h3 className="text-[22px] font-black text-white tracking-tight">WEEK AT A GLANCE</h3>
+        </div>
+        <button className="text-[11px] text-white/35 uppercase font-medium active:text-white transition-colors" style={{ letterSpacing: '0.15em' }}>
+          See All
+        </button>
+      </div>
+
+      <div
+        className="-mx-4 px-4 flex gap-5 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-4"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
+        {weekDates.map((date, i) => {
+          const isToday = date === todayStr;
+          const isPast = date < todayStr;
+          const entry = weekSchedule.find((s) => s.date === date);
+          const completedHere = entry?.templateId
+            && completedSessions.some((c) => c.templateId === entry.templateId && c.date === date);
+
+          // Resolve the card's headline text. Workout name takes priority;
+          // fallback to REST or "Open Day" so the title slot is never empty.
+          let title;
+          if (entry?.isRest) {
+            title = 'Rest\nDay';
+          } else if (entry?.templateId) {
+            const tmpl = templates.find((t) => t.id === entry.templateId);
+            title = entry.templateName || tmpl?.name || 'Workout';
+          } else {
+            title = 'Open\nDay';
+          }
+
+          // Status text shown in the second metadata slot. Mirrors the
+          // calendar's legend wording.
+          let status;
+          if (entry?.isRest) status = 'Rest';
+          else if (completedHere) status = 'Completed';
+          else if (!entry?.templateId) status = 'Open';
+          else if (isPast) status = 'Missed';
+          else status = 'Scheduled';
+
+          const day = Number(date.slice(-2));
+          const month = monthShort[Number(date.slice(5, 7)) - 1];
+          const subtitle = dayNames[i];
+          const duration = `${month} ${day}`;
+          const color = DAY_COLORS[i];
+
+          return (
+            <div
+              key={date}
+              className="snap-start shrink-0 w-[190px] active:scale-[0.96] transition-transform"
+              style={{
+                background: 'linear-gradient(160deg, #1c1c1c 0%, #111 100%)',
+                boxShadow: isToday
+                  ? `0 0 0 1.5px rgba(239,68,68,0.85), 0 12px 40px rgba(239,68,68,0.25), 0 4px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)`
+                  : '0 12px 40px rgba(0,0,0,0.6), 0 4px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)',
+                borderRadius: '2px',
+              }}
+            >
+              {/* Color accent bar — matches Nike test page card stripe */}
+              <div className="h-[3px]" style={{ background: `linear-gradient(90deg, ${color}, ${color}80)` }} />
+              <div className="p-5 pb-6">
+                <h4
+                  className="text-[20px] font-black text-white leading-[1.05] tracking-tight whitespace-pre-line mb-4"
+                  style={{ textShadow: '0 2px 10px rgba(0,0,0,0.3)' }}
+                >
+                  {title}
+                </h4>
+                <div className="flex items-center gap-3 mb-5">
+                  <span className="text-[11px] text-white/30 font-light">{subtitle}</span>
+                  <span className="w-px h-3 bg-white/10" />
+                  <span className="text-[11px] text-white/30 font-light">{duration}</span>
+                </div>
+                <button
+                  className="w-full py-2.5 rounded-full border border-white/20 text-[10px] text-white/60 uppercase font-medium active:bg-white/5 transition-colors"
+                  style={{ letterSpacing: '0.2em' }}
+                >
+                  {status}
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // Short names shown in the weekly-view StickyHeader (next to "Begin Program").
 // Display short names now come from the program_name_abbreviations DB table
 // — populated by the seed in server/initDb.js. The API ships them as
@@ -5612,6 +5756,13 @@ export default function Workouts() {
                 </div>
               </div>
             )}
+
+            {/* Week at a Glance — horizontal carousel mirroring the
+                Calendar weekly view (one card per day Sun→Sat). Visual
+                is a 1:1 port of the Nike test homepage "THIS WEEK"
+                carousel. Cards are non-interactive for now while the
+                styling is being dialed in. */}
+            <WeekAtAGlanceCarousel templates={templates} />
 
           </div>
         )}

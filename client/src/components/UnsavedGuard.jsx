@@ -133,46 +133,85 @@ export function useUnsavedGuard({ isDirty, onSave, saveLabel = 'Save' }) {
     setSaving(false);
   }
 
+  // Nike-style modal: dark gradient panel, sharp 2px corners, red top
+  // accent stripe + ambient red spotlight in the corner. Mirrors the
+  // Begin Program / Workout Summary share sheet treatment used elsewhere.
   const UnsavedModal = showModal ? (
     <div className="fixed inset-0 z-[100] flex items-center justify-center px-5" onClick={handleStay}>
-      <div className="absolute inset-0 bg-black/70" />
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
       <div
-        className="relative w-full max-w-xs bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
+        className="relative w-full max-w-xs overflow-hidden"
+        style={{
+          background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+          borderRadius: '2px',
+          boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-base font-bold text-white text-center mb-1">Unsaved Changes</h3>
-        <p className="text-wf-gray-400 text-sm text-center mb-5">
-          Would you like to save your data before leaving?
-        </p>
-        {saveError && (
-          <div className="bg-red-900/30 border border-red-800 rounded-lg px-4 py-3 text-red-300 text-sm mb-4">
-            {saveError}
-          </div>
-        )}
-        <div className="flex flex-col gap-2">
-          {onSave && (
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="w-full btn-gradient text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all disabled:opacity-50"
+        <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent)' }} />
+        <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.10) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+
+        <div className="relative p-5">
+          <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.3em' }}>
+            Heads Up
+          </p>
+          <h3 className="text-[22px] font-black text-white tracking-tight mb-2" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>
+            UNSAVED CHANGES
+          </h3>
+          <p className="text-[13px] text-white/65 leading-relaxed mb-5">
+            Would you like to save your data before leaving?
+          </p>
+          {saveError && (
+            <div
+              className="px-4 py-3 mb-4 text-[12px]"
+              style={{
+                background: 'rgba(239,68,68,0.12)',
+                border: '1px solid rgba(239,68,68,0.35)',
+                borderRadius: '2px',
+                color: 'rgba(254,202,202,0.95)',
+              }}
             >
-              {saving ? 'Saving...' : saveLabel}
-            </button>
+              {saveError}
+            </div>
           )}
-          <button
-            onClick={handleLeave}
-            disabled={saving}
-            className="w-full glass-card text-wf-red font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all disabled:opacity-50"
-          >
-            Leave Without Saving
-          </button>
-          <button
-            onClick={handleStay}
-            disabled={saving}
-            className="w-full text-wf-gray-400 font-medium py-2 text-sm active:opacity-70 transition-all"
-          >
-            Stay on Page
-          </button>
+          <div className="flex flex-col gap-2">
+            {onSave && (
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="w-full text-[11px] font-bold uppercase active:scale-[0.97] transition-all text-white py-3 disabled:opacity-50"
+                style={{
+                  letterSpacing: '0.2em',
+                  borderRadius: '2px',
+                  background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+                  boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+                }}
+              >
+                {saving ? 'Saving…' : saveLabel}
+              </button>
+            )}
+            <button
+              onClick={handleLeave}
+              disabled={saving}
+              className="w-full text-[11px] font-bold uppercase active:scale-[0.97] transition-all py-3 disabled:opacity-50"
+              style={{
+                letterSpacing: '0.2em',
+                borderRadius: '2px',
+                background: 'transparent',
+                border: '1px solid rgba(239,68,68,0.5)',
+                color: 'rgba(239,68,68,0.95)',
+              }}
+            >
+              Leave Without Saving
+            </button>
+            <button
+              onClick={handleStay}
+              disabled={saving}
+              className="w-full text-[10px] font-bold uppercase tracking-[0.25em] text-white/50 py-2 active:opacity-70 transition-all"
+            >
+              Stay on Page
+            </button>
+          </div>
         </div>
       </div>
     </div>

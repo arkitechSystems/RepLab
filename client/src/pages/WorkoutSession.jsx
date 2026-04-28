@@ -2777,7 +2777,10 @@ export default function WorkoutSession() {
         </div>
       )}
 
-      {/* Floating Rest Timer */}
+      {/* Floating Rest Timer — 150% scale of the original pill, and includes
+          the duration dropdown so the user can change rest length without
+          un-floating. Larger touch targets via py/px bumps; close button
+          scaled too. */}
       {restFloating && timerStarted && (
         <div
           className="fixed z-50 touch-none"
@@ -2786,27 +2789,67 @@ export default function WorkoutSession() {
           onTouchMove={handleRestFloatTouchMove}
           onTouchEnd={handleRestFloatTouchEnd}
         >
-          <div className={`rounded-2xl px-4 py-2.5 shadow-2xl backdrop-blur-sm flex items-center gap-3 ${restRemaining !== null && restRemaining <= 0 ? 'bg-green-900/95 border border-green-500/30' : 'bg-wf-gray-900/95'}`}>
+          <div className={`rounded-2xl px-6 py-4 shadow-2xl backdrop-blur-sm flex items-center gap-4 ${restRemaining !== null && restRemaining <= 0 ? 'bg-green-900/95 border border-green-500/30' : 'bg-wf-gray-900/95'}`}>
             {restRemaining !== null ? (
               restRemaining <= 0 ? (
-                <span className="text-lg font-mono-stat font-black text-green-400">GO!</span>
+                <span className="text-[27px] font-mono-stat font-black text-green-400">GO!</span>
               ) : (
                 <>
-                  <span className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-semibold">Rest</span>
-                  <span className="text-lg font-black text-wf-red tabular-nums font-mono-stat">{formatTime(restRemaining)}</span>
+                  <span className="text-[15px] text-wf-gray-500 uppercase tracking-widest font-semibold">Rest</span>
+                  <span className="text-[27px] font-black text-wf-red tabular-nums font-mono-stat">{formatTime(restRemaining)}</span>
                 </>
               )
             ) : (
-              <button onClick={startRestTimer} className="text-xs text-wf-red font-semibold px-3 py-1.5 rounded-lg bg-wf-red/10 active:bg-wf-red/20 transition-colors">
-                Start Rest
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Duration dropdown — same shape as the inline timer's. */}
+                <select
+                  value={restDuration}
+                  onChange={(e) => {
+                    const s = Number(e.target.value);
+                    setRestDuration(s);
+                    restDurationRef.current = s;
+                  }}
+                  // touch-auto so the drag-to-move handler doesn't swallow taps on the picker
+                  className="active:scale-[0.95] transition-all touch-auto"
+                  style={{
+                    padding: '6px 33px 6px 15px', borderRadius: '2px',
+                    fontSize: '15px', fontWeight: 700, letterSpacing: '0.15em',
+                    textTransform: 'uppercase',
+                    border: '1px solid rgba(239,68,68,0.4)',
+                    background: 'rgba(239,68,68,0.12)',
+                    color: 'rgba(239,68,68,0.9)',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    appearance: 'none',
+                    WebkitAppearance: 'none',
+                    MozAppearance: 'none',
+                    backgroundImage: 'linear-gradient(45deg, transparent 50%, rgba(239,68,68,0.9) 50%), linear-gradient(135deg, rgba(239,68,68,0.9) 50%, transparent 50%)',
+                    backgroundPosition: 'calc(100% - 14px) 50%, calc(100% - 9px) 50%',
+                    backgroundSize: '6px 6px, 6px 6px',
+                    backgroundRepeat: 'no-repeat',
+                  }}
+                  onTouchStart={(e) => e.stopPropagation()}
+                >
+                  {REST_OPTIONS.map((s) => (
+                    <option key={s} value={s} className="bg-wf-gray-900">
+                      {s >= 60 ? `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}` : `${s}s`}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={startRestTimer}
+                  className="text-[15px] text-wf-red font-semibold px-5 py-2 rounded-lg bg-wf-red/10 active:bg-wf-red/20 transition-colors"
+                >
+                  Start Rest
+                </button>
+              </div>
             )}
             <button
               onClick={() => setRestFloating(false)}
               aria-label="Close rest timer"
-              className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90"
+              className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90 shrink-0"
             >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>

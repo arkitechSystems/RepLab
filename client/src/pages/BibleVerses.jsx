@@ -1,8 +1,3 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { VERSES } from '../data/verses';
-import { getVerseAt } from '../utils/versePicker';
-
 // Timing knobs — tuned for a slow, reverent reveal.
 const WORD_STAGGER_MS = 110;   // delay between each word's start
 const WORD_ANIM_MS    = 900;   // per-word animation duration
@@ -182,52 +177,3 @@ export function BibleVerseOverlay({ verse, onClose, meta, runKey = 0 }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Sandbox page at /test/bible-verses — uses the overlay above + prev/replay/next.
-// ─────────────────────────────────────────────────────────────────────────────
-export default function BibleVerses() {
-  const navigate = useNavigate();
-  const [idx, setIdx] = useState(0);
-  const [runKey, setRunKey] = useState(0);
-
-  useEffect(() => { setRunKey((k) => k + 1); }, [idx]);
-
-  const replay = () => setRunKey((k) => k + 1);
-  const next   = () => setIdx((i) => (i + 1) % VERSES.length);
-  const prev   = () => setIdx((i) => (i - 1 + VERSES.length) % VERSES.length);
-
-  return (
-    <>
-      <BibleVerseOverlay
-        verse={getVerseAt(idx)}
-        onClose={() => navigate(-1)}
-        meta={`After 7 workouts · ${idx + 1} / ${VERSES.length}`}
-        runKey={runKey}
-      />
-
-      {/* Sandbox controls — not part of the production overlay */}
-      <div style={{
-        position: 'fixed', bottom: 24, left: 0, right: 0, zIndex: 1100,
-        display: 'flex', justifyContent: 'center', gap: 12,
-        fontFamily: '-apple-system, sans-serif',
-      }}>
-        <button onClick={prev} style={btnStyle}>‹ Prev</button>
-        <button onClick={replay} style={{ ...btnStyle, background: 'rgba(239,68,68,0.15)', borderColor: 'rgba(239,68,68,0.4)', color: '#ef4444' }}>Replay</button>
-        <button onClick={next} style={btnStyle}>Next ›</button>
-      </div>
-    </>
-  );
-}
-
-const btnStyle = {
-  padding: '10px 18px',
-  borderRadius: 999,
-  background: 'rgba(255,255,255,0.05)',
-  border: '1px solid rgba(255,255,255,0.15)',
-  color: 'rgba(255,255,255,0.7)',
-  fontSize: 11,
-  fontWeight: 600,
-  letterSpacing: '0.15em',
-  textTransform: 'uppercase',
-  cursor: 'pointer',
-};

@@ -51,7 +51,6 @@ const NikeCardsTest = lazy(() => import('./pages/NikeCardsTest'));
 const RepLabFeedTest = lazy(() => import('./pages/RepLabFeedTest'));
 const NewHomepage = lazy(() => import('./pages/NewHomepage'));
 const Brainstorm = lazy(() => import('./pages/Brainstorm'));
-const BibleVerses = lazy(() => import('./pages/BibleVerses'));
 const ParallaxAnimation = lazy(() => import('./pages/ParallaxAnimation'));
 const NavbarsTest = lazy(() => import('./pages/NavbarsTest'));
 const PlateCalculator = lazy(() => import('./pages/PlateCalculator'));
@@ -172,7 +171,6 @@ export default function App() {
         <Route path="/test/feed" element={<TestRoute><RepLabFeedTest /></TestRoute>} />
         <Route path="/test/new-homepage" element={<TestRoute><NewHomepage /></TestRoute>} />
         <Route path="/test/brainstorm" element={<TestRoute><Brainstorm /></TestRoute>} />
-        <Route path="/test/bible-verses" element={<TestRoute><BibleVerses /></TestRoute>} />
         <Route path="/test/parallax" element={<TestRoute><ParallaxAnimation /></TestRoute>} />
         <Route path="/test/navbars" element={<TestRoute><NavbarsTest /></TestRoute>} />
       </Route>

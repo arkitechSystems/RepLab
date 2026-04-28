@@ -121,7 +121,7 @@ export default function PlateCalculator() {
                   value={target}
                   onChange={(e) => setTarget(e.target.value)}
                   onFocus={(e) => e.target.select()}
-                  className="bg-transparent text-[49px] font-black tracking-tight focus:outline-none tabular-nums text-right"
+                  className="bg-transparent text-[64px] font-black tracking-tight focus:outline-none tabular-nums text-right"
                   style={{
                     fontFamily: 'system-ui',
                     letterSpacing: '-0.02em',
@@ -162,7 +162,7 @@ export default function PlateCalculator() {
                 {[
                   { v: 'both', label: 'Both Sides', kind: 'mode' },
                   { v: 'one',  label: 'One Side',   kind: 'mode' },
-                  { v: 'nobar', label: 'No Bar',    kind: 'nobar' },
+                  { v: 'nobar', label: 'Machine',   kind: 'nobar' },
                 ].map((opt) => {
                   const on = opt.kind === 'nobar' ? bar === 0 : (bar > 0 && mode === opt.v);
                   return (
@@ -171,9 +171,13 @@ export default function PlateCalculator() {
                       onClick={() => {
                         if (opt.kind === 'nobar') {
                           setBar(0);
+                          // Plate-loaded machines load on both sides, so
+                          // force both-side visual when entering machine
+                          // mode regardless of where the user was before.
+                          setMode('both');
                         } else {
                           // Restore a default bar weight if user is coming
-                          // back from "No Bar"; otherwise just flip mode.
+                          // back from Machine; otherwise just flip mode.
                           if (bar === 0) setBar(45);
                           setMode(opt.v);
                         }
@@ -198,16 +202,19 @@ export default function PlateCalculator() {
               </div>
             </div>
 
-            {/* Bar + plates visual with +/- adjustment on the left.
+            {/* Bar + plates visual with +/- adjustment pinned at the far
+                left. The +/- column is absolutely positioned so it stays
+                anchored when plates are added/removed (the centered bar
+                visual would otherwise re-flow and shift the buttons).
                 In one-side mode we hide the left half of the bar so the
                 user can visualize a single-end load (landmine, T-bar).
                 In no-bar mode we render a small leg press machine icon
                 in the middle instead of the bar. */}
             {valid && (
-              <div className="my-5 flex items-center justify-center gap-3" style={{ minHeight: 110 }}>
-                {/* +/- adjust column — picks up the currently-selected
-                    plate value from the Plates section below. */}
-                <div className="flex flex-col gap-1.5 shrink-0">
+              <div className="my-5 relative" style={{ minHeight: 110 }}>
+                {/* +/- adjust column — anchored to the far left edge of
+                    the row so it doesn't drift as the bar+plates re-center. */}
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 flex flex-col gap-1.5 shrink-0 z-10">
                   <button
                     onClick={() => adjustTarget(+1)}
                     aria-label={`Add ${selectedPlate} lb plate`}
@@ -238,36 +245,42 @@ export default function PlateCalculator() {
                   </button>
                 </div>
 
-                {/* Left side plates — hidden in one-side mode (and in
-                    no-bar mode if the user wants to think of the load as
-                    going onto a single horn — kept on for symmetry). */}
-                {mode === 'both' && (
+                {/* Centered bar + plates visual. Left padding (52px) clears
+                    the absolute +/- column; right padding mirrors so the
+                    visual stays optically centered between them. */}
+                <div className="flex items-center justify-center gap-2 h-full" style={{ paddingLeft: 52, paddingRight: 52, minHeight: 110 }}>
+                  {/* Left side plates — hidden in one-side mode (landmine
+                      / single-end load). Always visible in machine mode
+                      (bar === 0) since plate-loaded machines load on
+                      both sides. */}
+                  {(mode === 'both' || bar === 0) && (
+                    <div className="flex items-center" style={{ gap: 2 }}>
+                      {plates.slice().reverse().map((p, i) =>
+                        Array.from({ length: p.count }).map((_, n) => (
+                          <PlateBlock key={`L-${i}-${n}`} plate={p} />
+                        ))
+                      )}
+                    </div>
+                  )}
+                  {/* Center: bar (sleeve + center) when bar > 0, leg press
+                      machine icon when bar === 0. */}
+                  {bar > 0 ? (
+                    <div className="flex items-center" style={{ height: 14 }}>
+                      {mode === 'both' && <div style={{ width: 8, height: 14, background: '#9ca3af', borderRadius: '1px 0 0 1px' }} />}
+                      <div style={{ width: mode === 'both' ? 60 : 30, height: 6, background: '#6b7280' }} />
+                      <div style={{ width: 8, height: 14, background: '#9ca3af', borderRadius: '0 1px 1px 0' }} />
+                    </div>
+                  ) : (
+                    <LegPressIcon />
+                  )}
+                  {/* Right side plates */}
                   <div className="flex items-center" style={{ gap: 2 }}>
-                    {plates.slice().reverse().map((p, i) =>
+                    {plates.map((p, i) =>
                       Array.from({ length: p.count }).map((_, n) => (
-                        <PlateBlock key={`L-${i}-${n}`} plate={p} />
+                        <PlateBlock key={`R-${i}-${n}`} plate={p} />
                       ))
                     )}
                   </div>
-                )}
-                {/* Center: bar (sleeve + center) when bar > 0, leg press
-                    machine icon when bar === 0. */}
-                {bar > 0 ? (
-                  <div className="flex items-center" style={{ height: 14 }}>
-                    {mode === 'both' && <div style={{ width: 8, height: 14, background: '#9ca3af', borderRadius: '1px 0 0 1px' }} />}
-                    <div style={{ width: mode === 'both' ? 60 : 30, height: 6, background: '#6b7280' }} />
-                    <div style={{ width: 8, height: 14, background: '#9ca3af', borderRadius: '0 1px 1px 0' }} />
-                  </div>
-                ) : (
-                  <LegPressIcon />
-                )}
-                {/* Right side plates */}
-                <div className="flex items-center" style={{ gap: 2 }}>
-                  {plates.map((p, i) =>
-                    Array.from({ length: p.count }).map((_, n) => (
-                      <PlateBlock key={`R-${i}-${n}`} plate={p} />
-                    ))
-                  )}
                 </div>
               </div>
             )}
@@ -358,7 +371,7 @@ export default function PlateCalculator() {
             only in One Side mode). */}
         <div className="fade-slide-up" style={{ animationDelay: '90ms' }}>
           <p className="text-[10px] uppercase font-bold mb-2" style={{ color: 'rgba(255,255,255,0.4)', letterSpacing: '0.2em' }}>
-            Choose a Plate to Add
+            Choose a plate to add/remove
           </p>
           <div className="flex flex-wrap gap-2">
             {QUICK_PLATES.map((lb) => {
