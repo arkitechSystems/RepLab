@@ -13,3 +13,7 @@ client/ios/App/Pods/
 client/ios/DerivedData/
 *.xcworkspace/xcuserdata/
 *.xcodeproj/xcuserdata/
+
+# Local-only binary asset directories (videos live on the CDN; not versioned)
+replab-videos/
+server/VidLib/
