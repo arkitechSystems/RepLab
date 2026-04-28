@@ -522,12 +522,10 @@ function helpBlock(text) {
 router.get('/', adminAuth, async (req, res) => {
   const key = req.adminKey;
 
-  let totalUsers = 0, activeUsers7d = 0, newUsers7d = 0;
+  let totalUsers = 0, activeUsers7d = 0;
   try {
     const users = await db.getAllUsers();
     totalUsers = users.length;
-    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
-    newUsers7d = users.filter(u => u.createdAt && new Date(u.createdAt) >= new Date(weekAgo)).length;
     const active = await db.getActiveUsers();
     activeUsers7d = active.last7d;
   } catch {}
@@ -600,10 +598,6 @@ router.get('/', adminAuth, async (req, res) => {
     <div class="stat glass">
       <div class="value">${activeUsers7d}</div>
       <div class="label">Active (7 Days)</div>
-    </div>
-    <div class="stat glass">
-      <div class="value">${newUsers7d}</div>
-      <div class="label">New (7 Days)</div>
     </div>
     <a href="/admin/health" class="stat glass" style="text-decoration:none;display:block;">
       <div class="value" style="color:${dbColor};-webkit-text-fill-color:${dbColor};">${dbPctStr}</div>
