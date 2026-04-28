@@ -532,6 +532,20 @@ router.get('/', adminAuth, async (req, res) => {
     activeUsers7d = active.last7d;
   } catch {}
 
+  // DB storage usage. Render free Postgres = 1 GB; override with
+  // DB_SIZE_LIMIT_GB if you upgrade the plan so the gauge stays accurate.
+  let dbPctStr = '—', dbPctValue = 0, dbUsedStr = '—', dbLimitStr = '1 GB', dbColor = 'rgba(255,255,255,0.7)';
+  try {
+    const limitBytes = (Number(process.env.DB_SIZE_LIMIT_GB) || 1) * 1024 * 1024 * 1024;
+    const { rows } = await pool.query('SELECT pg_database_size(current_database())::bigint AS bytes');
+    const used = Number(rows[0].bytes);
+    dbPctValue = (used / limitBytes) * 100;
+    dbPctStr = dbPctValue.toFixed(1) + '%';
+    dbUsedStr = used > 1024 * 1024 ? (used / 1024 / 1024).toFixed(1) + ' MB' : (used / 1024).toFixed(0) + ' KB';
+    dbLimitStr = (limitBytes / 1024 / 1024 / 1024).toFixed(0) + ' GB';
+    dbColor = dbPctValue > 90 ? '#f87171' : dbPctValue > 70 ? '#fbbf24' : '#4ade80';
+  } catch {}
+
   // Read version from client
   let appVersion = '—';
   try {
@@ -591,6 +605,10 @@ router.get('/', adminAuth, async (req, res) => {
       <div class="value">${newUsers7d}</div>
       <div class="label">New (7 Days)</div>
     </div>
+    <a href="/admin/health" class="stat glass" style="text-decoration:none;display:block;">
+      <div class="value" style="color:${dbColor};-webkit-text-fill-color:${dbColor};">${dbPctStr}</div>
+      <div class="label">DB Storage <span style="opacity:0.55;font-weight:500;">(${dbUsedStr} / ${dbLimitStr})</span></div>
+    </a>
   </div>
   <div class="card-grid">
     <a class="card glass" href="/admin/users?format=html">
@@ -1778,6 +1796,35 @@ router.get('/health', adminAuth, async (req, res) => {
       dbStatus = 'Disconnected';
     }
 
+    // DB storage usage + per-table breakdown. Limit defaults to 1 GB
+    // (Render free tier); override via DB_SIZE_LIMIT_GB env var.
+    const limitBytes = (Number(process.env.DB_SIZE_LIMIT_GB) || 1) * 1024 * 1024 * 1024;
+    let dbBytes = 0, dbPct = 0, tableBreakdown = [];
+    try {
+      const sizeRes = await pool.query('SELECT pg_database_size(current_database())::bigint AS bytes');
+      dbBytes = Number(sizeRes.rows[0].bytes);
+      dbPct = (dbBytes / limitBytes) * 100;
+      const breakdownRes = await pool.query(`
+        SELECT tablename,
+               pg_total_relation_size(quote_ident(schemaname) || '.' || quote_ident(tablename))::bigint AS bytes
+        FROM pg_tables
+        WHERE schemaname = 'public'
+        ORDER BY bytes DESC
+        LIMIT 12
+      `);
+      tableBreakdown = breakdownRes.rows.map(r => ({ name: r.tablename, bytes: Number(r.bytes) }));
+    } catch {}
+
+    const formatBytes = (n) => {
+      if (n >= 1024 * 1024 * 1024) return (n / 1024 / 1024 / 1024).toFixed(2) + ' GB';
+      if (n >= 1024 * 1024) return (n / 1024 / 1024).toFixed(1) + ' MB';
+      if (n >= 1024) return (n / 1024).toFixed(0) + ' KB';
+      return n + ' B';
+    };
+    const dbColor = dbPct > 90 ? '#f87171' : dbPct > 70 ? '#fbbf24' : '#4ade80';
+    const dbBarColor = dbPct > 90 ? 'linear-gradient(90deg,#dc2626,#f87171)' : dbPct > 70 ? 'linear-gradient(90deg,#d97706,#fbbf24)' : 'linear-gradient(90deg,#16a34a,#4ade80)';
+    const limitStr = (limitBytes / 1024 / 1024 / 1024).toFixed(0) + ' GB';
+
     const uptime = process.uptime();
     const hours = Math.floor(uptime / 3600);
     const mins = Math.floor((uptime % 3600) / 60);
@@ -1807,6 +1854,37 @@ router.get('/health', adminAuth, async (req, res) => {
       <div class="value" style="font-size:24px;">${uptimeStr}</div>
       <div class="label">Server Uptime</div>
     </div>
+    <div class="stat glass">
+      <div class="value" style="font-size:24px;color:${dbColor};-webkit-text-fill-color:${dbColor};">${dbPct.toFixed(1)}%</div>
+      <div class="label">DB Storage</div>
+    </div>
+  </div>
+  <div class="glass" style="padding:24px;margin-bottom:24px;">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+      <h3 style="font-size:16px;font-weight:700;margin:0;color:rgba(255,255,255,0.7);">Database Storage</h3>
+      <div style="font-size:13px;color:rgba(255,255,255,0.5);">${formatBytes(dbBytes)} of <strong style="color:#fff;">${limitStr}</strong> used &middot; <span style="color:${dbColor};font-weight:700;">${dbPct.toFixed(2)}%</span></div>
+    </div>
+    <div style="height:14px;border-radius:7px;background:rgba(255,255,255,0.05);overflow:hidden;border:1px solid rgba(255,255,255,0.08);">
+      <div style="height:100%;width:${Math.min(dbPct, 100).toFixed(2)}%;background:${dbBarColor};transition:width 0.3s;border-radius:7px;"></div>
+    </div>
+    ${dbPct > 90 ? `<p style="color:#f87171;font-size:12px;margin:14px 0 0 0;">⚠️ Approaching limit — consider upgrading the Render Postgres plan.</p>` : dbPct > 70 ? `<p style="color:#fbbf24;font-size:12px;margin:14px 0 0 0;">⚠️ Storage usage is climbing — start planning for an upgrade or a cleanup pass.</p>` : ''}
+    ${tableBreakdown.length > 0 ? `
+      <h4 style="font-size:12px;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.4);margin:24px 0 10px 0;font-weight:600;">Top Tables by Size</h4>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        ${tableBreakdown.map(t => {
+          const tablePct = dbBytes > 0 ? (t.bytes / dbBytes) * 100 : 0;
+          return `
+          <div style="display:grid;grid-template-columns:1fr 100px 70px;gap:12px;align-items:center;font-size:12.5px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+            <span style="color:#fff;font-family:ui-monospace,Menlo,monospace;">${esc(t.name)}</span>
+            <span style="color:rgba(255,255,255,0.5);text-align:right;">${formatBytes(t.bytes)}</span>
+            <span style="color:rgba(255,255,255,0.4);text-align:right;font-variant-numeric:tabular-nums;">${tablePct.toFixed(1)}%</span>
+          </div>
+        `;}).join('')}
+      </div>
+    ` : ''}
+    <p style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:18px;line-height:1.5;">
+      Limit is set from <code>DB_SIZE_LIMIT_GB</code> env var (default 1 GB for Render free tier). Bump that env var in the Render dashboard if you upgrade the Postgres plan.
+    </p>
   </div>
   <div class="glass" style="padding:24px;">
     <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:rgba(255,255,255,0.7);">System Info</h3>
