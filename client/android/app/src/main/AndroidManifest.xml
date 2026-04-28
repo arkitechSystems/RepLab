@@ -27,16 +27,14 @@
             <!-- Android App Links (HTTPS deep links). autoVerify="true" makes the
                  OS fetch /.well-known/assetlinks.json from each declared host on
                  install and only register this filter as the default handler if
-                 the SHA-256 fingerprint matches our signing key.
-                 PRE-LAUNCH TODO (audit M6 / B1): replace the example.com hosts
-                 with your real production hostnames once the domain is decided. -->
+                 the SHA-256 fingerprint matches our signing key. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" />
-                <data android:host="example.com" />
-                <data android:host="www.example.com" />
+                <data android:host="replab-fitness.com" />
+                <data android:host="www.replab-fitness.com" />
             </intent-filter>
 
         </activity>

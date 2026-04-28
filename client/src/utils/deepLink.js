@@ -8,18 +8,11 @@
 //
 // Web is a no-op — links to the web app already open in the browser.
 //
-// PRE-LAUNCH TODO: edit APP_HOSTS to include your real production hostnames
-// (web app + any redirect domains). Until then, deep links from external
-// sources won't be matched and will fall back to a normal browser open.
-
 import { Capacitor } from '@capacitor/core';
 
 const APP_HOSTS = [
-  // TODO: replace with your real production hosts before submitting to stores.
-  // Examples once you decide your domain (audit B1 / decision):
-  // 'replab.com',
-  // 'www.replab.com',
-  // 'replab.onrender.com',
+  'replab-fitness.com',
+  'www.replab-fitness.com',
 ];
 
 let initialized = false;
