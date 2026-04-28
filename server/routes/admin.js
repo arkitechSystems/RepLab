@@ -544,6 +544,57 @@ router.get('/', adminAuth, async (req, res) => {
     dbColor = dbPctValue > 90 ? '#f87171' : dbPctValue > 70 ? '#fbbf24' : '#4ade80';
   } catch {}
 
+  // DB connections. Render free Postgres caps at 97; bump DB_CONN_LIMIT
+  // env var if you upgrade. Spike here = connection leak = downtime.
+  let dbConnStr = '—', dbConnSubStr = '', dbConnColor = 'rgba(255,255,255,0.7)';
+  try {
+    const connLimit = Number(process.env.DB_CONN_LIMIT) || 97;
+    const { rows } = await pool.query("SELECT count(*)::int AS n FROM pg_stat_activity WHERE datname = current_database()");
+    const used = rows[0].n;
+    const pct = (used / connLimit) * 100;
+    dbConnStr = String(used);
+    dbConnSubStr = `of ${connLimit}`;
+    dbConnColor = pct > 90 ? '#f87171' : pct > 70 ? '#fbbf24' : '#4ade80';
+  } catch {}
+
+  // Errors in last 24h (rolling in-memory log; resets on deploy).
+  let errors24hStr = '—', errorsColor = '#4ade80';
+  try {
+    const { errorLog } = await import('../index.js');
+    const cutoff = Date.now() - 86400000;
+    const n = (errorLog || []).filter(e => e.timestamp && new Date(e.timestamp).getTime() >= cutoff).length;
+    errors24hStr = String(n);
+    errorsColor = n > 10 ? '#f87171' : n > 0 ? '#fbbf24' : '#4ade80';
+  } catch {}
+
+  // Server uptime — proxy for "did we crash recently."
+  const uptime = process.uptime();
+  const upH = Math.floor(uptime / 3600);
+  const upM = Math.floor((uptime % 3600) / 60);
+  const uptimeStr = upH >= 24 ? `${Math.floor(upH / 24)}d ${upH % 24}h` : upH > 0 ? `${upH}h ${upM}m` : `${upM}m`;
+  const uptimeColor = uptime < 300 ? '#fbbf24' : 'rgba(255,255,255,0.9)'; // yellow if just restarted
+
+  // Heap memory.
+  const mem = process.memoryUsage();
+  const heapStr = (mem.heapUsed / 1024 / 1024).toFixed(0) + ' MB';
+  const heapPct = mem.heapTotal > 0 ? (mem.heapUsed / mem.heapTotal) * 100 : 0;
+  const heapColor = heapPct > 85 ? '#f87171' : heapPct > 70 ? '#fbbf24' : 'rgba(255,255,255,0.9)';
+
+  // AI spend month-to-date (Claude/AI usage table).
+  let aiMtdStr = '—';
+  try {
+    const { rows } = await pool.query(`
+      SELECT COALESCE(SUM(cost_cents), 0)::int AS cents
+      FROM ai_usage
+      WHERE created_at >= date_trunc('month', NOW())
+    `);
+    aiMtdStr = '$' + (Number(rows[0].cents) / 100).toFixed(2);
+  } catch {}
+
+  // Last deploy SHA. Render injects RENDER_GIT_COMMIT; falls back to "—" locally.
+  const deploySha = (process.env.RENDER_GIT_COMMIT || '').slice(0, 7) || '—';
+  const deployAgo = uptimeStr; // process restarted on deploy, so uptime ≈ time since deploy
+
   // Read version from client
   let appVersion = '—';
   try {
@@ -590,7 +641,23 @@ router.get('/', adminAuth, async (req, res) => {
       <div style="font-size:11px;color:#6b7280;margin-top:2px;">App size: ${appSize}</div>
     </div>
   </div>
-  <div class="stats" style="margin-top:8px;">
+  <style>
+    .stats-grid-3x3 {
+      display: grid !important;
+      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+      gap: 16px;
+      margin: 8px 0 28px 0;
+    }
+    .stats-grid-3x3 .stat { min-width: 0; }
+    @media (max-width: 768px) {
+      .stats-grid-3x3 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+    }
+    @media (max-width: 480px) {
+      .stats-grid-3x3 { grid-template-columns: 1fr !important; }
+    }
+  </style>
+  <div class="stats stats-grid-3x3">
+    <!-- Row 1 — Users -->
     <div class="stat glass">
       <div class="value">${totalUsers}</div>
       <div class="label">Total Users</div>
@@ -603,6 +670,34 @@ router.get('/', adminAuth, async (req, res) => {
       <div class="value" style="color:${dbColor};-webkit-text-fill-color:${dbColor};">${dbPctStr}</div>
       <div class="label">DB Storage <span style="opacity:0.55;font-weight:500;">(${dbUsedStr} / ${dbLimitStr})</span></div>
     </a>
+
+    <!-- Row 2 — Operational health -->
+    <a href="/admin/health" class="stat glass" style="text-decoration:none;display:block;">
+      <div class="value" style="color:${dbConnColor};-webkit-text-fill-color:${dbConnColor};">${dbConnStr}</div>
+      <div class="label">DB Connections <span style="opacity:0.55;font-weight:500;">${dbConnSubStr}</span></div>
+    </a>
+    <a href="/admin/errors" class="stat glass" style="text-decoration:none;display:block;">
+      <div class="value" style="color:${errorsColor};-webkit-text-fill-color:${errorsColor};">${errors24hStr}</div>
+      <div class="label">Errors (24h) <span style="opacity:0.55;font-weight:500;">in-memory</span></div>
+    </a>
+    <div class="stat glass">
+      <div class="value" style="color:${uptimeColor};-webkit-text-fill-color:${uptimeColor};font-size:32px;">${uptimeStr}</div>
+      <div class="label">Server Uptime</div>
+    </div>
+
+    <!-- Row 3 — Resources & cost -->
+    <div class="stat glass">
+      <div class="value" style="color:${heapColor};-webkit-text-fill-color:${heapColor};font-size:32px;">${heapStr}</div>
+      <div class="label">Heap Used <span style="opacity:0.55;font-weight:500;">(${heapPct.toFixed(0)}%)</span></div>
+    </div>
+    <a href="/admin/ai-usage" class="stat glass" style="text-decoration:none;display:block;">
+      <div class="value" style="font-size:32px;">${aiMtdStr}</div>
+      <div class="label">AI Spend <span style="opacity:0.55;font-weight:500;">month-to-date</span></div>
+    </a>
+    <div class="stat glass">
+      <div class="value" style="font-size:24px;font-family:ui-monospace,Menlo,monospace;">${deploySha}</div>
+      <div class="label">Last Deploy <span style="opacity:0.55;font-weight:500;">${deployAgo} ago</span></div>
+    </div>
   </div>
   <div class="card-grid">
     <a class="card glass" href="/admin/users?format=html">
