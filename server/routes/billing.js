@@ -43,7 +43,7 @@ router.post('/create-checkout-session', authMiddleware, async (req, res) => {
     }
 
     const baseUrl = process.env.NODE_ENV === 'production'
-      ? process.env.APP_URL || 'https://will-fit.shop'
+      ? process.env.APP_URL || 'https://replab-fitness.com'
       : 'http://localhost:5173';
 
     const session = await getStripe().checkout.sessions.create({
@@ -163,7 +163,7 @@ router.post('/create-portal-session', authMiddleware, async (req, res) => {
     }
 
     const baseUrl = process.env.NODE_ENV === 'production'
-      ? process.env.APP_URL || 'https://will-fit.shop'
+      ? process.env.APP_URL || 'https://replab-fitness.com'
       : 'http://localhost:5173';
 
     const session = await getStripe().billingPortal.sessions.create({

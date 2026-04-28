@@ -163,11 +163,11 @@ router.post('/forgot-password', express.urlencoded({ extended: false }), async (
     await db.setAdminSetting('admin_reset_token', token);
     await db.setAdminSetting('admin_reset_expires', new Date(Date.now() + 3600000).toISOString());
 
-    const resetUrl = `https://will-fit.shop/admin/reset-password?token=${token}`;
+    const resetUrl = `https://replab-fitness.com/admin/reset-password?token=${token}`;
     try {
       const resend = new Resend(process.env.RESEND_API_KEY);
       await resend.emails.send({
-        from: 'RepLab <noreply@will-fit.shop>',
+        from: 'RepLab <noreply@email.replab-fitness.com>',
         to: adminEmail,
         subject: 'Admin Dashboard Password Reset',
         html: `
@@ -2282,7 +2282,7 @@ const PENDING_BUILDS = [
   // Payments & Monetization
   { category: 'Payments & Monetization', name: 'Stripe Integration', desc: 'Subscription billing, one-time purchases, webhooks for payment events', status: 'not_started' },
   { category: 'Payments & Monetization', name: 'Subscription Tiers (Free/Pro/Elite)', desc: 'Feature gating based on user plan — Free (basic), Pro (advanced features), Elite (everything + priority)', status: 'not_started' },
-  { category: 'Payments & Monetization', name: 'Web-to-App Pro Upgrade Flow', desc: 'In-app screen directing users to will-fit.shop to subscribe via Stripe — avoids Apple\'s 15-30% cut', status: 'not_started' },
+  { category: 'Payments & Monetization', name: 'Web-to-App Pro Upgrade Flow', desc: 'In-app screen directing users to replab-fitness.com to subscribe via Stripe — avoids Apple\'s 15-30% cut', status: 'not_started' },
 
   // AI Features
   { category: 'AI Features (Claude API)', name: 'AI Workout Generator', desc: 'Generate personalized workouts based on user goals, experience, equipment, and PR history using Claude API', status: 'not_started' },
@@ -2325,7 +2325,7 @@ const PENDING_BUILDS = [
   { category: 'Analytics & Growth', name: 'Referral Program', desc: 'Reward users for inviting friends with credits or free months', status: 'not_started' },
 
   // Optional
-  { category: 'Optional', name: 'Apple In-App Purchases', desc: 'Native iOS IAP for in-app subscriptions — Apple takes 15-30%. Optional if using web-only Stripe payments and directing users to will-fit.shop', status: 'not_started' },
+  { category: 'Optional', name: 'Apple In-App Purchases', desc: 'Native iOS IAP for in-app subscriptions — Apple takes 15-30%. Optional if using web-only Stripe payments and directing users to replab-fitness.com', status: 'not_started' },
   { category: 'Optional', name: 'Receipt Validation', desc: 'Verify App Store receipts server-side to prevent fraud — only needed if using Apple IAP', status: 'not_started' },
   { category: 'Optional', name: 'Google Play Billing', desc: 'Native Android IAP if an Android app is built — Google takes 15-30%', status: 'not_started' },
 ];

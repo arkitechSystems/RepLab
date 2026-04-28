@@ -1455,7 +1455,7 @@ export default function Workouts() {
   }
 
   function renderExternalShareButtons(workoutName) {
-    const text = `I'm doing ${workoutName || 'a workout'} today on RepLab and want you to join! 💪 Check it out at https://will-fit.shop`;
+    const text = `I'm doing ${workoutName || 'a workout'} today on RepLab and want you to join! 💪 Check it out at https://replab-fitness.com`;
     return (
       <>
         <div className="flex items-center gap-3 mt-4 mb-3">
@@ -1482,7 +1482,7 @@ export default function Workouts() {
           <button
             onClick={() => {
               const encoded = encodeURIComponent(text);
-              window.open(`fb-messenger://share?link=${encodeURIComponent('https://will-fit.shop')}`, '_blank');
+              window.open(`fb-messenger://share?link=${encodeURIComponent('https://replab-fitness.com')}`, '_blank');
               setTimeout(() => window.open(`sms:?&body=${encoded}`, '_blank'), 300);
             }}
             className="flex-1 flex items-center justify-center gap-2 px-3 py-3 rounded-xl bg-purple-500/10 border border-purple-500/20 active:bg-purple-500/20 transition-colors"
