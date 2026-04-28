@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import sanitize from './middleware/sanitize.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -162,7 +162,7 @@ const refreshLimiter = rateLimit({
     if (typeof token === 'string' && token.length > 10) {
       return 'rf:' + crypto.createHash('sha256').update(token).digest('hex').slice(0, 32);
     }
-    return 'ip:' + req.ip;
+    return 'ip:' + ipKeyGenerator(req);
   },
 });
 app.use('/auth/refresh', refreshLimiter);
