@@ -53,6 +53,7 @@ const NewHomepage = lazy(() => import('./pages/NewHomepage'));
 const Brainstorm = lazy(() => import('./pages/Brainstorm'));
 const ParallaxAnimation = lazy(() => import('./pages/ParallaxAnimation'));
 const NavbarsTest = lazy(() => import('./pages/NavbarsTest'));
+const LoginScreensTest = lazy(() => import('./pages/LoginScreensTest'));
 const PlateCalculator = lazy(() => import('./pages/PlateCalculator'));
 
 function ProtectedRoute({ children }) {
@@ -173,6 +174,7 @@ export default function App() {
         <Route path="/test/brainstorm" element={<TestRoute><Brainstorm /></TestRoute>} />
         <Route path="/test/parallax" element={<TestRoute><ParallaxAnimation /></TestRoute>} />
         <Route path="/test/navbars" element={<TestRoute><NavbarsTest /></TestRoute>} />
+        <Route path="/test/login-screens" element={<TestRoute><LoginScreensTest /></TestRoute>} />
       </Route>
 
       <Route path="*" element={<CatchAllRedirect />} />

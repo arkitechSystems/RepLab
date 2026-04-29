@@ -1,4 +1,4 @@
-# WillFit - Mobile Fitness Tracker
+# RepLab - Mobile Fitness Tracker
 
 A mobile-first workout tracking app built with React + Node.js/Express + JSON persistence.
 
@@ -30,7 +30,7 @@ npm run dev
 
 ## Reset Database
 
-Delete `server/willfit.json` and restart the server. The seed data will be recreated automatically.
+Delete `server/replab.json` and restart the server. The seed data will be recreated automatically.
 
 ## Tech Stack
 
