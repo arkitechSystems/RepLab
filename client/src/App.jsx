@@ -54,7 +54,9 @@ const Brainstorm = lazy(() => import('./pages/Brainstorm'));
 const ParallaxAnimation = lazy(() => import('./pages/ParallaxAnimation'));
 const NavbarsTest = lazy(() => import('./pages/NavbarsTest'));
 const LoginScreensTest = lazy(() => import('./pages/LoginScreensTest'));
+const ProgressiveOverloadTest = lazy(() => import('./pages/ProgressiveOverloadTest'));
 const PlateCalculator = lazy(() => import('./pages/PlateCalculator'));
+const Progress = lazy(() => import('./pages/Progress'));
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -155,6 +157,7 @@ export default function App() {
         <Route path="/summary/:id" element={<SessionSummary />} />
         <Route path="/utilities" element={<Utilities />} />
         <Route path="/plate-calculator" element={<PlateCalculator />} />
+        <Route path="/progress" element={<Progress />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/upgrade" element={<Upgrade />} />
         <Route path="/tutorial/workout" element={<TutorialWorkout />} />
@@ -175,6 +178,7 @@ export default function App() {
         <Route path="/test/parallax" element={<TestRoute><ParallaxAnimation /></TestRoute>} />
         <Route path="/test/navbars" element={<TestRoute><NavbarsTest /></TestRoute>} />
         <Route path="/test/login-screens" element={<TestRoute><LoginScreensTest /></TestRoute>} />
+        <Route path="/test/progressive-overload" element={<TestRoute><ProgressiveOverloadTest /></TestRoute>} />
       </Route>
 
       <Route path="*" element={<CatchAllRedirect />} />

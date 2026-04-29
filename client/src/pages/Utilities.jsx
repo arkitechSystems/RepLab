@@ -4,33 +4,7 @@ import { api } from '../api';
 import StickyHeader from '../components/StickyHeader';
 import { beepCountdown, beepPhaseChange, beepComplete, initAudio } from '../utils/sounds';
 import { useAuth } from '../context/AuthContext';
-
-const MUSCLE_GROUPS = [
-  'Chest', 'Shoulders', 'Traps', 'Biceps', 'Back', 'Triceps', 'Quads', 'Glutes', 'Hamstrings',
-];
-
-const MUSCLE_KEYWORDS = {
-  Chest: ['bench press', 'chest', 'fly', 'flye', 'dip', 'push up', 'pushup', 'pec'],
-  Shoulders: ['shoulder press', 'overhead press', 'lateral raise', 'front raise', 'face pull', 'delt', 'arnold', 'military press'],
-  Traps: ['shrug', 'trap', 'upright row'],
-  Biceps: ['curl', 'bicep', 'hammer curl', 'preacher'],
-  Back: ['row', 'pulldown', 'pull-up', 'pull up', 'pullup', 'lat', 'deadlift', 'back'],
-  Triceps: ['tricep', 'pushdown', 'skull crusher', 'close grip', 'extension', 'kickback'],
-  Quads: ['squat', 'leg press', 'leg extension', 'lunge', 'split squat', 'front squat', 'quad'],
-  Glutes: ['hip thrust', 'glute', 'bridge', 'kickback'],
-  Hamstrings: ['hamstring', 'leg curl', 'romanian deadlift', 'rdl', 'stiff leg', 'nordic'],
-};
-
-// Order matters: more specific matches first
-const MUSCLE_PRIORITY = ['Hamstrings', 'Glutes', 'Quads', 'Traps', 'Biceps', 'Triceps', 'Shoulders', 'Chest', 'Back'];
-
-function classifyExercise(name) {
-  const lower = name.toLowerCase();
-  for (const group of MUSCLE_PRIORITY) {
-    if (MUSCLE_KEYWORDS[group].some((kw) => lower.includes(kw))) return group;
-  }
-  return null;
-}
+import { MUSCLE_GROUPS, classifyExercise } from '../utils/muscleGroup';
 
 function PRsSection() {
   const navigate = useNavigate();
@@ -1213,6 +1187,19 @@ export default function Utilities() {
             icon={(
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="#fb7185" strokeWidth={1.7}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v17.25m0 0c-1.472 0-2.882.265-4.185.75M12 20.25c1.472 0 2.882.265 4.185.75M18.75 4.97A48.416 48.416 0 0012 4.5c-2.291 0-4.545.16-6.75.47m13.5 0c1.01.143 2.01.317 3 .52m-3-.52l2.62 10.726c.122.499-.106 1.028-.589 1.202a5.988 5.988 0 01-2.031.352 5.988 5.988 0 01-2.031-.352c-.483-.174-.711-.703-.59-1.202L18.75 4.971zm-16.5.52c.99-.203 1.99-.377 3-.52m0 0l2.62 10.726c.122.499-.106 1.028-.589 1.202a5.989 5.989 0 01-2.031.352 5.989 5.989 0 01-2.031-.352c-.483-.174-.711-.703-.59-1.202L5.25 4.971z" />
+              </svg>
+            )}
+          />
+
+          <UtilityRow
+            color="#22c55e"
+            onClick={() => navigate('/progress')}
+            animationDelay={120}
+            title="Progress"
+            subtitle="Same weight, more reps? Set-by-set progressive overload."
+            icon={(
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="#4ade80" strokeWidth={1.7}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.5 4.5L21.75 6m0 0H15m6.75 0v6.75" />
               </svg>
             )}
           />

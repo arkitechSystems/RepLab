@@ -174,6 +174,19 @@ router.post('/activity', authMiddleware, async (req, res) => {
   }
 });
 
+// Progressive overload — every (exercise, weight) the user has logged on
+// 2+ distinct dates with all set entries. Drives the /progress page.
+// Sits before the /:id route so the literal string isn't swallowed.
+router.get('/progress-overload', authMiddleware, async (req, res) => {
+  try {
+    const groups = await db.getSameWeightRepeats(req.userId);
+    res.json(groups);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.get('/:id', authMiddleware, async (req, res) => {
   try {
     const id = Number(req.params.id);

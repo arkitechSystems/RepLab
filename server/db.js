@@ -830,6 +830,36 @@ const db = {
     return rows.map((r) => ({ id: r.id, templateId: r.template_id, date: r.date }));
   },
 
+  // Progressive overload data: every (exercise, weight) the user has logged
+  // on 2+ distinct dates, with all set entries grouped by date. Powers the
+  // /progress page's set-by-set pills viz so users can see whether their
+  // reps at the same weight are climbing/flat/declining over time.
+  async getSameWeightRepeats(userId) {
+    const { rows } = await pool.query(
+      `SELECT s.date, se.exercise_name, se.set_number, se.weight, se.reps
+       FROM session_entries se
+       JOIN sessions s ON s.id = se.session_id
+       WHERE s.user_id = $1
+         AND s.completed = TRUE
+         AND se.weight > 0
+         AND se.reps > 0
+       ORDER BY s.date ASC, se.exercise_name ASC, se.set_number ASC`,
+      [userId]
+    );
+    // Group by (exercise, weight) — only keep groups with 2+ distinct dates.
+    const byKey = new Map();
+    for (const r of rows) {
+      const w = Number(r.weight);
+      const key = `${r.exercise_name}__${w}`;
+      if (!byKey.has(key)) byKey.set(key, { exercise: r.exercise_name, weight: w, occurrences: [] });
+      byKey.get(key).occurrences.push({ date: r.date, reps: r.reps, setNumber: r.set_number });
+    }
+    return [...byKey.values()].filter((g) => {
+      const dates = new Set(g.occurrences.map((o) => o.date));
+      return dates.size >= 2;
+    });
+  },
+
   // Exercise history (for smart weight suggestions)
   async getExerciseHistoryBatch(userId, exerciseNames, limit = 3) {
     if (!exerciseNames.length) return {};

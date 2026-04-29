@@ -41,6 +41,16 @@ export default function Test() {
 
         <div className="space-y-4">
           <div
+            onClick={() => navigate('/test/progressive-overload')}
+            className="glass-card rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
+            style={{ border: '1px solid rgba(34,197,94,0.3)' }}
+          >
+            <div className="p-5">
+              <h2 className="text-xl font-black text-white tracking-tight">Progressive Overload Summaries</h2>
+              <p className="text-xs text-wf-gray-500 mt-1">10 ways to visualize same-weight rep progression — verdict cards, sparklines, heatmaps, stat blocks, dense tables. Real Wmartin lifts.</p>
+            </div>
+          </div>
+          <div
             onClick={() => navigate('/test/login-screens')}
             className="glass-card rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
             style={{ border: '1px solid rgba(239,68,68,0.3)' }}
@@ -78,16 +88,6 @@ export default function Test() {
             <div className="p-5">
               <h2 className="text-xl font-black text-white tracking-tight">Brainstorm</h2>
               <p className="text-xs text-wf-gray-500 mt-1">26 UI pattern sandbox — buttons, rings, sheets, charts, pickers, heatmaps, confetti</p>
-            </div>
-          </div>
-          <div
-            onClick={() => navigate('/test/bible-verses')}
-            className="glass-card rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
-            style={{ border: '1px solid rgba(239,68,68,0.3)' }}
-          >
-            <div className="p-5">
-              <h2 className="text-xl font-black text-white tracking-tight">Bible Verses</h2>
-              <p className="text-xs text-wf-gray-500 mt-1">Every-7-workout reflection screen — Georgia italic words reveal left-to-right</p>
             </div>
           </div>
           <div
