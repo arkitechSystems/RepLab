@@ -453,9 +453,11 @@ function WorkoutsWeeklyBarChart({ templates = [] }) {
 // card per day Sun→Sat. Visual is a 1:1 port of the Nike test homepage
 // "THIS WEEK" carousel — same 190px card width, same heavy display
 // title + subtitle row + outlined Begin button, same section spotlight
-// + eyebrow / heading. Cards are non-interactive for now so the user can
-// dial in the styling before wiring routing.
+// + eyebrow / heading. Each card's CTA navigates based on day state:
+// completed → /summary/:id, today/future/skipped → /session/:tmpl/:date,
+// rest/open → no-op.
 function WeekAtAGlanceCarousel({ templates = [] }) {
+  const navigate = useNavigate();
   const [weekSchedule, setWeekSchedule] = useState([]);
   const [completedSessions, setCompletedSessions] = useState([]);
 
@@ -522,8 +524,11 @@ function WeekAtAGlanceCarousel({ templates = [] }) {
           const isToday = date === todayStr;
           const isPast = date < todayStr;
           const entry = weekSchedule.find((s) => s.date === date);
-          const completedHere = entry?.templateId
-            && completedSessions.some((c) => c.templateId === entry.templateId && c.date === date);
+          // Find the actual completed session record so we can navigate to
+          // its summary by id. Falsy if none exists for this date+template.
+          const completedSession = entry?.templateId
+            ? completedSessions.find((c) => c.templateId === entry.templateId && c.date === date)
+            : null;
 
           // Resolve the card's headline text. Workout name takes priority;
           // fallback to REST or "Open Day" so the title slot is never empty.
@@ -537,14 +542,83 @@ function WeekAtAGlanceCarousel({ templates = [] }) {
             title = 'Open\nDay';
           }
 
-          // Status text shown in the second metadata slot. Mirrors the
-          // calendar's legend wording.
-          let status;
-          if (entry?.isRest) status = 'Rest';
-          else if (completedHere) status = 'Completed';
-          else if (!entry?.templateId) status = 'Open';
-          else if (isPast) status = 'Missed';
-          else status = 'Scheduled';
+          // CTA label + click handler depend on status:
+          //  - Rest / Open  → muted, non-interactive
+          //  - Completed    → "Completed", opens /summary/:id
+          //  - Today        → "Start Now", red CTA, opens session
+          //  - Future       → "Scheduled", opens session for that date
+          //  - Past, missed → "Skipped", opens session (backdated logging)
+          let ctaLabel;
+          let ctaKind; // 'rest' | 'open' | 'completed' | 'start' | 'scheduled' | 'skipped'
+          let onClick = null;
+          if (entry?.isRest) {
+            ctaLabel = 'Rest';
+            ctaKind = 'rest';
+          } else if (!entry?.templateId) {
+            ctaLabel = 'Open';
+            ctaKind = 'open';
+          } else if (completedSession) {
+            ctaLabel = 'Completed';
+            ctaKind = 'completed';
+            onClick = () => navigate(`/summary/${completedSession.id}`);
+          } else if (isToday) {
+            ctaLabel = 'Start Now';
+            ctaKind = 'start';
+            onClick = () => navigate(`/session/${entry.templateId}/${date}`);
+          } else if (isPast) {
+            ctaLabel = 'Skipped';
+            ctaKind = 'skipped';
+            onClick = () => navigate(`/session/${entry.templateId}/${date}`);
+          } else {
+            ctaLabel = 'Scheduled';
+            ctaKind = 'scheduled';
+            onClick = () => navigate(`/session/${entry.templateId}/${date}`);
+          }
+
+          // Per-status visual treatment for the CTA. Uses the same red
+          // gradient that the rest of the app's primary CTAs use; muted
+          // neutral pill for non-actionable states.
+          const ctaStyle = (() => {
+            switch (ctaKind) {
+              case 'start':
+                return {
+                  background: 'linear-gradient(135deg, rgba(239,68,68,0.95) 0%, rgba(220,38,38,0.95) 100%)',
+                  boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.18)',
+                  color: '#fff',
+                  border: 'none',
+                };
+              case 'completed':
+                return {
+                  background: 'rgba(34,197,94,0.12)',
+                  boxShadow: 'inset 0 0 0 1px rgba(34,197,94,0.45)',
+                  color: 'rgba(134,239,172,0.95)',
+                  border: 'none',
+                };
+              case 'skipped':
+                return {
+                  background: 'rgba(251,191,36,0.10)',
+                  boxShadow: 'inset 0 0 0 1px rgba(251,191,36,0.35)',
+                  color: 'rgba(252,211,77,0.95)',
+                  border: 'none',
+                };
+              case 'scheduled':
+                return {
+                  background: 'transparent',
+                  boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.20)',
+                  color: 'rgba(255,255,255,0.7)',
+                  border: 'none',
+                };
+              case 'rest':
+              case 'open':
+              default:
+                return {
+                  background: 'transparent',
+                  boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.10)',
+                  color: 'rgba(255,255,255,0.35)',
+                  border: 'none',
+                };
+            }
+          })();
 
           const day = Number(date.slice(-2));
           const month = monthShort[Number(date.slice(5, 7)) - 1];
@@ -579,10 +653,12 @@ function WeekAtAGlanceCarousel({ templates = [] }) {
                   <span className="text-[11px] text-white/30 font-light">{duration}</span>
                 </div>
                 <button
-                  className="w-full py-2.5 rounded-full border border-white/20 text-[10px] text-white/60 uppercase font-medium active:bg-white/5 transition-colors"
-                  style={{ letterSpacing: '0.2em' }}
+                  onClick={onClick || undefined}
+                  disabled={!onClick}
+                  className={`w-full py-2.5 rounded-full text-[10px] uppercase font-medium transition-transform ${onClick ? 'active:scale-[0.97]' : 'cursor-default'}`}
+                  style={{ letterSpacing: '0.2em', ...ctaStyle }}
                 >
-                  {status}
+                  {ctaLabel}
                 </button>
               </div>
             </div>
@@ -3566,7 +3642,7 @@ export default function Workouts() {
             <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: '24px', paddingBottom: '32px' }}>
               {/* Program label */}
               <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', letterSpacing: '0.3em', textTransform: 'uppercase', fontWeight: 300, marginBottom: '8px' }}>Featured Program</p>
-              <h2 style={{ fontSize: '26px', fontWeight: 900, color: 'white', lineHeight: 1, letterSpacing: '-0.5px', marginBottom: '24px', textAlign: 'center', textShadow: '0 2px 20px rgba(0,0,0,0.5)', fontFamily: 'system-ui' }}>
+              <h2 className="replab-title-shimmer" style={{ fontSize: '26px', fontWeight: 900, lineHeight: 1, letterSpacing: '-0.5px', marginBottom: '24px', textAlign: 'center', fontFamily: 'system-ui' }}>
                 WILL'S HYPERTROPHY PROGRAM
               </h2>
 
@@ -3659,7 +3735,7 @@ export default function Workouts() {
             <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: '24px', paddingBottom: '32px' }}>
               {/* Program label */}
               <p style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', letterSpacing: '0.3em', textTransform: 'uppercase', fontWeight: 300, marginBottom: '8px' }}>Featured Program</p>
-              <h2 style={{ fontSize: '26px', fontWeight: 900, color: 'white', lineHeight: 1, letterSpacing: '-0.5px', marginBottom: '24px', textAlign: 'center', textShadow: '0 2px 20px rgba(0,0,0,0.5)', fontFamily: 'system-ui' }}>
+              <h2 className="replab-title-shimmer" style={{ fontSize: '26px', fontWeight: 900, lineHeight: 1, letterSpacing: '-0.5px', marginBottom: '24px', textAlign: 'center', fontFamily: 'system-ui' }}>
                 WILL'S HYPERTROPHY PROGRAM
               </h2>
 
@@ -5132,11 +5208,12 @@ export default function Workouts() {
                     Programs
                   </div>
                 </div>
-                {/* 2x2 grid driven by the programType values that actually
-                    exist in browsePrograms (browseAvailableTypes). Labels
-                    are mapped to display strings; 'other' is skipped. The
-                    preferred-order array fixes the visual sequence so the
-                    grid layout is stable across DB additions/removals. */}
+                {/* Vertical stack on the right side, top-to-bottom, driven
+                    by the programType values that actually exist in
+                    browsePrograms (browseAvailableTypes). Display strings
+                    are mapped here; 'other' is skipped. TYPE_ORDER fixes
+                    the visual sequence so the stack is stable across DB
+                    additions/removals. */}
                 {(() => {
                   const TYPE_DISPLAY = {
                     hypertrophy: 'Hypertrophy',
@@ -5155,31 +5232,20 @@ export default function Workouts() {
                   const visible = TYPE_ORDER.filter((t) => browseAvailableTypes.has(t));
                   if (visible.length === 0) return null;
                   return (
-                    // 2-col grid: left column aligns left, right column
-                    // aligns right, so the type labels read in towards the
-                    // page rather than colliding in the middle. Each cell
-                    // is its own block so long labels (e.g. "Glute-Focused"
-                    // or future multi-word types) wrap within their cell
-                    // instead of overlapping the neighbor. Each tag is
-                    // followed by a · so the boundary stays visible even
-                    // if a label wraps mid-word.
-                    <div className="grid grid-cols-2 gap-x-3 gap-y-1 flex-1">
-                      {visible.map((type, i) => {
+                    <div className="flex flex-col gap-1 items-end">
+                      {visible.map((type) => {
                         const label = TYPE_DISPLAY[type] || type;
-                        const isLeftCol = i % 2 === 0;
                         return (
                           <span
                             key={type}
-                            className="text-[10px] font-bold uppercase block"
+                            className="text-[10px] font-bold uppercase"
                             style={{
                               color: 'rgba(239,68,68,0.75)',
                               letterSpacing: '0.25em',
-                              textAlign: isLeftCol ? 'left' : 'right',
-                              minWidth: 0,
-                              overflowWrap: 'anywhere',
+                              textAlign: 'right',
                             }}
                           >
-                            {label} ·
+                            {label}
                           </span>
                         );
                       })}
@@ -5551,6 +5617,13 @@ export default function Workouts() {
             </div>
             */}
 
+            {/* Week at a Glance — horizontal carousel mirroring the
+                Calendar weekly view (one card per day Sun→Sat). Visual
+                is a 1:1 port of the Nike test homepage "THIS WEEK"
+                carousel. Cards are non-interactive for now while the
+                styling is being dialed in. */}
+            <WeekAtAGlanceCarousel templates={templates} />
+
             {/* Tutorial card — Nike style */}
             <div
               onClick={() => startTutorial(null)}
@@ -5756,13 +5829,6 @@ export default function Workouts() {
                 </div>
               </div>
             )}
-
-            {/* Week at a Glance — horizontal carousel mirroring the
-                Calendar weekly view (one card per day Sun→Sat). Visual
-                is a 1:1 port of the Nike test homepage "THIS WEEK"
-                carousel. Cards are non-interactive for now while the
-                styling is being dialed in. */}
-            <WeekAtAGlanceCarousel templates={templates} />
 
           </div>
         )}
