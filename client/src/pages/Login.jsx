@@ -50,14 +50,14 @@ export default function Login() {
           )}
 
           <div>
-            <label className="text-xs text-wf-gray-400 uppercase tracking-wider mb-1 block">Email or Phone</label>
+            <label className="text-xs text-wf-gray-400 uppercase tracking-wider mb-1 block">Username, Email, or Phone</label>
             <input
-              type={phone ? 'tel' : 'email'}
+              type={phone ? 'tel' : 'text'}
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
-              placeholder="Email or phone number"
+              placeholder="Username, email, or phone"
               required
-              autoComplete={phone ? 'tel' : 'email'}
+              autoComplete={phone ? 'tel' : 'username'}
               className="w-full glass-input rounded-xl px-4 py-3.5 text-white text-base placeholder:text-wf-gray-500 focus:outline-none transition-all"
             />
           </div>

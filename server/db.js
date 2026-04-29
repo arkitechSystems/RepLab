@@ -258,8 +258,10 @@ const db = {
   },
 
   async findUserByIdentifier(identifier) {
+    // Match by email, phone, or username (case-insensitive on username
+    // since LOWER() normalizes stored value; route lowercases input).
     const { rows } = await pool.query(
-      'SELECT * FROM users WHERE email = $1 OR phone = $1',
+      'SELECT * FROM users WHERE email = $1 OR phone = $1 OR LOWER(username) = $1',
       [identifier]
     );
     if (!rows[0]) return null;

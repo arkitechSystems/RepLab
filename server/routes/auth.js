@@ -179,7 +179,7 @@ router.post('/login', async (req, res) => {
     const { identifier, password } = req.body;
 
     if (!identifier || !password) {
-      return res.status(400).json({ error: 'Email or phone and password are required' });
+      return res.status(400).json({ error: 'Username, email, or phone and password are required' });
     }
 
     const phone = isPhone(identifier);
