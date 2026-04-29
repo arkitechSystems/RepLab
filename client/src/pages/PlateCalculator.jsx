@@ -70,10 +70,13 @@ export default function PlateCalculator() {
 
   // +/- adjust target by N × selected plate value. Both-sides mode
   // multiplies by 2 (one plate per side), one-side mode multiplies by 1.
+  // Floor is the bar weight itself: in standard mode you can't subtract
+  // below an empty bar; in machine mode (bar=0) the floor is 0.
+  const canDecrement = targetNum > bar;
   function adjustTarget(direction) {
     const sides = mode === 'both' ? 2 : 1;
     const delta = direction * selectedPlate * sides;
-    const next = Math.max(0, targetNum + delta);
+    const next = Math.max(bar, targetNum + delta);
     // Strip trailing .0 so the input doesn't render "225.0"
     setTarget(String(Number(next.toFixed(2))));
   }
@@ -104,15 +107,15 @@ export default function PlateCalculator() {
         >
           <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent)' }} />
           <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.10) 0%, transparent 60%)', filter: 'blur(40px)' }} />
-          <div className="relative p-5">
+          <div className="relative p-5 pt-2.5">
             {/* Header row: title on the left, live total weight (red,
                 editable) on the right at the same display size as the
                 title so they read as a balanced pair. */}
-            <div className="flex items-baseline justify-between gap-3 mb-4">
+            <div className="flex items-baseline mb-2">
               <h2 className="text-[24px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95', letterSpacing: '-0.02em' }}>
                 TOTAL WEIGHT
               </h2>
-              <div className="flex items-baseline gap-1.5 shrink-0">
+              <div className="flex-1 flex items-baseline justify-center gap-1.5">
                 <input
                   type="number"
                   inputMode="decimal"
@@ -121,8 +124,15 @@ export default function PlateCalculator() {
                   value={target}
                   onChange={(e) => setTarget(e.target.value)}
                   onFocus={(e) => e.target.select()}
-                  className="bg-transparent text-[64px] font-black tracking-tight focus:outline-none tabular-nums text-right"
+                  className="bg-transparent font-black tracking-tight focus:outline-none tabular-nums text-center"
                   style={{
+                    // Inline fontSize is required: the global
+                    // `input[type="number"] { font-size: 16px }` rule
+                    // in index.css has higher specificity than any
+                    // Tailwind text-[Xpx] class, so a className-based
+                    // size silently does nothing here. Inline style wins.
+                    fontSize: 41,
+                    lineHeight: 0.95,
                     fontFamily: 'system-ui',
                     letterSpacing: '-0.02em',
                     color: '#ef4444',
@@ -136,69 +146,66 @@ export default function PlateCalculator() {
             </div>
 
             {/* Per-side section — visualization, +/- adjustment, plate
-                count list. Was a separate card; now a section in the
-                merged panel. Subtle green divider above ties it back to
-                the previous green-eyebrow treatment. */}
-            <div className="pt-4" style={{ borderTop: '1px solid rgba(34,197,94,0.20)' }}>
-            <div className="flex items-start justify-between gap-3 mb-4">
-              <div className="min-w-0">
-                <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(34,197,94,0.85)', letterSpacing: '0.3em' }}>
-                  {mode === 'one' ? 'One Side' : 'Per Side'}
-                </p>
-                <div className="flex items-baseline gap-2">
-                  <h2 className="text-[28px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>
-                    {valid ? perSide.toFixed(perSide % 1 ? 1 : 0) : '—'}
-                  </h2>
-                  <span className="text-[14px] text-white/40 font-light">
-                    {mode === 'one' ? 'lbs loaded' : 'lbs / side'}
-                  </span>
-                </div>
-              </div>
-              {/* Both Sides / One Side / No Bar toggle — sits opposite the
-                  +/- adjust buttons over the bar. The first two pick the
-                  loading mode; "No Bar" sets bar weight to 0 for fixed-
-                  weight setups (dumbbells, plate-loaded machines). */}
-              <div className="flex flex-col gap-1 shrink-0">
-                {[
-                  { v: 'both', label: 'Both Sides', kind: 'mode' },
-                  { v: 'one',  label: 'One Side',   kind: 'mode' },
-                  { v: 'nobar', label: 'Machine',   kind: 'nobar' },
-                ].map((opt) => {
-                  const on = opt.kind === 'nobar' ? bar === 0 : (bar > 0 && mode === opt.v);
-                  return (
-                    <button
-                      key={opt.v}
-                      onClick={() => {
-                        if (opt.kind === 'nobar') {
-                          setBar(0);
-                          // Plate-loaded machines load on both sides, so
-                          // force both-side visual when entering machine
-                          // mode regardless of where the user was before.
-                          setMode('both');
-                        } else {
-                          // Restore a default bar weight if user is coming
-                          // back from Machine; otherwise just flip mode.
-                          if (bar === 0) setBar(45);
-                          setMode(opt.v);
-                        }
-                      }}
-                      className="text-[9px] font-bold uppercase whitespace-nowrap py-1.5 px-2.5 active:scale-[0.97] transition-transform"
-                      style={{
-                        letterSpacing: '0.18em',
-                        borderRadius: '2px',
-                        background: on
-                          ? 'linear-gradient(135deg, rgba(34,197,94,0.9) 0%, rgba(22,163,74,0.9) 100%)'
-                          : 'rgba(255,255,255,0.05)',
-                        boxShadow: on
-                          ? '0 4px 14px rgba(34,197,94,0.30), inset 0 1px 0 rgba(255,255,255,0.15)'
-                          : 'inset 0 0 0 1px rgba(255,255,255,0.10)',
-                        color: on ? '#fff' : 'rgba(255,255,255,0.65)',
-                      }}
-                    >
-                      {opt.label}
-                    </button>
-                  );
-                })}
+                count list. Divider above matches the Bar Weight divider
+                so the panel reads as two stacked sub-sections. */}
+            <div className="pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.10)' }}>
+            {/* Both Sides / One Side / Machine toggle — full-width horizontal
+                row directly under the divider. The first two pick the loading
+                mode; "Machine" sets bar weight to 0 for plate-loaded machines. */}
+            <div className="flex gap-1.5 mb-4">
+              {[
+                { v: 'both', label: 'Both Sides', kind: 'mode' },
+                { v: 'one',  label: 'One Side',   kind: 'mode' },
+                { v: 'nobar', label: 'Machine',   kind: 'nobar' },
+              ].map((opt) => {
+                const on = opt.kind === 'nobar' ? bar === 0 : (bar > 0 && mode === opt.v);
+                return (
+                  <button
+                    key={opt.v}
+                    onClick={() => {
+                      if (opt.kind === 'nobar') {
+                        setBar(0);
+                        // Plate-loaded machines load on both sides, so
+                        // force both-side visual when entering machine
+                        // mode regardless of where the user was before.
+                        setMode('both');
+                      } else {
+                        // Restore a default bar weight if user is coming
+                        // back from Machine; otherwise just flip mode.
+                        if (bar === 0) setBar(45);
+                        setMode(opt.v);
+                      }
+                    }}
+                    className="flex-1 text-[10px] font-bold uppercase whitespace-nowrap py-2 px-2 active:scale-[0.97] transition-transform"
+                    style={{
+                      letterSpacing: '0.18em',
+                      borderRadius: '2px',
+                      background: on
+                        ? 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)'
+                        : 'rgba(255,255,255,0.05)',
+                      boxShadow: on
+                        ? '0 4px 14px rgba(239,68,68,0.30), inset 0 1px 0 rgba(255,255,255,0.15)'
+                        : 'inset 0 0 0 1px rgba(255,255,255,0.10)',
+                      color: on ? '#fff' : 'rgba(255,255,255,0.65)',
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mb-4">
+              <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(255,255,255,0.4)', letterSpacing: '0.3em' }}>
+                {mode === 'one' ? 'One Side' : 'Per Side'}
+              </p>
+              <div className="flex items-baseline gap-2">
+                <h2 className="text-[28px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>
+                  {valid ? perSide.toFixed(perSide % 1 ? 1 : 0) : '—'}
+                </h2>
+                <span className="text-[14px] text-white/40 font-light">
+                  {mode === 'one' ? 'lbs loaded' : 'lbs / side'}
+                </span>
               </div>
             </div>
 
@@ -231,12 +238,14 @@ export default function PlateCalculator() {
                   </button>
                   <button
                     onClick={() => adjustTarget(-1)}
+                    disabled={!canDecrement}
                     aria-label={`Remove ${selectedPlate} lb plate`}
-                    className="w-9 h-9 flex items-center justify-center text-white/80 active:scale-90 transition-transform"
+                    className={`w-9 h-9 flex items-center justify-center transition-transform ${canDecrement ? 'text-white/80 active:scale-90' : 'text-white/25 cursor-not-allowed'}`}
                     style={{
                       background: 'rgba(255,255,255,0.05)',
                       boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.10)',
                       borderRadius: '2px',
+                      opacity: canDecrement ? 1 : 0.4,
                     }}
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -246,9 +255,12 @@ export default function PlateCalculator() {
                 </div>
 
                 {/* Centered bar + plates visual. Left padding (52px) clears
-                    the absolute +/- column; right padding mirrors so the
-                    visual stays optically centered between them. */}
-                <div className="flex items-center justify-center gap-2 h-full" style={{ paddingLeft: 52, paddingRight: 52, minHeight: 110 }}>
+                    the absolute +/- column with a 16px gap to the bar.
+                    Right padding mirrors that 16px gap to the card edge,
+                    so the bar sits visually centered between the right
+                    edge of the +/- buttons and the right edge of the card
+                    rather than the geometric center of the full row. */}
+                <div className="flex items-center justify-center gap-2 h-full" style={{ paddingLeft: 52, paddingRight: 16, minHeight: 110 }}>
                   {/* Left side plates — hidden in one-side mode (landmine
                       / single-end load). Always visible in machine mode
                       (bar === 0) since plate-loaded machines load on
@@ -326,12 +338,57 @@ export default function PlateCalculator() {
             )}
             </div> {/* /per-side sub-section */}
 
-            {/* Bar Weight selector — moved to the bottom of the card
-                since the bar choice is the value that changes the least
-                during a session (set the bar once, then adjust target).
-                Hidden in No Bar mode since there's no bar to pick. */}
-            {bar > 0 && (
+            {/* Plate picker — drives the +/- buttons on the bar visual
+                above. Selecting a plate makes one tap of the +/- buttons
+                add or remove that plate (per side in Both Sides mode,
+                one-side only in One Side mode). Sits above Bar Weight
+                because it's the most-used picker after the +/- buttons. */}
             <div className="mt-5 pt-4 border-t border-white/10">
+              <p className="text-[10px] uppercase font-bold mb-2" style={{ color: 'rgba(255,255,255,0.4)', letterSpacing: '0.2em' }}>
+                Choose a plate to add/remove
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {QUICK_PLATES.map((lb) => {
+                  const meta = PLATES.find((p) => p.lb === lb);
+                  const on = selectedPlate === lb;
+                  return (
+                    <button
+                      key={lb}
+                      onClick={() => setSelectedPlate(lb)}
+                      className="flex items-center gap-2 text-[11px] font-bold py-2 px-3 active:scale-[0.97] transition-transform tabular-nums"
+                      style={{
+                        letterSpacing: '0.05em',
+                        borderRadius: '2px',
+                        background: on ? 'rgba(239,68,68,0.18)' : 'rgba(255,255,255,0.05)',
+                        boxShadow: on
+                          ? 'inset 0 0 0 1px rgba(239,68,68,0.55), 0 4px 12px rgba(239,68,68,0.20)'
+                          : 'inset 0 0 0 1px rgba(255,255,255,0.10)',
+                        color: on ? '#fff' : 'rgba(255,255,255,0.75)',
+                      }}
+                    >
+                      {/* Mini plate swatch in the chip color */}
+                      <span
+                        className="inline-block"
+                        style={{
+                          width: 6,
+                          height: 14,
+                          background: meta?.color || '#888',
+                          borderRadius: '1px',
+                          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.25)',
+                        }}
+                      />
+                      {lb} lb
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Bar Weight selector — sits below the plate picker since
+                bar choice changes the least during a session (set once,
+                then adjust target). Hidden in No Bar mode. */}
+            {bar > 0 && (
+            <div className="mt-4 pt-4 border-t border-white/10">
               <p className="text-[10px] uppercase font-bold mb-2" style={{ color: 'rgba(255,255,255,0.4)', letterSpacing: '0.2em' }}>
                 Bar Weight
               </p>
@@ -364,51 +421,6 @@ export default function PlateCalculator() {
             )}
           </div> {/* /relative p-5 */}
         </div> {/* /merged panel */}
-
-        {/* Plates picker — drives the +/- buttons on the bar visualization
-            above. Selecting a plate makes one tap of the +/- buttons add
-            or remove that plate (per side in Both Sides mode, or one-side
-            only in One Side mode). */}
-        <div className="fade-slide-up" style={{ animationDelay: '90ms' }}>
-          <p className="text-[10px] uppercase font-bold mb-2" style={{ color: 'rgba(255,255,255,0.4)', letterSpacing: '0.2em' }}>
-            Choose a plate to add/remove
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {QUICK_PLATES.map((lb) => {
-              const meta = PLATES.find((p) => p.lb === lb);
-              const on = selectedPlate === lb;
-              return (
-                <button
-                  key={lb}
-                  onClick={() => setSelectedPlate(lb)}
-                  className="flex items-center gap-2 text-[11px] font-bold py-2 px-3 active:scale-[0.97] transition-transform tabular-nums"
-                  style={{
-                    letterSpacing: '0.05em',
-                    borderRadius: '2px',
-                    background: on ? 'rgba(239,68,68,0.18)' : 'rgba(255,255,255,0.05)',
-                    boxShadow: on
-                      ? 'inset 0 0 0 1px rgba(239,68,68,0.55), 0 4px 12px rgba(239,68,68,0.20)'
-                      : 'inset 0 0 0 1px rgba(255,255,255,0.10)',
-                    color: on ? '#fff' : 'rgba(255,255,255,0.75)',
-                  }}
-                >
-                  {/* Mini plate swatch in the chip color */}
-                  <span
-                    className="inline-block"
-                    style={{
-                      width: 6,
-                      height: 14,
-                      background: meta?.color || '#888',
-                      borderRadius: '1px',
-                      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.25)',
-                    }}
-                  />
-                  {lb} lb
-                </button>
-              );
-            })}
-          </div>
-        </div>
 
         {/* Quick-set chips — common 1RM-ish jumps */}
         <div className="fade-slide-up" style={{ animationDelay: '120ms' }}>
