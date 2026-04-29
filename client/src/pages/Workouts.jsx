@@ -511,7 +511,11 @@ function WeekAtAGlanceCarousel({ templates = [] }) {
           </p>
           <h3 className="text-[22px] font-black text-white tracking-tight">WEEK AT A GLANCE</h3>
         </div>
-        <button className="text-[11px] text-white/35 uppercase font-medium active:text-white transition-colors" style={{ letterSpacing: '0.15em' }}>
+        <button
+          onClick={() => navigate('/calendar')}
+          className="text-[11px] text-white/35 uppercase font-medium active:text-white transition-colors"
+          style={{ letterSpacing: '0.15em' }}
+        >
           See All
         </button>
       </div>
@@ -531,32 +535,31 @@ function WeekAtAGlanceCarousel({ templates = [] }) {
             : null;
 
           // Resolve the card's headline text. Workout name takes priority;
-          // fallback to REST or "Open Day" so the title slot is never empty.
+          // anything else (explicit rest, or no schedule entry at all for
+          // new users) defaults to "Rest Day" so brand-new users see the
+          // Nike-style weekly view filled with rest days rather than an
+          // ambiguous "Open Day" empty state.
           let title;
-          if (entry?.isRest) {
-            title = 'Rest\nDay';
-          } else if (entry?.templateId) {
+          if (entry?.templateId) {
             const tmpl = templates.find((t) => t.id === entry.templateId);
             title = entry.templateName || tmpl?.name || 'Workout';
           } else {
-            title = 'Open\nDay';
+            title = 'Rest\nDay';
           }
 
           // CTA label + click handler depend on status:
-          //  - Rest / Open  → muted, non-interactive
+          //  - Rest         → muted, non-interactive (covers both explicit
+          //                   rest days and brand-new users with no schedule)
           //  - Completed    → "Completed", opens /summary/:id
           //  - Today        → "Start Now", red CTA, opens session
           //  - Future       → "Scheduled", opens session for that date
           //  - Past, missed → "Skipped", opens session (backdated logging)
           let ctaLabel;
-          let ctaKind; // 'rest' | 'open' | 'completed' | 'start' | 'scheduled' | 'skipped'
+          let ctaKind; // 'rest' | 'completed' | 'start' | 'scheduled' | 'skipped'
           let onClick = null;
-          if (entry?.isRest) {
+          if (!entry?.templateId) {
             ctaLabel = 'Rest';
             ctaKind = 'rest';
-          } else if (!entry?.templateId) {
-            ctaLabel = 'Open';
-            ctaKind = 'open';
           } else if (completedSession) {
             ctaLabel = 'Completed';
             ctaKind = 'completed';
@@ -575,50 +578,17 @@ function WeekAtAGlanceCarousel({ templates = [] }) {
             onClick = () => navigate(`/session/${entry.templateId}/${date}`);
           }
 
-          // Per-status visual treatment for the CTA. Uses the same red
-          // gradient that the rest of the app's primary CTAs use; muted
-          // neutral pill for non-actionable states.
-          const ctaStyle = (() => {
-            switch (ctaKind) {
-              case 'start':
-                return {
-                  background: 'linear-gradient(135deg, rgba(239,68,68,0.95) 0%, rgba(220,38,38,0.95) 100%)',
-                  boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.18)',
-                  color: '#fff',
-                  border: 'none',
-                };
-              case 'completed':
-                return {
-                  background: 'rgba(34,197,94,0.12)',
-                  boxShadow: 'inset 0 0 0 1px rgba(34,197,94,0.45)',
-                  color: 'rgba(134,239,172,0.95)',
-                  border: 'none',
-                };
-              case 'skipped':
-                return {
-                  background: 'rgba(251,191,36,0.10)',
-                  boxShadow: 'inset 0 0 0 1px rgba(251,191,36,0.35)',
-                  color: 'rgba(252,211,77,0.95)',
-                  border: 'none',
-                };
-              case 'scheduled':
-                return {
-                  background: 'transparent',
-                  boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.20)',
-                  color: 'rgba(255,255,255,0.7)',
-                  border: 'none',
-                };
-              case 'rest':
-              case 'open':
-              default:
-                return {
-                  background: 'transparent',
-                  boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.10)',
-                  color: 'rgba(255,255,255,0.35)',
-                  border: 'none',
-                };
-            }
-          })();
+          // Unified CTA visual: black pill with white letters across every
+          // state (Rest / Scheduled / Start Now / Skipped / Completed) so
+          // the row of buttons reads as a single horizontal element across
+          // the carousel. The card itself signals "today" via the red ring,
+          // not the button.
+          const ctaStyle = {
+            background: '#000',
+            color: '#fff',
+            boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.25)',
+            border: 'none',
+          };
 
           const day = Number(date.slice(-2));
           const month = monthShort[Number(date.slice(5, 7)) - 1];
@@ -641,9 +611,13 @@ function WeekAtAGlanceCarousel({ templates = [] }) {
               {/* Color accent bar — matches Nike test page card stripe */}
               <div className="h-[3px]" style={{ background: `linear-gradient(90deg, ${color}, ${color}80)` }} />
               <div className="p-5 pb-6">
+                {/* Fixed-height title region (3 lines worth at 20px × 1.05
+                    leading) so the day/date row and CTA below land on the
+                    same horizontal plane across every card, regardless of
+                    whether the title wraps. */}
                 <h4
                   className="text-[20px] font-black text-white leading-[1.05] tracking-tight whitespace-pre-line mb-4"
-                  style={{ textShadow: '0 2px 10px rgba(0,0,0,0.3)' }}
+                  style={{ textShadow: '0 2px 10px rgba(0,0,0,0.3)', minHeight: 63 }}
                 >
                   {title}
                 </h4>
@@ -5792,6 +5766,23 @@ export default function Workouts() {
                 }} />
 
                 <div style={{ position: 'relative', zIndex: 1, padding: '24px' }}>
+                  {/* Top-right "View Progress" pill — opens the live Progress
+                      page (same-weight progressive overload viz). Sits above
+                      the eyebrow + headline so it doesn't reflow per-row PRs. */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); navigate('/progress'); }}
+                    className="absolute top-4 right-4 text-[10px] font-bold uppercase tracking-[0.2em] px-3 py-1.5 active:scale-[0.97] transition-transform"
+                    style={{
+                      background: 'rgba(0,0,0,0.5)',
+                      color: '#fff',
+                      borderRadius: '2px',
+                      boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.25)',
+                      backdropFilter: 'blur(6px)',
+                      WebkitBackdropFilter: 'blur(6px)',
+                    }}
+                  >
+                    Progress →
+                  </button>
                   <p className="text-[10px] uppercase font-light mb-2" style={{ color: 'rgba(255,255,255,0.7)', letterSpacing: '0.3em', textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>
                     Personal Records
                   </p>
