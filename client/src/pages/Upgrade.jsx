@@ -1,8 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 import { api } from '../api';
 import { useAuth } from '../context/AuthContext';
 import StickyHeader from '../components/StickyHeader';
+
+// App Store guideline 3.1.1 prohibits in-app purchase mechanisms outside
+// StoreKit for digital subscriptions. Until StoreKit is wired, hide every
+// path that opens a Stripe checkout/portal when the app is running natively
+// on iOS. Tier comparison and plan info still render so iOS users can see
+// what's available; purchase happens out-of-app via the website. Web and
+// Android keep the full Stripe flow (Android allows external billing for
+// non-game apps).
+const IS_IOS_NATIVE = Capacitor.getPlatform() === 'ios';
 
 const PLANS = [
   {
@@ -285,20 +295,22 @@ export default function Upgrade() {
                   </svg>
                 </div>
               </div>
-              <button
-                onClick={handleManageSubscription}
-                disabled={portalLoading}
-                className="w-full text-white font-bold uppercase py-3.5 active:scale-[0.98] transition-all disabled:opacity-50"
-                style={{
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid rgba(255,255,255,0.12)',
-                  borderRadius: '2px',
-                  letterSpacing: '0.25em',
-                  fontSize: '12px',
-                }}
-              >
-                {portalLoading ? 'Opening...' : 'Manage Subscription'}
-              </button>
+              {!IS_IOS_NATIVE && (
+                <button
+                  onClick={handleManageSubscription}
+                  disabled={portalLoading}
+                  className="w-full text-white font-bold uppercase py-3.5 active:scale-[0.98] transition-all disabled:opacity-50"
+                  style={{
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: '2px',
+                    letterSpacing: '0.25em',
+                    fontSize: '12px',
+                  }}
+                >
+                  {portalLoading ? 'Opening...' : 'Manage Subscription'}
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -489,31 +501,35 @@ export default function Upgrade() {
               </div>
             )}
 
-            <button
-              onClick={handleCheckout}
-              disabled={loading}
-              className="w-full text-white font-bold uppercase py-4 transition-all active:scale-[0.98] disabled:opacity-50 mb-4"
-              style={{
-                background: '#ef4444',
-                borderRadius: '2px',
-                letterSpacing: '0.25em',
-                fontSize: '13px',
-                boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
-              }}
-            >
-              {loading
-                ? 'Redirecting...'
-                : `Subscribe to ${selectedPlan} • $${price}${billing === 'yearly' ? '/yr' : '/mo'}`}
-            </button>
+            {!IS_IOS_NATIVE && (
+              <>
+                <button
+                  onClick={handleCheckout}
+                  disabled={loading}
+                  className="w-full text-white font-bold uppercase py-4 transition-all active:scale-[0.98] disabled:opacity-50 mb-4"
+                  style={{
+                    background: '#ef4444',
+                    borderRadius: '2px',
+                    letterSpacing: '0.25em',
+                    fontSize: '13px',
+                    boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+                  }}
+                >
+                  {loading
+                    ? 'Redirecting...'
+                    : `Subscribe to ${selectedPlan} • $${price}${billing === 'yearly' ? '/yr' : '/mo'}`}
+                </button>
 
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <svg className="w-3.5 h-3.5 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-              </svg>
-              <span className="text-[10px] uppercase text-white/35 font-semibold" style={{ letterSpacing: '0.2em' }}>
-                Secure Stripe Checkout • Cancel Anytime
-              </span>
-            </div>
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <svg className="w-3.5 h-3.5 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                  </svg>
+                  <span className="text-[10px] uppercase text-white/35 font-semibold" style={{ letterSpacing: '0.2em' }}>
+                    Secure Stripe Checkout • Cancel Anytime
+                  </span>
+                </div>
+              </>
+            )}
           </>
         )}
       </div>

@@ -22,6 +22,7 @@ const updates = {
   urc_a4: 'done', // server/routes/admin.js noreply@ — no hit
   urc_a5: 'done', // server/routes/billing.js — uses process.env.APP_URL
   urc_a6: 'done', // client/src/pages/Workouts.jsx — no will-fit.shop hit
+  urc_a7: 'done', // README.md — rebranded in commit 6176417 ("Misc: README rebrand…")
 
   // Section B — bundle ID locked in as com.replab.fitness
   urc_b1: 'done', // Decision: com.replab.fitness

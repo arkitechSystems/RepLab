@@ -148,7 +148,7 @@ function LibraryFlipCard({ program, programColor, idx, isFlipped, onFlip, onView
           <div className="absolute inset-0 pointer-events-none" style={{ background: spotlight, borderRadius: '2px' }} />
           <div className="h-[3px] relative" style={{ background: `linear-gradient(90deg, ${programColor}, ${programColor}40)` }} />
           <div className="relative p-6 pb-7 h-full flex flex-col">
-            <h4 className="text-[24px] font-black text-white leading-[1.05] tracking-tight mb-3 uppercase" style={{ textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}>
+            <h4 className="text-[24px] font-black text-white leading-[1.05] tracking-tight mb-3 uppercase line-clamp-3" style={{ textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}>
               {program.name}
             </h4>
             <div className="flex items-center justify-center flex-wrap gap-x-2 gap-y-1 mb-5">
@@ -174,7 +174,7 @@ function LibraryFlipCard({ program, programColor, idx, isFlipped, onFlip, onView
                 </>
               )}
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 mt-auto">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -220,7 +220,7 @@ function LibraryFlipCard({ program, programColor, idx, isFlipped, onFlip, onView
                 Falls back to the full name when no shortName is set in the
                 abbreviations table. */}
             <h4
-              className="text-[18px] font-black text-white leading-[1.1] tracking-tight uppercase mb-2"
+              className="text-[18px] font-black text-white leading-[1.1] tracking-tight uppercase mb-2 line-clamp-2"
               style={{ textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}
             >
               {program.shortName || program.name}
