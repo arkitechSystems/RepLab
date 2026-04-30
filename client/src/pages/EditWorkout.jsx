@@ -1,9 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 import { api } from '../api';
 import { useExercises } from '../hooks/useExercises';
 import { useUnsavedGuard } from '../components/UnsavedGuard';
 import ExerciseCard from '../components/ExerciseCard';
+
+const IS_IOS_NATIVE = Capacitor.getPlatform() === 'ios';
 
 export default function EditWorkout() {
   const { id } = useParams();
@@ -187,8 +190,8 @@ export default function EditWorkout() {
         }
       }
       const from = searchParams.get('from');
-      if (from === 'trainer') { window.location.href = '/trainer/workouts'; }
-      else if (from === 'admin') { window.location.href = '/admin/workout-manager/workouts'; }
+      if (from === 'trainer' && !IS_IOS_NATIVE) { window.location.href = '/trainer/workouts'; }
+      else if (from === 'admin' && !IS_IOS_NATIVE) { window.location.href = '/admin/workout-manager/workouts'; }
       else { navigate('/'); }
     } catch (err) {
       setError(err.message);

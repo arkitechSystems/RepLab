@@ -1,9 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 import { api } from '../api';
 import { useExercises } from '../hooks/useExercises';
 import { useUnsavedGuard } from '../components/UnsavedGuard';
 import ExerciseCard from '../components/ExerciseCard';
+
+// Server-rendered admin/trainer dashboards are not part of the iOS app
+// surface. Redirecting into them would expose admin UI inside the iOS
+// WebView, which Apple Review can flag for consumer apps. On iOS, we fall
+// through to the SPA home instead.
+const IS_IOS_NATIVE = Capacitor.getPlatform() === 'ios';
 
 export default function CreateWorkout() {
   const navigate = useNavigate();
@@ -214,8 +221,8 @@ export default function CreateWorkout() {
         return;
       }
       const from = searchParams.get('from');
-      if (from === 'trainer') { window.location.href = '/trainer/workouts'; }
-      else if (from === 'admin') { window.location.href = '/admin/workout-manager/workouts'; }
+      if (from === 'trainer' && !IS_IOS_NATIVE) { window.location.href = '/trainer/workouts'; }
+      else if (from === 'admin' && !IS_IOS_NATIVE) { window.location.href = '/admin/workout-manager/workouts'; }
       else { navigate('/'); }
     } catch (err) {
       setError(err.message);
