@@ -2,7 +2,6 @@ node_modules/
 dist/
 .env
 *.log
-willfit.json
 .DS_Store
 Thumbs.db
 nul
