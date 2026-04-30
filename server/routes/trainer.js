@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import pool from '../dbPool.js';
 import db from '../db.js';
+import config from '../config.js';
 import { DASHBOARD_CSS, SIDEBAR_JS } from '../dashboardCSS.js';
 import { exerciseCardScript } from '../exerciseCardBuilder.js';
 import { generateToken, generateAccessToken, generateRefreshToken } from '../middleware/auth.js';
@@ -274,7 +275,7 @@ router.get('/guide', (req, res) => {
 </head>
 <body>
 <div class="container">
-  <a href="https://replab-fitness.com" class="back-btn">&larr; Back to RepLab</a>
+  <a href="${config.APP_URL}" class="back-btn">&larr; Back to RepLab</a>
   <div class="logo">REP<span>LAB</span></div>
   <h1>User Guide</h1>
   <p class="subtitle">Everything you need to know about using RepLab</p>
@@ -326,7 +327,7 @@ router.get('/guide', (req, res) => {
       <li><strong>Begin a Program</strong> — tap <strong>Begin Program</strong> on any program card, choose a start date, and the app will schedule your workouts on the calendar.</li>
       <li><strong>Start training</strong> — go to the Calendar tab, tap today's workout, and start logging your sets.</li>
     </ol>
-    <div class="tip"><strong>Tip:</strong> You can also create workouts from a computer at <strong>replab-fitness.com/trainer</strong> using the same login credentials.</div>
+    <div class="tip"><strong>Tip:</strong> You can also create workouts from a computer at <strong>${config.APP_HOST}/trainer</strong> using the same login credentials.</div>
   </div>
 
   <!-- 2. Workouts -->
@@ -510,14 +511,14 @@ router.get('/guide', (req, res) => {
   <!-- 6. Trainer Dashboard -->
   <div class="section" id="trainer-dashboard">
     <h2>6. Trainer Dashboard (Computer)</h2>
-    <p>The Trainer Dashboard lets you create and manage workouts from a computer. It's available at <a href="https://replab-fitness.com/trainer" style="color:#ef4444;text-decoration:none;font-weight:600;">replab-fitness.com/trainer</a>.</p>
+    <p>The Trainer Dashboard lets you create and manage workouts from a computer. It's available at <a href="${config.APP_URL}/trainer" style="color:#ef4444;text-decoration:none;font-weight:600;">${config.APP_HOST}/trainer</a>.</p>
 
     <h3 id="trainer-login">Logging In</h3>
     <p>Use the <strong>same email and password</strong> you use in the app. Your workouts are linked to your account — anything you create on the computer appears in the app under My Workouts.</p>
 
     <h3 id="trainer-create">Creating Workouts on a Computer</h3>
     <ol>
-      <li>Log in at <strong>replab-fitness.com/trainer</strong>.</li>
+      <li>Log in at <strong>${config.APP_HOST}/trainer</strong>.</li>
       <li>Click <strong>Create a Workout</strong>.</li>
       <li>Enter a workout name, select or create a program, and add a description.</li>
       <li>Add exercises by searching the exercise library. Each exercise has a set type selector, weight, and reps fields.</li>
@@ -572,7 +573,7 @@ router.get('/guide', (req, res) => {
       <li><strong>Save often</strong> — tap Save after each exercise or at the end of your workout. The app will warn you if you try to leave with unsaved changes.</li>
       <li><strong>Use the weight suggestions</strong> — the app analyzes your recent sessions and suggests when to increase, hold, or decrease weight.</li>
       <li><strong>Check your PRs after each session</strong> — the Utilities tab updates in real-time. Tap the date on any PR to revisit that workout.</li>
-      <li><strong>Create workouts on a computer</strong> — it's faster to build complex programs on <strong>replab-fitness.com/trainer</strong> where you have a full keyboard and larger screen.</li>
+      <li><strong>Create workouts on a computer</strong> — it's faster to build complex programs on <strong>${config.APP_HOST}/trainer</strong> where you have a full keyboard and larger screen.</li>
       <li><strong>Use the AI generator</strong> — if you're not sure what to do, let the AI build a workout for you. You can always refine it afterward.</li>
       <li><strong>Send feedback</strong> — this is an alpha version. If something breaks or you have an idea, tell us. Every piece of feedback gets read.</li>
     </ul>
@@ -580,7 +581,7 @@ router.get('/guide', (req, res) => {
 
   <div style="text-align:center;margin-top:48px;padding-top:24px;border-top:1px solid rgba(255,255,255,0.06);">
     <div class="logo" style="margin-bottom:8px;">REP<span>LAB</span></div>
-    <p style="color:rgba(255,255,255,0.3);font-size:12px;">Alpha Version &middot; <a href="https://replab-fitness.com" style="color:#ef4444;text-decoration:none;">replab-fitness.com</a></p>
+    <p style="color:rgba(255,255,255,0.3);font-size:12px;">Alpha Version &middot; <a href="${config.APP_URL}" style="color:#ef4444;text-decoration:none;">${config.APP_HOST}</a></p>
   </div>
 </div>
 </body>

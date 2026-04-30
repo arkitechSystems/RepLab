@@ -5,6 +5,7 @@ import db from '../db.js';
 import { Resend } from 'resend';
 import { sendDailySummaryEmail } from '../email.js';
 import pool from '../dbPool.js';
+import config from '../config.js';
 import { syncFromWger } from '../syncExercises.js';
 import { exerciseCardScript } from '../exerciseCardBuilder.js';
 import { DASHBOARD_CSS } from '../dashboardCSS.js';
@@ -163,11 +164,11 @@ router.post('/forgot-password', express.urlencoded({ extended: false }), async (
     await db.setAdminSetting('admin_reset_token', token);
     await db.setAdminSetting('admin_reset_expires', new Date(Date.now() + 3600000).toISOString());
 
-    const resetUrl = `https://replab-fitness.com/admin/reset-password?token=${token}`;
+    const resetUrl = `${config.APP_URL}/admin/reset-password?token=${token}`;
     try {
       const resend = new Resend(process.env.RESEND_API_KEY);
       await resend.emails.send({
-        from: 'RepLab <noreply@email.replab-fitness.com>',
+        from: config.EMAIL_FROM_ADMIN,
         to: adminEmail,
         subject: 'Admin Dashboard Password Reset',
         html: `
