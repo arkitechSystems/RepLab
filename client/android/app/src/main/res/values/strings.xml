@@ -2,6 +2,6 @@
 <resources>
     <string name="app_name">RepLab</string>
     <string name="title_activity_main">RepLab</string>
-    <string name="package_name">com.willfit.app</string>
-    <string name="custom_url_scheme">com.willfit.app</string>
+    <string name="package_name">com.replab.fitness</string>
+    <string name="custom_url_scheme">com.replab.fitness</string>
 </resources>

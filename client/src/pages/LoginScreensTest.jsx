@@ -517,7 +517,7 @@ function NikeStripeBanner() {
         }} />
 
         <div className="relative px-6 pt-12">
-          <p className="text-black/70 text-[11px] uppercase tracking-[0.35em] font-black mb-2">Rep Lab Fitness</p>
+          <p className="text-black/70 text-[11px] uppercase tracking-[0.35em] font-black mb-2">REPLAB Fitness</p>
           <h1 className="text-white font-black leading-[0.85] tracking-tighter"
             style={{ fontSize: 64, fontFamily: 'system-ui', textShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
             LET'S<br/>LOCK IN<span className="text-black">.</span>

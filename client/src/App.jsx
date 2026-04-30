@@ -8,6 +8,35 @@ import { VideoPlayerProvider } from './context/VideoPlayerContext';
 import Layout from './components/Layout';
 import ErrorBoundary from './components/ErrorBoundary';
 
+// Stale-chunk recovery: when a new build is deployed, the running tab's
+// `index-*.js` still references chunk hashes that no longer exist on the
+// server (the SPA fallback returns index.html instead, and the browser
+// fails to parse HTML as JS). Wrap every dynamic import with one retry +
+// reload so users on stale tabs get bumped to the new build automatically
+// instead of seeing a blank screen. Uses sessionStorage to guarantee at
+// most one reload per session — anything failing twice is a real bug and
+// gets re-thrown so the ErrorBoundary catches it.
+function lazyWithRetry(factory) {
+  return lazy(async () => {
+    try {
+      const mod = await factory();
+      sessionStorage.removeItem('chunk-reload-attempted');
+      return mod;
+    } catch (err) {
+      const already = sessionStorage.getItem('chunk-reload-attempted');
+      if (!already) {
+        sessionStorage.setItem('chunk-reload-attempted', '1');
+        window.location.reload();
+        // Return a placeholder so React doesn't crash before the reload
+        // commits. Suspense will keep showing fallback during the brief
+        // window between reload() being called and the page actually nav'ing.
+        return { default: () => null };
+      }
+      throw err;
+    }
+  });
+}
+
 // Critical routes — loaded immediately (core user paths)
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -16,47 +45,48 @@ import Calendar from './pages/Calendar';
 import WorkoutSession from './pages/WorkoutSession';
 
 // Lazy-loaded routes — downloaded on demand
-const CreateWorkout = lazy(() => import('./pages/CreateWorkout'));
-const EditWorkout = lazy(() => import('./pages/EditWorkout'));
-const CreateProgram = lazy(() => import('./pages/CreateProgram'));
-const History = lazy(() => import('./pages/History'));
-const SessionDetail = lazy(() => import('./pages/SessionDetail'));
-const SessionSummary = lazy(() => import('./pages/SessionSummary'));
-const Profile = lazy(() => import('./pages/Profile'));
-const Utilities = lazy(() => import('./pages/Utilities'));
-const Welcome = lazy(() => import('./pages/Welcome'));
-const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
-const FreeTrialOffer = lazy(() => import('./pages/FreeTrialOffer'));
-const Upgrade = lazy(() => import('./pages/Upgrade'));
-const ResetPassword = lazy(() => import('./pages/ResetPassword'));
-const AIWorkoutGenerator = lazy(() => import('./pages/AIWorkoutGenerator'));
-const ExerciseLibrary = lazy(() => import('./pages/ExerciseLibrary'));
-const ExerciseDetail = lazy(() => import('./pages/ExerciseDetail'));
-const TutorialWorkout = lazy(() => import('./pages/TutorialWorkout'));
-const Terms = lazy(() => import('./pages/Terms'));
-const Privacy = lazy(() => import('./pages/Privacy'));
-const NotFound = lazy(() => import('./pages/NotFound'));
+const CreateWorkout = lazyWithRetry(() => import('./pages/CreateWorkout'));
+const EditWorkout = lazyWithRetry(() => import('./pages/EditWorkout'));
+const CreateProgram = lazyWithRetry(() => import('./pages/CreateProgram'));
+const History = lazyWithRetry(() => import('./pages/History'));
+const SessionDetail = lazyWithRetry(() => import('./pages/SessionDetail'));
+const SessionSummary = lazyWithRetry(() => import('./pages/SessionSummary'));
+const Profile = lazyWithRetry(() => import('./pages/Profile'));
+const Utilities = lazyWithRetry(() => import('./pages/Utilities'));
+const Welcome = lazyWithRetry(() => import('./pages/Welcome'));
+const ForgotPassword = lazyWithRetry(() => import('./pages/ForgotPassword'));
+const FreeTrialOffer = lazyWithRetry(() => import('./pages/FreeTrialOffer'));
+const Upgrade = lazyWithRetry(() => import('./pages/Upgrade'));
+const ResetPassword = lazyWithRetry(() => import('./pages/ResetPassword'));
+const AIWorkoutGenerator = lazyWithRetry(() => import('./pages/AIWorkoutGenerator'));
+const ExerciseLibrary = lazyWithRetry(() => import('./pages/ExerciseLibrary'));
+const ExerciseDetail = lazyWithRetry(() => import('./pages/ExerciseDetail'));
+const TutorialWorkout = lazyWithRetry(() => import('./pages/TutorialWorkout'));
+const Terms = lazyWithRetry(() => import('./pages/Terms'));
+const Privacy = lazyWithRetry(() => import('./pages/Privacy'));
+const NotFound = lazyWithRetry(() => import('./pages/NotFound'));
 
 // Test pages — only loaded by test users
-const Test = lazy(() => import('./pages/Test'));
-const CardsTest = lazy(() => import('./pages/CardsTest'));
-const WorkoutSessionTest = lazy(() => import('./pages/WorkoutSessionTest'));
-const TutorialTest = lazy(() => import('./pages/TutorialTest'));
-const NewWorkoutSessionTest = lazy(() => import('./pages/NewWorkoutSessionTest'));
-const NeumorphicSessionTest = lazy(() => import('./pages/NeumorphicSessionTest'));
-const FeaturedWorkoutSession = lazy(() => import('./pages/FeaturedWorkoutSession'));
-const TestChallengeSection = lazy(() => import('./pages/TestChallengeSection'));
-const NikeTestHomepage = lazy(() => import('./pages/NikeTestHomepage'));
-const NikeCardsTest = lazy(() => import('./pages/NikeCardsTest'));
-const RepLabFeedTest = lazy(() => import('./pages/RepLabFeedTest'));
-const NewHomepage = lazy(() => import('./pages/NewHomepage'));
-const Brainstorm = lazy(() => import('./pages/Brainstorm'));
-const ParallaxAnimation = lazy(() => import('./pages/ParallaxAnimation'));
-const NavbarsTest = lazy(() => import('./pages/NavbarsTest'));
-const LoginScreensTest = lazy(() => import('./pages/LoginScreensTest'));
-const ProgressiveOverloadTest = lazy(() => import('./pages/ProgressiveOverloadTest'));
-const PlateCalculator = lazy(() => import('./pages/PlateCalculator'));
-const Progress = lazy(() => import('./pages/Progress'));
+const Test = lazyWithRetry(() => import('./pages/Test'));
+const CardsTest = lazyWithRetry(() => import('./pages/CardsTest'));
+const WorkoutSessionTest = lazyWithRetry(() => import('./pages/WorkoutSessionTest'));
+const TutorialTest = lazyWithRetry(() => import('./pages/TutorialTest'));
+const NewWorkoutSessionTest = lazyWithRetry(() => import('./pages/NewWorkoutSessionTest'));
+const NeumorphicSessionTest = lazyWithRetry(() => import('./pages/NeumorphicSessionTest'));
+const FeaturedWorkoutSession = lazyWithRetry(() => import('./pages/FeaturedWorkoutSession'));
+const TestChallengeSection = lazyWithRetry(() => import('./pages/TestChallengeSection'));
+const NikeTestHomepage = lazyWithRetry(() => import('./pages/NikeTestHomepage'));
+const NikeCardsTest = lazyWithRetry(() => import('./pages/NikeCardsTest'));
+const RepLabFeedTest = lazyWithRetry(() => import('./pages/RepLabFeedTest'));
+const NewHomepage = lazyWithRetry(() => import('./pages/NewHomepage'));
+const Brainstorm = lazyWithRetry(() => import('./pages/Brainstorm'));
+const ParallaxAnimation = lazyWithRetry(() => import('./pages/ParallaxAnimation'));
+const NavbarsTest = lazyWithRetry(() => import('./pages/NavbarsTest'));
+const LoginScreensTest = lazyWithRetry(() => import('./pages/LoginScreensTest'));
+const ProgressiveOverloadTest = lazyWithRetry(() => import('./pages/ProgressiveOverloadTest'));
+const PlateCalculator = lazyWithRetry(() => import('./pages/PlateCalculator'));
+const Progress = lazyWithRetry(() => import('./pages/Progress'));
+const Community = lazyWithRetry(() => import('./pages/Community'));
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -156,6 +186,7 @@ export default function App() {
         <Route path="/history/:id" element={<SessionDetail />} />
         <Route path="/summary/:id" element={<SessionSummary />} />
         <Route path="/utilities" element={<Utilities />} />
+        <Route path="/community" element={<Community />} />
         <Route path="/plate-calculator" element={<PlateCalculator />} />
         <Route path="/progress" element={<Progress />} />
         <Route path="/profile" element={<Profile />} />

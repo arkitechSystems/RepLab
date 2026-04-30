@@ -183,7 +183,7 @@ app.use('/auth/export-data', rateLimit({
 // PRE-LAUNCH TODO (tied to audit B1 — bundle ID):
 //   1. Replace TEAMID with your Apple Developer Team ID (App Store Connect →
 //      Membership). Example: ABCD1234XY.
-//   2. Replace `com.willfit.app` with the final bundle ID once B1 is decided.
+//   2. Bundle ID locked in as `com.replab.fitness` (audit B1 — done).
 //   3. Replace the Android sha256_cert_fingerprints placeholder with the
 //      SHA-256 of your release signing key. Generate with:
 //        keytool -list -v -keystore your-upload-key.keystore | grep SHA256
@@ -196,8 +196,8 @@ app.get('/.well-known/apple-app-site-association', (_req, res) => {
     applinks: {
       apps: [],
       details: [{
-        // TODO: TEAMID + final bundle ID — see audit B1.
-        appID: 'TEAMID.com.willfit.app',
+        // TODO: replace TEAMID with the real Apple Team ID (see audit B1).
+        appID: 'TEAMID.com.replab.fitness',
         paths: [
           '/session/*',
           '/featured-session/*',
@@ -214,8 +214,7 @@ app.get('/.well-known/assetlinks.json', (_req, res) => {
     relation: ['delegate_permission/common.handle_all_urls'],
     target: {
       namespace: 'android_app',
-      // TODO: final bundle ID — see audit B1.
-      package_name: 'com.willfit.app',
+      package_name: 'com.replab.fitness',
       sha256_cert_fingerprints: [
         // TODO: paste the SHA-256 of your Android release signing key.
         '00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00',

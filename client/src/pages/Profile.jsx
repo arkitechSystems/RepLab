@@ -246,6 +246,7 @@ export default function Profile() {
   const [sessionsLoading, setSessionsLoading] = useState(true);
   const [theme, setTheme] = useState(() => localStorage.getItem('wf-theme') || 'dark');
   const [bibleVersesOn, setBibleVersesOn] = useState(() => localStorage.getItem('wf-bible-verses') !== 'off');
+  const [shareActivityOn, setShareActivityOn] = useState(() => localStorage.getItem('wf-share-activity-to-community') !== 'off');
   // Workout-session defaults — keys shared with WorkoutSession.jsx so the
   // toggle here is the same value the session reads on mount. Any in-session
   // override (lock buttons, gear menu) writes back to the same key.
@@ -290,6 +291,10 @@ export default function Profile() {
   useEffect(() => {
     localStorage.setItem('wf-bible-verses', bibleVersesOn ? 'on' : 'off');
   }, [bibleVersesOn]);
+
+  useEffect(() => {
+    localStorage.setItem('wf-share-activity-to-community', shareActivityOn ? 'on' : 'off');
+  }, [shareActivityOn]);
 
   // Persist workout-session defaults. WorkoutSession.jsx reads these same
   // keys at mount so each new session inherits the latest preference.
@@ -793,6 +798,22 @@ export default function Profile() {
                 </p>
 
                 <div className="flex items-center justify-between gap-px">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                    </svg>
+                    <span className="text-white/70 text-sm font-medium">Share activity to community</span>
+                  </div>
+                  <button
+                    onClick={() => setShareActivityOn(!shareActivityOn)}
+                    aria-label={shareActivityOn ? 'Stop sharing activity to community' : 'Share activity to community'}
+                    className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${shareActivityOn ? 'bg-wf-red' : 'bg-white/15'}`}
+                  >
+                    <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${shareActivityOn ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between gap-px">
                   <div className="flex items-center gap-px flex-1 min-w-0">
                     <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
@@ -808,26 +829,6 @@ export default function Profile() {
                   </button>
                 </div>
 
-                {/* Re-show install prompt — clears the 14-day dismiss cooldown
-                    in localStorage and reloads so InstallPrompt re-evaluates
-                    on next mount. Useful for testing the iOS Add-to-Home-Screen
-                    instructions. The localStorage key matches the constant in
-                    components/InstallPrompt.jsx. */}
-                <button
-                  onClick={() => {
-                    try { localStorage.removeItem('replab:install-dismissed-at'); } catch {}
-                    window.location.reload();
-                  }}
-                  className="w-full text-left flex items-center gap-2 active:opacity-70 transition-opacity"
-                >
-                  <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                  </svg>
-                  <span className="text-white/70 text-sm font-medium flex-1 min-w-0">Show Install Prompt Again</span>
-                  <svg className="w-3.5 h-3.5 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
-                </button>
               </div>
 
             </div>

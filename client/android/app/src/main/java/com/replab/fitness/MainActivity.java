@@ -1,4 +1,4 @@
-package com.willfit.app;
+package com.replab.fitness;
 
 import com.getcapacitor.BridgeActivity;
 

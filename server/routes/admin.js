@@ -533,6 +533,7 @@ router.get('/', adminAuth, async (req, res) => {
   // DB storage usage. Render free Postgres = 1 GB; override with
   // DB_SIZE_LIMIT_GB if you upgrade the plan so the gauge stays accurate.
   let dbPctStr = '—', dbPctValue = 0, dbUsedStr = '—', dbLimitStr = '1 GB', dbColor = 'rgba(255,255,255,0.7)';
+  let dbBarPct = 0, dbBarColor = 'linear-gradient(90deg,#16a34a,#4ade80)', dbHasData = false;
   try {
     const limitBytes = (Number(process.env.DB_SIZE_LIMIT_GB) || 1) * 1024 * 1024 * 1024;
     const { rows } = await pool.query('SELECT pg_database_size(current_database())::bigint AS bytes');
@@ -542,6 +543,9 @@ router.get('/', adminAuth, async (req, res) => {
     dbUsedStr = used > 1024 * 1024 ? (used / 1024 / 1024).toFixed(1) + ' MB' : (used / 1024).toFixed(0) + ' KB';
     dbLimitStr = (limitBytes / 1024 / 1024 / 1024).toFixed(0) + ' GB';
     dbColor = dbPctValue > 90 ? '#f87171' : dbPctValue > 70 ? '#fbbf24' : '#4ade80';
+    dbBarColor = dbPctValue > 90 ? 'linear-gradient(90deg,#dc2626,#f87171)' : dbPctValue > 70 ? 'linear-gradient(90deg,#d97706,#fbbf24)' : 'linear-gradient(90deg,#16a34a,#4ade80)';
+    dbBarPct = Math.min(dbPctValue, 100);
+    dbHasData = true;
   } catch {}
 
   // DB connections. Render free Postgres caps at 97; bump DB_CONN_LIMIT
@@ -669,6 +673,11 @@ router.get('/', adminAuth, async (req, res) => {
     <a href="/admin/health" class="stat glass" style="text-decoration:none;display:block;">
       <div class="value" style="color:${dbColor};-webkit-text-fill-color:${dbColor};">${dbPctStr}</div>
       <div class="label">DB Storage <span style="opacity:0.55;font-weight:500;">(${dbUsedStr} / ${dbLimitStr})</span></div>
+      ${dbHasData ? `
+      <div style="height:6px;border-radius:3px;background:rgba(255,255,255,0.06);overflow:hidden;border:1px solid rgba(255,255,255,0.06);margin-top:10px;">
+        <div style="height:100%;width:${dbBarPct.toFixed(2)}%;background:${dbBarColor};border-radius:3px;transition:width 0.3s;"></div>
+      </div>
+      ` : ''}
     </a>
 
     <!-- Row 2 — Operational health -->

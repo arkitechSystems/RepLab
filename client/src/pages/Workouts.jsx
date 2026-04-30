@@ -5765,14 +5765,22 @@ export default function Workouts() {
                   pointerEvents: 'none',
                 }} />
 
-                <div style={{ position: 'relative', zIndex: 1, padding: '24px' }}>
+                <div style={{ position: 'relative', zIndex: 1, padding: '52px 24px 24px 24px' }}>
                   {/* Top-right "View Progress" pill — opens the live Progress
-                      page (same-weight progressive overload viz). Sits above
-                      the eyebrow + headline so it doesn't reflow per-row PRs. */}
+                      page (same-weight progressive overload viz). The
+                      surrounding content gets paddingTop:52 so the eyebrow
+                      "Personal Records" + headline "HEAVIEST LIFTS" always
+                      sit below the button regardless of card width — no
+                      risk of horizontal overlap. Button's own top offset
+                      is 11px (≈30% less than the 16px the rest of the
+                      card uses) per the design ask, with that extra room
+                      becoming visible space between the button and the
+                      headline. */}
                   <button
                     onClick={(e) => { e.stopPropagation(); navigate('/progress'); }}
-                    className="absolute top-4 right-4 text-[10px] font-bold uppercase tracking-[0.2em] px-3 py-1.5 active:scale-[0.97] transition-transform"
+                    className="absolute right-4 text-[10px] font-bold uppercase tracking-[0.2em] px-3 py-1.5 active:scale-[0.97] transition-transform"
                     style={{
+                      top: 11,
                       background: 'rgba(0,0,0,0.5)',
                       color: '#fff',
                       borderRadius: '2px',
