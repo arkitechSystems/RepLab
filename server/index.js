@@ -39,6 +39,7 @@ import sharingRoutes from './routes/sharing.js';
 import pushRoutes from './routes/push.js';
 import feedReactionsRoutes from './routes/feedReactions.js';
 import db from './db.js';
+import config from './config.js';
 import { sendDailySummaryEmail } from './email.js';
 import { startIdleReminderScheduler } from './pushScheduler.js';
 import { startStreakReminderScheduler } from './streakReminderScheduler.js';
@@ -180,24 +181,15 @@ app.use('/auth/export-data', rateLimit({
 // these endpoints are reachable (no auth, plain JSON, no redirect) before
 // they'll route external HTTPS links into the app.
 //
-// PRE-LAUNCH TODO (tied to audit B1 — bundle ID):
-//   1. Replace TEAMID with your Apple Developer Team ID (App Store Connect →
-//      Membership). Example: ABCD1234XY.
-//   2. Bundle ID locked in as `com.replab.fitness` (audit B1 — done).
-//   3. Replace the Android sha256_cert_fingerprints placeholder with the
-//      SHA-256 of your release signing key. Generate with:
-//        keytool -list -v -keystore your-upload-key.keystore | grep SHA256
-//      (Or grab it from Play Console → App signing → App signing key
-//      certificate.)
-//   4. Confirm the AndroidManifest <data android:host="..."/> entries match
-//      your real hosts.
+// All identity-coupled values (Apple Team ID, bundle ID, Android signing
+// SHA-256) come from server/config.js, which reads them from env. Set the
+// real values in Render env vars at LLC cutover — see MIGRATION.md.
 app.get('/.well-known/apple-app-site-association', (_req, res) => {
   res.type('application/json').json({
     applinks: {
       apps: [],
       details: [{
-        // TODO: replace TEAMID with the real Apple Team ID (see audit B1).
-        appID: 'TEAMID.com.replab.fitness',
+        appID: `${config.APPLE_TEAM_ID}.${config.APP_BUNDLE_ID}`,
         paths: [
           '/session/*',
           '/featured-session/*',
@@ -214,11 +206,8 @@ app.get('/.well-known/assetlinks.json', (_req, res) => {
     relation: ['delegate_permission/common.handle_all_urls'],
     target: {
       namespace: 'android_app',
-      package_name: 'com.replab.fitness',
-      sha256_cert_fingerprints: [
-        // TODO: paste the SHA-256 of your Android release signing key.
-        '00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00',
-      ],
+      package_name: config.APP_BUNDLE_ID,
+      sha256_cert_fingerprints: [config.ANDROID_SIGNING_SHA256],
     },
   }]);
 });

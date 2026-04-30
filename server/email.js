@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
 import pool from './dbPool.js';
+import config from './config.js';
 
 async function getTemplate(name) {
   try {
@@ -42,7 +43,7 @@ export async function sendWelcomeEmail(email) {
           <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">Trainer Dashboard</h3>
           <div style="background: #f8f8f8; border-radius: 8px; padding: 16px 20px; margin-bottom: 16px;">
             <p style="color: #333; font-size: 14px; line-height: 1.7; margin: 0;">
-              <strong>Prefer a bigger screen?</strong> You can create and manage your workouts from a computer using the <a href="https://replab-fitness.com/trainer" style="color: #EF4444; text-decoration: none; font-weight: 600;">Trainer Dashboard</a>. Just log in with the same credentials you used to sign up. Everything stays in sync with the app.
+              <strong>Prefer a bigger screen?</strong> You can create and manage your workouts from a computer using the <a href="${config.APP_URL}/trainer" style="color: #EF4444; text-decoration: none; font-weight: 600;">Trainer Dashboard</a>. Just log in with the same credentials you used to sign up. Everything stays in sync with the app.
             </p>
           </div>
 
@@ -66,7 +67,7 @@ export async function sendWelcomeEmail(email) {
           <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">User Guide</h3>
           <div style="background: #f0f0f0; border-radius: 8px; padding: 16px 20px; margin-bottom: 24px;">
             <p style="color: #333; font-size: 14px; line-height: 1.7; margin: 0;">
-              For a deeper look at every feature, check out the <a href="https://replab-fitness.com/trainer/guide" style="color: #EF4444; text-decoration: none; font-weight: 600;">RepLab User Guide</a>. It covers the workout library, calendar, logging sessions, personal records, creating custom workouts, and more.
+              For a deeper look at every feature, check out the <a href="${config.APP_URL}/trainer/guide" style="color: #EF4444; text-decoration: none; font-weight: 600;">RepLab User Guide</a>. It covers the workout library, calendar, logging sessions, personal records, creating custom workouts, and more.
             </p>
           </div>
 
@@ -74,7 +75,7 @@ export async function sendWelcomeEmail(email) {
             Thanks for being an early adopter. We're glad to have you.
           </p>
 
-          <a href="https://replab-fitness.com"
+          <a href="${config.APP_URL}"
              style="display: inline-block; margin-top: 24px; padding: 14px 32px; background: #111; color: #fff; text-decoration: none; border-radius: 10px; font-size: 15px; font-weight: 700; letter-spacing: 0.5px;">
             Open RepLab
           </a>
@@ -87,7 +88,7 @@ export async function sendWelcomeEmail(email) {
 
   try {
     await resend.emails.send({
-      from: 'RepLab <noreply@email.replab-fitness.com>',
+      from: config.EMAIL_FROM_TRANSACTIONAL,
       to: email,
       subject: custom?.subject || defaultSubject,
       html: custom?.html || defaultHtml,
@@ -105,11 +106,11 @@ export async function sendPasswordResetEmail(email, token) {
   }
 
   const resend = new Resend(process.env.RESEND_API_KEY);
-  const resetUrl = `https://replab-fitness.com/reset-password/${token}`;
+  const resetUrl = `${config.APP_URL}/reset-password/${token}`;
 
   try {
     await resend.emails.send({
-      from: 'RepLab <noreply@email.replab-fitness.com>',
+      from: config.EMAIL_FROM_TRANSACTIONAL,
       to: email,
       subject: 'Reset your RepLab password',
       html: `
@@ -146,7 +147,7 @@ export async function sendNewSignupNotification(user, totalUsers) {
 
   try {
     await resend.emails.send({
-      from: 'RepLab <noreply@email.replab-fitness.com>',
+      from: config.EMAIL_FROM_TRANSACTIONAL,
       to: process.env.ADMIN_EMAIL,
       subject: `New RepLab Signup — ${name} (#${totalUsers})`,
       html: `
@@ -210,7 +211,7 @@ export async function sendDailySummaryEmail(stats) {
 
   try {
     await resend.emails.send({
-      from: 'RepLab <noreply@email.replab-fitness.com>',
+      from: config.EMAIL_FROM_TRANSACTIONAL,
       to: process.env.ADMIN_EMAIL,
       subject: `RepLab Daily Summary — ${stats.totalUsers} users`,
       html: `
@@ -280,7 +281,7 @@ export async function sendDailySummaryEmail(stats) {
           ` : '<p style="color: #888; font-size: 13px;">No new signups in the last 24 hours.</p>'}
 
           <p style="color: #999; font-size: 11px; margin-top: 24px; text-align: center;">
-            <a href="https://replab-fitness.com/admin" style="color: #ef4444; text-decoration: none;">Open Admin Dashboard</a>
+            <a href="${config.APP_URL}/admin" style="color: #ef4444; text-decoration: none;">Open Admin Dashboard</a>
           </p>
         </div>
       `,
