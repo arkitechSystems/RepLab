@@ -87,17 +87,27 @@ router.post('/webhook', async (req, res) => {
         // Retrieve the subscription to get period end
         const subscription = await getStripe().subscriptions.retrieve(session.subscription);
 
-        await db.createSubscription({
-          userId,
-          stripeSubscriptionId: subscription.id,
-          stripeCustomerId: session.customer,
-          plan,
-          billingInterval: billing === 'yearly' ? 'year' : 'month',
-          status: subscription.status,
-          currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-        });
+        const client = await pool.connect();
+        try {
+          await client.query('BEGIN');
+          await db.createSubscription({
+            userId,
+            stripeSubscriptionId: subscription.id,
+            stripeCustomerId: session.customer,
+            plan,
+            billingInterval: billing === 'yearly' ? 'year' : 'month',
+            status: subscription.status,
+            currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+          }, client);
 
-        await db.updateUserPlan(userId, plan);
+          await db.updateUserPlan(userId, plan, client);
+          await client.query('COMMIT');
+        } catch (err) {
+          try { await client.query('ROLLBACK'); } catch (_) {}
+          throw err;
+        } finally {
+          client.release();
+        }
         break;
       }
 
@@ -135,13 +145,23 @@ router.post('/webhook', async (req, res) => {
 
       case 'customer.subscription.deleted': {
         const subscription = event.data.object;
-        await db.updateSubscriptionByStripeId(subscription.id, {
-          status: 'canceled',
-        });
-        // Reset user plan to Free
-        const user = await db.getUserByStripeCustomerId(subscription.customer);
-        if (user) {
-          await db.updateUserPlan(user.id, 'Free');
+        const client = await pool.connect();
+        try {
+          await client.query('BEGIN');
+          await db.updateSubscriptionByStripeId(subscription.id, {
+            status: 'canceled',
+          }, client);
+          // Reset user plan to Free
+          const user = await db.getUserByStripeCustomerId(subscription.customer, client);
+          if (user) {
+            await db.updateUserPlan(user.id, 'Free', client);
+          }
+          await client.query('COMMIT');
+        } catch (err) {
+          try { await client.query('ROLLBACK'); } catch (_) {}
+          throw err;
+        } finally {
+          client.release();
         }
         break;
       }

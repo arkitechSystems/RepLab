@@ -511,20 +511,22 @@ router.post('/create-workout', clientAuth, express.urlencoded({ extended: true }
     return res.redirect('/workouts/create-workout?error=Workout+name+is+required');
   }
 
+  const client = await pool.connect();
   try {
+    await client.query('BEGIN');
     // If no program selected, find or create a default one
     let finalProgramId = programId ? Number(programId) : null;
     if (!finalProgramId) {
       const programName = 'My Workouts';
       const userId = req.client.userId;
-      const { rows: existing } = await pool.query(
+      const { rows: existing } = await client.query(
         'SELECT id FROM programs WHERE name = $1 AND user_id = $2',
         [programName, userId]
       );
       if (existing.length > 0) {
         finalProgramId = existing[0].id;
       } else {
-        const { rows: [newProg] } = await pool.query(
+        const { rows: [newProg] } = await client.query(
           'INSERT INTO programs (user_id, name, description) VALUES ($1, $2, $3) RETURNING id',
           [userId, programName, '']
         );
@@ -535,14 +537,14 @@ router.post('/create-workout', clientAuth, express.urlencoded({ extended: true }
     const userId = req.client.userId;
 
     // Get current max sort_order
-    const { rows: sortRows } = await pool.query(
+    const { rows: sortRows } = await client.query(
       'SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_sort FROM templates WHERE program_id = $1',
       [finalProgramId]
     );
     const sortOrder = sortRows[0].next_sort;
 
     // Create template
-    const { rows: [tmpl] } = await pool.query(
+    const { rows: [tmpl] } = await client.query(
       'INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES ($1, $2, $3, $4, FALSE, $5) RETURNING id',
       [userId, finalProgramId, workoutName.trim(), description?.trim() || '', sortOrder]
     );
@@ -558,7 +560,7 @@ router.post('/create-workout', clientAuth, express.urlencoded({ extended: true }
         let setNum = 1;
         for (const set of sets) {
           if (!set) continue;
-          await pool.query(
+          await client.query(
             'INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7)',
             [tmpl.id, ex.name.trim(), setType, setNum++, parseInt(set.reps) || 10, parseInt(set.weight) || 0, exSortOrder]
           );
@@ -567,10 +569,14 @@ router.post('/create-workout', clientAuth, express.urlencoded({ extended: true }
       }
     }
 
+    await client.query('COMMIT');
     res.redirect('/workouts/create-workout?msg=Workout+"' + encodeURIComponent(workoutName.trim()) + '"+created+successfully');
   } catch (err) {
+    try { await client.query('ROLLBACK'); } catch (_) {}
     console.error('Create workout error:', err);
     res.redirect('/workouts/create-workout?error=Failed+to+create+workout');
+  } finally {
+    client.release();
   }
 });
 
@@ -1009,21 +1015,29 @@ router.post('/edit-workout/:id', clientAuth, express.urlencoded({ extended: true
 
   if (!workoutName?.trim()) return res.redirect('/workouts/edit-workout/' + templateId + '?error=Workout+name+is+required');
 
+  const client = await pool.connect();
   try {
+    await client.query('BEGIN');
     // Verify ownership
-    const { rows: tmplRows } = await pool.query('SELECT user_id, program_id FROM templates WHERE id = $1', [templateId]);
-    if (!tmplRows[0]) return res.redirect('/workouts/my-workouts');
-    if (tmplRows[0].user_id !== req.client.userId) return res.redirect('/workouts/my-workouts');
+    const { rows: tmplRows } = await client.query('SELECT user_id, program_id FROM templates WHERE id = $1', [templateId]);
+    if (!tmplRows[0]) {
+      await client.query('ROLLBACK');
+      return res.redirect('/workouts/my-workouts');
+    }
+    if (tmplRows[0].user_id !== req.client.userId) {
+      await client.query('ROLLBACK');
+      return res.redirect('/workouts/my-workouts');
+    }
 
     // Update template
     const newProgramId = programId ? Number(programId) : tmplRows[0].program_id;
-    await pool.query(
+    await client.query(
       'UPDATE templates SET name = $1, description = $2, program_id = $3 WHERE id = $4',
       [workoutName.trim(), description?.trim() || '', newProgramId, templateId]
     );
 
     // Delete old exercises and insert new ones
-    await pool.query('DELETE FROM template_exercises WHERE template_id = $1', [templateId]);
+    await client.query('DELETE FROM template_exercises WHERE template_id = $1', [templateId]);
 
     if (exercises && typeof exercises === 'object') {
       const exArray = Array.isArray(exercises) ? exercises : Object.values(exercises);
@@ -1035,7 +1049,7 @@ router.post('/edit-workout/:id', clientAuth, express.urlencoded({ extended: true
         let setNum = 1;
         for (const set of sets) {
           if (!set) continue;
-          await pool.query(
+          await client.query(
             'INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7)',
             [templateId, ex.name.trim(), setType, setNum++, parseInt(set.reps) || 10, parseInt(set.weight) || 0, exSort]
           );
@@ -1044,10 +1058,14 @@ router.post('/edit-workout/:id', clientAuth, express.urlencoded({ extended: true
       }
     }
 
+    await client.query('COMMIT');
     res.redirect('/workouts/edit-workout/' + templateId + '?msg=Workout+updated+successfully');
   } catch (err) {
+    try { await client.query('ROLLBACK'); } catch (_) {}
     console.error('Save edit error:', err);
     res.redirect('/workouts/edit-workout/' + templateId + '?error=Failed+to+save+changes');
+  } finally {
+    client.release();
   }
 });
 

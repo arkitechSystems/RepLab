@@ -907,13 +907,15 @@ router.post('/create-workout', trainerAuth, express.urlencoded({ extended: true 
     return res.redirect('/trainer/create-workout?error=Workout+name+is+required');
   }
 
+  const client = await pool.connect();
   try {
+    await client.query('BEGIN');
     // If no program selected, find or create a default one
     let finalProgramId = programId ? Number(programId) : null;
     if (!finalProgramId) {
       const programName = isAdmin ? 'Trainer Workouts' : 'My Workouts';
       const userId = isAdmin ? null : req.trainer.userId;
-      const { rows: existing } = await pool.query(
+      const { rows: existing } = await client.query(
         userId
           ? 'SELECT id FROM programs WHERE name = $1 AND user_id = $2'
           : 'SELECT id FROM programs WHERE name = $1 AND user_id IS NULL',
@@ -922,7 +924,7 @@ router.post('/create-workout', trainerAuth, express.urlencoded({ extended: true 
       if (existing.length > 0) {
         finalProgramId = existing[0].id;
       } else {
-        const { rows: [newProg] } = await pool.query(
+        const { rows: [newProg] } = await client.query(
           'INSERT INTO programs (user_id, name, description) VALUES ($1, $2, $3) RETURNING id',
           [userId, programName, '']
         );
@@ -933,14 +935,14 @@ router.post('/create-workout', trainerAuth, express.urlencoded({ extended: true 
     const userId = isAdmin ? null : req.trainer.userId;
 
     // Get current max sort_order
-    const { rows: sortRows } = await pool.query(
+    const { rows: sortRows } = await client.query(
       'SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_sort FROM templates WHERE program_id = $1',
       [finalProgramId]
     );
     const sortOrder = sortRows[0].next_sort;
 
     // Create template
-    const { rows: [tmpl] } = await pool.query(
+    const { rows: [tmpl] } = await client.query(
       'INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES ($1, $2, $3, $4, FALSE, $5) RETURNING id',
       [userId, finalProgramId, workoutName.trim(), description?.trim() || '', sortOrder]
     );
@@ -952,7 +954,7 @@ router.post('/create-workout', trainerAuth, express.urlencoded({ extended: true 
       for (const ex of exArray) {
         if (!ex?.name?.trim()) continue;
         if (ex.isSectionHeader === '1') {
-          await pool.query(
+          await client.query(
             'INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
             [tmpl.id, ex.name.trim(), 'straight', 1, 0, 0, exSortOrder, true, ex.sectionNotes?.trim() || '']
           );
@@ -962,7 +964,7 @@ router.post('/create-workout', trainerAuth, express.urlencoded({ extended: true 
           let setNum = 1;
           for (const set of sets) {
             if (!set) continue;
-            await pool.query(
+            await client.query(
               'INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7)',
               [tmpl.id, ex.name.trim(), setType, setNum++, parseInt(set.reps) || 10, parseInt(set.weight) || 0, exSortOrder]
             );
@@ -972,10 +974,14 @@ router.post('/create-workout', trainerAuth, express.urlencoded({ extended: true 
       }
     }
 
+    await client.query('COMMIT');
     res.redirect('/trainer/create-workout?msg=Workout+"' + encodeURIComponent(workoutName.trim()) + '"+created+successfully');
   } catch (err) {
+    try { await client.query('ROLLBACK'); } catch (_) {}
     console.error('Create workout error:', err);
     res.redirect('/trainer/create-workout?error=Failed+to+create+workout');
+  } finally {
+    client.release();
   }
 });
 
@@ -1166,21 +1172,29 @@ router.post('/edit-workout/:id', trainerAuth, express.urlencoded({ extended: tru
 
   if (!workoutName?.trim()) return res.redirect('/trainer/edit-workout/' + templateId + '?error=Workout+name+is+required');
 
+  const client = await pool.connect();
   try {
+    await client.query('BEGIN');
     // Verify ownership
-    const { rows: tmplRows } = await pool.query('SELECT user_id, program_id FROM templates WHERE id = $1', [templateId]);
-    if (!tmplRows[0]) return res.redirect('/trainer/workouts');
-    if (!isAdmin && tmplRows[0].user_id !== req.trainer.userId) return res.redirect('/trainer/workouts');
+    const { rows: tmplRows } = await client.query('SELECT user_id, program_id FROM templates WHERE id = $1', [templateId]);
+    if (!tmplRows[0]) {
+      await client.query('ROLLBACK');
+      return res.redirect('/trainer/workouts');
+    }
+    if (!isAdmin && tmplRows[0].user_id !== req.trainer.userId) {
+      await client.query('ROLLBACK');
+      return res.redirect('/trainer/workouts');
+    }
 
     // Update template
     const newProgramId = programId ? Number(programId) : tmplRows[0].program_id;
-    await pool.query(
+    await client.query(
       'UPDATE templates SET name = $1, description = $2, program_id = $3 WHERE id = $4',
       [workoutName.trim(), description?.trim() || '', newProgramId, templateId]
     );
 
     // Delete old exercises and insert new ones (including section headers)
-    await pool.query('DELETE FROM template_exercises WHERE template_id = $1', [templateId]);
+    await client.query('DELETE FROM template_exercises WHERE template_id = $1', [templateId]);
 
     if (exercises && typeof exercises === 'object') {
       const exArray = Array.isArray(exercises) ? exercises : Object.values(exercises);
@@ -1188,7 +1202,7 @@ router.post('/edit-workout/:id', trainerAuth, express.urlencoded({ extended: tru
       for (const ex of exArray) {
         if (!ex?.name?.trim()) continue;
         if (ex.isSectionHeader === '1') {
-          await pool.query(
+          await client.query(
             'INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
             [templateId, ex.name.trim(), 'straight', 1, 0, 0, exSort, true, ex.sectionNotes?.trim() || '']
           );
@@ -1198,7 +1212,7 @@ router.post('/edit-workout/:id', trainerAuth, express.urlencoded({ extended: tru
           let setNum = 1;
           for (const set of sets) {
             if (!set) continue;
-            await pool.query(
+            await client.query(
               'INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7)',
               [templateId, ex.name.trim(), setType, setNum++, parseInt(set.reps) || 10, parseInt(set.weight) || 0, exSort]
             );
@@ -1208,10 +1222,14 @@ router.post('/edit-workout/:id', trainerAuth, express.urlencoded({ extended: tru
       }
     }
 
+    await client.query('COMMIT');
     res.redirect('/trainer/edit-workout/' + templateId + '?msg=Workout+updated+successfully');
   } catch (err) {
+    try { await client.query('ROLLBACK'); } catch (_) {}
     console.error('Save edit error:', err);
     res.redirect('/trainer/edit-workout/' + templateId + '?error=Failed+to+save+changes');
+  } finally {
+    client.release();
   }
 });
 
@@ -1231,34 +1249,49 @@ router.get('/delete-workout/:id', trainerAuth, async (req, res) => {
 router.get('/copy-workout/:id', trainerAuth, async (req, res) => {
   const isAdmin = req.trainer.isAdmin || false;
   const templateId = Number(req.params.id);
+  const client = await pool.connect();
   try {
-    const { rows: tmplRows } = await pool.query('SELECT * FROM templates WHERE id = $1', [templateId]);
-    if (!tmplRows[0]) return res.redirect('/trainer/workouts');
+    await client.query('BEGIN');
+    const { rows: tmplRows } = await client.query('SELECT * FROM templates WHERE id = $1', [templateId]);
+    if (!tmplRows[0]) {
+      await client.query('ROLLBACK');
+      return res.redirect('/trainer/workouts');
+    }
     const tmpl = tmplRows[0];
-    if (!isAdmin && tmpl.user_id !== req.trainer.userId) return res.redirect('/trainer/workouts');
+    if (!isAdmin && tmpl.user_id !== req.trainer.userId) {
+      await client.query('ROLLBACK');
+      return res.redirect('/trainer/workouts');
+    }
 
     // Get max sort order
-    const { rows: sortRows } = await pool.query('SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_sort FROM templates WHERE program_id = $1', [tmpl.program_id]);
+    const { rows: sortRows } = await client.query('SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_sort FROM templates WHERE program_id = $1', [tmpl.program_id]);
 
     // Create copy
-    const { rows: [newTmpl] } = await pool.query(
+    const { rows: [newTmpl] } = await client.query(
       'INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
       [tmpl.user_id, tmpl.program_id, tmpl.name + ' (Copy)', tmpl.description, tmpl.is_rest, sortRows[0].next_sort]
     );
 
     // Copy exercises
-    const { rows: exercises } = await pool.query(
+    const { rows: exercises } = await client.query(
       'SELECT name, set_type, set_number, planned_reps, suggested_weight, sort_order FROM template_exercises WHERE template_id = $1 ORDER BY sort_order, set_number',
       [templateId]
     );
     for (const ex of exercises) {
-      await pool.query(
+      await client.query(
         'INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7)',
         [newTmpl.id, ex.name, ex.set_type, ex.set_number, ex.planned_reps, ex.suggested_weight, ex.sort_order]
       );
     }
+    await client.query('COMMIT');
     res.redirect('/trainer/workouts');
-  } catch (err) { console.error(err); res.redirect('/trainer/workouts'); }
+  } catch (err) {
+    try { await client.query('ROLLBACK'); } catch (_) {}
+    console.error(err);
+    res.redirect('/trainer/workouts');
+  } finally {
+    client.release();
+  }
 });
 
 // ─── Trainer Client Management API ───

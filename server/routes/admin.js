@@ -2934,15 +2934,17 @@ router.get('/workout-manager/create', adminAuth, async (req, res) => {
 router.post('/workout-manager/create', adminAuth, express.urlencoded({ extended: true }), async (req, res) => {
   const { workoutName, description, programId, exercises } = req.body;
   if (!workoutName?.trim()) return res.redirect('/admin/workout-manager/create?error=Workout+name+is+required');
+  const client = await pool.connect();
   try {
+    await client.query('BEGIN');
     let finalProgramId = programId ? Number(programId) : null;
     if (!finalProgramId) {
-      const { rows: existing } = await pool.query("SELECT id FROM programs WHERE name = 'Admin Workouts' AND user_id IS NULL");
+      const { rows: existing } = await client.query("SELECT id FROM programs WHERE name = 'Admin Workouts' AND user_id IS NULL");
       if (existing.length > 0) { finalProgramId = existing[0].id; }
-      else { const { rows: [p] } = await pool.query("INSERT INTO programs (user_id, name) VALUES (NULL, 'Admin Workouts') RETURNING id"); finalProgramId = p.id; }
+      else { const { rows: [p] } = await client.query("INSERT INTO programs (user_id, name) VALUES (NULL, 'Admin Workouts') RETURNING id"); finalProgramId = p.id; }
     }
-    const { rows: sortRows } = await pool.query('SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_sort FROM templates WHERE program_id = $1', [finalProgramId]);
-    const { rows: [tmpl] } = await pool.query('INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES (NULL, $1, $2, $3, FALSE, $4) RETURNING id', [finalProgramId, workoutName.trim(), description?.trim() || '', sortRows[0].next_sort]);
+    const { rows: sortRows } = await client.query('SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_sort FROM templates WHERE program_id = $1', [finalProgramId]);
+    const { rows: [tmpl] } = await client.query('INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES (NULL, $1, $2, $3, FALSE, $4) RETURNING id', [finalProgramId, workoutName.trim(), description?.trim() || '', sortRows[0].next_sort]);
     if (exercises && typeof exercises === 'object') {
       const exArray = Array.isArray(exercises) ? exercises : Object.values(exercises); let exSort = 0;
       const batchValues = [];
@@ -2968,14 +2970,21 @@ router.post('/workout-manager/create', adminAuth, express.urlencoded({ extended:
         exSort++;
       }
       if (batchValues.length > 0) {
-        await pool.query(
+        await client.query(
           `INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes) VALUES ${batchValues.join(', ')}`,
           batchParams
         );
       }
     }
+    await client.query('COMMIT');
     res.redirect('/admin/workout-manager/create?msg=Workout+"' + encodeURIComponent(workoutName.trim()) + '"+created+successfully');
-  } catch (err) { console.error(err); res.redirect('/admin/workout-manager/create?error=Failed+to+create+workout'); }
+  } catch (err) {
+    try { await client.query('ROLLBACK'); } catch (_) {}
+    console.error(err);
+    res.redirect('/admin/workout-manager/create?error=Failed+to+create+workout');
+  } finally {
+    client.release();
+  }
 });
 
 // GET /admin/workout-manager/workouts — View current workouts
@@ -3233,16 +3242,18 @@ router.post('/workout-manager/edit/:id', adminAuth, express.urlencoded({ extende
   const templateId = Number(req.params.id);
   const { workoutName, description, programId, exercises } = req.body;
   if (!workoutName?.trim()) return res.redirect('/admin/workout-manager/edit/' + templateId + '?error=Name+is+required');
+  const client = await pool.connect();
   try {
-    await pool.query('UPDATE templates SET name = $1, description = $2, program_id = $3 WHERE id = $4', [workoutName.trim(), description?.trim() || '', programId ? Number(programId) : null, templateId]);
-    await pool.query('DELETE FROM template_exercises WHERE template_id = $1', [templateId]);
+    await client.query('BEGIN');
+    await client.query('UPDATE templates SET name = $1, description = $2, program_id = $3 WHERE id = $4', [workoutName.trim(), description?.trim() || '', programId ? Number(programId) : null, templateId]);
+    await client.query('DELETE FROM template_exercises WHERE template_id = $1', [templateId]);
     if (exercises && typeof exercises === 'object') {
       const exArray = Array.isArray(exercises) ? exercises : Object.values(exercises);
       let exSort = 0;
       for (const ex of exArray) {
         if (!ex?.name?.trim()) continue;
         if (ex.isSectionHeader === '1') {
-          await pool.query(
+          await client.query(
             'INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
             [templateId, ex.name.trim(), 'straight', 1, 0, 0, exSort, true, ex.sectionNotes?.trim() || '']
           );
@@ -3252,12 +3263,19 @@ router.post('/workout-manager/edit/:id', adminAuth, express.urlencoded({ extende
         const setType = ex.setType || 'straight';
         const sets = ex.sets ? (Array.isArray(ex.sets) ? ex.sets : Object.values(ex.sets)) : [];
         let setNum = 1;
-        for (const set of sets) { if (!set) continue; await pool.query('INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7)', [templateId, ex.name.trim(), setType, setNum++, parseInt(set.reps) || 10, parseInt(set.weight) || 0, exSort]); }
+        for (const set of sets) { if (!set) continue; await client.query('INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7)', [templateId, ex.name.trim(), setType, setNum++, parseInt(set.reps) || 10, parseInt(set.weight) || 0, exSort]); }
         exSort++;
       }
     }
+    await client.query('COMMIT');
     res.redirect('/admin/workout-manager/edit/' + templateId + '?msg=Workout+updated+successfully');
-  } catch (err) { console.error(err); res.redirect('/admin/workout-manager/edit/' + templateId + '?error=Failed+to+save'); }
+  } catch (err) {
+    try { await client.query('ROLLBACK'); } catch (_) {}
+    console.error(err);
+    res.redirect('/admin/workout-manager/edit/' + templateId + '?error=Failed+to+save');
+  } finally {
+    client.release();
+  }
 });
 
 // GET /admin/workout-manager/delete/:id — Delete workout
@@ -3274,28 +3292,40 @@ router.get('/workout-manager/delete/:id', adminAuth, async (req, res) => {
 router.get('/workout-manager/copy/:id', adminAuth, async (req, res) => {
   const templateId = Number(req.params.id);
   const programId = req.query.programId;
+  const client = await pool.connect();
   try {
-    const { rows: tmplRows } = await pool.query('SELECT * FROM templates WHERE id = $1', [templateId]);
-    if (!tmplRows[0]) return res.redirect('/admin/workout-manager/workouts');
+    await client.query('BEGIN');
+    const { rows: tmplRows } = await client.query('SELECT * FROM templates WHERE id = $1', [templateId]);
+    if (!tmplRows[0]) {
+      await client.query('ROLLBACK');
+      return res.redirect('/admin/workout-manager/workouts');
+    }
     const tmpl = tmplRows[0];
-    const { rows: sortRows } = await pool.query('SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_sort FROM templates WHERE program_id = $1', [tmpl.program_id]);
-    const { rows: [newTmpl] } = await pool.query(
+    const { rows: sortRows } = await client.query('SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_sort FROM templates WHERE program_id = $1', [tmpl.program_id]);
+    const { rows: [newTmpl] } = await client.query(
       'INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
       [tmpl.user_id, tmpl.program_id, tmpl.name + ' (Copy)', tmpl.description, tmpl.is_rest, sortRows[0].next_sort]
     );
-    const { rows: exercises } = await pool.query(
+    const { rows: exercises } = await client.query(
       'SELECT name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes, exercise_description FROM template_exercises WHERE template_id = $1 ORDER BY sort_order, set_number',
       [templateId]
     );
     for (const ex of exercises) {
-      await pool.query(
+      await client.query(
         'INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes, exercise_description) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
         [newTmpl.id, ex.name, ex.set_type, ex.set_number, ex.planned_reps, ex.suggested_weight, ex.sort_order, ex.is_section_header || false, ex.section_notes || '', ex.exercise_description || '']
       );
     }
+    await client.query('COMMIT');
     const redirectTo = programId ? '/admin/workout-manager/program/' + programId + '?msg=Workout+copied' : '/admin/workout-manager/workouts?msg=Workout+copied';
     res.redirect(redirectTo);
-  } catch (err) { console.error(err); res.redirect('/admin/workout-manager/workouts'); }
+  } catch (err) {
+    try { await client.query('ROLLBACK'); } catch (_) {}
+    console.error(err);
+    res.redirect('/admin/workout-manager/workouts');
+  } finally {
+    client.release();
+  }
 });
 
 // GET /admin/workout-manager/move-program/:id — Move program up or down
@@ -4522,22 +4552,31 @@ router.get('/trainer-applications', adminAuth, async (req, res) => {
 
 // Approve trainer application
 router.post('/trainer-applications/:id/approve', adminAuth, async (req, res) => {
+  const client = await pool.connect();
   try {
+    await client.query('BEGIN');
     const { id } = req.params;
-    const { rows } = await pool.query('SELECT user_id FROM trainer_applications WHERE id = $1', [id]);
-    if (rows.length === 0) return res.status(404).json({ error: 'Application not found' });
+    const { rows } = await client.query('SELECT user_id FROM trainer_applications WHERE id = $1', [id]);
+    if (rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Application not found' });
+    }
 
     const userId = rows[0].user_id;
-    await pool.query("UPDATE trainer_applications SET status = 'approved', reviewed_at = NOW() WHERE id = $1", [id]);
-    await pool.query("UPDATE users SET role = 'trainer' WHERE id = $1", [userId]);
+    await client.query("UPDATE trainer_applications SET status = 'approved', reviewed_at = NOW() WHERE id = $1", [id]);
+    await client.query("UPDATE users SET role = 'trainer' WHERE id = $1", [userId]);
+    await client.query('COMMIT');
 
     if (req.headers.accept?.includes('application/json')) {
       return res.json({ message: 'Application approved' });
     }
     res.redirect('/admin/trainers');
   } catch (err) {
+    try { await client.query('ROLLBACK'); } catch (_) {}
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    client.release();
   }
 });
 
