@@ -7,13 +7,28 @@ const router = Router();
 
 router.post('/', authMiddleware, async (req, res) => {
   try {
-    const { templateId, date, entries, notes, workoutData } = req.body;
+    const { templateId, date, entries, notes, workoutData, confirmOverwrite } = req.body;
     if (!templateId || !date || !entries || !entries.length) {
       return res.status(400).json({ error: 'templateId, date, and entries are required' });
     }
-    const result = await db.createSession(req.userId, templateId, date, entries, notes, workoutData);
+    const result = await db.createSession(
+      req.userId,
+      templateId,
+      date,
+      entries,
+      notes,
+      workoutData,
+      { confirmOverwrite: confirmOverwrite === true }
+    );
     res.status(201).json(result);
   } catch (err) {
+    // Structured 409 — caller tried to overwrite a session that already has
+    // logged entries without setting confirmOverwrite. Surface the details
+    // payload so the client can render its confirmation modal with accurate
+    // counts.
+    if (err && err.code === 'OVERWRITE_REQUIRES_CONFIRMATION' && err.details) {
+      return res.status(409).json(err.details);
+    }
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
   }

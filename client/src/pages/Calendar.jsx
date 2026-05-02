@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { getWorkoutColor } from '../utils/workoutColors';
 import StickyHeader from '../components/StickyHeader';
 import LoadingSpinnerOverlay from '../components/LoadingSpinnerOverlay';
+import ConfirmOverwriteModal from '../components/ConfirmOverwriteModal';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const FULL_DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -44,6 +45,10 @@ export default function Calendar() {
   const [copyTarget, setCopyTarget] = useState(null); // Date object
   const [copying, setCopying] = useState(false);
   const [copyWeekOffset, setCopyWeekOffset] = useState(0);
+  // Set when POST /sessions returns 409 with OVERWRITE_REQUIRES_CONFIRMATION
+  // for a copy. We stash the structured payload + the args needed to retry the
+  // copy with confirmOverwrite: true. Cleared on confirm or cancel.
+  const [overwriteConfirm, setOverwriteConfirm] = useState(null); // { details, retry: { targetDate, useReps } }
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [tutorialDone, setTutorialDone] = useState(() => searchParams.get('tutorialDone') === '1');
@@ -361,7 +366,7 @@ export default function Calendar() {
     }
   }
 
-  async function executeCopy(targetDate, useReps) {
+  async function executeCopy(targetDate, useReps, confirmOverwrite = false) {
     setCopying(true);
     try {
       const targetDateStr = format(targetDate, 'yyyy-MM-dd');
@@ -431,16 +436,34 @@ export default function Calendar() {
         }
       }
 
-      await api('/sessions', {
-        method: 'POST',
-        body: JSON.stringify({
-          templateId: copySource.templateId,
-          date: targetDateStr,
-          entries,
-          notes: {},
-          workoutData: workoutDataForCopy,
-        }),
-      });
+      try {
+        await api('/sessions', {
+          method: 'POST',
+          body: JSON.stringify({
+            templateId: copySource.templateId,
+            date: targetDateStr,
+            entries,
+            notes: {},
+            workoutData: workoutDataForCopy,
+            ...(confirmOverwrite ? { confirmOverwrite: true } : {}),
+          }),
+        });
+      } catch (postErr) {
+        // 409 — the target date already has logged entries. Hold the copy
+        // mid-flight and surface the overwrite modal. The schedule PUT we
+        // already issued is harmless; copying onto the same templateId is a
+        // no-op for the schedule, and any other change can be undone by the
+        // user's next action.
+        if (postErr?.status === 409 && postErr?.data?.code === 'OVERWRITE_REQUIRES_CONFIRMATION') {
+          setOverwriteConfirm({
+            details: postErr.data,
+            retry: { targetDate, useReps },
+          });
+          setCopying(false);
+          return;
+        }
+        throw postErr;
+      }
 
       // Refresh schedule and completed sessions
       await refreshSchedule();
@@ -449,6 +472,21 @@ export default function Calendar() {
       if (import.meta.env.DEV) console.error('Copy failed:', err);
       cancelCopy();
     }
+  }
+
+  // Handlers for the overwrite confirmation modal — confirm retries with
+  // confirmOverwrite: true; cancel discards the in-flight copy without
+  // navigating the user away.
+  function handleOverwriteConfirm() {
+    const retry = overwriteConfirm?.retry;
+    setOverwriteConfirm(null);
+    if (retry) {
+      executeCopy(retry.targetDate, retry.useReps, true);
+    }
+  }
+  function handleOverwriteCancel() {
+    setOverwriteConfirm(null);
+    setCopying(false);
   }
 
   const enrichedPrograms = getEnrichedPrograms();
@@ -1414,9 +1452,9 @@ export default function Calendar() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-bold text-white text-center">Remove Completed Sessions?</h3>
+              <h3 className="text-lg font-bold text-white text-center">Clear Calendar?</h3>
               <p className="text-sm text-wf-gray-400 text-center mt-2">
-                Some of these days have completed workout sessions. Deleting this calendar or deleting these days will remove your saved workouts as well as recorded PRs. Do you still want to delete these?
+                Clearing the calendar removes the scheduled-workout assignments for these days. Your completed sessions and personal records will not be affected.
               </p>
             </div>
             <div className="px-5 pb-5 flex gap-3">
@@ -1636,6 +1674,17 @@ export default function Calendar() {
           </div>
         </div>
       )}
+
+      {/* Overwrite-confirmation modal — shown when copying onto a date that
+          already has logged session_entries. Server returns 409 with the
+          payload below; on confirm we retry the same POST with
+          confirmOverwrite: true. */}
+      <ConfirmOverwriteModal
+        open={!!overwriteConfirm}
+        details={overwriteConfirm?.details}
+        onConfirm={handleOverwriteConfirm}
+        onCancel={handleOverwriteCancel}
+      />
 
     </div>
   );

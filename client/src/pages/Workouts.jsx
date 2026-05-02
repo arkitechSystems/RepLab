@@ -1900,7 +1900,7 @@ export default function Workouts() {
   }
 
   async function handleDeleteProgram(programId) {
-    if (!confirm('Delete this entire program and all its workouts? This cannot be undone.')) return;
+    if (!confirm('Delete this entire program and all its workouts? Personal records tied to these workouts will also be removed. This cannot be undone.')) return;
     try {
       await api(`/programs/${programId}`, { method: 'DELETE' });
       setPrograms((prev) => prev.filter((p) => p.id !== programId));
@@ -1920,7 +1920,7 @@ export default function Workouts() {
     }
     const weekToDelete = weeks[weekIndex];
     if (!weekToDelete) return;
-    if (!confirm(`Delete Week ${weekIndex + 1} and all its workouts? Remaining weeks will be renumbered. This cannot be undone.`)) return;
+    if (!confirm(`Delete Week ${weekIndex + 1} and all its workouts? Personal records tied to these workouts will also be removed. Remaining weeks will be renumbered. This cannot be undone.`)) return;
     try {
       // Delete all templates in this week
       for (const t of weekToDelete) {

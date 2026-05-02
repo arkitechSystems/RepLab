@@ -37,6 +37,58 @@ async function batchInsertTemplateExercises(client, templateId, exercises) {
   }
 }
 
+// Wipe-and-rebuild PB rows for one (user, template) using whatever
+// session_entries currently exist across that user's sessions for the
+// template. Called inside an existing transaction (`client` must already
+// have BEGIN issued) after a destructive overwrite. The PB upsert path
+// elsewhere only ratchets PBs up via GREATEST, so without this rebuild a
+// destructive overwrite would leave stale rows pointing at deleted entries.
+//
+// Limitation: session_entries does not store set_type, so we can't filter
+// out drop-sets / rest-pause sets at recompute time. The original insert
+// path skipped non-straight sets when computing best-rep PBs from in-memory
+// entries; here we use whatever survives in DB. In practice the only
+// callers writing non-straight sets are inside the same session that gets
+// overwritten, so the loss is negligible.
+async function rebuildPBsForTemplateOnClient(client, userId, templateId) {
+  await client.query(
+    'DELETE FROM personal_bests WHERE user_id = $1 AND template_id = $2',
+    [userId, templateId]
+  );
+
+  // For each (exercise_name, weight) tuple across surviving sessions for
+  // this user+template, find the max reps. That tuple becomes the PB row.
+  const { rows } = await client.query(
+    `SELECT se.exercise_name AS exercise_name,
+            se.weight AS best_weight,
+            MAX(se.reps) AS best_reps
+       FROM session_entries se
+       JOIN sessions s ON s.id = se.session_id
+      WHERE s.user_id = $1
+        AND s.template_id = $2
+        AND se.weight > 0
+        AND se.reps > 0
+      GROUP BY se.exercise_name, se.weight`,
+    [userId, templateId]
+  );
+
+  if (rows.length === 0) return;
+
+  const values = [];
+  const params = [];
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const off = i * 5;
+    values.push(`($${off + 1}, $${off + 2}, $${off + 3}, $${off + 4}, $${off + 5})`);
+    params.push(userId, templateId, r.exercise_name, r.best_weight, r.best_reps);
+  }
+  await client.query(
+    `INSERT INTO personal_bests (user_id, template_id, exercise_name, best_weight, best_reps)
+     VALUES ${values.join(', ')}`,
+    params
+  );
+}
+
 const db = {
   // Admin settings
   async getAdminSetting(key) {
@@ -553,7 +605,22 @@ const db = {
   },
 
   // Sessions
-  async createSession(userId, templateId, date, entries, notes, workoutData) {
+  //
+  // Overwrite-protection contract:
+  //   - If no existing session row for (user, template, date): create.
+  //   - If existing row has zero session_entries: silently overwrite (this is
+  //     the in-progress autosave path right after /sessions/initialize seeds a
+  //     blank shell).
+  //   - If existing row has entries AND options.confirmOverwrite === true:
+  //     destructive overwrite, then sweep & recompute PBs (since the upsert
+  //     elsewhere only ratchets PBs upward — without a sweep, deleting entries
+  //     would leave stale PB rows pointing at nothing).
+  //   - If existing row has entries AND confirmOverwrite is not set: throw a
+  //     structured error so the route layer can return HTTP 409 with details
+  //     for the client modal.
+  async createSession(userId, templateId, date, entries, notes, workoutData, options = {}) {
+    const confirmOverwrite = options.confirmOverwrite === true;
+
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -565,8 +632,72 @@ const db = {
       );
 
       let sessionId;
+      let didDestructiveOverwrite = false;
       if (existing.length > 0) {
         sessionId = existing[0].id;
+
+        // Distinguish "session shell from /sessions/initialize" (all zero-
+        // weight, zero-rep, not-completed entries) from a session that has
+        // actual logged data. Only the latter counts as a row that requires
+        // overwrite confirmation. This also matches what the user thinks of
+        // as "logged" — they typed a number or marked a set complete.
+        const { rows: countRows } = await client.query(
+          `SELECT COUNT(*)::INT AS n
+             FROM session_entries
+            WHERE session_id = $1
+              AND (weight > 0 OR reps > 0 OR is_completed = TRUE)`,
+          [sessionId]
+        );
+        const existingEntryCount = countRows[0]?.n || 0;
+
+        if (existingEntryCount > 0 && !confirmOverwrite) {
+          // Roll back the open transaction before bubbling — we haven't
+          // mutated anything yet, but BEGIN is open and we'll release the
+          // client in finally.
+          await client.query('ROLLBACK');
+
+          // Gather PB count + completed timestamp + distinct exercise names
+          // for the error payload so the client modal can show accurate copy.
+          // Run sequentially on the same client to avoid pg protocol pipelining
+          // surprises right after a ROLLBACK.
+          const pbCountRes = await client.query(
+            'SELECT COUNT(*)::INT AS n FROM personal_bests WHERE user_id = $1 AND template_id = $2',
+            [userId, templateId]
+          );
+          // sessions table has last_activity_at + created_at, not a dedicated
+          // completed_at column. Prefer last_activity_at since for a completed
+          // session that's the time of the last edit / completion. Falls back
+          // to created_at when activity isn't tracked (legacy rows).
+          const sessionMetaRes = await client.query(
+            'SELECT COALESCE(last_activity_at, created_at) AS completed_at FROM sessions WHERE id = $1',
+            [sessionId]
+          );
+          const exNamesRes = await client.query(
+            // Only surface exercises with actual logged data — matches the
+            // entriesCount filter above, so the modal copy stays consistent.
+            `SELECT DISTINCT exercise_name
+               FROM session_entries
+              WHERE session_id = $1
+                AND (weight > 0 OR reps > 0 OR is_completed = TRUE)
+              ORDER BY exercise_name`,
+            [sessionId]
+          );
+
+          const err = new Error('OVERWRITE_REQUIRES_CONFIRMATION');
+          err.code = 'OVERWRITE_REQUIRES_CONFIRMATION';
+          err.details = {
+            code: 'OVERWRITE_REQUIRES_CONFIRMATION',
+            sessionId,
+            entriesCount: existingEntryCount,
+            prCount: pbCountRes.rows[0]?.n || 0,
+            completedAt: sessionMetaRes.rows[0]?.completed_at || null,
+            exerciseNames: exNamesRes.rows.map((r) => r.exercise_name),
+          };
+          throw err;
+        }
+
+        if (existingEntryCount > 0) didDestructiveOverwrite = true;
+
         await client.query('DELETE FROM session_entries WHERE session_id = $1', [sessionId]);
         await client.query(
           'UPDATE sessions SET notes = $1, workout_data = $2, last_activity_at = NOW(), reminder_sent_at = NULL WHERE id = $3',
@@ -611,21 +742,55 @@ const db = {
         }
       }
 
-      // Update PBs using upsert — one record per exercise per weight
-      for (const [, best] of bestRepsAtWeight) {
-        await client.query(
-          `INSERT INTO personal_bests (user_id, template_id, exercise_name, best_weight, best_reps)
-           VALUES ($1, $2, $3, $4, $5)
-           ON CONFLICT (user_id, template_id, exercise_name, best_weight)
-           DO UPDATE SET best_reps = GREATEST(personal_bests.best_reps, $5), achieved_at = CASE WHEN $5 > personal_bests.best_reps THEN NOW() ELSE personal_bests.achieved_at END`,
-          [userId, templateId, best.exerciseName, best.weight, best.reps]
-        );
+      // PB strategy:
+      //   - Normal path (insert / overwrite of an empty shell): upsert PBs
+      //     using GREATEST so they only ratchet upward.
+      //   - Destructive-overwrite path (an explicitly-confirmed clobber of a
+      //     session that already had entries): wipe PBs for this template and
+      //     rebuild from the surviving session_entries. The plain upsert is
+      //     unsafe here because deleted entries may have been the source of
+      //     PB rows that no longer correspond to any logged set.
+      if (didDestructiveOverwrite) {
+        await rebuildPBsForTemplateOnClient(client, userId, templateId);
+      } else {
+        for (const [, best] of bestRepsAtWeight) {
+          await client.query(
+            `INSERT INTO personal_bests (user_id, template_id, exercise_name, best_weight, best_reps)
+             VALUES ($1, $2, $3, $4, $5)
+             ON CONFLICT (user_id, template_id, exercise_name, best_weight)
+             DO UPDATE SET best_reps = GREATEST(personal_bests.best_reps, $5), achieved_at = CASE WHEN $5 > personal_bests.best_reps THEN NOW() ELSE personal_bests.achieved_at END`,
+            [userId, templateId, best.exerciseName, best.weight, best.reps]
+          );
+        }
       }
 
       await client.query('COMMIT');
       return { id: sessionId };
     } catch (err) {
-      await client.query('ROLLBACK');
+      // Don't double-rollback: when we throw OVERWRITE_REQUIRES_CONFIRMATION
+      // we already rolled back above before grabbing the metadata for the
+      // error payload. ROLLBACK on a transaction that's not open is harmless
+      // in pg, but errors from the metadata queries themselves would surface
+      // as confusing rollback failures otherwise.
+      try { await client.query('ROLLBACK'); } catch (_) {}
+      throw err;
+    } finally {
+      client.release();
+    }
+  },
+
+  // Public wrapper: rebuilds PBs for (userId, templateId) using its own
+  // connection. Useful for ad-hoc cleanup if a destructive overwrite happens
+  // outside createSession (none today, but the contract is here for future
+  // use and matches the spec).
+  async recomputePBsForTemplate(userId, templateId) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await rebuildPBsForTemplateOnClient(client, userId, templateId);
+      await client.query('COMMIT');
+    } catch (err) {
+      try { await client.query('ROLLBACK'); } catch (_) {}
       throw err;
     } finally {
       client.release();

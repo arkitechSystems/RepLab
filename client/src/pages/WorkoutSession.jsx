@@ -1673,6 +1673,13 @@ export default function WorkoutSession() {
         cardioSelections: cardioEnabled ? cardioSelections : undefined,
       };
 
+      // In-session save (autosave + the manual Save button below) is by
+      // definition editing the same session that WorkoutSession.loadSession
+      // already loaded for this user. Always pass confirmOverwrite: true so
+      // the server's overwrite-protection contract doesn't pop a 409 mid-
+      // workout. The protection is meant for cold-open paths (Calendar copy,
+      // a fresh "Start Workout" tap on a logged date) — not for users
+      // actively logging sets.
       const saveResp = await api('/sessions', {
         method: 'POST',
         body: JSON.stringify({
@@ -1681,6 +1688,7 @@ export default function WorkoutSession() {
           entries: allEntries,
           notes,
           workoutData,
+          confirmOverwrite: true,
         }),
       });
       // Server returns an error envelope if the write failed; treat that as a save failure.

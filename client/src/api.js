@@ -181,7 +181,9 @@ export async function api(path, options = {}) {
   } catch {
     // Response wasn't valid JSON
     if (!res.ok) {
-      throw new Error(`Server error (${res.status})`);
+      const err = new Error(`Server error (${res.status})`);
+      err.status = res.status;
+      throw err;
     }
     // Response was 2xx but body wasn't JSON (e.g. empty 204) — return empty object
     // so callers can safely destructure without null checks
@@ -189,7 +191,13 @@ export async function api(path, options = {}) {
   }
 
   if (!res.ok) {
-    throw new Error(data?.error || `Request failed (${res.status})`);
+    // Attach status + parsed body so callers can branch on status (e.g. 409
+    // structured-error responses with a code/details payload). Keep the
+    // message field populated for legacy consumers that just stringify.
+    const err = new Error(data?.error || `Request failed (${res.status})`);
+    err.status = res.status;
+    err.data = data;
+    throw err;
   }
 
   return data;
