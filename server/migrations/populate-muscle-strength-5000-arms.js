@@ -15,7 +15,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import xlsx from 'xlsx';
 import pool from '../dbPool.js';
-import { deleteLibraryProgramTemplatesWithGuard } from './_utils.js';
+import {
+  fetchLibraryProgramTemplates,
+  replaceTemplateExercises,
+  cascadeDeleteOrphanedLibraryTemplates,
+} from './_utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -159,11 +163,46 @@ async function run() {
       [JSON.stringify(details), programId]
     );
 
-    // 3. Clear existing templates (idempotent re-run)
-    const { rowCount: deleted } = await deleteLibraryProgramTemplatesWithGuard(
-      client, programId, { migrationName: 'populate-muscle-strength-5000-arms' }
-    );
-    if (deleted) console.log(`Cleared ${deleted} stale templates.`);
+    // 3. Snapshot existing templates so we can UPDATE in place by sort_order
+    //    (preserves PBs) and only cascade-delete sort_orders that vanish.
+    const existingBySortOrder = await fetchLibraryProgramTemplates(client, programId);
+    const newSortOrdersUsed = new Set();
+    let updatedCount = 0;
+    let insertedCount = 0;
+
+    // Unified column set covers both section-header rows and regular exercise rows.
+    const exerciseColumns = [
+      'name', 'set_type', 'set_number', 'planned_reps', 'suggested_weight',
+      'sort_order', 'rep_range', 'exercise_description', 'is_section_header', 'section_notes',
+    ];
+
+    async function upsertTemplate(sortOrder, fields, newExercises) {
+      newSortOrdersUsed.add(sortOrder);
+      const match = existingBySortOrder.get(sortOrder);
+      let templateId;
+      if (match) {
+        // Match by sort_order to preserve PBs across re-runs.
+        const { rows: [tpl] } = await client.query(
+          `UPDATE templates
+              SET name = $1, description = $2, is_rest = $3, sort_order = $4, phase = $5
+            WHERE id = $6
+            RETURNING id`,
+          [fields.name, fields.description, fields.isRest, sortOrder, fields.phase, match.id]
+        );
+        templateId = tpl.id;
+        updatedCount++;
+      } else {
+        const { rows: [tpl] } = await client.query(
+          `INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order, phase)
+           VALUES (NULL, $1, $2, $3, $4, $5, $6) RETURNING id`,
+          [programId, fields.name, fields.description, fields.isRest, sortOrder, fields.phase]
+        );
+        templateId = tpl.id;
+        insertedCount++;
+      }
+      await replaceTemplateExercises(client, templateId, newExercises, exerciseColumns);
+      return templateId;
+    }
 
     // 4. Build 10 weeks × 7 days = 70 templates
     let sortOrder = 0;
@@ -177,52 +216,76 @@ async function run() {
 
         if (!dayWorkout) {
           // Rest day
-          await client.query(
-            `INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order, phase)
-             VALUES (NULL, $1, $2, $3, TRUE, $4, $5)`,
-            [programId, 'Rest', 'Recovery day.', sortOrder++, weekType]
+          await upsertTemplate(
+            sortOrder++,
+            { name: 'Rest', description: 'Recovery day.', isRest: true, phase: weekType },
+            []
           );
           continue;
         }
 
-        // Workout day
+        // Workout day — build the section-header + per-set rows, then upsert.
         const templateName = `Week ${week} · ${dayName} — ${dayWorkout.focus}`;
-        const { rows: [tpl] } = await client.query(
-          `INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order, phase)
-           VALUES (NULL, $1, $2, $3, FALSE, $4, $5) RETURNING id`,
-          [programId, templateName, `${weekType}. ${dayWorkout.focus}.`, sortOrder++, weekType]
-        );
-        const templateId = tpl.id;
-
-        // Insert exercises as section headers + sets. Group by `section`.
+        const description = `${weekType}. ${dayWorkout.focus}.`;
+        const newExercises = [];
         let exerciseSortOrder = 0;
         let lastSection = null;
         for (const ex of dayWorkout.exercises) {
           if (ex.section && ex.section !== lastSection) {
-            await client.query(
-              `INSERT INTO template_exercises
-                (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes)
-               VALUES ($1, $2, 'straight', 1, 0, 0, $3, TRUE, $4)`,
-              [templateId, ex.section, exerciseSortOrder++, '']
-            );
+            newExercises.push({
+              name: ex.section,
+              set_type: 'straight',
+              set_number: 1,
+              planned_reps: 0,
+              suggested_weight: 0,
+              sort_order: exerciseSortOrder++,
+              rep_range: '',
+              exercise_description: '',
+              is_section_header: true,
+              section_notes: '',
+            });
             lastSection = ex.section;
           }
           const plannedReps = parsePlannedReps(ex.repRange);
           const thisOrder = exerciseSortOrder++;
           for (let s = 1; s <= ex.sets; s++) {
-            await client.query(
-              `INSERT INTO template_exercises
-                (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, rep_range, exercise_description)
-               VALUES ($1, $2, 'straight', $3, $4, 0, $5, $6, $7)`,
-              [templateId, ex.name, s, plannedReps, thisOrder, ex.repRange, '']
-            );
+            newExercises.push({
+              name: ex.name,
+              set_type: 'straight',
+              set_number: s,
+              planned_reps: plannedReps,
+              suggested_weight: 0,
+              sort_order: thisOrder,
+              rep_range: ex.repRange,
+              exercise_description: '',
+              is_section_header: false,
+              section_notes: '',
+            });
           }
         }
+
+        await upsertTemplate(
+          sortOrder++,
+          { name: templateName, description, isRest: false, phase: weekType },
+          newExercises
+        );
       }
     }
 
+    // Sweep orphans — templates whose sort_order was not regenerated.
+    const orphanIds = [];
+    for (const [so, t] of existingBySortOrder) {
+      if (!newSortOrdersUsed.has(so)) orphanIds.push(t.id);
+    }
+    if (orphanIds.length > 0) {
+      await cascadeDeleteOrphanedLibraryTemplates(client, orphanIds, {
+        migrationName: 'populate-muscle-strength-5000-arms',
+      });
+      console.log(`Removed ${orphanIds.length} orphaned templates (sort_order vanished from new payload).`);
+    }
+
     await client.query('COMMIT');
-    console.log(`Created ${sortOrder} templates for "${PROGRAM_NAME}".`);
+    console.log(`Upserted ${sortOrder} templates for "${PROGRAM_NAME}" (${updatedCount} updated, ${insertedCount} inserted).`);
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Migration failed:', err);

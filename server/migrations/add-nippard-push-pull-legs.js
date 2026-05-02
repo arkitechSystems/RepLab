@@ -14,7 +14,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import xlsx from 'xlsx';
 import pool from '../dbPool.js';
-import { deleteLibraryProgramTemplatesWithGuard } from './_utils.js';
+import {
+  fetchLibraryProgramTemplates,
+  replaceTemplateExercises,
+  cascadeDeleteOrphanedLibraryTemplates,
+} from './_utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -129,11 +133,12 @@ async function run() {
     }
     console.log(`Exercises: ${added} added, ${uniqueClean.size - added} already present.`);
 
-    // 3. Clear stale templates
-    const { rowCount: deleted } = await deleteLibraryProgramTemplatesWithGuard(
-      client, programId, { migrationName: 'add-nippard-push-pull-legs' }
-    );
-    if (deleted) console.log(`Cleared ${deleted} stale templates.`);
+    // 3. Snapshot existing templates so we can UPDATE in place by sort_order
+    //    (preserves PBs) and only cascade-delete sort_orders that vanish.
+    const existingBySortOrder = await fetchLibraryProgramTemplates(client, programId);
+    const newSortOrdersUsed = new Set();
+    let updatedCount = 0;
+    let insertedCount = 0;
 
     // 4. Group rows by (Overall Week, Day) — skip TOTAL SET VOLUME rows.
     const byDay = new Map();
@@ -156,6 +161,39 @@ async function run() {
     const phaseFor = (block) => block === 'Block 1' ? 'Block 1' : 'Block 2';
 
     // 5. Build 16 weeks × 7 days = 112 templates, Day 7 = Rest.
+    const exerciseColumns = [
+      'name', 'set_type', 'set_number', 'planned_reps', 'suggested_weight',
+      'sort_order', 'rep_range', 'exercise_description',
+    ];
+
+    async function upsertTemplate(sortOrder, fields, newExercises) {
+      newSortOrdersUsed.add(sortOrder);
+      const match = existingBySortOrder.get(sortOrder);
+      let templateId;
+      if (match) {
+        // Match by sort_order to preserve PBs across re-runs.
+        const { rows: [tpl] } = await client.query(
+          `UPDATE templates
+              SET name = $1, description = $2, is_rest = $3, sort_order = $4, phase = $5
+            WHERE id = $6
+            RETURNING id`,
+          [fields.name, fields.description, fields.isRest, sortOrder, fields.phase, match.id]
+        );
+        templateId = tpl.id;
+        updatedCount++;
+      } else {
+        const { rows: [tpl] } = await client.query(
+          `INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order, phase)
+           VALUES (NULL, $1, $2, $3, $4, $5, $6) RETURNING id`,
+          [programId, fields.name, fields.description, fields.isRest, sortOrder, fields.phase]
+        );
+        templateId = tpl.id;
+        insertedCount++;
+      }
+      await replaceTemplateExercises(client, templateId, newExercises, exerciseColumns);
+      return templateId;
+    }
+
     let sortOrder = 0;
     for (let week = 1; week <= 16; week++) {
       for (let day = 1; day <= 7; day++) {
@@ -163,10 +201,10 @@ async function run() {
         const phase = phaseFor(block);
 
         if (day === 7) {
-          await client.query(
-            `INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order, phase)
-             VALUES (NULL, $1, $2, $3, TRUE, $4, $5)`,
-            [programId, 'Rest', 'Recovery day.', sortOrder++, phase]
+          await upsertTemplate(
+            sortOrder++,
+            { name: 'Rest', description: 'Recovery day.', isRest: true, phase },
+            []
           );
           continue;
         }
@@ -174,25 +212,20 @@ async function run() {
         const group = byDay.get(`${week}-${day}`);
         if (!group) {
           // Should never happen given the xlsx structure; fall back to rest.
-          await client.query(
-            `INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order, phase)
-             VALUES (NULL, $1, $2, $3, TRUE, $4, $5)`,
-            [programId, 'Rest', 'Recovery day.', sortOrder++, phase]
+          await upsertTemplate(
+            sortOrder++,
+            { name: 'Rest', description: 'Recovery day.', isRest: true, phase },
+            []
           );
           continue;
         }
 
         const templateName = `Week ${week} · Day ${day} — ${group.workout}`;
         const description = `${block}. ${group.workout}.`;
-        const { rows: [tpl] } = await client.query(
-          `INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order, phase)
-           VALUES (NULL, $1, $2, $3, FALSE, $4, $5) RETURNING id`,
-          [programId, templateName, description, sortOrder++, phase]
-        );
-        const templateId = tpl.id;
 
         // Per-exercise sets. Program Notes (column N) → exercise_description,
         // along with RPE/%1RM and rest-range for quick reference on the card.
+        const newExercises = [];
         let exOrder = 0;
         for (const ex of group.rows) {
           const setCount = Number(ex.Sets) || 1;
@@ -209,19 +242,41 @@ async function run() {
           const thisOrder = exOrder++;
 
           for (let s = 1; s <= setCount; s++) {
-            await client.query(
-              `INSERT INTO template_exercises
-                (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, rep_range, exercise_description)
-               VALUES ($1, $2, 'straight', $3, $4, 0, $5, $6, $7)`,
-              [templateId, ex.Exercise, s, plannedReps, thisOrder, repRange, exerciseDescription]
-            );
+            newExercises.push({
+              name: ex.Exercise,
+              set_type: 'straight',
+              set_number: s,
+              planned_reps: plannedReps,
+              suggested_weight: 0,
+              sort_order: thisOrder,
+              rep_range: repRange,
+              exercise_description: exerciseDescription,
+            });
           }
         }
+
+        await upsertTemplate(
+          sortOrder++,
+          { name: templateName, description, isRest: false, phase },
+          newExercises
+        );
       }
     }
 
+    // Sweep orphans — templates whose sort_order was not regenerated.
+    const orphanIds = [];
+    for (const [so, t] of existingBySortOrder) {
+      if (!newSortOrdersUsed.has(so)) orphanIds.push(t.id);
+    }
+    if (orphanIds.length > 0) {
+      await cascadeDeleteOrphanedLibraryTemplates(client, orphanIds, {
+        migrationName: 'add-nippard-push-pull-legs',
+      });
+      console.log(`Removed ${orphanIds.length} orphaned templates (sort_order vanished from new payload).`);
+    }
+
     await client.query('COMMIT');
-    console.log(`Created ${sortOrder} templates for "${PROGRAM_NAME}".`);
+    console.log(`Upserted ${sortOrder} templates for "${PROGRAM_NAME}" (${updatedCount} updated, ${insertedCount} inserted).`);
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Migration failed:', err);

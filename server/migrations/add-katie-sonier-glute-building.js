@@ -19,7 +19,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import xlsx from 'xlsx';
 import pool from '../dbPool.js';
-import { deleteLibraryProgramTemplatesWithGuard } from './_utils.js';
+import {
+  fetchLibraryProgramTemplates,
+  replaceTemplateExercises,
+  cascadeDeleteOrphanedLibraryTemplates,
+} from './_utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -194,11 +198,45 @@ async function run() {
     }
     console.log(`Exercises: ${added} added, ${allExercises.size - added} already present.`);
 
-    // 4. Wipe any existing templates for this program.
-    const { rowCount: deleted } = await deleteLibraryProgramTemplatesWithGuard(
-      client, programId, { migrationName: 'add-katie-sonier-glute-building' }
-    );
-    if (deleted) console.log(`Cleared ${deleted} stale templates.`);
+    // 4. Snapshot existing templates so we can UPDATE in place by sort_order
+    //    (preserves PBs) and only cascade-delete sort_orders that vanish.
+    const existingBySortOrder = await fetchLibraryProgramTemplates(client, programId);
+    const newSortOrdersUsed = new Set();
+    let updatedCount = 0;
+    let insertedCount = 0;
+
+    const exerciseColumns = [
+      'name', 'set_type', 'set_number', 'planned_reps', 'suggested_weight',
+      'sort_order', 'rep_range', 'exercise_description', 'video_url', 'program_notes',
+    ];
+
+    async function upsertTemplate(sortOrder, fields, newExercises) {
+      newSortOrdersUsed.add(sortOrder);
+      const match = existingBySortOrder.get(sortOrder);
+      let templateId;
+      if (match) {
+        // Match by sort_order to preserve PBs across re-runs.
+        const { rows: [tpl] } = await client.query(
+          `UPDATE templates
+              SET name = $1, description = $2, is_rest = $3, sort_order = $4
+            WHERE id = $5
+            RETURNING id`,
+          [fields.name, fields.description, fields.isRest, sortOrder, match.id]
+        );
+        templateId = tpl.id;
+        updatedCount++;
+      } else {
+        const { rows: [tpl] } = await client.query(
+          `INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order)
+           VALUES (NULL, $1, $2, $3, $4, $5) RETURNING id`,
+          [programId, fields.name, fields.description, fields.isRest, sortOrder]
+        );
+        templateId = tpl.id;
+        insertedCount++;
+      }
+      await replaceTemplateExercises(client, templateId, newExercises, exerciseColumns);
+      return templateId;
+    }
 
     // 5. Build 6 weeks × 7 days = 42 templates.
     //    Schedule: Sun rest · Mon W · Tue rest · Wed W · Thu rest · Fri W · Sat rest
@@ -212,10 +250,10 @@ async function run() {
       for (let slot = 0; slot < 7; slot++) {
         const dayName = SLOT_TO_DAY[slot];
         if (!WORKOUT_DAYS.has(dayName)) {
-          await client.query(
-            `INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order)
-             VALUES (NULL, $1, $2, $3, TRUE, $4)`,
-            [programId, 'Rest', 'Recovery day.', sortOrder++]
+          await upsertTemplate(
+            sortOrder++,
+            { name: 'Rest', description: 'Recovery day.', isRest: true },
+            []
           );
           continue;
         }
@@ -223,22 +261,18 @@ async function run() {
         const grp = byKey.get(`${week}|${dayName}`);
         if (!grp) {
           // Shouldn't happen for a complete xlsx, but fall back to rest.
-          await client.query(
-            `INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order)
-             VALUES (NULL, $1, $2, $3, TRUE, $4)`,
-            [programId, 'Rest', 'Recovery day (xlsx data missing).', sortOrder++]
+          await upsertTemplate(
+            sortOrder++,
+            { name: 'Rest', description: 'Recovery day (xlsx data missing).', isRest: true },
+            []
           );
           continue;
         }
 
         const templateName = `Week ${week} · ${dayName}`;
-        const { rows: [tpl] } = await client.query(
-          `INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order)
-           VALUES (NULL, $1, $2, $3, FALSE, $4) RETURNING id`,
-          [programId, templateName, 'Glute-focused training. Master technique, then push the working sets near failure.', sortOrder++]
-        );
-        templatesCreated++;
+        const description = 'Glute-focused training. Master technique, then push the working sets near failure.';
 
+        const newExercises = [];
         let exOrder = 0;
         for (const r of grp.rows) {
           const setType = setTypeFor(r.Group);
@@ -261,20 +295,44 @@ async function run() {
 
           const thisOrder = exOrder++;
           for (let s = 1; s <= setCount; s++) {
-            await client.query(
-              `INSERT INTO template_exercises
-                (template_id, name, set_type, set_number, planned_reps, suggested_weight,
-                 sort_order, rep_range, exercise_description, video_url, program_notes)
-               VALUES ($1, $2, $3, $4, $5, 0, $6, $7, $8, '', $9)`,
-              [tpl.id, r.Exercise, setType, s, plannedReps, thisOrder, repPrescription, exerciseDescription, sessionNotes]
-            );
+            newExercises.push({
+              name: r.Exercise,
+              set_type: setType,
+              set_number: s,
+              planned_reps: plannedReps,
+              suggested_weight: 0,
+              sort_order: thisOrder,
+              rep_range: repPrescription,
+              exercise_description: exerciseDescription,
+              video_url: '',
+              program_notes: sessionNotes,
+            });
           }
         }
+
+        await upsertTemplate(
+          sortOrder++,
+          { name: templateName, description, isRest: false },
+          newExercises
+        );
+        templatesCreated++;
       }
     }
 
+    // Sweep orphans — templates whose sort_order was not regenerated.
+    const orphanIds = [];
+    for (const [so, t] of existingBySortOrder) {
+      if (!newSortOrdersUsed.has(so)) orphanIds.push(t.id);
+    }
+    if (orphanIds.length > 0) {
+      await cascadeDeleteOrphanedLibraryTemplates(client, orphanIds, {
+        migrationName: 'add-katie-sonier-glute-building',
+      });
+      console.log(`Removed ${orphanIds.length} orphaned templates (sort_order vanished from new payload).`);
+    }
+
     await client.query('COMMIT');
-    console.log(`Created ${templatesCreated} workout templates for "${PROGRAM_NAME}".`);
+    console.log(`Upserted ${templatesCreated} workout templates for "${PROGRAM_NAME}" (${updatedCount} updated, ${insertedCount} inserted).`);
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Migration failed:', err);

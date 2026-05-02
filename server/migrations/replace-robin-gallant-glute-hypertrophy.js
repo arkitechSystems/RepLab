@@ -36,7 +36,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import xlsx from 'xlsx';
 import pool from '../dbPool.js';
-import { deleteLibraryProgramTemplatesWithGuard } from './_utils.js';
+import {
+  fetchLibraryProgramTemplates,
+  replaceTemplateExercises,
+  cascadeDeleteOrphanedLibraryTemplates,
+} from './_utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -202,43 +206,75 @@ async function run() {
     }
     console.log(`Exercises: ${added} added, ${allExercises.size - added} already present.`);
 
-    // 3. Wipe all existing templates for this program.
-    const { rowCount: deleted } = await deleteLibraryProgramTemplatesWithGuard(
-      client, programId, { migrationName: 'replace-robin-gallant-glute-hypertrophy' }
-    );
-    if (deleted) console.log(`Cleared ${deleted} stale templates.`);
+    // 3. Snapshot existing templates so we can UPDATE in place by sort_order
+    //    (preserves PBs) and only cascade-delete sort_orders that vanish.
+    const existingBySortOrder = await fetchLibraryProgramTemplates(client, programId);
+    const newSortOrdersUsed = new Set();
+    let updatedCount = 0;
+    let insertedCount = 0;
 
-    // 4. Create the two prehab templates (sort_order high so they sit out of
+    const exerciseColumns = [
+      'name', 'set_type', 'set_number', 'planned_reps', 'suggested_weight',
+      'sort_order', 'rep_range', 'exercise_description', 'video_url', 'program_notes',
+    ];
+
+    // 4. Upsert the two prehab templates (sort_order high so they sit out of
     //    the visible weekly grid; is_prehab flag also tells the client to
-    //    filter them from week views).
-    async function insertPrehabTemplate(label, exercises, sortOrder) {
-      const { rows: [tpl] } = await client.query(
-        `INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order, is_prehab)
-         VALUES (NULL, $1, $2, $3, FALSE, $4, TRUE) RETURNING id`,
-        [programId, label, 'Optional warm-up routine. Activates target musculature before training.', sortOrder]
-      );
+    //    filter them from week views). Match by sort_order to preserve PBs.
+    async function upsertPrehabTemplate(label, exercises, sortOrder) {
+      newSortOrdersUsed.add(sortOrder);
+      const desc = 'Optional warm-up routine. Activates target musculature before training.';
+      const match = existingBySortOrder.get(sortOrder);
+      let templateId;
+      if (match) {
+        const { rows: [tpl] } = await client.query(
+          `UPDATE templates
+              SET name = $1, description = $2, is_rest = FALSE, sort_order = $3, is_prehab = TRUE
+            WHERE id = $4
+            RETURNING id`,
+          [label, desc, sortOrder, match.id]
+        );
+        templateId = tpl.id;
+        updatedCount++;
+      } else {
+        const { rows: [tpl] } = await client.query(
+          `INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order, is_prehab)
+           VALUES (NULL, $1, $2, $3, FALSE, $4, TRUE) RETURNING id`,
+          [programId, label, desc, sortOrder]
+        );
+        templateId = tpl.id;
+        insertedCount++;
+      }
+
+      const newExercises = [];
       let exOrder = 0;
       for (const ex of exercises) {
         const setCount = Number(ex.sets) || 1;
         const plannedReps = parsePlannedReps(ex.reps);
         const repRange = String(ex.reps || '');
-        const desc = String(ex.notes || '').trim();
+        const exerciseDescription = String(ex.notes || '').trim();
         const thisOrder = exOrder++;
         for (let s = 1; s <= setCount; s++) {
-          await client.query(
-            `INSERT INTO template_exercises
-              (template_id, name, set_type, set_number, planned_reps, suggested_weight,
-               sort_order, rep_range, exercise_description, video_url, program_notes)
-             VALUES ($1, $2, 'straight', $3, $4, 0, $5, $6, $7, $8, '')`,
-            [tpl.id, ex.name, s, plannedReps, thisOrder, repRange, desc, ex.videoUrl || '']
-          );
+          newExercises.push({
+            name: ex.name,
+            set_type: 'straight',
+            set_number: s,
+            planned_reps: plannedReps,
+            suggested_weight: 0,
+            sort_order: thisOrder,
+            rep_range: repRange,
+            exercise_description: exerciseDescription,
+            video_url: ex.videoUrl || '',
+            program_notes: '',
+          });
         }
       }
-      return tpl.id;
+      await replaceTemplateExercises(client, templateId, newExercises, exerciseColumns);
+      return templateId;
     }
-    const lowerPrehabId = await insertPrehabTemplate('Lower Body Prehab', lowerPrehab, 1000);
-    const upperPrehabId = await insertPrehabTemplate('Upper Body Prehab', upperPrehab, 1001);
-    console.log(`Created prehab templates: lower=${lowerPrehabId}, upper=${upperPrehabId}.`);
+    const lowerPrehabId = await upsertPrehabTemplate('Lower Body Prehab', lowerPrehab, 1000);
+    const upperPrehabId = await upsertPrehabTemplate('Upper Body Prehab', upperPrehab, 1001);
+    console.log(`Upserted prehab templates: lower=${lowerPrehabId}, upper=${upperPrehabId}.`);
 
     // 5. Build 4 weeks × 7 days = 28 templates from the xlsx data.
     //    Day mapping per the schedule above: slot 0/3/5 = LB days, 1/4 = UB days,
@@ -246,26 +282,55 @@ async function run() {
     const WEEKLY_PATTERN = ['Day 1', 'Day 2', null, 'Day 3', 'Day 4', 'Day 5', null];
     const PREHAB_FOR_TITLE = (title) => /UPPER BODY/i.test(title) ? upperPrehabId : lowerPrehabId;
 
+    async function upsertWorkoutTemplate(sortOrder, fields, newExercises) {
+      newSortOrdersUsed.add(sortOrder);
+      const match = existingBySortOrder.get(sortOrder);
+      let templateId;
+      if (match) {
+        // Match by sort_order to preserve PBs across re-runs.
+        const { rows: [tpl] } = await client.query(
+          `UPDATE templates
+              SET name = $1, description = $2, is_rest = $3, sort_order = $4,
+                  prehab_template_id = $5, is_prehab = FALSE
+            WHERE id = $6
+            RETURNING id`,
+          [fields.name, fields.description, fields.isRest, sortOrder, fields.prehabId, match.id]
+        );
+        templateId = tpl.id;
+        updatedCount++;
+      } else {
+        const { rows: [tpl] } = await client.query(
+          `INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order, prehab_template_id)
+           VALUES (NULL, $1, $2, $3, $4, $5, $6) RETURNING id`,
+          [programId, fields.name, fields.description, fields.isRest, sortOrder, fields.prehabId]
+        );
+        templateId = tpl.id;
+        insertedCount++;
+      }
+      await replaceTemplateExercises(client, templateId, newExercises, exerciseColumns);
+      return templateId;
+    }
+
     let sortOrder = 0;
     let templatesCreated = 0;
     for (let week = 1; week <= 4; week++) {
       for (let slot = 0; slot < 7; slot++) {
         const xlsxDay = WEEKLY_PATTERN[slot];
         if (xlsxDay === null) {
-          await client.query(
-            `INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order)
-             VALUES (NULL, $1, $2, $3, TRUE, $4)`,
-            [programId, 'Rest', 'Recovery day.', sortOrder++]
+          await upsertWorkoutTemplate(
+            sortOrder++,
+            { name: 'Rest', description: 'Recovery day.', isRest: true, prehabId: null },
+            []
           );
           continue;
         }
         const grp = byKey.get(`${week}|${xlsxDay}`);
         if (!grp) {
           // Should never happen — fall back to rest if a week-day is missing.
-          await client.query(
-            `INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order)
-             VALUES (NULL, $1, $2, $3, TRUE, $4)`,
-            [programId, 'Rest', 'Recovery day (xlsx data missing for this slot).', sortOrder++]
+          await upsertWorkoutTemplate(
+            sortOrder++,
+            { name: 'Rest', description: 'Recovery day (xlsx data missing for this slot).', isRest: true, prehabId: null },
+            []
           );
           continue;
         }
@@ -273,13 +338,8 @@ async function run() {
         const templateName = `Week ${week} · ${grp.workoutTitle}`;
         const templateDesc = `RPE-based work. Optional ${ /UPPER BODY/i.test(grp.workoutTitle) ? 'upper-body' : 'lower-body'} prehab available before this session.`;
         const prehabId = PREHAB_FOR_TITLE(grp.workoutTitle);
-        const { rows: [tpl] } = await client.query(
-          `INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order, prehab_template_id)
-           VALUES (NULL, $1, $2, $3, FALSE, $4, $5) RETURNING id`,
-          [programId, templateName, templateDesc, sortOrder++, prehabId]
-        );
-        templatesCreated++;
 
+        const newExercises = [];
         let exOrder = 0;
         for (const ex of grp.rows) {
           const setCount = Number(ex.Sets) || 1;
@@ -304,20 +364,44 @@ async function run() {
 
           const thisOrder = exOrder++;
           for (let s = 1; s <= setCount; s++) {
-            await client.query(
-              `INSERT INTO template_exercises
-                (template_id, name, set_type, set_number, planned_reps, suggested_weight,
-                 sort_order, rep_range, exercise_description, video_url, program_notes)
-               VALUES ($1, $2, 'straight', $3, $4, 0, $5, $6, $7, $8, $9)`,
-              [tpl.id, ex.Exercise, s, plannedReps, thisOrder, repRange, exerciseDescription, videoUrl, failureQ]
-            );
+            newExercises.push({
+              name: ex.Exercise,
+              set_type: 'straight',
+              set_number: s,
+              planned_reps: plannedReps,
+              suggested_weight: 0,
+              sort_order: thisOrder,
+              rep_range: repRange,
+              exercise_description: exerciseDescription,
+              video_url: videoUrl,
+              program_notes: failureQ,
+            });
           }
         }
+
+        await upsertWorkoutTemplate(
+          sortOrder++,
+          { name: templateName, description: templateDesc, isRest: false, prehabId },
+          newExercises
+        );
+        templatesCreated++;
       }
     }
 
+    // Sweep orphans — templates whose sort_order was not regenerated.
+    const orphanIds = [];
+    for (const [so, t] of existingBySortOrder) {
+      if (!newSortOrdersUsed.has(so)) orphanIds.push(t.id);
+    }
+    if (orphanIds.length > 0) {
+      await cascadeDeleteOrphanedLibraryTemplates(client, orphanIds, {
+        migrationName: 'replace-robin-gallant-glute-hypertrophy',
+      });
+      console.log(`Removed ${orphanIds.length} orphaned templates (sort_order vanished from new payload).`);
+    }
+
     await client.query('COMMIT');
-    console.log(`Created ${templatesCreated} workout templates + 2 prehab templates for "${PROGRAM_NAME}".`);
+    console.log(`Upserted ${templatesCreated} workout templates + 2 prehab templates for "${PROGRAM_NAME}" (${updatedCount} updated, ${insertedCount} inserted).`);
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Migration failed:', err);

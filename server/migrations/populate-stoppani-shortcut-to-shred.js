@@ -13,7 +13,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import xlsx from 'xlsx';
 import pool from '../dbPool.js';
-import { deleteLibraryProgramTemplatesWithGuard } from './_utils.js';
+import {
+  fetchLibraryProgramTemplates,
+  replaceTemplateExercises,
+  cascadeDeleteOrphanedLibraryTemplates,
+} from './_utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -107,12 +111,10 @@ async function run() {
     }
     console.log(`Master exercise library: ${added} new, ${uniqueByName.size - added} already present.`);
 
-    // 3. Clear any previous templates for this program (idempotent re-run).
-    //    template_exercises cascades.
-    const { rowCount: deleted } = await deleteLibraryProgramTemplatesWithGuard(
-      client, programId, { migrationName: 'populate-stoppani-shortcut-to-shred' }
-    );
-    if (deleted) console.log(`Cleared ${deleted} stale templates for program ${programId}.`);
+    // 3. Snapshot existing templates so we can UPDATE in place by sort_order
+    //    (preserves PBs) and only cascade-delete sort_orders that vanish.
+    const existingBySortOrder = await fetchLibraryProgramTemplates(client, programId);
+    const newSortOrdersUsed = new Set();
 
     // 4. Group rows by (Week, WorkoutNumber) and build templates in order.
     //    Sort explicitly so we don't depend on xlsx row order.
@@ -128,13 +130,30 @@ async function run() {
 
     let templateSortOrder = 0;
     let prevWeek = null;
+    let updatedCount = 0;
+    let insertedCount = 0;
 
-    async function insertRestDay(week, phase) {
-      await client.query(
-        `INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order, phase)
-         VALUES (NULL, $1, $2, $3, TRUE, $4, $5)`,
-        [programId, 'Rest', 'Recovery day.', templateSortOrder++, phase]
-      );
+    async function upsertRestDay(phase) {
+      const sortOrder = templateSortOrder++;
+      newSortOrdersUsed.add(sortOrder);
+      const match = existingBySortOrder.get(sortOrder);
+      if (match) {
+        await client.query(
+          `UPDATE templates
+              SET name = $1, description = $2, is_rest = TRUE, sort_order = $3, phase = $4
+            WHERE id = $5`,
+          ['Rest', 'Recovery day.', sortOrder, phase, match.id]
+        );
+        await replaceTemplateExercises(client, match.id, [], []);
+        updatedCount++;
+      } else {
+        await client.query(
+          `INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order, phase)
+           VALUES (NULL, $1, $2, $3, TRUE, $4, $5)`,
+          [programId, 'Rest', 'Recovery day.', sortOrder, phase]
+        );
+        insertedCount++;
+      }
     }
 
     for (const t of ordered) {
@@ -143,22 +162,18 @@ async function run() {
       // Insert the rest day immediately after the previous week's last
       // workout, i.e. when we see the first workout of a new week.
       if (prevWeek !== null && t.week !== prevWeek) {
-        await insertRestDay(prevWeek, ordered.find((x) => x.week === prevWeek)?.phase);
+        await upsertRestDay(ordered.find((x) => x.week === prevWeek)?.phase);
       }
       prevWeek = t.week;
 
       const templateName = `Week ${t.week} · ${t.name}`;
       const description = phaseNote(t.phase);
+      const sortOrder = templateSortOrder++;
+      newSortOrdersUsed.add(sortOrder);
 
-      const { rows: [tpl] } = await client.query(
-        `INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order, phase)
-         VALUES (NULL, $1, $2, $3, FALSE, $4, $5) RETURNING id`,
-        [programId, templateName, description, templateSortOrder++, t.phase]
-      );
-      const templateId = tpl.id;
-
-      // Exercises: one row per set. Sort within the template by ExerciseOrder.
+      // Build the exercise payload first so UPDATE and INSERT branches share it.
       const sortedExercises = [...t.rows].sort((a, b) => a.ExerciseOrder - b.ExerciseOrder);
+      const newExercises = [];
       let exerciseSortOrder = 0;
       for (const ex of sortedExercises) {
         const setCount = Number(ex.Sets) || 1;
@@ -166,23 +181,68 @@ async function run() {
         const plannedReps = parsePlannedReps(repRange);
         const setOrder = exerciseSortOrder++;
         for (let setNum = 1; setNum <= setCount; setNum++) {
-          await client.query(
-            `INSERT INTO template_exercises
-              (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, rep_range, exercise_description)
-             VALUES ($1, $2, 'straight', $3, $4, 0, $5, $6, $7)`,
-            [templateId, ex.Exercise, setNum, plannedReps, setOrder, repRange, ex.ExerciseDescription || '']
-          );
+          newExercises.push({
+            name: ex.Exercise,
+            set_type: 'straight',
+            set_number: setNum,
+            planned_reps: plannedReps,
+            suggested_weight: 0,
+            sort_order: setOrder,
+            rep_range: repRange,
+            exercise_description: ex.ExerciseDescription || '',
+          });
         }
       }
+      const exerciseColumns = [
+        'name', 'set_type', 'set_number', 'planned_reps', 'suggested_weight',
+        'sort_order', 'rep_range', 'exercise_description',
+      ];
+
+      const match = existingBySortOrder.get(sortOrder);
+      let templateId;
+      if (match) {
+        // Match by sort_order to preserve PBs across re-runs.
+        const { rows: [tpl] } = await client.query(
+          `UPDATE templates
+              SET name = $1, description = $2, is_rest = FALSE, sort_order = $3, phase = $4
+            WHERE id = $5
+            RETURNING id`,
+          [templateName, description, sortOrder, t.phase, match.id]
+        );
+        templateId = tpl.id;
+        updatedCount++;
+      } else {
+        const { rows: [tpl] } = await client.query(
+          `INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order, phase)
+           VALUES (NULL, $1, $2, $3, FALSE, $4, $5) RETURNING id`,
+          [programId, templateName, description, sortOrder, t.phase]
+        );
+        templateId = tpl.id;
+        insertedCount++;
+      }
+
+      await replaceTemplateExercises(client, templateId, newExercises, exerciseColumns);
     }
 
     // Rest day at the end of the final week.
     if (prevWeek !== null) {
-      await insertRestDay(prevWeek, ordered.find((x) => x.week === prevWeek)?.phase);
+      await upsertRestDay(ordered.find((x) => x.week === prevWeek)?.phase);
+    }
+
+    // Sweep orphans — templates whose sort_order was not regenerated.
+    const orphanIds = [];
+    for (const [sortOrder, t] of existingBySortOrder) {
+      if (!newSortOrdersUsed.has(sortOrder)) orphanIds.push(t.id);
+    }
+    if (orphanIds.length > 0) {
+      await cascadeDeleteOrphanedLibraryTemplates(client, orphanIds, {
+        migrationName: 'populate-stoppani-shortcut-to-shred',
+      });
+      console.log(`Removed ${orphanIds.length} orphaned templates (sort_order vanished from new payload).`);
     }
 
     await client.query('COMMIT');
-    console.log(`Created ${templateSortOrder} templates for "${PROGRAM_NAME}" (${ordered.length} workouts + rest days).`);
+    console.log(`Upserted ${templateSortOrder} templates for "${PROGRAM_NAME}" (${updatedCount} updated, ${insertedCount} inserted, ${ordered.length} workouts + rest days).`);
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Migration failed:', err);

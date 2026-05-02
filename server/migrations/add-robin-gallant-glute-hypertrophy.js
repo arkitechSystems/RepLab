@@ -22,7 +22,11 @@
 // Idempotent: deletes existing templates for the program before rebuilding.
 
 import pool from '../dbPool.js';
-import { deleteLibraryProgramTemplatesWithGuard } from './_utils.js';
+import {
+  fetchLibraryProgramTemplates,
+  replaceTemplateExercises,
+  cascadeDeleteOrphanedLibraryTemplates,
+} from './_utils.js';
 
 const PROGRAM_NAME = "Robin Gallant's Intensive Max Glute Hypertrophy";
 const SORT_ORDER = 19;
@@ -137,11 +141,45 @@ async function run() {
     }
     console.log(`Exercises: ${added} added, ${allExercises.size - added} already present.`);
 
-    // 3. Clear any previous templates for this program.
-    const { rowCount: deleted } = await deleteLibraryProgramTemplatesWithGuard(
-      client, programId, { migrationName: 'add-robin-gallant-glute-hypertrophy' }
-    );
-    if (deleted) console.log(`Cleared ${deleted} stale templates.`);
+    // 3. Snapshot existing templates so we can UPDATE in place by sort_order
+    //    (preserves PBs) and only cascade-delete sort_orders that vanish.
+    const existingBySortOrder = await fetchLibraryProgramTemplates(client, programId);
+    const newSortOrdersUsed = new Set();
+    let updatedCount = 0;
+    let insertedCount = 0;
+
+    const exerciseColumns = [
+      'name', 'set_type', 'set_number', 'planned_reps', 'suggested_weight',
+      'sort_order', 'rep_range', 'exercise_description',
+    ];
+
+    async function upsertTemplate(sortOrder, fields, newExercises) {
+      newSortOrdersUsed.add(sortOrder);
+      const match = existingBySortOrder.get(sortOrder);
+      let templateId;
+      if (match) {
+        // Match by sort_order to preserve PBs across re-runs.
+        const { rows: [tpl] } = await client.query(
+          `UPDATE templates
+              SET name = $1, description = $2, is_rest = $3, sort_order = $4
+            WHERE id = $5
+            RETURNING id`,
+          [fields.name, fields.description, fields.isRest, sortOrder, match.id]
+        );
+        templateId = tpl.id;
+        updatedCount++;
+      } else {
+        const { rows: [tpl] } = await client.query(
+          `INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order)
+           VALUES (NULL, $1, $2, $3, $4, $5) RETURNING id`,
+          [programId, fields.name, fields.description, fields.isRest, sortOrder]
+        );
+        templateId = tpl.id;
+        insertedCount++;
+      }
+      await replaceTemplateExercises(client, templateId, newExercises, exerciseColumns);
+      return templateId;
+    }
 
     // 4. Build 4 weeks × 7 days = 28 templates.
     let sortOrder = 0;
@@ -149,47 +187,65 @@ async function run() {
       for (let slot = 0; slot < 7; slot++) {
         const workoutDayIdx = WEEKLY_PATTERN[slot];
         if (workoutDayIdx === null) {
-          await client.query(
-            `INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order)
-             VALUES (NULL, $1, $2, $3, TRUE, $4)`,
-            [programId, 'Rest', 'Recovery day.', sortOrder++]
+          await upsertTemplate(
+            sortOrder++,
+            { name: 'Rest', description: 'Recovery day.', isRest: true },
+            []
           );
           continue;
         }
 
         const templateName = `Week ${week} · Day ${workoutDayIdx}`;
-        const { rows: [tpl] } = await client.query(
-          `INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order)
-           VALUES (NULL, $1, $2, $3, FALSE, $4) RETURNING id`,
-          [programId, templateName, 'RPE-based auto-regulated work. Rest noted per exercise.', sortOrder++]
-        );
-        const templateId = tpl.id;
+        const description = 'RPE-based auto-regulated work. Rest noted per exercise.';
 
+        const newExercises = [];
         let exOrder = 0;
         for (const base of workoutForDay(workoutDayIdx)) {
           const override = PROGRESSION[`w${week}-d${workoutDayIdx}-${base.name}`] || {};
           const ex = { ...base, ...override };
           const plannedReps = parsePlannedReps(ex.reps);
-          const description = [
+          const exerciseDescription = [
             `RPE ${ex.rpe}`,
             `Rest ${ex.rest}`,
             ex.notes,
           ].filter(Boolean).join(' · ');
           const thisOrder = exOrder++;
           for (let s = 1; s <= ex.sets; s++) {
-            await client.query(
-              `INSERT INTO template_exercises
-                (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, rep_range, exercise_description)
-               VALUES ($1, $2, 'straight', $3, $4, 0, $5, $6, $7)`,
-              [templateId, ex.name, s, plannedReps, thisOrder, ex.reps, description]
-            );
+            newExercises.push({
+              name: ex.name,
+              set_type: 'straight',
+              set_number: s,
+              planned_reps: plannedReps,
+              suggested_weight: 0,
+              sort_order: thisOrder,
+              rep_range: ex.reps,
+              exercise_description: exerciseDescription,
+            });
           }
         }
+
+        await upsertTemplate(
+          sortOrder++,
+          { name: templateName, description, isRest: false },
+          newExercises
+        );
       }
     }
 
+    // Sweep orphans — templates whose sort_order was not regenerated.
+    const orphanIds = [];
+    for (const [so, t] of existingBySortOrder) {
+      if (!newSortOrdersUsed.has(so)) orphanIds.push(t.id);
+    }
+    if (orphanIds.length > 0) {
+      await cascadeDeleteOrphanedLibraryTemplates(client, orphanIds, {
+        migrationName: 'add-robin-gallant-glute-hypertrophy',
+      });
+      console.log(`Removed ${orphanIds.length} orphaned templates (sort_order vanished from new payload).`);
+    }
+
     await client.query('COMMIT');
-    console.log(`Created ${sortOrder} templates for "${PROGRAM_NAME}".`);
+    console.log(`Upserted ${sortOrder} templates for "${PROGRAM_NAME}" (${updatedCount} updated, ${insertedCount} inserted).`);
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Migration failed:', err);
