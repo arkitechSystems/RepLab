@@ -67,7 +67,7 @@ export async function sendWelcomeEmail(email) {
           <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">User Guide</h3>
           <div style="background: #f0f0f0; border-radius: 8px; padding: 16px 20px; margin-bottom: 24px;">
             <p style="color: #333; font-size: 14px; line-height: 1.7; margin: 0;">
-              For a deeper look at every feature, check out the <a href="${config.APP_URL}/trainer/guide" style="color: #EF4444; text-decoration: none; font-weight: 600;">RepLab User Guide</a>. It covers the workout library, calendar, logging sessions, personal records, creating custom workouts, and more.
+              For a deeper look at every feature, check out the <a href="${config.APP_URL}/userguide" style="color: #EF4444; text-decoration: none; font-weight: 600;">RepLab User Guide</a>. It covers the workout library, calendar, logging sessions, personal records, creating custom workouts, and more.
             </p>
           </div>
 

@@ -196,28 +196,61 @@ router.get('/logout', (req, res) => {
 
 // GET /workouts — Dashboard home
 router.get('/', clientAuth, (req, res) => {
+  const displayName = req.client.firstName || req.client.email;
   res.send(clientPage('Dashboard', `
-    <div class="header">
-      <h1>Workout Dashboard</h1>
-      <p>Welcome back, ${req.client.firstName || req.client.email}. Manage your workouts and track your progress.</p>
+    <div class="header" style="margin-bottom:36px;">
+      <span class="eyebrow">REPLAB / CLIENT DASHBOARD</span>
+      <h1 class="display-sm">Welcome back, ${esc(displayName)}.</h1>
+      <p style="margin-top:12px;font-size:14px;color:rgba(255,255,255,0.45);max-width:560px;line-height:1.6;">Build, manage, and track your training. Every rep counts.</p>
     </div>
     <div class="card-grid">
-      <a class="card glass" href="/workouts/create-workout">
-        <div class="card-icon">➕</div>
-        <div class="card-title">Create a Workout</div>
+      <a class="card glass dash-tile" href="/workouts/create-workout">
+        <span class="eyebrow">01 / Create</span>
+        <div class="dash-tile-icon" style="color:#ef4444;">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+        </div>
+        <div class="dash-tile-title">Create a Workout</div>
         <div class="card-desc">Build a new workout from scratch.</div>
+        <span class="dash-tile-arrow" aria-hidden="true">&rarr;</span>
       </a>
-      <a class="card glass" href="/workouts/my-workouts">
-        <div class="card-icon">📋</div>
-        <div class="card-title">My Workouts</div>
+      <a class="card glass dash-tile" href="/workouts/my-workouts">
+        <span class="eyebrow">02 / Manage</span>
+        <div class="dash-tile-icon">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>
+        </div>
+        <div class="dash-tile-title">My Workouts</div>
         <div class="card-desc">Browse and manage your workouts and programs.</div>
+        <span class="dash-tile-arrow" aria-hidden="true">&rarr;</span>
       </a>
-      <a class="card glass" href="/workouts/history">
-        <div class="card-icon">📊</div>
-        <div class="card-title">Workout History</div>
+      <a class="card glass dash-tile" href="/workouts/history">
+        <span class="eyebrow">03 / Track</span>
+        <div class="dash-tile-icon">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="14"/><line x1="10" y1="20" x2="10" y2="10"/><line x1="16" y1="20" x2="16" y2="6"/><line x1="22" y1="20" x2="2" y2="20"/></svg>
+        </div>
+        <div class="dash-tile-title">Workout History</div>
         <div class="card-desc">View your completed workout sessions.</div>
+        <span class="dash-tile-arrow" aria-hidden="true">&rarr;</span>
       </a>
     </div>
+    <style>
+      .dash-tile { position: relative; padding: 28px; }
+      .dash-tile .eyebrow { margin-bottom: 0; }
+      .dash-tile-icon { margin-top: 22px; color: #fff; }
+      .dash-tile-title {
+        margin-top: 16px;
+        font-size: 22px; font-weight: 900;
+        letter-spacing: -0.02em; line-height: 1.05; color: #fff;
+      }
+      .dash-tile .card-desc { margin-top: 8px; }
+      .dash-tile-arrow {
+        position: absolute; top: 24px; right: 24px;
+        font-size: 18px; font-weight: 700; color: rgba(255,255,255,0.3);
+        transition: transform 0.2s ease, color 0.2s ease;
+      }
+      .dash-tile:hover .dash-tile-arrow {
+        color: #ef4444; transform: translateX(4px);
+      }
+    </style>
   `, req.client));
 });
 

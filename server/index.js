@@ -41,6 +41,7 @@ import feedReactionsRoutes from './routes/feedReactions.js';
 import db from './db.js';
 import config from './config.js';
 import { sendDailySummaryEmail } from './email.js';
+import { userGuidePage } from './userGuide.js';
 import { startIdleReminderScheduler } from './pushScheduler.js';
 import { startStreakReminderScheduler } from './streakReminderScheduler.js';
 
@@ -210,6 +211,11 @@ app.get('/.well-known/assetlinks.json', (_req, res) => {
       sha256_cert_fingerprints: [config.ANDROID_SIGNING_SHA256],
     },
   }]);
+});
+
+// Public user guide. Linked from the welcome email and footer.
+app.get('/userguide', (_req, res) => {
+  res.send(userGuidePage());
 });
 
 // Apply general limiter to all API routes
