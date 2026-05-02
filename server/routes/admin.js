@@ -257,6 +257,8 @@ function adminLoginPage(error, customContent) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/jpeg" href="/RepLabLogo4.jpg">
+  <link rel="apple-touch-icon" href="/RepLabLogo4.jpg">
   <title>RepLab Admin — Login</title>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
@@ -301,6 +303,8 @@ function adminPage(title, body) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/jpeg" href="/RepLabLogo4.jpg">
+  <link rel="apple-touch-icon" href="/RepLabLogo4.jpg">
   <title>RepLab Admin — ${title}</title>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>${DASHBOARD_CSS}</style>
@@ -4532,6 +4536,8 @@ router.get('/trainer-applications', adminAuth, async (req, res) => {
       </tr>
     `).join('');
     res.send(`<!DOCTYPE html><html><head><title>Trainer Applications</title>
+      <link rel="icon" type="image/jpeg" href="/RepLabLogo4.jpg">
+      <link rel="apple-touch-icon" href="/RepLabLogo4.jpg">
       <style>body{font-family:system-ui;background:#0a0a0a;color:#fff;padding:20px}table{width:100%;border-collapse:collapse}th,td{padding:8px 12px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.1)}th{color:#888;font-size:12px;text-transform:uppercase}a{color:#ef4444;text-decoration:none}.tabs{display:flex;gap:8px;margin-bottom:16px}.tab{padding:6px 16px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);color:#999;text-decoration:none;font-size:13px}.tab.active{background:rgba(239,68,68,0.1);color:#ef4444;border-color:rgba(239,68,68,0.3)}</style>
     </head><body>
       <p><a href="/admin">&larr; Back to Admin</a></p>

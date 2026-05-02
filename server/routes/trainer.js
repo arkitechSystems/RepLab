@@ -67,6 +67,8 @@ function trainerLoginPage(error) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/jpeg" href="/RepLabLogo4.jpg">
+  <link rel="apple-touch-icon" href="/RepLabLogo4.jpg">
   <title>RepLab Trainer — Login</title>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
@@ -106,6 +108,8 @@ function trainerPage(title, body, trainer) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/jpeg" href="/RepLabLogo4.jpg">
+  <link rel="apple-touch-icon" href="/RepLabLogo4.jpg">
   <title>RepLab Trainer — ${title}</title>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>${DASHBOARD_CSS}</style>
