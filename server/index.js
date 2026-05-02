@@ -258,11 +258,6 @@ app.get('/health', (req, res) => res.json({
   timestamp: new Date().toISOString(),
 }));
 
-// TEMPORARY — verifies backend Sentry pipeline. Remove after confirming events land in replab-backend.
-app.get('/debug-sentry', (req, res) => {
-  throw new Error('Backend Sentry test ' + new Date().toISOString());
-});
-
 // Serve exercise demo videos
 app.use('/videos', express.static(path.join(__dirname, 'VidLib')));
 
