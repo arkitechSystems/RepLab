@@ -28,6 +28,7 @@
     "react-router-dom": "^6.28.0"
   },
   "devDependencies": {
+    "@sentry/vite-plugin": "^5.2.1",
     "@types/react": "^18.3.12",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
