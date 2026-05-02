@@ -161,6 +161,7 @@ export default function SessionSummary() {
       completedSets={completedSets}
       elapsed={data.elapsedSecs || 0}
       formatTime={formatTimeFromSeconds}
+      sessionDate={typeof data.date === 'string' ? data.date.slice(0, 10) : null}
       onClose={() => navigate(-1)}
     />
   );

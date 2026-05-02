@@ -2739,6 +2739,7 @@ export default function WorkoutSession() {
           completedSets={completedSets}
           elapsed={tutorialMode ? 2717 : elapsed}
           formatTime={formatTime}
+          sessionDate={date}
           onClose={() => {
             setShowSummary(false);
             // If this was a 7th-workout milestone, let the verse overlay take
@@ -3050,7 +3051,8 @@ export default function WorkoutSession() {
   );
 }
 
-export function WorkoutSummary({ template, programName, entries, completedSets, elapsed, formatTime, onClose }) {
+export function WorkoutSummary({ template, programName, entries, completedSets, elapsed, formatTime, onClose, sessionDate }) {
+  const navigate = useNavigate();
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [shareImage, setShareImage] = useState(null);
   const [generatingImage, setGeneratingImage] = useState(false);
@@ -3602,8 +3604,9 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
           })()}
 
           {/* Body Parts Worked — segmented ring + legend, then anatomical
-              figures. Hidden if no sets were completed (nothing to show). */}
-          {muscleAllocation.length > 0 && (
+              figures. DISABLED pre-launch (2026-05-01) — code preserved
+              for future redesign. Re-enable by removing the `false &&`. */}
+          {false && muscleAllocation.length > 0 && (
             <div className="mb-6 px-4 py-5 rounded-sm" style={{
               background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
               boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
@@ -3795,6 +3798,21 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
         >
           {savedAsTemplate ? '✓ Saved to My Workouts' : savingTemplate ? 'Saving…' : '+ Save as Template'}
         </button>
+        {template.id && sessionDate && (
+          <button
+            onClick={() => navigate(`/session/${template.id}/${sessionDate}`)}
+            className="w-full active:scale-[0.97] transition-all text-white text-[11px] font-bold uppercase whitespace-nowrap py-3"
+            style={{
+              letterSpacing: '0.15em',
+              borderRadius: '2px',
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.15)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
+            }}
+          >
+            View Workout
+          </button>
+        )}
         <button
           onClick={onClose}
           className="w-full bg-black text-wf-gray-400 border border-wf-gray-600 font-bold py-3.5 rounded-xl text-base active:scale-[0.98] transition-all"
