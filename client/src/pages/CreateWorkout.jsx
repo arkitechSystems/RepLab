@@ -494,7 +494,7 @@ function TemplateExerciseWrapper({
     const suggestions = getSuggestions(ex.name);
     const hasExactMatch = suggestions.some(s => s.name.toLowerCase() === ex.name.toLowerCase());
     return (
-      <div className="glass-card rounded-xl overflow-hidden mb-3">
+      <div className="glass-card rounded-xl mb-3">
         <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
           <div className="flex-1 relative min-w-0" ref={activeAutocomplete ? autocompleteRef : null}>
             <input
@@ -518,7 +518,7 @@ function TemplateExerciseWrapper({
               className="w-full bg-transparent text-base font-semibold text-white placeholder:text-wf-gray-500 focus:outline-none"
             />
             {activeAutocomplete && (suggestions.length > 0 || ex.name.trim().length > 0) && (
-              <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-wf-gray-900 border border-white/10 rounded-xl shadow-2xl shadow-black/60 overflow-hidden max-h-64 overflow-y-auto">
+              <div className="absolute z-50 bottom-full left-0 right-0 mb-1 bg-wf-gray-900 border border-white/10 rounded-xl shadow-2xl shadow-black/60 overflow-hidden max-h-64 overflow-y-auto">
                 {suggestions.map((suggestion) => (
                   <button
                     key={suggestion.name}
