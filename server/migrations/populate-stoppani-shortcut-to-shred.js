@@ -13,6 +13,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import xlsx from 'xlsx';
 import pool from '../dbPool.js';
+import { deleteLibraryProgramTemplatesWithGuard } from './_utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -108,9 +109,8 @@ async function run() {
 
     // 3. Clear any previous templates for this program (idempotent re-run).
     //    template_exercises cascades.
-    const { rowCount: deleted } = await client.query(
-      'DELETE FROM templates WHERE program_id = $1',
-      [programId]
+    const { rowCount: deleted } = await deleteLibraryProgramTemplatesWithGuard(
+      client, programId, { migrationName: 'populate-stoppani-shortcut-to-shred' }
     );
     if (deleted) console.log(`Cleared ${deleted} stale templates for program ${programId}.`);
 

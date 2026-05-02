@@ -6463,7 +6463,10 @@ router.get('/backup', adminAuth, async (req, res) => {
         var res = await fetch('/admin/backup/restore', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(restoreData),
+          // confirmation: 'RESTORE' mirrors the typed input above. The
+          // server enforces the same string check, so direct API calls
+          // without going through this form will be rejected.
+          body: JSON.stringify(Object.assign({ confirmation: 'RESTORE' }, restoreData)),
         });
         var data = await res.json();
         if (res.ok) {
@@ -6490,9 +6493,51 @@ router.get('/backup', adminAuth, async (req, res) => {
 });
 
 // ─── Restore from Backup ────────────────────────────────────────────
+//
+// Destructive: TRUNCATE-style wipe of every user's session/PB/schedule data
+// before reinserting from the uploaded JSON. The admin UI already gates this
+// behind a typed-"RESTORE" input — but a direct API call (curl, leaked admin
+// session, mistargeted automation) could skip the UI. Mirror the typed
+// confirmation on the server so the gate can't be bypassed, and surface the
+// pre-flight row counts in the response so the admin sees exactly what's
+// being deleted before it's gone.
 router.post('/backup/restore', adminAuth, express.json({ limit: '50mb' }), async (req, res) => {
-  const { tables } = req.body;
+  const { tables, confirmation } = req.body;
   if (!tables) return res.status(400).json({ error: 'Invalid backup — missing tables' });
+
+  // Server-side typed-confirmation gate. The admin UI sends `confirmation:
+  // 'RESTORE'` only after the operator types it into the input. Anything that
+  // skips that input is refused with the counts of what would have been
+  // wiped, so the operator can see the blast radius and re-issue with
+  // intent.
+  if (confirmation !== 'RESTORE') {
+    try {
+      const counts = {};
+      const tablesToCount = [
+        'session_entries', 'personal_bests', 'schedule_days', 'user_metrics',
+        'template_exercises', 'sessions', 'templates', 'programs',
+      ];
+      for (const t of tablesToCount) {
+        const { rows } = await pool.query(`SELECT COUNT(*)::INT AS n FROM ${t}`);
+        counts[t] = rows[0]?.n || 0;
+      }
+      const { rows: [{ n: userCount }] } = await pool.query(
+        'SELECT COUNT(DISTINCT user_id)::INT AS n FROM sessions'
+      );
+      return res.status(400).json({
+        error: 'Confirmation required',
+        message: 'POST body must include `confirmation: "RESTORE"` to proceed. This call would wipe every user\'s data before reinserting from the backup.',
+        wouldDelete: { ...counts, distinctUsersWithSessions: userCount },
+      });
+    } catch (err) {
+      // If the count query itself fails, surface the original gating error
+      // rather than leak a 500 — the operator still hasn't confirmed.
+      return res.status(400).json({
+        error: 'Confirmation required',
+        message: 'POST body must include `confirmation: "RESTORE"` to proceed.',
+      });
+    }
+  }
 
   const client = await pool.connect();
   try {

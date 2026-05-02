@@ -22,6 +22,7 @@
 // Idempotent: deletes existing templates for the program before rebuilding.
 
 import pool from '../dbPool.js';
+import { deleteLibraryProgramTemplatesWithGuard } from './_utils.js';
 
 const PROGRAM_NAME = "Robin Gallant's Intensive Max Glute Hypertrophy";
 const SORT_ORDER = 19;
@@ -137,8 +138,8 @@ async function run() {
     console.log(`Exercises: ${added} added, ${allExercises.size - added} already present.`);
 
     // 3. Clear any previous templates for this program.
-    const { rowCount: deleted } = await client.query(
-      'DELETE FROM templates WHERE program_id = $1', [programId]
+    const { rowCount: deleted } = await deleteLibraryProgramTemplatesWithGuard(
+      client, programId, { migrationName: 'add-robin-gallant-glute-hypertrophy' }
     );
     if (deleted) console.log(`Cleared ${deleted} stale templates.`);
 

@@ -14,6 +14,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import xlsx from 'xlsx';
 import pool from '../dbPool.js';
+import { deleteLibraryProgramTemplatesWithGuard } from './_utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -129,8 +130,8 @@ async function run() {
     console.log(`Exercises: ${added} added, ${uniqueClean.size - added} already present.`);
 
     // 3. Clear stale templates
-    const { rowCount: deleted } = await client.query(
-      'DELETE FROM templates WHERE program_id = $1', [programId]
+    const { rowCount: deleted } = await deleteLibraryProgramTemplatesWithGuard(
+      client, programId, { migrationName: 'add-nippard-push-pull-legs' }
     );
     if (deleted) console.log(`Cleared ${deleted} stale templates.`);
 
