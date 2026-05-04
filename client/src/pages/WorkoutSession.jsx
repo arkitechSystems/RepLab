@@ -100,6 +100,7 @@ export default function WorkoutSession() {
   const [lastSession, setLastSession] = useState({});
   const [timerStarted, setTimerStarted] = useState(false);
   const [showBeginPrompt, setShowBeginPrompt] = useState(false);
+  const [showPrebeginSummary, setShowPrebeginSummary] = useState(false);
   const [showAllDemos, setShowAllDemos] = useState(false);
   const [timerHidden, setTimerHidden] = useState(false);
   const [timerFloating, setTimerFloating] = useState(false);
@@ -2037,20 +2038,36 @@ export default function WorkoutSession() {
               </div>
             </div>
             {!timerStarted ? (
-              <button
-                data-tutorial="begin-workout-btn"
-                onClick={handleBeginWorkout}
-                className="active:scale-[0.98] transition-all w-full mt-1"
-                style={{
-                  padding: '14px', borderRadius: '2px', border: 'none',
-                  background: 'linear-gradient(135deg, rgba(239,68,68,0.95) 0%, rgba(220,38,38,0.95) 100%)',
-                  color: 'white', fontSize: '12px', fontWeight: 700, cursor: 'pointer',
-                  letterSpacing: '0.25em', textTransform: 'uppercase',
-                  boxShadow: '0 4px 20px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
-                }}
-              >
-                Begin Workout
-              </button>
+              <>
+                <button
+                  data-tutorial="begin-workout-btn"
+                  onClick={handleBeginWorkout}
+                  className="active:scale-[0.98] transition-all w-full mt-1"
+                  style={{
+                    padding: '14px', borderRadius: '2px', border: 'none',
+                    background: 'linear-gradient(135deg, rgba(239,68,68,0.95) 0%, rgba(220,38,38,0.95) 100%)',
+                    color: 'white', fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+                    letterSpacing: '0.25em', textTransform: 'uppercase',
+                    boxShadow: '0 4px 20px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+                  }}
+                >
+                  Begin Workout
+                </button>
+                <button
+                  onClick={() => setShowPrebeginSummary(true)}
+                  className="active:scale-[0.97] transition-all w-full mt-2"
+                  style={{
+                    padding: '12px', borderRadius: '2px',
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    color: 'rgba(255,255,255,0.85)', fontSize: '11px', fontWeight: 700, cursor: 'pointer',
+                    letterSpacing: '0.25em', textTransform: 'uppercase',
+                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
+                  }}
+                >
+                  View Summary
+                </button>
+              </>
             ) : (
               <div className="mt-2">
                 <div
@@ -2600,6 +2617,88 @@ export default function WorkoutSession() {
                 }}
               >
                 Got It
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Pre-Begin Workout Summary — condensed list of exercise name + set
+          count so users can scan the session without scrolling through
+          every card. Only shown before Begin Workout (set-count is the
+          stable-pre-session view; mid-session users care about live
+          progress, not structure). */}
+      {showPrebeginSummary && idx === 0 && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 px-4" onClick={() => setShowPrebeginSummary(false)}>
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <div
+            className="relative w-full max-w-md max-h-[85vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+              borderRadius: '2px',
+              boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+            }}
+          >
+            <div className="h-[3px] shrink-0" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25))' }} />
+            <div
+              className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none"
+              style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }}
+            />
+
+            <div className="relative px-6 pt-6 pb-3 shrink-0">
+              <p className="text-[10px] text-white/30 uppercase font-light" style={{ letterSpacing: '0.3em' }}>
+                Workout Overview
+              </p>
+              <h2
+                className="text-[22px] font-black text-white tracking-tight mt-1 uppercase"
+                style={{ fontFamily: 'system-ui', lineHeight: '1' }}
+              >
+                {template.name || 'Today’s Workout'}
+              </h2>
+            </div>
+
+            <div className="relative flex-1 overflow-y-auto px-6 pb-2 border-t border-white/5">
+              {template.exercises.length === 0 ? (
+                <p className="py-6 text-center text-[13px] text-white/40">No exercises yet.</p>
+              ) : (
+                template.exercises.map((ex, exIdx) => {
+                  if (ex.isSectionHeader) {
+                    return (
+                      <div key={exIdx} className="pt-4 pb-2 border-b border-white/5">
+                        <p className="text-[10px] uppercase font-bold" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.25em' }}>
+                          {ex.name}
+                        </p>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={exIdx} className="py-3 flex items-center justify-between border-b border-white/5">
+                      <span className="text-[14px] text-white font-semibold flex-1 truncate pr-3">
+                        {ex.name}
+                      </span>
+                      <span className="text-[11px] text-white/50 font-bold whitespace-nowrap" style={{ letterSpacing: '0.1em' }}>
+                        {ex.sets.length} {ex.sets.length === 1 ? 'set' : 'sets'}
+                      </span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="relative px-4 pt-3 pb-4 shrink-0">
+              <button
+                onClick={() => setShowPrebeginSummary(false)}
+                className="w-full text-white font-bold uppercase active:scale-[0.98] transition-all"
+                style={{
+                  letterSpacing: '0.15em',
+                  fontSize: '11px',
+                  padding: '14px',
+                  borderRadius: '2px',
+                  background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+                  boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+                }}
+              >
+                Close
               </button>
             </div>
           </div>
