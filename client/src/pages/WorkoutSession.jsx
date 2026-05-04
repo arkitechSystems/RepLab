@@ -2740,6 +2740,7 @@ export default function WorkoutSession() {
           elapsed={tutorialMode ? 2717 : elapsed}
           formatTime={formatTime}
           sessionDate={date}
+          onViewWorkout={() => setShowSummary(false)}
           onClose={() => {
             setShowSummary(false);
             // If this was a 7th-workout milestone, let the verse overlay take
@@ -3051,7 +3052,7 @@ export default function WorkoutSession() {
   );
 }
 
-export function WorkoutSummary({ template, programName, entries, completedSets, elapsed, formatTime, onClose, sessionDate }) {
+export function WorkoutSummary({ template, programName, entries, completedSets, elapsed, formatTime, onClose, sessionDate, onViewWorkout }) {
   const navigate = useNavigate();
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [shareImage, setShareImage] = useState(null);
@@ -3800,7 +3801,19 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
         </button>
         {template.id && sessionDate && (
           <button
-            onClick={() => navigate(`/session/${template.id}/${sessionDate}`)}
+            onClick={() => {
+              // When the summary is shown as a modal over the live WorkoutSession
+              // (we're already at /session/:templateId/:date), navigate is a no-op
+              // and the modal stays open. The parent passes onViewWorkout in that
+              // case so we can just close the summary. From the standalone
+              // /summary/:id route there's no onViewWorkout — fall through to a
+              // real navigate.
+              if (onViewWorkout) {
+                onViewWorkout();
+              } else {
+                navigate(`/session/${template.id}/${sessionDate}`);
+              }
+            }}
             className="w-full active:scale-[0.97] transition-all text-white text-[11px] font-bold uppercase whitespace-nowrap py-3"
             style={{
               letterSpacing: '0.15em',
