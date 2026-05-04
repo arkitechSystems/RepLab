@@ -1879,11 +1879,14 @@ export default function WorkoutSession() {
   const completedCount = completedSets.size;
   const progressPct = totalSets > 0 ? Math.round((completedCount / totalSets) * 100) : 0;
 
+  // completed sets only — planned/pre-filled values are excluded so the
+  // session-level "Total Volume" tile reflects work actually done, not typed.
   const totalVolume = template.exercises.reduce((vol, ex, exIdx) => {
     if (ex.isSectionHeader) return vol;
     const eKey = exKey(template.exercises, ex, exIdx);
     const exEntries = entries[eKey] || [];
-    return vol + exEntries.reduce((sum, e) => {
+    return vol + exEntries.reduce((sum, e, i) => {
+      if (!completedSets.has(`${eKey}-${i}`)) return sum;
       const w = Number(e.weight) || 0;
       const r = Number(e.reps) || 0;
       return sum + (w > 0 ? w * r : 0);
@@ -3144,11 +3147,14 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
   // Stats
   const realExercises = template.exercises.filter(ex => !ex.isSectionHeader);
   const totalSets = realExercises.reduce((s, ex) => s + ex.sets.length, 0);
+  // completed sets only — planned/pre-filled values are excluded so the
+  // post-workout summary stats + share image reflect actual work done.
   const totalVolume = template.exercises.reduce((vol, ex, exIdx) => {
     if (ex.isSectionHeader) return vol;
     const eKey = exKey(template.exercises, ex, exIdx);
     const exEntries = entries[eKey] || [];
-    return vol + exEntries.reduce((sum, e) => {
+    return vol + exEntries.reduce((sum, e, i) => {
+      if (!completedSets.has(`${eKey}-${i}`)) return sum;
       const w = Number(e.weight) || 0;
       const r = Number(e.reps) || 0;
       return sum + (w > 0 ? w * r : 0);
@@ -3157,7 +3163,10 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
 
   const [expandedSummary, setExpandedSummary] = useState(new Set());
 
-  // Per-exercise data with per-set volume breakdown (goal volume vs actual volume)
+  // Per-exercise data with per-set volume breakdown (goal volume vs actual volume).
+  // actualVolume / actualWeight / actualReps reflect completed sets only —
+  // planned/pre-filled values are zeroed out so the breakdown's "actual" column
+  // represents work done, not typed.
   const exerciseStats = template.exercises.reduce((acc, ex, exIdx) => {
     if (ex.isSectionHeader) return acc;
     const eKey = exKey(template.exercises, ex, exIdx);
@@ -3166,8 +3175,9 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
       const goalWeight = Number(set.suggestedWeight) || 0;
       const goalReps = set.plannedReps || 0;
       const goalVolume = goalWeight > 0 ? goalWeight * goalReps : 0;
-      const actualWeight = Number(exEntries[idx]?.weight) || 0;
-      const actualReps = Number(exEntries[idx]?.reps) || 0;
+      const isSetCompleted = completedSets.has(`${eKey}-${idx}`);
+      const actualWeight = isSetCompleted ? (Number(exEntries[idx]?.weight) || 0) : 0;
+      const actualReps = isSetCompleted ? (Number(exEntries[idx]?.reps) || 0) : 0;
       const actualVolume = actualWeight > 0 ? actualWeight * actualReps : 0;
       const setType = exEntries[idx]?.setType || set.setType || ex.setType || 'straight';
       const hitGoal = goalReps > 0 ? actualReps >= goalReps : true;

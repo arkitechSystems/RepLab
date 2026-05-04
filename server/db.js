@@ -804,11 +804,14 @@ const db = {
   },
 
   async getSessions(userId) {
+    // total_volume + exercise_count count completed sets only — planned/pre-filled
+    // sets are excluded so a user writing down plans ahead of time doesn't inflate
+    // their history totals or community feed stats.
     const { rows } = await pool.query(
       `SELECT s.id, s.date, s.template_id, s.created_at, s.completed,
               COALESCE(t.name, 'Unknown') AS template_name,
-              COALESCE(SUM(se.weight * se.reps), 0)::NUMERIC AS total_volume,
-              COUNT(DISTINCT se.exercise_name) AS exercise_count
+              COALESCE(SUM(se.weight * se.reps) FILTER (WHERE se.is_completed = TRUE), 0)::NUMERIC AS total_volume,
+              COUNT(DISTINCT se.exercise_name) FILTER (WHERE se.is_completed = TRUE) AS exercise_count
        FROM sessions s
        LEFT JOIN templates t ON t.id = s.template_id
        LEFT JOIN session_entries se ON se.session_id = s.id
@@ -845,6 +848,9 @@ const db = {
     if (!sessionRows[0]) return null;
 
     const session = sessionRows[0];
+    // Includes planned + completed entries — surfaces user-typed data to the
+    // session-detail / summary views so they show what was logged, not just
+    // what was lifted.
     const { rows: entries } = await pool.query(
       'SELECT * FROM session_entries WHERE session_id = $1 ORDER BY id',
       [sessionId]
@@ -886,6 +892,9 @@ const db = {
     if (!sessionRows[0]) return null;
 
     const session = sessionRows[0];
+    // Includes planned + completed entries — the active session UI restores
+    // pre-filled values too so the user sees what they typed before tapping
+    // Begin Workout.
     const { rows: entries } = await pool.query(
       'SELECT * FROM session_entries WHERE session_id = $1 ORDER BY id',
       [session.id]
@@ -914,6 +923,8 @@ const db = {
   // Returns: { "Exercise Name": { 1: { weight, reps }, 2: { weight, reps } } }
   async getBestPerformanceByGroup(userId, groupId) {
     if (!groupId) return {};
+    // completed sets only — feeds /sessions/initialize, so planned/pre-filled
+    // values would otherwise re-seed themselves into the next session's plans.
     const { rows } = await pool.query(
       `SELECT DISTINCT ON (se.exercise_name, se.set_number)
          se.exercise_name, se.set_number, se.weight, se.reps
@@ -923,6 +934,7 @@ const db = {
        WHERE s.user_id = $1
          AND t.group_id = $2
          AND s.completed = TRUE
+         AND se.is_completed = TRUE
          AND se.weight > 0
          AND se.reps > 0
        ORDER BY se.exercise_name, se.set_number,
@@ -941,6 +953,8 @@ const db = {
   },
 
   async getBestPerformanceByTemplate(userId, templateId) {
+    // completed sets only — feeds /sessions/initialize, so planned/pre-filled
+    // values would otherwise re-seed themselves into the next session's plans.
     const { rows } = await pool.query(
       `SELECT DISTINCT ON (se.exercise_name, se.set_number)
          se.exercise_name, se.set_number, se.weight, se.reps
@@ -949,6 +963,7 @@ const db = {
        WHERE s.user_id = $1
          AND s.template_id = $2
          AND s.completed = TRUE
+         AND se.is_completed = TRUE
          AND se.weight > 0
          AND se.reps > 0
        ORDER BY se.exercise_name, se.set_number,
@@ -973,8 +988,10 @@ const db = {
     );
     if (sessions.length === 0) return {};
     const sessionId = sessions[0].id;
+    // completed sets only — drives weight suggestions, so planned/pre-filled
+    // sets must not be treated as "what they did last time".
     const { rows: entries } = await pool.query(
-      `SELECT exercise_name, set_number, weight, reps FROM session_entries WHERE session_id = $1 ORDER BY exercise_name, set_number`,
+      `SELECT exercise_name, set_number, weight, reps FROM session_entries WHERE session_id = $1 AND is_completed = TRUE ORDER BY exercise_name, set_number`,
       [sessionId]
     );
     const result = {};
@@ -1006,12 +1023,15 @@ const db = {
   // /progress page's set-by-set pills viz so users can see whether their
   // reps at the same weight are climbing/flat/declining over time.
   async getSameWeightRepeats(userId) {
+    // completed sets only — planned/pre-filled values would otherwise show
+    // up as fake data points on the progressive-overload chart.
     const { rows } = await pool.query(
       `SELECT s.date, se.exercise_name, se.set_number, se.weight, se.reps
        FROM session_entries se
        JOIN sessions s ON s.id = se.session_id
        WHERE s.user_id = $1
          AND s.completed = TRUE
+         AND se.is_completed = TRUE
          AND se.weight > 0
          AND se.reps > 0
        ORDER BY s.date ASC, se.exercise_name ASC, se.set_number ASC`,
@@ -1035,12 +1055,15 @@ const db = {
   async getExerciseHistoryBatch(userId, exerciseNames, limit = 3) {
     if (!exerciseNames.length) return {};
 
+    // completed sets only — feeds getWeightSuggestion(), so planned values
+    // would otherwise drive bogus "you did X last time" suggestions.
     const { rows } = await pool.query(
       `SELECT se.exercise_name, s.date, se.set_number, se.weight, se.reps
        FROM session_entries se
        JOIN sessions s ON se.session_id = s.id
        WHERE s.user_id = $1
          AND LOWER(se.exercise_name) = ANY(SELECT LOWER(unnest($2::text[])))
+         AND se.is_completed = TRUE
          AND se.weight > 0 AND se.reps > 0
        ORDER BY se.exercise_name, s.date DESC, se.set_number ASC`,
       [userId, exerciseNames]

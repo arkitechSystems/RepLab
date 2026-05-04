@@ -2036,9 +2036,12 @@ export default function FeaturedWorkoutSession() {
         });
         const totalSetsCompleted = completedSets.size;
         const totalSetsAvailable = workout.exercises.reduce((s, ex) => s + ex.sets.length, 0);
+        // completed sets only — planned values that were typed but never
+        // checkmarked don't count toward the share-image volume stat.
         const totalVolume = workout.exercises.reduce((vol, ex) => {
           const exEntries = entries[ex.name] || [];
-          return vol + exEntries.reduce((sum, e) => {
+          return vol + exEntries.reduce((sum, e, i) => {
+            if (!completedSets.has(`${ex.name}-${i}`)) return sum;
             const w = Number(e.weight) || 0;
             const r = Number(e.reps) || 0;
             return sum + (w > 0 ? w * r : 0);
