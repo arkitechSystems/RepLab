@@ -140,13 +140,13 @@ export default function WorkoutSession() {
   });
   const [undoToast, setUndoToast] = useState(null); // { message, undoFn }
   const [showGoalWeight, setShowGoalWeight] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('wf-default-show-goal-weight')) ?? true; } catch { return true; }
+    try { return JSON.parse(localStorage.getItem('wf-default-show-goal-weight')) ?? false; } catch { return false; }
   });
   const [showGoalReps, setShowGoalReps] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('wf-default-show-goal-reps')) ?? true; } catch { return true; }
+    try { return JSON.parse(localStorage.getItem('wf-default-show-goal-reps')) ?? false; } catch { return false; }
   });
   const [showSetType, setShowSetType] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('replab_show_set_type')) ?? true; } catch { return true; }
+    try { return JSON.parse(localStorage.getItem('replab_show_set_type')) ?? false; } catch { return false; }
   });
   // 'light' (default, #e8e8e8 card) or 'dark' (transparent — page bg shows through).
   // Persisted so the next session inherits the user's choice.
@@ -2538,25 +2538,62 @@ export default function WorkoutSession() {
           </div>
           )}
           {/* Undo toast after last exercise for exercise deletion at end */}
-          {/* Begin Workout prompt popup */}
+          {/* Begin Workout prompt popup — Nike style: eyebrow + display title,
+              red accent stripe, ambient red spotlight, sharp 2px corners. */}
       {showBeginPrompt && idx === 0 && (
         <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 px-5" onClick={() => setShowBeginPrompt(false)}>
-          <div className="absolute inset-0 bg-black/60" />
-          <div className="relative w-full max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-full bg-wf-red/15 flex items-center justify-center shrink-0">
-                <svg className="w-5 h-5 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
-                </svg>
-              </div>
-              <h3 className="text-base font-bold text-white">{isCompleted ? 'Scroll down and tap Undo Completion to edit.' : 'Click Begin Workout to start logging sets.'}</h3>
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <div
+            className="relative w-full max-w-sm overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+              borderRadius: '2px',
+              boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+            }}
+          >
+            <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25))' }} />
+            <div
+              className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none"
+              style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }}
+            />
+
+            <div className="relative px-6 pt-6 pb-2">
+              <p className="text-[10px] text-white/30 uppercase font-light" style={{ letterSpacing: '0.3em' }}>
+                {isCompleted ? 'Session Complete' : 'Heads Up'}
+              </p>
+              <h2
+                className="text-[26px] font-black text-white tracking-tight mt-1 uppercase"
+                style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}
+              >
+                {isCompleted ? 'Edit Locked' : 'Start Logging Sets'}
+              </h2>
             </div>
-            <button
-              onClick={() => setShowBeginPrompt(false)}
-              className="w-full btn-gradient text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
-            >
-              Got it
-            </button>
+
+            <div className="relative px-6 pb-5 pt-3">
+              <p className="text-[13px] text-white/55 leading-relaxed">
+                {isCompleted
+                  ? 'Scroll down and tap Undo Completion to edit this session.'
+                  : 'Tap Begin Workout above to start the timer and unlock the set inputs.'}
+              </p>
+            </div>
+
+            <div className="relative px-4 pb-4">
+              <button
+                onClick={() => setShowBeginPrompt(false)}
+                className="w-full text-white font-bold uppercase active:scale-[0.98] transition-all"
+                style={{
+                  letterSpacing: '0.15em',
+                  fontSize: '11px',
+                  padding: '14px',
+                  borderRadius: '2px',
+                  background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+                  boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+                }}
+              >
+                Got It
+              </button>
+            </div>
           </div>
         </div>
       )}
