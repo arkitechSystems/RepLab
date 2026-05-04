@@ -58,6 +58,9 @@ async function rebuildPBsForTemplateOnClient(client, userId, templateId) {
 
   // For each (exercise_name, weight) tuple across surviving sessions for
   // this user+template, find the max reps. That tuple becomes the PB row.
+  // Only completed sets count as PRs — planned/pre-filled sets are
+  // explicitly excluded (is_completed=FALSE) so a user writing down their
+  // plan ahead of time can't accidentally set a PR they didn't actually lift.
   const { rows } = await client.query(
     `SELECT se.exercise_name AS exercise_name,
             se.weight AS best_weight,
@@ -68,6 +71,7 @@ async function rebuildPBsForTemplateOnClient(client, userId, templateId) {
         AND s.template_id = $2
         AND se.weight > 0
         AND se.reps > 0
+        AND se.is_completed = TRUE
       GROUP BY se.exercise_name, se.weight`,
     [userId, templateId]
   );
@@ -727,10 +731,12 @@ const db = {
         );
       }
 
-      // Track best reps per exercise per weight for PB updates (regular sets only)
+      // Track best reps per exercise per weight for PB updates (straight,
+      // *completed* sets only — planned/pre-filled sets never count as PRs).
       const bestRepsAtWeight = new Map();
       for (const entry of entries) {
         if (entry.setType && entry.setType !== 'straight') continue;
+        if (!entry.isCompleted) continue;
         const w = entry.weight || 0;
         const r = entry.reps || 0;
         if (w > 0 && r > 0) {

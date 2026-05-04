@@ -1774,7 +1774,12 @@ export default function WorkoutSession() {
     exEntries.some((e) => (e.weight !== '' && e.weight !== undefined) || (e.reps !== '' && e.reps !== undefined))
   );
   const sessionDirty = hasEntryData && !persisted;
-  const inputsLocked = !timerStarted || isCompleted;
+  // inputsLocked: weight/reps/notes are NOT editable. Only blocks once the
+  // session is completed; pre-Begin Workout, users can pre-fill planned values.
+  // completionLocked: the green checkmark is gated by Begin Workout — pressing
+  // it pre-Begin shows the popup instead of marking the set complete.
+  const inputsLocked = isCompleted;
+  const completionLocked = !timerStarted || isCompleted;
   const structureLocked = isCompleted; // exercise/set editing allowed before Begin Workout
   const { guardedNavigate, UnsavedModal } = useUnsavedGuard({
     isDirty: sessionDirty,
@@ -2490,7 +2495,7 @@ export default function WorkoutSession() {
               onBlur={inputsLocked ? undefined : wrapCb(handleBlur)}
               completedSets={completedSets}
               autoFilled={autoFilled}
-              onToggleComplete={inputsLocked ? undefined : wrapCb(handleToggleComplete)}
+              onToggleComplete={completionLocked ? () => setShowBeginPrompt(true) : wrapCb(handleToggleComplete)}
               onAddSet={structureLocked ? undefined : wrapCb(handleAddSet)}
               onDeleteSet={structureLocked ? undefined : wrapCb(handleDeleteSet)}
               onSwapExercise={structureLocked ? undefined : (_oldName, newName) => handleSwapExercise(eKey, newName)}
@@ -2574,7 +2579,7 @@ export default function WorkoutSession() {
               <p className="text-[13px] text-white/55 leading-relaxed">
                 {isCompleted
                   ? 'Scroll down and tap Undo Completion to edit this session.'
-                  : 'Tap Begin Workout above to start the timer and unlock the set inputs.'}
+                  : 'You can pre-fill weights and reps anytime. Tap Begin Workout above to start the timer and mark sets complete.'}
               </p>
             </div>
 
