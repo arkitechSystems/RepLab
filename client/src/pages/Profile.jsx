@@ -256,11 +256,18 @@ export default function Profile() {
   const [defaultPinRestTimer, setDefaultPinRestTimer] = useState(() => {
     try { return JSON.parse(localStorage.getItem('wf-default-pin-rest-timer')) ?? true; } catch { return true; }
   });
+  // Default OFF for new users — keeps the workout view minimal on first run.
+  // Users who want goal-weight / goal-reps / set-type columns can opt in
+  // here, and that choice persists for subsequent sessions via the same
+  // localStorage key WorkoutSession.jsx reads.
   const [defaultShowGoalWeight, setDefaultShowGoalWeight] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('wf-default-show-goal-weight')) ?? true; } catch { return true; }
+    try { return JSON.parse(localStorage.getItem('wf-default-show-goal-weight')) ?? false; } catch { return false; }
   });
   const [defaultShowGoalReps, setDefaultShowGoalReps] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('wf-default-show-goal-reps')) ?? true; } catch { return true; }
+    try { return JSON.parse(localStorage.getItem('wf-default-show-goal-reps')) ?? false; } catch { return false; }
+  });
+  const [defaultShowSetType, setDefaultShowSetType] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('replab_show_set_type')) ?? false; } catch { return false; }
   });
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackType, setFeedbackType] = useState('bug');
@@ -310,6 +317,9 @@ export default function Profile() {
   useEffect(() => {
     localStorage.setItem('wf-default-show-goal-reps', JSON.stringify(defaultShowGoalReps));
   }, [defaultShowGoalReps]);
+  useEffect(() => {
+    localStorage.setItem('replab_show_set_type', JSON.stringify(defaultShowSetType));
+  }, [defaultShowSetType]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -785,6 +795,22 @@ export default function Profile() {
                     className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${defaultShowGoalReps ? 'bg-wf-red' : 'bg-white/15'}`}
                   >
                     <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${defaultShowGoalReps ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between gap-px">
+                  <div className="flex items-center gap-px flex-1 min-w-0">
+                    <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h10M7 12h10M7 17h6" />
+                    </svg>
+                    <span className="text-white/70 text-sm font-medium">Show Set Type</span>
+                  </div>
+                  <button
+                    onClick={() => setDefaultShowSetType(!defaultShowSetType)}
+                    aria-label={defaultShowSetType ? 'Hide set type by default' : 'Show set type by default'}
+                    className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${defaultShowSetType ? 'bg-wf-red' : 'bg-white/15'}`}
+                  >
+                    <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${defaultShowSetType ? 'translate-x-5' : 'translate-x-0.5'}`} />
                   </button>
                 </div>
               </div>

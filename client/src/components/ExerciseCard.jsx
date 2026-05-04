@@ -276,13 +276,16 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
         <div className={showSetType ? 'w-[1.43rem] shrink-0 text-center' : 'w-[2.8rem] shrink-0 text-center'}>Set</div>
         {showSetType && <div className="w-[2.8rem] shrink-0 text-center">Type</div>}
         {!isTemplate && showGoalWeight && <div className="w-[3.15rem] shrink-0 text-center">Goal Wt</div>}
-        <div className={showGoalWeight ? 'w-[3.15rem] shrink-0 text-center' : 'w-[6.5rem] shrink-0 text-center'}>Actual Wt</div>
+        {/* When the Goal column is hidden there's only one weight column,
+            so the simpler "Weight" label reads cleaner than "Actual Wt"
+            (which only makes sense as a contrast to "Goal Wt"). */}
+        <div className={showGoalWeight ? 'w-[3.15rem] shrink-0 text-center' : 'w-[6.5rem] shrink-0 text-center'}>{showGoalWeight ? 'Actual Wt' : 'Weight'}</div>
         {isTemplate ? (
           <div className="flex-1 text-center">Reps</div>
         ) : (
           <>
             {showGoalReps && <div className="flex-1 text-center">Goal Reps</div>}
-            <div className="text-center" style={{ flex: '1' }}>Actual Reps</div>
+            <div className="text-center" style={{ flex: '1' }}>{showGoalReps ? 'Actual Reps' : 'Reps'}</div>
           </>
         )}
       </div>
