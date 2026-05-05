@@ -210,7 +210,7 @@ export default function PlateCalculator() {
             </div>
 
             {/* Bar + plates visual with +/- adjustment pinned at the far
-                left. The +/- column is absolutely positioned so it stays
+                right. The +/- column is absolutely positioned so it stays
                 anchored when plates are added/removed (the centered bar
                 visual would otherwise re-flow and shift the buttons).
                 In one-side mode we hide the left half of the bar so the
@@ -219,9 +219,9 @@ export default function PlateCalculator() {
                 in the middle instead of the bar. */}
             {valid && (
               <div className="my-5 relative" style={{ minHeight: 110 }}>
-                {/* +/- adjust column — anchored to the far left edge of
+                {/* +/- adjust column — anchored to the far right edge of
                     the row so it doesn't drift as the bar+plates re-center. */}
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 flex flex-col gap-1.5 shrink-0 z-10">
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col gap-1.5 shrink-0 z-10">
                   <button
                     onClick={() => adjustTarget(+1)}
                     aria-label={`Add ${selectedPlate} lb plate`}
@@ -254,13 +254,13 @@ export default function PlateCalculator() {
                   </button>
                 </div>
 
-                {/* Centered bar + plates visual. Left padding (52px) clears
+                {/* Centered bar + plates visual. Right padding (52px) clears
                     the absolute +/- column with a 16px gap to the bar.
-                    Right padding mirrors that 16px gap to the card edge,
-                    so the bar sits visually centered between the right
-                    edge of the +/- buttons and the right edge of the card
+                    Left padding mirrors that 16px gap to the card edge,
+                    so the bar sits visually centered between the left
+                    edge of the card and the left edge of the +/- buttons
                     rather than the geometric center of the full row. */}
-                <div className="flex items-center justify-center gap-2 h-full" style={{ paddingLeft: 52, paddingRight: 16, minHeight: 110 }}>
+                <div className="flex items-center justify-center gap-2 h-full" style={{ paddingLeft: 16, paddingRight: 52, minHeight: 110 }}>
                   {/* Left side plates — hidden in one-side mode (landmine
                       / single-end load). Always visible in machine mode
                       (bar === 0) since plate-loaded machines load on
