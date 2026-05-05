@@ -3280,7 +3280,7 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
       const actualVolume = actualWeight > 0 ? actualWeight * actualReps : 0;
       const setType = exEntries[idx]?.setType || set.setType || ex.setType || 'straight';
       const hitGoal = goalReps > 0 ? actualReps >= goalReps : true;
-      return { setNumber: set.setNumber, goalVolume, actualVolume, goalReps, actualReps, goalWeight, actualWeight, setType, hitGoal };
+      return { setNumber: set.setNumber, goalVolume, actualVolume, goalReps, actualReps, goalWeight, actualWeight, setType, hitGoal, completed: isSetCompleted };
     });
     const totalGoalVol = setStats.reduce((s, ss) => s + ss.goalVolume, 0);
     const totalActualVol = setStats.reduce((s, ss) => s + ss.actualVolume, 0);
@@ -3922,67 +3922,64 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
               );
             })}
           </div>
-        </div>
-      </div>
 
-      {/* Bottom buttons — pads for the bottom nav + safe area via the
-          shared --rl-nav-clearance CSS var so the Done button isn't eaten
-          by the nav. Save as Template mirrors the "+ Create Workout"
-          button on the My Workouts card. */}
-      <div
-        className="relative z-20 px-4 pt-4 bg-gradient-to-t from-black via-black/95 to-transparent space-y-3"
-        style={{ paddingBottom: 'calc(1rem + var(--rl-nav-clearance))' }}
-      >
-        <button
-          onClick={saveAsTemplate}
-          disabled={savingTemplate || savedAsTemplate}
-          className="w-full active:scale-[0.97] transition-all text-white text-[11px] font-bold uppercase whitespace-nowrap py-3 disabled:opacity-70"
-          style={{
-            letterSpacing: '0.15em',
-            borderRadius: '2px',
-            background: savedAsTemplate
-              ? 'linear-gradient(135deg, rgba(34,197,94,0.85) 0%, rgba(22,163,74,0.85) 100%)'
-              : 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
-            boxShadow: savedAsTemplate
-              ? '0 4px 14px rgba(34,197,94,0.35), inset 0 1px 0 rgba(255,255,255,0.15)'
-              : '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
-          }}
-        >
-          {savedAsTemplate ? '✓ Saved to My Workouts' : savingTemplate ? 'Saving…' : '+ Save as Template'}
-        </button>
-        {template.id && sessionDate && (
-          <button
-            onClick={() => {
-              // When the summary is shown as a modal over the live WorkoutSession
-              // (we're already at /session/:templateId/:date), navigate is a no-op
-              // and the modal stays open. The parent passes onViewWorkout in that
-              // case so we can just close the summary. From the standalone
-              // /summary/:id route there's no onViewWorkout — fall through to a
-              // real navigate.
-              if (onViewWorkout) {
-                onViewWorkout();
-              } else {
-                navigate(`/session/${template.id}/${sessionDate}`);
-              }
-            }}
-            className="w-full active:scale-[0.97] transition-all text-white text-[11px] font-bold uppercase whitespace-nowrap py-3"
-            style={{
-              letterSpacing: '0.15em',
-              borderRadius: '2px',
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.15)',
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
-            }}
-          >
-            View Workout
-          </button>
-        )}
-        <button
-          onClick={onClose}
-          className="w-full bg-black text-wf-gray-400 border border-wf-gray-600 font-bold py-3.5 rounded-xl text-base active:scale-[0.98] transition-all"
-        >
-          Done
-        </button>
+          {/* Action buttons — placed at the bottom of the scrollable summary
+              so they don't block the per-exercise breakdown. Quick-exit lives
+              in the X at the top-left of the modal. Save as Template mirrors
+              the "+ Create Workout" button on the My Workouts card. */}
+          <div className="pt-6 space-y-3">
+            <button
+              onClick={saveAsTemplate}
+              disabled={savingTemplate || savedAsTemplate}
+              className="w-full active:scale-[0.97] transition-all text-white text-[11px] font-bold uppercase whitespace-nowrap py-3 disabled:opacity-70"
+              style={{
+                letterSpacing: '0.15em',
+                borderRadius: '2px',
+                background: savedAsTemplate
+                  ? 'linear-gradient(135deg, rgba(34,197,94,0.85) 0%, rgba(22,163,74,0.85) 100%)'
+                  : 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+                boxShadow: savedAsTemplate
+                  ? '0 4px 14px rgba(34,197,94,0.35), inset 0 1px 0 rgba(255,255,255,0.15)'
+                  : '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+              }}
+            >
+              {savedAsTemplate ? '✓ Saved to My Workouts' : savingTemplate ? 'Saving…' : '+ Save as Template'}
+            </button>
+            {template.id && sessionDate && (
+              <button
+                onClick={() => {
+                  // When the summary is shown as a modal over the live WorkoutSession
+                  // (we're already at /session/:templateId/:date), navigate is a no-op
+                  // and the modal stays open. The parent passes onViewWorkout in that
+                  // case so we can just close the summary. From the standalone
+                  // /summary/:id route there's no onViewWorkout — fall through to a
+                  // real navigate.
+                  if (onViewWorkout) {
+                    onViewWorkout();
+                  } else {
+                    navigate(`/session/${template.id}/${sessionDate}`);
+                  }
+                }}
+                className="w-full active:scale-[0.97] transition-all text-white text-[11px] font-bold uppercase whitespace-nowrap py-3"
+                style={{
+                  letterSpacing: '0.15em',
+                  borderRadius: '2px',
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
+                }}
+              >
+                View Workout
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="w-full bg-black text-wf-gray-400 border border-wf-gray-600 font-bold py-3.5 rounded-xl text-base active:scale-[0.98] transition-all"
+            >
+              Done
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Share menu bottom sheet — Nike style: black gradient panel with
