@@ -3853,10 +3853,42 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
                   <div className="space-y-1.5">
                     {ex.setStats.map((ss) => {
                       const maxRatio = 1.25;
-                      const ratio = ss.goalVolume > 0 ? ss.actualVolume / ss.goalVolume : 0;
-                      const barPct = Math.min(100, (ratio / maxRatio) * 100);
+                      // Volume ratio when both sides are computable, otherwise
+                      // fall back to a rep ratio so bodyweight / zero-weight
+                      // sets still render a meaningful bar.
+                      let ratio = 0;
+                      if (ss.completed) {
+                        if (ss.goalVolume > 0 && ss.actualVolume > 0) {
+                          ratio = ss.actualVolume / ss.goalVolume;
+                        } else if (ss.goalReps > 0 && ss.actualReps > 0) {
+                          ratio = ss.actualReps / ss.goalReps;
+                        }
+                      }
                       const tickPos = (1 / maxRatio) * 100;
-                      const barColor = ratio > 1 ? 'bg-green-500' : ratio === 1 ? 'bg-yellow-500' : 'bg-red-500';
+                      // Color always tracks the rep-based hitGoal so the bar
+                      // agrees with the ✓/✗ checkmark on the same row. A set
+                      // where the user used heavier weight but missed the
+                      // rep goal still reads as red — matching how the user
+                      // thinks about "did I hit my goal."
+                      const barColor = !ss.completed
+                        ? 'bg-white/0' // empty track only
+                        : !ss.hitGoal
+                          ? 'bg-red-500'
+                          : ratio > 1
+                            ? 'bg-green-500'
+                            : ratio === 1
+                              ? 'bg-yellow-500'
+                              : 'bg-yellow-500';
+                      const rawPct = (ratio / maxRatio) * 100;
+                      // Floor missed-goal sets at a visible width so a 0%
+                      // (e.g. BW set with no logged volume) still shows red
+                      // — the whole point of the bar is to make missed goals
+                      // visible at a glance.
+                      const barPct = !ss.completed
+                        ? 0
+                        : !ss.hitGoal
+                          ? Math.max(rawPct, 8)
+                          : Math.min(100, rawPct);
 
                       return (
                         <div key={ss.setNumber} className="flex items-center gap-2">
