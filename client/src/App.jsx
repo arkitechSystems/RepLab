@@ -71,8 +71,6 @@ const Test = lazyWithRetry(() => import('./pages/Test'));
 const CardsTest = lazyWithRetry(() => import('./pages/CardsTest'));
 const WorkoutSessionTest = lazyWithRetry(() => import('./pages/WorkoutSessionTest'));
 const TutorialTest = lazyWithRetry(() => import('./pages/TutorialTest'));
-const NewWorkoutSessionTest = lazyWithRetry(() => import('./pages/NewWorkoutSessionTest'));
-const NeumorphicSessionTest = lazyWithRetry(() => import('./pages/NeumorphicSessionTest'));
 const FeaturedWorkoutSession = lazyWithRetry(() => import('./pages/FeaturedWorkoutSession'));
 const TestChallengeSection = lazyWithRetry(() => import('./pages/TestChallengeSection'));
 const NikeTestHomepage = lazyWithRetry(() => import('./pages/NikeTestHomepage'));
@@ -84,6 +82,7 @@ const ParallaxAnimation = lazyWithRetry(() => import('./pages/ParallaxAnimation'
 const NavbarsTest = lazyWithRetry(() => import('./pages/NavbarsTest'));
 const LoginScreensTest = lazyWithRetry(() => import('./pages/LoginScreensTest'));
 const ProgressiveOverloadTest = lazyWithRetry(() => import('./pages/ProgressiveOverloadTest'));
+const LandingPageTest = lazyWithRetry(() => import('./pages/LandingPageTest'));
 const PlateCalculator = lazyWithRetry(() => import('./pages/PlateCalculator'));
 const Progress = lazyWithRetry(() => import('./pages/Progress'));
 const Community = lazyWithRetry(() => import('./pages/Community'));
@@ -198,8 +197,6 @@ export default function App() {
         <Route path="/test/cards" element={<TestRoute><CardsTest /></TestRoute>} />
         <Route path="/test/workout-session" element={<TestRoute><WorkoutSessionTest /></TestRoute>} />
         <Route path="/test/tutorial" element={<TestRoute><TutorialTest /></TestRoute>} />
-        <Route path="/test/new-session" element={<TestRoute><NewWorkoutSessionTest /></TestRoute>} />
-        <Route path="/test/neumorphic-session" element={<TestRoute><NeumorphicSessionTest /></TestRoute>} />
         <Route path="/test/challenge-section" element={<TestRoute><TestChallengeSection /></TestRoute>} />
         <Route path="/test/nike" element={<TestRoute><NikeTestHomepage /></TestRoute>} />
         <Route path="/test/nike-cards" element={<TestRoute><NikeCardsTest /></TestRoute>} />
@@ -210,6 +207,7 @@ export default function App() {
         <Route path="/test/navbars" element={<TestRoute><NavbarsTest /></TestRoute>} />
         <Route path="/test/login-screens" element={<TestRoute><LoginScreensTest /></TestRoute>} />
         <Route path="/test/progressive-overload" element={<TestRoute><ProgressiveOverloadTest /></TestRoute>} />
+        <Route path="/test/landing" element={<TestRoute><LandingPageTest /></TestRoute>} />
       </Route>
 
       <Route path="*" element={<CatchAllRedirect />} />
