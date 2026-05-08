@@ -160,11 +160,7 @@ function LibraryFlipCard({ program, programColor, idx, isFlipped, onFlip, onView
                   <span className="text-white/40 text-[11px] leading-none select-none">·</span>
                   <span
                     className="text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full"
-                    style={
-                      program.programType === 'glute_focused'
-                        ? { background: '#ec4899', color: '#ffffff', boxShadow: '0 4px 12px rgba(236,72,153,0.35)' }
-                        : { background: '#e8eaed', color: '#000000', boxShadow: '0 4px 12px rgba(255,255,255,0.10)' }
-                    }
+                    style={{ background: '#e8eaed', color: '#000000', boxShadow: '0 4px 12px rgba(255,255,255,0.10)' }}
                   >{
                     program.programType === 'strength_conditioning' ? 'Shred'
                     : program.programType === 'hypertrophy_strength' ? 'Hyp & Str'
