@@ -265,14 +265,38 @@ app.get('/health', (req, res) => res.json({
 // Serve exercise demo videos
 app.use('/videos', express.static(path.join(__dirname, 'VidLib')));
 
-// Serve built client in production
+// Serve built client in production.
+//   - /assets/* files are content-hashed by Vite (index-CgIhV5KL.js, etc.)
+//     so they're safe to cache aggressively forever (immutable).
+//   - index.html must NOT be cached — it references those hashed assets and
+//     a new deploy changes which hashes are valid. Without no-cache here,
+//     browsers serve stale HTML pointing at chunks that no longer exist on
+//     the server, which produces the dreaded "Failed to load module script:
+//     Expected JavaScript-or-Wasm module script but server responded with
+//     MIME type of text/html" error.
 const clientDist = path.join(__dirname, '..', 'client', 'dist');
-app.use(express.static(clientDist));
-// Catch-all for React SPA — skip server-rendered pages (/admin, /trainer)
+app.use(express.static(clientDist, {
+  setHeaders(res, filePath) {
+    if (filePath.endsWith('index.html')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    } else if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+  },
+}));
+// Catch-all for React SPA — skip server-rendered pages (/admin, /trainer).
+// Critically, /assets/* requests must NEVER fall through to index.html: if a
+// hashed chunk is missing, return a clean 404 so the browser surfaces it
+// (and our lazyWithRetry / SW recovery can react) instead of "successfully"
+// loading HTML as JavaScript.
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/admin') || req.path.startsWith('/trainer') || req.path.startsWith('/workouts')) {
     return next();
   }
+  if (req.path.startsWith('/assets/')) {
+    return res.status(404).send('Asset not found');
+  }
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.sendFile(path.join(clientDist, 'index.html'));
 });
 
