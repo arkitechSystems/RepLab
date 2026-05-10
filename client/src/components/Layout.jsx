@@ -7,7 +7,11 @@ import { useTutorial } from '../context/TutorialContext';
 import { useAuth } from '../context/AuthContext';
 import { MiniPlayer, useVideoPlayer } from '../context/VideoPlayerContext';
 
-export default function Layout() {
+// Layout normally renders the matched child route via &lt;Outlet /&gt;. Accepting
+// an optional `children` prop lets a non-route consumer (e.g. the conditional
+// HomeRoute in App.jsx) wrap a component in the chrome without nesting under
+// a Route. When `children` is provided we render them instead of the Outlet.
+export default function Layout({ children }) {
   const { tutorial } = useTutorial();
   const { user } = useAuth();
   const { video, minimized } = useVideoPlayer();
@@ -126,7 +130,7 @@ export default function Layout() {
         }
       >
         <div className="page-fade-in" key={location.pathname}>
-          <Outlet />
+          {children ?? <Outlet />}
         </div>
       </main>
       {!isDashboardEmbed && <BottomNav />}

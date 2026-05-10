@@ -13,14 +13,16 @@ import { evaluateAndMaybeNotify as evaluateStreakReminder } from '../streakRemin
 
 const router = Router();
 
-// Startup guard: if ADMIN_PASS / ADMIN_KEY is set but is NOT a bcrypt hash
-// ($2... prefix), the login flow silently rejects it forever. Surface the
-// misconfiguration loudly so it isn't a "why can't I log in?" mystery later.
+// Startup guard: if ADMIN_PASS is set but is NOT a bcrypt hash ($2... prefix),
+// the login flow silently rejects it forever. Surface the misconfiguration
+// loudly so it isn't a "why can't I log in?" mystery later. ADMIN_KEY is a
+// separate query-string auth token (intentionally non-bcrypt random hex) and
+// is not checked here.
 (() => {
-  const env = process.env.ADMIN_PASS || process.env.ADMIN_KEY;
+  const env = process.env.ADMIN_PASS;
   if (env && !env.startsWith('$2')) {
     console.error(
-      '[admin] WARNING: ADMIN_PASS/ADMIN_KEY is set but is not a bcrypt hash ' +
+      '[admin] WARNING: ADMIN_PASS is set but is not a bcrypt hash ' +
       "(must start with '$2'). Plaintext env passwords are rejected. " +
       "Generate a hash with: node -e \"console.log(require('bcryptjs').hashSync('yourPassword', 10))\""
     );
@@ -749,6 +751,11 @@ router.get('/', adminAuth, async (req, res) => {
       <div class="card-title">Feedback</div>
       <div class="card-desc">View bug reports and improvement ideas submitted by users.</div>
     </a>
+    <a class="card glass" href="/admin/pro-waiting-list">
+      <div class="card-icon">📝</div>
+      <div class="card-title">REPLAB Pro Waiting List</div>
+      <div class="card-desc">Pre-launch interest list. Shows whether each entry is an existing member.</div>
+    </a>
     <a class="card glass" href="/admin/retention">
       <div class="card-icon">📈</div>
       <div class="card-title">Retention Dashboard</div>
@@ -1428,6 +1435,93 @@ router.get('/feedback', adminAuth, async (req, res) => {
   </table>
   </div>
   ${helpBlock('The Feedback page displays every bug report and improvement idea submitted by users through the Send Feedback form in their Profile tab. Each submission is saved to your database with the user\'s name, the type of feedback (Bug Report or Improvement Idea), their full message, and the date and time it was submitted. Feedback is not visible to other users — only you can see it here. Use this page to prioritize which bugs to fix and which features to build next based on real user input. The stats at the top give you a quick breakdown of total submissions, bug reports, and ideas. This replaced the old FormSubmit integration, so all feedback is now stored internally and never leaves your server.')}`));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// REPLAB Pro waiting list — pre-launch interest capture. Joins to users so
+// each row shows whether the email belongs to an existing account, what plan
+// they're on, and whether they joined while logged in vs. anonymous.
+router.get('/pro-waiting-list', adminAuth, async (req, res) => {
+  try {
+    const { rows: entries } = await pool.query(
+      `SELECT w.id,
+              w.email,
+              w.user_id,
+              w.source,
+              w.created_at,
+              u.first_name,
+              u.last_name,
+              u.username,
+              u.plan,
+              u.created_at AS user_created_at
+         FROM pro_waiting_list w
+         LEFT JOIN users u ON u.id = w.user_id
+         ORDER BY w.created_at DESC`
+    );
+
+    const memberCount = entries.filter((e) => e.user_id != null).length;
+    const proCount = entries.filter((e) => e.plan === 'Pro' || e.plan === 'Elite').length;
+    const guestCount = entries.length - memberCount;
+
+    const tableRows = entries.map((e, i) => {
+      const date = new Date(e.created_at).toLocaleDateString('en-US', {
+        timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric',
+      });
+      const time = new Date(e.created_at).toLocaleTimeString('en-US', {
+        timeZone: 'UTC', hour: 'numeric', minute: '2-digit',
+      });
+
+      let memberBadge;
+      if (e.user_id == null) {
+        memberBadge = '<span style="background:rgba(148,163,184,0.15);color:#94a3b8;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">No Account</span>';
+      } else if (e.plan === 'Pro' || e.plan === 'Elite') {
+        memberBadge = `<span style="background:rgba(239,68,68,0.18);color:#fca5a5;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;">${esc(e.plan)}</span>`;
+      } else {
+        memberBadge = `<span style="background:rgba(34,197,94,0.15);color:#86efac;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">${esc(e.plan || 'Free')}</span>`;
+      }
+
+      const sourceBadge = e.source === 'logged_in'
+        ? '<span style="background:rgba(59,130,246,0.15);color:#60a5fa;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">Signed In</span>'
+        : '<span style="background:rgba(168,85,247,0.15);color:#c4b5fd;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">Email Only</span>';
+
+      const name = [e.first_name, e.last_name].filter(Boolean).join(' ')
+        || e.username
+        || '<span style="color:rgba(255,255,255,0.3);">—</span>';
+
+      return `<tr>
+        <td>${i + 1}</td>
+        <td>${esc(e.email)}</td>
+        <td>${name}</td>
+        <td>${memberBadge}</td>
+        <td>${sourceBadge}</td>
+        <td>${date} <span style="color:#888;">${time} UTC</span></td>
+      </tr>`;
+    }).join('');
+
+    res.send(adminPage('REPLAB Pro Waiting List', `
+  <div class="breadcrumb"><a href="/admin">Dashboard</a> / REPLAB Pro Waiting List</div>
+  <div class="header">
+    <h1>Admin Dashboard</h1>
+    <h2>REPLAB Pro Waiting List</h2>
+    <p>Generated ${new Date().toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+  </div>
+  <div class="stats">
+    <div class="stat glass"><div class="value">${entries.length}</div><div class="label">Total on List</div></div>
+    <div class="stat glass"><div class="value">${memberCount}</div><div class="label">Existing Accounts</div></div>
+    <div class="stat glass"><div class="value">${proCount}</div><div class="label">Already Pro</div></div>
+    <div class="stat glass"><div class="value">${guestCount}</div><div class="label">Email Only</div></div>
+  </div>
+  <div class="glass table-wrap" style="border-radius:16px;">
+  <table>
+    <thead><tr><th>#</th><th>Email</th><th>Name</th><th>Plan</th><th>Source</th><th>Joined</th></tr></thead>
+    <tbody>${tableRows || '<tr><td colspan="6" style="text-align:center;color:rgba(255,255,255,0.3);">No one on the list yet</td></tr>'}</tbody>
+  </table>
+  </div>
+  ${helpBlock('Every email submitted via the public /waiting-list page lands here. The Plan column resolves automatically: if the email matches an existing account we join to users.plan and show Free / Pro / Elite. If the email isn\'t tied to an account it shows "No Account" — those are leads who signed up email-only and have not yet created a RepLab account. Source distinguishes "Signed In" (joined while authenticated) from "Email Only" (anonymous). Re-submitting from the same email is idempotent — it never creates duplicates.')}`));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 function isPhone(value) {
@@ -47,8 +47,18 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const phone = isPhone(identifier);
+
+  // Whitelisted post-login redirects. Open-redirect via a free-form ?redirect=
+  // would let an attacker craft a phishing URL like
+  //   /login?redirect=https://evil.example
+  // and bounce the user there. Mapping known tokens → known paths keeps the
+  // redirect surface intentional.
+  const REDIRECTS = {
+    waitlist: '/waiting-list?auto=1',
+  };
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -56,7 +66,8 @@ export default function Login() {
     setLoading(true);
     try {
       await login(identifier, password);
-      navigate('/');
+      const target = REDIRECTS[searchParams.get('redirect')] || '/';
+      navigate(target);
     } catch (err) {
       setError(err.message);
     } finally {

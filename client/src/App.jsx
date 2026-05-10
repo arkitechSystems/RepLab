@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 import { useAuth } from './context/AuthContext';
 import { api } from './api';
 import SplashScreen from './components/SplashScreen';
@@ -65,6 +66,8 @@ const TutorialWorkout = lazyWithRetry(() => import('./pages/TutorialWorkout'));
 const Terms = lazyWithRetry(() => import('./pages/Terms'));
 const Privacy = lazyWithRetry(() => import('./pages/Privacy'));
 const NotFound = lazyWithRetry(() => import('./pages/NotFound'));
+const WaitingList = lazyWithRetry(() => import('./pages/WaitingList'));
+const LandingPage = lazyWithRetry(() => import('./pages/LandingPage'));
 
 // Test pages — only loaded by test users
 const Test = lazyWithRetry(() => import('./pages/Test'));
@@ -83,6 +86,7 @@ const NavbarsTest = lazyWithRetry(() => import('./pages/NavbarsTest'));
 const LoginScreensTest = lazyWithRetry(() => import('./pages/LoginScreensTest'));
 const ProgressiveOverloadTest = lazyWithRetry(() => import('./pages/ProgressiveOverloadTest'));
 const LandingPageTest = lazyWithRetry(() => import('./pages/LandingPageTest'));
+const LandingPageAuroraTest = lazyWithRetry(() => import('./pages/LandingPageAuroraTest'));
 const PlateCalculator = lazyWithRetry(() => import('./pages/PlateCalculator'));
 const Progress = lazyWithRetry(() => import('./pages/Progress'));
 const Community = lazyWithRetry(() => import('./pages/Community'));
@@ -114,6 +118,26 @@ function CatchAllRedirect() {
   // authenticated users landing on an unknown path see the friendly 404.
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   return <NotFound />;
+}
+
+// Root URL ('/') gateway. Picks between the marketing landing page and the
+// authenticated dashboard based on platform + auth state:
+//   - Capacitor (iOS / Android wrappers): never show marketing, always go
+//     straight to login or dashboard. Mobile users already installed the
+//     app — they don't need a sales page.
+//   - Web, authenticated:   render the dashboard (Workouts) inside Layout.
+//   - Web, not authenticated: render the public LandingPage.
+// Works because Layout accepts an optional children prop in addition to the
+// usual &lt;Outlet /&gt; pattern, so we can wrap Workouts here without nesting
+// under a Route.
+function HomeRoute() {
+  const { isAuthenticated } = useAuth();
+  if (Capacitor.isNativePlatform()) {
+    if (!isAuthenticated) return <Navigate to="/login" replace />;
+    return <Layout><Workouts /></Layout>;
+  }
+  if (!isAuthenticated) return <LandingPage />;
+  return <Layout><Workouts /></Layout>;
 }
 
 function PageTracker() {
@@ -162,8 +186,15 @@ export default function App() {
       <Route path="/reset-password/:token" element={<PublicRoute><ResetPassword /></PublicRoute>} />
       <Route path="/terms" element={<Terms />} />
       <Route path="/privacy" element={<Privacy />} />
+      <Route path="/waiting-list" element={<WaitingList />} />
       <Route path="/welcome" element={<ProtectedRoute><Welcome /></ProtectedRoute>} />
       <Route path="/free-trial" element={<ProtectedRoute><FreeTrialOffer /></ProtectedRoute>} />
+
+      {/* Root URL is conditional — see HomeRoute. Authed users get the
+          dashboard wrapped in Layout (children form); unauth web visitors
+          see the marketing LandingPage; Capacitor users skip the landing
+          and bounce to /login if not authed. */}
+      <Route path="/" element={<HomeRoute />} />
 
       <Route
         element={
@@ -172,7 +203,6 @@ export default function App() {
           </ProtectedRoute>
         }
       >
-        <Route path="/" element={<Workouts />} />
         <Route path="/calendar" element={<Calendar />} />
         <Route path="/session/:templateId/:date" element={<WorkoutSession />} />
         <Route path="/clientworkouts/create" element={<CreateWorkout />} />
@@ -208,6 +238,7 @@ export default function App() {
         <Route path="/test/login-screens" element={<TestRoute><LoginScreensTest /></TestRoute>} />
         <Route path="/test/progressive-overload" element={<TestRoute><ProgressiveOverloadTest /></TestRoute>} />
         <Route path="/test/landing" element={<TestRoute><LandingPageTest /></TestRoute>} />
+        <Route path="/test/landing-aurora" element={<TestRoute><LandingPageAuroraTest /></TestRoute>} />
       </Route>
 
       <Route path="*" element={<CatchAllRedirect />} />

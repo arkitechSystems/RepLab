@@ -1,26 +1,19 @@
 import { useNavigate } from 'react-router-dom';
 
-// Sandbox for the future replab-fitness.com root marketing site. App users
-// land here, then either log into the web app, download the mobile app,
-// subscribe, or shop merch. Will be ported to a static site / separate
-// Render service when the subdomain split happens.
-export default function LandingPageTest() {
+// Public marketing landing page. Rendered at `/` for unauthenticated browser
+// visitors via HomeRoute in App.jsx. Mobile (Capacitor) users never see this
+// page — they're routed straight to /login or the dashboard. Iterate on copy
+// and styling in /test/landing first; this file is what ships to
+// replab-fitness.com.
+export default function LandingPage() {
   const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Top nav */}
+      {/* Top nav. No Back button — this is the root URL, there's nothing to
+          go back to. Logo is centered, Log In CTA on the right. */}
       <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-black/70 border-b border-white/5">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-1 text-wf-red text-sm font-medium active:opacity-70"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-            </svg>
-            Back
-          </button>
           <div className="text-xl font-black tracking-widest">
             REP<span className="text-wf-red">LAB</span>
           </div>
@@ -50,9 +43,6 @@ export default function LandingPageTest() {
           <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-wf-red mb-6">
             Train Smarter · Track Everything
           </p>
-          {/* Headline typography matches the Nike Knockout "Sign In →" button
-              from /test/login-screens #1 — font-black, uppercase, 0.25em
-              letterspacing. Color treatment preserved (Logged. in wf-red). */}
           <h1
             className="text-5xl md:text-7xl font-black uppercase leading-[0.95] mb-6"
             style={{ letterSpacing: '0.25em' }}
@@ -64,7 +54,6 @@ export default function LandingPageTest() {
             REPLAB is the lifter's logbook. Track every set, every rep, every PR — across iOS, Android, and the web.
           </p>
 
-          {/* Primary CTA: log in to web app */}
           <div className="flex flex-col sm:flex-row gap-3 justify-center items-center mb-6">
             <button
               onClick={() => navigate('/login')}
@@ -84,7 +73,6 @@ export default function LandingPageTest() {
             </button>
           </div>
 
-          {/* App store badges (placeholders pre-launch) */}
           <div className="flex flex-col sm:flex-row gap-3 justify-center items-center mt-8">
             <p className="text-[10px] uppercase tracking-widest text-white/40 sm:mr-2">Get the mobile app</p>
             <button
@@ -111,7 +99,7 @@ export default function LandingPageTest() {
         </div>
       </section>
 
-      {/* Pro subscription CTA */}
+      {/* REPLAB Pro CTA */}
       <section className="px-6 py-20 border-t border-white/5">
         <div className="max-w-3xl mx-auto text-center">
           <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-wf-red mb-3">REPLAB Pro</p>

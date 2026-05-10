@@ -46,8 +46,18 @@ export default function Test() {
             style={{ border: '1px solid rgba(239,68,68,0.5)' }}
           >
             <div className="p-5">
-              <h2 className="text-xl font-black text-white tracking-tight">Landing Page</h2>
-              <p className="text-xs text-wf-gray-500 mt-1">Marketing site sandbox for replab-fitness.com — hero, features, Pro/Shop CTAs, web app login. Will be ported to a static site post-launch.</p>
+              <h2 className="text-xl font-black text-white tracking-tight">Landing Page (Smooth)</h2>
+              <p className="text-xs text-wf-gray-500 mt-1">Original marketing site sandbox — gradient hero, rounded glass cards, smooth Nike-style aesthetic.</p>
+            </div>
+          </div>
+          <div
+            onClick={() => navigate('/test/landing-aurora')}
+            className="glass-card rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
+            style={{ border: '1px solid rgba(239,68,68,0.5)' }}
+          >
+            <div className="p-5">
+              <h2 className="text-xl font-black text-white tracking-tight">Landing Page (Aurora Pulse)</h2>
+              <p className="text-xs text-wf-gray-500 mt-1">Same content, restyled in the Aurora Pulse aesthetic from /test/login-screens #6 — floating red orbs, pulsing conic ring, breathing glow on CTAs, glass cards. Honors prefers-reduced-motion.</p>
             </div>
           </div>
           <div

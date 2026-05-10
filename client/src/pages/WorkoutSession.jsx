@@ -18,6 +18,8 @@ import { getWeightSuggestion } from '../utils/weightSuggestion';
 import { calculateOneRMSuggestion } from '../utils/oneRepMaxSuggestion';
 import { beepCountdown, beepRestEnd, initAudio } from '../utils/sounds';
 import { track } from '../utils/analytics';
+import AddCardioModal from '../components/AddCardioModal';
+import CardioCard from '../components/CardioCard';
 import { BibleVerseOverlay } from './BibleVerses';
 import { pickNextVerse } from '../utils/versePicker';
 
@@ -88,6 +90,11 @@ export default function WorkoutSession() {
   const [notes, setNotes] = useState({});
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [addExerciseSearch, setAddExerciseSearch] = useState('');
+  // Cardio entries are persisted to the server immediately on add (linked to
+  // the session's DB id) so they survive a refresh during a long workout.
+  const [sessionId, setSessionId] = useState(null);
+  const [cardioEntries, setCardioEntries] = useState([]);
+  const [showAddCardio, setShowAddCardio] = useState(false);
   const [autoFilled, setAutoFilled] = useState(new Set()); // tracks predicted entries
   // Refs that always mirror the latest completedSets / autoFilled. handleBlur
   // can fire after a set was just marked complete (focus loss races completion);
@@ -704,6 +711,16 @@ export default function WorkoutSession() {
           if (cancelled) return;
         }
 
+        // Capture the session id so cardio entries can link to it. Also fetch
+        // any cardio already logged against this session (e.g. user navigated
+        // away mid-workout and came back).
+        if (session?.id) {
+          setSessionId(session.id);
+          api(`/cardio?session_id=${session.id}`)
+            .then((rows) => { if (!cancelled && Array.isArray(rows)) setCardioEntries(rows); })
+            .catch(() => {});
+        }
+
         // If still no workout data (shouldn't happen, but safety net)
         if (!session?.workoutData?.exercises) {
           // Fallback: load template directly (legacy behavior)
@@ -1159,6 +1176,31 @@ export default function WorkoutSession() {
 
   const exerciseRefs = useRef({});
   const scrollToExercise = useRef(null);
+
+  // Persist a new cardio entry to the server, then append to local state so
+  // the card appears under the Add Cardio button without a refetch. Throws
+  // on failure so the modal can surface the error to the user.
+  async function handleSaveCardio(payload) {
+    if (!sessionId) throw new Error('Session not ready yet — try again in a moment.');
+    const created = await api('/cardio', {
+      method: 'POST',
+      body: JSON.stringify({ ...payload, session_id: sessionId }),
+    });
+    setCardioEntries((prev) => [...prev, created]);
+    setShowAddCardio(false);
+  }
+
+  async function handleDeleteCardio(id) {
+    // Optimistic removal — re-add the entry on failure (rare).
+    const before = cardioEntries;
+    setCardioEntries((prev) => prev.filter((c) => c.id !== id));
+    try {
+      await api(`/cardio/${id}`, { method: 'DELETE' });
+    } catch (err) {
+      console.error('Failed to delete cardio entry', err);
+      setCardioEntries(before);
+    }
+  }
 
   function handleDeleteExercise(exerciseKey) {
     // Snapshot before deleting
@@ -2730,7 +2772,45 @@ export default function WorkoutSession() {
           </button>
         )}
 
+        {/* Cardio section — saved entries render here, Add Cardio button at
+            the bottom. Hidden during read-only mode (e.g., reviewing a
+            completed session) since the user shouldn't be modifying it. */}
+        {!structureLocked && (
+          <>
+            {cardioEntries.length > 0 && (
+              <div className="mt-1">
+                <div className="text-[10px] uppercase tracking-widest text-cyan-300/60 font-semibold mb-2 px-1">Cardio</div>
+                {cardioEntries.map((c) => (
+                  <CardioCard
+                    key={c.id}
+                    entry={c}
+                    onDelete={() => handleDeleteCardio(c.id)}
+                  />
+                ))}
+              </div>
+            )}
+            <button
+              onClick={() => setShowAddCardio(true)}
+              disabled={!sessionId}
+              className="w-full border border-dashed rounded-xl py-3.5 text-sm font-medium transition-colors flex items-center justify-center gap-2 mb-3 disabled:opacity-50"
+              style={{ borderColor: 'rgba(6,182,212,0.35)', color: 'rgba(103,232,249,0.85)' }}
+              title={sessionId ? 'Add a cardio session' : 'Loading…'}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Add Cardio
+            </button>
+          </>
+        )}
+
       </div>
+
+      <AddCardioModal
+        open={showAddCardio}
+        onClose={() => setShowAddCardio(false)}
+        onSave={handleSaveCardio}
+      />
 
       {/* Add Exercise Modal */}
       {showAddExercise && (() => {

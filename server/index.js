@@ -38,6 +38,8 @@ import workoutDashboardRoutes from './routes/workoutDashboard.js';
 import sharingRoutes from './routes/sharing.js';
 import pushRoutes from './routes/push.js';
 import feedReactionsRoutes from './routes/feedReactions.js';
+import cardioRoutes from './routes/cardio.js';
+import waitlistRoutes from './routes/waitlist.js';
 import db from './db.js';
 import config from './config.js';
 import { sendDailySummaryEmail } from './email.js';
@@ -250,6 +252,8 @@ app.use('/workouts', workoutDashboardRoutes);
 app.use('/sharing', apiLimiter, sharingRoutes);
 app.use('/push', pushRoutes);
 app.use('/feed/reactions', apiLimiter, feedReactionsRoutes);
+app.use('/cardio', cardioRoutes);
+app.use('/waitlist', apiLimiter, waitlistRoutes);
 
 // Health check — pinged by UptimeRobot to prevent Render free-tier sleep
 app.get('/health', (req, res) => res.json({

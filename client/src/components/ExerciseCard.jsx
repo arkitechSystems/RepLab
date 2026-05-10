@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo, memo } from 'react';
+import { useState, useRef, useCallback, useLayoutEffect, useMemo, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { getExerciseVideoId, getExerciseSearchUrl } from '../utils/exerciseVideos.js';
 import { useExercises, getSubstitutesFromList } from '../hooks/useExercises.js';
@@ -72,6 +72,52 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
   const touchStartPos = useRef(null);
   const swipeRowRefs = useRef({});
   const swipeActive = useRef(false);
+
+  // FLIP-style reorder animation. Each card tracks its layout position; when
+  // it changes (because the user moved this card or an adjacent one), apply
+  // an inverted transform and transition back to identity. The card the user
+  // CLICKED also gets a brief lift effect (scale + shadow + raised z-index)
+  // to make it visually clear which card moved vs. which was displaced. Same
+  // mechanism animates inserts/deletes too — anything below shifts smoothly.
+  const cardRef = useRef(null);
+  const prevTopRef = useRef(null);
+  const wasJustClickedRef = useRef(false);
+
+  useLayoutEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    const top = el.offsetTop;
+    if (prevTopRef.current != null && prevTopRef.current !== top) {
+      const dy = prevTopRef.current - top;
+      const isClicked = wasJustClickedRef.current;
+      wasJustClickedRef.current = false;
+
+      el.style.transition = 'none';
+      el.style.transform = isClicked ? `translateY(${dy}px) scale(1.03)` : `translateY(${dy}px)`;
+      if (isClicked) {
+        el.style.zIndex = '10';
+        el.style.boxShadow = '0 16px 48px rgba(0,0,0,0.5)';
+      }
+      // Force reflow so the transition has something to interpolate FROM
+      void el.offsetHeight;
+
+      requestAnimationFrame(() => {
+        el.style.transition = isClicked
+          ? 'transform 320ms cubic-bezier(0.2, 0, 0, 1), box-shadow 320ms ease-out'
+          : 'transform 280ms cubic-bezier(0.2, 0, 0, 1)';
+        el.style.transform = '';
+        if (isClicked) el.style.boxShadow = '';
+
+        const onEnd = () => {
+          el.style.transition = '';
+          el.style.zIndex = '';
+          el.removeEventListener('transitionend', onEnd);
+        };
+        el.addEventListener('transitionend', onEnd);
+      });
+    }
+    prevTopRef.current = top;
+  });
 
   const handleTouchStart = useCallback((idx, e) => {
     const touch = e.touches[0];
@@ -147,7 +193,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
 
   return (
     <>
-    <div data-tutorial={dataTutorial ? 'exercise-card' : undefined} className={`${isDarkTheme ? 'exercise-card-transparent-test' : 'exercise-card-light-test'} glass-card rounded-xl overflow-hidden mb-3${EXERCISE_CARD_GRADIENT_BORDER && !isDarkTheme ? ' exercise-card-gradient-border' : ''}`}>
+    <div ref={cardRef} data-tutorial={dataTutorial ? 'exercise-card' : undefined} className={`${isDarkTheme ? 'exercise-card-transparent-test' : 'exercise-card-light-test'} glass-card rounded-xl overflow-hidden mb-3${EXERCISE_CARD_GRADIENT_BORDER && !isDarkTheme ? ' exercise-card-gradient-border' : ''}`} style={{ position: 'relative' }}>
       {/* Exercise Header — name + demo button */}
       <div data-tutorial={dataTutorial} className="px-4 py-3 flex items-center justify-between" style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '3px double rgba(255,255,255,0.15)' }}>
         <div className="min-w-0">
@@ -197,12 +243,12 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
         <div className="px-4 py-2 border-b border-white/5 flex items-center gap-1.5 bg-white/[0.015]">
             <span data-tutorial={dataTutorial ? 'move-buttons' : undefined} className="flex items-center gap-1.5">
             {onMoveUp && (
-              <button type="button" onClick={onMoveUp} aria-label="Move exercise up" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-white hover:bg-white/20 active:scale-90 transition-all">
+              <button type="button" onClick={() => { wasJustClickedRef.current = true; onMoveUp(); }} aria-label="Move exercise up" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-white hover:bg-white/20 active:scale-90 transition-all">
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>
               </button>
             )}
             {onMoveDown && (
-              <button type="button" onClick={onMoveDown} aria-label="Move exercise down" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-white hover:bg-white/20 active:scale-90 transition-all">
+              <button type="button" onClick={() => { wasJustClickedRef.current = true; onMoveDown(); }} aria-label="Move exercise down" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-white hover:bg-white/20 active:scale-90 transition-all">
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
               </button>
             )}

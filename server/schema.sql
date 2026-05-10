@@ -276,3 +276,39 @@ CREATE TABLE IF NOT EXISTS password_reset_log (
 );
 CREATE INDEX IF NOT EXISTS idx_password_reset_log_user ON password_reset_log(user_id);
 CREATE INDEX IF NOT EXISTS idx_password_reset_log_token ON password_reset_log(token_hash);
+
+-- Cardio entries logged inside (or outside) a workout session. session_id is
+-- nullable so users can log standalone cardio. Common fields are columns;
+-- per-machine specifics (speed, incline, resistance, level, pace, stroke
+-- rate, rpm) live in metadata JSONB so the schema doesn't need a column per
+-- machine type.
+CREATE TABLE IF NOT EXISTS cardio_entries (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  session_id INT REFERENCES sessions(id) ON DELETE CASCADE,
+  cardio_type TEXT NOT NULL,
+  duration_secs INT NOT NULL,
+  distance_m NUMERIC,
+  calories INT,
+  avg_heart_rate INT,
+  notes TEXT,
+  metadata JSONB DEFAULT '{}'::jsonb,
+  sort_order INT DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_cardio_entries_user_session ON cardio_entries(user_id, session_id);
+CREATE INDEX IF NOT EXISTS idx_cardio_entries_user_type ON cardio_entries(user_id, cardio_type);
+
+-- Pre-launch interest list for REPLAB Pro. Anyone can submit an email; if it
+-- matches an existing user we link via user_id so the admin view can show the
+-- account's plan. Emails are unique so re-submitting from the same address
+-- updates the existing row instead of creating duplicates.
+CREATE TABLE IF NOT EXISTS pro_waiting_list (
+  id SERIAL PRIMARY KEY,
+  email TEXT NOT NULL UNIQUE,
+  user_id INT REFERENCES users(id) ON DELETE SET NULL,
+  source TEXT DEFAULT 'email',  -- 'email' | 'logged_in'
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_pro_waiting_list_user ON pro_waiting_list(user_id);
