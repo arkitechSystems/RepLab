@@ -1,4 +1,103 @@
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import AppStoreBadges from '../components/AppStoreBadges';
+
+// ───────────────────────────────────────────────────────────────────────
+// Inline helpers — kept local so the rest of LandingPageTest stays in
+// one file. useBreath / Orb / AuroraButton are ported from
+// LandingPageAuroraTest (only used by the REPLAB Pro section below).
+// TiltFeatureCard is the 3D-tilt-on-hover card from Brainstorm card #7,
+// adapted to take title + body so it can power the Why REPLAB grid.
+// ───────────────────────────────────────────────────────────────────────
+function useBreath(speed = 50) {
+  const [phase, setPhase] = useState(0);
+  useEffect(() => {
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) return;
+    const id = setInterval(() => setPhase((p) => (p + 1) % 1000), speed);
+    return () => clearInterval(id);
+  }, [speed]);
+  return phase;
+}
+
+function Orb({ phase, top, left, right, bottom, size = 280, color = 'rgba(239,68,68,0.6)', blur = 50, freqA = 1, freqB = 1 }) {
+  const t = phase * 0.05;
+  const dx = Math.sin(t * freqA) * 12;
+  const dy = Math.cos(t * freqB) * 10;
+  const style = {
+    position: 'absolute',
+    pointerEvents: 'none',
+    width: size,
+    height: size,
+    borderRadius: '50%',
+    background: `radial-gradient(circle, ${color} 0%, transparent 65%)`,
+    filter: `blur(${blur}px)`,
+    transition: 'all 0.4s linear',
+  };
+  if (top != null) style.top = `calc(${top}% + ${dy}px)`;
+  if (bottom != null) style.bottom = `calc(${bottom}% + ${dy}px)`;
+  if (left != null) style.left = `calc(${left}% + ${dx}px)`;
+  if (right != null) style.right = `calc(${right}% + ${dx}px)`;
+  return <div style={style} />;
+}
+
+function AuroraButton({ phase, onClick, children }) {
+  const t = phase * 0.05;
+  const glowSize = 20 + Math.sin(t * 2) * 10;
+  return (
+    <button
+      onClick={onClick}
+      className="w-full text-white font-bold py-3.5 text-[14px] active:scale-[0.98] transition-transform"
+      style={{
+        borderRadius: 999,
+        boxShadow: `0 0 ${glowSize}px rgba(239,68,68,0.5), inset 0 1px 0 rgba(255,255,255,0.18)`,
+        background: 'linear-gradient(135deg, #EF4444, #B91C1C)',
+        border: 'none',
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function TiltFeatureCard({ title, body }) {
+  const [tx, setTx] = useState({ x: 0, y: 0 });
+  const cardRef = useRef(null);
+  function onMove(e) {
+    const r = cardRef.current?.getBoundingClientRect();
+    if (!r) return;
+    const x = (e.clientX - r.left) / r.width - 0.5;
+    const y = (e.clientY - r.top) / r.height - 0.5;
+    setTx({ x, y });
+  }
+  function onLeave() { setTx({ x: 0, y: 0 }); }
+  return (
+    <div
+      ref={cardRef}
+      onMouseMove={onMove}
+      onMouseLeave={onLeave}
+      className="rounded-2xl p-6 relative"
+      style={{
+        transformStyle: 'preserve-3d',
+        transform: `perspective(900px) rotateY(${tx.x * 14}deg) rotateX(${-tx.y * 14}deg)`,
+        transition: 'transform 0.1s ease-out',
+        willChange: 'transform',
+        background: 'linear-gradient(135deg, #1a1a1a, #0a0a0a)',
+        border: '1px solid rgba(255,255,255,0.1)',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+      }}
+    >
+      <div
+        className="absolute inset-0 rounded-2xl pointer-events-none"
+        style={{
+          background: `radial-gradient(circle at ${(tx.x + 0.5) * 100}% ${(tx.y + 0.5) * 100}%, rgba(239,68,68,0.22), transparent 55%)`,
+        }}
+      />
+      <h3 className="text-lg font-black tracking-tight mb-2 relative">{title}</h3>
+      <p className="text-sm text-white/55 leading-relaxed relative">{body}</p>
+    </div>
+  );
+}
 
 // Sandbox for the future replab-fitness.com root marketing site. App users
 // land here, then either log into the web app, download the mobile app,
@@ -6,6 +105,7 @@ import { useNavigate } from 'react-router-dom';
 // Render service when the subdomain split happens.
 export default function LandingPageTest() {
   const navigate = useNavigate();
+  const phase = useBreath(50);
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -103,87 +203,56 @@ export default function LandingPageTest() {
             </button>
           </div>
 
-          {/* App store badges (placeholders pre-launch) */}
-          <div className="flex flex-col sm:flex-row gap-3 justify-center items-center mt-8">
-            <p className="text-[10px] uppercase tracking-widest text-white/40 sm:mr-2">Get the mobile app</p>
-            <button
-              disabled
-              className="px-6 py-3 rounded-xl border border-white/10 text-sm font-semibold flex items-center gap-2 opacity-50 cursor-not-allowed"
-              title="Coming soon to the App Store"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
-              </svg>
-              App Store
-            </button>
-            <button
-              disabled
-              className="px-6 py-3 rounded-xl border border-white/10 text-sm font-semibold flex items-center gap-2 opacity-50 cursor-not-allowed"
-              title="Coming soon to Google Play"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M3 20.5V3.5c0-.59.34-1.11.84-1.35L13.69 12l-9.85 9.85c-.5-.25-.84-.76-.84-1.35zM16.81 15.12L6.05 21.34l8.49-8.49 2.27 2.27zM20.16 10.81c.34.27.54.69.54 1.19s-.2.92-.54 1.19l-2.62 1.51-2.61-2.61 2.61-2.61 2.62 1.33zM6.05 2.66l10.76 6.22-2.27 2.27-8.49-8.49z"/>
-              </svg>
-              Google Play
-            </button>
+          {/* App store badges — official-style black badges via shared component */}
+          <div className="flex flex-col gap-4 justify-center items-center mt-8">
+            <p className="text-[10px] uppercase tracking-widest text-white/40">Get the mobile app</p>
+            <AppStoreBadges />
           </div>
         </div>
       </section>
 
-      {/* Features grid — "Why REPLAB" replacement with a curated 9-card
-          set covering the core differentiators. Card #9 is a coming-soon
-          teaser with a slightly different visual treatment so it reads as
-          roadmap rather than shipped. */}
+      {/* Features grid — "Why REPLAB" with 8 cards using the 3D-tilt
+          treatment from Brainstorm card #7 (mouse-parallax depth on
+          hover). Card count kept even so the grid lays out cleanly. */}
       <section className="px-6 py-20 border-t border-white/5">
         <div className="max-w-6xl mx-auto">
-          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-wf-red mb-3 text-center">Why REPLAB</p>
-          <h2 className="text-3xl md:text-4xl font-black tracking-tight text-center mb-12">Built for serious lifters.</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-wf-red mb-12 text-center">Why REPLAB</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
               { title: 'Log Every Workout', body: 'Track sets, reps, weights, rest, and set types — every detail of every session.' },
-              { title: 'Progressive Overload', body: 'Auto-suggest next-session weights from your last PR so you keep climbing.' },
               { title: 'Track PRs', body: 'By lift, by weight, and by volume — see every personal record.' },
               { title: 'Share Programs', body: 'Send any workout or program directly to a friend’s account.' },
               { title: 'Custom Programs', body: 'Build your own training splits and reorder exercises anytime.' },
               { title: 'Cross-Device Sync', body: 'iOS, Android, and the web — one logbook, all your devices.' },
-              { title: 'Cardio Logging', body: '7 machine types with tailored fields for each piece of equipment.' },
               { title: '1RM Estimator', body: 'Calculate your one-rep max from any set you log.' },
+              { title: 'Plate Calculator', body: 'Dial in exact plate loading for any target weight and bar setup.' },
               { title: 'Guided Workouts', body: 'Rep-by-rep audio guidance is coming soon to the Featured Workouts section.' },
             ].map((f) => (
-              <div
-                key={f.title}
-                className="rounded-2xl p-6 border"
-                style={{
-                  background: 'linear-gradient(160deg, rgba(239,68,68,0.08) 0%, rgba(239,68,68,0.02) 100%)',
-                  borderColor: 'rgba(239,68,68,0.35)',
-                }}
-              >
-                <h3 className="text-lg font-black tracking-tight mb-2">{f.title}</h3>
-                <p className="text-sm text-white/55 leading-relaxed">{f.body}</p>
-              </div>
+              <TiltFeatureCard key={f.title} title={f.title} body={f.body} />
             ))}
           </div>
         </div>
       </section>
 
-      {/* Pro subscription CTA */}
-      <section className="px-6 py-20 border-t border-white/5">
-        <div className="max-w-3xl mx-auto text-center">
-          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-wf-red mb-3">REPLAB Pro</p>
-          <h2 className="text-3xl md:text-4xl font-black tracking-tight mb-4">AI-generated workouts for smarter training.</h2>
-          <p className="text-white/50 mb-8 max-w-xl mx-auto">
-            Unlock AI workout generation, advanced progress charts, and trainer features.
-          </p>
-          <button
-            onClick={() => navigate('/waiting-list')}
-            className="px-8 py-4 rounded-full font-bold text-base uppercase tracking-wider text-white active:scale-95 transition-all"
-            style={{
-              background: 'linear-gradient(135deg, #DC2626, #EF4444, #F97316)',
-              boxShadow: '0 8px 30px rgba(239,68,68,0.4)',
-            }}
-          >
-            Join the Waiting List
-          </button>
+      {/* REPLAB Pro — Aurora treatment: floating red orbs with a breathing-
+          glow CTA. Ported from LandingPageAuroraTest. */}
+      <section className="relative px-5 py-20 overflow-hidden border-t border-white/5">
+        <Orb phase={phase} top={10}    left={5}  size={300} color="rgba(220,38,38,0.45)" blur={55} freqA={1.2} freqB={0.9} />
+        <Orb phase={phase} bottom={10} right={8} size={260} color="rgba(127,29,29,0.6)"  blur={50} freqA={0.9} freqB={1.3} />
+
+        <div className="relative max-w-2xl mx-auto">
+          <div className="px-6 sm:px-10 py-12 text-center">
+            <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-wf-red mb-3">REPLAB Pro</p>
+            <h2 className="text-3xl md:text-4xl font-black tracking-tight mb-4">AI-generated workouts for smarter training.</h2>
+            <p className="text-white/55 mb-8 max-w-xl mx-auto leading-relaxed">
+              Unlock AI workout generation, advanced progress charts, and trainer features.
+            </p>
+            <div className="max-w-xs mx-auto">
+              <AuroraButton phase={phase} onClick={() => navigate('/waiting-list')}>
+                Join the Waiting List →
+              </AuroraButton>
+            </div>
+          </div>
         </div>
       </section>
 

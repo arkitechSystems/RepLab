@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import AppStoreBadges from '../components/AppStoreBadges';
 
 // Public marketing landing page. Rendered at `/` for unauthenticated browser
 // visitors via HomeRoute in App.jsx. Mobile (Capacitor) users never see this
@@ -92,28 +93,9 @@ export default function LandingPage() {
             </button>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 justify-center items-center mt-8">
-            <p className="text-[10px] uppercase tracking-widest text-white/40 sm:mr-2">Get the mobile app</p>
-            <button
-              disabled
-              className="px-6 py-3 rounded-xl border border-white/10 text-sm font-semibold flex items-center gap-2 opacity-50 cursor-not-allowed"
-              title="Coming soon to the App Store"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
-              </svg>
-              App Store
-            </button>
-            <button
-              disabled
-              className="px-6 py-3 rounded-xl border border-white/10 text-sm font-semibold flex items-center gap-2 opacity-50 cursor-not-allowed"
-              title="Coming soon to Google Play"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M3 20.5V3.5c0-.59.34-1.11.84-1.35L13.69 12l-9.85 9.85c-.5-.25-.84-.76-.84-1.35zM16.81 15.12L6.05 21.34l8.49-8.49 2.27 2.27zM20.16 10.81c.34.27.54.69.54 1.19s-.2.92-.54 1.19l-2.62 1.51-2.61-2.61 2.61-2.61 2.62 1.33zM6.05 2.66l10.76 6.22-2.27 2.27-8.49-8.49z"/>
-              </svg>
-              Google Play
-            </button>
+          <div className="flex flex-col gap-4 justify-center items-center mt-8">
+            <p className="text-[10px] uppercase tracking-widest text-white/40">Get the mobile app</p>
+            <AppStoreBadges />
           </div>
         </div>
       </section>
