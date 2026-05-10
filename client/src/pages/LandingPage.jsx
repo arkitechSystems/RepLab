@@ -41,14 +41,15 @@ export default function LandingPage() {
 
         <div className="relative z-10 max-w-4xl mx-auto text-center">
           <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-wf-red mb-6">
-            Train Smarter · Track Everything
+            Train Smarter · Outlift Yesterday
           </p>
           <h1
             className="text-5xl md:text-7xl font-black uppercase leading-[0.95] mb-6"
             style={{ letterSpacing: '0.25em' }}
           >
-            Your workouts.<br />
-            <span className="text-wf-red">Logged.</span> Forever.
+            Train.<br />
+            <span className="text-wf-red">Track.</span><br />
+            Share.
           </h1>
           <p className="text-base md:text-lg text-white/60 max-w-xl mx-auto mb-8 leading-relaxed">
             REPLAB is the lifter's logbook. Built for progressive overload — across iOS, Android, and the web.
@@ -135,26 +136,17 @@ export default function LandingPage() {
               { title: 'Cross-Device Sync', body: 'iOS, Android, and the web — one logbook, all your devices.' },
               { title: 'Cardio Logging', body: '7 machine types with tailored fields for each piece of equipment.' },
               { title: '1RM Estimator', body: 'Calculate your one-rep max from any set you log.' },
-              { title: 'Guided Workouts', body: 'Rep-by-rep audio guidance is coming soon to the Featured Workouts section.', comingSoon: true },
+              { title: 'Guided Workouts', body: 'Rep-by-rep audio guidance is coming soon to the Featured Workouts section.' },
             ].map((f) => (
               <div
                 key={f.title}
                 className="rounded-2xl p-6 border"
                 style={{
-                  background: f.comingSoon
-                    ? 'linear-gradient(160deg, rgba(239,68,68,0.08) 0%, rgba(239,68,68,0.02) 100%)'
-                    : 'linear-gradient(160deg, #1a1a1a 0%, #0d0d0d 100%)',
-                  borderColor: f.comingSoon ? 'rgba(239,68,68,0.35)' : 'rgba(255,255,255,0.05)',
+                  background: 'linear-gradient(160deg, rgba(239,68,68,0.08) 0%, rgba(239,68,68,0.02) 100%)',
+                  borderColor: 'rgba(239,68,68,0.35)',
                 }}
               >
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <h3 className="text-lg font-black tracking-tight">{f.title}</h3>
-                  {f.comingSoon && (
-                    <span className="shrink-0 text-[9px] font-bold uppercase tracking-widest text-wf-red px-2 py-1 rounded-full border border-wf-red/40 bg-wf-red/10">
-                      Coming Soon
-                    </span>
-                  )}
-                </div>
+                <h3 className="text-lg font-black tracking-tight mb-2">{f.title}</h3>
                 <p className="text-sm text-white/55 leading-relaxed">{f.body}</p>
               </div>
             ))}
