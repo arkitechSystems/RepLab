@@ -9,7 +9,12 @@
 //     program if Will's Hypertrophy is missing)
 //   - 3-5 logged sessions on dates in the past week
 //
-// Run: node --env-file=server/.env server/scripts/seed-apple-reviewer.js
+// Run: REVIEWER_PASSWORD='...' node --env-file=server/.env server/scripts/seed-apple-reviewer.js
+//
+// REVIEWER_PASSWORD must be set in the environment. The password is the
+// reviewer login credential — never hardcode it in source. Rotate the
+// password before each App Store submission and paste the new value into
+// App Store Connect's "App Review Information" demo-account field.
 import pkg from 'pg';
 import bcrypt from 'bcryptjs';
 
@@ -21,9 +26,14 @@ const pool = new Pool({
 });
 
 const REVIEWER_EMAIL = 'apple-reviewer@replab-fitness.com';
-const REVIEWER_PASSWORD = 'Reviewer2026!';
+const REVIEWER_PASSWORD = process.env.REVIEWER_PASSWORD;
 const REVIEWER_FIRST = 'Apple';
 const REVIEWER_LAST = 'Reviewer';
+
+if (!REVIEWER_PASSWORD || REVIEWER_PASSWORD.length < 8) {
+  console.error('REVIEWER_PASSWORD env var is required (min 8 chars). Aborting.');
+  process.exit(1);
+}
 
 // Format a Date as YYYY-MM-DD in UTC.
 function ymd(d) {

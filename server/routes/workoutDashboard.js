@@ -22,6 +22,28 @@ function clientAuth(req, res, next) {
   return res.status(401).json({ error: 'Unauthorized' });
 }
 
+// CSRF defense-in-depth: reject state-changing requests whose Origin/Referer
+// doesn't match the host. SameSite=strict on the session cookie is the
+// primary defense; this catches edge cases (cookie-less browsers, relaxed
+// cross-origin setups) and gives clear logs if someone is probing.
+function clientCsrfCheck(req, res, next) {
+  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next();
+  const host = req.get('host');
+  const origin = req.get('origin');
+  const referer = req.get('referer');
+  try {
+    if (origin) {
+      if (new URL(origin).host !== host) return res.status(403).send('Cross-origin request blocked');
+    } else if (referer) {
+      if (new URL(referer).host !== host) return res.status(403).send('Cross-origin referer blocked');
+    }
+  } catch {
+    return res.status(403).send('Malformed Origin/Referer');
+  }
+  next();
+}
+router.use(clientCsrfCheck);
+
 function esc(str) {
   if (!str) return '';
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -59,7 +81,7 @@ function clientLoginPage(error) {
     <div class="login-logo">REP<span>LAB</span></div>
     <p class="subtitle">Workout Dashboard</p>
     <div class="glass" style="padding:28px;">
-      ${error ? `<div class="error">${error}</div>` : ''}
+      ${error ? `<div class="error">${esc(error)}</div>` : ''}
       <form method="POST" action="/workouts/login">
         <div class="field">
           <label>Email / Phone</label>
@@ -178,7 +200,7 @@ router.post('/login', express.urlencoded({ extended: false }), async (req, res) 
     res.cookie('client_session', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'strict',
       maxAge: 24 * 60 * 60 * 1000,
     });
     return res.redirect('/workouts');

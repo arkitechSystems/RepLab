@@ -16,3 +16,7 @@ client/ios/DerivedData/
 # Local-only binary asset directories (videos live on the CDN; not versioned)
 replab-videos/
 server/VidLib/
+
+# Legacy JSON DB from pre-Postgres era — may contain user data, never commit
+server/willfit.json
+server/replab.json

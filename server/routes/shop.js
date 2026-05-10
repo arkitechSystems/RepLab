@@ -30,7 +30,11 @@ function shopAuth(req, res, next) {
     req.userId = decoded.userId;
     req.userRole = decoded.role || 'client';
 
-    // Set cookie for subsequent page loads
+    // Set cookie for subsequent page loads, then strip the token from the URL
+    // by redirecting to the clean path. The redirect re-enters this middleware
+    // and finds the token in the cookie, so it does NOT loop. This prevents
+    // the token from leaking into browser history, Referer headers (sent to
+    // any third-party resource the page loads), and server access logs.
     if (!token && tokenParam) {
       res.cookie('replab_token', tokenParam, {
         httpOnly: true,
@@ -38,6 +42,10 @@ function shopAuth(req, res, next) {
         sameSite: 'lax',
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
+      const cleanQuery = { ...req.query };
+      delete cleanQuery.token;
+      const qs = new URLSearchParams(cleanQuery).toString();
+      return res.redirect(req.path + (qs ? '?' + qs : ''));
     }
     next();
   } catch {

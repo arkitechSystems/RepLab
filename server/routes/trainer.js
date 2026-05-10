@@ -59,6 +59,28 @@ setInterval(() => {
   pool.query(`DELETE FROM trainer_sessions WHERE expires_at <= NOW()`).catch(() => {});
 }, 60 * 60 * 1000).unref?.();
 
+// CSRF defense-in-depth: reject state-changing requests whose Origin/Referer
+// doesn't match the host. SameSite=strict on the session cookie is the
+// primary defense; this catches edge cases (cookie-less browsers, relaxed
+// cross-origin setups) and gives clear logs if someone is probing.
+function trainerCsrfCheck(req, res, next) {
+  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next();
+  const host = req.get('host');
+  const origin = req.get('origin');
+  const referer = req.get('referer');
+  try {
+    if (origin) {
+      if (new URL(origin).host !== host) return res.status(403).send('Cross-origin request blocked');
+    } else if (referer) {
+      if (new URL(referer).host !== host) return res.status(403).send('Cross-origin referer blocked');
+    }
+  } catch {
+    return res.status(403).send('Malformed Origin/Referer');
+  }
+  next();
+}
+router.use(trainerCsrfCheck);
+
 // CSS is now shared via dashboardCSS.js
 
 function trainerLoginPage(error) {
@@ -84,7 +106,7 @@ function trainerLoginPage(error) {
     <div class="login-logo">REP<span>LAB</span></div>
     <div class="eyebrow" style="display:block;text-align:center;margin-bottom:24px;">Trainer / Sign In</div>
     <div class="glass" style="padding:28px;border-radius:20px;">
-      ${error ? `<div class="error">${error}</div>` : ''}
+      ${error ? `<div class="error">${esc(error)}</div>` : ''}
       <form method="POST" action="/trainer/login">
         <div class="field">
           <label>Email</label>
@@ -229,7 +251,7 @@ router.post('/login', express.urlencoded({ extended: false }), async (req, res) 
     res.cookie('trainer_session', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'strict',
       maxAge: TRAINER_SESSION_TTL_MS,
     });
     return res.redirect('/trainer');
@@ -847,8 +869,12 @@ router.get('/workouts', trainerAuth, async (req, res) => {
             '</td>' +
             '<td style="padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.06);text-align:right;white-space:nowrap;">' +
               '<a href="/trainer/edit-workout/' + t.id + '" style="color:#ef4444;text-decoration:none;font-size:11px;font-weight:600;padding:6px 10px;border-radius:7px;border:1px solid rgba(239,68,68,0.3);margin-right:4px;" onmouseover="this.style.background=\'rgba(239,68,68,0.1)\'" onmouseout="this.style.background=\'none\'">Edit</a>' +
-              '<a href="/trainer/copy-workout/' + t.id + '" style="color:rgba(255,255,255,0.5);text-decoration:none;font-size:11px;font-weight:600;padding:6px 10px;border-radius:7px;border:1px solid rgba(255,255,255,0.1);margin-right:4px;" onmouseover="this.style.color=\'#3b82f6\';this.style.borderColor=\'rgba(59,130,246,0.3)\';this.style.background=\'rgba(59,130,246,0.08)\'" onmouseout="this.style.color=\'rgba(255,255,255,0.5)\';this.style.borderColor=\'rgba(255,255,255,0.1)\';this.style.background=\'none\'">Copy</a>' +
-              '<a href="/trainer/delete-workout/' + t.id + '" onclick="return confirm(\'Delete this workout and all its exercises? This cannot be undone.\')" style="color:rgba(255,255,255,0.3);text-decoration:none;font-size:11px;font-weight:600;padding:6px 10px;border-radius:7px;border:1px solid rgba(255,255,255,0.08);" onmouseover="this.style.color=\'#ef4444\';this.style.borderColor=\'rgba(239,68,68,0.3)\';this.style.background=\'rgba(239,68,68,0.08)\'" onmouseout="this.style.color=\'rgba(255,255,255,0.3)\';this.style.borderColor=\'rgba(255,255,255,0.08)\';this.style.background=\'none\'">Delete</a>' +
+              '<form method="POST" action="/trainer/copy-workout/' + t.id + '" style="display:inline;margin-right:4px;">' +
+                '<button type="submit" style="color:rgba(255,255,255,0.5);background:none;text-decoration:none;font-size:11px;font-weight:600;padding:6px 10px;border-radius:7px;border:1px solid rgba(255,255,255,0.1);cursor:pointer;font-family:inherit;" onmouseover="this.style.color=\'#3b82f6\';this.style.borderColor=\'rgba(59,130,246,0.3)\';this.style.background=\'rgba(59,130,246,0.08)\'" onmouseout="this.style.color=\'rgba(255,255,255,0.5)\';this.style.borderColor=\'rgba(255,255,255,0.1)\';this.style.background=\'none\'">Copy</button>' +
+              '</form>' +
+              '<form method="POST" action="/trainer/delete-workout/' + t.id + '" style="display:inline;" onsubmit="return confirm(\'Delete this workout and all its exercises? This cannot be undone.\')">' +
+                '<button type="submit" style="color:rgba(255,255,255,0.3);background:none;text-decoration:none;font-size:11px;font-weight:600;padding:6px 10px;border-radius:7px;border:1px solid rgba(255,255,255,0.08);cursor:pointer;font-family:inherit;" onmouseover="this.style.color=\'#ef4444\';this.style.borderColor=\'rgba(239,68,68,0.3)\';this.style.background=\'rgba(239,68,68,0.08)\'" onmouseout="this.style.color=\'rgba(255,255,255,0.3)\';this.style.borderColor=\'rgba(255,255,255,0.08)\';this.style.background=\'none\'">Delete</button>' +
+              '</form>' +
             '</td>' +
           '</tr>';
         }).join('');
@@ -1237,8 +1263,8 @@ router.post('/edit-workout/:id', trainerAuth, express.urlencoded({ extended: tru
   }
 });
 
-// GET /trainer/delete-workout/:id — Delete workout
-router.get('/delete-workout/:id', trainerAuth, async (req, res) => {
+// POST /trainer/delete-workout/:id — Delete workout (POST, not GET, to prevent CSRF via &lt;img&gt; or prefetched links)
+router.post('/delete-workout/:id', trainerAuth, async (req, res) => {
   const isAdmin = req.trainer.isAdmin || false;
   try {
     const { rows } = await pool.query('SELECT user_id FROM templates WHERE id = $1', [Number(req.params.id)]);
@@ -1249,8 +1275,8 @@ router.get('/delete-workout/:id', trainerAuth, async (req, res) => {
   } catch (err) { console.error(err); res.redirect('/trainer/workouts'); }
 });
 
-// GET /trainer/copy-workout/:id — Duplicate workout
-router.get('/copy-workout/:id', trainerAuth, async (req, res) => {
+// POST /trainer/copy-workout/:id — Duplicate workout (POST, not GET, to prevent CSRF via &lt;img&gt; or prefetched links)
+router.post('/copy-workout/:id', trainerAuth, async (req, res) => {
   const isAdmin = req.trainer.isAdmin || false;
   const templateId = Number(req.params.id);
   const client = await pool.connect();
