@@ -120,24 +120,30 @@ function CatchAllRedirect() {
   return <NotFound />;
 }
 
+// Runtime native-platform check. Uses window.Capacitor so it gracefully
+// returns false in the web bundle where the Capacitor SDK may not be present;
+// avoids forcing a hard import for the marketing-only path.
+function isNativePlatform() {
+  return (
+    typeof window !== 'undefined' &&
+    window.Capacitor &&
+    typeof window.Capacitor.isNativePlatform === 'function' &&
+    window.Capacitor.isNativePlatform()
+  );
+}
+
 // Root URL ('/') gateway. Picks between the marketing landing page and the
 // authenticated dashboard based on platform + auth state:
-//   - Capacitor (iOS / Android wrappers): never show marketing, always go
-//     straight to login or dashboard. Mobile users already installed the
-//     app — they don't need a sales page.
-//   - Web, authenticated:   render the dashboard (Workouts) inside Layout.
-//   - Web, not authenticated: render the public LandingPage.
-// Works because Layout accepts an optional children prop in addition to the
-// usual &lt;Outlet /&gt; pattern, so we can wrap Workouts here without nesting
-// under a Route.
-function HomeRoute() {
+//   - Authenticated (any platform): render the dashboard (Workouts) inside Layout.
+//   - Native (iOS / Android) + logged-out: bounce to /login. Apple flags
+//     marketing pages inside the bundle as web-wrappers (Guideline 4.2), and
+//     mobile users tapped the icon to lift, not to read a sales page.
+//   - Web + logged-out: render the public LandingPageTest (replab-fitness.com root).
+function RootRoute() {
   const { isAuthenticated } = useAuth();
-  if (Capacitor.isNativePlatform()) {
-    if (!isAuthenticated) return <Navigate to="/login" replace />;
-    return <Layout><Workouts /></Layout>;
-  }
-  if (!isAuthenticated) return <LandingPage />;
-  return <Layout><Workouts /></Layout>;
+  if (isAuthenticated) return <Layout><Workouts /></Layout>;
+  if (isNativePlatform()) return <Navigate to="/login" replace />;
+  return <LandingPageTest />;
 }
 
 function PageTracker() {
@@ -155,7 +161,15 @@ function PageTracker() {
 }
 
 export default function App() {
+  const { isAuthenticated } = useAuth();
   const [splashDone, setSplashDone] = useState(false);
+
+  // Splash only gates entry to the app proper — the mobile (Capacitor) launch
+  // and the authed web dashboard. All public web surfaces (marketing landing,
+  // /login, /signup, /waiting-list, /privacy, /terms, etc.) skip splash so
+  // visitors see content immediately. Once dismissed in a session it stays
+  // dismissed across subsequent route changes.
+  const isAppContext = Capacitor.isNativePlatform() || isAuthenticated;
 
   // Capture UTM params on first landing and persist until signup
   useEffect(() => {
@@ -177,7 +191,7 @@ export default function App() {
     <TutorialProvider>
     <VideoPlayerProvider>
       <PageTracker />
-      {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
+      {isAppContext && !splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
     <Suspense fallback={<div className="min-h-screen bg-black" />}>
     <Routes>
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
@@ -190,11 +204,11 @@ export default function App() {
       <Route path="/welcome" element={<ProtectedRoute><Welcome /></ProtectedRoute>} />
       <Route path="/free-trial" element={<ProtectedRoute><FreeTrialOffer /></ProtectedRoute>} />
 
-      {/* Root URL is conditional — see HomeRoute. Authed users get the
+      {/* Root URL is conditional — see RootRoute. Authed users get the
           dashboard wrapped in Layout (children form); unauth web visitors
-          see the marketing LandingPage; Capacitor users skip the landing
-          and bounce to /login if not authed. */}
-      <Route path="/" element={<HomeRoute />} />
+          see the marketing LandingPageTest; Capacitor (native) users skip
+          the landing and bounce to /login if not authed. */}
+      <Route path="/" element={<RootRoute />} />
 
       <Route
         element={
