@@ -6115,9 +6115,14 @@ function MaxPushupsChallenge() {
       {/* Input */}
       <div className="glass-card rounded-xl p-4 mb-5">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
+          <button
+            type="button"
+            onClick={() => navigate('/profile')}
+            aria-label="Open your profile"
+            className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center text-white text-xs font-bold shrink-0 active:scale-90 transition-transform"
+          >
             {user?.firstName?.[0]?.toUpperCase() || '?'}
-          </div>
+          </button>
           <div className="flex-1 relative">
             <input
               type="number"
@@ -6165,16 +6170,32 @@ function MaxPushupsChallenge() {
                   <span className={idx < 3 ? rankColors[idx] : 'text-wf-gray-500'}>{idx + 1}</span>
                 </div>
 
-                {/* Avatar */}
-                <div className={`w-9 h-9 rounded-full overflow-hidden flex items-center justify-center text-xs font-bold shrink-0 ${
-                  entry.photoUrl ? '' : entry.userId === user?.id
-                    ? 'bg-gradient-to-br from-orange-500 to-yellow-500 text-white'
-                    : 'bg-white/10 text-wf-gray-300'
-                }`}>
-                  {entry.photoUrl ? (
-                    <img src={entry.photoUrl} alt="" className="w-full h-full object-cover" />
-                  ) : getInitials(entry)}
-                </div>
+                {/* Avatar — clickable for the current user's own row so
+                    tapping it jumps straight to /profile (e.g. to upload a
+                    photo). Other users' avatars are non-interactive since
+                    there's no public profile page yet. */}
+                {entry.userId === user?.id ? (
+                  <button
+                    type="button"
+                    onClick={() => navigate('/profile')}
+                    aria-label="Open your profile"
+                    className={`w-9 h-9 rounded-full overflow-hidden flex items-center justify-center text-xs font-bold shrink-0 active:scale-90 transition-transform ${
+                      entry.photoUrl ? '' : 'bg-gradient-to-br from-orange-500 to-yellow-500 text-white'
+                    }`}
+                  >
+                    {entry.photoUrl ? (
+                      <img src={entry.photoUrl} alt="" className="w-full h-full object-cover" />
+                    ) : getInitials(entry)}
+                  </button>
+                ) : (
+                  <div className={`w-9 h-9 rounded-full overflow-hidden flex items-center justify-center text-xs font-bold shrink-0 ${
+                    entry.photoUrl ? '' : 'bg-white/10 text-wf-gray-300'
+                  }`}>
+                    {entry.photoUrl ? (
+                      <img src={entry.photoUrl} alt="" className="w-full h-full object-cover" />
+                    ) : getInitials(entry)}
+                  </div>
+                )}
 
                 {/* Name */}
                 <div className="flex-1 min-w-0">
