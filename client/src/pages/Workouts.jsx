@@ -4005,7 +4005,7 @@ export default function Workouts() {
                     type="text"
                     value={browseSearch}
                     onChange={(e) => setBrowseSearch(e.target.value)}
-                    placeholder="Search programs..."
+                    placeholder="Search programs and workouts..."
                     autoFocus
                     className="w-full glass-input rounded-xl pl-10 pr-9 py-2 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none"
                   />
@@ -4084,18 +4084,46 @@ export default function Workouts() {
             const typeFiltered = isBrowse && browseFilter !== 'all'
               ? groupPrograms.filter((p) => p.programType === browseFilter)
               : groupPrograms;
-            const filtered = isBrowse && browseSearch.trim()
-              ? typeFiltered.filter((p) => p.name.toLowerCase().includes(browseSearch.toLowerCase()))
+            // Search matches programs by their own name OR by any of the
+            // program's individual workout (template) names. A program with a
+            // matching workout still shows in the program card list so users
+            // can drill in if they want the whole program.
+            const q = browseSearch.trim().toLowerCase();
+            const filtered = isBrowse && q
+              ? typeFiltered.filter((p) => {
+                  if (p.name.toLowerCase().includes(q)) return true;
+                  return (p.templates || []).some(
+                    (t) => !t.isRest && (t.name || '').toLowerCase().includes(q)
+                  );
+                })
               : typeFiltered;
+
+            // Surface every individual workout that matches so users can add
+            // a single day to their calendar without committing to the whole
+            // program. Only shown in the Browse Library and only while
+            // searching. Excludes rest days (no exercises to log) and prehab
+            // templates (already filtered out by getEnrichedPrograms).
+            const matchingWorkouts = isBrowse && q
+              ? typeFiltered.flatMap((p) =>
+                  (p.templates || [])
+                    .filter((t) => !t.isRest && (t.name || '').toLowerCase().includes(q))
+                    .map((t) => ({ template: t, programName: p.name, programId: p.id }))
+                )
+              : [];
 
             // Split into own programs and shared programs (My Workouts only)
             const ownPrograms = isBrowse ? filtered : filtered.filter((p) => !acceptedSharesMap[p.id]);
             const sharedPrograms = isBrowse ? [] : filtered.filter((p) => acceptedSharesMap[p.id]);
 
-            if (ownPrograms.length === 0 && sharedPrograms.length === 0 && browseSearch.trim()) {
+            if (
+              ownPrograms.length === 0 &&
+              sharedPrograms.length === 0 &&
+              matchingWorkouts.length === 0 &&
+              browseSearch.trim()
+            ) {
               return (
                 <div className="glass-card rounded-2xl p-8 text-center">
-                  <p className="text-wf-gray-400 text-sm">No programs matching "{browseSearch}"</p>
+                  <p className="text-wf-gray-400 text-sm">No programs or workouts matching "{browseSearch}"</p>
                 </div>
               );
             }
@@ -4122,6 +4150,46 @@ export default function Workouts() {
             }
             return (
               <>
+                {/* Matching Workouts — only while searching the Browse Library.
+                    Lets users add a single workout (one calendar day) without
+                    committing to the whole program. Tapping a row opens the
+                    existing add-workout modal (same flow as the calendar's
+                    "+ Add Workout" tap). */}
+                {matchingWorkouts.length > 0 && (
+                  <div className="mb-5">
+                    <p
+                      className="text-[10px] uppercase font-bold mb-2"
+                      style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.25em' }}
+                    >
+                      Workouts
+                    </p>
+                    <div className="space-y-2">
+                      {matchingWorkouts.map(({ template, programName, programId }) => (
+                        <button
+                          key={`wk-${programId}-${template.id}`}
+                          onClick={() => openAddWorkout(template)}
+                          className="w-full glass-card rounded-xl px-4 py-3 flex items-center gap-3 active:scale-[0.99] transition-all text-left"
+                        >
+                          <div className="w-9 h-9 rounded-lg bg-wf-red/15 flex items-center justify-center shrink-0">
+                            <svg className="w-4 h-4 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                            </svg>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-semibold text-white truncate">{template.name}</div>
+                            <div className="text-[11px] text-wf-gray-500 truncate">
+                              from {programName} · {template.exercises?.length || 0} {(template.exercises?.length || 0) === 1 ? 'exercise' : 'exercises'}
+                            </div>
+                          </div>
+                          <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                          </svg>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {ownPrograms.length > 0 && (
                   isBrowse ? (
                     <div

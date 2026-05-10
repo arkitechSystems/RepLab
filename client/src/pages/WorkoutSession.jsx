@@ -79,6 +79,13 @@ export default function WorkoutSession() {
   // same exercise on change. Persisted inside workout_data on auto-save.
   const [cardioSelections, setCardioSelections] = useState({});
   const [pbs, setPbs] = useState({});
+  // All-time PR rows for the user (across every template) — feeds the
+  // per-exercise PR popup so users can see their top historical lifts during
+  // a session. Each row: { exercise_name, best_weight, best_reps, achieved_at }.
+  const [allTimePRs, setAllTimePRs] = useState([]);
+  // exerciseName whose PR modal is currently open, or null when closed.
+  const [prModalExercise, setPrModalExercise] = useState(null);
+  const [prModalSort, setPrModalSort] = useState('weight');
   const [entries, setEntries] = useState({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
@@ -96,12 +103,19 @@ export default function WorkoutSession() {
   const [cardioEntries, setCardioEntries] = useState([]);
   const [showAddCardio, setShowAddCardio] = useState(false);
   const [autoFilled, setAutoFilled] = useState(new Set()); // tracks predicted entries
-  // Refs that always mirror the latest completedSets / autoFilled. handleBlur
-  // can fire after a set was just marked complete (focus loss races completion);
-  // reading state via these refs avoids the stale-closure overwrite where
-  // auto-fill clobbers a freshly-completed set.
+  // Tracks per-field user edits so autofill never clobbers a value the user
+  // explicitly typed. Keys are `${exerciseKey}-${setIdx}:${field}` where field
+  // is 'weight' or 'reps'. Once marked, a field is permanently protected from
+  // forward-propagation until the set/exercise is removed or the user clears
+  // it deliberately by typing again (handleChange re-marks the new value).
+  const [userEdited, setUserEdited] = useState(new Set());
+  // Refs that always mirror the latest completedSets / autoFilled / userEdited.
+  // handleBlur can fire after a set was just marked complete (focus loss races
+  // completion); reading state via these refs avoids the stale-closure overwrite
+  // where auto-fill clobbers a freshly-completed or freshly-typed set.
   const completedSetsRef = useRef(new Set());
   const autoFilledRef = useRef(new Set());
+  const userEditedRef = useRef(new Set());
   const [isCompleted, setIsCompleted] = useState(false);
   const [weightSuggestions, setWeightSuggestions] = useState({});
   const [lastSession, setLastSession] = useState({});
@@ -277,6 +291,7 @@ export default function WorkoutSession() {
   useEffect(() => { restDurationRef.current = restDuration; }, [restDuration]);
   useEffect(() => { completedSetsRef.current = completedSets; }, [completedSets]);
   useEffect(() => { autoFilledRef.current = autoFilled; }, [autoFilled]);
+  useEffect(() => { userEditedRef.current = userEdited; }, [userEdited]);
 
   // Auto-save after checkmark toggle (debounced 1.5s) — skip in tutorial mode
   useEffect(() => {
@@ -481,6 +496,9 @@ export default function WorkoutSession() {
         if (Array.isArray(restored.autoFilled)) {
           setAutoFilled(new Set(restored.autoFilled));
         }
+        if (Array.isArray(restored.userEdited)) {
+          setUserEdited(new Set(restored.userEdited));
+        }
         if (typeof restored.timerStarted === 'boolean') {
           setTimerStarted(restored.timerStarted);
         }
@@ -527,6 +545,7 @@ export default function WorkoutSession() {
           completedSets: Array.from(completedSets),
           notes,
           autoFilled: Array.from(autoFilled),
+          userEdited: Array.from(userEdited),
           timerStarted,
           elapsed,
           restDuration,
@@ -548,6 +567,7 @@ export default function WorkoutSession() {
     completedSets,
     notes,
     autoFilled,
+    userEdited,
     timerStarted,
     elapsed,
     restDuration,
@@ -649,7 +669,7 @@ export default function WorkoutSession() {
         // Fetch schedule for a small window around the current date (for day nav arrows)
         const schedFrom = format(subDays(parseDateLocal(date), 7), 'yyyy-MM-dd');
         const schedTo = format(addDays(parseDateLocal(date), 7), 'yyyy-MM-dd');
-        const [pbList, scheduleData, lastEntries, programs, userMetrics] = await Promise.all([
+        const [pbList, scheduleData, lastEntries, programs, userMetrics, allPRsList] = await Promise.all([
           api(`/pbs?templateId=${templateId}`),
           api(`/schedule?from=${schedFrom}&to=${schedTo}`),
           api(`/sessions/last-entries/${templateId}`).catch((err) => {
@@ -663,6 +683,10 @@ export default function WorkoutSession() {
           // 1RM maxes — used to auto-fill %1RM-prescribed suggested weights
           // (see applyOneRMSuggestions below). Missing metrics = no-op.
           api('/metrics').catch(() => ({})),
+          // All-time PRs across every template — drives the per-exercise PR
+          // popup. Non-blocking for the page render path; defaults to [] on
+          // failure so the rest of the session loads cleanly.
+          api('/pbs/all-by-muscle').catch(() => []),
         ]);
         if (cancelled) return;
         setLastSession(lastEntries || {});
@@ -696,6 +720,7 @@ export default function WorkoutSession() {
           pbMap[pb.exerciseName][pb.bestWeight] = pb.bestReps;
         }
         setPbs(pbMap);
+        setAllTimePRs(allPRsList || []);
         setSchedule(scheduleData);
 
         // Check for existing session
@@ -917,6 +942,16 @@ export default function WorkoutSession() {
       next.delete(`${exerciseName}-${setIdx}`);
       return next;
     });
+    // And mark the specific field as user-edited so future autofill from
+    // earlier sets won't clobber it. Only weight/reps are autofill targets;
+    // setType doesn't propagate so we don't need to track it.
+    if (field === 'weight' || field === 'reps') {
+      setUserEdited((prev) => {
+        const next = new Set(prev);
+        next.add(`${exerciseName}-${setIdx}:${field}`);
+        return next;
+      });
+    }
   }
 
   function handleBlur(exerciseName, setIdx, field) {
@@ -944,12 +979,16 @@ export default function WorkoutSession() {
     // explicitly completed (those are locked-in results we never clobber).
     // This means editing set 1 fills sets 2..N; later editing set 4 fills
     // sets 5..N with the new value while leaving 2..3 alone.
+    // Skip any later set whose THIS field was previously user-edited — that
+    // value is locked-in by the user, not eligible for forward propagation.
+    const userEditedNow = userEditedRef.current;
     setEntries((prev) => {
       const updated = { ...prev };
       updated[exerciseName] = [...(updated[exerciseName] || [])];
       for (let i = setIdx + 1; i < exercise.sets.length; i++) {
         const key = `${exerciseName}-${i}`;
         if (completedNow.has(key)) continue;
+        if (userEditedNow.has(`${key}:${field}`)) continue;
         updated[exerciseName][i] = {
           ...updated[exerciseName][i],
           [field]: value,
@@ -962,7 +1001,11 @@ export default function WorkoutSession() {
       const next = new Set(prev);
       for (let i = setIdx + 1; i < exercise.sets.length; i++) {
         const key = `${exerciseName}-${i}`;
-        if (!completedNow.has(key)) next.add(key);
+        if (completedNow.has(key)) continue;
+        // Only flag as autofilled if we actually wrote — i.e., not a
+        // user-edited skip for this field.
+        if (userEditedNow.has(`${key}:${field}`)) continue;
+        next.add(key);
       }
       return next;
     });
@@ -1587,6 +1630,11 @@ export default function WorkoutSession() {
             if (!template.exercises[i].isSectionHeader && exKey(template.exercises, template.exercises[i], i) === exerciseKey) { exercise = template.exercises[i]; break; }
           }
           if (exercise) {
+            // Per-field user-edit guard: never propagate over a weight or
+            // reps value the user typed manually. Read from the ref so we
+            // see the freshest marks even if a typed-then-completed sequence
+            // landed in the same tick.
+            const userEditedNow = userEditedRef.current;
             setEntries((prev) => {
               const updated = { ...prev };
               updated[exerciseKey] = [...(updated[exerciseKey] || [])];
@@ -1600,11 +1648,26 @@ export default function WorkoutSession() {
                   const isCurrentAutoFilled = autoFilled.has(laterKey);
                   const weightEmpty = currentWeight === '' || currentWeight === undefined;
                   const repsEmpty = currentReps === '' || currentReps === undefined;
-                  if (weightEmpty || repsEmpty || isCurrentAutoFilled) {
+                  const weightUserEdited = userEditedNow.has(`${laterKey}:weight`);
+                  const repsUserEdited = userEditedNow.has(`${laterKey}:reps`);
+
+                  // Decide per-field whether to overwrite. A field is eligible
+                  // when (empty || the set was autofilled before) AND the user
+                  // hasn't typed into it.
+                  const overwriteWeight =
+                    !weightUserEdited &&
+                    (weightEmpty || isCurrentAutoFilled) &&
+                    w !== '' && w !== undefined;
+                  const overwriteReps =
+                    !repsUserEdited &&
+                    (repsEmpty || isCurrentAutoFilled) &&
+                    r !== '' && r !== undefined;
+
+                  if (overwriteWeight || overwriteReps) {
                     updated[exerciseKey][i] = {
                       ...current,
-                      weight: w !== '' && w !== undefined ? w : current.weight,
-                      reps: r !== '' && r !== undefined ? r : current.reps,
+                      weight: overwriteWeight ? w : current.weight,
+                      reps: overwriteReps ? r : current.reps,
                     };
                     newAutoFilled.add(laterKey);
                   }
@@ -2552,6 +2615,7 @@ export default function WorkoutSession() {
               pbs={pbs}
               readOnly={structureLocked}
               inputsLocked={inputsLocked}
+              onShowPRs={(name) => { setPrModalSort('weight'); setPrModalExercise(name); }}
               onLockedTap={inputsLocked ? () => setShowBeginPrompt(true) : undefined}
               onChange={inputsLocked ? undefined : wrapCb(handleChange)}
               onBlur={inputsLocked ? undefined : wrapCb(handleBlur)}
@@ -2664,6 +2728,164 @@ export default function WorkoutSession() {
           </div>
         </div>
       )}
+      {/* Per-exercise PR popup — opened from the PRs button at the top of
+          each exercise card. Mirrors the Personal Records list on the home
+          page (sticky header, Weight/Volume toggle, ranked rows). Scoped
+          to a single exercise and capped at top 10 lifts so users can
+          quickly reference previous bests mid-session. */}
+      {prModalExercise && idx === 0 && (() => {
+        const byVolume = prModalSort === 'volume';
+        const lifts = (allTimePRs || [])
+          .filter((r) => (r.exercise_name || '').toLowerCase() === prModalExercise.toLowerCase())
+          .map((r) => {
+            const w = Number(r.best_weight) || 0;
+            const reps = Number(r.best_reps) || 0;
+            return { weight: w, reps, volume: w * reps, achievedAt: r.achieved_at };
+          })
+          .sort((a, b) => (byVolume ? b.volume - a.volume : b.weight - a.weight || b.reps - a.reps))
+          .slice(0, 10);
+        return (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center px-4" onClick={() => setPrModalExercise(null)}>
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+            <div
+              className="relative w-full max-w-md max-h-[85vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                borderRadius: '20px',
+                overflow: 'hidden',
+                background: '#111',
+                border: '1px solid rgba(255,255,255,0.06)',
+                boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3)',
+              }}
+            >
+              {/* Sticky header — matches the home-page Personal Records card */}
+              <div
+                style={{
+                  padding: '17px 20px 12px',
+                  display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+                  gap: '12px',
+                  background: '#111',
+                  borderBottom: '1px solid rgba(255,255,255,0.06)',
+                }}
+              >
+                <div className="min-w-0">
+                  <p style={{
+                    fontSize: '9px', color: 'rgba(255,255,255,0.3)',
+                    letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 600,
+                    margin: 0,
+                  }}>
+                    Personal Records
+                  </p>
+                  <h3 className="text-white font-bold text-[15px] mt-1 truncate">{prModalExercise}</h3>
+                </div>
+                <button
+                  onClick={() => setPrModalExercise(null)}
+                  aria-label="Close"
+                  className="shrink-0 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90 transition-all"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Sort toggle */}
+              <div style={{
+                padding: '10px 20px',
+                background: '#111',
+                borderBottom: '1px solid rgba(255,255,255,0.04)',
+              }}>
+                <div style={{
+                  display: 'flex',
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  borderRadius: '100px',
+                  padding: '2px',
+                  gap: '2px',
+                }}>
+                  {['weight', 'volume'].map((mode) => {
+                    const active = prModalSort === mode;
+                    return (
+                      <button
+                        key={mode}
+                        onClick={() => setPrModalSort(mode)}
+                        style={{
+                          flex: 1, padding: '6px 0', borderRadius: '100px',
+                          fontSize: '10px', fontWeight: 700, letterSpacing: '0.2em',
+                          textTransform: 'uppercase', cursor: 'pointer',
+                          border: 'none', transition: 'all 0.18s ease',
+                          background: active ? 'rgba(239,68,68,0.9)' : 'transparent',
+                          color: active ? 'white' : 'rgba(255,255,255,0.45)',
+                          boxShadow: active ? '0 2px 8px rgba(239,68,68,0.3)' : 'none',
+                        }}
+                      >
+                        {mode}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Scrollable list — top 10 best lifts */}
+              <div style={{ overflowY: 'auto', flex: 1 }}>
+                {lifts.length === 0 ? (
+                  <div style={{ padding: '32px 20px', textAlign: 'center' }}>
+                    <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>
+                      No personal records yet for this exercise.
+                    </p>
+                    <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.25)', marginTop: '6px' }}>
+                      Complete a set with weight and reps to start tracking PRs.
+                    </p>
+                  </div>
+                ) : (
+                  lifts.map((lift, i) => (
+                    <div
+                      key={`${lift.weight}-${lift.reps}-${i}`}
+                      style={{
+                        padding: '12px 20px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        borderBottom: i < lifts.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span style={{
+                          fontSize: '11px', fontWeight: 800,
+                          color: i === 0 ? 'rgba(239,68,68,0.85)' : 'rgba(255,255,255,0.2)',
+                          letterSpacing: '1px',
+                          width: '22px', textAlign: 'center',
+                        }}>
+                          {String(i + 1).padStart(2, '0')}
+                        </span>
+                        <span style={{
+                          fontSize: '13px', color: 'rgba(255,255,255,0.9)',
+                          fontWeight: 600, fontVariantNumeric: 'tabular-nums',
+                        }}>
+                          {lift.weight} lbs × {lift.reps}
+                          {byVolume && (
+                            <span style={{ color: 'rgba(239,68,68,0.7)', marginLeft: '8px', fontWeight: 700 }}>
+                              = {lift.volume.toLocaleString()}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      {lift.achievedAt && (
+                        <span style={{
+                          fontSize: '10px', color: 'rgba(255,255,255,0.3)',
+                          letterSpacing: '1px', textTransform: 'uppercase',
+                          fontVariantNumeric: 'tabular-nums',
+                        }}>
+                          {new Date(lift.achievedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}
+                        </span>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Pre-Begin Workout Summary — condensed list of exercise name + set
           count so users can scan the session without scrolling through
           every card. Only shown before Begin Workout (set-count is the

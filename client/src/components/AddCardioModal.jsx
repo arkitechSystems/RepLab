@@ -180,16 +180,12 @@ export default function AddCardioModal({ open, onClose, onSave }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center px-4 py-6" onClick={onClose}>
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
       <div
-        className="relative w-full sm:max-w-md bg-wf-gray-900 border border-white/10 rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[90vh] flex flex-col"
+        className="relative w-full max-w-md bg-wf-gray-900 border border-white/10 rounded-2xl shadow-2xl max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Sheet handle (mobile) */}
-        <div className="sm:hidden flex justify-center pt-2 pb-1">
-          <div className="w-10 h-1 rounded-full bg-white/20" />
-        </div>
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-3 pb-3 border-b border-white/10">
@@ -211,7 +207,7 @@ export default function AddCardioModal({ open, onClose, onSave }) {
                 {step === 'pick' ? 'Add Cardio' : machine?.label || 'Cardio'}
               </h2>
               <p className="text-[10px] uppercase tracking-widest text-white/40">
-                {step === 'pick' ? 'Choose a machine' : 'Log your session'}
+                {step === 'pick' ? 'Choose a cardio option' : 'Log your session'}
               </p>
             </div>
           </div>

@@ -50,9 +50,27 @@ export default function LandingPage() {
             Your workouts.<br />
             <span className="text-wf-red">Logged.</span> Forever.
           </h1>
-          <p className="text-base md:text-lg text-white/60 max-w-xl mx-auto mb-10 leading-relaxed">
-            REPLAB is the lifter's logbook. Track every set, every rep, every PR — across iOS, Android, and the web.
+          <p className="text-base md:text-lg text-white/60 max-w-xl mx-auto mb-8 leading-relaxed">
+            REPLAB is the lifter's logbook. Built for progressive overload — across iOS, Android, and the web.
           </p>
+
+          {/* Hero feature bullets — concise pitch above the CTAs. Mirrors
+              the more detailed "Why REPLAB" grid further down the page. */}
+          <ul className="text-left max-w-md mx-auto mb-10 space-y-2">
+            {[
+              'Log every workout',
+              'Track progressive overload',
+              'Share programs with friends',
+              'PRs by lift, weight, and volume',
+            ].map((bullet) => (
+              <li key={bullet} className="flex items-center gap-3 text-sm md:text-base text-white/75">
+                <svg className="w-4 h-4 shrink-0 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                </svg>
+                {bullet}
+              </li>
+            ))}
+          </ul>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center items-center mb-6">
             <button
@@ -95,6 +113,51 @@ export default function LandingPage() {
               </svg>
               Google Play
             </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Features grid — "Why REPLAB" replacement with a curated 9-card
+          set covering the core differentiators. Card #9 is a coming-soon
+          teaser with a slightly different visual treatment so it reads as
+          roadmap rather than shipped. */}
+      <section className="px-6 py-20 border-t border-white/5">
+        <div className="max-w-6xl mx-auto">
+          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-wf-red mb-3 text-center">Why REPLAB</p>
+          <h2 className="text-3xl md:text-4xl font-black tracking-tight text-center mb-12">Built for serious lifters.</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[
+              { title: 'Log Every Workout', body: 'Track sets, reps, weights, rest, and set types — every detail of every session.' },
+              { title: 'Progressive Overload', body: 'Auto-suggest next-session weights from your last PR so you keep climbing.' },
+              { title: 'Track PRs', body: 'By lift, by weight, and by volume — see every personal record.' },
+              { title: 'Share Programs', body: 'Send any workout or program directly to a friend’s account.' },
+              { title: 'Custom Programs', body: 'Build your own training splits and reorder exercises anytime.' },
+              { title: 'Cross-Device Sync', body: 'iOS, Android, and the web — one logbook, all your devices.' },
+              { title: 'Cardio Logging', body: '7 machine types with tailored fields for each piece of equipment.' },
+              { title: '1RM Estimator', body: 'Calculate your one-rep max from any set you log.' },
+              { title: 'Guided Workouts', body: 'Rep-by-rep audio guidance is coming soon to the Featured Workouts section.', comingSoon: true },
+            ].map((f) => (
+              <div
+                key={f.title}
+                className="rounded-2xl p-6 border"
+                style={{
+                  background: f.comingSoon
+                    ? 'linear-gradient(160deg, rgba(239,68,68,0.08) 0%, rgba(239,68,68,0.02) 100%)'
+                    : 'linear-gradient(160deg, #1a1a1a 0%, #0d0d0d 100%)',
+                  borderColor: f.comingSoon ? 'rgba(239,68,68,0.35)' : 'rgba(255,255,255,0.05)',
+                }}
+              >
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <h3 className="text-lg font-black tracking-tight">{f.title}</h3>
+                  {f.comingSoon && (
+                    <span className="shrink-0 text-[9px] font-bold uppercase tracking-widest text-wf-red px-2 py-1 rounded-full border border-wf-red/40 bg-wf-red/10">
+                      Coming Soon
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-white/55 leading-relaxed">{f.body}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
