@@ -61,9 +61,9 @@ export default function LandingPage() {
           <ul className="text-left max-w-md mx-auto mb-10 space-y-2">
             {[
               'Log every workout',
-              'Track progressive overload',
-              'Share programs with friends',
               'PRs by lift, weight, and volume',
+              'Workout summaries and insights',
+              'Share programs with friends',
             ].map((bullet) => (
               <li key={bullet} className="flex items-center gap-3 text-sm md:text-base text-white/75">
                 <svg className="w-4 h-4 shrink-0 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
