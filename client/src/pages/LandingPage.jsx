@@ -53,7 +53,7 @@ export default function LandingPage() {
             Share.
           </h1>
           <p className="text-base md:text-lg text-white/60 max-w-xl mx-auto mb-8 leading-relaxed">
-            Get 1% better everyday. REPLAB is the lifter's logbook. Built to help you track for progressive overloading and breaking plateaus — across iOS, Android, and the web.
+            Get 1% better everyday. REPLAB is the lifter's logbook. Built to help you track for progressive overloading and break plateaus — across iOS, Android, and the web.
           </p>
 
           {/* Hero feature bullets — concise pitch above the CTAs. Mirrors
