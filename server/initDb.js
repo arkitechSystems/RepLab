@@ -125,6 +125,52 @@ export default async function initDb() {
     created_at TIMESTAMPTZ DEFAULT NOW()
   )`);
 
+  // One-time dedup pass for (user_id, lower(name)) duplicates — must run
+  // BEFORE the partial unique index below or index creation will fail on
+  // existing dupes. Idempotent: no-op when there are no duplicate groups.
+  // Reassigns templates of non-keeper programs to the lowest-id keeper, then
+  // deletes the non-keepers. Wrapped in a transaction so partial failure rolls
+  // back cleanly.
+  const dedupClient = await pool.connect();
+  try {
+    await dedupClient.query('BEGIN');
+    const { rows: dupGroups } = await dedupClient.query(`
+      SELECT user_id, lower(name) AS lname, MIN(id) AS keeper_id, array_agg(id ORDER BY id) AS all_ids
+      FROM programs
+      WHERE user_id IS NOT NULL
+      GROUP BY user_id, lower(name)
+      HAVING COUNT(*) > 1
+    `);
+    let mergedCount = 0;
+    for (const g of dupGroups) {
+      const losers = g.all_ids.filter((id) => id !== g.keeper_id);
+      if (losers.length === 0) continue;
+      await dedupClient.query(
+        `UPDATE templates SET program_id = $1 WHERE program_id = ANY($2::int[])`,
+        [g.keeper_id, losers]
+      );
+      await dedupClient.query(
+        `DELETE FROM programs WHERE id = ANY($1::int[])`,
+        [losers]
+      );
+      mergedCount += losers.length;
+    }
+    await dedupClient.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_programs_user_lower_name
+      ON programs(user_id, lower(name))
+      WHERE user_id IS NOT NULL
+    `);
+    await dedupClient.query('COMMIT');
+    if (mergedCount > 0) {
+      console.log(`[initDb] Merged ${mergedCount} duplicate program(s)`);
+    }
+  } catch (err) {
+    try { await dedupClient.query('ROLLBACK'); } catch (_) {}
+    console.error('[initDb] program dedup/index failed:', err);
+  } finally {
+    dedupClient.release();
+  }
+
   // Indexes for common queries
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_programs_user_id ON programs(user_id)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_templates_user_id ON templates(user_id)`);

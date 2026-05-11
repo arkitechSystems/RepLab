@@ -70,6 +70,57 @@ router.put('/', authMiddleware, async (req, res) => {
   }
 });
 
+// POST /schedule/shift — slide every schedule_days row from fromDate onward
+// by one day in `direction`. Runs in one transaction over the full table so
+// the cascade isn't bounded by whatever window the client happens to have
+// loaded. Includes standalone rest days (template_id IS NULL, is_rest = TRUE).
+router.post('/shift', authMiddleware, async (req, res) => {
+  const { fromDate, direction } = req.body || {};
+  if (!fromDate || !/^\d{4}-\d{2}-\d{2}$/.test(fromDate)) {
+    return res.status(400).json({ error: 'fromDate in YYYY-MM-DD format is required' });
+  }
+  if (direction !== 'forward' && direction !== 'back') {
+    return res.status(400).json({ error: "direction must be 'forward' or 'back'" });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Order matters to avoid colliding with the (user_id, schedule_date)
+    // unique index mid-loop: when sliding forward, update the latest row
+    // first so its new slot is free; when sliding back, update the earliest
+    // first so its new (earlier) slot is free.
+    const orderDir = direction === 'forward' ? 'DESC' : 'ASC';
+    const { rows } = await client.query(
+      `SELECT id, schedule_date
+       FROM schedule_days
+       WHERE user_id = $1 AND schedule_date >= $2
+       ORDER BY schedule_date ${orderDir}`,
+      [req.userId, fromDate]
+    );
+
+    const deltaSql = direction === 'forward' ? `+ INTERVAL '1 day'` : `- INTERVAL '1 day'`;
+    for (const row of rows) {
+      await client.query(
+        `UPDATE schedule_days
+         SET schedule_date = schedule_date ${deltaSql}
+         WHERE id = $1`,
+        [row.id]
+      );
+    }
+
+    await client.query('COMMIT');
+    res.json({ shifted: rows.length });
+  } catch (err) {
+    try { await client.query('ROLLBACK'); } catch (_) {}
+    console.error('schedule/shift error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    client.release();
+  }
+});
+
 router.delete('/', authMiddleware, async (req, res) => {
   try {
     const { from } = req.query;

@@ -291,32 +291,17 @@ export default function Calendar() {
 
   // Inverse of handleSkipWorkout: pushes every assigned workout from `date`
   // forward by one day so the user can drop a one-off custom workout on `date`
-  // without losing the originally-scheduled one.
+  // without losing the originally-scheduled one. Delegates to the server so
+  // the cascade isn't bounded by the loaded calendar window.
   async function handlePushScheduleBack(date) {
-    const startStr = format(date, 'yyyy-MM-dd');
     setScheduleSaving(true);
     try {
-      const futureWorkouts = schedule
-        .filter((s) => s.date >= startStr && s.templateId)
-        .sort((a, b) => a.date.localeCompare(b.date));
-
-      const updateMap = new Map();
-      // Clear every original date first; the per-workout "claim newDate" pass
-      // below will repopulate everything that should still be filled.
-      for (const w of futureWorkouts) {
-        updateMap.set(w.date, null);
-      }
-      for (const w of futureWorkouts) {
-        const newDate = format(addDays(parseISO(w.date), 1), 'yyyy-MM-dd');
-        updateMap.set(newDate, w.templateId);
-      }
-      const updates = Array.from(updateMap.entries()).map(
-        ([d, templateId]) => ({ date: d, templateId })
-      );
-
-      await api('/schedule', {
-        method: 'PUT',
-        body: JSON.stringify({ schedule: updates }),
+      await api('/schedule/shift', {
+        method: 'POST',
+        body: JSON.stringify({
+          fromDate: format(date, 'yyyy-MM-dd'),
+          direction: 'forward',
+        }),
       });
       await refreshSchedule();
     } catch (err) {
@@ -330,6 +315,7 @@ export default function Calendar() {
 
   function openStartEmptyFlow() {
     if (!editingDay) return;
+    setEditError('');
     const workout = getWorkoutForDay(editingDay);
     const hasWorkout = workout && !workout.isRest && workout.templateId;
     if (hasWorkout) {
@@ -342,26 +328,16 @@ export default function Calendar() {
 
   function proceedToNamePrompt() {
     if (!editingDay) return;
+    setEditError('');
     setStartEmptyName(`${format(editingDay, 'M/d/yy')} custom workout`);
     setStartEmptyStep('name-prompt');
   }
 
   async function handleStartEmptySkipExisting() {
-    const dateStr = format(editingDay, 'yyyy-MM-dd');
-    setScheduleSaving(true);
-    try {
-      await api('/schedule', {
-        method: 'PUT',
-        body: JSON.stringify({ schedule: [{ date: dateStr, templateId: null }] }),
-      });
-      await refreshSchedule();
-      proceedToNamePrompt();
-    } catch (err) {
-      if (import.meta.env.DEV) console.error(err);
-      setEditError('Failed to save. Please try again.');
-    } finally {
-      setScheduleSaving(false);
-    }
+    // Don't pre-clear the day — /sessions/start-empty's UPSERT replaces the
+    // schedule row when the user confirms a name. Pre-clearing here would
+    // leave the day blank if the user cancels at the name prompt.
+    proceedToNamePrompt();
   }
 
   async function handleStartEmptyPushBack() {
@@ -374,6 +350,9 @@ export default function Calendar() {
   }
 
   async function handleConfirmStartEmpty() {
+    // Entry guard against double-tap / Enter-held: setStartEmptySaving
+    // doesn't flip the button's disabled flag until the next render.
+    if (startEmptySaving) return;
     if (!editingDay) return;
     const trimmed = startEmptyName.trim();
     if (!trimmed) {
@@ -407,6 +386,7 @@ export default function Calendar() {
   }
 
   function cancelStartEmpty() {
+    setEditError('');
     setStartEmptyStep(null);
     setStartEmptyName('');
   }

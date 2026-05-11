@@ -63,22 +63,20 @@ router.post('/start-empty', authMiddleware, async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    // Find-or-create the user's "My Workouts" program
+    // Race-safe find-or-create of the user's "My Workouts" program.
+    // DO UPDATE is a no-op forcing RETURNING to fire on conflict so we always
+    // get the row id back. The ON CONFLICT WHERE clause must match the partial
+    // unique index in initDb.js exactly.
     const programName = 'My Workouts';
-    let programId;
-    const { rows: existingProgram } = await client.query(
-      'SELECT id FROM programs WHERE user_id = $1 AND name = $2',
-      [req.userId, programName]
+    const { rows: [programRow] } = await client.query(
+      `INSERT INTO programs (user_id, name, description)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (user_id, lower(name)) WHERE user_id IS NOT NULL
+       DO UPDATE SET name = EXCLUDED.name
+       RETURNING id`,
+      [req.userId, programName, '']
     );
-    if (existingProgram.length > 0) {
-      programId = existingProgram[0].id;
-    } else {
-      const { rows: [newProg] } = await client.query(
-        'INSERT INTO programs (user_id, name, description) VALUES ($1, $2, $3) RETURNING id',
-        [req.userId, programName, '']
-      );
-      programId = newProg.id;
-    }
+    const programId = programRow.id;
 
     // De-duplicate the name within the program (case-insensitive)
     const baseName = name.trim();
