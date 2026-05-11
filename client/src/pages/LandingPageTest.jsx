@@ -124,18 +124,11 @@ export default function LandingPageTest() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Top nav */}
+      {/* Top nav — logo on the left, primary action (Log In / Open App) on
+          the right. No Back button: the landing is the root URL, there's
+          nothing to go back to. */}
       <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-black/70 border-b border-white/5">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-1 text-wf-red text-sm font-medium active:opacity-70"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-            </svg>
-            Back
-          </button>
           <div className="text-xl font-black tracking-widest">
             REP<span className="text-wf-red">LAB</span>
           </div>
@@ -177,7 +170,7 @@ export default function LandingPageTest() {
             Share.
           </h1>
           <p className="text-base md:text-lg text-white/60 max-w-xl mx-auto mb-8 leading-relaxed">
-            Get 1% better everyday. REPLAB is the lifter's logbook. Built to help you track for progressive overloading and breaking plateaus — across iOS, Android, and the web.
+            Get 1% better everyday. REPLAB is the lifter's logbook. Built to help you track for progressive overloading and break plateaus — across iOS, Android, and the web.
           </p>
 
           {/* Hero feature bullets — concise pitch above the CTAs. The fuller
