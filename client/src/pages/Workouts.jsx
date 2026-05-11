@@ -4115,6 +4115,19 @@ export default function Workouts() {
             const ownPrograms = isBrowse ? filtered : filtered.filter((p) => !acceptedSharesMap[p.id]);
             const sharedPrograms = isBrowse ? [] : filtered.filter((p) => acceptedSharesMap[p.id]);
 
+            // In My Workouts view, pin a program literally named "My Workouts"
+            // to the top so the catch-all bucket for custom + empty-start
+            // workouts is always the first card.
+            if (!isBrowse) {
+              ownPrograms.sort((a, b) => {
+                const aMine = (a.name || '').toLowerCase() === 'my workouts';
+                const bMine = (b.name || '').toLowerCase() === 'my workouts';
+                if (aMine && !bMine) return -1;
+                if (bMine && !aMine) return 1;
+                return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+              });
+            }
+
             if (
               ownPrograms.length === 0 &&
               sharedPrograms.length === 0 &&

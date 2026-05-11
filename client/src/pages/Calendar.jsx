@@ -49,6 +49,9 @@ export default function Calendar() {
   // for a copy. We stash the structured payload + the args needed to retry the
   // copy with confirmOverwrite: true. Cleared on confirm or cancel.
   const [overwriteConfirm, setOverwriteConfirm] = useState(null); // { details, retry: { targetDate, useReps } }
+  const [startEmptyStep, setStartEmptyStep] = useState(null); // 'overwrite-options' | 'name-prompt' | null
+  const [startEmptyName, setStartEmptyName] = useState('');
+  const [startEmptySaving, setStartEmptySaving] = useState(false);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [tutorialDone, setTutorialDone] = useState(() => searchParams.get('tutorialDone') === '1');
@@ -177,6 +180,8 @@ export default function Calendar() {
     setRestDayPrompt(false);
     setClearCalendarConfirm(false);
     setClearCalendarCompletedWarn(false);
+    setStartEmptyStep(null);
+    setStartEmptyName('');
     setEditingDay(date);
   }
 
@@ -282,6 +287,128 @@ export default function Calendar() {
     } finally {
       setScheduleSaving(false);
     }
+  }
+
+  // Inverse of handleSkipWorkout: pushes every assigned workout from `date`
+  // forward by one day so the user can drop a one-off custom workout on `date`
+  // without losing the originally-scheduled one.
+  async function handlePushScheduleBack(date) {
+    const startStr = format(date, 'yyyy-MM-dd');
+    setScheduleSaving(true);
+    try {
+      const futureWorkouts = schedule
+        .filter((s) => s.date >= startStr && s.templateId)
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+      const updateMap = new Map();
+      // Clear every original date first; the per-workout "claim newDate" pass
+      // below will repopulate everything that should still be filled.
+      for (const w of futureWorkouts) {
+        updateMap.set(w.date, null);
+      }
+      for (const w of futureWorkouts) {
+        const newDate = format(addDays(parseISO(w.date), 1), 'yyyy-MM-dd');
+        updateMap.set(newDate, w.templateId);
+      }
+      const updates = Array.from(updateMap.entries()).map(
+        ([d, templateId]) => ({ date: d, templateId })
+      );
+
+      await api('/schedule', {
+        method: 'PUT',
+        body: JSON.stringify({ schedule: updates }),
+      });
+      await refreshSchedule();
+    } catch (err) {
+      if (import.meta.env.DEV) console.error(err);
+      setEditError('Failed to save. Please try again.');
+      throw err;
+    } finally {
+      setScheduleSaving(false);
+    }
+  }
+
+  function openStartEmptyFlow() {
+    if (!editingDay) return;
+    const workout = getWorkoutForDay(editingDay);
+    const hasWorkout = workout && !workout.isRest && workout.templateId;
+    if (hasWorkout) {
+      setStartEmptyStep('overwrite-options');
+    } else {
+      setStartEmptyName(`${format(editingDay, 'M/d/yy')} custom workout`);
+      setStartEmptyStep('name-prompt');
+    }
+  }
+
+  function proceedToNamePrompt() {
+    if (!editingDay) return;
+    setStartEmptyName(`${format(editingDay, 'M/d/yy')} custom workout`);
+    setStartEmptyStep('name-prompt');
+  }
+
+  async function handleStartEmptySkipExisting() {
+    const dateStr = format(editingDay, 'yyyy-MM-dd');
+    setScheduleSaving(true);
+    try {
+      await api('/schedule', {
+        method: 'PUT',
+        body: JSON.stringify({ schedule: [{ date: dateStr, templateId: null }] }),
+      });
+      await refreshSchedule();
+      proceedToNamePrompt();
+    } catch (err) {
+      if (import.meta.env.DEV) console.error(err);
+      setEditError('Failed to save. Please try again.');
+    } finally {
+      setScheduleSaving(false);
+    }
+  }
+
+  async function handleStartEmptyPushBack() {
+    try {
+      await handlePushScheduleBack(editingDay);
+      proceedToNamePrompt();
+    } catch (_) {
+      // error already surfaced
+    }
+  }
+
+  async function handleConfirmStartEmpty() {
+    if (!editingDay) return;
+    const trimmed = startEmptyName.trim();
+    if (!trimmed) {
+      setEditError('Please enter a workout name.');
+      return;
+    }
+    setStartEmptySaving(true);
+    try {
+      const result = await api('/sessions/start-empty', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: trimmed,
+          date: format(editingDay, 'yyyy-MM-dd'),
+        }),
+      });
+      // Pick up the new template so it's available app-wide before nav
+      const tpls = await api('/templates');
+      setTemplates(tpls);
+      await refreshSchedule();
+      const dateStr = format(editingDay, 'yyyy-MM-dd');
+      setStartEmptyStep(null);
+      setStartEmptyName('');
+      setEditingDay(null);
+      navigate(`/session/${result.templateId}/${dateStr}`);
+    } catch (err) {
+      if (import.meta.env.DEV) console.error(err);
+      setEditError('Failed to create workout. Please try again.');
+    } finally {
+      setStartEmptySaving(false);
+    }
+  }
+
+  function cancelStartEmpty() {
+    setStartEmptyStep(null);
+    setStartEmptyName('');
   }
 
   async function handleClearCalendar() {
@@ -1172,6 +1299,18 @@ export default function Calendar() {
                       </div>
                       <span className="text-sm font-medium text-white">Create a Workout</span>
                     </button>
+                    <button
+                      onClick={openStartEmptyFlow}
+                      disabled={scheduleSaving}
+                      className={`w-full text-left rounded-xl px-4 py-3 flex items-center gap-3 bg-white/5 active:bg-white/10 active:scale-[0.98] transition-all ${scheduleSaving ? 'opacity-50 pointer-events-none' : ''}`}
+                    >
+                      <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+                        <svg className="w-4 h-4 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                      </div>
+                      <span className="text-sm font-medium text-white">Start Empty Workout</span>
+                    </button>
                     {hasWorkout && (
                       isPremium ? (
                         <button
@@ -1386,6 +1525,34 @@ export default function Calendar() {
                   <div>
                     <p className="text-sm font-semibold text-white">Skip Workout</p>
                     <p className="text-xs text-wf-gray-500 mt-0.5">Drop this workout and pull all future workouts up by one day.</p>
+                  </div>
+                </div>
+              </button>
+
+              {/* Push Everything Back — slide today's workout (and all
+                  future workouts) forward by one day. Inverse of Skip. */}
+              <button
+                onClick={async () => {
+                  try {
+                    await handlePushScheduleBack(editingDay);
+                    setRestDayPrompt(false);
+                    setEditingDay(null);
+                  } catch (_) {
+                    // error already surfaced via editError
+                  }
+                }}
+                disabled={scheduleSaving}
+                className={`w-full text-left rounded-xl px-4 py-4 bg-white/5 active:bg-white/10 active:scale-[0.98] transition-all ${scheduleSaving ? 'opacity-50 pointer-events-none' : ''}`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+                    <svg className="w-5 h-5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-white">Push Everything Back</p>
+                    <p className="text-xs text-wf-gray-500 mt-0.5">Slide this workout (and everything after it) forward one day.</p>
                   </div>
                 </div>
               </button>
@@ -1685,6 +1852,153 @@ export default function Calendar() {
         onConfirm={handleOverwriteConfirm}
         onCancel={handleOverwriteCancel}
       />
+
+      {/* Start Empty — Overwrite Options Modal */}
+      {startEmptyStep === 'overwrite-options' && editingDay && (
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center px-4"
+          onClick={cancelStartEmpty}
+        >
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+          <div
+            className="relative w-full max-w-sm shadow-2xl"
+            style={{
+              background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: '2px',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 pt-5 pb-4">
+              <p
+                className="text-[10px] uppercase font-bold mb-1"
+                style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.2em' }}
+              >
+                Start Empty Workout
+              </p>
+              <h3
+                className="text-xl font-black text-white leading-tight"
+                style={{ letterSpacing: '-0.01em' }}
+              >
+                This day already has a workout scheduled
+              </h3>
+              <p className="text-sm text-wf-gray-400 mt-2">
+                What should we do with{' '}
+                <span className="text-white font-medium">
+                  {getWorkoutForDay(editingDay)?.templateName}
+                </span>?
+              </p>
+            </div>
+            <div className="px-5 pb-5 space-y-2">
+              <button
+                onClick={handleStartEmptySkipExisting}
+                disabled={scheduleSaving}
+                className={`w-full text-left px-4 py-3 bg-white/5 active:bg-white/10 active:scale-[0.98] transition-all ${scheduleSaving ? 'opacity-50 pointer-events-none' : ''}`}
+                style={{ borderRadius: '2px' }}
+              >
+                <p className="text-sm font-semibold text-white">Skip this workout</p>
+                <p className="text-xs text-wf-gray-500 mt-0.5">
+                  Drop the scheduled workout from the program.
+                </p>
+              </button>
+              <button
+                onClick={handleStartEmptyPushBack}
+                disabled={scheduleSaving}
+                className={`w-full text-left px-4 py-3 bg-white/5 active:bg-white/10 active:scale-[0.98] transition-all ${scheduleSaving ? 'opacity-50 pointer-events-none' : ''}`}
+                style={{ borderRadius: '2px' }}
+              >
+                <p className="text-sm font-semibold text-white">Push everything back one day</p>
+                <p className="text-xs text-wf-gray-500 mt-0.5">
+                  Slide this workout (and the rest) forward by a day.
+                </p>
+              </button>
+              <button
+                onClick={cancelStartEmpty}
+                className="w-full text-left px-4 py-3 bg-white/5 active:bg-white/10 active:scale-[0.98] transition-all"
+                style={{ borderRadius: '2px' }}
+              >
+                <p className="text-sm font-semibold text-wf-gray-300">Cancel</p>
+              </button>
+            </div>
+            {editError && (
+              <div className="px-5 pb-4">
+                <p className="text-sm text-red-400 text-center">{editError}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Start Empty — Name Prompt Modal */}
+      {startEmptyStep === 'name-prompt' && editingDay && (
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center px-4"
+          onClick={cancelStartEmpty}
+        >
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+          <div
+            className="relative w-full max-w-sm shadow-2xl"
+            style={{
+              background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: '2px',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 pt-5 pb-4">
+              <p
+                className="text-[10px] uppercase font-bold mb-1"
+                style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.2em' }}
+              >
+                Name Your Workout
+              </p>
+              <h3
+                className="text-xl font-black text-white leading-tight"
+                style={{ letterSpacing: '-0.01em' }}
+              >
+                Start Empty Workout
+              </h3>
+              <p className="text-sm text-wf-gray-400 mt-2">
+                Saved to your <span className="text-white font-medium">My Workouts</span> program.
+              </p>
+              <input
+                type="text"
+                value={startEmptyName}
+                onChange={(e) => setStartEmptyName(e.target.value)}
+                autoFocus
+                className="w-full mt-4 glass-input rounded-md px-3 py-2.5 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none transition-all"
+                placeholder="Workout name"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !startEmptySaving) handleConfirmStartEmpty();
+                }}
+              />
+            </div>
+            <div className="px-5 pb-5 flex gap-3">
+              <button
+                onClick={cancelStartEmpty}
+                disabled={startEmptySaving}
+                className={`flex-1 py-3 bg-white/10 text-sm font-semibold text-white active:scale-[0.98] transition-all ${startEmptySaving ? 'opacity-50 pointer-events-none' : ''}`}
+                style={{ borderRadius: '2px' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmStartEmpty}
+                disabled={startEmptySaving || !startEmptyName.trim()}
+                className={`flex-1 py-3 btn-gradient text-sm font-semibold text-white active:scale-[0.98] transition-all ${(startEmptySaving || !startEmptyName.trim()) ? 'opacity-50 pointer-events-none' : ''}`}
+                style={{ borderRadius: '2px' }}
+              >
+                {startEmptySaving ? 'Creating...' : 'Confirm'}
+              </button>
+            </div>
+            {editError && (
+              <div className="px-5 pb-4">
+                <p className="text-sm text-red-400 text-center">{editError}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
     </div>
   );

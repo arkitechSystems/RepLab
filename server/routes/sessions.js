@@ -44,6 +44,90 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 
+// POST /sessions/start-empty — Create an empty "custom" template in the
+// user's "My Workouts" program and assign it to the given date. Returns the
+// new templateId so the client can navigate straight into the session.
+// Does not touch any existing session rows for the date — that's handled by
+// db.createSession's overwrite-protection contract when the user actually
+// logs entries.
+router.post('/start-empty', authMiddleware, async (req, res) => {
+  const { name, date } = req.body;
+  if (!name || typeof name !== 'string' || !name.trim()) {
+    return res.status(400).json({ error: 'name is required' });
+  }
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return res.status(400).json({ error: 'date in YYYY-MM-DD format is required' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Find-or-create the user's "My Workouts" program
+    const programName = 'My Workouts';
+    let programId;
+    const { rows: existingProgram } = await client.query(
+      'SELECT id FROM programs WHERE user_id = $1 AND name = $2',
+      [req.userId, programName]
+    );
+    if (existingProgram.length > 0) {
+      programId = existingProgram[0].id;
+    } else {
+      const { rows: [newProg] } = await client.query(
+        'INSERT INTO programs (user_id, name, description) VALUES ($1, $2, $3) RETURNING id',
+        [req.userId, programName, '']
+      );
+      programId = newProg.id;
+    }
+
+    // De-duplicate the name within the program (case-insensitive)
+    const baseName = name.trim();
+    let finalName = baseName;
+    let suffix = 2;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const { rows: dupe } = await client.query(
+        'SELECT id FROM templates WHERE program_id = $1 AND LOWER(name) = LOWER($2) LIMIT 1',
+        [programId, finalName]
+      );
+      if (dupe.length === 0) break;
+      finalName = `${baseName} (${suffix})`;
+      suffix += 1;
+    }
+
+    // Next sort_order for the program
+    const { rows: sortRows } = await client.query(
+      'SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_sort FROM templates WHERE program_id = $1',
+      [programId]
+    );
+    const sortOrder = sortRows[0].next_sort;
+
+    // Empty template — no exercises
+    const { rows: [tmpl] } = await client.query(
+      'INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES ($1, $2, $3, $4, FALSE, $5) RETURNING id',
+      [req.userId, programId, finalName, '', sortOrder]
+    );
+
+    // Replace whatever was on that day with the new template
+    await client.query(
+      `INSERT INTO schedule_days (user_id, schedule_date, template_id, is_rest)
+       VALUES ($1, $2, $3, FALSE)
+       ON CONFLICT (user_id, schedule_date)
+       DO UPDATE SET template_id = $3, is_rest = FALSE`,
+      [req.userId, date, tmpl.id]
+    );
+
+    await client.query('COMMIT');
+    res.status(201).json({ templateId: tmpl.id, finalName });
+  } catch (err) {
+    try { await client.query('ROLLBACK'); } catch (_) {}
+    console.error('start-empty error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    client.release();
+  }
+});
+
 // POST /sessions/initialize — Create initial session copy from template (no entries yet)
 router.post('/initialize', authMiddleware, async (req, res) => {
   try {
