@@ -1,4 +1,7 @@
-const CACHE_NAME = 'replab-v4';
+// Bumped to v5 (2026-05-11) to evict a poisoned cache of 404/text-html
+// responses that the static-asset handler used to store unconditionally.
+// Existing users get a clean activate-time cache wipe on their next visit.
+const CACHE_NAME = 'replab-v5';
 const SHELL_ASSETS = ['/', '/index.html'];
 
 // API paths to cache (GET) for offline use
@@ -72,14 +75,21 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets: cache-first (video extensions dropped — handled above)
+  // Static assets: cache-first (video extensions dropped — handled above).
+  // CRITICAL: only cache 2xx responses. The previous version stored every
+  // response including 404s and HTML-typed error bodies — once a stale asset
+  // hash 404'd through the SPA fallback, the SW kept serving that 404 as if
+  // it were the real asset, producing "Refused to apply style ... MIME type
+  // (text/html)" errors that persisted through every refresh.
   if (url.pathname.match(/\.(js|css|png|jpg|svg|woff2?)$/)) {
     event.respondWith(
       caches.match(event.request).then((cached) =>
         cached ||
         fetch(event.request).then((response) => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
           return response;
         })
       )
@@ -87,13 +97,17 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // API GET requests: network-first with cache fallback
+  // API GET requests: network-first with cache fallback. Same response.ok
+  // guard as the static-asset branch — don't cache 4xx/5xx responses or
+  // we'll keep replaying errors instead of falling back to real data.
   if (CACHEABLE_API.some((p) => url.pathname.startsWith(p))) {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
           return response;
         })
         .catch(() =>
