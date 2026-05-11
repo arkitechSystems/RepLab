@@ -1335,6 +1335,69 @@ export default function WorkoutSession() {
     }, 50);
   }
 
+  // Reorder sets WITHIN an exercise. Triggered by drag-and-drop on the set
+  // rows in ExerciseCard (long-press → drag activation via @dnd-kit).
+  // All four parallel structures need to shuffle together so logged data
+  // stays attached to the right row:
+  //   • template.exercises[i].sets — the set definitions (renumbered 1..N)
+  //   • entries[exerciseKey]       — the per-set weight/reps/setType the user entered
+  //   • completedSets              — `${eKey}-${idx}` markers
+  //   • autoFilled                 — `${eKey}-${idx}` markers
+  // For the shared index-shifting logic, every "from→to" reorder shifts a
+  // contiguous range of indices by ±1 between fromIdx and toIdx; everything
+  // outside that range keeps its index.
+  function handleReorderSets(exerciseKey, fromIdx, toIdx) {
+    if (fromIdx === toIdx) return;
+    setPersisted(false);
+    structureSaveNeeded.current = true;
+
+    const tIdx = findExIdx(template.exercises, exerciseKey);
+    if (tIdx < 0) return;
+
+    setTemplate((prev) => {
+      const exercises = [...prev.exercises];
+      const sets = [...exercises[tIdx].sets];
+      const [moved] = sets.splice(fromIdx, 1);
+      sets.splice(toIdx, 0, moved);
+      const renumbered = sets.map((s, i) => ({ ...s, setNumber: i + 1 }));
+      exercises[tIdx] = { ...exercises[tIdx], sets: renumbered };
+      return { ...prev, exercises };
+    });
+
+    setEntries((prev) => {
+      const arr = prev[exerciseKey];
+      if (!Array.isArray(arr)) return prev;
+      const next = [...arr];
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved);
+      return { ...prev, [exerciseKey]: next };
+    });
+
+    const remapIdx = (idx) => {
+      if (idx === fromIdx) return toIdx;
+      if (fromIdx < toIdx && idx > fromIdx && idx <= toIdx) return idx - 1;
+      if (fromIdx > toIdx && idx >= toIdx && idx < fromIdx) return idx + 1;
+      return idx;
+    };
+    const remapSetForExercise = (keySet) => {
+      const next = new Set();
+      const prefix = exerciseKey + '-';
+      for (const key of keySet) {
+        if (key.startsWith(prefix)) {
+          const idx = Number(key.slice(prefix.length));
+          if (Number.isFinite(idx)) {
+            next.add(`${prefix}${remapIdx(idx)}`);
+            continue;
+          }
+        }
+        next.add(key);
+      }
+      return next;
+    };
+    setCompletedSets((prev) => remapSetForExercise(prev));
+    setAutoFilled((prev) => remapSetForExercise(prev));
+  }
+
   function handleNoteChange(exerciseName, value) {
     setPersisted(false);
     setNotes((prev) => ({ ...prev, [exerciseName]: value }));
@@ -2628,6 +2691,7 @@ export default function WorkoutSession() {
               onToggleComplete={completionLocked ? () => setShowBeginPrompt(true) : wrapCb(handleToggleComplete)}
               onAddSet={structureLocked ? undefined : wrapCb(handleAddSet)}
               onDeleteSet={structureLocked ? undefined : wrapCb(handleDeleteSet)}
+              onReorderSets={structureLocked ? undefined : (fromIdx, toIdx) => handleReorderSets(eKey, fromIdx, toIdx)}
               onSwapExercise={structureLocked ? undefined : (_oldName, newName) => handleSwapExercise(eKey, newName)}
               onAddExercise={structureLocked ? undefined : (name) => handleAddExercise(name, idx)}
               onDeleteExercise={structureLocked ? undefined : () => handleDeleteExercise(eKey)}

@@ -1,5 +1,19 @@
 import { useState, useRef, useCallback, useLayoutEffect, useMemo, memo } from 'react';
 import { createPortal } from 'react-dom';
+import {
+  DndContext,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { getExerciseVideoId, getExerciseSearchUrl } from '../utils/exerciseVideos.js';
 import { useExercises, getSubstitutesFromList } from '../hooks/useExercises.js';
 import VideoPlayerModal from './VideoPlayerModal.jsx';
@@ -39,7 +53,33 @@ function getSetTypeShort(value) {
 
 export { SET_TYPES };
 
-function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, onShowPRs, note, onNoteChange, weightSuggestion, onApplySuggestion, allWorkoutExercises, lastEntries, forceShowDemo, mode = 'session', dataTutorial, showGoalWeight = true, showGoalReps = true, showSetType = true, exerciseNumber, cardioEnabled = false, cardioSelections, onCardioChange, cardTheme = 'light' }) {
+// Sortable wrapper for an individual set row. Apply listeners on the outer
+// node so dnd-kit's TouchSensor (configured with a 500ms delay constraint
+// in ExerciseCard below) owns long-press → drag activation. The inner row
+// keeps its own onTouchStart/Move/End for swipe-to-delete and
+// swipe-to-complete — the two activation conditions don't overlap:
+//   • Drag: still touch + 500ms = long-press
+//   • Swipe: > 15px horizontal motion before 500ms = sideways gesture
+// `disabled` blocks drag activation entirely (used for completed sets,
+// template/readOnly modes, and when the parent hasn't passed onReorderSets).
+function SortableSetRow({ id, disabled, children }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.7 : 1,
+    zIndex: isDragging ? 30 : undefined,
+    boxShadow: isDragging ? '0 18px 36px rgba(0,0,0,0.5)' : undefined,
+    position: 'relative',
+  };
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      {children}
+    </div>
+  );
+}
+
+function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onReorderSets, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, onShowPRs, note, onNoteChange, weightSuggestion, onApplySuggestion, allWorkoutExercises, lastEntries, forceShowDemo, mode = 'session', dataTutorial, showGoalWeight = true, showGoalReps = true, showSetType = true, exerciseNumber, cardioEnabled = false, cardioSelections, onCardioChange, cardTheme = 'light' }) {
   // 'light' = #e8e8e8 card with dark text (default)
   // 'dark'  = transparent card, white text — page bg shows through
   const isDarkTheme = cardTheme === 'dark';
@@ -67,11 +107,30 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
   const [swapSearch, setSwapSearch] = useState('');
   const [showAddBelow, setShowAddBelow] = useState(false);
   const [addBelowSearch, setAddBelowSearch] = useState('');
-  const longPressRef = useRef(null);
 
   const touchStartPos = useRef(null);
   const swipeRowRefs = useRef({});
   const swipeActive = useRef(false);
+
+  // Sensors for set-row drag-and-drop. Touch uses a 500ms delay activation
+  // so a quick tap (input focus) or short swipe (delete/complete) still
+  // works — only a stationary long-press kicks off a drag. Mouse uses a
+  // small distance constraint so a click doesn't accidentally start a drag.
+  const sortableSensors = useSensors(
+    useSensor(TouchSensor, { activationConstraint: { delay: 500, tolerance: 8 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  );
+
+  const handleSetDragEnd = useCallback((event) => {
+    if (!onReorderSets) return;
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const fromIdx = Number(active.id);
+    const toIdx = Number(over.id);
+    if (!Number.isFinite(fromIdx) || !Number.isFinite(toIdx)) return;
+    onReorderSets(fromIdx, toIdx);
+    navigator.vibrate?.(20);
+  }, [onReorderSets]);
 
   // FLIP-style reorder animation. Each card tracks its layout position; when
   // it changes (because the user moved this card or an adjacent one), apply
@@ -123,11 +182,8 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
     const touch = e.touches[0];
     touchStartPos.current = { x: touch.clientX, y: touch.clientY, idx };
     swipeActive.current = false;
-    longPressRef.current = setTimeout(() => {
-      navigator.vibrate?.(30);
-      setDeleteIdx(idx);
-      longPressRef.current = null;
-    }, 500);
+    // Long-press is now owned by @dnd-kit's TouchSensor (it activates drag
+    // after 500ms of stillness). Delete is still reachable via swipe-left.
   }, []);
 
   const handleTouchMove = useCallback((e) => {
@@ -136,12 +192,6 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
     const dx = touch.clientX - touchStartPos.current.x;
     const dy = Math.abs(touch.clientY - touchStartPos.current.y);
     const absDx = Math.abs(dx);
-
-    // Cancel long press if finger moved
-    if (longPressRef.current && (absDx > 10 || dy > 10)) {
-      clearTimeout(longPressRef.current);
-      longPressRef.current = null;
-    }
 
     // Activate swipe mode if horizontal movement dominates (session mode only)
     if (!isTemplate && absDx > 15 && absDx > dy * 1.5) {
@@ -159,10 +209,6 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
   }, [isTemplate]);
 
   const handleTouchEnd = useCallback(() => {
-    if (longPressRef.current) {
-      clearTimeout(longPressRef.current);
-      longPressRef.current = null;
-    }
 
     if (swipeActive.current && touchStartPos.current) {
       const idx = touchStartPos.current.idx;
@@ -351,7 +397,11 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
         )}
       </div>
 
-      {/* Set Rows */}
+      {/* Set Rows — wrapped in dnd-kit so long-press initiates a drag-to-
+          reorder. Completed sets (and template/readOnly modes) are passed
+          `disabled` so they're not draggable but still render in place. */}
+      <DndContext sensors={sortableSensors} collisionDetection={closestCenter} onDragEnd={handleSetDragEnd}>
+        <SortableContext items={exercise.sets.map((_, i) => i)} strategy={verticalListSortingStrategy}>
       <div className="divide-y divide-white/5">
         {exercise.sets.map((set, idx) => {
           const entry = entries?.[idx] || {};
@@ -562,13 +612,20 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
             />
           ) : null;
 
+          // Drag-to-reorder is disabled for completed sets (user shouldn't
+          // be able to pick them up — see handleReorderSets in
+          // WorkoutSession.jsx for the index-shift semantics for completed
+          // sets that "slide" around an active drag) and any mode without a
+          // reorder handler (template editing has its own UX, readOnly
+          // mode is read-only).
+          const dragDisabled = !onReorderSets || readOnly || isTemplate || isCompleted;
           // In session mode, wrap with swipe support. Action backgrounds
           // sit behind the row and are revealed as the row is dragged:
           //   • swipe right → green Complete (left edge)
           //   • swipe left  → red Delete (right edge)
           if (!isTemplate && !readOnly) {
             return (
-              <div key={idx}>
+              <SortableSetRow key={idx} id={idx} disabled={dragDisabled}>
                 <div className="relative overflow-hidden">
                   {/* Green Complete — revealed when row is swiped right */}
                   <div
@@ -600,13 +657,19 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                 </div>
                 {lastHint}
                 {cardioCard}
-              </div>
+              </SortableSetRow>
             );
           }
 
-          return <div key={idx}>{rowContent}{lastHint}{cardioCard}</div>;
+          return (
+            <SortableSetRow key={idx} id={idx} disabled={dragDisabled}>
+              {rowContent}{lastHint}{cardioCard}
+            </SortableSetRow>
+          );
         })}
       </div>
+        </SortableContext>
+      </DndContext>
 
       {/* Program-provided note (xlsx column Q — "Failure / Workout Note").
           Renders as a static italic block above the user-editable notes
