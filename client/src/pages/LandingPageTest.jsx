@@ -82,7 +82,9 @@ function TiltFeatureCard({ title, body }) {
         transform: `perspective(900px) rotateY(${tx.x * 14}deg) rotateX(${-tx.y * 14}deg)`,
         transition: 'transform 0.1s ease-out',
         willChange: 'transform',
-        background: 'linear-gradient(135deg, #1a1a1a, #0a0a0a)',
+        // Red → dark-red gradient ported from Brainstorm flip card #8 face.
+        // Tilt behavior, shadow, and hover hot-spot all preserved.
+        background: 'linear-gradient(135deg, #ef4444, #7f1d1d)',
         border: '1px solid rgba(255,255,255,0.1)',
         boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
       }}
@@ -90,11 +92,19 @@ function TiltFeatureCard({ title, body }) {
       <div
         className="absolute inset-0 rounded-2xl pointer-events-none"
         style={{
-          background: `radial-gradient(circle at ${(tx.x + 0.5) * 100}% ${(tx.y + 0.5) * 100}%, rgba(239,68,68,0.22), transparent 55%)`,
+          background: `radial-gradient(circle at ${(tx.x + 0.5) * 100}% ${(tx.y + 0.5) * 100}%, rgba(255,255,255,0.18), transparent 55%)`,
         }}
       />
-      <h3 className="text-lg font-black tracking-tight mb-2 relative">{title}</h3>
-      <p className="text-sm text-white/55 leading-relaxed relative">{body}</p>
+      {/* Title + body font treatment mirrors flip card #8's face — brutalist
+          uppercase eyebrow with wide letterspacing for the title, slightly
+          brighter body text to keep contrast against the red gradient. */}
+      <h3
+        className="text-lg font-black uppercase mb-2 relative text-white"
+        style={{ letterSpacing: '0.2em' }}
+      >
+        {title}
+      </h3>
+      <p className="text-sm text-white/80 leading-relaxed relative">{body}</p>
     </div>
   );
 }
@@ -162,7 +172,7 @@ export default function LandingPageTest() {
             Share.
           </h1>
           <p className="text-base md:text-lg text-white/60 max-w-xl mx-auto mb-8 leading-relaxed">
-            REPLAB is the lifter's logbook. Built for progressive overload — across iOS, Android, and the web.
+            Get 1% better everyday. REPLAB is the lifter's logbook. Built to help you track for progressive overloading and breaking plateaus — across iOS, Android, and the web.
           </p>
 
           {/* Hero feature bullets — concise pitch above the CTAs. The fuller
