@@ -46,7 +46,7 @@ export default function FreeTrialOffer() {
       });
       updateUser(data.user);
       startTutorial(null);
-      navigate('/');
+      navigate('/app');
     } catch (err) {
       setError(err.message || 'Something went wrong');
     } finally {
@@ -56,7 +56,7 @@ export default function FreeTrialOffer() {
 
   function handleSkip() {
     startTutorial(null);
-    navigate('/');
+    navigate('/app');
   }
 
   return (

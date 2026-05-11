@@ -69,14 +69,14 @@ export default function Welcome() {
       catch { return true; }
     })();
     if (!versesEnabled) {
-      navigate('/');
+      navigate('/app');
       return;
     }
     try {
       const { verse } = pickNextVerse();
       setExitVerse(verse);
     } catch {
-      navigate('/');
+      navigate('/app');
     }
   }
 
@@ -124,7 +124,7 @@ export default function Welcome() {
     return (
       <BibleVerseOverlay
         verse={exitVerse}
-        onClose={() => navigate('/')}
+        onClose={() => navigate('/app')}
       />
     );
   }

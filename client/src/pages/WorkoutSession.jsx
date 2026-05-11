@@ -68,7 +68,7 @@ export default function WorkoutSession() {
   const location = useLocation();
   const tutorialMode = templateId === 'tutorial';
   const tutorialTemplate = location.state?.tutorialTemplate || null;
-  const { exercises: allExercisesFromDB, createCustom } = useExercises();
+  const { exercises: allExercisesFromDB, muscleGroups: allMuscleGroups, createCustom } = useExercises();
   const [template, setTemplate] = useState(null);
   const [programName, setProgramName] = useState('');
   // Cardio-acceleration programs (Stoppani) render a dropdown + 60s timer
@@ -97,6 +97,10 @@ export default function WorkoutSession() {
   const [notes, setNotes] = useState({});
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [addExerciseSearch, setAddExerciseSearch] = useState('');
+  // Active body-part filter in the Add Exercise modal. 'all' shows every
+  // muscle group; setting to a specific name (e.g. 'Triceps') narrows both
+  // the search results and the browse-by-muscle view to that group only.
+  const [addExerciseMuscleFilter, setAddExerciseMuscleFilter] = useState('all');
   // Cardio entries are persisted to the server immediately on add (linked to
   // the session's DB id) so they survive a refresh during a long workout.
   const [sessionId, setSessionId] = useState(null);
@@ -2082,7 +2086,7 @@ export default function WorkoutSession() {
       )}
       {/* Back button + Day navigation arrows */}
       <div className="px-4 pt-6 flex items-center justify-between">
-        <button onClick={() => tutorialMode ? navigate('/') : guardedNavigate(() => navigate(-1))} className="flex items-center gap-1 text-[11px] uppercase font-bold mb-2 active:opacity-70" style={{ color: 'rgba(239,68,68,0.9)', letterSpacing: '0.2em' }}>
+        <button onClick={() => tutorialMode ? navigate('/app') : guardedNavigate(() => navigate(-1))} className="flex items-center gap-1 text-[11px] uppercase font-bold mb-2 active:opacity-70" style={{ color: 'rgba(239,68,68,0.9)', letterSpacing: '0.2em' }}>
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>
@@ -2984,7 +2988,7 @@ export default function WorkoutSession() {
         {/* Add Exercise Button */}
         {!structureLocked && (
           <button
-            onClick={() => { setShowAddExercise(true); setAddExerciseSearch(''); }}
+            onClick={() => { setShowAddExercise(true); setAddExerciseSearch(''); setAddExerciseMuscleFilter('all'); }}
             className="w-full border border-dashed border-white/15 rounded-xl py-3.5 text-wf-gray-400 text-sm font-medium active:border-wf-red active:text-wf-red transition-colors flex items-center justify-center gap-2 mb-3"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -3039,9 +3043,14 @@ export default function WorkoutSession() {
         const allExercises = allExercisesFromDB;
         const existingNames = new Set(template.exercises.map((ex) => ex.name));
         const q = addExerciseSearch.toLowerCase();
+        const muscleFilter = addExerciseMuscleFilter;
+        const matchesMuscleFilter = (ex) => muscleFilter === 'all' || ex.muscle === muscleFilter;
         const seen = new Set();
+        // Pre-filter by muscle so both the search-results path and the
+        // browse-by-muscle path respect the active filter pill.
+        const muscleScoped = allExercises.filter(matchesMuscleFilter);
         const filtered = q
-          ? allExercises.filter((ex) => {
+          ? muscleScoped.filter((ex) => {
               if (existingNames.has(ex.name) || seen.has(ex.name)) return false;
               seen.add(ex.name);
               return ex.name.toLowerCase().includes(q);
@@ -3050,13 +3059,19 @@ export default function WorkoutSession() {
         // Group by muscle for browsing when no search
         const muscleGroups = {};
         if (!q) {
-          for (const ex of allExercises) {
+          for (const ex of muscleScoped) {
             if (existingNames.has(ex.name) || seen.has(ex.name)) continue;
             seen.add(ex.name);
             if (!muscleGroups[ex.muscle]) muscleGroups[ex.muscle] = [];
             muscleGroups[ex.muscle].push(ex);
           }
         }
+        // Pills derived from the hook's muscleGroups list, with "All" first.
+        // Falls back to deriving from the loaded exercises if the hook
+        // hasn't populated yet (defensive — useExercises sometimes races).
+        const muscleList = allMuscleGroups && allMuscleGroups.length > 0
+          ? allMuscleGroups
+          : Array.from(new Set(allExercises.map((ex) => ex.muscle).filter(Boolean))).sort();
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4" onClick={() => setShowAddExercise(false)}>
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
@@ -3081,6 +3096,28 @@ export default function WorkoutSession() {
                   ref={iosFocusRef}
                   className="w-full glass-input rounded-xl px-4 py-3 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none transition-all"
                 />
+                {/* Body-part filter pills — same interaction pattern as the
+                    Browse Workout Library at /workouts, scoped to muscle
+                    groups loaded from the exercises API. Horizontal scroll
+                    so the list never blows out the modal width. */}
+                <div className="-mx-5 mt-3 px-5 flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+                  {[{ value: 'all', label: 'All' }, ...muscleList.map((m) => ({ value: m, label: m }))].map((f) => {
+                    const isActive = addExerciseMuscleFilter === f.value;
+                    return (
+                      <button
+                        key={f.value}
+                        onClick={() => setAddExerciseMuscleFilter(f.value)}
+                        className={`shrink-0 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all active:scale-[0.97] ${
+                          isActive
+                            ? 'bg-wf-red text-white'
+                            : 'bg-white/5 text-white/60 border border-white/10 hover:text-white hover:border-white/25'
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
               <div className="overflow-y-auto flex-1 px-5 py-3">
                 {/* Custom exercise option when typing */}
@@ -3483,7 +3520,7 @@ export default function WorkoutSession() {
                   {tip.next ? 'Next' : 'Got it'}
                 </button>}
                 <button
-                  onClick={() => { setTutorialTip(null); navigate('/'); }}
+                  onClick={() => { setTutorialTip(null); navigate('/app'); }}
                   className="text-sm font-semibold text-white/70 bg-white/10 hover:bg-white/15 active:bg-white/20 transition-colors py-2 px-5 rounded-xl border border-white/10"
                 >
                   Skip tutorial

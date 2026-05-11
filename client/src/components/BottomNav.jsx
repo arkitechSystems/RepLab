@@ -6,7 +6,9 @@ import { NavLink } from 'react-router-dom';
 // + the top red accent bar — the icon itself doesn't change shape.
 const tabs = [
   {
-    to: '/',
+    // Dashboard moved from '/' to '/app' (2026-05) so the public landing
+    // page can live at the root for all web visitors.
+    to: '/app',
     label: 'Workouts',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className="w-full h-full">
@@ -62,7 +64,7 @@ export default function BottomNav() {
           <NavLink
             key={tab.to}
             to={tab.to}
-            end={tab.to === '/'}
+            end={tab.to === '/app'}
             data-tutorial={`nav-${tab.label.toLowerCase()}`}
             className="flex-1 flex flex-col items-center justify-center gap-1 active:scale-[0.97] transition-transform relative overflow-hidden"
           >

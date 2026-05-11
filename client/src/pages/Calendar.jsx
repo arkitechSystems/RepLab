@@ -835,7 +835,7 @@ export default function Calendar() {
                 </p>
                 <div className="flex gap-3 mt-4">
                   <button
-                    onClick={() => { setTutorialDone(false); navigate('/'); }}
+                    onClick={() => { setTutorialDone(false); navigate('/app'); }}
                     className="flex-1 btn-gradient text-white text-sm font-semibold py-2.5 px-4 rounded-xl active:scale-[0.97] transition-transform"
                   >
                     Browse Library

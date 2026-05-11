@@ -223,7 +223,7 @@ export default function CreateWorkout() {
       const from = searchParams.get('from');
       if (from === 'trainer' && !IS_IOS_NATIVE) { window.location.href = '/trainer/workouts'; }
       else if (from === 'admin' && !IS_IOS_NATIVE) { window.location.href = '/admin/workout-manager/workouts'; }
-      else { navigate('/'); }
+      else { navigate('/app'); }
     } catch (err) {
       setError(err.message);
     } finally {

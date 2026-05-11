@@ -33,7 +33,7 @@ export default function CreateProgram() {
         source: 'create_program_page',
         hasDescription: description.trim().length > 0,
       });
-      navigate('/');
+      navigate('/app');
     } catch (err) {
       setError(err.message);
     } finally {

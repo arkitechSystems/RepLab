@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppStoreBadges from '../components/AppStoreBadges';
+import { useAuth } from '../context/AuthContext';
 
 // ───────────────────────────────────────────────────────────────────────
 // Inline helpers — kept local so the rest of LandingPageTest stays in
@@ -116,6 +117,10 @@ function TiltFeatureCard({ title, body }) {
 export default function LandingPageTest() {
   const navigate = useNavigate();
   const phase = useBreath(50);
+  // The landing now lives at '/' for every web visitor (refactor 2026-05).
+  // Authed users get a CTA that takes them into /app; logged-out users get
+  // the legacy "Log In / Create Account" pair.
+  const { isAuthenticated } = useAuth();
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -135,10 +140,10 @@ export default function LandingPageTest() {
             REP<span className="text-wf-red">LAB</span>
           </div>
           <button
-            onClick={() => navigate('/login')}
+            onClick={() => navigate(isAuthenticated ? '/app' : '/login')}
             className="text-xs font-bold uppercase tracking-wider px-4 py-2 rounded-full border border-white/20 hover:border-white/40 active:scale-95 transition-all"
           >
-            Log In
+            {isAuthenticated ? 'Open App' : 'Log In'}
           </button>
         </div>
       </nav>
@@ -193,24 +198,30 @@ export default function LandingPageTest() {
             ))}
           </ul>
 
-          {/* Primary CTA: log in to web app */}
+          {/* Primary CTA: routes into /app if signed in, otherwise to /login.
+              Visual treatment is identical in both states — only the label
+              and target swap. The "Create an Account" secondary CTA is
+              hidden for signed-in visitors (a logged-in user already has
+              an account, so the prompt is nonsense). */}
           <div className="flex flex-col sm:flex-row gap-3 justify-center items-center mb-6">
             <button
-              onClick={() => navigate('/login')}
+              onClick={() => navigate(isAuthenticated ? '/app' : '/login')}
               className="w-full sm:w-auto px-8 py-4 rounded-full font-bold text-base uppercase tracking-wider text-white active:scale-95 transition-all"
               style={{
                 background: 'linear-gradient(135deg, #DC2626, #EF4444, #F97316)',
                 boxShadow: '0 8px 30px rgba(239,68,68,0.4)',
               }}
             >
-              Log In to Web App →
+              {isAuthenticated ? 'Go to Web App →' : 'Log In to Web App →'}
             </button>
-            <button
-              onClick={() => navigate('/signup')}
-              className="w-full sm:w-auto px-8 py-4 rounded-full font-bold text-base uppercase tracking-wider border border-white/20 hover:border-white/40 active:scale-95 transition-all"
-            >
-              Create an Account
-            </button>
+            {!isAuthenticated && (
+              <button
+                onClick={() => navigate('/signup')}
+                className="w-full sm:w-auto px-8 py-4 rounded-full font-bold text-base uppercase tracking-wider border border-white/20 hover:border-white/40 active:scale-95 transition-all"
+              >
+                Create an Account
+              </button>
+            )}
           </div>
 
           {/* App store badges — official-style black badges via shared component */}

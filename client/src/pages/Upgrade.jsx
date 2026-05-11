@@ -137,7 +137,7 @@ export default function Upgrade() {
               Your plan is now active. Unlock every feature and start training.
             </p>
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/app')}
               className="w-full active:scale-[0.98] text-white font-bold uppercase py-4 transition-all"
               style={{
                 background: '#ef4444',

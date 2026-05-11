@@ -199,7 +199,7 @@ export default function AIWorkoutGenerator() {
           programId: program.id,
         }),
       });
-      navigate('/');
+      navigate('/app');
     } catch (err) {
       setError(err.message);
     } finally {

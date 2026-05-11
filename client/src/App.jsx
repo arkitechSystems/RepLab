@@ -99,7 +99,7 @@ function ProtectedRoute({ children }) {
 
 function PublicRoute({ children }) {
   const { isAuthenticated } = useAuth();
-  if (isAuthenticated) return <Navigate to="/" replace />;
+  if (isAuthenticated) return <Navigate to="/app" replace />;
   return children;
 }
 
@@ -107,7 +107,7 @@ const TEST_EMAILS = ['willmartinmail@gmail.com', 'abilenerentals@gmail.com'];
 function TestRoute({ children }) {
   const { isAuthenticated, user } = useAuth();
   if (!isAuthenticated || !user?.email || !TEST_EMAILS.includes(user.email.toLowerCase())) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/app" replace />;
   }
   return children;
 }
@@ -132,17 +132,19 @@ function isNativePlatform() {
   );
 }
 
-// Root URL ('/') gateway. Picks between the marketing landing page and the
-// authenticated dashboard based on platform + auth state:
-//   - Authenticated (any platform): render the dashboard (Workouts) inside Layout.
-//   - Native (iOS / Android) + logged-out: bounce to /login. Apple flags
-//     marketing pages inside the bundle as web-wrappers (Guideline 4.2), and
-//     mobile users tapped the icon to lift, not to read a sales page.
-//   - Web + logged-out: render the public LandingPageTest (replab-fitness.com root).
+// Root URL ('/') gateway. The web treats '/' as the marketing landing page
+// for EVERYONE — logged-in users typing replab-fitness.com still see the
+// public landing (it shows them a "Go to Web App" CTA into /app). Native
+// (Capacitor) bundles bypass the landing entirely:
+//   - Native + authenticated: redirect to /app (dashboard).
+//   - Native + logged-out: redirect to /login.
+//   - Web (any auth state): render the public LandingPageTest. The landing
+//     itself handles the CTA swap based on isAuthenticated.
 function RootRoute() {
   const { isAuthenticated } = useAuth();
-  if (isAuthenticated) return <Layout><Workouts /></Layout>;
-  if (isNativePlatform()) return <Navigate to="/login" replace />;
+  if (isNativePlatform()) {
+    return <Navigate to={isAuthenticated ? '/app' : '/login'} replace />;
+  }
   return <LandingPageTest />;
 }
 
@@ -204,11 +206,25 @@ export default function App() {
       <Route path="/welcome" element={<ProtectedRoute><Welcome /></ProtectedRoute>} />
       <Route path="/free-trial" element={<ProtectedRoute><FreeTrialOffer /></ProtectedRoute>} />
 
-      {/* Root URL is conditional — see RootRoute. Authed users get the
-          dashboard wrapped in Layout (children form); unauth web visitors
-          see the marketing LandingPageTest; Capacitor (native) users skip
-          the landing and bounce to /login if not authed. */}
+      {/* Root URL — see RootRoute. The web always renders the marketing
+          LandingPageTest (regardless of auth); Capacitor (native) users skip
+          the landing and bounce to /app (authed) or /login (logged-out). */}
       <Route path="/" element={<RootRoute />} />
+
+      {/* Authenticated dashboard lives at /app. Uses the Layout-as-children
+          pattern (rather than the nested Outlet form below) because Workouts
+          was the canonical home route and we want the splash + chrome to
+          behave identically to the pre-refactor "/" experience. */}
+      <Route
+        path="/app"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Workouts />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
 
       <Route
         element={
