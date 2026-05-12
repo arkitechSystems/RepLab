@@ -126,6 +126,10 @@ export default function WorkoutSession() {
   const [timerStarted, setTimerStarted] = useState(false);
   const [showBeginPrompt, setShowBeginPrompt] = useState(false);
   const [showPrebeginSummary, setShowPrebeginSummary] = useState(false);
+  // Index of the exercise whose set-by-set breakdown is currently expanded
+  // in the View Summary accordion, or null when collapsed. Resets to null
+  // whenever the modal closes so reopening starts in a clean state.
+  const [expandedOverviewExIdx, setExpandedOverviewExIdx] = useState(null);
   const [showAllDemos, setShowAllDemos] = useState(false);
   const [timerHidden, setTimerHidden] = useState(false);
   const [timerFloating, setTimerFloating] = useState(false);
@@ -2960,7 +2964,10 @@ export default function WorkoutSession() {
           stable-pre-session view; mid-session users care about live
           progress, not structure). */}
       {showPrebeginSummary && idx === 0 && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 px-4" onClick={() => setShowPrebeginSummary(false)}>
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center pt-16 px-4"
+          onClick={() => { setShowPrebeginSummary(false); setExpandedOverviewExIdx(null); }}
+        >
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
           <div
             className="relative w-full max-w-md max-h-[85vh] overflow-hidden flex flex-col"
@@ -3003,14 +3010,60 @@ export default function WorkoutSession() {
                       </div>
                     );
                   }
+                  const isExpanded = expandedOverviewExIdx === exIdx;
                   return (
-                    <div key={exIdx} className="py-3 flex items-center justify-between border-b border-white/5">
-                      <span className="text-[14px] text-white font-semibold flex-1 truncate pr-3">
-                        {ex.name}
-                      </span>
-                      <span className="text-[11px] text-white/50 font-bold whitespace-nowrap" style={{ letterSpacing: '0.1em' }}>
-                        {ex.sets.length} {ex.sets.length === 1 ? 'set' : 'sets'}
-                      </span>
+                    <div key={exIdx} className="border-b border-white/5">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedOverviewExIdx(isExpanded ? null : exIdx)}
+                        aria-expanded={isExpanded}
+                        className="w-full py-3 flex items-center justify-between text-left active:bg-white/5 transition-colors"
+                      >
+                        <span className="text-[14px] text-white font-semibold flex-1 truncate pr-3">
+                          {ex.name}
+                        </span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-[11px] text-white/50 font-bold whitespace-nowrap" style={{ letterSpacing: '0.1em' }}>
+                            {ex.sets.length} {ex.sets.length === 1 ? 'set' : 'sets'}
+                          </span>
+                          <svg
+                            className="w-4 h-4 transition-transform"
+                            style={{ color: '#ef4444', transform: isExpanded ? 'rotate(90deg)' : 'none' }}
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={2.5}
+                            aria-hidden="true"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                          </svg>
+                        </div>
+                      </button>
+                      {isExpanded && (
+                        <div className="pb-3 pl-1">
+                          {ex.sets.map((s, sIdx) => {
+                            const reps = s.plannedReps != null ? s.plannedReps : '—';
+                            const weight = Number(s.suggestedWeight) || 0;
+                            return (
+                              <div
+                                key={sIdx}
+                                className="py-1 flex items-baseline gap-3"
+                                style={{ color: 'rgba(239,68,68,0.9)' }}
+                              >
+                                <span
+                                  className="text-[10px] font-bold uppercase opacity-70 shrink-0"
+                                  style={{ letterSpacing: '0.15em', minWidth: '46px' }}
+                                >
+                                  Set {sIdx + 1}
+                                </span>
+                                <span className="text-[12px] font-semibold tabular-nums">
+                                  {reps} {reps === 1 ? 'rep' : 'reps'}{weight > 0 ? ` × ${weight} lbs` : ''}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   );
                 })
@@ -3019,7 +3072,7 @@ export default function WorkoutSession() {
 
             <div className="relative px-4 pt-3 pb-4 shrink-0">
               <button
-                onClick={() => setShowPrebeginSummary(false)}
+                onClick={() => { setShowPrebeginSummary(false); setExpandedOverviewExIdx(null); }}
                 className="w-full text-white font-bold uppercase active:scale-[0.98] transition-all"
                 style={{
                   letterSpacing: '0.15em',
