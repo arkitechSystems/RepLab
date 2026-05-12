@@ -242,6 +242,7 @@ export default function Welcome() {
             inputMode="decimal"
             min="0"
             max="2000"
+            aria-label={`${label} one-rep max in pounds`}
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="—"

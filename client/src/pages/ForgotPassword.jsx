@@ -94,8 +94,9 @@ export default function ForgotPassword() {
                 )}
 
                 <div>
-                  <label className={labelClass} style={labelStyle}>Email Address</label>
+                  <label htmlFor="forgot-email" className={labelClass} style={labelStyle}>Email Address</label>
                   <input
+                    id="forgot-email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}

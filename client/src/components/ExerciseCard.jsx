@@ -19,6 +19,7 @@ import { useExercises, getSubstitutesFromList } from '../hooks/useExercises.js';
 import VideoPlayerModal from './VideoPlayerModal.jsx';
 import CardioAccelerationCard from './CardioAccelerationCard.jsx';
 import { iosFocusRef } from '../utils/iosFocus.js';
+import useFocusTrap from '../hooks/useFocusTrap.js';
 
 // When true, exercise cards in workout sessions get a red->white->red gradient
 // border matching the Swap Exercise modal. Flip to false to revert.
@@ -102,7 +103,9 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
   const [showDemoLocal, setShowDemoLocal] = useState(false);
   const showDemo = forceShowDemo || showDemoLocal;
   const [deleteIdx, setDeleteIdx] = useState(null);
+  const deleteSetTrapRef = useFocusTrap(deleteIdx !== null);
   const [confirmDeleteLast, setConfirmDeleteLast] = useState(false);
+  const confirmDeleteLastTrapRef = useFocusTrap(confirmDeleteLast);
   const [showSwap, setShowSwap] = useState(false);
   const [swapSearch, setSwapSearch] = useState('');
   const [showAddBelow, setShowAddBelow] = useState(false);
@@ -504,6 +507,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                   inputMode="decimal"
                   min="0"
                   max="9999"
+                  aria-label={`Set ${idx + 1} weight`}
                   value={entry.weight ?? (isTemplate ? '' : set.suggestedWeight ?? '')}
                   placeholder={readOnly || inputsLocked ? '—' : '0'}
                   onChange={(e) => onChange?.(exercise.name, idx, 'weight', e.target.value)}
@@ -524,6 +528,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                     pattern="[0-9]*"
                     min="0"
                     max="9999"
+                    aria-label={`Set ${idx + 1} reps`}
                     value={entry.reps ?? ''}
                     onChange={(e) => { const v = e.target.value; onChange?.(exercise.name, idx, 'reps', v === '' ? '' : Math.max(0, Number(v))); }}
                     onFocus={(e) => e.target.select()}
@@ -550,6 +555,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                       pattern="[0-9]*"
                       min="0"
                       max="9999"
+                      aria-label={`Set ${idx + 1} reps`}
                       value={entry.reps ?? ''}
                       onChange={(e) => { const v = e.target.value; onChange?.(exercise.name, idx, 'reps', v === '' ? '' : Math.max(0, Number(v))); }}
                       onFocus={(e) => { if (inputsLocked && onLockedTap) { e.target.blur(); onLockedTap(); return; } e.target.select(); }}
@@ -713,13 +719,20 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
 
       {/* Delete Set Confirmation */}
       {deleteIdx !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-5" onClick={() => setDeleteIdx(null)}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-5"
+          onClick={() => setDeleteIdx(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ec-delete-set-title"
+        >
           <div className="absolute inset-0 bg-black/70" />
           <div
+            ref={deleteSetTrapRef}
             className="relative w-full max-w-xs bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-base font-bold text-white text-center mb-1">Delete selected set?</h3>
+            <h3 id="ec-delete-set-title" className="text-base font-bold text-white text-center mb-1">Delete selected set?</h3>
             <p className="text-wf-gray-400 text-sm text-center mb-5">
               Set {deleteIdx + 1} of {exercise.name}
             </p>
@@ -746,13 +759,20 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
 
       {/* Confirm Delete Completed Last Set */}
       {confirmDeleteLast && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-5" onClick={() => setConfirmDeleteLast(false)}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-5"
+          onClick={() => setConfirmDeleteLast(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ec-confirm-delete-last-title"
+        >
           <div className="absolute inset-0 bg-black/70" />
           <div
+            ref={confirmDeleteLastTrapRef}
             className="relative w-full max-w-xs bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-base font-bold text-white text-center mb-1">Delete completed set?</h3>
+            <h3 id="ec-confirm-delete-last-title" className="text-base font-bold text-white text-center mb-1">Delete completed set?</h3>
             <p className="text-wf-gray-400 text-sm text-center mb-5">
               Are you sure you want to delete a completed set?
             </p>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import useFocusTrap from '../hooks/useFocusTrap';
 
 // Two-step modal for logging a cardio entry inside a workout session.
 // Step 1: pick a machine (7 options, tile grid).
@@ -144,6 +145,7 @@ export default function AddCardioModal({ open, onClose, onSave }) {
   const [showMore, setShowMore] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const trapRef = useFocusTrap(open);
 
   // Reset everything whenever the modal opens
   useEffect(() => {
@@ -180,9 +182,16 @@ export default function AddCardioModal({ open, onClose, onSave }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center px-4 py-6" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center px-4 py-6"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="add-cardio-title"
+    >
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
       <div
+        ref={trapRef}
         className="relative w-full max-w-md bg-wf-gray-900 border border-white/10 rounded-2xl shadow-2xl max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
@@ -203,7 +212,7 @@ export default function AddCardioModal({ open, onClose, onSave }) {
               </button>
             )}
             <div className="min-w-0">
-              <h2 className="text-base font-bold text-white truncate">
+              <h2 id="add-cardio-title" className="text-base font-bold text-white truncate">
                 {step === 'pick' ? 'Add Cardio' : machine?.label || 'Cardio'}
               </h2>
               <p className="text-[10px] uppercase tracking-widest text-white/40">

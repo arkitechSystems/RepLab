@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useTutorial } from '../context/TutorialContext';
 import { getStepsForPhase } from '../data/tutorialSteps';
+import useFocusTrap from '../hooks/useFocusTrap';
 
 export default function Tutorial() {
   const { tutorial, startTutorial, advanceTutorial, goToStepIndex, skipTutorial, updateTutorial } = useTutorial();
@@ -24,6 +25,12 @@ export default function Tutorial() {
   const showChoice = tutorial.active && tutorial.screen === 'choice';
   // If phase is set, show spotlight steps
   const showSpotlight = tutorial.active && tutorial.phase && current;
+
+  // Focus traps for the two dialog-style screens. The spotlight overlay isn't
+  // a real modal (pointer-events: none + bypass cutouts), so it doesn't need
+  // one; backdrop-only modals also opt out.
+  const introTrapRef = useFocusTrap(showIntro);
+  const choiceTrapRef = useFocusTrap(showChoice);
 
   const measureTarget = useCallback(() => {
     if (!current || !current.target) {
@@ -101,9 +108,15 @@ export default function Tutorial() {
   // ─── Intro Screen ───
   if (showIntro) {
     return createPortal(
-      <div className="fixed inset-0 z-[100] flex items-center justify-center px-6" style={{ pointerEvents: 'auto' }}>
+      <div
+        className="fixed inset-0 z-[100] flex items-center justify-center px-6"
+        style={{ pointerEvents: 'auto' }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tutorial-intro-title"
+      >
         <div className="absolute inset-0 bg-black/90" onClick={handleSkip} />
-        <div className="relative w-full max-w-sm">
+        <div ref={introTrapRef} className="relative w-full max-w-sm">
           <div className="flex justify-center mb-5">
             <div className="w-14 h-14 rounded-2xl bg-wf-cyan/10 border border-wf-cyan/20 flex items-center justify-center">
               <svg className="w-7 h-7 text-wf-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -112,7 +125,7 @@ export default function Tutorial() {
             </div>
           </div>
 
-          <h2 className="text-xl font-black text-white text-center mb-2">How can we help you get started?</h2>
+          <h2 id="tutorial-intro-title" className="text-xl font-black text-white text-center mb-2">How can we help you get started?</h2>
           <p className="text-sm text-wf-gray-400 text-center leading-relaxed mb-6">
             Let us know what you're looking for so we can walk you through it.
           </p>
@@ -169,9 +182,15 @@ export default function Tutorial() {
   // ─── Choice Screen ───
   if (showChoice) {
     return createPortal(
-      <div className="fixed inset-0 z-[100] flex items-center justify-center px-6" style={{ pointerEvents: 'auto' }}>
+      <div
+        className="fixed inset-0 z-[100] flex items-center justify-center px-6"
+        style={{ pointerEvents: 'auto' }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tutorial-choice-title"
+      >
         <div className="absolute inset-0 bg-black/90" onClick={handleSkip} />
-        <div className="relative w-full max-w-sm">
+        <div ref={choiceTrapRef} className="relative w-full max-w-sm">
           <div className="flex justify-center mb-5">
             <div className="w-14 h-14 rounded-2xl bg-wf-cyan/10 border border-wf-cyan/20 flex items-center justify-center">
               <svg className="w-7 h-7 text-wf-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -180,7 +199,7 @@ export default function Tutorial() {
             </div>
           </div>
 
-          <h2 className="text-xl font-black text-white text-center mb-2">How would you like to get started?</h2>
+          <h2 id="tutorial-choice-title" className="text-xl font-black text-white text-center mb-2">How would you like to get started?</h2>
           <p className="text-sm text-wf-gray-400 text-center leading-relaxed mb-6">
             You can follow a pre-built program designed by trainers, or create your own custom workout from scratch.
           </p>

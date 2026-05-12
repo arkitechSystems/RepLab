@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import useFocusTrap from '../hooks/useFocusTrap';
 
 // Modal shown when POST /sessions returns a 409 with
 // `{ code: 'OVERWRITE_REQUIRES_CONFIRMATION', ... }`. The user has explicitly
@@ -21,6 +22,7 @@ import { useEffect, useState } from 'react';
 // classes.
 export default function ConfirmOverwriteModal({ open, onConfirm, onCancel, details }) {
   const [acknowledged, setAcknowledged] = useState(false);
+  const trapRef = useFocusTrap(open);
 
   // Reset the checkbox every time the modal opens so a previous "yes" doesn't
   // carry over to the next confirmation prompt.
@@ -45,9 +47,13 @@ export default function ConfirmOverwriteModal({ open, onConfirm, onCancel, detai
     <div
       className="fixed inset-0 z-[200] flex items-center justify-center px-4"
       onClick={onCancel}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-overwrite-title"
     >
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
       <div
+        ref={trapRef}
         className="relative w-full max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
@@ -74,7 +80,7 @@ export default function ConfirmOverwriteModal({ open, onConfirm, onCancel, detai
           >
             Overwrite Warning
           </p>
-          <h3 className="text-lg font-bold text-white text-center">
+          <h3 id="confirm-overwrite-title" className="text-lg font-bold text-white text-center">
             This date already has a completed workout
           </h3>
 

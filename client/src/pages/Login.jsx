@@ -149,8 +149,9 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} noValidate>
             <div style={{ marginBottom: 16 }}>
-              <label style={labelStyle}>Username/Email/Phone</label>
+              <label htmlFor="login-identifier" style={labelStyle}>Username/Email/Phone</label>
               <input
+                id="login-identifier"
                 type={phone ? 'tel' : 'text'}
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
@@ -164,8 +165,9 @@ export default function Login() {
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <label style={labelStyle}>Password</label>
+              <label htmlFor="login-password" style={labelStyle}>Password</label>
               <input
+                id="login-password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

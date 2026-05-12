@@ -1018,3 +1018,40 @@ input[type="number"] {
   color: transparent;
   animation: replab-title-shimmer 6s linear infinite;
 }
+
+/* Accessibility — even when components set `focus:outline-none` for the
+   default :focus state (to keep the touch UI quiet), keyboard users still
+   need a visible focus ring. :focus-visible only matches keyboard traversal
+   (Tab/arrow keys), not mouse/touch clicks, so adding a ring here is the
+   correct UX trade-off. The wf-red brand color matches our active link
+   underline. */
+:focus-visible {
+  outline: 2px solid rgba(239, 68, 68, 0.6) !important;
+  outline-offset: 2px !important;
+  border-radius: 2px;
+}
+/* For inputs, swap the outline for a colored ring (matches Tailwind's ring
+   utility) so the focus indicator sits inside the existing border instead
+   of pushing the layout. */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.5) !important;
+}
+
+/* Accessibility — honor the OS-level "Reduce Motion" preference. We disable
+   the decorative looping animations on the Workouts hero (Ken Burns + accent
+   shimmer) and the title shimmer, since they trigger via inline style on
+   elements that match these keyframe names. !important is required to win
+   against the inline `animation` style declarations. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -115,8 +115,9 @@ export default function ResetPassword() {
                 )}
 
                 <div>
-                  <label className={labelClass} style={labelStyle}>New Password</label>
+                  <label htmlFor="reset-password" className={labelClass} style={labelStyle}>New Password</label>
                   <input
+                    id="reset-password"
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -128,8 +129,9 @@ export default function ResetPassword() {
                 </div>
 
                 <div>
-                  <label className={labelClass} style={labelStyle}>Confirm Password</label>
+                  <label htmlFor="reset-password-confirm" className={labelClass} style={labelStyle}>Confirm Password</label>
                   <input
+                    id="reset-password-confirm"
                     type="password"
                     value={confirm}
                     onChange={(e) => setConfirm(e.target.value)}

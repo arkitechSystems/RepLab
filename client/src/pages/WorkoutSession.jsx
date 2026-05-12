@@ -20,6 +20,7 @@ import { beepCountdown, beepRestEnd, initAudio } from '../utils/sounds';
 import { track } from '../utils/analytics';
 import AddCardioModal from '../components/AddCardioModal';
 import CardioCard from '../components/CardioCard';
+import useFocusTrap from '../hooks/useFocusTrap';
 import { BibleVerseOverlay } from './BibleVerses';
 import { pickNextVerse } from '../utils/versePicker';
 
@@ -85,6 +86,7 @@ export default function WorkoutSession() {
   const [allTimePRs, setAllTimePRs] = useState([]);
   // exerciseName whose PR modal is currently open, or null when closed.
   const [prModalExercise, setPrModalExercise] = useState(null);
+  const prModalTrapRef = useFocusTrap(!!prModalExercise);
   const [prModalSort, setPrModalSort] = useState('weight');
   const [entries, setEntries] = useState({});
   const [loading, setLoading] = useState(true);
@@ -96,6 +98,7 @@ export default function WorkoutSession() {
   const [newPBs, setNewPBs] = useState(null);
   const [notes, setNotes] = useState({});
   const [showAddExercise, setShowAddExercise] = useState(false);
+  const addExerciseTrapRef = useFocusTrap(showAddExercise);
   const [addExerciseSearch, setAddExerciseSearch] = useState('');
   // Active body-part filter in the Add Exercise modal. 'all' shows every
   // muscle group; setting to a specific name (e.g. 'Triceps') narrows both
@@ -125,7 +128,9 @@ export default function WorkoutSession() {
   const [lastSession, setLastSession] = useState({});
   const [timerStarted, setTimerStarted] = useState(false);
   const [showBeginPrompt, setShowBeginPrompt] = useState(false);
+  const beginPromptTrapRef = useFocusTrap(showBeginPrompt);
   const [showPrebeginSummary, setShowPrebeginSummary] = useState(false);
+  const prebeginSummaryTrapRef = useFocusTrap(showPrebeginSummary);
   // Index of the exercise whose set-by-set breakdown is currently expanded
   // in the View Summary accordion, or null when collapsed. Resets to null
   // whenever the modal closes so reopening starts in a clean state.
@@ -139,10 +144,12 @@ export default function WorkoutSession() {
   const [showSummary, setShowSummary] = useState(false);
   const [pendingVerse, setPendingVerse] = useState(null); // set when this completion hits a 7-workout milestone
   const [showDateConfirm, setShowDateConfirm] = useState(false);
+  const dateConfirmTrapRef = useFocusTrap(showDateConfirm);
   const [tutorialTip, setTutorialTip] = useState(null); // tutorial workout tooltips
   const [tutorialReady, setTutorialReady] = useState(false); // true once element is scrolled + measured
   const tutorialRectRef = useRef(null); // cached rect for current tip target
   const [pendingSwap, setPendingSwap] = useState(null); // { oldName, newName }
+  const pendingSwapTrapRef = useFocusTrap(!!pendingSwap);
   const [schedule, setSchedule] = useState(null); // day-of-week → templateId map for nav arrows
   const dragRef = useRef(null);
   const [elapsed, setElapsed] = useState(0);
@@ -2072,6 +2079,7 @@ export default function WorkoutSession() {
 
   return (
     <div className={`pb-24${cardTheme === 'dark' ? ' wf-dark-cards' : ''}`}>
+      <h1 className="sr-only">REPLAB Workout Session</h1>
       {/* Dark-card mode swaps the page bg to the same gray (#e8e8e8) that
           light-mode cards use, so the surface and the cards trade places.
           Fixed + pointer-events-none so it sits behind everything in this
@@ -2095,13 +2103,20 @@ export default function WorkoutSession() {
 
       {UnsavedModal}
       {showDateConfirm && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center px-5" onClick={() => setShowDateConfirm(false)}>
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center px-5"
+          onClick={() => setShowDateConfirm(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ws-date-confirm-title"
+        >
           <div className="absolute inset-0 bg-black/70" />
           <div
+            ref={dateConfirmTrapRef}
             className="relative w-full max-w-xs bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-base font-bold text-white text-center mb-1">Different Date</h3>
+            <h3 id="ws-date-confirm-title" className="text-base font-bold text-white text-center mb-1">Different Date</h3>
             <p className="text-wf-gray-400 text-sm text-center mb-5">
               This workout is scheduled for {format(parseDateLocal(date), 'MMMM d, yyyy')}. Are you sure you want to start it now?
             </p>
@@ -2124,13 +2139,20 @@ export default function WorkoutSession() {
       )}
 
       {pendingSwap && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center px-5" onClick={() => setPendingSwap(null)}>
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center px-5"
+          onClick={() => setPendingSwap(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ws-pending-swap-title"
+        >
           <div className="absolute inset-0 bg-black/70" />
           <div
+            ref={pendingSwapTrapRef}
             className="relative w-full max-w-xs bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-base font-bold text-white text-center mb-1">Substitute Exercise</h3>
+            <h3 id="ws-pending-swap-title" className="text-base font-bold text-white text-center mb-1">Substitute Exercise</h3>
             <p className="text-wf-gray-400 text-sm text-center mb-5">
               Substituting this exercise will remove your saved sets for {exNameFromKey(pendingSwap.oldName)}. You can undo this.
             </p>
@@ -2744,9 +2766,16 @@ export default function WorkoutSession() {
           {/* Begin Workout prompt popup — Nike style: eyebrow + display title,
               red accent stripe, ambient red spotlight, sharp 2px corners. */}
       {showBeginPrompt && idx === 0 && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 px-5" onClick={() => setShowBeginPrompt(false)}>
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center pt-24 px-5"
+          onClick={() => setShowBeginPrompt(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ws-begin-prompt-title"
+        >
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
           <div
+            ref={beginPromptTrapRef}
             className="relative w-full max-w-sm overflow-hidden"
             onClick={(e) => e.stopPropagation()}
             style={{
@@ -2766,6 +2795,7 @@ export default function WorkoutSession() {
                 {isCompleted ? 'Session Complete' : 'Heads Up'}
               </p>
               <h2
+                id="ws-begin-prompt-title"
                 className="text-[26px] font-black text-white tracking-tight mt-1 uppercase"
                 style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}
               >
@@ -2817,9 +2847,16 @@ export default function WorkoutSession() {
           .sort((a, b) => (byVolume ? b.volume - a.volume : b.weight - a.weight || b.reps - a.reps))
           .slice(0, 10);
         return (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center px-4" onClick={() => setPrModalExercise(null)}>
+          <div
+            className="fixed inset-0 z-[110] flex items-center justify-center px-4"
+            onClick={() => setPrModalExercise(null)}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ws-pr-modal-title"
+          >
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             <div
+              ref={prModalTrapRef}
               className="relative w-full max-w-md max-h-[85vh] flex flex-col"
               onClick={(e) => e.stopPropagation()}
               style={{
@@ -2848,7 +2885,7 @@ export default function WorkoutSession() {
                   }}>
                     Personal Records
                   </p>
-                  <h3 className="text-white font-bold text-[15px] mt-1 truncate">{prModalExercise}</h3>
+                  <h3 id="ws-pr-modal-title" className="text-white font-bold text-[15px] mt-1 truncate">{prModalExercise}</h3>
                 </div>
                 <button
                   onClick={() => setPrModalExercise(null)}
@@ -2967,9 +3004,13 @@ export default function WorkoutSession() {
         <div
           className="fixed inset-0 z-50 flex items-start justify-center pt-16 px-4"
           onClick={() => { setShowPrebeginSummary(false); setExpandedOverviewExIdx(null); }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ws-prebegin-summary-title"
         >
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
           <div
+            ref={prebeginSummaryTrapRef}
             className="relative w-full max-w-md max-h-[85vh] overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}
             style={{
@@ -2989,6 +3030,7 @@ export default function WorkoutSession() {
                 Workout Overview
               </p>
               <h2
+                id="ws-prebegin-summary-title"
                 className="text-[22px] font-black text-white tracking-tight mt-1 uppercase"
                 style={{ fontFamily: 'system-ui', lineHeight: '1' }}
               >
@@ -3190,15 +3232,22 @@ export default function WorkoutSession() {
           ? allMuscleGroups
           : Array.from(new Set(allExercises.map((ex) => ex.muscle).filter(Boolean))).sort();
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center px-4" onClick={() => setShowAddExercise(false)}>
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center px-4"
+            onClick={() => setShowAddExercise(false)}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ws-add-exercise-title"
+          >
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             <div
+              ref={addExerciseTrapRef}
               className="relative w-full max-w-lg bg-wf-gray-900 border border-white/10 rounded-2xl shadow-2xl max-h-[75vh] flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="px-5 pt-5 pb-3 border-b border-white/10 shrink-0">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-lg font-bold text-white">Add Exercise</h3>
+                  <h3 id="ws-add-exercise-title" className="text-lg font-bold text-white">Add Exercise</h3>
                   <button onClick={() => setShowAddExercise(false)} aria-label="Close" className="text-wf-gray-400 active:opacity-70">
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -3206,7 +3255,8 @@ export default function WorkoutSession() {
                   </button>
                 </div>
                 <input
-                  type="text"
+                  type="search"
+                  aria-label="Search exercises"
                   value={addExerciseSearch}
                   onChange={(e) => setAddExerciseSearch(e.target.value)}
                   placeholder="Search exercises or type a custom name..."

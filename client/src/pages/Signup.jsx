@@ -192,8 +192,9 @@ export default function Signup() {
 
               {/* Email */}
               <div>
-                <label className={labelClass} style={labelStyle}>Email *</label>
+                <label htmlFor="signup-email" className={labelClass} style={labelStyle}>Email *</label>
                 <input
+                  id="signup-email"
                   type="email"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
@@ -206,8 +207,9 @@ export default function Signup() {
 
               {/* Password */}
               <div>
-                <label className={labelClass} style={labelStyle}>Password *</label>
+                <label htmlFor="signup-password" className={labelClass} style={labelStyle}>Password *</label>
                 <input
+                  id="signup-password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -220,8 +222,9 @@ export default function Signup() {
 
               {/* Confirm Password */}
               <div>
-                <label className={labelClass} style={labelStyle}>Confirm Password *</label>
+                <label htmlFor="signup-password-confirm" className={labelClass} style={labelStyle}>Confirm Password *</label>
                 <input
+                  id="signup-password-confirm"
                   type="password"
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
@@ -239,8 +242,9 @@ export default function Signup() {
               {/* First Name & Last Name */}
               <div className="flex gap-3">
                 <div className="flex-1">
-                  <label className={labelClass} style={labelStyle}>First Name *</label>
+                  <label htmlFor="signup-first-name" className={labelClass} style={labelStyle}>First Name *</label>
                   <input
+                    id="signup-first-name"
                     type="text"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
@@ -251,8 +255,9 @@ export default function Signup() {
                   />
                 </div>
                 <div className="flex-1">
-                  <label className={labelClass} style={labelStyle}>Last Name *</label>
+                  <label htmlFor="signup-last-name" className={labelClass} style={labelStyle}>Last Name *</label>
                   <input
+                    id="signup-last-name"
                     type="text"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
@@ -266,8 +271,9 @@ export default function Signup() {
 
               {/* Phone (optional) */}
               <div>
-                <label className={labelClass} style={labelStyle}>Phone <span className="text-wf-gray-600 normal-case font-normal" style={{ letterSpacing: '0' }}>(optional)</span></label>
+                <label htmlFor="signup-phone" className={labelClass} style={labelStyle}>Phone <span className="text-wf-gray-600 normal-case font-normal" style={{ letterSpacing: '0' }}>(optional)</span></label>
                 <input
+                  id="signup-phone"
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
@@ -279,8 +285,9 @@ export default function Signup() {
 
               {/* Zip Code */}
               <div>
-                <label className={labelClass} style={labelStyle}>Zip Code *</label>
+                <label htmlFor="signup-zip" className={labelClass} style={labelStyle}>Zip Code *</label>
                 <input
+                  id="signup-zip"
                   type="text"
                   inputMode="numeric"
                   value={zipCode}
@@ -320,8 +327,9 @@ export default function Signup() {
 
               {/* Username */}
               <div>
-                <label className={labelClass} style={labelStyle}>Username <span className="text-wf-gray-600 normal-case font-normal" style={{ letterSpacing: '0' }}>(optional)</span></label>
+                <label htmlFor="signup-username" className={labelClass} style={labelStyle}>Username <span className="text-wf-gray-600 normal-case font-normal" style={{ letterSpacing: '0' }}>(optional)</span></label>
                 <input
+                  id="signup-username"
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
@@ -337,8 +345,9 @@ export default function Signup() {
 
               {/* How did you hear about us */}
               <div>
-                <label className={labelClass} style={labelStyle}>How did you hear about us?</label>
+                <label htmlFor="signup-referral-source" className={labelClass} style={labelStyle}>How did you hear about us?</label>
                 <select
+                  id="signup-referral-source"
                   value={referralSource}
                   onChange={(e) => setReferralSource(e.target.value)}
                   className={`${inputClass} bg-transparent appearance-none cursor-pointer`}
@@ -353,8 +362,9 @@ export default function Signup() {
 
               {referralSource === 'other' && (
                 <div>
-                  <label className={labelClass} style={labelStyle}>Please specify</label>
+                  <label htmlFor="signup-referral-other" className={labelClass} style={labelStyle}>Please specify</label>
                   <input
+                    id="signup-referral-other"
                     type="text"
                     value={referralOther}
                     onChange={(e) => setReferralOther(e.target.value)}
@@ -366,8 +376,9 @@ export default function Signup() {
 
               {referralSource === 'friend' && (
                 <div>
-                  <label className={labelClass} style={labelStyle}>Referral Name <span className="text-wf-gray-600 normal-case font-normal" style={{ letterSpacing: '0' }}>(optional)</span></label>
+                  <label htmlFor="signup-referral-friend" className={labelClass} style={labelStyle}>Referral Name <span className="text-wf-gray-600 normal-case font-normal" style={{ letterSpacing: '0' }}>(optional)</span></label>
                   <input
+                    id="signup-referral-friend"
                     type="text"
                     value={referralOther}
                     onChange={(e) => setReferralOther(e.target.value)}
@@ -378,8 +389,9 @@ export default function Signup() {
               )}
 
               <div>
-                <label className={labelClass} style={labelStyle}>Referral Code <span className="text-wf-gray-600 normal-case font-normal" style={{ letterSpacing: '0' }}>(optional)</span></label>
+                <label htmlFor="signup-referral-code" className={labelClass} style={labelStyle}>Referral Code <span className="text-wf-gray-600 normal-case font-normal" style={{ letterSpacing: '0' }}>(optional)</span></label>
                 <input
+                  id="signup-referral-code"
                   type="text"
                   value={referralCode}
                   onChange={(e) => setReferralCode(e.target.value)}

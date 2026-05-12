@@ -159,6 +159,7 @@ function MetricInput({ label, value, unit, onChange }) {
         <input
           type="number"
           inputMode="decimal"
+          aria-label={unit ? `${label} (${unit})` : label}
           value={value ?? ''}
           onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
           placeholder="—"
@@ -206,6 +207,7 @@ function HeightInput({ label, value, onChange }) {
           inputMode="numeric"
           min="0"
           max="9"
+          aria-label={`${label} feet`}
           value={feetStr}
           onChange={(e) => { const v = e.target.value; setFeetStr(v); commit(v, inchesStr); }}
           placeholder="—"
@@ -217,6 +219,7 @@ function HeightInput({ label, value, onChange }) {
           inputMode="numeric"
           min="0"
           max="11"
+          aria-label={`${label} inches`}
           value={inchesStr}
           onChange={(e) => { const v = e.target.value; setInchesStr(v); commit(feetStr, v); }}
           placeholder="—"
@@ -470,6 +473,7 @@ export default function Profile() {
 
   return (
     <div className="profile-transparent">
+      <h1 className="sr-only">REPLAB Profile</h1>
       <StickyHeader title="PROFILE" titleStyle={{ fontSize: '26.4px' }} />
 
       <div className="px-4 pb-24">
@@ -1068,12 +1072,14 @@ export default function Profile() {
                   </div>
                 )}
                 <div>
-                  <label className="text-[10px] text-white/40 uppercase mb-1.5 block font-semibold" style={{ letterSpacing: '0.25em' }}>Current Password</label>
+                  <label htmlFor="profile-current-password" className="text-[10px] text-white/40 uppercase mb-1.5 block font-semibold" style={{ letterSpacing: '0.25em' }}>Current Password</label>
                   <input
+                    id="profile-current-password"
                     type="password"
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
                     placeholder="Enter current password"
+                    autoComplete="current-password"
                     className="w-full px-4 py-3 text-white text-sm placeholder:text-white/25 focus:outline-none transition-all"
                     style={{
                       background: 'rgba(0,0,0,0.3)',
@@ -1083,12 +1089,14 @@ export default function Profile() {
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] text-white/40 uppercase mb-1.5 block font-semibold" style={{ letterSpacing: '0.25em' }}>New Password</label>
+                  <label htmlFor="profile-new-password" className="text-[10px] text-white/40 uppercase mb-1.5 block font-semibold" style={{ letterSpacing: '0.25em' }}>New Password</label>
                   <input
+                    id="profile-new-password"
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Enter new password"
+                    autoComplete="new-password"
                     className="w-full px-4 py-3 text-white text-sm placeholder:text-white/25 focus:outline-none transition-all"
                     style={{
                       background: 'rgba(0,0,0,0.3)',
@@ -1098,12 +1106,14 @@ export default function Profile() {
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] text-white/40 uppercase mb-1.5 block font-semibold" style={{ letterSpacing: '0.25em' }}>Confirm New Password</label>
+                  <label htmlFor="profile-confirm-new-password" className="text-[10px] text-white/40 uppercase mb-1.5 block font-semibold" style={{ letterSpacing: '0.25em' }}>Confirm New Password</label>
                   <input
+                    id="profile-confirm-new-password"
                     type="password"
                     value={confirmNewPassword}
                     onChange={(e) => setConfirmNewPassword(e.target.value)}
                     placeholder="Confirm new password"
+                    autoComplete="new-password"
                     className="w-full px-4 py-3 text-white text-sm placeholder:text-white/25 focus:outline-none transition-all"
                     style={{
                       background: 'rgba(0,0,0,0.3)',
@@ -1301,18 +1311,21 @@ export default function Profile() {
 
               <div className="mt-4 space-y-3">
                 <div>
-                  <label className="text-xs text-wf-gray-500 mb-1 block">Enter your password</label>
+                  <label htmlFor="profile-delete-password" className="text-xs text-wf-gray-500 mb-1 block">Enter your password</label>
                   <input
+                    id="profile-delete-password"
                     type="password"
                     value={deletePassword}
                     onChange={(e) => setDeletePassword(e.target.value)}
                     placeholder="Password"
+                    autoComplete="current-password"
                     className="w-full glass-input rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-wf-gray-600 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-wf-gray-500 mb-1 block">Type <span className="text-red-400 font-semibold">DELETE</span> to confirm</label>
+                  <label htmlFor="profile-delete-confirm" className="text-xs text-wf-gray-500 mb-1 block">Type <span className="text-red-400 font-semibold">DELETE</span> to confirm</label>
                   <input
+                    id="profile-delete-confirm"
                     type="text"
                     value={deleteConfirmText}
                     onChange={(e) => setDeleteConfirmText(e.target.value)}

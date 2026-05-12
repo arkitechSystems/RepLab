@@ -1902,6 +1902,7 @@ export default function FeaturedWorkoutSession() {
                       inputMode="decimal"
                       min="0"
                       step="0.5"
+                      aria-label={`Set ${idx + 1} weight`}
                       value={entry.weight ?? ''}
                       placeholder={set.suggestedWeight ? String(set.suggestedWeight) : '0'}
                       onChange={(e) => handleChange(idx, 'weight', e.target.value)}
@@ -1927,6 +1928,7 @@ export default function FeaturedWorkoutSession() {
                     inputMode="numeric"
                     min="0"
                     step="1"
+                    aria-label={`Set ${idx + 1} reps`}
                     value={entry.reps ?? ''}
                     placeholder={set.plannedReps ? String(set.plannedReps) : '0'}
                     onChange={(e) => handleChange(idx, 'reps', e.target.value)}

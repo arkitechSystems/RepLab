@@ -1881,7 +1881,7 @@ export default function Workouts() {
         body: JSON.stringify({ programId: program.id, templateIds: orderedIds }),
       });
     } catch (err) {
-      console.error(err);
+      if (import.meta.env.DEV) console.error(err);
     }
   }
 
@@ -1891,7 +1891,7 @@ export default function Workouts() {
       await api(`/templates/${templateId}`, { method: 'DELETE' });
       setTemplates((prev) => prev.filter((t) => t.id !== templateId));
     } catch (err) {
-      console.error(err);
+      if (import.meta.env.DEV) console.error(err);
     }
   }
 
@@ -1905,7 +1905,7 @@ export default function Workouts() {
       setSelectedWeek(null);
       setEditMode(false);
     } catch (err) {
-      console.error(err);
+      if (import.meta.env.DEV) console.error(err);
     }
   }
 
@@ -1947,7 +1947,7 @@ export default function Workouts() {
         }
       }
     } catch (err) {
-      console.error(err);
+      if (import.meta.env.DEV) console.error(err);
     }
   }
 
@@ -4002,7 +4002,8 @@ export default function Workouts() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
                   </svg>
                   <input
-                    type="text"
+                    type="search"
+                    aria-label="Search programs and workouts"
                     value={browseSearch}
                     onChange={(e) => setBrowseSearch(e.target.value)}
                     placeholder="Search programs and workouts..."
@@ -4629,6 +4630,7 @@ export default function Workouts() {
       onTouchMove={handlePullMove}
       onTouchEnd={handlePullEnd}
     >
+      <h1 className="sr-only">REPLAB Workouts</h1>
       {/* Featured Workouts zoom-in transition */}
       {featuredTransition && featuredCardRect && (() => {
         const r = featuredCardRect;
