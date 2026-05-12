@@ -1294,8 +1294,8 @@ router.get('/analytics', adminAuth, async (req, res) => {
     const topUserRows = topUsers.map((u, i) => `
       <tr>
         <td>${i + 1}</td>
-        <td>${u.name}</td>
-        <td>${u.email || '—'}</td>
+        <td>${esc(u.name)}</td>
+        <td>${u.email ? esc(u.email) : '—'}</td>
         <td>${u.count}</td>
         <td>${new Date(u.lastWorkout).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
       </tr>`).join('');
@@ -1316,7 +1316,7 @@ router.get('/analytics', adminAuth, async (req, res) => {
       return `
       <tr>
         <td>${esc(name)}</td>
-        <td>${s.templateName || '—'}</td>
+        <td>${s.templateName ? esc(s.templateName) : '—'}</td>
         <td>${s.completed ? '<span style="color: #22c55e; font-weight: 600;">Completed</span>' : '<span style="color: #888;">In Progress</span>'}</td>
         <td>${new Date(s.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
       </tr>`;
@@ -2133,7 +2133,7 @@ router.get('/active', adminAuth, async (req, res) => {
       return `<tr>
         <td>${i + 1}</td>
         <td>${esc(name)}</td>
-        <td>${u.email || '—'}</td>
+        <td>${u.email ? esc(u.email) : '—'}</td>
         <td>${date} <span style="color:#888;">${time} UTC</span></td>
       </tr>`;
     }).join('');

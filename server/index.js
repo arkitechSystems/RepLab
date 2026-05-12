@@ -246,7 +246,12 @@ app.use('/feedback', feedbackRoutes);
 app.use('/ai', aiRoutes);
 app.use('/exercises', exerciseRoutes);
 app.use('/challenges', challengeRoutes);
-app.use('/billing', billingRoutes);
+// Rate-limit /billing routes but leave the Stripe webhook unlimited so we
+// never reject legitimate Stripe deliveries during a burst.
+app.use('/billing', (req, res, next) => {
+  if (req.path === '/webhook') return next();
+  return apiLimiter(req, res, next);
+}, billingRoutes);
 app.use('/shop', shopRoutes);
 app.use('/workouts', workoutDashboardRoutes);
 app.use('/sharing', apiLimiter, sharingRoutes);
