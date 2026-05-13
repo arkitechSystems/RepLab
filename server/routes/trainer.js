@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import pool from '../dbPool.js';
 import db from '../db.js';
 import config from '../config.js';
-import { DASHBOARD_CSS, SIDEBAR_JS } from '../dashboardCSS.js';
+import { DASHBOARD_CSS, SIDEBAR_JS, ICONS } from '../dashboardCSS.js';
 import { exerciseCardScript } from '../exerciseCardBuilder.js';
 import { generateToken, generateAccessToken, generateRefreshToken } from '../middleware/auth.js';
 
@@ -299,22 +299,22 @@ router.get('/', trainerAuth, (req, res) => {
     </div>
     <div class="card-grid">
       <a class="card glass" href="/trainer/create-workout">
-        <div class="card-icon">➕</div>
+        <div class="card-icon">${ICONS.plus}</div>
         <div class="card-title">Create a Workout</div>
         <div class="card-desc">Build a new workout from scratch. Add exercises, sets, reps, and weights.</div>
       </a>
       <a class="card glass" href="/trainer/workouts">
-        <div class="card-icon">📋</div>
+        <div class="card-icon">${ICONS.clipboardList}</div>
         <div class="card-title">View Current Workouts</div>
         <div class="card-desc">Browse and manage your existing programs and workouts.</div>
       </a>
       <a class="card glass" href="/trainer/clients">
-        <div class="card-icon">👥</div>
+        <div class="card-icon">${ICONS.userGroup}</div>
         <div class="card-title">My Clients</div>
         <div class="card-desc">View your client list, check their workout history, and assign programs.</div>
       </a>
       <a class="card glass" href="/trainer/guide">
-        <div class="card-icon">📖</div>
+        <div class="card-icon">${ICONS.book}</div>
         <div class="card-title">User Guide</div>
         <div class="card-desc">Detailed instructions on how to use every feature in RepLab.</div>
       </a>

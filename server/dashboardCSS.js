@@ -243,7 +243,17 @@ export const DASHBOARD_CSS = `
                   0 0 24px rgba(255,255,255,0.06),
                   0 0 1px rgba(255,255,255,0.2);
     }
-    .card .card-icon { font-size: 32px; margin-bottom: 14px; }
+    /* Card icons are stroke SVGs (see ICONS export). Width/height live on the
+       wrapper; the SVG fills it via 100% sizing. Color is white at moderate
+       opacity, brightening on hover to match the rest of the card. */
+    .card .card-icon {
+      width: 28px; height: 28px; margin-bottom: 18px;
+      color: rgba(255,255,255,0.72);
+      display: inline-flex; align-items: center; justify-content: flex-start;
+      transition: color 0.25s ease, transform 0.25s ease;
+    }
+    .card .card-icon svg { width: 100%; height: 100%; display: block; }
+    .card:hover .card-icon { color: #fff; transform: translateY(-1px); }
     .card .card-title { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
     .card .card-desc { font-size: 13px; color: rgba(255,255,255,0.4); margin-top: 8px; line-height: 1.6; }
 
@@ -373,6 +383,52 @@ export const DASHBOARD_CSS = `
       .display, .display-sm, .header h1 { color: #111; }
     }
 `;
+
+// Shared Nike-style line icons for dashboard cards. Each value is a
+// fully-formed inline SVG string sized at 24×24 viewBox with
+// stroke="currentColor" — the .card-icon wrapper colors them. Replaced the
+// previous emoji set so admin/trainer/workout dashboards read as
+// professional monochrome line art instead of mismatched OS emoji renders.
+const _ICON = (path) =>
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" '
+  + 'stroke="currentColor" stroke-width="1.5" stroke-linecap="round" '
+  + 'stroke-linejoin="round" aria-hidden="true">' + path + '</svg>';
+
+export const ICONS = {
+  users:          _ICON('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'),
+  user:           _ICON('<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'),
+  userGroup:      _ICON('<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'),
+  identification: _ICON('<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="12" r="2.5"/><path d="M5.5 17c.5-1.8 2.1-3 3.5-3s3 1.2 3.5 3"/><line x1="14" y1="9" x2="18" y2="9"/><line x1="14" y1="13" x2="17" y2="13"/>'),
+  clipboardList:  _ICON('<rect x="5" y="4" width="14" height="17" rx="2"/><rect x="9" y="2" width="6" height="4" rx="1"/><line x1="9" y1="11" x2="15" y2="11"/><line x1="9" y1="15" x2="15" y2="15"/><line x1="9" y1="19" x2="13" y2="19"/>'),
+  clipboard:      _ICON('<rect x="5" y="4" width="14" height="17" rx="2"/><rect x="9" y="2" width="6" height="4" rx="1"/>'),
+  chartBar:       _ICON('<line x1="3" y1="20" x2="21" y2="20"/><rect x="6" y="10" width="3" height="10"/><rect x="11" y="5" width="3" height="15"/><rect x="16" y="13" width="3" height="7"/>'),
+  wrench:         _ICON('<path d="M14.7 6.3a4.5 4.5 0 0 0-6.4 6.4l-5.6 5.6a1.5 1.5 0 0 0 2.1 2.1l5.6-5.6a4.5 4.5 0 0 0 6.4-6.4l-2.5 2.5-2.1-2.1z"/>'),
+  cpuChip:        _ICON('<rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="2" x2="9" y2="5"/><line x1="15" y1="2" x2="15" y2="5"/><line x1="9" y1="19" x2="9" y2="22"/><line x1="15" y1="19" x2="15" y2="22"/><line x1="19" y1="9" x2="22" y2="9"/><line x1="19" y1="15" x2="22" y2="15"/><line x1="2" y1="9" x2="5" y2="9"/><line x1="2" y1="15" x2="5" y2="15"/>'),
+  chat:           _ICON('<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>'),
+  trendingUp:     _ICON('<polyline points="3 17 9 11 13 15 21 7"/><polyline points="15 7 21 7 21 13"/>'),
+  pulse:          _ICON('<polyline points="3 12 7 12 9 6 15 18 17 12 21 12"/>'),
+  link:           _ICON('<path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1 1"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1-1"/>'),
+  phone:          _ICON('<rect x="6" y="2" width="12" height="20" rx="2"/><line x1="11" y1="18" x2="13" y2="18"/>'),
+  barbell:        _ICON('<rect x="2" y="9" width="2" height="6" rx="0.5"/><rect x="4.5" y="7" width="2" height="10" rx="0.5"/><line x1="6.5" y1="12" x2="17.5" y2="12"/><rect x="17.5" y="7" width="2" height="10" rx="0.5"/><rect x="20" y="9" width="2" height="6" rx="0.5"/>'),
+  megaphone:      _ICON('<path d="M3 11v2a2 2 0 0 0 2 2h1l4 4v-14l-4 4H5a2 2 0 0 0-2 2z"/><path d="M14 8v8"/><path d="M18 5v14"/>'),
+  flag:           _ICON('<path d="M4 22V4"/><path d="M4 4h13l-2.5 4L17 12H4"/>'),
+  heartbeat:      _ICON('<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/><polyline points="7 12 9.5 12 11 9.5 13 14.5 14.5 12 17 12"/>'),
+  alert:          _ICON('<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>'),
+  envelope:       _ICON('<rect x="2" y="5" width="20" height="14" rx="2"/><polyline points="2 7 12 13 22 7"/>'),
+  sparkles:       _ICON('<path d="M9 5l1.2 3.3a3 3 0 0 0 1.5 1.5L15 11l-3.3 1.2a3 3 0 0 0-1.5 1.5L9 17l-1.2-3.3a3 3 0 0 0-1.5-1.5L3 11l3.3-1.2a3 3 0 0 0 1.5-1.5L9 5z"/><path d="M18 3l.6 1.7a2 2 0 0 0 1.2 1.2L21.5 6.5l-1.7.6a2 2 0 0 0-1.2 1.2L18 10l-.6-1.7a2 2 0 0 0-1.2-1.2L14.5 6.5l1.7-.6a2 2 0 0 0 1.2-1.2L18 3z"/>'),
+  film:           _ICON('<rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="4" x2="9" y2="20"/><line x1="15" y1="4" x2="15" y2="20"/>'),
+  receipt:        _ICON('<path d="M6 2h12v20l-3-2-3 2-3-2-3 2V2z"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/><line x1="9" y1="15" x2="13" y2="15"/>'),
+  currency:       _ICON('<line x1="12" y1="2" x2="12" y2="22"/><path d="M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>'),
+  creditCard:     _ICON('<rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>'),
+  cog:            _ICON('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>'),
+  lock:           _ICON('<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>'),
+  eye:            _ICON('<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>'),
+  database:       _ICON('<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 11v6c0 1.66 4.03 3 9 3s9-1.34 9-3v-6"/>'),
+  magnifier:      _ICON('<circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>'),
+  arrowPath:      _ICON('<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>'),
+  plus:           _ICON('<circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>'),
+  book:           _ICON('<path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v17H6.5a2.5 2.5 0 0 0 0 5H20v-5"/><line x1="9" y1="7" x2="16" y2="7"/><line x1="9" y1="11" x2="16" y2="11"/>'),
+};
 
 // Shared sidebar toggle + section collapse JS
 export const SIDEBAR_JS = `

@@ -8,7 +8,7 @@ import pool from '../dbPool.js';
 import config from '../config.js';
 import { syncFromWger } from '../syncExercises.js';
 import { exerciseCardScript } from '../exerciseCardBuilder.js';
-import { DASHBOARD_CSS } from '../dashboardCSS.js';
+import { DASHBOARD_CSS, ICONS } from '../dashboardCSS.js';
 import { evaluateAndMaybeNotify as evaluateStreakReminder } from '../streakReminderScheduler.js';
 
 const router = Router();
@@ -717,152 +717,152 @@ router.get('/', adminAuth, async (req, res) => {
   </div>
   <div class="card-grid">
     <a class="card glass" href="/admin/users?format=html">
-      <div class="card-icon">👥</div>
+      <div class="card-icon">${ICONS.users}</div>
       <div class="card-title">User Sign Ups</div>
       <div class="card-desc">View all registered users, contact info, referral sources, and export data.</div>
     </a>
     <a class="card glass" href="/admin/daily-summary" style="border-color:rgba(34,197,94,0.25);">
-      <div class="card-icon">📋</div>
+      <div class="card-icon">${ICONS.clipboardList}</div>
       <div class="card-title">Daily Summary</div>
       <div class="card-desc">Today's stats, signups, workouts, active users, and day-over-day comparisons.</div>
     </a>
     <a class="card glass" href="/admin/trainers" style="border-color:rgba(168,85,247,0.25);">
-      <div class="card-icon">🏋️‍♀️</div>
+      <div class="card-icon">${ICONS.identification}</div>
       <div class="card-title">Trainer Central</div>
       <div class="card-desc">Manage trainers, review applications, and view trainer details.</div>
     </a>
     <a class="card glass" href="/admin/analytics">
-      <div class="card-icon">📊</div>
+      <div class="card-icon">${ICONS.chartBar}</div>
       <div class="card-title">Session Analytics</div>
       <div class="card-desc">Workout completions, most active users, and recent activity across all users.</div>
     </a>
     <a class="card glass" href="/admin/builds" style="border-color:rgba(239,68,68,0.25);">
-      <div class="card-icon">🔨</div>
+      <div class="card-icon">${ICONS.wrench}</div>
       <div class="card-title">Pending Builds</div>
       <div class="card-desc">Track progress on features, integrations, and requirements needed for launch.</div>
     </a>
     <a class="card glass" href="/admin/ai-usage">
-      <div class="card-icon">🤖</div>
+      <div class="card-icon">${ICONS.cpuChip}</div>
       <div class="card-title">AI Usage</div>
       <div class="card-desc">Track Claude API usage, costs, and request history.</div>
     </a>
     <a class="card glass" href="/admin/feedback">
-      <div class="card-icon">💬</div>
+      <div class="card-icon">${ICONS.chat}</div>
       <div class="card-title">Feedback</div>
       <div class="card-desc">View bug reports and improvement ideas submitted by users.</div>
     </a>
     <a class="card glass" href="/admin/pro-waiting-list">
-      <div class="card-icon">📝</div>
+      <div class="card-icon">${ICONS.clipboard}</div>
       <div class="card-title">REPLAB Pro Waiting List</div>
       <div class="card-desc">Pre-launch interest list. Shows whether each entry is an existing member.</div>
     </a>
     <a class="card glass" href="/admin/retention">
-      <div class="card-icon">📈</div>
+      <div class="card-icon">${ICONS.trendingUp}</div>
       <div class="card-title">Retention Dashboard</div>
       <div class="card-desc">Day 1, 7, and 30 retention rates across your user base.</div>
     </a>
     <a class="card glass" href="/admin/active">
-      <div class="card-icon">🟢</div>
+      <div class="card-icon">${ICONS.pulse}</div>
       <div class="card-title">Active Users</div>
       <div class="card-desc">Users who logged a session in the last 24 hours, 7 days, and 30 days.</div>
     </a>
     <a class="card glass" href="/admin/referrals">
-      <div class="card-icon">🔗</div>
+      <div class="card-icon">${ICONS.link}</div>
       <div class="card-title">Referral Breakdown</div>
       <div class="card-desc">See where your users are coming from by referral source.</div>
     </a>
     <a class="card glass" href="/admin/devices">
-      <div class="card-icon">📱</div>
+      <div class="card-icon">${ICONS.phone}</div>
       <div class="card-title">Device Breakdown</div>
       <div class="card-desc">Signup device distribution across your user base.</div>
     </a>
     <a class="card glass" href="/admin/workouts">
-      <div class="card-icon">🏋️</div>
+      <div class="card-icon">${ICONS.barbell}</div>
       <div class="card-title">Workout Library</div>
       <div class="card-desc">Browse all programs and templates in the workout library.</div>
     </a>
     <a class="card glass" href="/admin/announcements">
-      <div class="card-icon">📢</div>
+      <div class="card-icon">${ICONS.megaphone}</div>
       <div class="card-title">Announcements</div>
       <div class="card-desc">Create and manage announcements shown to users in the app.</div>
     </a>
     <a class="card glass" href="/admin/flags">
-      <div class="card-icon">🚩</div>
+      <div class="card-icon">${ICONS.flag}</div>
       <div class="card-title">Feature Flags</div>
       <div class="card-desc">Toggle features on and off without deploying code.</div>
     </a>
     <a class="card glass" href="/admin/health">
-      <div class="card-icon">💚</div>
+      <div class="card-icon">${ICONS.heartbeat}</div>
       <div class="card-title">Health Check</div>
       <div class="card-desc">Server status, database connection, memory usage, and uptime.</div>
     </a>
     <a class="card glass" href="/admin/errors">
-      <div class="card-icon">🚨</div>
+      <div class="card-icon">${ICONS.alert}</div>
       <div class="card-title">Error Log</div>
       <div class="card-desc">View the last 50 server errors captured in memory.</div>
     </a>
     <a class="card glass" href="/admin/correspondence">
-      <div class="card-icon">📧</div>
+      <div class="card-icon">${ICONS.envelope}</div>
       <div class="card-title">User Correspondence</div>
       <div class="card-desc">Edit welcome emails, notification templates, and text message content.</div>
     </a>
     <a class="card glass" href="/admin/custom-exercises">
-      <div class="card-icon">🆕</div>
+      <div class="card-icon">${ICONS.sparkles}</div>
       <div class="card-title">Custom Exercises</div>
       <div class="card-desc">User-created exercises to review and add to the official library.</div>
     </a>
     <a class="card glass" href="/admin/exercise-library" style="border-color:rgba(168,85,247,0.25);">
-      <div class="card-icon">🎬</div>
+      <div class="card-icon">${ICONS.film}</div>
       <div class="card-title">Exercise Library</div>
       <div class="card-desc">View all exercises and their video mappings.</div>
     </a>
     <a class="card glass" href="/admin/monthly-costs" style="border-color:rgba(59,130,246,0.25);">
-      <div class="card-icon">📋</div>
+      <div class="card-icon">${ICONS.receipt}</div>
       <div class="card-title">Monthly Costs</div>
       <div class="card-desc">Full breakdown of hosting, App Store, and infrastructure costs.</div>
     </a>
     <a class="card glass" href="/admin/revenue">
-      <div class="card-icon">💰</div>
+      <div class="card-icon">${ICONS.currency}</div>
       <div class="card-title">Revenue Dashboard</div>
       <div class="card-desc">Track revenue when paid plans are launched.</div>
     </a>
     <a class="card glass" href="/admin/subscriptions">
-      <div class="card-icon">💳</div>
+      <div class="card-icon">${ICONS.creditCard}</div>
       <div class="card-title">Subscription Manager</div>
       <div class="card-desc">Manage user subscriptions when paid plans are launched.</div>
     </a>
     <a class="card glass" href="/admin/workout-manager" style="border-color:rgba(239,68,68,0.25);">
-      <div class="card-icon">🏋️‍♂️</div>
+      <div class="card-icon">${ICONS.cog}</div>
       <div class="card-title">Workout Manager</div>
       <div class="card-desc">Create and manage workouts in the browse library. Workouts show up for all users.</div>
     </a>
     <a class="card glass" href="/admin/trainer-logins">
-      <div class="card-icon">🔐</div>
+      <div class="card-icon">${ICONS.lock}</div>
       <div class="card-title">Trainer Login History</div>
       <div class="card-desc">View login activity on the trainer dashboard.</div>
     </a>
     <a class="card glass" href="/admin/user-logins">
-      <div class="card-icon">👤</div>
+      <div class="card-icon">${ICONS.user}</div>
       <div class="card-title">User Login History</div>
       <div class="card-desc">View user login activity with date range filtering.</div>
     </a>
     <a class="card glass" href="/admin/page-visits">
-      <div class="card-icon">📊</div>
+      <div class="card-icon">${ICONS.eye}</div>
       <div class="card-title">Page Visits</div>
       <div class="card-desc">Track which pages users visit and when.</div>
     </a>
     <a class="card glass" href="/admin/backup" style="border-color:rgba(34,197,94,0.25);">
-      <div class="card-icon">💾</div>
+      <div class="card-icon">${ICONS.database}</div>
       <div class="card-title">Database Backup</div>
       <div class="card-desc">Export all user data as a JSON backup file.</div>
     </a>
     <a class="card glass" href="/admin/audit" style="border-color:rgba(251,191,36,0.25);">
-      <div class="card-icon">🔍</div>
+      <div class="card-icon">${ICONS.magnifier}</div>
       <div class="card-title">Audit Reports</div>
       <div class="card-desc">UX audit findings, bugs, and fix priorities.</div>
     </a>
     <a class="card glass" href="/admin/url-conversion" style="border-color:rgba(239,68,68,0.25);">
-      <div class="card-icon">🔗</div>
+      <div class="card-icon">${ICONS.arrowPath}</div>
       <div class="card-title">URL Conversion</div>
       <div class="card-desc">Migration checklist: will-fit.shop &rarr; replab-fitness.com.</div>
     </a>
@@ -2803,12 +2803,12 @@ router.get('/workout-manager', adminAuth, (req, res) => {
     </div>
     <div class="card-grid">
       <a class="card glass" href="/admin/workout-manager/create">
-        <div class="card-icon">➕</div>
+        <div class="card-icon">${ICONS.plus}</div>
         <div class="card-title">Create a Workout</div>
         <div class="card-desc">Build a new workout from scratch. Add exercises, sets, reps, and weights.</div>
       </a>
       <a class="card glass" href="/admin/workout-manager/workouts">
-        <div class="card-icon">📋</div>
+        <div class="card-icon">${ICONS.clipboardList}</div>
         <div class="card-title">View Current Workouts</div>
         <div class="card-desc">Browse and manage existing programs and workouts in the library.</div>
       </a>
