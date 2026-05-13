@@ -15,8 +15,11 @@ export default function LandingPage() {
           go back to. Logo is centered, Log In CTA on the right. */}
       <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-black/70 border-b border-white/5">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="text-xl font-black tracking-widest">
-            REP<span className="text-wf-red">LAB</span>
+          <div className="flex items-center gap-3">
+            <img src="/replab-logo.png" alt="REPLAB" className="h-9 w-9 rounded" />
+            <span className="text-xl font-black tracking-widest">
+              REP<span className="text-wf-red">LAB</span>
+            </span>
           </div>
           <button
             onClick={() => navigate('/login')}

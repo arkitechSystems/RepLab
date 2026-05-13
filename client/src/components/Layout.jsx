@@ -76,7 +76,12 @@ export default function Layout({ children }) {
             paddingBottom: '0.05rem',
           }}
         >
-          <img src="/RepLabLogo3.jpg" alt="RepLab" className="h-7 rounded" />
+          <div className="flex items-center gap-2">
+            <img src="/replab-logo.png" alt="REPLAB" className="h-8 w-8 rounded" />
+            <span className="text-base font-black tracking-widest">
+              REP<span className="text-wf-red">LAB</span>
+            </span>
+          </div>
           <button
             onClick={() => navigate('/profile')}
             aria-label="Open profile"

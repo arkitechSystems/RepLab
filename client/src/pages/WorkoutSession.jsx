@@ -2807,11 +2807,15 @@ export default function WorkoutSession() {
               <p className="text-[13px] text-white/55 leading-relaxed">
                 {isCompleted
                   ? 'Scroll down and tap Undo Completion to edit this session.'
-                  : 'You can pre-fill weights and reps anytime. Tap Begin Workout above to start the timer and mark sets complete.'}
+                  : (
+                    <>
+                      Tap <span className="text-white font-semibold">Got It</span> to keep pre-filling planned weights and reps without starting the timer. Tap <span className="text-white font-semibold">Begin Workout</span> to start your session timer and unlock set completion.
+                    </>
+                  )}
               </p>
             </div>
 
-            <div className="relative px-4 pb-4">
+            <div className="relative px-4 pb-4 space-y-2">
               <button
                 onClick={() => setShowBeginPrompt(false)}
                 className="w-full text-white font-bold uppercase active:scale-[0.98] transition-all"
@@ -2826,6 +2830,24 @@ export default function WorkoutSession() {
               >
                 Got It
               </button>
+              {!isCompleted && (
+                <button
+                  onClick={() => {
+                    setShowBeginPrompt(false);
+                    handleBeginWorkout();
+                  }}
+                  className="w-full text-white font-bold uppercase active:scale-[0.98] transition-all border border-white/15 hover:border-white/30"
+                  style={{
+                    letterSpacing: '0.15em',
+                    fontSize: '11px',
+                    padding: '14px',
+                    borderRadius: '2px',
+                    background: 'rgba(255,255,255,0.04)',
+                  }}
+                >
+                  Begin Workout
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -3233,7 +3255,7 @@ export default function WorkoutSession() {
           : Array.from(new Set(allExercises.map((ex) => ex.muscle).filter(Boolean))).sort();
         return (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center px-4"
+            className="fixed inset-0 z-50 flex items-start justify-center px-4 pt-20"
             onClick={() => setShowAddExercise(false)}
             role="dialog"
             aria-modal="true"
