@@ -164,14 +164,22 @@ function PageTracker() {
 
 export default function App() {
   const { isAuthenticated } = useAuth();
+  const location = useLocation();
   const [splashDone, setSplashDone] = useState(false);
 
   // Splash only gates entry to the app proper — the mobile (Capacitor) launch
   // and the authed web dashboard. All public web surfaces (marketing landing,
   // /login, /signup, /waiting-list, /privacy, /terms, etc.) skip splash so
   // visitors see content immediately. Once dismissed in a session it stays
-  // dismissed across subsequent route changes.
-  const isAppContext = Capacitor.isNativePlatform() || isAuthenticated;
+  // dismissed across subsequent route changes. The path check matters for
+  // authed users hitting `/` — without it they'd see splash on the marketing
+  // landing every visit.
+  const PUBLIC_SURFACES = ['/', '/login', '/signup', '/forgot-password', '/waiting-list', '/privacy', '/terms'];
+  const isPublicSurface =
+    PUBLIC_SURFACES.includes(location.pathname) ||
+    location.pathname.startsWith('/reset-password/');
+  const isAppContext =
+    !isPublicSurface && (Capacitor.isNativePlatform() || isAuthenticated);
 
   // Capture UTM params on first landing and persist until signup
   useEffect(() => {

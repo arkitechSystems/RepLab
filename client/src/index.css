@@ -694,8 +694,10 @@ input[type="number"] {
   background: rgba(232, 232, 232, 0.92);
   border-bottom: 1px solid rgba(0, 0, 0, 0.10);
 }
-.wf-dark-cards .sticky-header.collapsed h1,
-.wf-dark-cards .sticky-header.collapsed p {
+/* Workout name + subtitle stay legible on the light page bg whether or not
+   the header has collapsed on scroll. */
+.wf-dark-cards .sticky-header h1,
+.wf-dark-cards .sticky-header p {
   color: #111 !important;
 }
 

@@ -3170,7 +3170,14 @@ export default function WorkoutSession() {
         {!structureLocked && (
           <button
             onClick={() => { setShowAddExercise(true); setAddExerciseSearch(''); setAddExerciseMuscleFilter('all'); }}
-            className="w-full border border-dashed border-white/35 rounded-xl py-3.5 text-white/80 text-sm font-medium active:border-wf-red active:text-wf-red transition-colors flex items-center justify-center gap-2 mb-3"
+            className="w-full border border-dashed rounded-xl py-3.5 text-sm font-medium active:border-wf-red active:text-wf-red transition-colors flex items-center justify-center gap-2 mb-3"
+            style={cardTheme === 'dark' ? {
+              borderColor: 'rgba(0,0,0,0.45)',
+              color: 'rgba(0,0,0,0.80)',
+            } : {
+              borderColor: 'rgba(255,255,255,0.40)',
+              color: 'rgba(255,255,255,0.85)',
+            }}
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -3200,7 +3207,13 @@ export default function WorkoutSession() {
               onClick={() => setShowAddCardio(true)}
               disabled={!sessionId}
               className="w-full border border-dashed rounded-xl py-3.5 text-sm font-medium transition-colors flex items-center justify-center gap-2 mb-3 disabled:opacity-50"
-              style={{ borderColor: 'rgba(6,182,212,0.6)', color: 'rgba(103,232,249,0.95)' }}
+              style={cardTheme === 'dark' ? {
+                borderColor: 'rgba(8,145,178,0.75)',
+                color: 'rgba(8,116,144,0.95)',
+              } : {
+                borderColor: 'rgba(6,182,212,0.6)',
+                color: 'rgba(103,232,249,0.95)',
+              }}
               title={sessionId ? 'Add a cardio session' : 'Loading…'}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -3386,9 +3399,10 @@ export default function WorkoutSession() {
             className="active:scale-[0.98] transition-all w-full"
             style={isCompleted ? {
               padding: '16px', borderRadius: '2px',
-              border: '1px solid rgba(255,255,255,0.30)',
-              background: 'rgba(255,255,255,0.10)',
-              color: 'rgba(255,255,255,0.85)', fontSize: '13px', fontWeight: 700, cursor: 'pointer',
+              border: cardTheme === 'dark' ? '1px solid rgba(0,0,0,0.30)' : '1px solid rgba(255,255,255,0.30)',
+              background: cardTheme === 'dark' ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.10)',
+              color: cardTheme === 'dark' ? 'rgba(0,0,0,0.65)' : 'rgba(255,255,255,0.85)',
+              fontSize: '13px', fontWeight: 700, cursor: 'pointer',
               letterSpacing: '0.25em', textTransform: 'uppercase',
             } : {
               padding: '16px', borderRadius: '2px', border: 'none',

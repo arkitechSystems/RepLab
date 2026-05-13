@@ -1037,7 +1037,9 @@ const db = {
        ORDER BY s.date ASC, se.exercise_name ASC, se.set_number ASC`,
       [userId]
     );
-    // Group by (exercise, weight) — only keep groups with 2+ distinct dates.
+    // Group by (exercise, weight). Single-date groups are returned too — the
+    // client renders them in a neutral/gray state to indicate "no comparison
+    // yet" until the same lift is repeated on another date.
     const byKey = new Map();
     for (const r of rows) {
       const w = Number(r.weight);
@@ -1045,10 +1047,7 @@ const db = {
       if (!byKey.has(key)) byKey.set(key, { exercise: r.exercise_name, weight: w, occurrences: [] });
       byKey.get(key).occurrences.push({ date: r.date, reps: r.reps, setNumber: r.set_number });
     }
-    return [...byKey.values()].filter((g) => {
-      const dates = new Set(g.occurrences.map((o) => o.date));
-      return dates.size >= 2;
-    });
+    return [...byKey.values()];
   },
 
   // Exercise history (for smart weight suggestions)

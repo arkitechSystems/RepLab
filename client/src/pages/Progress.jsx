@@ -7,9 +7,12 @@ import { classifyExercise } from '../utils/muscleGroup';
 // Color tokens shared with the Progressive Overload test page so the
 // production view matches the pill design the user picked.
 const COLORS = {
-  up:   { bg: 'rgba(34,197,94,0.15)',  ring: 'rgba(34,197,94,0.45)',  text: '#86efac', solid: '#22c55e' },
-  down: { bg: 'rgba(239,68,68,0.15)',  ring: 'rgba(239,68,68,0.45)',  text: '#fca5a5', solid: '#ef4444' },
-  same: { bg: 'rgba(251,191,36,0.15)', ring: 'rgba(251,191,36,0.45)', text: '#fcd34d', solid: '#eab308' },
+  up:      { bg: 'rgba(34,197,94,0.15)',  ring: 'rgba(34,197,94,0.45)',  text: '#86efac', solid: '#22c55e' },
+  down:    { bg: 'rgba(239,68,68,0.15)',  ring: 'rgba(239,68,68,0.45)',  text: '#fca5a5', solid: '#ef4444' },
+  same:    { bg: 'rgba(251,191,36,0.15)', ring: 'rgba(251,191,36,0.45)', text: '#fcd34d', solid: '#eab308' },
+  // Used when a lift has been logged on only one date so far — no comparison
+  // yet. Reverts to up/down/same once the same (exercise, weight) is repeated.
+  neutral: { bg: 'rgba(255,255,255,0.05)', ring: 'rgba(255,255,255,0.20)', text: 'rgba(255,255,255,0.55)', solid: '#9ca3af' },
 };
 
 // Same display order as the home page's Heaviest Lifts list.
@@ -124,12 +127,13 @@ export default function Progress() {
               SAME WEIGHT.<br/>MORE REPS?
             </h2>
             <p className="text-[12px] text-white/50 mt-2 leading-relaxed">
-              Every lift you've logged at the same weight on multiple dates. Greener = more reps than last time. Yellow = flat. Red = fewer.
+              Every lift you've logged. Greener = more reps than last time. Yellow = flat. Red = fewer. Gray = no comparison yet — log the same weight on another day to start the trend.
             </p>
-            <div className="flex items-center gap-3 mt-3 text-[10px] uppercase tracking-[0.2em]">
+            <div className="flex items-center gap-3 mt-3 text-[10px] uppercase tracking-[0.2em] flex-wrap">
               <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: COLORS.up.solid }} /><span style={{ color: COLORS.up.text }}>Up</span></span>
               <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: COLORS.same.solid }} /><span style={{ color: COLORS.same.text }}>Flat</span></span>
               <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: COLORS.down.solid }} /><span style={{ color: COLORS.down.text }}>Down</span></span>
+              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ background: COLORS.neutral.solid }} /><span style={{ color: COLORS.neutral.text }}>New</span></span>
             </div>
           </div>
         </div>
@@ -188,8 +192,8 @@ export default function Progress() {
             background: 'linear-gradient(160deg, #1c1c1c 0%, #111 100%)',
             border: '1px solid rgba(255,255,255,0.06)',
           }}>
-            <p className="text-white/70 text-sm font-bold mb-1">Nothing to compare yet</p>
-            <p className="text-white/40 text-xs">Log the same exercise at the same weight on 2+ different days, and it'll show up here.</p>
+            <p className="text-white/70 text-sm font-bold mb-1">Nothing logged yet</p>
+            <p className="text-white/40 text-xs">Complete a workout and your lifts will show up here.</p>
           </div>
         )}
         {raw !== null && allRows.length > 0 && rows.length === 0 && (
@@ -197,7 +201,7 @@ export default function Progress() {
             background: 'linear-gradient(160deg, #1c1c1c 0%, #111 100%)',
             border: '1px solid rgba(255,255,255,0.06)',
           }}>
-            <p className="text-white/50 text-sm">No same-weight repeats logged yet for {selectedBodyPart}.</p>
+            <p className="text-white/50 text-sm">No lifts logged yet for {selectedBodyPart}.</p>
           </div>
         )}
 
@@ -210,34 +214,43 @@ export default function Progress() {
             border: '1px solid rgba(255,255,255,0.06)',
           }}>
             <div className="space-y-5">
-              {rows.map((r) => (
-                <div key={`${r.exercise}-${r.weight}`}>
-                  <div className="flex items-baseline justify-between mb-2">
-                    <span className="text-white text-sm font-bold truncate">{r.exercise}</span>
-                    <span className="text-white/40 text-[11px] shrink-0 ml-2">{r.weight} lbs</span>
-                  </div>
-                  {r.weeks.map((w, wi) => {
-                    const prevBest = wi === 0 ? null : r.weeks[wi - 1].best;
-                    return (
-                      <div key={w.date} className="flex items-center gap-2 mb-1.5">
-                        <span className="text-[10px] text-white/40 w-12 shrink-0">{fmtDate(w.date)}</span>
-                        <div className="flex gap-1.5 flex-wrap">
-                          {w.sets.map((reps, si) => {
-                            const t = prevBest === null ? 'same' : trendOfReps(prevBest, reps);
-                            const c = wi === 0 ? COLORS.same : COLORS[t];
-                            return (
-                              <span key={si} className="text-[12px] font-bold tabular-nums px-2.5 py-1 rounded-md"
-                                style={{ background: c.bg, color: c.text, boxShadow: `inset 0 0 0 1px ${c.ring}` }}>
-                                {reps}
-                              </span>
-                            );
-                          })}
+              {rows.map((r) => {
+                // No prior date to compare against → render every chip in
+                // neutral gray. As soon as the user logs the same
+                // (exercise, weight) on a second date this flips to the
+                // baseline/flat yellow on row 1 and trend colors after.
+                const noComparison = r.weeks.length === 1;
+                return (
+                  <div key={`${r.exercise}-${r.weight}`}>
+                    <div className="flex items-baseline justify-between mb-2">
+                      <span className="text-white text-sm font-bold truncate">{r.exercise}</span>
+                      <span className="text-white/40 text-[11px] shrink-0 ml-2">{r.weight} lbs</span>
+                    </div>
+                    {r.weeks.map((w, wi) => {
+                      const prevBest = wi === 0 ? null : r.weeks[wi - 1].best;
+                      return (
+                        <div key={w.date} className="flex items-center gap-2 mb-1.5">
+                          <span className="text-[10px] text-white/40 w-12 shrink-0">{fmtDate(w.date)}</span>
+                          <div className="flex gap-1.5 flex-wrap">
+                            {w.sets.map((reps, si) => {
+                              const t = prevBest === null ? 'same' : trendOfReps(prevBest, reps);
+                              const c = noComparison
+                                ? COLORS.neutral
+                                : (wi === 0 ? COLORS.same : COLORS[t]);
+                              return (
+                                <span key={si} className="text-[12px] font-bold tabular-nums px-2.5 py-1 rounded-md"
+                                  style={{ background: c.bg, color: c.text, boxShadow: `inset 0 0 0 1px ${c.ring}` }}>
+                                  {reps}
+                                </span>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
+                      );
+                    })}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
