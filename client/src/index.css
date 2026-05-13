@@ -685,20 +685,17 @@ input[type="number"] {
 }
 
 /* Dark-cards mode overrides for the workout-session page. The page bg
-   flips to light gray (#e8e8e8); these rules keep the sticky header in
-   the same light tone when it collapses on scroll (was turning black —
-   visually jarring against the light page) and flip the exercise name
-   text to black so it stays legible on the lighter surface. */
+   flips to light gray (#e8e8e8); keep the sticky header in the same
+   light tone when it collapses on scroll (was turning black — visually
+   jarring against the light page). Text inside the dark cards stays
+   white via the `.exercise-card-transparent-test *` rule above; do NOT
+   override it here. */
 .wf-dark-cards .sticky-header.collapsed {
   background: rgba(232, 232, 232, 0.92);
   border-bottom: 1px solid rgba(0, 0, 0, 0.10);
 }
 .wf-dark-cards .sticky-header.collapsed h1,
 .wf-dark-cards .sticky-header.collapsed p {
-  color: #111 !important;
-}
-.wf-dark-cards .exercise-card-transparent-test .text-white,
-.wf-dark-cards [data-exercise-name] {
   color: #111 !important;
 }
 
