@@ -89,6 +89,11 @@ Reasoning: high-intent search terms only. Skipped filler words ("the/and/app"), 
 - **Support URL:** `https://replab-fitness.com/support`
 - **Privacy Policy URL:** `https://replab-fitness.com/privacy`
 
+### Copyright / Seller
+- **Copyright string:** `© 2026 ArkiTech Systems, LLC`
+- **Seller name (App Store Connect Account Holder):** `ArkiTech Systems, LLC`
+- **Display name in App Store:** `ArkiTech Systems` (Apple truncates "LLC" suffix on small surfaces)
+
 ### Categories
 - **Primary:** Health & Fitness
 - **Secondary:** Sports

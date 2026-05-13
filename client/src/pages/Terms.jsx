@@ -28,7 +28,7 @@ export default function Terms() {
             TERMS OF SERVICE
           </h1>
           <p className="text-[11px] uppercase text-white/40 mt-3 font-light" style={{ letterSpacing: '0.25em' }}>
-            Last updated: April 1, 2026
+            Last updated: May 12, 2026
           </p>
         </div>
       </div>
@@ -38,7 +38,7 @@ export default function Terms() {
           <div className="relative p-6">
             <h2 className="text-[11px] uppercase font-semibold text-white mb-3" style={{ letterSpacing: '0.25em' }}>1. Acceptance of Terms</h2>
             <div className="border-t border-white/5 pt-3">
-              <p>By accessing or using RepLab ("the App"), you agree to be bound by these Terms of Service. If you do not agree to these terms, do not use the App.</p>
+              <p>REPLAB ("the App") is operated by <strong className="text-white">ArkiTech Systems, LLC</strong> ("we", "us", "our"). By accessing or using the App, you agree to be bound by these Terms of Service. If you do not agree to these terms, do not use the App.</p>
             </div>
           </div>
         </section>
@@ -101,7 +101,7 @@ export default function Terms() {
           <div className="relative p-6">
             <h2 className="text-[11px] uppercase font-semibold text-white mb-3" style={{ letterSpacing: '0.25em' }}>8. Limitation of Liability</h2>
             <div className="border-t border-white/5 pt-3">
-              <p>To the maximum extent permitted by law, RepLab and its creators shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising out of or related to your use of the App. Our total liability shall not exceed the amount you paid for the App in the 12 months preceding the claim.</p>
+              <p>To the maximum extent permitted by law, ArkiTech Systems, LLC and its members, officers, employees, and affiliates shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising out of or related to your use of the App. Our total liability shall not exceed the amount you paid for the App in the 12 months preceding the claim.</p>
             </div>
           </div>
         </section>
@@ -117,7 +117,25 @@ export default function Terms() {
 
         <section className="relative overflow-hidden" style={sectionPanelStyle}>
           <div className="relative p-6">
-            <h2 className="text-[11px] uppercase font-semibold text-white mb-3" style={{ letterSpacing: '0.25em' }}>10. Changes to Terms</h2>
+            <h2 className="text-[11px] uppercase font-semibold text-white mb-3" style={{ letterSpacing: '0.25em' }}>10. Governing Law</h2>
+            <div className="border-t border-white/5 pt-3">
+              <p>These Terms are governed by and construed in accordance with the laws of the State of [STATE OF FORMATION], United States, without regard to its conflict-of-law principles. The exclusive jurisdiction and venue for any dispute arising out of or related to these Terms or the App shall be the state and federal courts located in [STATE OF FORMATION], and you consent to the personal jurisdiction of those courts.</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="relative overflow-hidden" style={sectionPanelStyle}>
+          <div className="relative p-6">
+            <h2 className="text-[11px] uppercase font-semibold text-white mb-3" style={{ letterSpacing: '0.25em' }}>11. Dispute Resolution</h2>
+            <div className="border-t border-white/5 pt-3">
+              <p>Before filing a claim, you agree to first contact us at <a href="mailto:support@replab-fitness.com" className="text-wf-red underline">support@replab-fitness.com</a> to attempt an informal resolution. If we cannot resolve the dispute within 30 days, either party may pursue the dispute in the courts identified in Section 10. Each party waives the right to a jury trial to the maximum extent permitted by law. You agree not to participate in a class action against us; all claims must be brought in your individual capacity.</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="relative overflow-hidden" style={sectionPanelStyle}>
+          <div className="relative p-6">
+            <h2 className="text-[11px] uppercase font-semibold text-white mb-3" style={{ letterSpacing: '0.25em' }}>12. Changes to Terms</h2>
             <div className="border-t border-white/5 pt-3">
               <p>We may update these Terms of Service from time to time. We will notify users of material changes through the App. Your continued use of the App after changes constitutes acceptance of the updated terms.</p>
             </div>
@@ -126,9 +144,10 @@ export default function Terms() {
 
         <section className="relative overflow-hidden" style={sectionPanelStyle}>
           <div className="relative p-6">
-            <h2 className="text-[11px] uppercase font-semibold text-white mb-3" style={{ letterSpacing: '0.25em' }}>11. Contact</h2>
+            <h2 className="text-[11px] uppercase font-semibold text-white mb-3" style={{ letterSpacing: '0.25em' }}>13. Contact</h2>
             <div className="border-t border-white/5 pt-3">
-              <p>If you have questions about these Terms of Service, please contact us through the App's feedback feature or at the email address provided in the App.</p>
+              <p>ArkiTech Systems, LLC<br />Email: <a href="mailto:support@replab-fitness.com" className="text-wf-red underline">support@replab-fitness.com</a></p>
+              <p className="mt-2">For questions about these Terms of Service or to report a violation, contact us at the email above or through the App's in-product feedback feature.</p>
             </div>
           </div>
         </section>
