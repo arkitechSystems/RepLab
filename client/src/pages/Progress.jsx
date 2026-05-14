@@ -1,8 +1,96 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import StickyHeader from '../components/StickyHeader';
 import { classifyExercise } from '../utils/muscleGroup';
+
+const HERO_WINDOW_DAYS = 30;
+
+// Computes the four hero numbers from the raw progress-overload payload.
+// Returns null when nothing has been logged inside the window — the card
+// then hides instead of showing a row of zeros.
+function computeHeroStats(raw, days = HERO_WINDOW_DAYS) {
+  if (!raw || raw.length === 0) return null;
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+
+  const sessionDates = new Set();
+  const exercises = new Set();
+  let totalRepsGained = 0;
+  let biggestJump = null;
+
+  for (const g of raw) {
+    const recent = g.occurrences.filter((o) => o.date >= cutoffStr);
+    if (recent.length === 0) continue;
+    exercises.add(g.exercise);
+    for (const o of recent) sessionDates.add(o.date);
+
+    // Per-(exercise, weight): max reps on the earliest in-window date vs the
+    // latest. A positive delta counts toward Reps Gained and competes for
+    // Biggest Jump. Negative deltas don't subtract — we only celebrate gains.
+    const byDate = new Map();
+    for (const o of recent) {
+      byDate.set(o.date, Math.max(byDate.get(o.date) || 0, o.reps));
+    }
+    const sorted = [...byDate.entries()].sort(([a], [b]) => a.localeCompare(b));
+    if (sorted.length >= 2) {
+      const delta = sorted[sorted.length - 1][1] - sorted[0][1];
+      if (delta > 0) {
+        totalRepsGained += delta;
+        if (!biggestJump || delta > biggestJump.delta) {
+          biggestJump = { exercise: g.exercise, weight: g.weight, delta };
+        }
+      }
+    }
+  }
+
+  if (sessionDates.size === 0) return null;
+  return {
+    sessions: sessionDates.size,
+    exercises: exercises.size,
+    repsGained: totalRepsGained,
+    biggestJump,
+  };
+}
+
+// Count-up animator. When `value` arrives (or changes), tween from the
+// current displayed number to the target over `duration` ms using an
+// ease-out cubic so the early frames feel snappy and the tail settles.
+function useCountUp(value, duration = 900) {
+  const [display, setDisplay] = useState(0);
+  const fromRef = useRef(0);
+  useEffect(() => {
+    if (typeof value !== 'number' || Number.isNaN(value)) return;
+    const start = performance.now();
+    const from = fromRef.current;
+    const to = value;
+    let raf;
+    const tick = (now) => {
+      const p = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      const next = Math.round(from + (to - from) * eased);
+      setDisplay(next);
+      if (p < 1) raf = requestAnimationFrame(tick);
+      else fromRef.current = to;
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value, duration]);
+  return display;
+}
+
+function StatNumber({ value, prefix = '', accent = 'rgba(255,255,255,0.95)' }) {
+  const display = useCountUp(value);
+  return (
+    <span
+      className="text-[26px] font-black tracking-tight"
+      style={{ color: accent, fontVariantNumeric: 'tabular-nums', fontFamily: 'system-ui', letterSpacing: '-0.02em' }}
+    >
+      {prefix}{display.toLocaleString()}
+    </span>
+  );
+}
 
 // Color tokens shared with the Progressive Overload test page so the
 // production view matches the pill design the user picked.
@@ -94,6 +182,8 @@ export default function Progress() {
     return allRows.filter((r) => r.bodyPart === selectedBodyPart);
   }, [allRows, selectedBodyPart]);
 
+  const heroStats = useMemo(() => computeHeroStats(raw), [raw]);
+
   return (
     <div className="pb-24">
       <StickyHeader title="PROGRESS" titleStyle={{ fontSize: '26.4px' }}>
@@ -107,6 +197,67 @@ export default function Progress() {
       </StickyHeader>
 
       <div className="px-4 pt-1 space-y-4">
+        {/* Hero stats card — shown once data has loaded and the user has
+            logged something in the window. Numbers tween up on first render
+            via useCountUp; the tile divs use staggered fade-slide-up classes
+            so they cascade in after the card itself slides in. */}
+        {heroStats && (
+          <div
+            className="relative overflow-hidden fade-slide-up"
+            style={{
+              background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+              borderRadius: '2px',
+              boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+            }}
+          >
+            <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #22c55e, rgba(34,197,94,0.25), transparent)' }} />
+            <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(34,197,94,0.12) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+            <div className="relative p-5">
+              <p className="text-[10px] uppercase font-light mb-4" style={{ color: 'rgba(34,197,94,0.85)', letterSpacing: '0.3em' }}>
+                Last {HERO_WINDOW_DAYS} Days
+              </p>
+              <div className="grid grid-cols-3 gap-3 mb-3">
+                <div className="fade-slide-up" style={{ animationDelay: '60ms' }}>
+                  <StatNumber value={heroStats.sessions} />
+                  <p className="text-[9px] uppercase mt-1" style={{ color: 'rgba(255,255,255,0.4)', letterSpacing: '0.2em' }}>Sessions</p>
+                </div>
+                <div className="fade-slide-up" style={{ animationDelay: '140ms' }}>
+                  <StatNumber value={heroStats.exercises} />
+                  <p className="text-[9px] uppercase mt-1" style={{ color: 'rgba(255,255,255,0.4)', letterSpacing: '0.2em' }}>Exercises</p>
+                </div>
+                <div className="fade-slide-up" style={{ animationDelay: '220ms' }}>
+                  <StatNumber value={heroStats.repsGained} prefix={heroStats.repsGained > 0 ? '+' : ''} accent={heroStats.repsGained > 0 ? COLORS.up.text : 'rgba(255,255,255,0.95)'} />
+                  <p className="text-[9px] uppercase mt-1" style={{ color: 'rgba(255,255,255,0.4)', letterSpacing: '0.2em' }}>Reps Gained</p>
+                </div>
+              </div>
+              <div
+                className="fade-slide-up"
+                style={{
+                  animationDelay: '300ms',
+                  background: heroStats.biggestJump
+                    ? 'linear-gradient(135deg, rgba(34,197,94,0.10) 0%, rgba(34,197,94,0.02) 100%)'
+                    : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${heroStats.biggestJump ? 'rgba(34,197,94,0.25)' : 'rgba(255,255,255,0.06)'}`,
+                  borderRadius: '2px',
+                  padding: '10px 14px',
+                }}
+              >
+                <p className="text-[9px] uppercase mb-1" style={{ color: 'rgba(255,255,255,0.4)', letterSpacing: '0.2em' }}>Biggest Jump</p>
+                {heroStats.biggestJump ? (
+                  <p className="text-[13px] font-bold text-white truncate">
+                    {heroStats.biggestJump.exercise}
+                    <span className="ml-2 text-[11px] font-light" style={{ color: COLORS.up.text }}>
+                      +{heroStats.biggestJump.delta} reps · {heroStats.biggestJump.weight} lbs
+                    </span>
+                  </p>
+                ) : (
+                  <p className="text-[12px] text-white/40">Log the same weight again to start a comparison.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Intro panel — explains what the page tracks. Same Nike panel
             shell used by Plate Calculator etc. */}
         <div
