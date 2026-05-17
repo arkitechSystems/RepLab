@@ -11,15 +11,17 @@
 import pool from './dbPool.js';
 
 async function run() {
+  // Post-Path-B: orphan check keys on te.exercise_id IS NULL (the canonical
+  // FK), not LOWER(name) matching. Section headers carry NULL exercise_id by
+  // design (their `name` is a label) so we still exclude them explicitly.
   const { rows } = await pool.query(`
     SELECT DISTINCT te.name AS exercise, p.name AS program, t.name AS template
     FROM template_exercises te
     JOIN templates t ON t.id = te.template_id
     JOIN programs p  ON p.id = t.program_id
-    LEFT JOIN exercises e ON LOWER(e.name) = LOWER(te.name)
     WHERE p.user_id IS NULL
       AND COALESCE(te.is_section_header, FALSE) = FALSE
-      AND e.id IS NULL
+      AND te.exercise_id IS NULL
     ORDER BY p.name, te.name, t.name
   `);
 

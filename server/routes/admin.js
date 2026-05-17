@@ -5080,13 +5080,14 @@ router.get('/exercise-library/export.xlsx', adminAuth, async (req, res) => {
         COALESCE(pl.programs, '') AS programs
       FROM exercises e
       LEFT JOIN (
-        SELECT exercise_name, COUNT(*) AS pr_count
+        SELECT exercise_id, COUNT(*) AS pr_count
         FROM personal_bests
-        GROUP BY exercise_name
-      ) pb ON LOWER(pb.exercise_name) = LOWER(e.name)
+        WHERE exercise_id IS NOT NULL
+        GROUP BY exercise_id
+      ) pb ON pb.exercise_id = e.id
       LEFT JOIN (
         SELECT
-          LOWER(te.name) AS ex_lower,
+          te.exercise_id,
           STRING_AGG(
             DISTINCT COALESCE(pna.short_name, p.name),
             '; '
@@ -5097,9 +5098,10 @@ router.get('/exercise-library/export.xlsx', adminAuth, async (req, res) => {
         JOIN programs p  ON p.id = t.program_id
         LEFT JOIN program_name_abbreviations pna ON pna.full_name = p.name
         WHERE p.user_id IS NULL
+          AND te.exercise_id IS NOT NULL
           AND COALESCE(te.is_section_header, FALSE) = FALSE
-        GROUP BY LOWER(te.name)
-      ) pl ON pl.ex_lower = LOWER(e.name)
+        GROUP BY te.exercise_id
+      ) pl ON pl.exercise_id = e.id
       ORDER BY e.muscle_group ASC, e.name ASC
     `);
 
@@ -5124,7 +5126,10 @@ router.get('/exercise-library/export.xlsx', adminAuth, async (req, res) => {
     ];
     ws['!freeze'] = { xSplit: 0, ySplit: 1 };
 
-    // Sheet 2: orphan PR names — personal_bests.exercise_name with no matching row in exercises
+    // Sheet 2: orphan PR rows — personal_bests with no matching exercises
+    // row. Now identified via exercise_id IS NULL (the canonical FK), which
+    // also catches rows whose exercise was deleted post-creation (the FK
+    // ON DELETE SET NULL converts the id to NULL on parent delete).
     const orphansR = await pool.query(`
       SELECT
         pb.exercise_name,
@@ -5132,8 +5137,7 @@ router.get('/exercise-library/export.xlsx', adminAuth, async (req, res) => {
         COUNT(DISTINCT pb.user_id)::int AS distinct_users,
         MAX(pb.achieved_at) AS latest_achieved_at
       FROM personal_bests pb
-      LEFT JOIN exercises e ON LOWER(e.name) = LOWER(pb.exercise_name)
-      WHERE e.id IS NULL
+      WHERE pb.exercise_id IS NULL
       GROUP BY pb.exercise_name
       ORDER BY pr_count DESC, pb.exercise_name ASC
     `);

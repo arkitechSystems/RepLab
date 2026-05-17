@@ -32,11 +32,15 @@ router.get('/stats', authMiddleware, async (req, res) => {
         `SELECT exercise_name, best_weight, best_reps FROM personal_bests WHERE user_id = $1 ORDER BY best_weight DESC LIMIT 1`,
         [userId]
       ),
-      // Most improved exercise (biggest weight range)
+      // Most improved exercise (biggest weight range). Grouped by
+      // exercise_id (canonical) plus exercise_name for display — exercise_id
+      // survives any future rename, exercise_name is what we render.
       pool.query(
         `SELECT exercise_name, MAX(best_weight) - MIN(best_weight) AS improvement
-         FROM personal_bests WHERE user_id = $1
-         GROUP BY exercise_name HAVING COUNT(*) > 1
+         FROM personal_bests
+         WHERE user_id = $1 AND exercise_id IS NOT NULL
+         GROUP BY exercise_id, exercise_name
+         HAVING COUNT(*) > 1
          ORDER BY improvement DESC LIMIT 1`,
         [userId]
       ),
@@ -57,11 +61,15 @@ router.get('/stats', authMiddleware, async (req, res) => {
 router.get('/by-body-part', authMiddleware, async (req, res) => {
   try {
     const pool = (await import('../dbPool.js')).default;
+    // Joined via exercise_id (canonical FK) rather than LOWER(name) match.
+    // Any PR row that somehow has a NULL exercise_id is dropped — that's the
+    // intended behavior: it can't be bucketed by muscle group without a
+    // master library row anyway.
     const { rows } = await pool.query(
       `SELECT DISTINCT ON (e.muscle_group)
          e.muscle_group, pb.exercise_name, pb.best_weight, pb.best_reps
        FROM personal_bests pb
-       JOIN exercises e ON LOWER(e.name) = LOWER(pb.exercise_name)
+       JOIN exercises e ON e.id = pb.exercise_id
        WHERE pb.user_id = $1
        ORDER BY e.muscle_group, pb.best_weight DESC`,
       [req.userId]
@@ -74,7 +82,8 @@ router.get('/by-body-part', authMiddleware, async (req, res) => {
 });
 
 // Every PB row with muscle_group attached, ordered for client-side grouping:
-// muscle_group → exercise_name → descending weight.
+// muscle_group → exercise_name → descending weight. Joined via exercise_id
+// rather than LOWER(name) match — see /by-body-part for the rationale.
 router.get('/all-by-muscle', authMiddleware, async (req, res) => {
   try {
     const pool = (await import('../dbPool.js')).default;
@@ -82,7 +91,7 @@ router.get('/all-by-muscle', authMiddleware, async (req, res) => {
       `SELECT e.muscle_group, pb.exercise_name, pb.best_weight, pb.best_reps,
               pb.template_id, pb.achieved_at
        FROM personal_bests pb
-       JOIN exercises e ON LOWER(e.name) = LOWER(pb.exercise_name)
+       JOIN exercises e ON e.id = pb.exercise_id
        WHERE pb.user_id = $1
        ORDER BY e.muscle_group, pb.exercise_name, pb.best_weight DESC, pb.best_reps DESC`,
       [req.userId]
