@@ -815,28 +815,18 @@ function ProgramOverviewHero({ program, weekCount }) {
 // Horizontal filter pills with static gradient fade affordances on both
 // edges — always visible as a scroll hint, regardless of overflow state.
 //
-// Pill visuals mirror the type pills on the library cards:
-//   • glute_focused → pink (#ec4899) background with white letters
-//   • everything else → white background with black letters
-// Selected state pops contrast: deeper pink for glute, black-on-white
-// inverts to white-on-black, so the active filter is unambiguous.
+// All pills share the same visual: white background with black letters,
+// inverting to white-on-black when active so the selected filter is
+// unambiguous.
 function FilterPillsRow({ filters, value, onChange }) {
   return (
     <div className="relative -mx-4 mb-3">
       <div className="flex gap-2 overflow-x-auto pb-2 px-4 scrollbar-hide">
         {filters.map((f) => {
-          const isGlute = f.value === 'glute_focused';
           const isActive = value === f.value;
-          let style;
-          if (isGlute) {
-            style = isActive
-              ? { background: '#000000', color: '#ec4899', boxShadow: '0 4px 14px rgba(236,72,153,0.35)' }
-              : { background: '#ec4899', color: '#ffffff', boxShadow: '0 4px 12px rgba(236,72,153,0.35)' };
-          } else {
-            style = isActive
-              ? { background: '#000000', color: '#ffffff', boxShadow: '0 4px 12px rgba(0,0,0,0.35)' }
-              : { background: '#ffffff', color: '#000000', boxShadow: '0 4px 12px rgba(255,255,255,0.10)' };
-          }
+          const style = isActive
+            ? { background: '#000000', color: '#ffffff', boxShadow: '0 4px 12px rgba(0,0,0,0.35)' }
+            : { background: '#ffffff', color: '#000000', boxShadow: '0 4px 12px rgba(255,255,255,0.10)' };
           return (
             <button
               key={f.value}
