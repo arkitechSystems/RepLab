@@ -8,7 +8,9 @@
 import pool from '../dbPool.js';
 
 const PROGRAM_NAME = 'Muscle & Fitness 5000 Rep Arm Specialization';
-const PDF_URL = '/Workouts/Muscle and Strength 5000 rep Arm Specialization Program.pdf';
+// Served from the RepLab static-asset CDN; the bundled copy in
+// client/public/Workouts/ has been removed to keep the iOS build slim.
+const PDF_URL = 'https://replab-videos.onrender.com/Muscle and Strength 5000 rep Arm Specialization Program.pdf';
 
 async function run() {
   const client = await pool.connect();

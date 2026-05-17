@@ -4655,7 +4655,7 @@ export default function Workouts() {
               <video
                 className="absolute inset-0 w-full h-full object-cover"
                 autoPlay loop muted playsInline
-                src="/Gym cinematic promotion video.mp4"
+                src="https://replab-videos.onrender.com/Gym cinematic promotion video.mp4"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
               {/* Text overlay — fades out as it grows */}
@@ -5193,7 +5193,7 @@ export default function Workouts() {
                 playsInline
                 webkit-playsinline=""
                 preload="auto"
-                src="/Gym cinematic promotion video.mp4"
+                src="https://replab-videos.onrender.com/Gym cinematic promotion video.mp4"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
               <div className="relative z-10 p-5 flex flex-col justify-end h-full" style={{ minHeight: '126px' }}>

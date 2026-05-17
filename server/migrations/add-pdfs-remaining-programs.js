@@ -1,24 +1,29 @@
-// Adds downloadable PDF links to the remaining three library programs that
-// have a source PDF in client/public/Workouts/. Pairs with the existing
-// add-pdf-to-muscle-strength-5000.js migration.
+// Adds downloadable PDF links to the remaining three library programs.
+// PDFs are served from the RepLab static-asset CDN at
+// https://replab-videos.onrender.com (same Render static site that hosts
+// the exercise demo videos). Source files no longer live in the app
+// bundle — moved out to keep the iOS build slim. Pairs with
+// add-pdf-to-muscle-strength-5000.js.
 //
 // Run with: node --env-file=server/.env server/migrations/add-pdfs-remaining-programs.js
 // Idempotent — always sets/overwrites the PDF key on program_details.
 
 import pool from '../dbPool.js';
 
+const CDN = 'https://replab-videos.onrender.com';
+
 const MAP = [
   {
     name: "Jim Stoppani's Shortcut to Shred",
-    pdf: '/Workouts/Jim Stopanni\'s Shortcut to Shred.pdf',
+    pdf: `${CDN}/Jim Stopanni's Shortcut to Shred.pdf`,
   },
   {
     name: "Robin Gallant's Intensive Max Glute Hypertrophy",
-    pdf: "/Workouts/Robin Gallant's Intensive Max Glute Hypertrophy Program.pdf",
+    pdf: `${CDN}/Robin Gallant's Intensive Max Glute Hypertrophy Program.pdf`,
   },
   {
     name: "Jeff Nippard's Push Pull Legs",
-    pdf: "/Workouts/Jeff Nippard's Push Pull Legs.pdf",
+    pdf: `${CDN}/Jeff Nippard's Push Pull Legs.pdf`,
   },
 ];
 

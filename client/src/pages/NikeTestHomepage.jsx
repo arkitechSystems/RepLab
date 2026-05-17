@@ -100,7 +100,7 @@ export default function NikeTestHomepage() {
               ref={(el) => { if (el) { el.currentTime = 10; el.play().catch(() => {}); } }}
               className="absolute inset-0 w-full h-full object-cover"
               autoPlay loop muted playsInline preload="auto"
-              src="/Gym cinematic promotion video.mp4"
+              src="https://replab-videos.onrender.com/Gym cinematic promotion video.mp4"
             />
             <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.8) 100%)' }} />
             <div className="relative p-6" style={{ minHeight: '140px' }}>

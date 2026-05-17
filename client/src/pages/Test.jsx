@@ -24,7 +24,7 @@ export default function Test() {
         playsInline
         webkit-playsinline=""
         preload="auto"
-        src="/Gym cinematic promotion video.mp4"
+        src="https://replab-videos.onrender.com/Gym cinematic promotion video.mp4"
       />
       <div className="fixed inset-0 z-0 bg-gradient-to-b from-black/40 via-black/60 to-black/80" />
 
