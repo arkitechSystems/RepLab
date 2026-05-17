@@ -865,8 +865,11 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
           "Use" writes the chosen number back through onChange and closes. */}
       {plateCalcSetIdx !== null && (() => {
         const setEntry = entries?.[plateCalcSetIdx] || {};
-        const setTemplate = exercise.sets?.[plateCalcSetIdx] || {};
-        const initial = Number(setEntry.weight) || Number(setTemplate.suggestedWeight) || 0;
+        // Only pre-fill with the user's actually-logged weight. Skip the
+        // template's suggestedWeight so the calc opens at a clean
+        // bar-only state when the set hasn't been entered yet (modal
+        // defaults target to bar weight when initialWeight is 0).
+        const initial = Number(setEntry.weight) || 0;
         return (
           <PlateCalculatorModal
             open={true}

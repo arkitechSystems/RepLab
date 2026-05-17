@@ -83,14 +83,20 @@ function LegPressIcon() {
 }
 
 export default function PlateCalculatorModal({ open, initialWeight = 0, onUse, onClose }) {
-  const [target, setTarget] = useState(String(initialWeight || 0));
   const [bar, setBar] = useState(45);
+  // When no weight was passed in (set hasn't been entered yet), open at
+  // the current bar weight so the visual shows just the bare bar — no
+  // plates per side. The user adds plates from there via the +/- buttons
+  // or by typing a new target.
+  const [target, setTarget] = useState(() => String(initialWeight > 0 ? initialWeight : 45));
   const [mode, setMode] = useState('both');
   const [selectedPlate, setSelectedPlate] = useState(45);
 
-  // Reset target whenever the modal is freshly opened with a new initial weight.
+  // Reset target whenever the modal is freshly opened with a new initial
+  // weight. Same bar-only fallback as the initial useState above.
   useEffect(() => {
-    if (open) setTarget(String(initialWeight || 0));
+    if (open) setTarget(String(initialWeight > 0 ? initialWeight : (bar || 45)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialWeight]);
 
   if (!open) return null;
