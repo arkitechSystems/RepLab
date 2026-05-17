@@ -5063,6 +5063,11 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
 router.get('/exercise-library/export.xlsx', adminAuth, async (req, res) => {
   try {
     const XLSX = await import('xlsx');
+    // The `programs` subquery aggregates the library programs (user_id IS NULL)
+    // that reference each exercise name, joining program_name_abbreviations so
+    // we ship the short name when one exists and fall back to the full name
+    // otherwise. STRING_AGG with DISTINCT + matching ORDER BY dedupes the case
+    // where an exercise appears in multiple templates of the same program.
     const { rows } = await pool.query(`
       SELECT
         e.id,
@@ -5071,13 +5076,30 @@ router.get('/exercise-library/export.xlsx', adminAuth, async (req, res) => {
         e.is_custom,
         COALESCE(e.tags, '{}') AS tags,
         COALESCE(e.video_id, '') AS video_id,
-        COALESCE(pb.pr_count, 0) AS pr_count
+        COALESCE(pb.pr_count, 0) AS pr_count,
+        COALESCE(pl.programs, '') AS programs
       FROM exercises e
       LEFT JOIN (
         SELECT exercise_name, COUNT(*) AS pr_count
         FROM personal_bests
         GROUP BY exercise_name
       ) pb ON LOWER(pb.exercise_name) = LOWER(e.name)
+      LEFT JOIN (
+        SELECT
+          LOWER(te.name) AS ex_lower,
+          STRING_AGG(
+            DISTINCT COALESCE(pna.short_name, p.name),
+            '; '
+            ORDER BY COALESCE(pna.short_name, p.name)
+          ) AS programs
+        FROM template_exercises te
+        JOIN templates t ON t.id = te.template_id
+        JOIN programs p  ON p.id = t.program_id
+        LEFT JOIN program_name_abbreviations pna ON pna.full_name = p.name
+        WHERE p.user_id IS NULL
+          AND COALESCE(te.is_section_header, FALSE) = FALSE
+        GROUP BY LOWER(te.name)
+      ) pl ON pl.ex_lower = LOWER(e.name)
       ORDER BY e.muscle_group ASC, e.name ASC
     `);
 
@@ -5090,14 +5112,15 @@ router.get('/exercise-library/export.xlsx', adminAuth, async (req, res) => {
       video_id: r.video_id,
       has_video: r.video_id ? 'YES' : 'NO',
       pr_count: Number(r.pr_count) || 0,
+      programs: r.programs || '',
     }));
 
     const ws = XLSX.utils.json_to_sheet(sheetRows, {
-      header: ['id', 'name', 'muscle_group', 'is_custom', 'tags', 'video_id', 'has_video', 'pr_count'],
+      header: ['id', 'name', 'muscle_group', 'is_custom', 'tags', 'video_id', 'has_video', 'pr_count', 'programs'],
     });
     ws['!cols'] = [
       { wch: 6 }, { wch: 40 }, { wch: 18 }, { wch: 10 },
-      { wch: 24 }, { wch: 14 }, { wch: 10 }, { wch: 10 },
+      { wch: 24 }, { wch: 14 }, { wch: 10 }, { wch: 10 }, { wch: 50 },
     ];
     ws['!freeze'] = { xSplit: 0, ySplit: 1 };
 

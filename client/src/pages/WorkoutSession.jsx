@@ -191,6 +191,14 @@ export default function WorkoutSession() {
     try { return localStorage.getItem('wf-default-card-theme') || 'light'; } catch { return 'light'; }
   });
   const [showSessionMenu, setShowSessionMenu] = useState(false);
+  // Long-press-to-edit on section headers. `sectionEditing` is null when the
+  // modal is closed; otherwise { idx, name, notes } — `idx` is the position
+  // inside template.exercises (stable while the modal is open since the user
+  // can't reorder concurrently). `sectionDeleteConfirming` is a two-step
+  // delete guard so a single mistap can't drop a section.
+  const [sectionEditing, setSectionEditing] = useState(null);
+  const [sectionDeleteConfirming, setSectionDeleteConfirming] = useState(false);
+  const sectionLongPressTimerRef = useRef(null);
   const autoSaveRef = useRef(null);
   const autoSaveNeeded = useRef(false);
   const structureSaveRef = useRef(null);
@@ -1258,6 +1266,41 @@ export default function WorkoutSession() {
       console.error('Failed to delete cardio entry', err);
       setCardioEntries(before);
     }
+  }
+
+  // Save edits made in the section-edit modal (rename + notes). Section
+  // headers have no entries/completedSets/autoFilled to migrate, so this
+  // is a single template-mutation.
+  function handleSaveSection(idx, name, notes) {
+    const trimmedName = name.trim();
+    if (!trimmedName) return; // ignore empty saves; modal also gates this
+    setPersisted(false);
+    structureSaveNeeded.current = true;
+    setTemplate((prev) => ({
+      ...prev,
+      exercises: prev.exercises.map((ex, i) => {
+        if (i !== idx || !ex.isSectionHeader) return ex;
+        const next = { ...ex, name: trimmedName };
+        const trimmedNotes = notes.trim();
+        if (trimmedNotes) next.sectionNotes = trimmedNotes;
+        else delete next.sectionNotes;
+        return next;
+      }),
+    }));
+    setSectionEditing(null);
+    setSectionDeleteConfirming(false);
+  }
+
+  // Drop a section header from the template. No entries to clean up.
+  function handleDeleteSection(idx) {
+    setPersisted(false);
+    structureSaveNeeded.current = true;
+    setTemplate((prev) => ({
+      ...prev,
+      exercises: prev.exercises.filter((_, i) => i !== idx),
+    }));
+    setSectionEditing(null);
+    setSectionDeleteConfirming(false);
   }
 
   function handleDeleteExercise(exerciseKey) {
@@ -2677,12 +2720,35 @@ export default function WorkoutSession() {
             )}
             {exercise.isSectionHeader ? (
             <div className="fade-slide-up mb-3 mt-2" style={{ animationDelay: `${idx * 60}ms` }}>
-              <div className="overflow-hidden" style={{
-                borderRadius: '2px',
-                background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)',
-                position: 'relative',
-              }}>
+              {/* Long-press (500ms, cancelled on lift/move) opens the
+                  edit-or-delete modal. Movement during press cancels so
+                  scroll gestures don't trigger an edit. Read-only when
+                  structureLocked (completed sessions). */}
+              <div
+                className="overflow-hidden"
+                style={{
+                  borderRadius: '2px',
+                  background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)',
+                  position: 'relative',
+                  cursor: structureLocked ? 'default' : 'pointer',
+                  touchAction: 'manipulation',
+                  userSelect: 'none',
+                  WebkitUserSelect: 'none',
+                  WebkitTouchCallout: 'none',
+                }}
+                onPointerDown={structureLocked ? undefined : () => {
+                  sectionLongPressTimerRef.current = setTimeout(() => {
+                    setSectionEditing({ idx, name: exercise.name, notes: exercise.sectionNotes || '' });
+                    setSectionDeleteConfirming(false);
+                  }, 500);
+                }}
+                onPointerUp={() => { if (sectionLongPressTimerRef.current) { clearTimeout(sectionLongPressTimerRef.current); sectionLongPressTimerRef.current = null; } }}
+                onPointerMove={() => { if (sectionLongPressTimerRef.current) { clearTimeout(sectionLongPressTimerRef.current); sectionLongPressTimerRef.current = null; } }}
+                onPointerCancel={() => { if (sectionLongPressTimerRef.current) { clearTimeout(sectionLongPressTimerRef.current); sectionLongPressTimerRef.current = null; } }}
+                onPointerLeave={() => { if (sectionLongPressTimerRef.current) { clearTimeout(sectionLongPressTimerRef.current); sectionLongPressTimerRef.current = null; } }}
+                onContextMenu={(e) => e.preventDefault()}
+              >
                 {/* Red top accent bar */}
                 <div style={{ height: '3px', background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.4), transparent)' }} />
                 {/* Ambient red spotlight */}
@@ -2852,6 +2918,143 @@ export default function WorkoutSession() {
           </div>
         </div>
       )}
+      {/* Section header edit modal — opened by long-press on a section
+          header. Lets the user rename, edit notes, or delete the section.
+          Delete is two-step (tap → "Tap again to confirm" → tap → delete)
+          so a single mistap can't drop a section. Tap outside closes; tap
+          inside doesn't (e.stopPropagation on the inner panel). */}
+      {sectionEditing && idx === 0 && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center pt-24 px-5"
+          onClick={() => { setSectionEditing(null); setSectionDeleteConfirming(false); }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ws-section-edit-title"
+        >
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <div
+            className="relative w-full max-w-sm overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+              borderRadius: '2px',
+              boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+            }}
+          >
+            <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25))' }} />
+            <div
+              className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none"
+              style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }}
+            />
+
+            <div className="relative px-6 pt-6 pb-2">
+              <p className="text-[10px] text-white/30 uppercase font-light" style={{ letterSpacing: '0.3em' }}>
+                Section
+              </p>
+              <h2
+                id="ws-section-edit-title"
+                className="text-[22px] font-black text-white tracking-tight mt-1 uppercase"
+                style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}
+              >
+                Edit Section
+              </h2>
+            </div>
+
+            <div className="relative px-5 pb-3 pt-4 space-y-4">
+              <div>
+                <p className="text-[10px] uppercase font-bold mb-2" style={{ color: 'rgba(255,255,255,0.55)', letterSpacing: '0.22em' }}>
+                  Name
+                </p>
+                <input
+                  type="text"
+                  value={sectionEditing.name}
+                  onChange={(e) => setSectionEditing((prev) => ({ ...prev, name: e.target.value }))}
+                  autoFocus
+                  className="w-full text-white placeholder:text-white/30 text-sm bg-transparent focus:outline-none"
+                  style={{
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.10)',
+                    borderRadius: '2px',
+                    padding: '12px 14px',
+                  }}
+                />
+              </div>
+              <div>
+                <p className="text-[10px] uppercase font-bold mb-2" style={{ color: 'rgba(255,255,255,0.55)', letterSpacing: '0.22em' }}>
+                  Notes
+                </p>
+                <textarea
+                  value={sectionEditing.notes}
+                  onChange={(e) => setSectionEditing((prev) => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Optional"
+                  rows={3}
+                  className="w-full text-white placeholder:text-white/30 text-sm bg-transparent focus:outline-none resize-none"
+                  style={{
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.10)',
+                    borderRadius: '2px',
+                    padding: '12px 14px',
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="relative px-4 pb-4 space-y-2">
+              <button
+                onClick={() => handleSaveSection(sectionEditing.idx, sectionEditing.name, sectionEditing.notes)}
+                disabled={!sectionEditing.name.trim()}
+                className="w-full text-white font-bold uppercase active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{
+                  letterSpacing: '0.15em',
+                  fontSize: '11px',
+                  padding: '14px',
+                  borderRadius: '2px',
+                  background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+                  boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+                }}
+              >
+                Save
+              </button>
+              <button
+                onClick={() => { setSectionEditing(null); setSectionDeleteConfirming(false); }}
+                className="w-full font-bold uppercase active:scale-[0.98] transition-all border border-white/15 hover:border-white/30"
+                style={{
+                  letterSpacing: '0.15em',
+                  fontSize: '11px',
+                  padding: '14px',
+                  borderRadius: '2px',
+                  background: 'rgba(255,255,255,0.04)',
+                  color: 'rgba(255,255,255,0.85)',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (sectionDeleteConfirming) {
+                    handleDeleteSection(sectionEditing.idx);
+                  } else {
+                    setSectionDeleteConfirming(true);
+                  }
+                }}
+                className="w-full font-bold uppercase active:scale-[0.98] transition-all"
+                style={{
+                  letterSpacing: '0.15em',
+                  fontSize: '11px',
+                  padding: '14px',
+                  borderRadius: '2px',
+                  background: sectionDeleteConfirming ? 'rgba(239,68,68,0.18)' : 'transparent',
+                  border: '1px solid rgba(239,68,68,0.45)',
+                  color: '#fca5a5',
+                }}
+              >
+                {sectionDeleteConfirming ? 'Tap Again to Confirm Delete' : 'Delete Section'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Per-exercise PR popup — opened from the PRs button at the top of
           each exercise card. Mirrors the Personal Records list on the home
           page (sticky header, Weight/Volume toggle, ranked rows). Scoped

@@ -87,6 +87,7 @@ const LoginScreensTest = lazyWithRetry(() => import('./pages/LoginScreensTest'))
 const ProgressiveOverloadTest = lazyWithRetry(() => import('./pages/ProgressiveOverloadTest'));
 const LandingPageTest = lazyWithRetry(() => import('./pages/LandingPageTest'));
 const LandingPageAuroraTest = lazyWithRetry(() => import('./pages/LandingPageAuroraTest'));
+const RequestTrainerTest = lazyWithRetry(() => import('./pages/RequestTrainerTest'));
 const PlateCalculator = lazyWithRetry(() => import('./pages/PlateCalculator'));
 const Progress = lazyWithRetry(() => import('./pages/Progress'));
 const Community = lazyWithRetry(() => import('./pages/Community'));
@@ -277,6 +278,7 @@ export default function App() {
         <Route path="/test/progressive-overload" element={<TestRoute><ProgressiveOverloadTest /></TestRoute>} />
         <Route path="/test/landing" element={<TestRoute><LandingPageTest /></TestRoute>} />
         <Route path="/test/landing-aurora" element={<TestRoute><LandingPageAuroraTest /></TestRoute>} />
+        <Route path="/test/request-trainer" element={<TestRoute><RequestTrainerTest /></TestRoute>} />
       </Route>
 
       <Route path="*" element={<CatchAllRedirect />} />
