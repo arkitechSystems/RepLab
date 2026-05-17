@@ -9,29 +9,74 @@ function hashResetToken(token) {
   return crypto.createHash('sha256').update(String(token)).digest('hex');
 }
 
-async function batchInsertTemplateExercises(client, templateId, exercises) {
+// Look up master `exercises.id` for a batch of names. Returns Map of
+// lowercase-name → id, with null entries for names that didn't resolve.
+// Filters by `(created_by IS NULL OR created_by = $userId)` so custom
+// exercises stay private — user A's custom never resolves for user B.
+// Pass userId so customs can be matched; pass null/undefined to skip the
+// user-scope check (admin / global contexts).
+async function resolveExerciseIdsForNames(client, names, userId) {
+  const out = new Map();
+  if (!names || names.length === 0) return out;
+  const distinct = [...new Set(names.filter(Boolean).map((n) => String(n).trim()))];
+  if (distinct.length === 0) return out;
+  const userClause = userId
+    ? 'AND (created_by IS NULL OR created_by = $2)'
+    : 'AND created_by IS NULL';
+  const params = userId ? [distinct.map((n) => n.toLowerCase()), userId] : [distinct.map((n) => n.toLowerCase())];
+  // DISTINCT ON keeps one row per lowercase-name when colliding rows still
+  // exist (shouldn't post-Path-A, but defensive). Prefers master library
+  // (created_by IS NULL) over the user's own customs on collision.
+  const { rows } = await client.query(
+    `SELECT DISTINCT ON (LOWER(name)) LOWER(name) AS lname, id
+       FROM exercises
+       WHERE LOWER(name) = ANY($1::text[]) ${userClause}
+       ORDER BY LOWER(name), CASE WHEN created_by IS NULL THEN 0 ELSE 1 END, id ASC`,
+    params
+  );
+  for (const r of rows) out.set(r.lname, r.id);
+  for (const n of distinct) {
+    const k = n.toLowerCase();
+    if (!out.has(k)) out.set(k, null);
+  }
+  return out;
+}
+
+async function batchInsertTemplateExercises(client, templateId, exercises, userId) {
+  // Resolve every distinct name once up front so the batch INSERT can
+  // dual-write exercise_id. Names that don't resolve (a custom the user
+  // hasn't created yet, or a typo) get exercise_id = NULL — schema allows
+  // it and old read paths still work via the name column.
+  const names = exercises
+    .filter((ex) => !ex.isSectionHeader)
+    .map((ex) => ex.name);
+  const idByName = await resolveExerciseIdsForNames(client, names, userId);
+  const idFor = (name) => idByName.get(String(name).trim().toLowerCase()) ?? null;
+
   const values = [];
   const params = [];
   let paramIdx = 1;
   for (let sortOrder = 0; sortOrder < exercises.length; sortOrder++) {
     const ex = exercises[sortOrder];
     if (ex.isSectionHeader) {
-      values.push(`($${paramIdx}, $${paramIdx + 1}, $${paramIdx + 2}, $${paramIdx + 3}, $${paramIdx + 4}, $${paramIdx + 5}, $${paramIdx + 6}, $${paramIdx + 7}, $${paramIdx + 8})`);
-      params.push(templateId, ex.name, 'straight', 1, 0, 0, sortOrder, true, ex.sectionNotes || '');
-      paramIdx += 9;
+      // Section headers carry exercise_id = NULL — `name` is a section label.
+      values.push(`($${paramIdx}, $${paramIdx + 1}, $${paramIdx + 2}, $${paramIdx + 3}, $${paramIdx + 4}, $${paramIdx + 5}, $${paramIdx + 6}, $${paramIdx + 7}, $${paramIdx + 8}, $${paramIdx + 9})`);
+      params.push(templateId, null, ex.name, 'straight', 1, 0, 0, sortOrder, true, ex.sectionNotes || '');
+      paramIdx += 10;
       continue;
     }
     const sets = ex.sets || [{ reps: 10, weight: 0 }];
     const setType = ex.setType || 'straight';
+    const resolvedId = idFor(ex.name);
     for (let i = 0; i < sets.length; i++) {
-      values.push(`($${paramIdx}, $${paramIdx + 1}, $${paramIdx + 2}, $${paramIdx + 3}, $${paramIdx + 4}, $${paramIdx + 5}, $${paramIdx + 6}, $${paramIdx + 7}, $${paramIdx + 8})`);
-      params.push(templateId, ex.name, setType, i + 1, sets[i].reps || 10, sets[i].weight || 0, sortOrder, false, '');
-      paramIdx += 9;
+      values.push(`($${paramIdx}, $${paramIdx + 1}, $${paramIdx + 2}, $${paramIdx + 3}, $${paramIdx + 4}, $${paramIdx + 5}, $${paramIdx + 6}, $${paramIdx + 7}, $${paramIdx + 8}, $${paramIdx + 9})`);
+      params.push(templateId, resolvedId, ex.name, setType, i + 1, sets[i].reps || 10, sets[i].weight || 0, sortOrder, false, '');
+      paramIdx += 10;
     }
   }
   if (values.length > 0) {
     await client.query(
-      `INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes) VALUES ${values.join(', ')}`,
+      `INSERT INTO template_exercises (template_id, exercise_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes) VALUES ${values.join(', ')}`,
       params
     );
   }
@@ -61,8 +106,12 @@ async function rebuildPBsForTemplateOnClient(client, userId, templateId) {
   // Only completed sets count as PRs — planned/pre-filled sets are
   // explicitly excluded (is_completed=FALSE) so a user writing down their
   // plan ahead of time can't accidentally set a PR they didn't actually lift.
+  // MAX(se.exercise_id) FILTER (WHERE not null) picks any non-null id for
+  // each (name, weight) group — they should all be the same id post-Path-A,
+  // but MAX is defensive against any rows that have NULL.
   const { rows } = await client.query(
     `SELECT se.exercise_name AS exercise_name,
+            MAX(se.exercise_id) AS exercise_id,
             se.weight AS best_weight,
             MAX(se.reps) AS best_reps
        FROM session_entries se
@@ -82,12 +131,12 @@ async function rebuildPBsForTemplateOnClient(client, userId, templateId) {
   const params = [];
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
-    const off = i * 5;
-    values.push(`($${off + 1}, $${off + 2}, $${off + 3}, $${off + 4}, $${off + 5})`);
-    params.push(userId, templateId, r.exercise_name, r.best_weight, r.best_reps);
+    const off = i * 6;
+    values.push(`($${off + 1}, $${off + 2}, $${off + 3}, $${off + 4}, $${off + 5}, $${off + 6})`);
+    params.push(userId, templateId, r.exercise_id ?? null, r.exercise_name, r.best_weight, r.best_reps);
   }
   await client.query(
-    `INSERT INTO personal_bests (user_id, template_id, exercise_name, best_weight, best_reps)
+    `INSERT INTO personal_bests (user_id, template_id, exercise_id, exercise_name, best_weight, best_reps)
      VALUES ${values.join(', ')}`,
     params
   );
@@ -496,7 +545,7 @@ const db = {
       // Remove old exercises and batch insert new ones
       await client.query('DELETE FROM template_exercises WHERE template_id = $1', [templateId]);
       if (exercises) {
-        await batchInsertTemplateExercises(client, templateId, exercises);
+        await batchInsertTemplateExercises(client, templateId, exercises, userId);
       }
 
       await client.query('COMMIT');
@@ -528,7 +577,7 @@ const db = {
       const templateId = rows[0].id;
 
       if (exercises) {
-        await batchInsertTemplateExercises(client, templateId, exercises);
+        await batchInsertTemplateExercises(client, templateId, exercises, userId);
       }
 
       await client.query('COMMIT');
@@ -715,18 +764,27 @@ const db = {
         sessionId = sessionRows[0].id;
       }
 
-      // Batch insert session entries
+      // Batch insert session entries. Resolve all distinct exercise names to
+      // master library ids once up front (user-scoped — customs stay private),
+      // then dual-write exercise_id alongside exercise_name. Unresolved names
+      // get NULL — schema allows it, old read paths still work via the name.
       if (entries.length > 0) {
+        const idByName = await resolveExerciseIdsForNames(
+          client,
+          entries.map((e) => e.exerciseName),
+          userId
+        );
         const values = [];
         const params = [];
         for (let i = 0; i < entries.length; i++) {
           const entry = entries[i];
-          const off = i * 6;
-          values.push(`($${off + 1}, $${off + 2}, $${off + 3}, $${off + 4}, $${off + 5}, $${off + 6})`);
-          params.push(sessionId, entry.exerciseName, entry.setNumber, entry.weight || 0, entry.reps || 0, entry.isCompleted || false);
+          const off = i * 7;
+          const exId = idByName.get(String(entry.exerciseName).trim().toLowerCase()) ?? null;
+          values.push(`($${off + 1}, $${off + 2}, $${off + 3}, $${off + 4}, $${off + 5}, $${off + 6}, $${off + 7})`);
+          params.push(sessionId, exId, entry.exerciseName, entry.setNumber, entry.weight || 0, entry.reps || 0, entry.isCompleted || false);
         }
         await client.query(
-          `INSERT INTO session_entries (session_id, exercise_name, set_number, weight, reps, is_completed) VALUES ${values.join(', ')}`,
+          `INSERT INTO session_entries (session_id, exercise_id, exercise_name, set_number, weight, reps, is_completed) VALUES ${values.join(', ')}`,
           params
         );
       }
@@ -759,13 +817,27 @@ const db = {
       if (didDestructiveOverwrite) {
         await rebuildPBsForTemplateOnClient(client, userId, templateId);
       } else {
+        // Resolve exercise_ids in one batch so the per-PB upsert doesn't
+        // round-trip a SELECT for each. ON CONFLICT key stays on
+        // (user_id, template_id, exercise_name, best_weight) — see
+        // idx_personal_bests_upsert. exercise_id is set on both INSERT
+        // and DO UPDATE so prior NULL rows get filled in too.
+        const pbIdByName = await resolveExerciseIdsForNames(
+          client,
+          [...bestRepsAtWeight.values()].map((b) => b.exerciseName),
+          userId
+        );
         for (const [, best] of bestRepsAtWeight) {
+          const exId = pbIdByName.get(String(best.exerciseName).trim().toLowerCase()) ?? null;
           await client.query(
-            `INSERT INTO personal_bests (user_id, template_id, exercise_name, best_weight, best_reps)
-             VALUES ($1, $2, $3, $4, $5)
+            `INSERT INTO personal_bests (user_id, template_id, exercise_id, exercise_name, best_weight, best_reps)
+             VALUES ($1, $2, $3, $4, $5, $6)
              ON CONFLICT (user_id, template_id, exercise_name, best_weight)
-             DO UPDATE SET best_reps = GREATEST(personal_bests.best_reps, $5), achieved_at = CASE WHEN $5 > personal_bests.best_reps THEN NOW() ELSE personal_bests.achieved_at END`,
-            [userId, templateId, best.exerciseName, best.weight, best.reps]
+             DO UPDATE SET
+               best_reps = GREATEST(personal_bests.best_reps, $6),
+               achieved_at = CASE WHEN $6 > personal_bests.best_reps THEN NOW() ELSE personal_bests.achieved_at END,
+               exercise_id = COALESCE(personal_bests.exercise_id, EXCLUDED.exercise_id)`,
+            [userId, templateId, exId, best.exerciseName, best.weight, best.reps]
           );
         }
       }
@@ -1582,7 +1654,10 @@ const db = {
         );
         const newTmplId = newTmplRows[0].id;
 
-        // Copy exercises
+        // Copy exercises. The source rows already have exercise_id populated
+        // (post-Path-B-step-1 backfill), so we just propagate it. No need to
+        // re-resolve by name — this is a verbatim copy of an existing
+        // template slot.
         const { rows: srcExercises } = await client.query(
           'SELECT * FROM template_exercises WHERE template_id = $1 ORDER BY sort_order, set_number', [tmpl.id]
         );
@@ -1591,12 +1666,12 @@ const db = {
           const params = [];
           let pi = 1;
           for (const ex of srcExercises) {
-            values.push(`($${pi}, $${pi+1}, $${pi+2}, $${pi+3}, $${pi+4}, $${pi+5}, $${pi+6}, $${pi+7}, $${pi+8})`);
-            params.push(newTmplId, ex.name, ex.set_type, ex.set_number, ex.planned_reps, ex.suggested_weight, ex.sort_order, ex.is_section_header || false, ex.section_notes || '');
-            pi += 9;
+            values.push(`($${pi}, $${pi+1}, $${pi+2}, $${pi+3}, $${pi+4}, $${pi+5}, $${pi+6}, $${pi+7}, $${pi+8}, $${pi+9})`);
+            params.push(newTmplId, ex.exercise_id ?? null, ex.name, ex.set_type, ex.set_number, ex.planned_reps, ex.suggested_weight, ex.sort_order, ex.is_section_header || false, ex.section_notes || '');
+            pi += 10;
           }
           await client.query(
-            `INSERT INTO template_exercises (template_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes) VALUES ${values.join(', ')}`,
+            `INSERT INTO template_exercises (template_id, exercise_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes) VALUES ${values.join(', ')}`,
             params
           );
         }

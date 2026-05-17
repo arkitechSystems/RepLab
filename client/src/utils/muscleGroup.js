@@ -7,7 +7,7 @@
 // keyword pulls it into Back.
 
 export const MUSCLE_GROUPS = [
-  'Chest', 'Shoulders', 'Traps', 'Biceps', 'Back', 'Triceps', 'Quads', 'Glutes', 'Hamstrings',
+  'Chest', 'Shoulders', 'Traps', 'Biceps', 'Back', 'Triceps', 'Quads', 'Glutes', 'Hamstrings', 'Hips',
 ];
 
 export const MUSCLE_KEYWORDS = {
@@ -20,9 +20,13 @@ export const MUSCLE_KEYWORDS = {
   Quads: ['squat', 'leg press', 'leg extension', 'lunge', 'split squat', 'front squat', 'quad'],
   Glutes: ['hip thrust', 'glute', 'bridge', 'kickback'],
   Hamstrings: ['hamstring', 'leg curl', 'romanian deadlift', 'rdl', 'stiff leg', 'nordic'],
+  // Hips covers explicit hip-flexor / abduction / adduction work. Order
+  // matters in MUSCLE_PRIORITY: Hips ahead of Glutes so "hip flexor" isn't
+  // accidentally swept into Glutes by the generic "hip" inside "hip thrust".
+  Hips: ['hip flexor', 'hip abduction', 'hip adduction', 'hip extension', 'hip raise'],
 };
 
-export const MUSCLE_PRIORITY = ['Hamstrings', 'Glutes', 'Quads', 'Traps', 'Biceps', 'Triceps', 'Shoulders', 'Chest', 'Back'];
+export const MUSCLE_PRIORITY = ['Hamstrings', 'Hips', 'Glutes', 'Quads', 'Traps', 'Biceps', 'Triceps', 'Shoulders', 'Chest', 'Back'];
 
 export function classifyExercise(name) {
   if (!name) return null;
