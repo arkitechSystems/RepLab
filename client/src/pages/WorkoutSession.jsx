@@ -3446,12 +3446,15 @@ export default function WorkoutSession() {
         // Pre-filter by muscle so both the search-results path and the
         // browse-by-muscle path respect the active filter pill.
         const muscleScoped = allExercises.filter(matchesMuscleFilter);
+        // No cap — the modal body is `overflow-y-auto flex-1` so the user
+        // can scroll through every matching exercise. Capping previously
+        // hid most of the library behind the first 12 results.
         const filtered = q
           ? muscleScoped.filter((ex) => {
               if (existingNames.has(ex.name) || seen.has(ex.name)) return false;
               seen.add(ex.name);
               return ex.name.toLowerCase().includes(q);
-            }).slice(0, 12)
+            })
           : [];
         // Group by muscle for browsing when no search
         const muscleGroups = {};
@@ -3551,12 +3554,14 @@ export default function WorkoutSession() {
                     <span className="text-[10px] text-wf-gray-500 uppercase tracking-wider ml-2 shrink-0">{ex.muscle}</span>
                   </button>
                 ))}
-                {/* Browse by muscle when no search */}
+                {/* Browse by muscle when no search. No per-muscle cap —
+                    the modal body scrolls so the user can see every
+                    exercise grouped under each muscle. */}
                 {!q && Object.entries(muscleGroups).map(([muscle, exercises]) => (
                   <div key={muscle} className="mb-4">
                     <p className="text-[10px] uppercase tracking-widest text-wf-gray-500 font-semibold mb-2 px-1">{muscle}</p>
                     <div className="space-y-0.5">
-                      {exercises.slice(0, 6).map((ex) => (
+                      {exercises.map((ex) => (
                         <button
                           key={ex.name}
                           onClick={() => handleAddExercise(ex.name)}

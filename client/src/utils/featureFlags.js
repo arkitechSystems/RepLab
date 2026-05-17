@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 // no way to inject a URL param, so reviewers always see the locked state.
 
 export const FF_FEATURED = 'featured';
+export const FF_CHALLENGES = 'challenges';
 
 const STORAGE_PREFIX = 'rl_ff_';
 

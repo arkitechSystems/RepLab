@@ -829,12 +829,15 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
         const allEx = allExercises;
         const q = addBelowSearch.toLowerCase().trim();
         const seen = new Set();
+        // No cap — the dropdown body is `max-h-48 overflow-y-auto` so the
+        // user can scroll the full filtered list. Capping at 8 hid the
+        // rest behind the cut-off.
         const filtered = q
           ? allEx.filter((ex) => {
               if (seen.has(ex.name)) return false;
               seen.add(ex.name);
               return ex.name.toLowerCase().includes(q);
-            }).slice(0, 8)
+            })
           : [];
         return (
           <div className="glass-card rounded-xl overflow-hidden mb-3 border border-green-500/20 animate-drop-down">

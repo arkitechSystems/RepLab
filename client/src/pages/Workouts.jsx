@@ -8,7 +8,7 @@ import { iosFocusRef } from '../utils/iosFocus';
 import TrainerProfile from '../components/TrainerProfile';
 import { getTrainers, getTrainerById } from '../data/trainers';
 import { useAuth } from '../context/AuthContext';
-import { useFeatureFlag, FF_FEATURED } from '../utils/featureFlags';
+import { useFeatureFlag, FF_FEATURED, FF_CHALLENGES } from '../utils/featureFlags';
 import { sharePR } from '../utils/prShare';
 import { useTutorial } from '../context/TutorialContext';
 import UndoToast from '../components/UndoToast';
@@ -1016,10 +1016,12 @@ export default function Workouts() {
   const { tutorial, startTutorial, completeTutorialAction, skipTutorial } = useTutorial();
   const isPremium = user?.plan && user.plan !== 'Free';
 
-  // Featured Workouts gate — see client/src/utils/featureFlags.js for the
-  // unlock instructions. Apple App Review's demo account never has the
-  // flag set, so reviewers see the consistent "Coming Soon" state.
+  // Pre-launch gates — see client/src/utils/featureFlags.js for the unlock
+  // instructions. Apple App Review's demo account never has these flags,
+  // so reviewers see the consistent "Coming Soon" state across both
+  // Featured Workouts and Challenges.
   const featuredUnlocked = useFeatureFlag(FF_FEATURED);
+  const challengesUnlocked = useFeatureFlag(FF_CHALLENGES);
   const [showPremiumGate, setShowPremiumGate] = useState(false);
   const [selectedChallenge, setSelectedChallenge] = useState(null);
   const [challengeTab, setChallengeTab] = useState('active');
@@ -3329,7 +3331,15 @@ export default function Workouts() {
     );
   }
 
-  // Challenges view
+  // Challenges view — pre-launch gate. If somehow selectedGroup gets set
+  // to 'challenges' without the FF_CHALLENGES flag (deep link, stale
+  // state, anything weird), bounce back to the default group instead of
+  // rendering. The card-level gate above is the primary defense; this is
+  // belt-and-suspenders.
+  if (selectedGroup === 'challenges' && !challengesUnlocked) {
+    setSelectedGroup(null);
+    return null;
+  }
   if (selectedGroup === 'challenges') {
     return (
       <div className="pb-24">
@@ -4949,25 +4959,23 @@ export default function Workouts() {
                     )}
                   </div>
 
-                  {/* CTA */}
+                  {/* CTAs — Create (left, primary) and Browse (right,
+                      outline). Previously the left button started/resumed
+                      the next scheduled workout and the right was Browse,
+                      but they collapsed to the same destination when no
+                      workout was scheduled. Separating them into distinct
+                      destinations always (Create vs Browse) keeps the
+                      pair functional regardless of schedule state. */}
                   <div className="flex gap-3">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (nextWorkoutInfo?.templateId) {
-                          navigateToWorkout(nextWorkoutInfo.templateId, nextWorkoutInfo.date);
-                        } else {
-                          setSelectedGroup('browse');
-                        }
+                        navigate('/clientworkouts/create');
                       }}
-                      className={`${nextWorkoutInfo?.status === 'resume' ? 'btn-liquid' : ''} flex-1 py-3.5 rounded-full text-[11px] font-bold uppercase active:scale-[0.97] transition-transform`}
-                      style={nextWorkoutInfo?.status === 'resume'
-                        ? { letterSpacing: '0.15em' }
-                        : { background: 'linear-gradient(135deg, #fff 0%, #e0e0e0 100%)', color: '#000', letterSpacing: '0.15em', boxShadow: '0 6px 20px rgba(255,255,255,0.1)' }}
+                      className="flex-1 py-3.5 rounded-full text-[11px] font-bold uppercase active:scale-[0.97] transition-transform"
+                      style={{ background: 'linear-gradient(135deg, #fff 0%, #e0e0e0 100%)', color: '#000', letterSpacing: '0.15em', boxShadow: '0 6px 20px rgba(255,255,255,0.1)' }}
                     >
-                      {nextWorkoutInfo?.templateId
-                        ? (nextWorkoutInfo.status === 'resume' ? 'Resume' : nextWorkoutInfo.status === 'upcoming' ? 'Preview' : 'Start Now')
-                        : 'Add a Workout'}
+                      Create a Workout
                     </button>
                     <button
                       onClick={() => setSelectedGroup('browse')}
@@ -5752,10 +5760,15 @@ export default function Workouts() {
             </div>
             */}
 
-            {/* Challenges card — Nike style */}
+            {/* Challenges card — Nike style. Gated as "Coming Soon"
+                pre-launch via FF_CHALLENGES (see featureFlags.js). When
+                locked: no onClick, no "Explore →" affordance, dimmed
+                opacity. Unlock with ?ff=challenges or
+                localStorage.setItem('rl_ff_challenges', '1'). */}
             <div
-              onClick={() => setSelectedGroup('challenges')}
-              className="cursor-pointer active:scale-[0.98] transition-transform fade-slide-up"
+              onClick={challengesUnlocked ? () => setSelectedGroup('challenges') : undefined}
+              aria-disabled={!challengesUnlocked}
+              className={`transition-transform fade-slide-up ${challengesUnlocked ? 'cursor-pointer active:scale-[0.98]' : 'cursor-default'}`}
               style={{
                 position: 'relative',
                 overflow: 'hidden',
@@ -5763,6 +5776,7 @@ export default function Workouts() {
                 background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
                 boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
                 animationDelay: '0ms',
+                opacity: challengesUnlocked ? 1 : 0.65,
               }}
             >
               {/* Orange accent bar */}
@@ -5791,12 +5805,14 @@ export default function Workouts() {
                 <p className="text-[11px] text-white/40 font-light mt-3 max-w-[280px] leading-relaxed">
                   Compete, push your limits, and earn rewards.
                 </p>
-                <div className="flex items-center gap-1.5 mt-4">
-                  <span className="text-[10px] text-white/40 uppercase font-medium" style={{ letterSpacing: '0.2em' }}>Explore</span>
-                  <svg className="w-3 h-3 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
-                </div>
+                {challengesUnlocked && (
+                  <div className="flex items-center gap-1.5 mt-4">
+                    <span className="text-[10px] text-white/40 uppercase font-medium" style={{ letterSpacing: '0.2em' }}>Explore</span>
+                    <svg className="w-3 h-3 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                    </svg>
+                  </div>
+                )}
               </div>
             </div>
 
