@@ -4,9 +4,10 @@
 //
 // Creates `apple-reviewer@replab-fitness.com` (Free tier, role=user) with:
 //   - realistic profile + user_metrics
-//   - the "Will's Hypertrophy Program" library program assigned to their
-//     schedule for the upcoming 7 days (falls back to any seeded library
-//     program if Will's Hypertrophy is missing)
+//   - a non-featured library program ("Jeff Nippard's Push Pull Legs" by
+//     preference) assigned to their schedule for the upcoming 7 days. We
+//     explicitly skip is_featured = TRUE programs (Will's Hypertrophy is
+//     gated behind FF_FEATURED and reviewers can't open it).
 //   - 3-5 logged sessions on dates in the past week
 //
 // Run: REVIEWER_PASSWORD='...' node --env-file=server/.env server/scripts/seed-apple-reviewer.js
@@ -74,14 +75,17 @@ async function ensureUser(client) {
 }
 
 async function pickLibraryProgram(client) {
-  // Prefer Will's Hypertrophy (the marketing-hook program), fall back to any
-  // seeded library program (user_id IS NULL). Skip programs with no
-  // non-rest templates — those would log nothing useful for the reviewer.
-  const target = "Will's Hypertrophy Program";
+  // Prefer Jeff Nippard's Push Pull Legs — a real, non-featured library
+  // program the reviewer can actually open. Will's Hypertrophy is gated
+  // behind FF_FEATURED, so we exclude is_featured = TRUE everywhere. Skip
+  // programs with no non-rest templates — those would log nothing useful.
+  const target = "Jeff Nippard's Push Pull Legs";
   const { rows: hits } = await client.query(
     `SELECT p.id, p.name
        FROM programs p
-      WHERE p.user_id IS NULL AND p.name = $1
+      WHERE p.user_id IS NULL
+        AND p.name = $1
+        AND COALESCE(p.is_featured, false) = false
       LIMIT 1`,
     [target]
   );
@@ -91,6 +95,7 @@ async function pickLibraryProgram(client) {
     `SELECT p.id, p.name
        FROM programs p
       WHERE p.user_id IS NULL
+        AND COALESCE(p.is_featured, false) = false
         AND EXISTS (
           SELECT 1 FROM templates t
            WHERE t.program_id = p.id AND COALESCE(t.is_rest, false) = false

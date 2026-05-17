@@ -1,48 +1,16 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StickyHeader from '../components/StickyHeader';
+import { BAR_OPTIONS, PLATES, QUICK_PLATES, computePlatesPerSide } from '../utils/plateMath';
 
 // Nike-styled plate calculator. Greedy-fills standard plate denominations
 // per side until the requested weight is reached. Doesn't handle kilo
 // plates or unusual sets (e.g. fractional 1.25/0.5) — keep this minimal
 // for now; iterate if users ask for more.
-
-const BAR_OPTIONS = [
-  { value: 45, label: '45 lb (Olympic)' },
-  { value: 35, label: '35 lb' },
-  { value: 25, label: '25 lb' },
-  { value: 15, label: '15 lb' },
-  { value: 0, label: 'No bar (DBs / fixed)' },
-];
-
-// Each plate has a color, a width (px) for the visual stack, and the lb
-// denomination. Ordered heaviest → lightest for the greedy fill.
-const PLATES = [
-  { lb: 45,  color: '#1f2937', text: '#fff', height: 92, label: '45' },
-  { lb: 35,  color: '#fbbf24', text: '#000', height: 78, label: '35' },
-  { lb: 25,  color: '#16a34a', text: '#fff', height: 70, label: '25' },
-  { lb: 10,  color: '#ffffff', text: '#000', height: 58, label: '10' },
-  { lb: 5,   color: '#3b82f6', text: '#fff', height: 48, label: '5' },
-  { lb: 2.5, color: '#ef4444', text: '#fff', height: 40, label: '2.5' },
-];
-
-function computePlatesPerSide(perSideWeight) {
-  const out = [];
-  let remaining = perSideWeight;
-  for (const p of PLATES) {
-    const count = Math.floor(remaining / p.lb);
-    if (count > 0) {
-      out.push({ ...p, count });
-      remaining = +(remaining - count * p.lb).toFixed(3);
-    }
-  }
-  return { plates: out, leftover: remaining };
-}
-
-// Plate denominations available for the manual +/- chip — common gym
-// plates only. Note these don't include 2.5 since users rarely "+5lb"
-// per side using fractionals.
-const QUICK_PLATES = [5, 10, 25, 35, 45];
+//
+// Plate denominations + computePlatesPerSide() live in
+// client/src/utils/plateMath.js so the same math drives both this page
+// and the in-session PlateCalculatorModal popup.
 
 export default function PlateCalculator() {
   const navigate = useNavigate();

@@ -1,70 +1,101 @@
 # REPLAB Pre-Launch Checklist
 
-Living list of things that must be done before App Store / Play Store submission. Updated 2026-04-30.
+Living list of things that must be done before App Store / Play Store submission. Updated **2026-05-17** after the Path A/B exercise-library overhaul + the Featured/Challenges pre-launch gating sweep.
+
+## Done since the last revision (2026-04-30)
+
+- [x] **Exercise library cleanup (Path A)** — 479 → 313 master exercises, 0 orphan PRs, 0 customs leaked into library programs. PR data consolidated across former duplicate names.
+- [x] **Path B Phase 1** — added `exercise_id` FK columns + dual-write to template_exercises, session_entries, personal_bests.
+- [x] **Path B Phase 2** — server reads switched from `LOWER(name)` joins to id-keyed joins (pbs.js, admin.js, check-exercise-coverage.js).
+- [x] **Admin tooling for ongoing maintenance** — uniqueness guard, health page (`/admin/exercise-health`), filter toggle (master/custom/both), promote-custom-to-master button, merge-duplicates UI.
+- [x] **Featured Workouts gated** as "Coming Soon" — route gate + non-clickable card. Unlock via `?ff=featured` or localStorage.
+- [x] **Challenges section gated** as "Coming Soon" — non-clickable card + `selectedGroup === 'challenges'` view guard.
+- [x] **Bundle asset purge** — `Gym cinematic promotion video.mp4` + the entire `client/public/Workouts/` folder moved to the `replab-videos.onrender.com` CDN; ~40 MB removed from the iOS app bundle.
+- [x] **Sentry live** — `@sentry/react` + `@sentry/node` configured on Render with `sendDefaultPii: false`. Org `arkitech-systems-llc`, projects `replab-frontend` + `node`.
+- [x] **Master library name uniqueness index** prevents future duplicate masters at the DB level.
+- [x] **Plate calculator in-session** — long-press a weight input OR tap the ⚖ icon → in-session plate calc modal matching the Utilities page layout. Defaults to bar-only state when set is empty.
+- [x] **Brand artwork** — RL logo wired as iOS/Android app icon, PWA icons, Add-to-Home-Screen apple-touch-icon, in-app header, landing nav. Brand spelling normalized to REPLAB everywhere user-facing.
 
 ## Blocking — Must do before submission
 
-### Email (Resend)
-- [ ] **Resolve open Resend email issue** ← Will flagged 2026-04-30. Fix before launch.
-- [ ] Add `replab-fitness.com` (or `email.replab-fitness.com` subdomain) to Resend dashboard
-- [ ] Add SPF, DKIM (×3), DMARC DNS records at registrar
-- [ ] Click Verify in Resend; wait for green checks
+### Apple Developer Program (status: Individual enrollment)
+- [x] LLC formation (ArkiTech Systems LLC) + DUNS in hand
+- [ ] ~~Apple Developer Program (Organization)~~ — **REJECTED** for trademark conflict ("ArkiTech" flagged as similar to "ARKit"). User enrolled as **Individual** with personal Apple ID. Update copyright to "© 2026 Will Martin" in app-store-metadata.md.
+- [ ] Confirm Apple Developer membership purchase verification email received
+- [ ] Generate Apple Distribution certificate + provisioning profile (via Xcode auto-signing on first archive)
+- [ ] App Transfer plan: post-launch, once LLC name is renamed or new entity formed, use Apple's App Transfer process to move the app from Individual → LLC. Apple ID stays personal; app moves to new account.
+
+### Email (Resend) — STILL OPEN
+- [ ] **Resolve the open Resend email issue Will flagged 2026-04-30** ← still pending per memory
+- [ ] Verify `replab-fitness.com` domain in Resend dashboard (SPF, DKIM ×3, DMARC at registrar)
 - [ ] Send test from each transactional path: welcome, password reset, signup notification, daily summary, push reminder — confirm deliverability
 
-### Sentry (10 min of dashboard work)
-- [ ] Create sentry.io account + organization
-- [ ] Create two projects: `replab-frontend` (React) and `replab-backend` (Node.js) — copy each DSN
-- [ ] Set `VITE_SENTRY_DSN` on Render frontend service env vars
-- [ ] Set `SENTRY_DSN` on Render backend service env vars
-- [ ] Trigger a test error in production; confirm it lands in Sentry dashboard
-
-### iOS push notifications (Xcode work)
-- [ ] Open `client/ios/App/App.xcworkspace` in Xcode
+### iOS push notifications (Xcode work, after Mac access)
+- [ ] Open `client/ios/App/App.xcworkspace` in Xcode (on rented Mac or owned Mac)
 - [ ] Signing & Capabilities → "+ Capability" → add **Push Notifications** (creates `App.entitlements` with `aps-environment`)
 - [ ] Add **Background Modes** capability → check "Remote notifications"
-- [ ] (After Apple Dev account) Create APNs Auth Key (.p8) in Apple Developer Portal
-- [ ] (After Apple Dev account) Upload .p8 to Firebase Console → Cloud Messaging → APNs Authentication Key
+- [ ] Create APNs Auth Key (.p8) in Apple Developer Portal
+- [ ] Upload .p8 to Firebase Console → Cloud Messaging → APNs Authentication Key
 - [ ] (Code change) Wire `@capacitor-firebase/messaging` (or equivalent) so iOS uses FCM transport
+- [ ] Or accept push-notifications-Android-only for v1; document in privacy policy
+
+### Mac access for building .ipa
+- [ ] Rent MacinCloud / MacStadium OR get access to a physical Mac with Xcode 15+
+- [ ] Install Xcode (~10-15 GB)
+- [ ] Clone repo on the Mac, run `cd client && npm install && npm run build && npx cap sync ios && open ios/App/App.xcworkspace`
+- [ ] Archive → Upload → TestFlight smoke test before submitting
 
 ### App Store Connect / Play Console assets
-- [ ] App Store Connect: privacy policy URL, marketing URL, support URL → set to `https://replab-fitness.com/privacy`, `/`, `/support`
-- [ ] App Store screenshots (6.7" iPhone required, 1290×2796) — 3-10 images
-- [ ] Play Store screenshots
+- [ ] Create App Store Connect listing — bundle ID `com.replab.fitness`
+- [ ] Create Play Console listing — package name `com.replab.fitness`
+- [ ] App Store Connect: privacy/marketing/support URLs → `https://replab-fitness.com/privacy`, `/`, `/support`
+- [ ] App Store screenshots (6.9" iPhone 1320×2868 required, 6.5" or 6.7" also recommended) — 3-10 images
+- [ ] Play Store screenshots (phone, optionally tablet)
+- [ ] Feature graphic (Play only) — 1024×500
 - [ ] App Review Notes — paste from `_marketing/app-review-notes.md`
 - [ ] Privacy nutrition label / Data Safety form — paste from `_marketing/privacy-nutrition-answers.md`
-- [ ] App description / subtitle / keywords — paste from `_marketing/app-store-metadata.md`
-- [ ] Demo reviewer account — run `node --env-file=server/.env server/scripts/seed-apple-reviewer.js` against production DB once ready
+- [ ] App description / subtitle / keywords — paste from `_marketing/app-store-metadata.md` (refresh first; see notes there for Featured-gated copy)
+- [ ] Demo reviewer account — run `node --env-file=server/.env server/scripts/seed-apple-reviewer.js` against production DB once ready; verify creds work in App Review Notes
+- [ ] Verify account-deletion path is reachable from Profile (Apple required since 2022)
 
-### LLC / DUNS chain (everything below this is gated)
-- [ ] LLC formation finalized
-- [ ] Apply for DUNS number
-- [ ] Apple Developer Program (Organization) enrollment with DUNS
-- [ ] Generate Apple Distribution certificate + provisioning profile
-- [ ] Set `APPLE_TEAM_ID` env var on Render backend (replaces `TEAMID` placeholder in AASA)
+### Domain + universal links
+- [ ] Set `APPLE_TEAM_ID` env var on Render backend (replaces `TEAMID` placeholder in AASA) — after Apple Dev membership active
 - [ ] Generate Android upload keystore (or enable Play App Signing)
 - [ ] Get Android SHA-256 release fingerprint from Play Console → set `ANDROID_SIGNING_SHA256` env var on Render
 - [ ] Verify `https://replab-fitness.com/.well-known/apple-app-site-association` returns valid JSON over HTTPS
 - [ ] Verify `https://replab-fitness.com/.well-known/assetlinks.json` returns valid JSON over HTTPS
 - [ ] Xcode → Signing & Capabilities → Associated Domains → add `applinks:replab-fitness.com`
-- [ ] Stripe webhook URL → flip to `https://replab-fitness.com/billing/webhook`
+
+### Payments
+- [ ] iOS Pro tier: hidden entirely (Apple 3.1.1 — Stripe path off on iOS); confirm by smoke test on TestFlight
+- [ ] Stripe webhook URL → flip to `https://replab-fitness.com/billing/webhook` on Stripe dashboard
+- [ ] Verify Stripe live mode keys in Render env vars (not test keys)
+
+### Legal
 - [ ] Replace LLC state placeholder `[STATE TBD]` in `client/src/pages/Terms.jsx` (governing law)
+- [ ] If Individual enrollment: ensure Privacy + Terms still reference ArkiTech Systems LLC as the legal entity (the app is owned by the LLC, just published under personal Apple ID for now); confirm with counsel
+- [ ] Lawyer review of `Privacy.jsx` and `Terms.jsx` — esp. auto-renewal disclosure (CA, NY have specific rules)
 
 ## Should do — Polish before submission
 
 - [ ] PostHog → Authorized URLs → add `replab-fitness.com`
 - [ ] Sentry → Allowed Domains → add `replab-fitness.com`
+- [ ] PostHog session replay masking — confirm `maskAllInputs: true` (or equivalent) so emails/names aren't captured in replays
 - [ ] Confirm Splash image asset is in Xcode project (LaunchScreen.storyboard references "Splash" — if missing, app crashes on launch)
 - [ ] Manual test: Profile → Delete Account on iOS Simulator — confirm cascade works end-to-end
-- [ ] Run `server/tests/cascade-delete.test.js` against staging DB (set `DATABASE_URL`) to validate orphan-free deletion
-- [ ] Decide: keep `RepLab` as iOS home-screen `CFBundleDisplayName` or flip to all-caps `REPLAB`
-- [ ] Lawyer review of `Privacy.jsx` and `Terms.jsx` — esp. auto-renewal disclosure (CA, NY have specific rules)
+- [ ] Run `server/tests/cascade-delete.test.js` against staging DB to validate orphan-free deletion
+- [ ] Decide: keep `RepLab` as iOS home-screen `CFBundleDisplayName` or flip to all-caps `REPLAB` (currently strings.xml says `RepLab` for Android too)
+- [ ] **Trainers demo content** — `client/src/data/trainers.js` ships a mock Zumba Jason trainer with fake stats. Either gate the trainers feature like Featured/Challenges, or replace with real trainer data, or stub the list to empty for v1. See `_marketing/DEMO-CONTENT-AUDIT.md`.
+- [ ] Decide whether to use the App Store Notes-to-Reviewer to explain the Featured/Challenges "Coming Soon" gating, OR keep the gated state silent (current plan is silent — the COMING SOON label is sufficient)
 
 ## Nice to have — Post-launch OK
 
-- [ ] App icon: design a simplified glyph for 20×20 / notification sizes (current REPLAB wordmark goes illegible at that resolution)
+- [ ] App icon: design a simplified glyph for 20×20 / notification sizes (current RL wordmark may go illegible at that resolution)
 - [ ] Optional: 301 redirect `will-fit.shop` → `replab-fitness.com` for old email links (keep alive 6+ months)
 - [ ] Localized App Store keywords for non-English markets
 - [ ] Wire StoreKit IAP for iOS Pro tier (currently iOS is free-tier-only per 3.1.1)
+- [ ] App Transfer to LLC once new entity / renamed LLC has a clean Apple Dev account
+- [ ] Plate calculator + Plate Calculator Modal — fully deduplicated via `client/src/utils/plateMath.js`; visual components still per-file. Could extract further if drift becomes a problem.
 
 ---
 

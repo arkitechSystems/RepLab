@@ -1,43 +1,17 @@
 import { useEffect, useState } from 'react';
+import { BAR_OPTIONS, PLATES, QUICK_PLATES, computePlatesPerSide } from '../utils/plateMath';
 
 // In-session plate calculator. Opens pre-filled with whatever weight the
 // user was editing (long-pressed the weight input OR tapped the ⚖ icon
 // next to it). Layout mirrors the /plate-calculator page exactly — same
 // sections, same chips, same plate visual — so users get one mental
-// model. The +/- adjustment buttons live on the LEFT of the bar visual.
+// model.
+//
+// Plate math (denominations + greedy-fill) lives in
+// client/src/utils/plateMath.js so this modal and the page version stay
+// in lockstep.
 //
 // "Use {N} lbs" pushes the chosen target back into the source input.
-
-const BAR_OPTIONS = [
-  { value: 45, label: '45 lb (Olympic)' },
-  { value: 35, label: '35 lb' },
-  { value: 25, label: '25 lb' },
-  { value: 15, label: '15 lb' },
-];
-
-const PLATES = [
-  { lb: 45,  color: '#1f2937', text: '#fff', height: 92, label: '45' },
-  { lb: 35,  color: '#fbbf24', text: '#000', height: 78, label: '35' },
-  { lb: 25,  color: '#16a34a', text: '#fff', height: 70, label: '25' },
-  { lb: 10,  color: '#ffffff', text: '#000', height: 58, label: '10' },
-  { lb: 5,   color: '#3b82f6', text: '#fff', height: 48, label: '5' },
-  { lb: 2.5, color: '#ef4444', text: '#fff', height: 40, label: '2.5' },
-];
-
-const QUICK_PLATES = [5, 10, 25, 35, 45];
-
-function computePlatesPerSide(perSideWeight) {
-  const out = [];
-  let remaining = perSideWeight;
-  for (const p of PLATES) {
-    const count = Math.floor(remaining / p.lb);
-    if (count > 0) {
-      out.push({ ...p, count });
-      remaining = +(remaining - count * p.lb).toFixed(3);
-    }
-  }
-  return { plates: out, leftover: remaining };
-}
 
 function PlateBlock({ plate }) {
   return (
