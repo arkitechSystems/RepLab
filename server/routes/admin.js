@@ -4711,12 +4711,27 @@ router.post('/users/:id/revoke-trainer', adminAuth, async (req, res) => {
   }
 });
 
-// GET /admin/exercise-library — View all exercises and video mappings
+// GET /admin/exercise-library — View all exercises and video mappings.
+// Query string:
+//   ?filter=master  -> only created_by IS NULL
+//   ?filter=custom  -> only is_custom = TRUE
+//   ?filter=both    -> everything (default)
 router.get('/exercise-library', adminAuth, async (req, res) => {
   try {
-    // Query all global (non-custom) exercises including video_id
+    const filter = ['master', 'custom', 'both'].includes(req.query.filter) ? req.query.filter : 'both';
+    let whereClause = '';
+    if (filter === 'master') whereClause = 'WHERE e.created_by IS NULL';
+    else if (filter === 'custom') whereClause = 'WHERE e.is_custom = TRUE';
+    // LEFT JOIN users so custom rows can show their owner. Master rows
+    // (created_by IS NULL) get a NULL join result, which the template
+    // treats as no-owner.
     const { rows } = await pool.query(
-      'SELECT id, name, muscle_group, is_custom, tags, video_id FROM exercises ORDER BY name ASC'
+      `SELECT e.id, e.name, e.muscle_group, e.is_custom, e.tags, e.video_id,
+              e.created_by, u.email AS owner_email, u.first_name AS owner_first
+       FROM exercises e
+       LEFT JOIN users u ON u.id = e.created_by
+       ${whereClause}
+       ORDER BY e.name ASC`
     );
     const muscleGroups = await db.getMuscleGroups();
 
@@ -4727,6 +4742,9 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
       isCustom: e.is_custom,
       tags: e.tags || [],
       video_id: e.video_id || '',
+      ownerEmail: e.owner_email || '',
+      ownerFirst: e.owner_first || '',
+      createdBy: e.created_by,
     }));
 
     const totalExercises = exercises.length;
@@ -4735,8 +4753,21 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
 
     const exerciseRows = exercises.map(e => {
       const videoId = e.video_id;
+      const ownerLabel = e.ownerEmail
+        ? `${e.ownerFirst ? e.ownerFirst + ' · ' : ''}${e.ownerEmail}`
+        : '';
+      const kindFilter = e.isCustom ? 'custom' : 'master';
       return `
-        <div class="ex-row" data-exercise-row data-name="${e.name.toLowerCase()}" data-muscle="${(e.muscle || '').toLowerCase()}" data-has-video="${videoId ? 'yes' : 'no'}">
+        <div class="ex-row" data-exercise-row data-id="${e.id}" data-name="${e.name.toLowerCase()}" data-muscle="${(e.muscle || '').toLowerCase()}" data-has-video="${videoId ? 'yes' : 'no'}" data-kind="${kindFilter}" data-is-custom="${e.isCustom ? '1' : '0'}">
+          <input
+            type="checkbox"
+            class="ex-merge-check"
+            data-ex-id="${e.id}"
+            data-ex-name="${e.name.replace(/"/g, '&quot;')}"
+            style="margin-right:8px;width:16px;height:16px;accent-color:#a855f7;cursor:pointer;flex-shrink:0;"
+            onchange="toggleMergeSelect(this)"
+            title="Select for merge"
+          />
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:6px;">
               <input
@@ -4747,9 +4778,9 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
                 onfocus="this.style.borderColor='rgba(255,255,255,0.2)';this.style.background='rgba(255,255,255,0.04)'"
                 onblur="this.style.borderColor='transparent';this.style.background='none';renameExercise(${e.id})"
                 onkeydown="if(event.key==='Enter'){this.blur()}"
-              />${e.isCustom ? '<span style="font-size:10px;color:rgba(168,85,247,0.8);font-weight:700;white-space:nowrap;">CUSTOM</span>' : ''}
+              />${e.isCustom ? `<span style="font-size:10px;color:rgba(168,85,247,0.8);font-weight:700;white-space:nowrap;">CUSTOM</span><button onclick="promoteToMaster(${e.id}, ${JSON.stringify(e.name).replace(/"/g, '&quot;')})" title="Promote to master library" style="font-size:10px;padding:2px 8px;border-radius:6px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);color:#22c55e;font-weight:700;cursor:pointer;white-space:nowrap;">&#9650; Promote</button>` : ''}
             </div>
-            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px;padding-left:6px;">${e.muscle || 'Unknown'}</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px;padding-left:6px;">${e.muscle || 'Unknown'}${ownerLabel ? ` · <span style="color:rgba(168,85,247,0.7);">owner: ${ownerLabel}</span>` : ''}</div>
           </div>
           <div class="video-status" style="flex-shrink:0;margin-right:12px;">
             ${videoId
@@ -4787,13 +4818,26 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
         </div>`;
     }).join('');
 
+    const filterBtn = (val, label) => {
+      const active = filter === val;
+      return `<a href="/admin/exercise-library?filter=${val}" style="padding:8px 14px;border-radius:8px;border:1px solid ${active ? 'rgba(168,85,247,0.5)' : 'rgba(255,255,255,0.1)'};background:${active ? 'rgba(168,85,247,0.18)' : 'rgba(255,255,255,0.03)'};color:${active ? '#c084fc' : 'rgba(255,255,255,0.7)'};font-size:12px;font-weight:700;text-decoration:none;text-transform:uppercase;letter-spacing:0.5px;">${label}</a>`;
+    };
+
     res.send(adminPage('Exercise Library', `
       <h1 style="font-size:28px;font-weight:800;letter-spacing:-0.5px;">Exercise Library</h1>
       <p style="color:rgba(255,255,255,0.4);margin-top:4px;font-size:14px;">All exercises and their video mappings</p>
 
-      <div style="display:flex;gap:12px;margin-top:24px;flex-wrap:wrap;">
+      <div style="display:flex;gap:8px;margin-top:16px;align-items:center;flex-wrap:wrap;">
+        <span style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);font-weight:600;margin-right:4px;">Show:</span>
+        ${filterBtn('both', 'All')}
+        ${filterBtn('master', 'Master Only')}
+        ${filterBtn('custom', 'Customs Only')}
+        <a href="/admin/exercise-health" style="margin-left:auto;padding:8px 14px;border-radius:8px;border:1px solid rgba(34,197,94,0.3);background:rgba(34,197,94,0.1);color:#22c55e;font-size:12px;font-weight:700;text-decoration:none;">&#9829; Health Check</a>
+      </div>
+
+      <div style="display:flex;gap:12px;margin-top:16px;flex-wrap:wrap;">
         <div class="glass" style="padding:16px 20px;border-radius:12px;flex:1;min-width:140px;">
-          <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);font-weight:600;">Total Exercises</div>
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);font-weight:600;">${filter === 'master' ? 'Master' : filter === 'custom' ? 'Custom' : 'Total'} Exercises</div>
           <div style="font-size:28px;font-weight:800;margin-top:4px;">${totalExercises}</div>
         </div>
         <div class="glass" style="padding:16px 20px;border-radius:12px;flex:1;min-width:140px;border-color:rgba(34,197,94,0.2);">
@@ -4803,6 +4847,20 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
         <div class="glass" style="padding:16px 20px;border-radius:12px;flex:1;min-width:140px;border-color:rgba(239,68,68,0.2);">
           <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);font-weight:600;">Unmapped</div>
           <div style="font-size:28px;font-weight:800;margin-top:4px;color:#ef4444;">${unmappedCount}</div>
+        </div>
+      </div>
+
+      <!-- Merge sticky bar — fixed at the bottom while 2+ exercises are
+           checked. Picking the winner button closes the bar and runs the
+           merge transactionally on the server. -->
+      <div id="merge-bar" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9000;padding:14px 24px;background:rgba(18,18,18,0.96);border-top:1px solid rgba(168,85,247,0.35);box-shadow:0 -12px 32px rgba(0,0,0,0.5);backdrop-filter:blur(10px);">
+        <div style="max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:200px;">
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(168,85,247,0.8);font-weight:700;">Merge Duplicates</div>
+            <div id="merge-summary" style="font-size:13px;color:rgba(255,255,255,0.7);margin-top:4px;"></div>
+          </div>
+          <div id="merge-actions" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+          <button onclick="clearMergeSelection()" style="padding:8px 14px;border-radius:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);font-size:12px;font-weight:700;cursor:pointer;">Cancel</button>
         </div>
       </div>
 
@@ -4997,6 +5055,98 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
           }
         }
 
+        // Promote a custom exercise to the master library. Flips the row's
+        // is_custom + created_by columns server-side. Reloads on success
+        // (simpler than reconciling the row's classes/buttons inline).
+        async function promoteToMaster(exerciseId, exerciseName) {
+          if (!confirm('Promote "' + exerciseName + '" to the master library?\\n\\nIt will become visible to every user. The original owner keeps their reference (no data loss).')) return;
+          try {
+            const resp = await fetch('/admin/exercise-library/promote/' + exerciseId, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+            });
+            const data = await resp.json();
+            if (resp.ok) { window.location.reload(); }
+            else { alert(data.error || 'Failed to promote'); }
+          } catch (err) {
+            alert('Failed to promote: ' + err.message);
+          }
+        }
+
+        // ----- Merge-selection state -----
+        // mergeSelected: array of { id, name } in selection order (max 2).
+        // Picking which to keep is done via two "Keep X" buttons in the
+        // sticky bar after 2 are selected.
+        var mergeSelected = [];
+        function toggleMergeSelect(checkbox) {
+          var id = Number(checkbox.dataset.exId);
+          var name = checkbox.dataset.exName;
+          if (checkbox.checked) {
+            if (mergeSelected.length >= 2) {
+              checkbox.checked = false;
+              alert('Select at most 2 exercises to merge.');
+              return;
+            }
+            mergeSelected.push({ id: id, name: name });
+          } else {
+            mergeSelected = mergeSelected.filter(function(x) { return x.id !== id; });
+          }
+          renderMergeBar();
+        }
+        function renderMergeBar() {
+          var bar = document.getElementById('merge-bar');
+          var summary = document.getElementById('merge-summary');
+          var actions = document.getElementById('merge-actions');
+          if (mergeSelected.length === 0) {
+            bar.style.display = 'none';
+            actions.innerHTML = '';
+            return;
+          }
+          bar.style.display = 'block';
+          if (mergeSelected.length === 1) {
+            summary.textContent = 'Selected: ' + mergeSelected[0].name + ' · pick one more to merge into it.';
+            actions.innerHTML = '';
+            return;
+          }
+          // Two selected — show "Keep A" and "Keep B" buttons.
+          var a = mergeSelected[0], b = mergeSelected[1];
+          summary.innerHTML = '<strong>' + a.name + '</strong> &nbsp;⇄&nbsp; <strong>' + b.name + '</strong> — pick the survivor; the other will be merged in and deleted.';
+          actions.innerHTML =
+            '<button onclick="confirmMerge(' + a.id + ',' + b.id + ')" style="padding:8px 14px;border-radius:8px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.35);color:#22c55e;font-size:12px;font-weight:700;cursor:pointer;">Keep "' + a.name + '"</button>' +
+            '<button onclick="confirmMerge(' + b.id + ',' + a.id + ')" style="padding:8px 14px;border-radius:8px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.35);color:#22c55e;font-size:12px;font-weight:700;cursor:pointer;">Keep "' + b.name + '"</button>';
+        }
+        async function confirmMerge(winnerId, loserId) {
+          var winner = mergeSelected.find(function(x){ return x.id === winnerId; });
+          var loser = mergeSelected.find(function(x){ return x.id === loserId; });
+          if (!winner || !loser) return;
+          if (!confirm('Merge "' + loser.name + '" into "' + winner.name + '"?\\n\\nEverything pointing at "' + loser.name + '" (programs, sessions, PRs) will be rewritten to point at "' + winner.name + '". PRs collide-merge keeping the heaviest. "' + loser.name + '" will be deleted from the library.\\n\\nThis cannot be undone from the UI.')) return;
+          try {
+            var resp = await fetch('/admin/exercise-library/merge', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ winnerId: winnerId, loserId: loserId }),
+            });
+            var data = await resp.json();
+            if (resp.ok) {
+              alert('Merged.\\n\\ntemplate_exercises renamed: ' + data.counts.template_exercises_renamed +
+                    '\\nsession_entries renamed: ' + data.counts.session_entries_renamed +
+                    '\\npersonal_bests deleted: ' + data.counts.personal_bests_deleted +
+                    '\\npersonal_bests renamed: ' + data.counts.personal_bests_renamed +
+                    '\\nexercise rows deleted: ' + data.counts.exercise_deleted);
+              window.location.reload();
+            } else {
+              alert(data.error || 'Merge failed');
+            }
+          } catch (err) {
+            alert('Merge failed: ' + err.message);
+          }
+        }
+        function clearMergeSelection() {
+          mergeSelected = [];
+          document.querySelectorAll('.ex-merge-check').forEach(function(c) { c.checked = false; });
+          renderMergeBar();
+        }
+
         (function() {
           const rows = document.querySelectorAll('.ex-row');
           const searchInput = document.getElementById('ex-search');
@@ -5165,6 +5315,244 @@ router.get('/exercise-library/export.xlsx', adminAuth, async (req, res) => {
   } catch (err) {
     console.error('Exercise library export error:', err);
     res.status(500).send('Export failed: ' + err.message);
+  }
+});
+
+// GET /admin/exercise-health — Live counts of orphans + library composition.
+// Green/red indicators per row so you can spot drift at a glance.
+router.get('/exercise-health', adminAuth, async (req, res) => {
+  try {
+    const q = (sql) => pool.query(sql).then((r) => r.rows[0]);
+    const masterCount = await q(`SELECT COUNT(*)::int AS n FROM exercises WHERE created_by IS NULL`);
+    const customCount = await q(`SELECT COUNT(*)::int AS n FROM exercises WHERE created_by IS NOT NULL`);
+    const orphanCustoms = await q(`SELECT COUNT(*)::int AS n FROM exercises WHERE is_custom = TRUE AND created_by IS NULL`);
+    const dupMasterNames = await q(`
+      SELECT COUNT(*)::int AS n FROM (
+        SELECT LOWER(name) FROM exercises WHERE created_by IS NULL
+        GROUP BY LOWER(name) HAVING COUNT(*) > 1
+      ) d
+    `);
+    const orphanPRs = await q(`SELECT COUNT(*)::int AS n FROM personal_bests WHERE exercise_id IS NULL`);
+    const orphanSE = await q(`SELECT COUNT(*)::int AS n FROM session_entries WHERE exercise_id IS NULL`);
+    const orphanTE = await q(`
+      SELECT COUNT(*)::int AS n FROM template_exercises
+      WHERE exercise_id IS NULL AND COALESCE(is_section_header, FALSE) = FALSE
+    `);
+    const customsInLibrary = await q(`
+      SELECT COUNT(DISTINCT e.id)::int AS n
+      FROM exercises e
+      JOIN template_exercises te ON te.exercise_id = e.id
+      JOIN templates t ON t.id = te.template_id
+      JOIN programs p ON p.id = t.program_id
+      WHERE e.is_custom = TRUE AND p.user_id IS NULL
+    `);
+
+    const indicator = (ok) => ok
+      ? '<span style="color:#22c55e;font-weight:700;">&#10003; OK</span>'
+      : '<span style="color:#ef4444;font-weight:700;">&#9888; ATTENTION</span>';
+
+    const row = (label, value, ok, hint) => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.05);">
+        <div>
+          <div style="font-weight:600;color:#fff;font-size:14px;">${label}</div>
+          ${hint ? `<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px;">${hint}</div>` : ''}
+        </div>
+        <div style="display:flex;align-items:center;gap:16px;">
+          <div style="font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;color:${ok ? '#fff' : '#ef4444'};">${value}</div>
+          <div style="min-width:120px;text-align:right;">${indicator(ok)}</div>
+        </div>
+      </div>
+    `;
+
+    const composition = `
+      <div style="display:flex;gap:12px;margin-top:24px;flex-wrap:wrap;">
+        <div class="glass" style="padding:16px 20px;border-radius:12px;flex:1;min-width:140px;">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);font-weight:600;">Master Library</div>
+          <div style="font-size:28px;font-weight:800;margin-top:4px;">${masterCount.n}</div>
+        </div>
+        <div class="glass" style="padding:16px 20px;border-radius:12px;flex:1;min-width:140px;border-color:rgba(168,85,247,0.2);">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);font-weight:600;">Custom Exercises</div>
+          <div style="font-size:28px;font-weight:800;margin-top:4px;color:#a855f7;">${customCount.n}</div>
+        </div>
+        <div class="glass" style="padding:16px 20px;border-radius:12px;flex:1;min-width:140px;">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);font-weight:600;">Total</div>
+          <div style="font-size:28px;font-weight:800;margin-top:4px;">${masterCount.n + customCount.n}</div>
+        </div>
+      </div>
+    `;
+
+    res.send(adminPage('Exercise Library Health', `
+      <h1 style="font-size:28px;font-weight:800;letter-spacing:-0.5px;">Exercise Library Health</h1>
+      <p style="color:rgba(255,255,255,0.4);margin-top:4px;font-size:14px;">Live integrity checks. Green = healthy. Red numbers indicate something to clean up.</p>
+
+      ${composition}
+
+      <div class="glass" style="margin-top:24px;border-radius:14px;overflow:hidden;">
+        ${row('Duplicate master names', dupMasterNames.n, dupMasterNames.n === 0, 'Two or more master rows sharing the same name (case-insensitive). The uniqueness index should prevent any from being created.')}
+        ${row('Orphan customs', orphanCustoms.n, orphanCustoms.n === 0, 'Rows marked is_custom = TRUE but created_by IS NULL — usually leftover from test fixtures or deleted users.')}
+        ${row('Customs in library programs', customsInLibrary.n, customsInLibrary.n === 0, 'Customs visible only to one user but referenced by a library program — would not resolve for other users.')}
+        ${row('Orphan personal_bests', orphanPRs.n, orphanPRs.n === 0, 'PR rows where exercise_id is NULL — the row is not tied to any master library exercise.')}
+        ${row('Orphan session_entries', orphanSE.n, orphanSE.n === 0, 'Logged sets where exercise_id is NULL.')}
+        ${row('Orphan template slots', orphanTE.n, orphanTE.n === 0, 'Program template rows (non-section) where exercise_id is NULL.')}
+      </div>
+
+      <div style="margin-top:16px;display:flex;gap:8px;">
+        <a href="/admin/exercise-library" style="padding:8px 16px;border-radius:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#fff;font-size:12px;font-weight:700;text-decoration:none;">&#8592; Back to Exercise Library</a>
+      </div>
+    `));
+  } catch (err) {
+    console.error('Exercise health error:', err);
+    res.status(500).send(adminPage('Exercise Library Health', `
+      <h1 style="font-size:28px;font-weight:800;">Exercise Library Health</h1>
+      <div class="glass" style="margin-top:24px;padding:20px;border-left:3px solid #ef4444;">
+        <p style="color:#f87171;">Error loading health metrics: ${err.message}</p>
+      </div>
+    `));
+  }
+});
+
+// POST /admin/exercise-library/promote/:id — Promote a custom to the master
+// library by flipping is_custom = FALSE, created_by = NULL. Returns 409 if
+// the name collides with an existing master (the uniqueness index protects
+// this too, but the explicit check gives a friendlier error message).
+router.post('/exercise-library/promote/:id', adminAuth, express.json(), async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Invalid id' });
+
+    const { rows: cur } = await pool.query('SELECT id, name, is_custom, created_by FROM exercises WHERE id = $1', [id]);
+    if (cur.length === 0) return res.status(404).json({ error: 'Exercise not found' });
+    if (cur[0].created_by === null && !cur[0].is_custom) {
+      return res.status(409).json({ error: 'Exercise is already in the master library' });
+    }
+
+    // Name collision check against existing master library.
+    const { rows: clash } = await pool.query(
+      `SELECT id FROM exercises WHERE LOWER(name) = LOWER($1) AND created_by IS NULL AND id <> $2`,
+      [cur[0].name, id]
+    );
+    if (clash.length > 0) {
+      return res.status(409).json({
+        error: `A master exercise named "${cur[0].name}" already exists (id ${clash[0].id}). Merge into that one instead, or rename this custom first.`,
+      });
+    }
+
+    await pool.query(
+      `UPDATE exercises SET is_custom = FALSE, created_by = NULL WHERE id = $1`,
+      [id]
+    );
+    res.json({ success: true, id, name: cur[0].name });
+  } catch (err) {
+    console.error('Promote custom error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /admin/exercise-library/merge — Merge two exercises (winner survives,
+// loser is deleted). Same logic as the Path A 2026-05-17 migration's
+// per-row converter: rename string references in template_exercises and
+// session_entries, merge personal_bests per-user (heaviest wins, tiebreak
+// reps, prefer winner on equality), re-link exercise_id FKs, delete loser.
+// Body: { winnerId, loserId }. Transactional.
+router.post('/exercise-library/merge', adminAuth, express.json(), async (req, res) => {
+  const winnerId = Number(req.body.winnerId);
+  const loserId = Number(req.body.loserId);
+  if (!Number.isInteger(winnerId) || !Number.isInteger(loserId) || winnerId === loserId) {
+    return res.status(400).json({ error: 'Need distinct winnerId + loserId' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const { rows } = await client.query(
+      'SELECT id, name FROM exercises WHERE id = ANY($1::int[])',
+      [[winnerId, loserId]]
+    );
+    if (rows.length !== 2) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'One or both exercises not found' });
+    }
+    const winner = rows.find((r) => r.id === winnerId);
+    const loser = rows.find((r) => r.id === loserId);
+    const sameName = winner.name.trim().toLowerCase() === loser.name.trim().toLowerCase();
+
+    // 1) Rename template_exercises + session_entries if names differ.
+    let teRenamed = 0;
+    let seRenamed = 0;
+    if (!sameName) {
+      const te = await client.query(
+        'UPDATE template_exercises SET name = $1 WHERE LOWER(name) = LOWER($2)',
+        [winner.name, loser.name]
+      );
+      teRenamed = te.rowCount;
+      const se = await client.query(
+        'UPDATE session_entries SET exercise_name = $1 WHERE LOWER(exercise_name) = LOWER($2)',
+        [winner.name, loser.name]
+      );
+      seRenamed = se.rowCount;
+    }
+
+    // 2) Merge personal_bests per-user. Window picks the best row per user
+    //    across both names; losers get deleted; survivor renamed to winner.
+    const merge = await client.query(
+      `
+      WITH ranked AS (
+        SELECT id, user_id, exercise_name, best_weight, best_reps,
+          ROW_NUMBER() OVER (
+            PARTITION BY user_id
+            ORDER BY best_weight DESC NULLS LAST, best_reps DESC NULLS LAST,
+                     CASE WHEN LOWER(exercise_name) = LOWER($2) THEN 0 ELSE 1 END
+          ) AS rn
+        FROM personal_bests
+        WHERE LOWER(exercise_name) IN (LOWER($1), LOWER($2))
+      ),
+      losers AS (
+        DELETE FROM personal_bests pb USING ranked r
+        WHERE pb.id = r.id AND r.rn > 1
+        RETURNING pb.id
+      )
+      SELECT (SELECT COUNT(*)::int FROM losers) AS pbs_deleted
+      `,
+      [loser.name, winner.name]
+    );
+    const pbsDeleted = merge.rows[0].pbs_deleted || 0;
+    let pbRenamed = 0;
+    if (!sameName) {
+      const rename = await client.query(
+        'UPDATE personal_bests SET exercise_name = $1 WHERE LOWER(exercise_name) = LOWER($2)',
+        [winner.name, loser.name]
+      );
+      pbRenamed = rename.rowCount;
+    }
+
+    // 3) Re-link exercise_id columns from loser id → winner id, then delete
+    //    the loser from exercises. Order matters: relink before delete so we
+    //    don't lose the FK chain mid-flight.
+    await client.query('UPDATE template_exercises SET exercise_id = $1 WHERE exercise_id = $2', [winnerId, loserId]);
+    await client.query('UPDATE session_entries  SET exercise_id = $1 WHERE exercise_id = $2', [winnerId, loserId]);
+    await client.query('UPDATE personal_bests   SET exercise_id = $1 WHERE exercise_id = $2', [winnerId, loserId]);
+    const del = await client.query('DELETE FROM exercises WHERE id = $1', [loserId]);
+
+    await client.query('COMMIT');
+    res.json({
+      success: true,
+      winner: { id: winner.id, name: winner.name },
+      loser:  { id: loser.id, name: loser.name },
+      counts: {
+        template_exercises_renamed: teRenamed,
+        session_entries_renamed: seRenamed,
+        personal_bests_deleted: pbsDeleted,
+        personal_bests_renamed: pbRenamed,
+        exercise_deleted: del.rowCount,
+      },
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Merge exercises error:', err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
   }
 });
 

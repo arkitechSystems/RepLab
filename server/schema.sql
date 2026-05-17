@@ -185,6 +185,15 @@ CREATE TABLE IF NOT EXISTS exercises (
   created_by INT REFERENCES users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+-- Master library uniqueness guard. No two master rows (created_by IS NULL)
+-- may share the same name, case-insensitive. Customs are exempt — each user
+-- can hold their own private custom with any name, including names that
+-- collide with another user's customs or with a master row (the master
+-- always wins on resolution). This is the safety net that prevents the
+-- Path A 2026-05-17 cleanup from ever needing to happen again.
+CREATE UNIQUE INDEX IF NOT EXISTS exercises_master_name_unique
+  ON exercises (LOWER(name))
+  WHERE created_by IS NULL;
 
 CREATE TABLE IF NOT EXISTS subscriptions (
   id SERIAL PRIMARY KEY,
