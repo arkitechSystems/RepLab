@@ -1,6 +1,6 @@
 # REPLAB Pre-Launch Checklist
 
-Living list of things that must be done before App Store / Play Store submission. Updated **2026-05-17** after the Path A/B exercise-library overhaul + the Featured/Challenges pre-launch gating sweep.
+Living list of things that must be done before App Store / Play Store submission. Updated **2026-05-17** after the Resend domain verification + REPLAB email-copy sweep.
 
 ## Done since the last revision (2026-04-30)
 
@@ -25,10 +25,13 @@ Living list of things that must be done before App Store / Play Store submission
 - [ ] Generate Apple Distribution certificate + provisioning profile (via Xcode auto-signing on first archive)
 - [ ] App Transfer plan: post-launch, once LLC name is renamed or new entity formed, use Apple's App Transfer process to move the app from Individual → LLC. Apple ID stays personal; app moves to new account.
 
-### Email (Resend) — STILL OPEN
-- [ ] **Resolve the open Resend email issue Will flagged 2026-04-30** ← still pending per memory
-- [ ] Verify `replab-fitness.com` domain in Resend dashboard (SPF, DKIM ×3, DMARC at registrar)
-- [ ] Send test from each transactional path: welcome, password reset, signup notification, daily summary, push reminder — confirm deliverability
+### Email (Resend) — ✅ welcome path live
+- [x] **Resend domain verification** — `email.replab-fitness.com` verified 2026-05-17. DKIM + SPF (MX + TXT) green in the Resend dashboard. Inbound MX intentionally not started (we don't need to receive at the subdomain).
+- [x] **Welcome email end-to-end test** — delivered to `willmartinmail@gmail.com` from `noreply@email.replab-fitness.com`, REPLAB-branded copy.
+- [x] **DB welcome template updated** — `email_templates` row swapped from the WillFit-era copy to REPLAB via `server/scripts/update-welcome-email-template.sql`.
+- [x] **REPLAB brand sweep across email.js** — welcome / password reset / signup notification / daily summary all use REPLAB (not RepLab).
+- [ ] Send test from password reset, signup notification, daily summary paths — confirm deliverability of the remaining transactional flows
+- [ ] Push reminder email path (if there is one) — confirm
 
 ### iOS push notifications (Xcode work, after Mac access)
 - [ ] Open `client/ios/App/App.xcworkspace` in Xcode (on rented Mac or owned Mac)
