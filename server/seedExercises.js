@@ -178,9 +178,10 @@ const SEED_EXERCISES = [
   { name: 'Battle Ropes', muscle: 'Cardio', tags: ['cardio', 'conditioning', 'upper body'] },
 
   // === ADDITIONAL from seed workouts ===
+  // 'Incline Bench Press' and 'Dumbbell Shoulder Press' were originally
+  // duplicated here from lines 5/22; removed to satisfy the
+  // exercises_master_name_unique partial index on a fresh DB seed.
   { name: 'Bench Press', muscle: 'Chest', tags: ['press', 'horizontal', 'barbell', 'compound'] },
-  { name: 'Incline Bench Press', muscle: 'Chest', tags: ['press', 'incline', 'barbell', 'compound'] },
-  { name: 'Dumbbell Shoulder Press', muscle: 'Shoulders', tags: ['press', 'vertical', 'dumbbell', 'compound'] },
   { name: 'Hammer Strength Shoulder Press', muscle: 'Shoulders', tags: ['press', 'vertical', 'machine', 'compound'] },
   { name: 'Mid Upper Chest Flyes', muscle: 'Chest', tags: ['fly', 'isolation', 'cable'] },
   { name: 'Banded Close-Grip DB Bench', muscle: 'Chest', tags: ['press', 'horizontal', 'dumbbell', 'compound', 'band'] },

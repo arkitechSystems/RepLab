@@ -5443,6 +5443,12 @@ router.post('/exercise-library/promote/:id', adminAuth, express.json(), async (r
     );
     res.json({ success: true, id, name: cur[0].name });
   } catch (err) {
+    // Belt-and-suspenders for the SELECT→UPDATE race: if another request
+    // promoted/inserted a colliding master between our pre-check and the
+    // UPDATE, the partial unique index throws 23505. Translate to 409.
+    if (err.code === '23505') {
+      return res.status(409).json({ error: 'A master library exercise with this name already exists. Merge into that one instead.' });
+    }
     console.error('Promote custom error:', err);
     res.status(500).json({ error: err.message });
   }
@@ -5466,7 +5472,7 @@ router.post('/exercise-library/merge', adminAuth, express.json(), async (req, re
     await client.query('BEGIN');
 
     const { rows } = await client.query(
-      'SELECT id, name FROM exercises WHERE id = ANY($1::int[])',
+      'SELECT id, name, is_custom, created_by FROM exercises WHERE id = ANY($1::int[])',
       [[winnerId, loserId]]
     );
     if (rows.length !== 2) {
@@ -5475,6 +5481,21 @@ router.post('/exercise-library/merge', adminAuth, express.json(), async (req, re
     }
     const winner = rows.find((r) => r.id === winnerId);
     const loser = rows.find((r) => r.id === loserId);
+
+    // Privacy rule: if either row is a master library exercise (created_by
+    // IS NULL), it MUST be the winner. Allowing a custom to swallow a master
+    // would leave the merged result visible only to the original custom's
+    // creator — library programs referencing it would break for everyone
+    // else. Reject with a clear message + suggest swapping the pick.
+    const winnerIsMaster = winner.created_by === null;
+    const loserIsMaster = loser.created_by === null;
+    if (loserIsMaster && !winnerIsMaster) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        error: `Cannot merge master "${loser.name}" into custom "${winner.name}" — the result would only be visible to the custom's owner. Pick the master as the survivor instead.`,
+      });
+    }
+
     const sameName = winner.name.trim().toLowerCase() === loser.name.trim().toLowerCase();
 
     // 1) Rename template_exercises + session_entries if names differ.
@@ -5574,38 +5595,134 @@ router.post('/exercise-library/add', adminAuth, express.json(), async (req, res)
     const { name, muscle, videoId } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ error: 'Exercise name is required' });
     if (!muscle) return res.status(400).json({ error: 'Muscle group is required' });
-    // Check for duplicate
-    const { rows: existing } = await pool.query('SELECT id FROM exercises WHERE LOWER(name) = LOWER($1)', [name.trim()]);
-    if (existing.length > 0) return res.status(409).json({ error: 'An exercise with this name already exists' });
+    // Duplicate check is scoped to the master library — a user's custom with
+    // the same name is allowed to coexist (the resolver prefers master on
+    // collision). The partial unique index also enforces this at the DB
+    // level; this pre-check just gives a friendlier 409.
+    const { rows: existing } = await pool.query(
+      'SELECT id FROM exercises WHERE LOWER(name) = LOWER($1) AND created_by IS NULL',
+      [name.trim()]
+    );
+    if (existing.length > 0) return res.status(409).json({ error: 'A master library exercise with this name already exists' });
     const { rows } = await pool.query(
       'INSERT INTO exercises (name, muscle_group, is_custom, video_id) VALUES ($1, $2, FALSE, $3) RETURNING id',
       [name.trim(), muscle, videoId || null]
     );
     res.status(201).json({ success: true, id: rows[0].id });
   } catch (err) {
+    // Belt-and-suspenders: if the race-condition slipped between SELECT and
+    // INSERT, Postgres throws 23505 from the unique index. Translate to a
+    // friendly 409 instead of generic 500.
+    if (err.code === '23505') {
+      return res.status(409).json({ error: 'A master library exercise with this name already exists' });
+    }
     console.error('Add exercise error:', err);
     res.status(500).json({ error: 'Failed to add exercise' });
   }
 });
 
-// PUT /admin/exercise-library/rename/:id — Rename an exercise
+// PUT /admin/exercise-library/rename/:id — Rename an exercise.
+// Renames propagate to every string-keyed table that references this
+// exercise by name (template_exercises, session_entries, personal_bests)
+// so historical and program data carries the new canonical label. The
+// exercise_id FK already ties those rows to this exercise — we just sync
+// the denormalized name column on each.
+// All four UPDATEs run inside one transaction so a unique-index violation
+// on `exercises` rolls back any propagated renames.
 router.put('/exercise-library/rename/:id', adminAuth, express.json(), async (req, res) => {
+  const client = await pool.connect();
   try {
     const { name } = req.body;
-    if (!name || !name.trim()) return res.status(400).json({ error: 'Name is required' });
-    await pool.query('UPDATE exercises SET name = $1 WHERE id = $2', [name.trim(), Number(req.params.id)]);
-    res.json({ success: true });
+    if (!name || !name.trim()) {
+      client.release();
+      return res.status(400).json({ error: 'Name is required' });
+    }
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      client.release();
+      return res.status(400).json({ error: 'Invalid id' });
+    }
+
+    await client.query('BEGIN');
+    const newName = name.trim();
+
+    // Master rename first — if this fails on the unique-name index, we
+    // bail before touching the denormalized name columns elsewhere.
+    const upRes = await client.query(
+      'UPDATE exercises SET name = $1 WHERE id = $2 RETURNING id',
+      [newName, id]
+    );
+    if (upRes.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Exercise not found' });
+    }
+
+    // Propagate the new name to every row that points at this exercise via
+    // the exercise_id FK. After Path B, exercise_id is canonical and these
+    // UPDATEs catch all references regardless of any prior name variants.
+    const te = await client.query(
+      'UPDATE template_exercises SET name = $1 WHERE exercise_id = $2',
+      [newName, id]
+    );
+    const se = await client.query(
+      'UPDATE session_entries SET exercise_name = $1 WHERE exercise_id = $2',
+      [newName, id]
+    );
+    const pb = await client.query(
+      'UPDATE personal_bests SET exercise_name = $1 WHERE exercise_id = $2',
+      [newName, id]
+    );
+
+    await client.query('COMMIT');
+    res.json({
+      success: true,
+      counts: {
+        template_exercises: te.rowCount,
+        session_entries: se.rowCount,
+        personal_bests: pb.rowCount,
+      },
+    });
   } catch (err) {
+    try { await client.query('ROLLBACK'); } catch (_) {}
+    if (err.code === '23505') {
+      // Hit the partial unique index — another master with this name exists.
+      return res.status(409).json({ error: 'A master library exercise with this name already exists. Merge into that one instead.' });
+    }
     console.error('Rename exercise error:', err);
     res.status(500).json({ error: 'Failed to rename exercise' });
+  } finally {
+    client.release();
   }
 });
 
-// DELETE /admin/exercise-library/delete/:id — Delete an exercise
+// DELETE /admin/exercise-library/delete/:id — Delete an exercise.
+// Pre-checks every string-keyed table that references this exercise via
+// exercise_id. If anything still points at it, refuses with a 409 +
+// counts and a suggestion to merge instead. ON DELETE SET NULL on the FKs
+// would otherwise silently break the linked rows' display: their
+// exercise_id would go NULL and the canonical JOIN against `exercises`
+// would drop them entirely from PR/history views.
 router.delete('/exercise-library/delete/:id', adminAuth, async (req, res) => {
   try {
     const id = Number(req.params.id);
-    await pool.query('DELETE FROM exercises WHERE id = $1', [id]);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Invalid id' });
+
+    const q = (sql) => pool.query(sql, [id]).then((r) => Number(r.rows[0].n));
+    const [teCount, seCount, pbCount] = await Promise.all([
+      q('SELECT COUNT(*)::int AS n FROM template_exercises WHERE exercise_id = $1'),
+      q('SELECT COUNT(*)::int AS n FROM session_entries WHERE exercise_id = $1'),
+      q('SELECT COUNT(*)::int AS n FROM personal_bests WHERE exercise_id = $1'),
+    ]);
+    const total = teCount + seCount + pbCount;
+    if (total > 0) {
+      return res.status(409).json({
+        error: `Cannot delete — this exercise is referenced by ${teCount} program template slot(s), ${seCount} logged set(s), and ${pbCount} PR record(s). Merge it into another exercise instead, which preserves the history.`,
+        refs: { template_exercises: teCount, session_entries: seCount, personal_bests: pbCount },
+      });
+    }
+
+    const del = await pool.query('DELETE FROM exercises WHERE id = $1 RETURNING id', [id]);
+    if (del.rowCount === 0) return res.status(404).json({ error: 'Exercise not found' });
     res.json({ success: true });
   } catch (err) {
     console.error('Delete exercise error:', err);
