@@ -21,15 +21,15 @@ async function getTemplate(name) {
 const resend = new Resend(process.env.RESEND_API_KEY);
 const custom = await getTemplate('welcome');
 
-const defaultSubject = 'Welcome to RepLab — You\'re In!';
+const defaultSubject = 'Welcome to REPLAB — You\'re In!';
 const defaultHtml = `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px; color: #333;">
           <div style="text-align: center; margin-bottom: 32px;">
             <h1 style="font-size: 32px; font-weight: 900; letter-spacing: 2px; margin: 0; color: #111;">REP<span style="color: #EF4444;">LAB</span></h1>
           </div>
-          <h2 style="color: #111; font-size: 24px; font-weight: 800; margin: 0 0 8px 0;">Welcome to RepLab!</h2>
+          <h2 style="color: #111; font-size: 24px; font-weight: 800; margin: 0 0 8px 0;">Welcome to REPLAB!</h2>
           <p style="font-size: 16px; line-height: 1.7; margin: 0 0 24px 0; color: #444;">
-            Thanks for signing up! You're now part of the <strong>alpha version</strong> of RepLab. The app is fully functional and ready for you to start tracking your workouts, but we're still actively building and improving it. Your experience and feedback will help shape the final product.
+            Thanks for signing up! You're now part of the <strong>alpha version</strong> of REPLAB. The app is fully functional and ready for you to start tracking your workouts, but we're still actively building and improving it. Your experience and feedback will help shape the final product.
           </p>
           <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">Getting Started</h3>
           <div style="background: #f0f7ff; border-left: 4px solid #3b82f6; border-radius: 8px; padding: 16px 20px; margin-bottom: 16px;">
@@ -46,7 +46,7 @@ const defaultHtml = `
           <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">AI-Powered Features</h3>
           <div style="background: #f0f0ff; border-left: 4px solid #8b5cf6; border-radius: 8px; padding: 16px 20px; margin-bottom: 16px;">
             <p style="color: #333; font-size: 14px; line-height: 1.7; margin: 0;">
-              We're working on <strong>AI-powered features</strong> for RepLab. Soon you'll be able to generate custom workouts tailored to your goals, experience level, and available equipment — powered by an <strong>AI trainer</strong> built right into the app. Stay tuned.
+              We're working on <strong>AI-powered features</strong> for REPLAB. Soon you'll be able to generate custom workouts tailored to your goals, experience level, and available equipment — powered by an <strong>AI trainer</strong> built right into the app. Stay tuned.
             </p>
           </div>
           <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">Alpha Version</h3>
@@ -58,7 +58,7 @@ const defaultHtml = `
           <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">User Guide</h3>
           <div style="background: #f0f0f0; border-radius: 8px; padding: 16px 20px; margin-bottom: 24px;">
             <p style="color: #333; font-size: 14px; line-height: 1.7; margin: 0;">
-              For a deeper look at every feature, check out the <a href="${config.APP_URL}/trainer/guide" style="color: #EF4444; text-decoration: none; font-weight: 600;">RepLab User Guide</a>. It covers the workout library, calendar, logging sessions, personal records, creating custom workouts, and more.
+              For a deeper look at every feature, check out the <a href="${config.APP_URL}/trainer/guide" style="color: #EF4444; text-decoration: none; font-weight: 600;">REPLAB User Guide</a>. It covers the workout library, calendar, logging sessions, personal records, creating custom workouts, and more.
             </p>
           </div>
           <p style="color: #666; font-size: 13px; line-height: 1.6;">
@@ -66,10 +66,10 @@ const defaultHtml = `
           </p>
           <a href="${config.APP_URL}"
              style="display: inline-block; margin-top: 24px; padding: 14px 32px; background: #111; color: #fff; text-decoration: none; border-radius: 10px; font-size: 15px; font-weight: 700; letter-spacing: 0.5px;">
-            Open RepLab
+            Open REPLAB
           </a>
           <p style="color: #999; font-size: 12px; margin-top: 24px; line-height: 1.6;">
-            If you didn't create a RepLab account, you can safely ignore this email.
+            If you didn't create a REPLAB account, you can safely ignore this email.
           </p>
         </div>
       `;
