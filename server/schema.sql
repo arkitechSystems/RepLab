@@ -52,6 +52,13 @@ CREATE TABLE IF NOT EXISTS templates (
 CREATE TABLE IF NOT EXISTS template_exercises (
   id SERIAL PRIMARY KEY,
   template_id INT REFERENCES templates(id) ON DELETE CASCADE,
+  -- exercise_id is the canonical link into the master library. NULL is
+  -- allowed for legacy rows that haven't been backfilled yet and for
+  -- section-header rows (is_section_header = TRUE) where `name` is a
+  -- label, not an exercise. New code should write exercise_id alongside
+  -- name; old read paths still join via LOWER(name) until the refactor
+  -- to id-keyed reads lands.
+  exercise_id INT REFERENCES exercises(id) ON DELETE SET NULL,
   name TEXT NOT NULL,
   set_type TEXT DEFAULT 'straight',
   set_number INT NOT NULL,
@@ -59,6 +66,7 @@ CREATE TABLE IF NOT EXISTS template_exercises (
   suggested_weight NUMERIC DEFAULT 0,
   sort_order INT DEFAULT 0
 );
+CREATE INDEX IF NOT EXISTS idx_template_exercises_exercise_id ON template_exercises(exercise_id);
 
 CREATE TABLE IF NOT EXISTS schedule_days (
   id SERIAL PRIMARY KEY,
@@ -84,21 +92,29 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE TABLE IF NOT EXISTS session_entries (
   id SERIAL PRIMARY KEY,
   session_id INT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  -- See template_exercises.exercise_id note: canonical id link, kept
+  -- alongside exercise_name during the dual-write transition.
+  exercise_id INT REFERENCES exercises(id) ON DELETE SET NULL,
   exercise_name TEXT NOT NULL,
   set_number INT NOT NULL,
   weight NUMERIC DEFAULT 0,
   reps INT DEFAULT 0
 );
+CREATE INDEX IF NOT EXISTS idx_session_entries_exercise_id ON session_entries(exercise_id);
 
 CREATE TABLE IF NOT EXISTS personal_bests (
   id SERIAL PRIMARY KEY,
   user_id INT NOT NULL REFERENCES users(id),
   template_id INT REFERENCES templates(id) ON DELETE CASCADE,
+  -- See template_exercises.exercise_id note: canonical id link, kept
+  -- alongside exercise_name during the dual-write transition.
+  exercise_id INT REFERENCES exercises(id) ON DELETE SET NULL,
   exercise_name TEXT NOT NULL,
   best_weight NUMERIC NOT NULL,
   best_reps INT NOT NULL,
   achieved_at TIMESTAMPTZ DEFAULT NOW()
 );
+CREATE INDEX IF NOT EXISTS idx_personal_bests_exercise_id ON personal_bests(exercise_id);
 
 -- Feed reactions — one row per (user, item). Switching a reaction is an
 -- UPDATE; clearing it is a DELETE. item_id is a string key shared with the
