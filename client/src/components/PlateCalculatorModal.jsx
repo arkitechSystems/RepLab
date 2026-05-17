@@ -236,15 +236,15 @@ export default function PlateCalculatorModal({ open, initialWeight = 0, onUse, o
               </div>
             </div>
 
-            {/* Bar + plates visual with +/- pinned at the LEFT edge.
-                Mirrors the page version exactly except the +/- column was
-                moved from right to left. Left padding (52px) clears the
-                button column with a 16px gap to the bar; right padding
-                (16px) mirrors the gap on the opposite side. */}
+            {/* Bar + plates visual with +/- pinned at the RIGHT edge, to
+                match the /plate-calculator page exactly. Right padding
+                (52px) clears the button column with a 16px gap to the
+                bar; left padding (16px) mirrors the gap on the opposite
+                side. */}
             {valid && (
               <div className="my-4 relative" style={{ minHeight: 100 }}>
-                {/* +/- adjust column — anchored to the LEFT edge */}
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 flex flex-col gap-1.5 shrink-0 z-10">
+                {/* +/- adjust column — anchored to the RIGHT edge */}
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col gap-1.5 shrink-0 z-10">
                   <button
                     onClick={() => adjustTarget(+1)}
                     aria-label={`Add ${selectedPlate} lb plate`}
@@ -278,7 +278,7 @@ export default function PlateCalculatorModal({ open, initialWeight = 0, onUse, o
                 </div>
 
                 {/* Centered bar + plates visual */}
-                <div className="flex items-center justify-center gap-2 h-full" style={{ paddingLeft: 52, paddingRight: 16, minHeight: 100 }}>
+                <div className="flex items-center justify-center gap-2 h-full" style={{ paddingLeft: 16, paddingRight: 52, minHeight: 100 }}>
                   {(mode === 'both' || bar === 0) && (
                     <div className="flex items-center" style={{ gap: 2 }}>
                       {plates.slice().reverse().map((p, i) =>
