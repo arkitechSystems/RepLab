@@ -5,7 +5,9 @@ const TRAINERS = [
   {
     id: 'zumba-jason',
     name: 'Zumba Jason',
-    photo: '/zumba-jason.jpg',
+    // photo removed — the bundled /zumba-jason.jpg was dropped in the
+    // pre-launch asset purge. Renderers fall back to `initials` when
+    // photo is missing (see TrainerProfile.jsx + Workouts.jsx card).
     initials: 'ZJ',
     title: 'Certified HIIT & Dance Fitness Instructor',
     credentials: 'ACE Certified Personal Trainer \u00b7 NASM HIIT Specialist',

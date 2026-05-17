@@ -8,6 +8,7 @@ import { iosFocusRef } from '../utils/iosFocus';
 import TrainerProfile from '../components/TrainerProfile';
 import { getTrainers, getTrainerById } from '../data/trainers';
 import { useAuth } from '../context/AuthContext';
+import { useFeatureFlag, FF_FEATURED } from '../utils/featureFlags';
 import { sharePR } from '../utils/prShare';
 import { useTutorial } from '../context/TutorialContext';
 import UndoToast from '../components/UndoToast';
@@ -1014,6 +1015,11 @@ export default function Workouts() {
   const { user } = useAuth();
   const { tutorial, startTutorial, completeTutorialAction, skipTutorial } = useTutorial();
   const isPremium = user?.plan && user.plan !== 'Free';
+
+  // Featured Workouts gate — see client/src/utils/featureFlags.js for the
+  // unlock instructions. Apple App Review's demo account never has the
+  // flag set, so reviewers see the consistent "Coming Soon" state.
+  const featuredUnlocked = useFeatureFlag(FF_FEATURED);
   const [showPremiumGate, setShowPremiumGate] = useState(false);
   const [selectedChallenge, setSelectedChallenge] = useState(null);
   const [challengeTab, setChallengeTab] = useState('active');
@@ -5163,10 +5169,18 @@ export default function Workouts() {
               </div>
             </div>
 
-            {/* Featured Workouts card */}
+            {/* Featured Workouts card — gated as "Coming Soon" pre-launch.
+                Clickable only when the localStorage feature flag is set
+                (`rl_ff_featured === '1'`). Set the flag two ways:
+                  • Dev console:  localStorage.setItem('rl_ff_featured', '1')
+                  • URL one-shot: ?ff=featured (the effect below also persists
+                    the flag so subsequent visits stay unlocked).
+                Apple's App Review demo account does NOT have the flag, so
+                the reviewer sees a clean "COMING SOON"-tagged card with no
+                interaction — keeps the review story consistent. */}
             <div
               ref={featuredCardRef}
-              onClick={() => {
+              onClick={featuredUnlocked ? () => {
                 const rect = featuredCardRef.current?.getBoundingClientRect();
                 if (rect) setFeaturedCardRect(rect);
                 setFeaturedTransition('card');
@@ -5180,9 +5194,10 @@ export default function Workouts() {
                 setTimeout(() => setFeaturedTransition('fade'), 3100);
                 // Done
                 setTimeout(() => { setFeaturedTransition(null); setFeaturedCardRect(null); setSelectedGroup('featured'); }, 3600);
-              }}
-              className="w-full rounded-2xl overflow-hidden fade-slide-up relative cursor-pointer active:scale-[0.98] transition-transform"
-              style={{ animationDelay: '0ms', minHeight: '107px' }}
+              } : undefined}
+              aria-disabled={!featuredUnlocked}
+              className={`w-full rounded-2xl overflow-hidden fade-slide-up relative transition-transform ${featuredUnlocked ? 'cursor-pointer active:scale-[0.98]' : 'cursor-default'}`}
+              style={{ animationDelay: '0ms', minHeight: '107px', opacity: featuredUnlocked ? 1 : 0.65 }}
             >
               <video
                 ref={featuredVideoRef}
@@ -5196,16 +5211,24 @@ export default function Workouts() {
                 src="https://replab-videos.onrender.com/Gym cinematic promotion video.mp4"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
+              {!featuredUnlocked && (
+                <div
+                  className="absolute top-3 right-3 z-20 text-[10px] font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded-full"
+                  style={{
+                    background: 'rgba(0,0,0,0.55)',
+                    color: 'rgba(255,255,255,0.85)',
+                    border: '1px solid rgba(255,255,255,0.25)',
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                  }}
+                >
+                  Coming Soon
+                </div>
+              )}
               <div className="relative z-10 p-5 flex flex-col justify-end h-full" style={{ minHeight: '126px' }}>
                 <div className="mt-auto">
                   <h2 className="text-2xl font-black text-white tracking-tight drop-shadow-lg">Featured Workouts</h2>
-                  <p className="text-white/60 text-xs mt-1 drop-shadow">Guided sessions · Custom coaching</p>
-                  <div className="flex items-center gap-1 mt-2">
-                    <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)' }}>Tap to start</span>
-                    <svg className="w-3.5 h-3.5" style={{ color: 'rgba(255,255,255,0.5)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                    </svg>
-                  </div>
+                  <p className="text-white/60 text-xs mt-1 drop-shadow">Guided sessions · Coming Soon</p>
                 </div>
               </div>
             </div>

@@ -8,6 +8,7 @@ import { TutorialProvider } from './context/TutorialContext';
 import { VideoPlayerProvider } from './context/VideoPlayerContext';
 import Layout from './components/Layout';
 import ErrorBoundary from './components/ErrorBoundary';
+import { useFeatureFlag, FF_FEATURED } from './utils/featureFlags';
 
 // Stale-chunk recovery: when a new build is deployed, the running tab's
 // `index-*.js` still references chunk hashes that no longer exist on the
@@ -110,6 +111,19 @@ function TestRoute({ children }) {
   if (!isAuthenticated || !user?.email || !TEST_EMAILS.includes(user.email.toLowerCase())) {
     return <Navigate to="/app" replace />;
   }
+  return children;
+}
+
+// Pre-launch gate for the Featured Workouts experience. Renders the
+// wrapped page only when the `featured` client-side feature flag is set
+// (see client/src/utils/featureFlags.js for unlock instructions). For
+// every other visitor — including the Apple App Review demo account and
+// any deep-link / stale navigation that lands on /featured-session —
+// silently redirects back to /app, so the feature is unreachable from
+// any entry point until launch.
+function FeaturedGate({ children }) {
+  const unlocked = useFeatureFlag(FF_FEATURED);
+  if (!unlocked) return <Navigate to="/app" replace />;
   return children;
 }
 
@@ -260,8 +274,8 @@ export default function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/upgrade" element={<Upgrade />} />
         <Route path="/tutorial/workout" element={<TutorialWorkout />} />
-        <Route path="/featured-session" element={<FeaturedWorkoutSession />} />
-        <Route path="/featured-session/:workoutId" element={<FeaturedWorkoutSession />} />
+        <Route path="/featured-session" element={<FeaturedGate><FeaturedWorkoutSession /></FeaturedGate>} />
+        <Route path="/featured-session/:workoutId" element={<FeaturedGate><FeaturedWorkoutSession /></FeaturedGate>} />
         <Route path="/test" element={<TestRoute><Test /></TestRoute>} />
         <Route path="/test/cards" element={<TestRoute><CardsTest /></TestRoute>} />
         <Route path="/test/workout-session" element={<TestRoute><WorkoutSessionTest /></TestRoute>} />
