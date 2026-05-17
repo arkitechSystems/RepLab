@@ -17,6 +17,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { getExerciseVideoId, getExerciseSearchUrl } from '../utils/exerciseVideos.js';
 import { useExercises, getSubstitutesFromList } from '../hooks/useExercises.js';
 import VideoPlayerModal from './VideoPlayerModal.jsx';
+import PlateCalculatorModal from './PlateCalculatorModal.jsx';
 import CardioAccelerationCard from './CardioAccelerationCard.jsx';
 import { iosFocusRef } from '../utils/iosFocus.js';
 import useFocusTrap from '../hooks/useFocusTrap.js';
@@ -110,6 +111,11 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
   const [swapSearch, setSwapSearch] = useState('');
   const [showAddBelow, setShowAddBelow] = useState(false);
   const [addBelowSearch, setAddBelowSearch] = useState('');
+  // Index of the set whose weight input is currently driving the plate
+  // calculator modal. null = modal closed. Set by either the ⚖ icon next
+  // to a weight input or a long-press on the input itself.
+  const [plateCalcSetIdx, setPlateCalcSetIdx] = useState(null);
+  const plateCalcLongPressRef = useRef(null);
 
   const touchStartPos = useRef(null);
   const swipeRowRefs = useRef({});
@@ -500,8 +506,13 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                 </div>
               )}
 
-              {/* Weight input */}
-              <div className={showGoalWeight ? 'w-[3.15rem] shrink-0' : 'w-[6.5rem] shrink-0'}>
+              {/* Weight input — long-press (600ms) on the input OR a tap on
+                  the ⚖ icon opens the in-session plate calculator pre-
+                  filled with this set's current weight. The icon is the
+                  discoverable affordance; long-press is the power-user
+                  shortcut. Movement during press cancels so scrolling
+                  doesn't trigger it. */}
+              <div className={`${showGoalWeight ? 'w-[3.15rem] shrink-0' : 'w-[6.5rem] shrink-0'} relative`}>
                 <input
                   type="number"
                   inputMode="decimal"
@@ -513,10 +524,36 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                   onChange={(e) => onChange?.(exercise.name, idx, 'weight', e.target.value)}
                   onFocus={(e) => { if (inputsLocked && onLockedTap) { e.target.blur(); onLockedTap(); return; } e.target.select(); }}
                   onBlur={() => onBlur?.(exercise.name, idx, 'weight')}
+                  onPointerDown={(readOnly || inputsLocked) ? undefined : () => {
+                    plateCalcLongPressRef.current = setTimeout(() => {
+                      setPlateCalcSetIdx(idx);
+                    }, 600);
+                  }}
+                  onPointerUp={() => { if (plateCalcLongPressRef.current) { clearTimeout(plateCalcLongPressRef.current); plateCalcLongPressRef.current = null; } }}
+                  onPointerMove={() => { if (plateCalcLongPressRef.current) { clearTimeout(plateCalcLongPressRef.current); plateCalcLongPressRef.current = null; } }}
+                  onPointerCancel={() => { if (plateCalcLongPressRef.current) { clearTimeout(plateCalcLongPressRef.current); plateCalcLongPressRef.current = null; } }}
+                  onPointerLeave={() => { if (plateCalcLongPressRef.current) { clearTimeout(plateCalcLongPressRef.current); plateCalcLongPressRef.current = null; } }}
+                  onContextMenu={(e) => e.preventDefault()}
                   readOnly={readOnly || inputsLocked}
-                  className={`w-full lcd-input rounded-lg px-2 py-2.5 text-center text-base focus:outline-none disabled:opacity-50 ${isCompleted ? 'completed text-white' : isAutoFill ? 'text-wf-gray-500 italic' : 'text-white'}`}
+                  className={`w-full lcd-input rounded-lg pl-2 pr-5 py-2.5 text-center text-base focus:outline-none disabled:opacity-50 ${isCompleted ? 'completed text-white' : isAutoFill ? 'text-wf-gray-500 italic' : 'text-white'}`}
                   disabled={readOnly}
                 />
+                {!readOnly && !inputsLocked && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (plateCalcLongPressRef.current) { clearTimeout(plateCalcLongPressRef.current); plateCalcLongPressRef.current = null; } setPlateCalcSetIdx(idx); }}
+                    aria-label={`Open plate calculator for set ${idx + 1}`}
+                    title="Plate calculator"
+                    className="absolute top-1/2 -translate-y-1/2 right-1 w-4 h-4 flex items-center justify-center active:scale-90 transition-transform"
+                    style={{ color: 'rgba(239,68,68,0.55)' }}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <circle cx="6" cy="12" r="3" />
+                      <line x1="9" y1="12" x2="15" y2="12" />
+                      <circle cx="18" cy="12" r="3" />
+                    </svg>
+                  </button>
+                )}
               </div>
 
               {isTemplate ? (
@@ -821,6 +858,28 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
           onClose={() => setShowVideo(false)}
         />
       )}
+
+      {/* Plate Calculator Modal — opened by long-press on a weight input
+          or tap on the ⚖ icon next to it. Pre-fills with that set's
+          current weight (or the template's suggested weight as a fallback).
+          "Use" writes the chosen number back through onChange and closes. */}
+      {plateCalcSetIdx !== null && (() => {
+        const setEntry = entries?.[plateCalcSetIdx] || {};
+        const setTemplate = exercise.sets?.[plateCalcSetIdx] || {};
+        const initial = Number(setEntry.weight) || Number(setTemplate.suggestedWeight) || 0;
+        return (
+          <PlateCalculatorModal
+            open={true}
+            initialWeight={initial}
+            onUse={(weight) => {
+              const idxAtOpen = plateCalcSetIdx;
+              if (onChange) onChange(exercise.name, idxAtOpen, 'weight', String(weight));
+              setPlateCalcSetIdx(null);
+            }}
+            onClose={() => setPlateCalcSetIdx(null)}
+          />
+        );
+      })()}
 
     </div>
 
