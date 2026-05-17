@@ -1,6 +1,7 @@
 // Migration: Add "Muscle & Fitness 5000 rep arm specialization" program card
-// to the RepLab library. Workouts left empty for now — the card will appear
-// in Hypertrophy but have no templates until they're filled in.
+// to the RepLab library. Original migration left workouts empty; the
+// follow-up populate-muscle-strength-5000-arms.js seeds all 10 weeks of
+// templates. Description has been updated to reflect the populated state.
 //
 // Run with: node --env-file=server/.env server/migrations/add-muscle-fitness-5000-arms.js
 // Re-running is safe — the script is idempotent (name + user_id IS NULL is the
@@ -9,7 +10,7 @@
 import pool from '../dbPool.js';
 
 const PROGRAM_NAME = 'Muscle & Fitness 5000 Rep Arm Specialization';
-const DESCRIPTION  = 'High-volume arm specialization block. Workouts coming soon.';
+const DESCRIPTION  = 'High-volume arm specialization block. 10 weeks, alternating 3-day and 2-day training splits — ~5,000 dedicated arm reps across the program.';
 const SORT_ORDER   = 17;
 const PROGRAM_TYPE = 'hypertrophy';
 

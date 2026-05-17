@@ -73,9 +73,10 @@ const CARD_BORDER_STYLE = {
 };
 
 // Flip card for the Workout Library list. Combines Brainstorm demo #8
-// (flip card) with demo #7 (3D mouse-tilt + spotlight). Tap card to flip.
-// On desktop the card tilts toward the cursor with a moving highlight; on
-// mobile mousemove doesn't fire so only the flip animates.
+// (flip card) with mouse-follow spotlight. Tap card to flip. The card no
+// longer tilts toward the cursor — we kept the mousemove tracking so the
+// red spotlight still chases the pointer, but the rotateX/Y transform was
+// removed for a flatter, more uniform card grid.
 function LibraryFlipCard({ program, programColor, idx, isFlipped, onFlip, onView, navigate, openBeginProgram, dataTutorial }) {
   const cardRef = useRef(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
@@ -89,17 +90,11 @@ function LibraryFlipCard({ program, programColor, idx, isFlipped, onFlip, onView
   };
   const reset = () => setTilt({ x: 0, y: 0 });
 
-  const TILT_MAX = 12;
-  const tiltX = -tilt.y * TILT_MAX;
-  const tiltY = tilt.x * TILT_MAX;
   const flipY = isFlipped ? 180 : 0;
-  // Decoupled transforms: tilt lives on an outer wrapper with a fast (0.1s)
-  // transition for cursor-follow snappiness; flip lives on the inner wrapper
-  // with the slow (0.7s) transition that matches Brainstorm demo #8.
-  const tiltTransform = `rotateX(${tiltX}deg) rotateY(${tiltY}deg)`;
   const flipTransform = `rotateY(${flipY}deg)`;
-  // Red mouse-follow spotlight on a near-black surface — matches the
-  // brainstorm tilt demo #7 aesthetic exactly.
+  // Red mouse-follow spotlight — tilt.x/y are still computed by onMove so
+  // the gradient origin tracks the pointer; only the rotateX/Y transform
+  // was dropped.
   const spotlight = `radial-gradient(circle at ${(tilt.x + 0.5) * 100}% ${(tilt.y + 0.5) * 100}%, rgba(239,68,68,0.25), transparent 50%)`;
 
   const FACE_BG = 'linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%)';
@@ -120,15 +115,14 @@ function LibraryFlipCard({ program, programColor, idx, isFlipped, onFlip, onView
       className="snap-start shrink-0 w-full wf-flip-outer fade-slide-up"
       style={{ animationDelay: `${idx * 60}ms`, height: '210px' }}
     >
-      {/* Tilt wrapper — fast transition for cursor-follow. */}
+      {/* Inner 3D container — preserves the perspective context for the
+          flip child but no longer applies a tilt transform. */}
       <div
         style={{
           position: 'relative',
           width: '100%',
           height: '100%',
           transformStyle: 'preserve-3d',
-          transform: tiltTransform,
-          transition: 'transform 0.1s ease-out',
         }}
       >
       <div
