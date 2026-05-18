@@ -237,6 +237,7 @@ export default function WorkoutSession() {
       'add-delete-exercise': '[data-tutorial="add-delete-buttons"]',
       'set-controls': '[data-tutorial="set-controls"]',
       'set-row': '[data-tutorial="set-row"]',
+      'plate-calc': '[data-tutorial="plate-calc"]',
       'session-settings': '[data-tutorial="session-settings"]',
       'exercise-notes': '[data-tutorial="exercise-notes"]',
       'mark-complete': '[data-tutorial="mark-complete"]',
@@ -275,7 +276,7 @@ export default function WorkoutSession() {
         // scroll so the top is visible just below the sticky header rather than
         // centering (which can cause the tooltip to overlap the spotlight).
         const elRect = el.getBoundingClientRect();
-        const exerciseCardSteps = ['exercise-header', 'swap-exercise', 'add-delete-exercise', 'set-controls', 'set-row', 'exercise-notes'];
+        const exerciseCardSteps = ['exercise-header', 'swap-exercise', 'add-delete-exercise', 'set-controls', 'set-row', 'plate-calc', 'exercise-notes'];
         const isExerciseCardStep = exerciseCardSteps.includes(tutorialTip);
         if (tutorialTip === 'exercise-card') {
           // Scroll the exercise card header to the very top of the viewport
@@ -3818,7 +3819,7 @@ export default function WorkoutSession() {
           'add-delete-exercise': {
             target: '[data-tutorial="add-delete-buttons"]',
             title: 'Add & Remove Exercises',
-            description: <>The <span className="text-white font-semibold">plus button</span> adds a new exercise below this one. The <span className="text-white font-semibold">X button</span> removes this exercise from the workout entirely. Tap the exercise name to view a demo video.</>,
+            description: <>The <span className="text-white font-semibold">plus button</span> adds a new exercise below this one. The <span className="text-white font-semibold">X button</span> removes this exercise from the workout entirely. Need a refresher on the movement? Tap <span className="text-white font-semibold">Demo</span> in the card header to watch the video.</>,
             prev: 'swap-exercise',
             next: 'set-controls',
             position: 'below',
@@ -3836,6 +3837,14 @@ export default function WorkoutSession() {
             title: 'Tracking a Set',
             description: <>Each row is one set. The <span className="text-white font-semibold">circle on the left</span> marks the set as complete. <span className="text-white font-semibold">Type</span> shows the set type (warm-up, regular, drop set, etc.) — tap to change it. <span className="text-white font-semibold">Goal Wt</span> shows the target weight. <span className="text-white font-semibold">Actual Wt</span> is where you enter the weight used. <span className="text-white font-semibold">Goal Reps</span> shows the target reps. <span className="text-white font-semibold">Actual Reps</span> is where you enter the reps you completed.</>,
             prev: 'set-controls',
+            next: 'plate-calc',
+            position: 'below',
+          },
+          'plate-calc': {
+            target: '[data-tutorial="plate-calc"]',
+            title: 'Plate Calculator',
+            description: <>Not sure how to load the bar? The <span className="text-white font-semibold">⚖ icon</span> in the card header opens a plate calculator that shows exactly which plates to put on each side. You can also <span className="text-white font-semibold">long-press any weight input</span> on a set row to open the same calculator pre-filled with that set's weight.</>,
+            prev: 'set-row',
             next: 'session-settings',
             position: 'below',
           },
@@ -3843,7 +3852,7 @@ export default function WorkoutSession() {
             target: '[data-tutorial="session-settings"]',
             title: 'Display Settings',
             description: <>Tap the <span className="text-white font-semibold">gear icon</span> to customize your workout view. You can toggle <span className="text-white font-semibold">Goal Weight / Reps</span> columns on or off, and show or hide the <span className="text-white font-semibold">Set Type</span> column to keep your layout clean.</>,
-            prev: 'set-row',
+            prev: 'plate-calc',
             next: 'exercise-notes',
             position: 'below',
           },
@@ -4330,10 +4339,10 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
     ctx.fillText(new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }), W / 2, curY + 14);
     curY += 40;
 
-    // --- "Logged with RepLab" ---
+    // --- "Logged with REPLAB" ---
     ctx.font = `600 20px ${font}`;
     ctx.fillStyle = 'rgba(255,255,255,0.25)';
-    ctx.fillText('Logged with RepLab', W / 2, curY + 14);
+    ctx.fillText('Logged with REPLAB', W / 2, curY + 14);
 
     return canvas.toDataURL('image/png');
   }
@@ -4418,7 +4427,7 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
       });
       lines.push('');
     });
-    lines.push('Logged with RepLab');
+    lines.push('Logged with REPLAB');
     const text = lines.join('\n');
     if (navigator.share) {
       try { await navigator.share({ text }); } catch {}
