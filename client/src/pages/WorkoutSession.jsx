@@ -3321,7 +3321,11 @@ export default function WorkoutSession() {
           })
           .sort((a, b) => (byVolume ? b.volume - a.volume : b.weight - a.weight || b.reps - a.reps))
           .slice(0, 10);
-        return (
+        // Portal to document.body so the modal can sit above the full-screen
+        // overlay (also portaled to body at z-90). Without the portal it
+        // renders inside the React tree, which gets stacked below the body-
+        // level overlay regardless of z-index.
+        return createPortal(
           <div
             className="fixed inset-0 z-[110] flex items-center justify-center px-4"
             onClick={() => setPrModalExercise(null)}
@@ -3466,7 +3470,8 @@ export default function WorkoutSession() {
                 )}
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         );
       })()}
 
