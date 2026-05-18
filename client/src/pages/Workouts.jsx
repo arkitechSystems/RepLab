@@ -5233,20 +5233,6 @@ export default function Workouts() {
                 src="https://replab-videos.onrender.com/Gym cinematic promotion video.mp4"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
-              {!featuredUnlocked && (
-                <div
-                  className="absolute top-3 right-3 z-20 text-[10px] font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded-full"
-                  style={{
-                    background: 'rgba(0,0,0,0.55)',
-                    color: 'rgba(255,255,255,0.85)',
-                    border: '1px solid rgba(255,255,255,0.25)',
-                    backdropFilter: 'blur(8px)',
-                    WebkitBackdropFilter: 'blur(8px)',
-                  }}
-                >
-                  Coming Soon
-                </div>
-              )}
               <div className="relative z-10 p-5 flex flex-col justify-end h-full" style={{ minHeight: '126px' }}>
                 <div className="mt-auto">
                   <h2 className="text-2xl font-black text-white tracking-tight drop-shadow-lg">Featured Workouts</h2>
