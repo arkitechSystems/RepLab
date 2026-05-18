@@ -22,7 +22,6 @@ const SEED_EXERCISES = [
   { name: 'Dumbbell Shoulder Press', muscle: 'Shoulders', tags: ['press', 'vertical', 'dumbbell', 'compound'] },
   { name: 'Arnold Press', muscle: 'Shoulders', tags: ['press', 'vertical', 'dumbbell', 'compound', 'rotation'] },
   { name: 'Military Press', muscle: 'Shoulders', tags: ['press', 'vertical', 'barbell', 'compound'] },
-  { name: 'Lateral Raises', muscle: 'Shoulders', tags: ['raise', 'lateral', 'isolation', 'dumbbell'] },
   { name: 'Dumbbell Lateral Raise', muscle: 'Shoulders', tags: ['raise', 'lateral', 'isolation', 'dumbbell'] },
   { name: 'Cable Lateral Raise', muscle: 'Shoulders', tags: ['raise', 'lateral', 'isolation', 'cable'] },
   { name: 'Front Raise', muscle: 'Shoulders', tags: ['raise', 'front', 'isolation', 'dumbbell'] },
@@ -36,8 +35,7 @@ const SEED_EXERCISES = [
   { name: 'Lat Pulldown', muscle: 'Back', tags: ['pull', 'vertical', 'cable', 'compound', 'lats'] },
   { name: 'Wide-Grip Cable Pulldowns', muscle: 'Back', tags: ['pull', 'vertical', 'cable', 'compound', 'lats', 'wide'] },
   { name: 'Close-Grip Pulldown', muscle: 'Back', tags: ['pull', 'vertical', 'cable', 'compound', 'lats'] },
-  { name: 'Pull Ups', muscle: 'Back', tags: ['pull', 'vertical', 'bodyweight', 'compound', 'lats'] },
-  { name: 'Pull-Ups', muscle: 'Back', tags: ['pull', 'vertical', 'bodyweight', 'compound', 'lats'] },
+  { name: 'PULL-UP', muscle: 'Back', tags: ['pull', 'vertical', 'bodyweight', 'compound', 'lats'] },
   { name: 'Supinated Weighted Pull-Ups', muscle: 'Back', tags: ['pull', 'vertical', 'bodyweight', 'compound', 'lats', 'weighted'] },
   { name: 'Chin-Ups', muscle: 'Back', tags: ['pull', 'vertical', 'bodyweight', 'compound', 'lats', 'biceps'] },
   { name: 'Barbell Row', muscle: 'Back', tags: ['row', 'horizontal', 'barbell', 'compound'] },
@@ -59,12 +57,9 @@ const SEED_EXERCISES = [
 
   // === BICEPS ===
   { name: 'Barbell Curl', muscle: 'Biceps', tags: ['curl', 'barbell', 'isolation'] },
-  { name: 'Barbell Curls', muscle: 'Biceps', tags: ['curl', 'barbell', 'isolation'] },
   { name: 'EZ Bar Curl', muscle: 'Biceps', tags: ['curl', 'barbell', 'isolation'] },
   { name: 'Dumbbell Curl', muscle: 'Biceps', tags: ['curl', 'dumbbell', 'isolation'] },
-  { name: 'Hammer Curl (DB)', muscle: 'Biceps', tags: ['curl', 'dumbbell', 'isolation', 'hammer', 'brachialis'] },
-  { name: 'Hammer Curls', muscle: 'Biceps', tags: ['curl', 'dumbbell', 'isolation', 'hammer', 'brachialis'] },
-  { name: 'Hammer Curls (warm-up)', muscle: 'Biceps', tags: ['curl', 'dumbbell', 'isolation', 'hammer', 'brachialis'] },
+  { name: 'Dumbbell Hammer Curl', muscle: 'Biceps', tags: ['curl', 'dumbbell', 'isolation', 'hammer', 'brachialis'] },
   { name: 'Incline Dumbbell Curl', muscle: 'Biceps', tags: ['curl', 'dumbbell', 'isolation', 'incline'] },
   { name: 'Preacher Curl', muscle: 'Biceps', tags: ['curl', 'isolation', 'preacher'] },
   { name: 'Banded Preacher Curls', muscle: 'Biceps', tags: ['curl', 'isolation', 'preacher', 'band'] },
@@ -78,7 +73,6 @@ const SEED_EXERCISES = [
 
   // === TRICEPS ===
   { name: 'Cable Tricep Pushdown', muscle: 'Triceps', tags: ['pushdown', 'cable', 'isolation'] },
-  { name: 'Tricep Pushdowns', muscle: 'Triceps', tags: ['pushdown', 'cable', 'isolation'] },
   { name: 'Overhead Tricep Extension (rope)', muscle: 'Triceps', tags: ['extension', 'overhead', 'cable', 'isolation'] },
   { name: 'Overhead Triceps Extension', muscle: 'Triceps', tags: ['extension', 'overhead', 'isolation'] },
   { name: 'Tricep Extensions', muscle: 'Triceps', tags: ['extension', 'isolation'] },
@@ -99,7 +93,6 @@ const SEED_EXERCISES = [
   { name: 'Single Leg Leg Press', muscle: 'Quads', tags: ['press', 'machine', 'compound', 'unilateral'] },
   { name: 'Leg Extension', muscle: 'Quads', tags: ['extension', 'machine', 'isolation'] },
   { name: 'Leg Extensions', muscle: 'Quads', tags: ['extension', 'machine', 'isolation'] },
-  { name: 'Bulgarian Split Squats', muscle: 'Quads', tags: ['squat', 'dumbbell', 'compound', 'unilateral', 'lunge'] },
   { name: 'Bulgarian Split Squat', muscle: 'Quads', tags: ['squat', 'dumbbell', 'compound', 'unilateral', 'lunge'] },
   { name: 'Smith Machine Squat', muscle: 'Quads', tags: ['squat', 'machine', 'compound', 'bilateral'] },
   { name: 'Sissy Squat', muscle: 'Quads', tags: ['squat', 'bodyweight', 'isolation'] },
@@ -120,7 +113,6 @@ const SEED_EXERCISES = [
   { name: 'Cable Pull-Through', muscle: 'Hamstrings', tags: ['hinge', 'cable', 'compound'] },
 
   // === GLUTES ===
-  { name: 'Hip Thrust', muscle: 'Glutes', tags: ['thrust', 'barbell', 'compound'] },
   { name: 'Barbell Hip Thrust', muscle: 'Glutes', tags: ['thrust', 'barbell', 'compound'] },
   { name: 'Dumbbell Sumo Squat', muscle: 'Glutes', tags: ['squat', 'dumbbell', 'compound', 'sumo'] },
   { name: 'Sumo Deadlift', muscle: 'Glutes', tags: ['hinge', 'barbell', 'compound', 'sumo'] },
@@ -159,7 +151,6 @@ const SEED_EXERCISES = [
   { name: 'Cable Hip Adduction', muscle: 'Hips', tags: ['adduction', 'cable', 'isolation'] },
 
   // === CORE ===
-  { name: 'Planks', muscle: 'Core', tags: ['isometric', 'bodyweight'] },
   { name: 'Plank', muscle: 'Core', tags: ['isometric', 'bodyweight'] },
   { name: 'Hanging Leg Raises', muscle: 'Core', tags: ['raise', 'bodyweight', 'lower abs'] },
   { name: 'Cable Crunch', muscle: 'Core', tags: ['crunch', 'cable'] },
@@ -181,7 +172,6 @@ const SEED_EXERCISES = [
   // 'Incline Bench Press' and 'Dumbbell Shoulder Press' were originally
   // duplicated here from lines 5/22; removed to satisfy the
   // exercises_master_name_unique partial index on a fresh DB seed.
-  { name: 'Bench Press', muscle: 'Chest', tags: ['press', 'horizontal', 'barbell', 'compound'] },
   { name: 'Hammer Strength Shoulder Press', muscle: 'Shoulders', tags: ['press', 'vertical', 'machine', 'compound'] },
   { name: 'Mid Upper Chest Flyes', muscle: 'Chest', tags: ['fly', 'isolation', 'cable'] },
   { name: 'Banded Close-Grip DB Bench', muscle: 'Chest', tags: ['press', 'horizontal', 'dumbbell', 'compound', 'band'] },
@@ -224,6 +214,7 @@ const SEED_EXERCISES = [
   { name: 'Inverted Row', muscle: 'Back', tags: ['pull', 'horizontal', 'bodyweight', 'compound'] },
   { name: 'Push Press', muscle: 'Shoulders', tags: ['press', 'vertical', 'barbell', 'compound', 'explosive'] },
   { name: 'Glute-Ham Raise', muscle: 'Hamstrings', tags: ['compound', 'machine', 'bodyweight', 'glutes'] },
+  { name: 'Nordic Hamstring Curl', muscle: 'Hamstrings', tags: ['compound', 'bodyweight', 'eccentric'] },
 
   // === CORE additions ===
   { name: 'Pallof Press', muscle: 'Core', tags: ['anti-rotation', 'cable', 'isolation', 'stability'] },
