@@ -14,6 +14,7 @@ import { useTutorial } from '../context/TutorialContext';
 import UndoToast from '../components/UndoToast';
 import LoadingSpinnerOverlay from '../components/LoadingSpinnerOverlay';
 import { track } from '../utils/analytics';
+import useFocusTrap from '../hooks/useFocusTrap';
 
 const DAY_NAMES_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -1118,6 +1119,14 @@ export default function Workouts() {
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteResult, setInviteResult] = useState(null);
   const [pendingShares, setPendingShares] = useState([]);
+  // Focus traps for the various dialog modals rendered by this page.
+  const inviteTrapRef = useFocusTrap(!!inviteModal);
+  const prehabTrapRef = useFocusTrap(!!prehabPrompt);
+  const beginModalTrapRef = useFocusTrap(!!beginModal && !conflictInfo);
+  const conflictTrapRef = useFocusTrap(!!conflictInfo);
+  const addWorkoutTrapRef = useFocusTrap(!!addWorkoutModal && !addConflictInfo);
+  const addConflictTrapRef = useFocusTrap(!!addConflictInfo);
+  const shareTrapRef = useFocusTrap(!!shareModal);
   const [undoToast, setUndoToast] = useState(null); // { message, undoFn, commitFn }
   const [acceptedSharesMap, setAcceptedSharesMap] = useState({}); // { programId: { senderName, senderUsername, senderPhoto } }
   const [shareUsers, setShareUsers] = useState([]); // all users for share picker
@@ -2550,9 +2559,16 @@ export default function Workouts() {
         {renderBeginModals()}
         {/* Invite Workout Modal (week detail view) */}
         {inviteModal && (
-          <div className="fixed inset-0 z-50 flex flex-col" onClick={() => setInviteModal(null)}>
+          <div
+            className="fixed inset-0 z-50 flex flex-col"
+            onClick={() => setInviteModal(null)}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="workouts-invite-title"
+          >
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             <div
+              ref={inviteTrapRef}
               className="relative flex-1 flex flex-col mt-12 overflow-hidden animate-drop-down"
               style={{
                 background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
@@ -2570,7 +2586,7 @@ export default function Workouts() {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-[11px] uppercase font-light mb-2" style={{ letterSpacing: '0.3em', color: 'rgba(239,68,68,0.8)' }}>Partner Up</p>
-                    <h3 className="text-[22px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>INVITE TO WORKOUT</h3>
+                    <h3 id="workouts-invite-title" className="text-[22px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>INVITE TO WORKOUT</h3>
                   </div>
                   <button
                     onClick={() => setInviteModal(null)}
@@ -2803,9 +2819,16 @@ export default function Workouts() {
             Yes routes to the prehab session; No skips straight to the
             real workout via skipPrehab=true. */}
         {prehabPrompt && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center px-5" onClick={() => setPrehabPrompt(null)}>
+          <div
+            className="fixed inset-0 z-[110] flex items-center justify-center px-5"
+            onClick={() => setPrehabPrompt(null)}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="workouts-prehab-title"
+          >
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             <div
+              ref={prehabTrapRef}
               className="relative w-full max-w-sm overflow-hidden"
               style={{
                 background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
@@ -2817,7 +2840,7 @@ export default function Workouts() {
               <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25))' }} />
               <div className="p-5">
                 <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.3em' }}>Optional</p>
-                <h3 className="text-[20px] font-black text-white tracking-tight mb-2">WARM-UP</h3>
+                <h3 id="workouts-prehab-title" className="text-[20px] font-black text-white tracking-tight mb-2">WARM-UP</h3>
                 <p className="text-[13px] text-white/65 leading-relaxed mb-5">
                   Would you like to do the prehabilitation warm-up before this workout?
                 </p>
@@ -2855,9 +2878,16 @@ export default function Workouts() {
           </div>
         )}
         {beginModal && !conflictInfo && (
-          <div className={`fixed inset-0 flex items-center justify-center px-5 ${tutorial.active ? 'z-[200]' : 'z-50'}`} onClick={closeBeginModal}>
+          <div
+            className={`fixed inset-0 flex items-center justify-center px-5 ${tutorial.active ? 'z-[200]' : 'z-50'}`}
+            onClick={closeBeginModal}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="workouts-begin-title"
+          >
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             <div
+              ref={beginModalTrapRef}
               data-tutorial="begin-modal"
               className="relative w-full max-w-sm overflow-hidden"
               style={{
@@ -2876,7 +2906,7 @@ export default function Workouts() {
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <p className="text-[11px] uppercase font-light mb-2" style={{ letterSpacing: '0.3em', color: 'rgba(239,68,68,0.8)' }}>Schedule</p>
-                    <h3 className="text-[22px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>BEGIN PROGRAM</h3>
+                    <h3 id="workouts-begin-title" className="text-[22px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>BEGIN PROGRAM</h3>
                   </div>
                   <button
                     onClick={closeBeginModal}
@@ -2975,9 +3005,16 @@ export default function Workouts() {
         )}
 
         {conflictInfo && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center px-5" onClick={() => setConflictInfo(null)}>
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center px-5"
+            onClick={() => setConflictInfo(null)}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="workouts-conflict-title"
+          >
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             <div
+              ref={conflictTrapRef}
               className="relative w-full max-w-sm overflow-hidden"
               style={{
                 background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
@@ -2993,7 +3030,7 @@ export default function Workouts() {
 
               <div className="relative p-6">
                 <p className="text-[11px] uppercase font-light mb-2" style={{ letterSpacing: '0.3em', color: 'rgba(239,68,68,0.8)' }}>Warning</p>
-                <h3 className="text-[22px] font-black text-white tracking-tight mb-3" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>OVERWRITE<br/>WORKOUTS?</h3>
+                <h3 id="workouts-conflict-title" className="text-[22px] font-black text-white tracking-tight mb-3" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>OVERWRITE<br/>WORKOUTS?</h3>
                 <p className="text-[12px] text-white/50 font-light leading-relaxed mb-4">
                   {beginModal?.isFeatured
                     ? 'You already have workouts for these dates. Beginning this program will remove them from the calendar:'
@@ -3055,9 +3092,16 @@ export default function Workouts() {
     return (
       <>
         {addWorkoutModal && !addConflictInfo && (
-          <div className={`fixed inset-0 flex ${tutorial.active ? 'z-[200] items-center justify-center px-5' : 'z-50 items-start justify-center pt-24 px-5'}`} onClick={closeAddWorkoutModal}>
+          <div
+            className={`fixed inset-0 flex ${tutorial.active ? 'z-[200] items-center justify-center px-5' : 'z-50 items-start justify-center pt-24 px-5'}`}
+            onClick={closeAddWorkoutModal}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="workouts-add-title"
+          >
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             <div
+              ref={addWorkoutTrapRef}
               className={`relative w-full max-w-sm overflow-hidden ${tutorial.active ? '' : 'animate-drop-down'}`}
               style={{
                 background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
@@ -3075,7 +3119,7 @@ export default function Workouts() {
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <p className="text-[11px] uppercase font-light mb-2" style={{ letterSpacing: '0.3em', color: 'rgba(239,68,68,0.8)' }}>Calendar</p>
-                    <h3 className="text-[22px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>ADD WORKOUT</h3>
+                    <h3 id="workouts-add-title" className="text-[22px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>ADD WORKOUT</h3>
                   </div>
                   <button
                     onClick={closeAddWorkoutModal}
@@ -3168,9 +3212,16 @@ export default function Workouts() {
         )}
 
         {addConflictInfo && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center px-5" onClick={() => setAddConflictInfo(null)}>
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center px-5"
+            onClick={() => setAddConflictInfo(null)}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="workouts-add-conflict-title"
+          >
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             <div
+              ref={addConflictTrapRef}
               className="relative w-full max-w-sm overflow-hidden"
               style={{
                 background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
@@ -3186,7 +3237,7 @@ export default function Workouts() {
 
               <div className="relative p-6">
                 <p className="text-[11px] uppercase font-light mb-2" style={{ letterSpacing: '0.3em', color: 'rgba(239,68,68,0.8)' }}>Warning</p>
-                <h3 className="text-[22px] font-black text-white tracking-tight mb-3" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>OVERWRITE<br/>WORKOUT?</h3>
+                <h3 id="workouts-add-conflict-title" className="text-[22px] font-black text-white tracking-tight mb-3" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>OVERWRITE<br/>WORKOUT?</h3>
                 <p className="text-[12px] text-white/50 font-light leading-relaxed mb-3">
                   This will replace the current workout on:
                 </p>
@@ -4343,9 +4394,16 @@ export default function Workouts() {
 
         {/* Share Program Modal */}
         {shareModal && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setShareModal(null)}>
+          <div
+            className="fixed inset-0 z-50 flex items-end justify-center"
+            onClick={() => setShareModal(null)}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="workouts-share-title"
+          >
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             <div
+              ref={shareTrapRef}
               className="relative w-full overflow-hidden animate-drop-down"
               style={{
                 background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
@@ -4363,7 +4421,7 @@ export default function Workouts() {
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <p className="text-[11px] uppercase font-light mb-2" style={{ letterSpacing: '0.3em', color: 'rgba(239,68,68,0.8)' }}>Share</p>
-                    <h3 className="text-[22px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>SHARE PROGRAM</h3>
+                    <h3 id="workouts-share-title" className="text-[22px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>SHARE PROGRAM</h3>
                   </div>
                   <button
                     onClick={() => setShareModal(null)}
@@ -4473,9 +4531,16 @@ export default function Workouts() {
 
         {/* Invite Workout Modal (browse library) */}
         {inviteModal && (
-          <div className="fixed inset-0 z-50 flex flex-col" onClick={() => setInviteModal(null)}>
+          <div
+            className="fixed inset-0 z-50 flex flex-col"
+            onClick={() => setInviteModal(null)}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="workouts-invite-browse-title"
+          >
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             <div
+              ref={inviteTrapRef}
               className="relative flex-1 flex flex-col mt-12 overflow-hidden animate-drop-down"
               style={{
                 background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
@@ -4493,7 +4558,7 @@ export default function Workouts() {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-[11px] uppercase font-light mb-2" style={{ letterSpacing: '0.3em', color: 'rgba(239,68,68,0.8)' }}>Partner Up</p>
-                    <h3 className="text-[22px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>INVITE TO WORKOUT</h3>
+                    <h3 id="workouts-invite-browse-title" className="text-[22px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>INVITE TO WORKOUT</h3>
                   </div>
                   <button
                     onClick={() => setInviteModal(null)}
@@ -6029,6 +6094,7 @@ function MaxPushupsChallenge() {
   const [showOverwriteConfirm, setShowOverwriteConfirm] = useState(false);
   const [pendingValue, setPendingValue] = useState(null);
   const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0, ended: false });
+  const overwriteConfirmTrapRef = useFocusTrap(showOverwriteConfirm);
 
   // Countdown to Mar 28, 2026 midnight ET
   useEffect(() => {
@@ -6261,13 +6327,20 @@ function MaxPushupsChallenge() {
 
       {/* Overwrite confirmation modal */}
       {showOverwriteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-5" onClick={() => { setShowOverwriteConfirm(false); setPendingValue(null); }}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-5"
+          onClick={() => { setShowOverwriteConfirm(false); setPendingValue(null); }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="workouts-overwrite-score-title"
+        >
           <div className="absolute inset-0 bg-black/70" />
           <div
+            ref={overwriteConfirmTrapRef}
             className="relative w-full max-w-xs bg-wf-gray-900 border border-white/10 rounded-2xl p-5 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-base font-bold text-white text-center mb-2">Lower Score</h3>
+            <h3 id="workouts-overwrite-score-title" className="text-base font-bold text-white text-center mb-2">Lower Score</h3>
             <p className="text-wf-gray-400 text-sm text-center mb-5">
               Your current record is <span className="text-white font-bold">{myCurrentValue}</span> reps. You're about to replace it with <span className="text-orange-400 font-bold">{pendingValue}</span> reps. Are you sure?
             </p>
