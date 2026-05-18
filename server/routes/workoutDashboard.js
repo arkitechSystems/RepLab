@@ -29,7 +29,7 @@ function esc(str) {
 
 function clientLoginPage(error) {
   return `<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -60,12 +60,12 @@ function clientLoginPage(error) {
       ${error ? `<div class="error">${error}</div>` : ''}
       <form method="POST" action="/workouts/login">
         <div class="field">
-          <label>Email / Phone</label>
-          <input type="text" name="identifier" placeholder="Enter your email or phone" required autocomplete="email" />
+          <label for="client-login-identifier">Email / Phone</label>
+          <input id="client-login-identifier" type="text" name="identifier" placeholder="Enter your email or phone" required autocomplete="email" />
         </div>
         <div class="field">
-          <label>Password</label>
-          <input type="password" name="password" placeholder="Enter password" required autocomplete="current-password" />
+          <label for="client-login-password">Password</label>
+          <input id="client-login-password" type="password" name="password" placeholder="Enter password" required autocomplete="current-password" />
         </div>
         <button type="submit" class="btn-login">Sign In</button>
       </form>
@@ -77,7 +77,7 @@ function clientLoginPage(error) {
 
 function clientPage(title, body, user) {
   return `<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -102,19 +102,19 @@ function clientPage(title, body, user) {
       <svg id="sidebar-toggle-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition:transform 0.2s;"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
     </button>
   </div>
-  <div class="sidebar-section" onclick="toggleSection('workouts')">
+  <button class="sidebar-section" type="button" aria-expanded="false" onclick="toggleSection('workouts')">
     <span>Workouts</span>
     <svg class="chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
-  </div>
+  </button>
   <div class="sidebar-links" id="section-workouts">
     <a href="/workouts"${title === 'Dashboard' ? ' class="active"' : ''}>Dashboard</a>
     <a href="/workouts/create-workout"${title === 'Create a Workout' ? ' class="active"' : ''}>Create Workout</a>
     <a href="/workouts/my-workouts"${title === 'My Workouts' ? ' class="active"' : ''}>My Workouts</a>
   </div>
-  <div class="sidebar-section" onclick="toggleSection('history')">
+  <button class="sidebar-section" type="button" aria-expanded="false" onclick="toggleSection('history')">
     <span>History</span>
     <svg class="chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
-  </div>
+  </button>
   <div class="sidebar-links" id="section-history">
     <a href="/workouts/history"${title === 'Workout History' ? ' class="active"' : ''}>Workout History</a>
   </div>
@@ -248,16 +248,16 @@ ${error ? '<div class="glass" style="padding:14px 20px;margin-bottom:20px;border
 <form method="POST" action="/workouts/create-workout" id="workout-form">
 <div class="glass" style="padding:24px;border-radius:16px;margin-bottom:20px;">
   <div class="field">
-    <label>Workout Name <span style="color:#ef4444;">*</span></label>
-    <input type="text" name="workoutName" placeholder="e.g. Upper Body Push" required />
+    <label for="wd-cw-workout-name">Workout Name <span style="color:#ef4444;">*</span></label>
+    <input id="wd-cw-workout-name" type="text" name="workoutName" placeholder="e.g. Upper Body Push" required />
   </div>
   <div class="field">
-    <label>Description <span style="color:rgba(255,255,255,0.3);font-weight:400;font-size:11px;">(optional)</span></label>
-    <textarea name="description" placeholder="Brief description of this workout..." rows="2" style="resize:vertical;min-height:60px;"></textarea>
+    <label for="wd-cw-description">Description <span style="color:rgba(255,255,255,0.3);font-weight:400;font-size:11px;">(optional)</span></label>
+    <textarea id="wd-cw-description" name="description" placeholder="Brief description of this workout..." rows="2" style="resize:vertical;min-height:60px;"></textarea>
   </div>
   <div class="field">
-    <label>Program <span style="color:rgba(255,255,255,0.3);font-weight:400;font-size:11px;">(optional — leave blank to use default)</span></label>
-    <select name="programId">
+    <label for="wd-cw-program-id">Program <span style="color:rgba(255,255,255,0.3);font-weight:400;font-size:11px;">(optional — leave blank to use default)</span></label>
+    <select id="wd-cw-program-id" name="programId">
       <option value="">— No Program (standalone) —</option>
       ${programs.map(p => '<option value="' + p.id + '">' + esc(p.name) + '</option>').join('')}
     </select>
@@ -278,11 +278,11 @@ ${error ? '<div class="glass" style="padding:14px 20px;margin-bottom:20px;border
   <div class="glass" style="max-width:400px;width:90%;padding:28px;border-radius:16px;position:relative;">
     <h3 style="font-size:16px;font-weight:700;color:#fff;margin-bottom:16px;">Create Custom Exercise</h3>
     <div class="field">
-      <label>Exercise Name</label>
+      <label for="custom-ex-name">Exercise Name</label>
       <input type="text" id="custom-ex-name" placeholder="e.g. Cable Lateral Raise" />
     </div>
     <div class="field">
-      <label>Muscle Group</label>
+      <label for="custom-ex-muscle">Muscle Group</label>
       <select id="custom-ex-muscle">
         ${muscleGroups.map(g => '<option value="' + esc(g) + '">' + esc(g) + '</option>').join('')}
       </select>
@@ -721,16 +721,16 @@ router.get('/edit-workout/:id', clientAuth, async (req, res) => {
     <form method="POST" action="/workouts/edit-workout/${templateId}" id="workout-form">
     <div class="glass" style="padding:24px;border-radius:16px;margin-bottom:20px;">
       <div class="field">
-        <label>Workout Name <span style="color:#ef4444;">*</span></label>
-        <input type="text" name="workoutName" value="${esc(tmpl.name)}" required />
+        <label for="wd-ew-workout-name">Workout Name <span style="color:#ef4444;">*</span></label>
+        <input id="wd-ew-workout-name" type="text" name="workoutName" value="${esc(tmpl.name)}" required />
       </div>
       <div class="field">
-        <label>Description <span style="color:rgba(255,255,255,0.3);font-weight:400;font-size:11px;">(optional)</span></label>
-        <textarea name="description" rows="2" style="resize:vertical;min-height:60px;">${esc(tmpl.description || '')}</textarea>
+        <label for="wd-ew-description">Description <span style="color:rgba(255,255,255,0.3);font-weight:400;font-size:11px;">(optional)</span></label>
+        <textarea id="wd-ew-description" name="description" rows="2" style="resize:vertical;min-height:60px;">${esc(tmpl.description || '')}</textarea>
       </div>
       <div class="field">
-        <label>Program</label>
-        <select name="programId">
+        <label for="wd-ew-program-id">Program</label>
+        <select id="wd-ew-program-id" name="programId">
           <option value="">— No Program (standalone) —</option>
           ${programs.map(p => '<option value="' + p.id + '"' + (p.id === tmpl.program_id ? ' selected' : '') + '>' + esc(p.name) + '</option>').join('')}
         </select>
@@ -754,11 +754,11 @@ router.get('/edit-workout/:id', clientAuth, async (req, res) => {
       <div class="glass" style="max-width:400px;width:90%;padding:28px;border-radius:16px;position:relative;">
         <h3 style="font-size:16px;font-weight:700;color:#fff;margin-bottom:16px;">Create Custom Exercise</h3>
         <div class="field">
-          <label>Exercise Name</label>
+          <label for="custom-ex-name">Exercise Name</label>
           <input type="text" id="custom-ex-name" placeholder="e.g. Cable Lateral Raise" />
         </div>
         <div class="field">
-          <label>Muscle Group</label>
+          <label for="custom-ex-muscle">Muscle Group</label>
           <select id="custom-ex-muscle">
             ${muscleGroups.map(g => '<option value="' + esc(g) + '">' + esc(g) + '</option>').join('')}
           </select>
