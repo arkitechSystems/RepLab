@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { api, setApiToken, setAuthTokens, getApiToken } from '../api';
 import StickyHeader from '../components/StickyHeader';
 import SplashScreen from '../components/SplashScreen';
+import useFocusTrap from '../hooks/useFocusTrap';
 import { APP_VERSION } from '../version';
 import { getWorkoutColor } from '../utils/workoutColors';
 
@@ -292,6 +293,7 @@ export default function Profile() {
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordChanged, setPasswordChanged] = useState(false);
   const [showPhotoMenu, setShowPhotoMenu] = useState(false);
+  const photoMenuTrapRef = useFocusTrap(showPhotoMenu);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const fileInputRef = useRef(null);
   // Stats & Streak card moved to /test/brainstorm.
@@ -403,6 +405,7 @@ export default function Profile() {
   }
 
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
+  const deleteAccountTrapRef = useFocusTrap(showDeleteAccount);
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleteError, setDeleteError] = useState('');
@@ -1272,12 +1275,20 @@ export default function Profile() {
 
       {/* Photo Menu Modal */}
       {showPhotoMenu && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4" onClick={() => setShowPhotoMenu(false)}>
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center px-4"
+          onClick={() => setShowPhotoMenu(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="profile-photo-menu-title"
+        >
           <div className="absolute inset-0 bg-black/70" />
           <div
+            ref={photoMenuTrapRef}
             className="relative w-full max-w-xs bg-wf-gray-900 border border-white/10 rounded-2xl overflow-hidden shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
+            <h3 id="profile-photo-menu-title" className="sr-only">Profile Photo Options</h3>
             {user?.photoUrl ? (
               <>
                 <button
@@ -1326,9 +1337,17 @@ export default function Profile() {
 
       {/* Delete Account Confirmation Modal */}
       {showDeleteAccount && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4" onClick={() => setShowDeleteAccount(false)}>
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center px-4"
+          onClick={() => setShowDeleteAccount(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="profile-delete-title"
+          aria-describedby="profile-delete-desc"
+        >
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
           <div
+            ref={deleteAccountTrapRef}
             className="relative w-full max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
@@ -1338,8 +1357,8 @@ export default function Profile() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-bold text-white text-center">Delete Account</h3>
-              <p className="text-sm text-wf-gray-400 text-center mt-2">
+              <h3 id="profile-delete-title" className="text-lg font-bold text-white text-center">Delete Account</h3>
+              <p id="profile-delete-desc" className="text-sm text-wf-gray-400 text-center mt-2">
                 This will permanently delete your account and all your data including workouts, programs, and history. This cannot be undone.
               </p>
 

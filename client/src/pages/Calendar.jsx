@@ -7,6 +7,7 @@ import { getWorkoutColor } from '../utils/workoutColors';
 import StickyHeader from '../components/StickyHeader';
 import LoadingSpinnerOverlay from '../components/LoadingSpinnerOverlay';
 import ConfirmOverwriteModal from '../components/ConfirmOverwriteModal';
+import useFocusTrap from '../hooks/useFocusTrap';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const FULL_DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -50,6 +51,12 @@ export default function Calendar() {
   // copy with confirmOverwrite: true. Cleared on confirm or cancel.
   const [overwriteConfirm, setOverwriteConfirm] = useState(null); // { details, retry: { targetDate, useReps } }
   const [startEmptyStep, setStartEmptyStep] = useState(null); // 'overwrite-options' | 'name-prompt' | null
+  // Focus traps for the various modal dialogs rendered on this page.
+  const pickerTrapRef = useFocusTrap(!!editingDay);
+  const restDayTrapRef = useFocusTrap(restDayPrompt);
+  const clearCalendarTrapRef = useFocusTrap(clearCalendarConfirm);
+  const clearCompletedTrapRef = useFocusTrap(clearCalendarCompletedWarn);
+  const copyTrapRef = useFocusTrap(!!(copySource && copyStep));
   const [startEmptyName, setStartEmptyName] = useState('');
   const [startEmptySaving, setStartEmptySaving] = useState(false);
   const navigate = useNavigate();
@@ -1198,9 +1205,16 @@ export default function Calendar() {
         const isCurrentRest = currentWorkout?.isRest;
         const hasWorkout = currentWorkout && !isCurrentRest && currentWorkout.templateId;
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center px-4" onClick={() => setEditingDay(null)}>
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center px-4"
+            onClick={() => setEditingDay(null)}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cal-picker-title"
+          >
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
             <div
+              ref={pickerTrapRef}
               className="relative w-full max-w-lg bg-wf-gray-900 border border-white/10 rounded-2xl shadow-2xl max-h-[75vh] flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
@@ -1209,7 +1223,7 @@ export default function Calendar() {
               <div className="px-5 pt-2 pb-3 border-b border-white/10 shrink-0">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-bold text-white">
+                    <h3 id="cal-picker-title" className="text-lg font-bold text-white">
                       {hasWorkout ? 'Change Workout' : 'Assign Workout'}
                     </h3>
                     <p className="text-sm text-wf-gray-400 mt-0.5">
@@ -1442,9 +1456,16 @@ export default function Calendar() {
 
       {/* Rest Day Options Modal */}
       {restDayPrompt && editingDay && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4" onClick={() => setRestDayPrompt(false)}>
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center px-4"
+          onClick={() => setRestDayPrompt(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cal-restday-title"
+        >
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
           <div
+            ref={restDayTrapRef}
             className="relative w-full max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
@@ -1452,7 +1473,7 @@ export default function Calendar() {
             <div className="px-5 pt-4 pb-3 border-b border-white/10">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-bold text-white">Rest Day</h3>
+                  <h3 id="cal-restday-title" className="text-lg font-bold text-white">Rest Day</h3>
                   <p className="text-sm text-wf-gray-400 mt-0.5">
                     {DAY_NAMES[editingDay.getDay()]}, {format(editingDay, 'MMM d')}
                   </p>
@@ -1551,9 +1572,16 @@ export default function Calendar() {
 
       {/* Clear Calendar Confirmation Modal */}
       {clearCalendarConfirm && editingDay && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4" onClick={() => setClearCalendarConfirm(false)}>
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center px-4"
+          onClick={() => setClearCalendarConfirm(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cal-clear-title"
+        >
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
           <div
+            ref={clearCalendarTrapRef}
             className="relative w-full max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
@@ -1563,7 +1591,7 @@ export default function Calendar() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-bold text-white text-center">Clear Calendar</h3>
+              <h3 id="cal-clear-title" className="text-lg font-bold text-white text-center">Clear Calendar</h3>
               <p className="text-sm text-wf-gray-400 text-center mt-2">
                 This will remove all workouts from <span className="text-white font-medium">{format(editingDay, 'MMM d')}</span> onward.
               </p>
@@ -1589,9 +1617,16 @@ export default function Calendar() {
 
       {/* Second confirmation — only shown when the cleared range contains completed sessions */}
       {clearCalendarCompletedWarn && editingDay && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center px-4" onClick={() => setClearCalendarCompletedWarn(false)}>
+        <div
+          className="fixed inset-0 z-[110] flex items-center justify-center px-4"
+          onClick={() => setClearCalendarCompletedWarn(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cal-clear-completed-title"
+        >
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
           <div
+            ref={clearCompletedTrapRef}
             className="relative w-full max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
@@ -1601,7 +1636,7 @@ export default function Calendar() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-bold text-white text-center">Clear Calendar?</h3>
+              <h3 id="cal-clear-completed-title" className="text-lg font-bold text-white text-center">Clear Calendar?</h3>
               <p className="text-sm text-wf-gray-400 text-center mt-2">
                 Clearing the calendar removes the scheduled-workout assignments for these days. Your completed sessions and personal records will not be affected.
               </p>
@@ -1639,9 +1674,16 @@ export default function Calendar() {
 
       {/* Copy Workout Modal */}
       {copySource && copyStep && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4" onClick={cancelCopy}>
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center px-4"
+          onClick={cancelCopy}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cal-copy-title"
+        >
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
           <div
+            ref={copyTrapRef}
             className="relative w-full max-w-lg bg-wf-gray-900 border border-white/10 rounded-2xl shadow-2xl max-h-[75vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
@@ -1649,7 +1691,7 @@ export default function Calendar() {
             <div className="px-5 pt-4 pb-3 border-b border-white/10 shrink-0">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-bold text-white">
+                  <h3 id="cal-copy-title" className="text-lg font-bold text-white">
                     {copyStep === 'pick-day' && 'Copy Workout'}
                     {copyStep === 'confirm-overwrite' && 'Overwrite Workout?'}
                     {copyStep === 'use-reps' && 'Use Previous Reps?'}
