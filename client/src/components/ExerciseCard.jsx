@@ -305,13 +305,9 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                 }}
                 aria-label={`Open plate calculator for ${exercise.name}`}
                 title="Plate calculator"
-                className="h-7 w-7 rounded-lg flex items-center justify-center active:scale-95 transition-all bg-wf-red/10 border border-wf-red/20"
+                className="h-7 px-2.5 rounded-lg flex items-center justify-center active:scale-95 transition-all bg-wf-red/10 border border-wf-red/20"
               >
-                <svg className="w-3.5 h-3.5 text-wf-red" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <circle cx="6" cy="12" r="3" />
-                  <line x1="9" y1="12" x2="15" y2="12" />
-                  <circle cx="18" cy="12" r="3" />
-                </svg>
+                <span className="text-[10px] font-semibold text-wf-red">PC</span>
               </button>
             )}
             {onShowPRs && (

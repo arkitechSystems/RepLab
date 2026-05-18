@@ -4111,7 +4111,7 @@ export default function WorkoutSession() {
           'plate-calc': {
             target: '[data-tutorial="plate-calc"]',
             title: 'Plate Calculator',
-            description: <>Not sure how to load the bar? The <span className="text-white font-semibold">⚖ icon</span> in the card header opens a plate calculator that shows exactly which plates to put on each side. You can also <span className="text-white font-semibold">long-press any weight input</span> on a set row to open the same calculator pre-filled with that set's weight.</>,
+            description: <>Not sure how to load the bar? The <span className="text-white font-semibold">PC button</span> in the card header opens a plate calculator that shows exactly which plates to put on each side. You can also <span className="text-white font-semibold">long-press any weight input</span> on a set row to open the same calculator pre-filled with that set's weight.</>,
             prev: 'set-row',
             next: 'full-screen',
             position: 'below',
