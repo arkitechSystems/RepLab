@@ -257,7 +257,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
 
   return (
     <>
-    <div ref={cardRef} data-tutorial={dataTutorial ? 'exercise-card' : undefined} className={`${isDarkTheme ? 'exercise-card-transparent-test' : 'exercise-card-light-test'} glass-card overflow-hidden${fullScreen ? ' min-h-full' : ' rounded-xl mb-3'}${EXERCISE_CARD_GRADIENT_BORDER && !isDarkTheme && !fullScreen ? ' exercise-card-gradient-border' : ''}`} style={{ position: 'relative' }}>
+    <div ref={cardRef} data-tutorial={dataTutorial ? 'exercise-card' : undefined} className={`${isDarkTheme ? 'exercise-card-transparent-test' : 'exercise-card-light-test'} glass-card${fullScreen ? ' min-h-full' : ' overflow-hidden rounded-xl mb-3'}${EXERCISE_CARD_GRADIENT_BORDER && !isDarkTheme && !fullScreen ? ' exercise-card-gradient-border' : ''}`} style={{ position: 'relative' }}>
       {/* Viewfinder ⛶ row — sits slightly above the icon cluster
           (PRs / ⚖ / Demo) in the card header. Tap to enter full-screen
           mode for this exercise. Hidden in template mode and when the
@@ -282,8 +282,11 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
           </button>
         </div>
       )}
-      {/* Exercise Header — name + demo button */}
-      <div data-tutorial={dataTutorial} className="px-4 py-3 flex items-center justify-between" style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '3px double rgba(255,255,255,0.15)' }}>
+      {/* Exercise Header — name + plate-calc + PRs + demo. Sticky so it
+          stays pinned at the top of the scroll viewport while the user
+          scrolls long set lists, especially valuable in full-screen mode
+          where every set might require referring back to the name + PRs. */}
+      <div data-tutorial={dataTutorial} className="px-4 py-3 flex items-center justify-between sticky top-0 z-20 backdrop-blur-md" style={{ background: isDarkTheme ? 'rgba(20,20,20,0.9)' : 'rgba(242,242,242,0.9)', borderBottom: '3px double rgba(255,255,255,0.15)' }}>
         <div className="min-w-0">
           <span className="text-[17px] font-bold text-white">{exercise.name}</span>
           <div className="text-[10px] text-wf-gray-500 mt-0.5">
