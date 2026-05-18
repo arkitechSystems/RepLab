@@ -89,6 +89,7 @@ const ProgressiveOverloadTest = lazyWithRetry(() => import('./pages/ProgressiveO
 const LandingPageTest = lazyWithRetry(() => import('./pages/LandingPageTest'));
 const LandingPageAuroraTest = lazyWithRetry(() => import('./pages/LandingPageAuroraTest'));
 const RequestTrainerTest = lazyWithRetry(() => import('./pages/RequestTrainerTest'));
+const MuscleDiagramsTest = lazyWithRetry(() => import('./pages/MuscleDiagramsTest'));
 const PlateCalculator = lazyWithRetry(() => import('./pages/PlateCalculator'));
 const Progress = lazyWithRetry(() => import('./pages/Progress'));
 const Community = lazyWithRetry(() => import('./pages/Community'));
@@ -293,6 +294,7 @@ export default function App() {
         <Route path="/test/landing" element={<TestRoute><LandingPageTest /></TestRoute>} />
         <Route path="/test/landing-aurora" element={<TestRoute><LandingPageAuroraTest /></TestRoute>} />
         <Route path="/test/request-trainer" element={<TestRoute><RequestTrainerTest /></TestRoute>} />
+        <Route path="/test/muscle-diagrams" element={<TestRoute><MuscleDiagramsTest /></TestRoute>} />
       </Route>
 
       <Route path="*" element={<CatchAllRedirect />} />
