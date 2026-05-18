@@ -17,11 +17,30 @@ function generateParticles() {
   });
 }
 
+const PB_TUTORIAL_STORAGE_KEY = 'replab.pb-celebration-tutorial-seen';
+
 export default function PBCelebration({ prs, onDismiss }) {
   const [dismissing, setDismissing] = useState(false);
   const particles = useMemo(() => generateParticles(), []);
   const onDismissRef = useRef(onDismiss);
   onDismissRef.current = onDismiss;
+
+  // Show the one-shot helper caption the very first time the celebration
+  // fires for this user. Decide synchronously so the caption is present on
+  // initial render, then write the flag so it never appears again.
+  const [showCaption] = useState(() => {
+    try {
+      return !localStorage.getItem(PB_TUTORIAL_STORAGE_KEY);
+    } catch (_) {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    if (showCaption) {
+      try { localStorage.setItem(PB_TUTORIAL_STORAGE_KEY, '1'); } catch (_) {}
+    }
+  }, [showCaption]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -89,6 +108,13 @@ export default function PBCelebration({ prs, onDismiss }) {
                 </div>
               ))}
             </div>
+
+            {/* One-shot helper caption — only the first ever PR celebration */}
+            {showCaption && (
+              <p className="mt-2 text-[11px] text-amber-200/70 leading-snug">
+                REPLAB just tracked this as a personal record.
+              </p>
+            )}
           </div>
         </div>
       </div>
