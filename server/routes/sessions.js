@@ -2,6 +2,7 @@ import { Router } from 'express';
 import db from '../db.js';
 import pool from '../dbPool.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { notifyPRCelebration, notifyFirstWorkout } from '../postSessionPushes.js';
 
 const router = Router();
 
@@ -210,6 +211,14 @@ router.put('/complete', authMiddleware, async (req, res) => {
     const result = await db.toggleSessionComplete(req.userId, templateId, date, completed);
     if (!result) return res.status(404).json({ error: 'Session not found' });
     res.json({ success: true });
+
+    // Post-complete pushes — fire-and-forget after the response goes out so
+    // the client never blocks on FCM. Only run when transitioning to
+    // completed; uncompleting silently no-ops.
+    if (completed === true) {
+      notifyPRCelebration(req.userId, result.id).catch(() => {});
+      notifyFirstWorkout(req.userId).catch(() => {});
+    }
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });

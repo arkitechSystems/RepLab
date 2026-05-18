@@ -46,6 +46,7 @@ import { sendDailySummaryEmail } from './email.js';
 import { userGuidePage } from './userGuide.js';
 import { startIdleReminderScheduler } from './pushScheduler.js';
 import { startStreakReminderScheduler } from './streakReminderScheduler.js';
+import { startWeeklySummaryScheduler } from './weeklySummaryScheduler.js';
 
 // In-memory error log for admin dashboard
 export const errorLog = [];
@@ -365,8 +366,11 @@ if (process.env.NODE_ENV !== 'test') {
 
         // Idle-session push reminders. Dormant until FCM_SERVICE_ACCOUNT_JSON is set.
         startIdleReminderScheduler();
-        // Streak-protection reminder. Same dormancy rule.
+        // Daily workout reminder (streak-protection + non-streak nudge,
+        // fires at each user's personalized workout time). Same dormancy rule.
         startStreakReminderScheduler();
+        // Weekly summary digest (Sunday 6–8 PM local). Same dormancy rule.
+        startWeeklySummaryScheduler();
       });
     })
     .catch((err) => {

@@ -522,6 +522,13 @@ export default async function initDb() {
   // the scheduler doesn't double-send across overlapping ticks. 18h cooldown
   // matches the daily-evening cadence.
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_streak_reminder_at TIMESTAMPTZ`);
+  // First-workout celebration push dedup. Set once when the user marks
+  // their first session complete; checked in postSessionPushes.notifyFirstWorkout
+  // so the welcome push fires exactly once per user.
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS welcomed_at TIMESTAMPTZ`);
+  // Weekly summary push cooldown. Set when the Sunday-evening scheduler
+  // sends the weekly digest; prevents re-firing within 7 days.
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_weekly_summary_at TIMESTAMPTZ`);
 
   // Programs that run cardio acceleration between sets (Jim Stoppani-style
   // conditioning). Opt-in per program; the WorkoutSession UI reads this flag
