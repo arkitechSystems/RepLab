@@ -184,12 +184,14 @@ export default function WorkoutSession() {
 
     const targetMap = {
       'begin-workout': '[data-tutorial="begin-workout-btn"]',
+      'exit-workout': '[data-tutorial="exit-workout"]',
       timer: '[data-tutorial="workout-timer"]',
       rest: '[data-tutorial="rest-timer"]',
       'exercise-card': '[data-tutorial="exercise-card"]',
       'exercise-header': '[data-tutorial="move-buttons"]',
       'swap-exercise': '[data-tutorial="swap-button"]',
       'add-delete-exercise': '[data-tutorial="add-delete-buttons"]',
+      'demo-button': '[data-tutorial="demo-button"]',
       'set-controls': '[data-tutorial="set-controls"]',
       'set-row': '[data-tutorial="set-row"]',
       'session-settings': '[data-tutorial="session-settings"]',
@@ -230,7 +232,7 @@ export default function WorkoutSession() {
         // scroll so the top is visible just below the sticky header rather than
         // centering (which can cause the tooltip to overlap the spotlight).
         const elRect = el.getBoundingClientRect();
-        const exerciseCardSteps = ['exercise-header', 'swap-exercise', 'add-delete-exercise', 'set-controls', 'set-row', 'exercise-notes'];
+        const exerciseCardSteps = ['exercise-header', 'swap-exercise', 'add-delete-exercise', 'demo-button', 'set-controls', 'set-row', 'exercise-notes'];
         const isExerciseCardStep = exerciseCardSteps.includes(tutorialTip);
         if (tutorialTip === 'exercise-card') {
           // Scroll the exercise card header to the very top of the viewport
@@ -355,7 +357,7 @@ export default function WorkoutSession() {
     if (tutorialMode) {
       setTutorialTip(null);
       startTimer();
-      setTimeout(() => setTutorialTip('timer'), 600);
+      setTimeout(() => setTutorialTip('exit-workout'), 600);
       return;
     }
     const sessionDate = parseDateLocal(date);
@@ -1960,7 +1962,7 @@ export default function WorkoutSession() {
       )}
       {/* Back button + Day navigation arrows */}
       <div className="px-4 pt-6 flex items-center justify-between">
-        <button onClick={() => tutorialMode ? navigate('/') : guardedNavigate(() => navigate(-1))} className="flex items-center gap-1 text-[11px] uppercase font-bold mb-2 active:opacity-70" style={{ color: 'rgba(239,68,68,0.9)', letterSpacing: '0.2em' }}>
+        <button data-tutorial="exit-workout" onClick={() => tutorialMode ? navigate('/') : guardedNavigate(() => navigate(-1))} className="flex items-center gap-1 text-[11px] uppercase font-bold mb-2 active:opacity-70" style={{ color: 'rgba(239,68,68,0.9)', letterSpacing: '0.2em' }}>
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>
@@ -2826,11 +2828,19 @@ export default function WorkoutSession() {
             position: 'below',
             interactive: true, // allow clicking the actual button
           },
+          'exit-workout': {
+            target: '[data-tutorial="exit-workout"]',
+            title: 'Leaving Mid-Workout',
+            description: <>Tap <span className="text-white font-semibold">Back</span> anytime — REPLAB auto-saves as you go. Your sets stay on the day's card and you can pick up exactly where you left off.</>,
+            prev: null, // can't go back to begin-workout (already tapped)
+            next: 'timer',
+            position: 'below',
+          },
           timer: {
             target: '[data-tutorial="workout-timer"]',
             title: 'Workout Timer',
             description: <>This timer tracks your total workout time. To the far right, use the <span className="text-white font-semibold">pop-out</span> button to float the timer on screen as you scroll, or the <span className="text-white font-semibold">lock toggle</span> to keep the timer visible as you scroll down.</>,
-            prev: null, // can't go back to begin-workout (already tapped)
+            prev: 'exit-workout',
             next: 'rest',
             position: 'below',
           },
@@ -2870,8 +2880,16 @@ export default function WorkoutSession() {
           'add-delete-exercise': {
             target: '[data-tutorial="add-delete-buttons"]',
             title: 'Add & Remove Exercises',
-            description: <>The <span className="text-white font-semibold">plus button</span> adds a new exercise below this one. The <span className="text-white font-semibold">X button</span> removes this exercise from the workout entirely. Tap the exercise name to view a demo video.</>,
+            description: <>The <span className="text-white font-semibold">plus button</span> adds a new exercise below this one. The <span className="text-white font-semibold">X button</span> removes this exercise from the workout entirely.</>,
             prev: 'swap-exercise',
+            next: 'demo-button',
+            position: 'below',
+          },
+          'demo-button': {
+            target: '[data-tutorial="demo-button"]',
+            title: 'Watch the Movement',
+            description: <>Not sure on form? Tap <span className="text-white font-semibold">Demo</span> in the card header to play the exercise video right inside the card.</>,
+            prev: 'add-delete-exercise',
             next: 'set-controls',
             position: 'below',
           },
@@ -2879,7 +2897,7 @@ export default function WorkoutSession() {
             target: '[data-tutorial="set-controls"]',
             title: 'Add & Remove Sets',
             description: <>Tap <span className="text-white font-semibold">Add Set</span> to add another set to this exercise. Tap <span className="text-white font-semibold">Remove</span> to delete the last set. Long-press any set row to delete a specific set.</>,
-            prev: 'add-delete-exercise',
+            prev: 'demo-button',
             next: 'set-row',
             position: 'below',
           },
@@ -2894,7 +2912,7 @@ export default function WorkoutSession() {
           'session-settings': {
             target: '[data-tutorial="session-settings"]',
             title: 'Display Settings',
-            description: <>Tap the <span className="text-white font-semibold">gear icon</span> to customize your workout view. You can toggle <span className="text-white font-semibold">Goal Weight / Reps</span> columns on or off, and show or hide the <span className="text-white font-semibold">Set Type</span> column to keep your layout clean.</>,
+            description: <>Tap the <span className="text-white font-semibold">gear icon</span> to toggle <span className="text-white font-semibold">Goal Weight / Reps</span>, <span className="text-white font-semibold">Set Type</span>, <span className="text-white font-semibold">Light / Dark Cards</span>, and <span className="text-white font-semibold">Full-Screen Mode</span> on the fly.</>,
             prev: 'set-row',
             next: 'exercise-notes',
             position: 'below',
