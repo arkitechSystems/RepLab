@@ -9,7 +9,8 @@ function isPhone(value) {
 
 const REFERRAL_OPTIONS = [
   { value: '', label: 'Select one...' },
-  { value: 'facebook', label: 'Facebook / Instagram Ad' },
+  { value: 'facebook', label: 'Facebook' },
+  { value: 'instagram', label: 'Instagram' },
   { value: 'youtube', label: 'YouTube Ad' },
   { value: 'tiktok', label: 'TikTok' },
   { value: 'google', label: 'Google Search' },
