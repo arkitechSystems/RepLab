@@ -69,7 +69,7 @@ router.post('/generate-workout', authMiddleware, async (req, res) => {
       }
     } catch {}
 
-    const prompt = `You are a certified personal trainer creating a workout for a user of the RepLab fitness app.
+    const prompt = `You are a certified personal trainer creating a workout for a user of the REPLAB fitness app.
 
 User Profile:
 - Goal: ${safeGoal}
@@ -169,7 +169,7 @@ router.post('/edit-workout', authMiddleware, async (req, res) => {
 
     const safeInstruction = sanitizePromptInput(instruction, 500);
 
-    const prompt = `You are a certified personal trainer helping edit a workout in the RepLab fitness app.
+    const prompt = `You are a certified personal trainer helping edit a workout in the REPLAB fitness app.
 
 Current workout:
 ${JSON.stringify(workout, null, 2)}
@@ -260,7 +260,7 @@ router.post('/suggest-swap', authMiddleware, async (req, res) => {
     const safeExerciseName = sanitizePromptInput(exerciseName, 100);
     const safeReason = sanitizePromptInput(reason, 200);
 
-    const prompt = `You are a certified personal trainer helping a user of the RepLab fitness app swap an exercise mid-workout.
+    const prompt = `You are a certified personal trainer helping a user of the REPLAB fitness app swap an exercise mid-workout.
 
 The user wants to replace: "${safeExerciseName}"
 ${safeReason ? `Reason: ${safeReason}` : 'Reason: equipment unavailable'}

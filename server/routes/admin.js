@@ -261,7 +261,7 @@ function adminLoginPage(error, customContent) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/jpeg" href="/RepLabLogo4.jpg">
   <link rel="apple-touch-icon" href="/RepLabLogo4.jpg">
-  <title>RepLab Admin — Login</title>
+  <title>REPLAB Admin — Login</title>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     ${DASHBOARD_CSS}
@@ -307,7 +307,7 @@ function adminPage(title, body) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/jpeg" href="/RepLabLogo4.jpg">
   <link rel="apple-touch-icon" href="/RepLabLogo4.jpg">
-  <title>RepLab Admin — ${title}</title>
+  <title>REPLAB Admin — ${title}</title>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>${DASHBOARD_CSS}</style>
 </head>
@@ -645,7 +645,7 @@ router.get('/', adminAuth, async (req, res) => {
   <div class="header" style="display:flex;justify-content:space-between;align-items:flex-start;">
     <div>
       <h1>Admin Dashboard</h1>
-      <p>RepLab administration panel</p>
+      <p>REPLAB administration panel</p>
     </div>
     <div style="text-align:right;">
       <div style="font-size:14px;font-weight:700;color:#fff;">v${appVersion}</div>
@@ -1212,7 +1212,7 @@ router.get('/users', adminAuth, async (req, res) => {
     <tbody>${rows}</tbody>
   </table>
   </div>
-  ${helpBlock('This page shows every registered user on RepLab, excluding demo accounts. Each row displays the information the user provided during signup, including their name, email or phone, username, zip code, gender, referral source, referral code, UTM marketing parameters (captured from ad links), their signup device and browser, the city and state detected from their IP address, and the exact date and time they created their account. You can delete a user by clicking the X icon in the Actions column — this permanently removes their account and all associated data including programs, workouts, sessions, and personal records. Use the Print button to save a PDF snapshot, Export to Excel to download a CSV file, or Fullscreen Table to expand the table for easier viewing on smaller screens. The table scrolls horizontally on mobile devices. All timestamps are shown in Central Time (CT).')}`));
+  ${helpBlock('This page shows every registered user on REPLAB, excluding demo accounts. Each row displays the information the user provided during signup, including their name, email or phone, username, zip code, gender, referral source, referral code, UTM marketing parameters (captured from ad links), their signup device and browser, the city and state detected from their IP address, and the exact date and time they created their account. You can delete a user by clicking the X icon in the Actions column — this permanently removes their account and all associated data including programs, workouts, sessions, and personal records. Use the Print button to save a PDF snapshot, Export to Excel to download a CSV file, or Fullscreen Table to expand the table for easier viewing on smaller screens. The table scrolls horizontally on mobile devices. All timestamps are shown in Central Time (CT).')}`));
     }
 
     res.json({ count: users.length, users });
@@ -1377,7 +1377,7 @@ router.get('/analytics', adminAuth, async (req, res) => {
     <tbody>${recentRows || '<tr><td colspan="4" style="text-align:center; color:rgba(255,255,255,0.3);">No sessions yet</td></tr>'}</tbody>
   </table>
   </div>
-  ${helpBlock('Session Analytics gives you a high-level view of how your users are engaging with RepLab. Total Workouts counts every completed workout session across all users. Active Users shows unique users who have completed at least one workout. This Week and This Month filter those counts to recent time periods so you can spot trends. The Most Active Users table ranks users by how many workouts they have completed, helping you identify your power users. Most Popular Workouts shows which workout templates are being used most frequently, which can inform which types of programs to create more of. Recent Activity is a live feed of the last 20 workout sessions logged, showing who worked out, what they did, whether they completed it, and when. Demo accounts are excluded from all calculations.')}
+  ${helpBlock('Session Analytics gives you a high-level view of how your users are engaging with REPLAB. Total Workouts counts every completed workout session across all users. Active Users shows unique users who have completed at least one workout. This Week and This Month filter those counts to recent time periods so you can spot trends. The Most Active Users table ranks users by how many workouts they have completed, helping you identify your power users. Most Popular Workouts shows which workout templates are being used most frequently, which can inform which types of programs to create more of. Recent Activity is a live feed of the last 20 workout sessions logged, showing who worked out, what they did, whether they completed it, and when. Demo accounts are excluded from all calculations.')}
     `));
   } catch (err) {
     console.error(err);
@@ -1521,7 +1521,7 @@ router.get('/pro-waiting-list', adminAuth, async (req, res) => {
     <tbody>${tableRows || '<tr><td colspan="6" style="text-align:center;color:rgba(255,255,255,0.3);">No one on the list yet</td></tr>'}</tbody>
   </table>
   </div>
-  ${helpBlock('Every email submitted via the public /waiting-list page lands here. The Plan column resolves automatically: if the email matches an existing account we join to users.plan and show Free / Pro / Elite. If the email isn\'t tied to an account it shows "No Account" — those are leads who signed up email-only and have not yet created a RepLab account. Source distinguishes "Signed In" (joined while authenticated) from "Email Only" (anonymous). Re-submitting from the same email is idempotent — it never creates duplicates.')}`));
+  ${helpBlock('Every email submitted via the public /waiting-list page lands here. The Plan column resolves automatically: if the email matches an existing account we join to users.plan and show Free / Pro / Elite. If the email isn\'t tied to an account it shows "No Account" — those are leads who signed up email-only and have not yet created a REPLAB account. Source distinguishes "Signed In" (joined while authenticated) from "Email Only" (anonymous). Re-submitting from the same email is idempotent — it never creates duplicates.')}`));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
@@ -1620,7 +1620,7 @@ router.get('/referrals', adminAuth, async (req, res) => {
   <div class="glass" style="padding:24px;">
     ${bars || '<p style="color:rgba(255,255,255,0.3);text-align:center;">No referral data yet</p>'}
   </div>
-  ${helpBlock('Referral Breakdown shows where your users discovered RepLab. This data comes from the "How did you hear about us?" dropdown on the signup form. Each bar represents a referral source with its user count and percentage of total signups. Sources include Facebook/Instagram Ad, YouTube Ad, TikTok, Google Search, Friend/Word of Mouth (which also captures who referred them), and Other (with a custom text field). Users who selected "Friend" will show as "Friend: [name]" if they provided a referral name. Use this data to understand which marketing channels are driving the most signups and allocate your ad spend accordingly. If "Unknown" has a high count, those are users who signed up before the referral field was added or skipped it. UTM parameters from ad links are tracked separately in the User Sign Ups table for more granular campaign-level attribution.')}`));
+  ${helpBlock('Referral Breakdown shows where your users discovered REPLAB. This data comes from the "How did you hear about us?" dropdown on the signup form. Each bar represents a referral source with its user count and percentage of total signups. Sources include Facebook/Instagram Ad, YouTube Ad, TikTok, Google Search, Friend/Word of Mouth (which also captures who referred them), and Other (with a custom text field). Users who selected "Friend" will show as "Friend: [name]" if they provided a referral name. Use this data to understand which marketing channels are driving the most signups and allocate your ad spend accordingly. If "Unknown" has a high count, those are users who signed up before the referral field was added or skipped it. UTM parameters from ad links are tracked separately in the User Sign Ups table for more granular campaign-level attribution.')}`));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
@@ -1728,7 +1728,7 @@ router.get('/workouts', adminAuth, async (req, res) => {
     <tbody>${rows || '<tr><td colspan="6" style="text-align:center;color:rgba(255,255,255,0.3);">No programs yet</td></tr>'}</tbody>
   </table>
   </div>
-  ${helpBlock('The Workout Library shows every program in the RepLab database. Programs labeled "Global" are the pre-built workout programs that ship with the app (like Push Pull Legs, Upper/Lower, Bro Split, etc.) and are visible to all users. Programs labeled "User" are custom programs created by individual users — each user can only see their own custom programs. The Templates column shows how many individual workouts exist within each program. This page is currently read-only, meaning you can browse but not edit programs from the dashboard. In the future, this will be expanded to allow creating, editing, and deleting programs directly from here without needing to modify the code. To add new global programs today, they need to be added as seed data in the server\'s initDb.js file.')}`));
+  ${helpBlock('The Workout Library shows every program in the REPLAB database. Programs labeled "Global" are the pre-built workout programs that ship with the app (like Push Pull Legs, Upper/Lower, Bro Split, etc.) and are visible to all users. Programs labeled "User" are custom programs created by individual users — each user can only see their own custom programs. The Templates column shows how many individual workouts exist within each program. This page is currently read-only, meaning you can browse but not edit programs from the dashboard. In the future, this will be expanded to allow creating, editing, and deleting programs directly from here without needing to modify the code. To add new global programs today, they need to be added as seed data in the server\'s initDb.js file.')}`));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
@@ -1792,7 +1792,7 @@ router.get('/announcements', adminAuth, async (req, res) => {
     <tbody>${rows || '<tr><td colspan="5" style="text-align:center;color:rgba(255,255,255,0.3);">No announcements yet</td></tr>'}</tbody>
   </table>
   </div>
-  ${helpBlock('Announcements let you broadcast a message to all RepLab users. When you publish an announcement, it becomes the active announcement and any previously active announcement is automatically deactivated — only one announcement can be active at a time. Active announcements can be displayed as a banner in the app (via the /feedback/announcement API endpoint). Announcements are not permanent — you can deactivate them at any time by clicking the Deactivate button, which hides them from users without deleting them. You can also reactivate old announcements or delete them entirely. Common uses: maintenance notices ("The app will be down for maintenance tonight at 10pm"), new feature announcements ("We just launched the 1RM Estimator!"), or community messages ("Join our March fitness challenge!"). Deleted announcements cannot be recovered.')}`));
+  ${helpBlock('Announcements let you broadcast a message to all REPLAB users. When you publish an announcement, it becomes the active announcement and any previously active announcement is automatically deactivated — only one announcement can be active at a time. Active announcements can be displayed as a banner in the app (via the /feedback/announcement API endpoint). Announcements are not permanent — you can deactivate them at any time by clicking the Deactivate button, which hides them from users without deleting them. You can also reactivate old announcements or delete them entirely. Common uses: maintenance notices ("The app will be down for maintenance tonight at 10pm"), new feature announcements ("We just launched the 1RM Estimator!"), or community messages ("Join our March fitness challenge!"). Deleted announcements cannot be recovered.')}`));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
@@ -2362,7 +2362,7 @@ router.get('/revenue', adminAuth, (req, res) => {
     <h3 style="font-size:20px;font-weight:700;margin-bottom:12px;">Coming Soon</h3>
     <p style="color:rgba(255,255,255,0.4);font-size:14px;max-width:400px;margin:0 auto;line-height:1.8;">Revenue tracking will appear here when paid plans are launched. This will include MRR, total revenue, plan distribution, and growth charts.</p>
   </div>
-  ${helpBlock('The Revenue Dashboard will become active once paid subscription plans are integrated into RepLab using Stripe. When launched, this page will display: Monthly Recurring Revenue (MRR) — the total amount of subscription income per month; Total Revenue — cumulative lifetime revenue; Plan Distribution — a breakdown of how many users are on each plan tier (Free, Pro, Lifetime); Growth Charts — visual trends of revenue over time showing month-over-month growth; Churn Rate — the percentage of paying users who cancel each month; and Average Revenue Per User (ARPU). To set up revenue tracking, you will need to create a Stripe account, configure subscription products, add Stripe webhooks to the server, and store subscription status on each user record. See the monetization plan for detailed implementation steps.')}`));
+  ${helpBlock('The Revenue Dashboard will become active once paid subscription plans are integrated into REPLAB using Stripe. When launched, this page will display: Monthly Recurring Revenue (MRR) — the total amount of subscription income per month; Total Revenue — cumulative lifetime revenue; Plan Distribution — a breakdown of how many users are on each plan tier (Free, Pro, Lifetime); Growth Charts — visual trends of revenue over time showing month-over-month growth; Churn Rate — the percentage of paying users who cancel each month; and Average Revenue Per User (ARPU). To set up revenue tracking, you will need to create a Stripe account, configure subscription products, add Stripe webhooks to the server, and store subscription status on each user record. See the monetization plan for detailed implementation steps.')}`));
 });
 
 // ============================================================
@@ -2540,7 +2540,7 @@ router.get('/builds', adminAuth, async (req, res) => {
   </div>
   ${progressBar}
   ${sections}
-  ${helpBlock('Pending Builds is your launch checklist. It tracks every feature, integration, and requirement that needs to be completed before RepLab is ready for a full production launch on the App Store. Each item has a status that you can update using the dropdown: Not Started (gray), In Progress (blue), or Completed (green). Status changes are saved to the database and persist across sessions. The progress bar at the top shows your overall completion percentage. Categories are organized by priority: Payments & Monetization for revenue generation, AI Features for the Claude API-powered workout generator and help chatbot, Legal & Compliance for app store and legal requirements, Security for protecting user data, App Store Submission for Apple requirements, Infrastructure for scaling and reliability, User Experience for engagement features, and Analytics & Growth for marketing tools. Update statuses as you complete each item to track your progress toward launch.')}
+  ${helpBlock('Pending Builds is your launch checklist. It tracks every feature, integration, and requirement that needs to be completed before REPLAB is ready for a full production launch on the App Store. Each item has a status that you can update using the dropdown: Not Started (gray), In Progress (blue), or Completed (green). Status changes are saved to the database and persist across sessions. The progress bar at the top shows your overall completion percentage. Categories are organized by priority: Payments & Monetization for revenue generation, AI Features for the Claude API-powered workout generator and help chatbot, Legal & Compliance for app store and legal requirements, Security for protecting user data, App Store Submission for Apple requirements, Infrastructure for scaling and reliability, User Experience for engagement features, and Analytics & Growth for marketing tools. Update statuses as you complete each item to track your progress toward launch.')}
   `));
 });
 
@@ -2724,10 +2724,10 @@ router.get('/correspondence/:name', adminAuth, async (req, res) => {
 
   // Get defaults from email.js (approximate — show current content)
   const defaults = {
-    welcome: { subject: 'Welcome to RepLab!', html: 'Default welcome email template' },
-    password_reset: { subject: 'Reset your RepLab password', html: 'Default password reset template' },
-    admin_signup_notification: { subject: 'New RepLab Signup', html: 'Default admin notification template' },
-    daily_summary: { subject: 'RepLab Daily Summary', html: 'Default daily summary template' },
+    welcome: { subject: 'Welcome to REPLAB!', html: 'Default welcome email template' },
+    password_reset: { subject: 'Reset your REPLAB password', html: 'Default password reset template' },
+    admin_signup_notification: { subject: 'New REPLAB Signup', html: 'Default admin notification template' },
+    daily_summary: { subject: 'REPLAB Daily Summary', html: 'Default daily summary template' },
   };
 
   const current = saved || defaults[templateName];
@@ -4152,7 +4152,7 @@ router.get('/daily-summary', adminAuth, async (req, res) => {
 
     // Build export data JSON (embedded in page for client-side export)
     const exportData = {
-      title: 'RepLab Daily Summary',
+      title: 'REPLAB Daily Summary',
       period: displayLabel,
       summary: {
         'Total Users': stats.totalUsers,
@@ -4462,7 +4462,7 @@ router.get('/daily-summary', adminAuth, async (req, res) => {
           }
         });
 
-        var filename = 'RepLab_Summary_' + document.getElementById('startDate').value + '.xlsx';
+        var filename = 'REPLAB_Summary_' + document.getElementById('startDate').value + '.xlsx';
         XLSX.writeFile(wb, filename);
       } catch (err) {
         alert('Excel export failed: ' + err.message);
@@ -4484,7 +4484,7 @@ router.get('/daily-summary', adminAuth, async (req, res) => {
         // Title
         doc.setFontSize(18);
         doc.setFont(undefined, 'bold');
-        doc.text('RepLab Daily Summary', 14, y);
+        doc.text('REPLAB Daily Summary', 14, y);
         y += 8;
         doc.setFontSize(11);
         doc.setFont(undefined, 'normal');
@@ -4556,11 +4556,11 @@ router.get('/daily-summary', adminAuth, async (req, res) => {
           doc.setPage(p);
           doc.setFontSize(8);
           doc.setTextColor(160);
-          doc.text('RepLab Admin — Generated ' + new Date().toLocaleString(), 14, doc.internal.pageSize.getHeight() - 8);
+          doc.text('REPLAB Admin — Generated ' + new Date().toLocaleString(), 14, doc.internal.pageSize.getHeight() - 8);
           doc.text('Page ' + p + ' of ' + pages, pageW - 14, doc.internal.pageSize.getHeight() - 8, { align: 'right' });
         }
 
-        var filename = 'RepLab_Summary_' + document.getElementById('startDate').value + '.pdf';
+        var filename = 'REPLAB_Summary_' + document.getElementById('startDate').value + '.pdf';
         doc.save(filename);
       } catch (err) {
         alert('PDF export failed: ' + err.message);
@@ -5783,7 +5783,7 @@ router.get('/audit', adminAuth, async (req, res) => {
 
   // Build category sections — array of { id, title, location } for each severity
   const BLOCKERS = [
-    { id: 'bk1', title: "Bundle ID still <code>com.willfit.app</code>",                                      desc: 'App is branded RepLab. Decide final ID (e.g. <code>com.replab.fitness</code>) before first TestFlight or Play upload — bundle IDs cannot be changed once shipped.', loc: 'capacitor.config.json:2' },
+    { id: 'bk1', title: "Bundle ID still <code>com.willfit.app</code>",                                      desc: 'App is branded REPLAB. Decide final ID (e.g. <code>com.replab.fitness</code>) before first TestFlight or Play upload — bundle IDs cannot be changed once shipped.', loc: 'capacitor.config.json:2' },
     { id: 'bk2', title: 'Info.plist has zero usage-description strings',                                   desc: 'Apple will reject. Add NSUserNotificationUsageDescription, NSPhotoLibraryAddUsageDescription / NSPhotoLibraryUsageDescription / NSCameraUsageDescription as applicable.', loc: 'ios/App/App/Info.plist' },
     { id: 'bk3', title: 'AndroidManifest missing POST_NOTIFICATIONS permission',                          desc: 'Android 13+ users will silently never get push.', loc: 'android/app/src/main/AndroidManifest.xml' },
     { id: 'bk4', title: '<code>android:allowBackup="true"</code> on fitness data',                         desc: 'Privacy risk + Play Store data-safety red flag. Set to false unless implementing BackupAgent + encryption.', loc: 'AndroidManifest.xml:5' },
@@ -6744,7 +6744,7 @@ router.get('/url-conversion', adminAuth, async (req, res) => {
     </div>
 
     <div class="urc-print-only" style="display:none;font-size:11px;color:#444;margin-bottom:14px;">
-      Generated: <span id="urc-gen-date"></span> · RepLab admin · /admin/url-conversion
+      Generated: <span id="urc-gen-date"></span> · REPLAB admin · /admin/url-conversion
     </div>
 
     ${SECTIONS.map(renderSection).join('')}
@@ -6938,9 +6938,9 @@ router.get('/backup', adminAuth, async (req, res) => {
 
       // Claude prompt sheet
       const claudePrompt = [
-        { Instructions: 'PROMPT FOR CLAUDE IN EXCEL — Copy this into Claude to analyze your RepLab data:' },
+        { Instructions: 'PROMPT FOR CLAUDE IN EXCEL — Copy this into Claude to analyze your REPLAB data:' },
         { Instructions: '' },
-        { Instructions: 'You have a RepLab workout app Excel export with these sheets:' },
+        { Instructions: 'You have a REPLAB workout app Excel export with these sheets:' },
         { Instructions: '' },
         { Instructions: '1. "Session Report" — The main report. Each row is one set logged by a user. Columns: session_id, date, completed, user_id, user_email, user_name, template_id, template_name, exercise_name, set_number, weight, reps, is_completed.' },
         { Instructions: '' },

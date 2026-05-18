@@ -126,7 +126,7 @@ export default function Test() {
             style={{ border: '1px solid rgba(239,68,68,0.3)' }}
           >
             <div className="p-5">
-              <h2 className="text-xl font-black text-white tracking-tight">RepLab Feed</h2>
+              <h2 className="text-xl font-black text-white tracking-tight">REPLAB Feed</h2>
               <p className="text-xs text-wf-gray-500 mt-1">Community sandbox — activity feed + fitness news/influencer feed</p>
             </div>
           </div>

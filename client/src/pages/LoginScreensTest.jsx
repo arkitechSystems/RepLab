@@ -272,7 +272,7 @@ function CinematicLightLeaks() {
 
       {/* Hero copy */}
       <div className="relative px-6 pt-16 pb-4">
-        <p className="text-[10px] text-wf-red uppercase tracking-[0.4em] font-bold mb-3">RepLab</p>
+        <p className="text-[10px] text-wf-red uppercase tracking-[0.4em] font-bold mb-3">REPLAB</p>
         <h1 className="text-white font-black leading-[0.95] tracking-tight"
           style={{ fontSize: 44, textShadow: '0 4px 30px rgba(0,0,0,0.7)' }}>
           The work is<br/>the reward.
