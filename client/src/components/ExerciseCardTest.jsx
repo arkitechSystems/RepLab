@@ -10,7 +10,7 @@ const SET_TYPES = [
   { value: 'touch_up',     short: 'TU',   label: 'Touch Up' },
   { value: 'straight',     short: 'REG',  label: 'Regular' },
   { value: 'drop',         short: 'DS',   label: 'Drop Set' },
-  { value: 'rest_pause',   short: 'RP',   label: 'Rest-Pause Set' },
+  { value: 'rest_pause',   short: 'RP',   label: 'Rest Pause' },
   { value: 'superset',     short: 'SS',   label: 'Super Set' },
   { value: 'alternating',  short: 'Alt',  label: 'Alternating Set' },
   { value: 'pre_exhaust',  short: 'PrEx', label: 'Pre-Exhaust' },
