@@ -112,10 +112,19 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
   const [showAddBelow, setShowAddBelow] = useState(false);
   const [addBelowSearch, setAddBelowSearch] = useState('');
   // Index of the set whose weight input is currently driving the plate
-  // calculator modal. null = modal closed. Set by either the ⚖ icon next
-  // to a weight input or a long-press on the input itself.
+  // calculator modal. null = modal closed. Set by long-press on a weight
+  // input — in that case the modal pre-fills with the set's weight and
+  // writes the chosen value back to that set on Use.
   const [plateCalcSetIdx, setPlateCalcSetIdx] = useState(null);
+  // Separate "opened from the header ⚖ icon" flag. The header trigger
+  // isn't tied to a specific set, so it pre-fills from the last weight
+  // input the user focused (if any) and just closes on Use without
+  // writing back. null = modal closed; true = open from header.
+  const [plateCalcFromHeader, setPlateCalcFromHeader] = useState(false);
   const plateCalcLongPressRef = useRef(null);
+  // Tracks the most recently focused set's weight input so the header
+  // ⚖ icon can pre-fill the modal with the user's current row of focus.
+  const lastFocusedSetIdxRef = useRef(null);
 
   const touchStartPos = useRef(null);
   const swipeRowRefs = useRef({});
@@ -259,6 +268,25 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
         </div>
         {!isTemplate && (
           <div className="shrink-0 flex items-center gap-1.5">
+            {!readOnly && (
+              <button
+                type="button"
+                data-tutorial={dataTutorial ? 'plate-calc' : undefined}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPlateCalcFromHeader(true);
+                }}
+                aria-label={`Open plate calculator for ${exercise.name}`}
+                title="Plate calculator"
+                className="h-7 w-7 rounded-lg flex items-center justify-center active:scale-95 transition-all bg-wf-red/10 border border-wf-red/20"
+              >
+                <svg className="w-3.5 h-3.5 text-wf-red" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="6" cy="12" r="3" />
+                  <line x1="9" y1="12" x2="15" y2="12" />
+                  <circle cx="18" cy="12" r="3" />
+                </svg>
+              </button>
+            )}
             {onShowPRs && (
               <button
                 type="button"
@@ -506,12 +534,12 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                 </div>
               )}
 
-              {/* Weight input — long-press (600ms) on the input OR a tap on
-                  the ⚖ icon opens the in-session plate calculator pre-
-                  filled with this set's current weight. The icon is the
-                  discoverable affordance; long-press is the power-user
-                  shortcut. Movement during press cancels so scrolling
-                  doesn't trigger it. */}
+              {/* Weight input — long-press (600ms) on the input opens the
+                  in-session plate calculator pre-filled with this set's
+                  current weight. The discoverable affordance lives in the
+                  card header (⚖ icon next to PRs); long-press is the
+                  power-user shortcut. Movement during press cancels so
+                  scrolling doesn't trigger it. */}
               <div className={`${showGoalWeight ? 'w-[3.15rem] shrink-0' : 'w-[6.5rem] shrink-0'} relative`}>
                 <input
                   type="number"
@@ -522,7 +550,11 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                   value={entry.weight ?? (isTemplate ? '' : set.suggestedWeight ?? '')}
                   placeholder={readOnly || inputsLocked ? '—' : '0'}
                   onChange={(e) => onChange?.(exercise.name, idx, 'weight', e.target.value)}
-                  onFocus={(e) => { if (inputsLocked && onLockedTap) { e.target.blur(); onLockedTap(); return; } e.target.select(); }}
+                  onFocus={(e) => {
+                    if (inputsLocked && onLockedTap) { e.target.blur(); onLockedTap(); return; }
+                    lastFocusedSetIdxRef.current = idx;
+                    e.target.select();
+                  }}
                   onBlur={() => onBlur?.(exercise.name, idx, 'weight')}
                   onPointerDown={(readOnly || inputsLocked) ? undefined : () => {
                     plateCalcLongPressRef.current = setTimeout(() => {
@@ -535,25 +567,9 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                   onPointerLeave={() => { if (plateCalcLongPressRef.current) { clearTimeout(plateCalcLongPressRef.current); plateCalcLongPressRef.current = null; } }}
                   onContextMenu={(e) => e.preventDefault()}
                   readOnly={readOnly || inputsLocked}
-                  className={`w-full lcd-input rounded-lg pl-2 pr-5 py-2.5 text-center text-base focus:outline-none disabled:opacity-50 ${isCompleted ? 'completed text-white' : isAutoFill ? 'text-wf-gray-500 italic' : 'text-white'}`}
+                  className={`w-full lcd-input rounded-lg px-2 py-2.5 text-center text-base focus:outline-none disabled:opacity-50 ${isCompleted ? 'completed text-white' : isAutoFill ? 'text-wf-gray-500 italic' : 'text-white'}`}
                   disabled={readOnly}
                 />
-                {!readOnly && !inputsLocked && (
-                  <button
-                    type="button"
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (plateCalcLongPressRef.current) { clearTimeout(plateCalcLongPressRef.current); plateCalcLongPressRef.current = null; } setPlateCalcSetIdx(idx); }}
-                    aria-label={`Open plate calculator for set ${idx + 1}`}
-                    title="Plate calculator"
-                    className="absolute top-1/2 -translate-y-1/2 right-1 w-4 h-4 flex items-center justify-center active:scale-90 transition-transform"
-                    style={{ color: 'rgba(239,68,68,0.55)' }}
-                  >
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <circle cx="6" cy="12" r="3" />
-                      <line x1="9" y1="12" x2="15" y2="12" />
-                      <circle cx="18" cy="12" r="3" />
-                    </svg>
-                  </button>
-                )}
               </div>
 
               {isTemplate ? (
@@ -860,9 +876,9 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
       )}
 
       {/* Plate Calculator Modal — opened by long-press on a weight input
-          or tap on the ⚖ icon next to it. Pre-fills with that set's
-          current weight (or the template's suggested weight as a fallback).
-          "Use" writes the chosen number back through onChange and closes. */}
+          (per-set, writes back on Use) or by the ⚖ icon in the card
+          header (informational; pre-fills from the last focused set's
+          weight if any, otherwise opens at the bar). */}
       {plateCalcSetIdx !== null && (() => {
         const setEntry = entries?.[plateCalcSetIdx] || {};
         // Only pre-fill with the user's actually-logged weight. Skip the
@@ -880,6 +896,37 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
               setPlateCalcSetIdx(null);
             }}
             onClose={() => setPlateCalcSetIdx(null)}
+          />
+        );
+      })()}
+      {plateCalcFromHeader && (() => {
+        // Header-triggered: pick a sensible initial weight. If the user
+        // most recently focused a weight input on this card, use that
+        // set's current weight (or its suggested weight as a fallback).
+        // Otherwise pass 0 so the modal falls back to bar weight (45).
+        const lastIdx = lastFocusedSetIdxRef.current;
+        let initial = 0;
+        if (lastIdx !== null && lastIdx !== undefined) {
+          const e = entries?.[lastIdx] || {};
+          const s = exercise.sets?.[lastIdx] || {};
+          initial = Number(e.weight) || Number(s.suggestedWeight) || 0;
+        }
+        return (
+          <PlateCalculatorModal
+            open={true}
+            initialWeight={initial}
+            onUse={(weight) => {
+              // If the user had a specific set in focus when they opened
+              // the calc from the header, write the result back to that
+              // set. Otherwise just close — the header trigger is meant
+              // to be informational when no set is anchored.
+              const idx = lastFocusedSetIdxRef.current;
+              if (idx !== null && idx !== undefined && onChange) {
+                onChange(exercise.name, idx, 'weight', String(weight));
+              }
+              setPlateCalcFromHeader(false);
+            }}
+            onClose={() => setPlateCalcFromHeader(false)}
           />
         );
       })()}
