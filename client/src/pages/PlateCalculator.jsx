@@ -14,7 +14,10 @@ import { BAR_OPTIONS, PLATES, QUICK_PLATES, computePlatesPerSide } from '../util
 
 export default function PlateCalculator() {
   const navigate = useNavigate();
-  const [target, setTarget] = useState('135');
+  // Default to an empty Olympic bar (target = bar weight → 0 plates per side).
+  // User starts at "empty bar" and loads plates with +/-, which feels more
+  // natural than booting with a magic 135 pre-loaded.
+  const [target, setTarget] = useState('45');
   const [bar, setBar] = useState(45);
   // Selected manual-add plate. The +/- buttons on the bar use this value
   // to bump the target weight up or down.
@@ -137,10 +140,17 @@ export default function PlateCalculator() {
                         // force both-side visual when entering machine
                         // mode regardless of where the user was before.
                         setMode('both');
+                        // Reset to a blank machine — user adds plates from
+                        // zero rather than inheriting whatever target was
+                        // set for the previous bar config.
+                        setTarget('0');
                       } else {
                         // Restore a default bar weight if user is coming
                         // back from Machine; otherwise just flip mode.
-                        if (bar === 0) setBar(45);
+                        if (bar === 0) {
+                          setBar(45);
+                          setTarget('45');
+                        }
                         setMode(opt.v);
                       }
                     }}
@@ -366,7 +376,7 @@ export default function PlateCalculator() {
                   return (
                     <button
                       key={b.value}
-                      onClick={() => setBar(b.value)}
+                      onClick={() => { setBar(b.value); setTarget(String(b.value)); }}
                       className="text-[10px] font-bold uppercase whitespace-nowrap py-2 px-3 active:scale-[0.97] transition-transform"
                       style={{
                         letterSpacing: '0.15em',

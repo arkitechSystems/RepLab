@@ -179,8 +179,19 @@ export default function PlateCalculatorModal({ open, initialWeight = 0, onUse, o
                   <button
                     key={opt.v}
                     onClick={() => {
-                      if (opt.kind === 'nobar') { setBar(0); setMode('both'); }
-                      else { if (bar === 0) setBar(45); setMode(opt.v); }
+                      if (opt.kind === 'nobar') {
+                        setBar(0);
+                        setMode('both');
+                        // Reset to a blank machine so the user starts adding
+                        // plates from zero, not from a previous-bar target.
+                        setTarget('0');
+                      } else {
+                        if (bar === 0) {
+                          setBar(45);
+                          setTarget('45');
+                        }
+                        setMode(opt.v);
+                      }
                     }}
                     className="flex-1 text-[10px] font-bold uppercase whitespace-nowrap py-2 px-2 active:scale-[0.97] transition-transform"
                     style={{
@@ -382,7 +393,7 @@ export default function PlateCalculatorModal({ open, initialWeight = 0, onUse, o
                   return (
                     <button
                       key={b.value}
-                      onClick={() => setBar(b.value)}
+                      onClick={() => { setBar(b.value); setTarget(String(b.value)); }}
                       className="text-[10px] font-bold uppercase whitespace-nowrap py-2 px-3 active:scale-[0.97] transition-transform"
                       style={{
                         letterSpacing: '0.15em',
