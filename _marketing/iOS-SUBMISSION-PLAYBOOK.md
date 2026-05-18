@@ -13,8 +13,8 @@ This is the **execution** doc. For the inventory of what's done vs. blocking, se
 - iOS deployment target: `15.0`
 - Code-sign style: `Automatic` (good — Xcode will fetch the certificate + profile for you on first archive)
 - AppDelegate is the Capacitor stock template; **no Firebase init code is wired** (`client/ios/App/App/App/AppDelegate.swift`)
-- `@capacitor/push-notifications` is in `client/package.json`; `@capacitor-firebase/messaging` is **NOT** installed
-- `client/src/utils/push.js` registers raw APNs tokens to the backend on iOS — works as-is for an APNs-direct path, but the backend's existing FCM transport will not deliver to iOS until either (a) `@capacitor-firebase/messaging` is added so iOS hands FCM tokens to the server, or (b) the backend grows an APNs sender alongside FCM
+- `@capacitor/push-notifications` AND `@capacitor-firebase/messaging` are both in `client/package.json` (the latter added 2026-05-18 to wire iOS push)
+- `client/src/utils/push.js` swaps the raw APNs token for an FCM token on iOS via `FirebaseMessaging.getToken()` before registering with the backend, so every token in `device_tokens` is an FCM token regardless of platform. Backend's FCM transport delivers to both Android and iOS as soon as the iOS Xcode project has GoogleService-Info.plist + Firebase Messaging pod (steps A.2–A.4 below)
 - No `App.entitlements` file exists yet (will be created by Xcode the moment you add the first capability)
 - No `GoogleService-Info.plist` in the iOS project
 
@@ -277,12 +277,12 @@ You have two branches here. Pick one and document it in the App Review Notes if 
 
 #### A.1 Install the Firebase Capacitor plugin
 - **Owner:** Mac
-- **Time:** 3 min
-- **Steps:**
+- **Time:** 2 min
+- **Status:** ✅ Already installed as of 2026-05-18 — `@capacitor-firebase/messaging@^8.2.0` is in `client/package.json`.
+- **On the Mac, just run:**
   1. `cd client`
-  2. `npm install @capacitor-firebase/messaging`
-  3. `npx cap sync ios`
-- **Note:** As of this playbook, `@capacitor-firebase/messaging` is NOT in `client/package.json`. Verify before assuming the plugin is wired.
+  2. `npm install` (picks up the dep from package.json)
+  3. `npx cap sync ios` (syncs the plugin's native code + adds the Firebase Messaging pod to the Podfile)
 
 #### A.2 Download GoogleService-Info.plist from Firebase
 - **Owner:** Firebase + Mac
@@ -319,12 +319,9 @@ You have two branches here. Pick one and document it in the App Review Notes if 
 - **Why:** The Capacitor plugin needs Firebase initialized before it can call `getToken()`.
 
 #### A.5 Update the bootstrap to prefer FCM tokens on iOS
-- **Owner:** Will (code change, plan only — do this BEFORE the next Mac session)
-- **Time:** 30 min
-- **Steps:** This is a separate code change to `client/src/utils/push.js` and is **out of scope for this playbook**. Plan the work on Windows before getting on the Mac:
-  - Branch the existing APNs registration in `push.js` so iOS calls `@capacitor-firebase/messaging` for an FCM token instead of `@capacitor/push-notifications` for an APNs token
-  - Server's `/push/register` endpoint should already accept either; verify in `server/routes/push.js` and `server/pushScheduler.js`
-- **Don't ship Branch A without doing this.** Otherwise iOS will register raw APNs tokens that the backend's FCM transport can't deliver to.
+- **Owner:** Will (code change)
+- **Status:** ✅ Done as of 2026-05-18. `client/src/utils/push.js` now imports `@capacitor-firebase/messaging` on iOS, calls `FirebaseMessaging.getToken()` after the Capacitor `registration` event fires, and registers the FCM token (not the raw APNs token) with the server. If `getToken()` fails (e.g., GoogleService-Info.plist missing in the Xcode project, Firebase Messaging pod not linked), iOS skips registration entirely rather than storing a dead APNs token.
+- **No further code changes needed pre-Mac.** A.2–A.4 are the only remaining steps and they all live on the Mac / in Firebase Console.
 
 ### Branch B — Ship v1 as Android-only push
 

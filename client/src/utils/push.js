@@ -9,11 +9,17 @@
 // idempotent — guarded by a module-level flag — so re-running on every
 // auth state change is safe and cheap.
 //
-// The token we register is the platform-native push token returned by the
-// Capacitor plugin (APNs on iOS, FCM on Android). For FCM sends to reach
-// iOS devices, the Capacitor iOS project needs the Firebase Messaging SDK
-// added at app-store-prep time; until then iOS registrations will sit in
-// the DB but won't actually receive sends.
+// Token flow:
+//   - Android: @capacitor/push-notifications returns an FCM token directly
+//     (Capacitor wraps Google Play Services on Android).
+//   - iOS: @capacitor/push-notifications returns a raw APNs token, which
+//     our firebase-admin server can't deliver to. So on iOS we ADDITIONALLY
+//     call @capacitor-firebase/messaging's getToken() to retrieve an FCM
+//     token (which Firebase produces internally once APNs registration
+//     succeeds), and register THAT with our server.
+//   - Prerequisites for iOS FCM: GoogleService-Info.plist must be in the
+//     Xcode project and Firebase Messaging pod must be installed. See
+//     _marketing/iOS-SUBMISSION-PLAYBOOK.md.
 
 import { Capacitor } from '@capacitor/core';
 import { api } from '../api';
@@ -59,10 +65,32 @@ export async function initPushNotifications() {
 
     const platform = Capacitor.getPlatform(); // 'ios' | 'android'
 
-    PushNotifications.addListener('registration', (tokenObj) => {
-      if (tokenObj?.value) {
-        registerTokenOnServer(tokenObj.value, platform);
+    PushNotifications.addListener('registration', async (tokenObj) => {
+      // On Android, tokenObj.value is already an FCM token — register as-is.
+      // On iOS, tokenObj.value is a raw APNs token; swap it for the FCM
+      // token that Firebase produces once APNs registration succeeds. The
+      // server's firebase-admin can only deliver to FCM tokens, so if FCM
+      // is unavailable on the iOS build (GoogleService-Info.plist missing,
+      // Firebase pod not linked) we skip registration entirely rather than
+      // store a dead APNs token.
+      let token = tokenObj?.value;
+      if (!token) return;
+      if (platform === 'ios') {
+        try {
+          const { FirebaseMessaging } = await import('@capacitor-firebase/messaging');
+          const fcm = await FirebaseMessaging.getToken();
+          if (fcm?.token) {
+            token = fcm.token;
+          } else {
+            if (import.meta.env.DEV) console.warn('[push] FCM getToken returned empty on iOS — skipping registration');
+            return;
+          }
+        } catch (err) {
+          if (import.meta.env.DEV) console.warn('[push] FCM unavailable on iOS, skipping registration:', err?.message || err);
+          return;
+        }
       }
+      registerTokenOnServer(token, platform);
     });
 
     PushNotifications.addListener('registrationError', (err) => {

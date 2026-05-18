@@ -2,10 +2,14 @@
 // Dormant until FCM_SERVICE_ACCOUNT_JSON (or GOOGLE_APPLICATION_CREDENTIALS)
 // is set — isFcmConfigured() is false, all send calls no-op.
 //
-// iOS caveat: Capacitor's default iOS push plugin returns raw APNs tokens, not
-// FCM tokens. For FCM sends to work on iOS, the Capacitor iOS app must add the
-// Firebase Messaging SDK (via CocoaPods) so registerForRemoteNotifications()
-// returns an FCM token. That step happens at app-store-prep time, not now.
+// iOS token flow: the client (client/src/utils/push.js) swaps the raw APNs
+// token for an FCM token via @capacitor-firebase/messaging before
+// registering with the server, so every token in the device_tokens table
+// is an FCM token regardless of platform. iOS delivery requires:
+//   - GoogleService-Info.plist in the Xcode project (client/ios/App/App/)
+//   - Firebase Messaging pod (auto-added by `npx cap sync` once the
+//     @capacitor-firebase/messaging dep is in package.json)
+// See _marketing/iOS-SUBMISSION-PLAYBOOK.md for the Mac-side steps.
 
 import admin from 'firebase-admin';
 
