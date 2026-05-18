@@ -141,8 +141,8 @@ router.get('/forgot-password', (req, res) => {
     ${msg ? '<div class="error" style="background:rgba(34,197,94,0.15);border-color:rgba(34,197,94,0.3);color:#4ade80;">' + msg + '</div>' : ''}
     <form method="POST" action="/admin/forgot-password">
       <div class="field">
-        <label>Admin Email</label>
-        <input type="email" name="email" placeholder="Enter admin email" required />
+        <label for="admin-forgot-email">Admin Email</label>
+        <input id="admin-forgot-email" type="email" name="email" placeholder="Enter admin email" required />
       </div>
       <button type="submit" class="btn-login">Send Reset Link</button>
     </form>
@@ -200,12 +200,12 @@ router.get('/reset-password', async (req, res) => {
     <form method="POST" action="/admin/reset-password">
       <input type="hidden" name="token" value="${token}" />
       <div class="field">
-        <label>New Password</label>
-        <input type="password" name="newPassword" placeholder="Enter new password" required minlength="6" />
+        <label for="admin-reset-new-password">New Password</label>
+        <input id="admin-reset-new-password" type="password" name="newPassword" placeholder="Enter new password" required minlength="6" />
       </div>
       <div class="field">
-        <label>Confirm Password</label>
-        <input type="password" name="confirmPassword" placeholder="Confirm new password" required />
+        <label for="admin-reset-confirm-password">Confirm Password</label>
+        <input id="admin-reset-confirm-password" type="password" name="confirmPassword" placeholder="Confirm new password" required />
       </div>
       <button type="submit" class="btn-login">Reset Password</button>
     </form>
@@ -252,7 +252,7 @@ router.get('/logout', (req, res) => {
 
 function adminLoginPage(error, customContent) {
   return `<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -275,12 +275,12 @@ function adminLoginPage(error, customContent) {
       ${customContent || `
       <form method="POST" action="/admin/login">
         <div class="field">
-          <label>Username</label>
-          <input type="text" name="username" placeholder="Enter username" required autocomplete="username" />
+          <label for="admin-login-username">Username</label>
+          <input id="admin-login-username" type="text" name="username" placeholder="Enter username" required autocomplete="username" />
         </div>
         <div class="field">
-          <label>Password</label>
-          <input type="password" name="password" placeholder="Enter password" required autocomplete="current-password" />
+          <label for="admin-login-password">Password</label>
+          <input id="admin-login-password" type="password" name="password" placeholder="Enter password" required autocomplete="current-password" />
         </div>
         <button type="submit" class="btn-login">Sign In</button>
       </form>
@@ -296,7 +296,7 @@ function adminLoginPage(error, customContent) {
 
 function adminPage(title, body) {
   return `<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -469,13 +469,13 @@ try {
     </div>
     <form method="POST" action="/admin/change-password">
       <div style="margin-bottom:12px;">
-        <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);margin-bottom:4px;font-weight:600;">New Password</label>
-        <input type="password" name="newPassword" placeholder="Min 6 characters" required minlength="6"
+        <label for="admin-change-new-password" style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);margin-bottom:4px;font-weight:600;">New Password</label>
+        <input id="admin-change-new-password" type="password" name="newPassword" placeholder="Min 6 characters" required minlength="6"
           style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;" />
       </div>
       <div style="margin-bottom:16px;">
-        <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);margin-bottom:4px;font-weight:600;">Confirm Password</label>
-        <input type="password" name="confirmPassword" placeholder="Confirm password" required
+        <label for="admin-change-confirm-password" style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);margin-bottom:4px;font-weight:600;">Confirm Password</label>
+        <input id="admin-change-confirm-password" type="password" name="confirmPassword" placeholder="Confirm password" required
           style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;" />
       </div>
       <button type="submit" class="btn" style="margin:0;width:100%;padding:12px;font-size:14px;">Update Password</button>
@@ -1563,8 +1563,8 @@ router.get('/announcements', adminAuth, async (req, res) => {
     <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:rgba(255,255,255,0.7);">Create New Announcement</h3>
     <form method="POST" action="/admin/announcements/create" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
       <div style="flex:1;min-width:300px;">
-        <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);margin-bottom:4px;font-weight:600;">Message</label>
-        <input type="text" name="message" placeholder="Enter announcement message..." required
+        <label for="admin-announcement-message" style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);margin-bottom:4px;font-weight:600;">Message</label>
+        <input id="admin-announcement-message" type="text" name="message" placeholder="Enter announcement message..." required
           style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;" />
       </div>
       <button type="submit" class="btn" style="margin:0;padding:10px 20px;font-size:13px;">Publish</button>
@@ -1655,13 +1655,13 @@ router.get('/flags', adminAuth, async (req, res) => {
     <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:rgba(255,255,255,0.7);">Add New Flag</h3>
     <form method="POST" action="/admin/flags/create" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
       <div style="flex:1;min-width:160px;">
-        <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);margin-bottom:4px;font-weight:600;">Key</label>
-        <input type="text" name="key" placeholder="e.g. dark_mode_v2" required
+        <label for="admin-flag-key" style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);margin-bottom:4px;font-weight:600;">Key</label>
+        <input id="admin-flag-key" type="text" name="key" placeholder="e.g. dark_mode_v2" required
           style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;" />
       </div>
       <div style="flex:1;min-width:200px;">
-        <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);margin-bottom:4px;font-weight:600;">Description</label>
-        <input type="text" name="description" placeholder="What does this flag do?"
+        <label for="admin-flag-description" style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);margin-bottom:4px;font-weight:600;">Description</label>
+        <input id="admin-flag-description" type="text" name="description" placeholder="What does this flag do?"
           style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;" />
       </div>
       <button type="submit" class="btn" style="margin:0;padding:10px 20px;font-size:13px;">Add Flag</button>
@@ -2468,13 +2468,13 @@ router.get('/correspondence/:name', adminAuth, async (req, res) => {
     <form method="POST" action="/admin/correspondence/${templateName}">
       <div class="glass" style="padding:24px;border-radius:16px;">
         <div style="margin-bottom:16px;">
-          <label>Subject Line</label>
-          <input type="text" name="subject" value="${esc(current.subject)}" required
+          <label for="admin-email-subject">Subject Line</label>
+          <input id="admin-email-subject" type="text" name="subject" value="${esc(current.subject)}" required
             style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;" />
         </div>
         <div style="margin-bottom:16px;">
-          <label>HTML Body</label>
-          <textarea name="html" required rows="18"
+          <label for="admin-email-html">HTML Body</label>
+          <textarea id="admin-email-html" name="html" required rows="18"
             style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:13px;font-family:'Space Mono',monospace;outline:none;resize:vertical;line-height:1.6;box-sizing:border-box;">${esc(current.html)}</textarea>
         </div>
         <div style="display:flex;gap:8px;">
@@ -2609,11 +2609,11 @@ router.get('/workout-manager/create', adminAuth, async (req, res) => {
       <div class="glass" style="padding:24px;border-radius:16px;margin-bottom:20px;overflow:visible;">
         <div style="display:flex;gap:16px;flex-wrap:wrap;">
           <div style="flex:1;min-width:200px;">
-            <label>Workout Name</label>
-            <input type="text" name="workoutName" placeholder="e.g. Upper Body A" required style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;" />
+            <label for="admin-cw-workout-name">Workout Name</label>
+            <input id="admin-cw-workout-name" type="text" name="workoutName" placeholder="e.g. Upper Body A" required style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;" />
           </div>
           <div style="flex:1;min-width:200px;">
-            <label>Program</label>
+            <label for="program-btn">Program</label>
             <input type="hidden" name="programId" id="program-value" value="" />
             <button type="button" id="program-btn" onclick="toggleProgramDropdown()" style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
               <span id="program-label">— No Program —</span>
@@ -2623,8 +2623,8 @@ router.get('/workout-manager/create', adminAuth, async (req, res) => {
 
         </div>
         <div style="margin-top:16px;">
-          <label>Description <span style="color:rgba(255,255,255,0.2);">(optional)</span></label>
-          <input type="text" name="description" placeholder="e.g. Chest, Shoulders, Triceps" style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;" />
+          <label for="admin-cw-description">Description <span style="color:rgba(255,255,255,0.2);">(optional)</span></label>
+          <input id="admin-cw-description" type="text" name="description" placeholder="e.g. Chest, Shoulders, Triceps" style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;" />
         </div>
       </div>
       <div id="exercises-container"></div>
@@ -2660,10 +2660,10 @@ router.get('/workout-manager/create', adminAuth, async (req, res) => {
     <div id="custom-ex-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);" onclick="if(event.target===this)this.style.display='none'">
       <div class="glass" style="padding:24px;max-width:400px;width:90%;border-radius:16px;">
         <h3 style="font-size:16px;font-weight:700;color:#fff;margin-bottom:16px;">Add Custom Exercise</h3>
-        <div style="margin-bottom:12px;"><label>Exercise Name</label>
+        <div style="margin-bottom:12px;"><label for="custom-ex-name">Exercise Name</label>
           <input type="text" id="custom-ex-name" placeholder="e.g. Cable Lateral Raise" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;" />
         </div>
-        <div style="margin-bottom:16px;"><label>Muscle Group</label>
+        <div style="margin-bottom:16px;"><label for="custom-ex-muscle">Muscle Group</label>
           <select id="custom-ex-muscle" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:#111;color:#fff;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;">
             ${muscleGroups.map(g => '<option value="' + esc(g) + '" style="background:#111;color:#fff;">' + esc(g) + '</option>').join('')}
           </select>
@@ -2676,10 +2676,10 @@ router.get('/workout-manager/create', adminAuth, async (req, res) => {
     <div id="new-program-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);" onclick="if(event.target===this)this.style.display='none'">
       <div class="glass" style="padding:24px;max-width:400px;width:90%;border-radius:16px;">
         <h3 style="font-size:16px;font-weight:700;color:#fff;margin-bottom:16px;">Create New Program</h3>
-        <div style="margin-bottom:12px;"><label>Program Name</label>
+        <div style="margin-bottom:12px;"><label for="new-program-name">Program Name</label>
           <input type="text" id="new-program-name" placeholder="e.g. 4-Week Strength Program" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;" />
         </div>
-        <div style="margin-bottom:16px;"><label>Description <span style="color:rgba(255,255,255,0.2);">(optional)</span></label>
+        <div style="margin-bottom:16px;"><label for="new-program-desc">Description <span style="color:rgba(255,255,255,0.2);">(optional)</span></label>
           <input type="text" id="new-program-desc" placeholder="e.g. Progressive overload focused" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;" />
         </div>
         <div id="new-program-error" style="display:none;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);border-radius:10px;padding:10px 14px;font-size:13px;color:#f87171;margin-bottom:12px;text-align:center;"></div>
@@ -2947,11 +2947,11 @@ router.get('/workout-manager/edit/:id', adminAuth, async (req, res) => {
         <div class="glass" style="padding:24px;border-radius:16px;margin-bottom:20px;overflow:visible;">
           <div style="display:flex;gap:16px;flex-wrap:wrap;">
             <div style="flex:1;min-width:200px;">
-              <label>Workout Name</label>
-              <input type="text" name="workoutName" value="${esc(tmpl.name)}" required style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;" />
+              <label for="admin-ew-workout-name">Workout Name</label>
+              <input id="admin-ew-workout-name" type="text" name="workoutName" value="${esc(tmpl.name)}" required style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;" />
             </div>
             <div style="flex:1;min-width:200px;">
-              <label>Program</label>
+              <label for="program-btn">Program</label>
               <input type="hidden" name="programId" id="program-value" value="${tmpl.program_id || ''}" />
               <button type="button" id="program-btn" onclick="toggleProgramDropdown()" style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:${tmpl.program_id ? '#fff' : 'rgba(255,255,255,0.5)'};font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
                 <span id="program-label">${tmpl.program_name ? esc(tmpl.program_name) : '— No Program —'}</span>
@@ -2960,8 +2960,8 @@ router.get('/workout-manager/edit/:id', adminAuth, async (req, res) => {
             </div>
           </div>
           <div style="margin-top:16px;">
-            <label>Description <span style="color:rgba(255,255,255,0.2);">(optional)</span></label>
-            <input type="text" name="description" value="${esc(tmpl.description || '')}" style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;" />
+            <label for="admin-ew-description">Description <span style="color:rgba(255,255,255,0.2);">(optional)</span></label>
+            <input id="admin-ew-description" type="text" name="description" value="${esc(tmpl.description || '')}" style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;" />
           </div>
         </div>
         <div id="exercises-container"></div>
@@ -2997,10 +2997,10 @@ router.get('/workout-manager/edit/:id', adminAuth, async (req, res) => {
       <div id="custom-ex-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);" onclick="if(event.target===this)this.style.display='none'">
         <div class="glass" style="padding:24px;max-width:400px;width:90%;border-radius:16px;">
           <h3 style="font-size:16px;font-weight:700;color:#fff;margin-bottom:16px;">Add Custom Exercise</h3>
-          <div style="margin-bottom:12px;"><label>Exercise Name</label>
+          <div style="margin-bottom:12px;"><label for="custom-ex-name">Exercise Name</label>
             <input type="text" id="custom-ex-name" placeholder="e.g. Cable Lateral Raise" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;" />
           </div>
-          <div style="margin-bottom:16px;"><label>Muscle Group</label>
+          <div style="margin-bottom:16px;"><label for="custom-ex-muscle">Muscle Group</label>
             <select id="custom-ex-muscle" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;">
               ${muscleGroups.map(g => '<option value="' + esc(g) + '">' + esc(g) + '</option>').join('')}
             </select>
@@ -4515,18 +4515,18 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
 
       <div id="add-ex-form" style="display:none;margin-top:12px;padding:16px;border-radius:12px;border:1px solid rgba(168,85,247,0.3);background:rgba(168,85,247,0.05);gap:10px;flex-wrap:wrap;align-items:flex-end;">
         <div style="flex:1;min-width:180px;">
-          <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);font-weight:600;display:block;margin-bottom:4px;">Exercise Name *</label>
+          <label for="add-ex-name" style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);font-weight:600;display:block;margin-bottom:4px;">Exercise Name *</label>
           <input type="text" id="add-ex-name" placeholder="e.g. Barbell Curl" required style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#fff;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;" />
         </div>
         <div style="min-width:160px;">
-          <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);font-weight:600;display:block;margin-bottom:4px;">Muscle Group *</label>
+          <label for="add-ex-muscle" style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);font-weight:600;display:block;margin-bottom:4px;">Muscle Group *</label>
           <select id="add-ex-muscle" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:#111;color:#fff;font-size:13px;font-family:inherit;outline:none;">
             ${muscleGroups.map(g => '<option value="' + g + '" style="background:#111;color:#fff;">' + g + '</option>').join('')}
             <option value="Other" style="background:#111;color:#fff;">Other</option>
           </select>
         </div>
         <div style="min-width:180px;">
-          <label style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);font-weight:600;display:block;margin-bottom:4px;">YouTube Video ID (optional)</label>
+          <label for="add-ex-video" style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.4);font-weight:600;display:block;margin-bottom:4px;">YouTube Video ID (optional)</label>
           <input type="text" id="add-ex-video" placeholder="e.g. tuwHzzPdaGc" style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#fff;font-size:13px;font-family:monospace;outline:none;box-sizing:border-box;" />
         </div>
         <button onclick="addExercise()" style="padding:8px 20px;border-radius:8px;background:rgba(168,85,247,0.3);border:1px solid rgba(168,85,247,0.5);color:#a855f7;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;" onmouseover="this.style.background='rgba(168,85,247,0.4)'" onmouseout="this.style.background='rgba(168,85,247,0.3)'">Add</button>
