@@ -44,33 +44,39 @@ export default function Login() {
 
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
           {error && (
-            <div className="bg-red-900/30 border border-red-800 rounded-[2px] px-4 py-3 text-red-300 text-sm">
+            <div id="login-error" role="alert" className="bg-red-900/30 border border-red-800 rounded-[2px] px-4 py-3 text-red-300 text-sm">
               {error}
             </div>
           )}
 
           <div>
-            <label className="text-xs text-wf-gray-400 uppercase tracking-wider mb-1 block">Email or Phone</label>
+            <label htmlFor="login-identifier" className="text-xs text-wf-gray-400 uppercase tracking-wider mb-1 block">Email or Phone</label>
             <input
+              id="login-identifier"
               type={phone ? 'tel' : 'email'}
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               placeholder="Email or phone number"
               required
               autoComplete={phone ? 'tel' : 'email'}
+              aria-invalid={!!error}
+              aria-describedby={error ? 'login-error' : undefined}
               className="w-full glass-input rounded-xl px-4 py-3.5 text-white text-base placeholder:text-wf-gray-500 focus:outline-none transition-all"
             />
           </div>
 
           <div>
-            <label className="text-xs text-wf-gray-400 uppercase tracking-wider mb-1 block">Password</label>
+            <label htmlFor="login-password" className="text-xs text-wf-gray-400 uppercase tracking-wider mb-1 block">Password</label>
             <input
+              id="login-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter password"
               required
               autoComplete="current-password"
+              aria-invalid={!!error}
+              aria-describedby={error ? 'login-error' : undefined}
               className="w-full glass-input rounded-xl px-4 py-3.5 text-white text-base placeholder:text-wf-gray-500 focus:outline-none transition-all"
             />
           </div>

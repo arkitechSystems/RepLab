@@ -183,7 +183,7 @@ export default function Signup() {
 
             <form onSubmit={handleSubmit} noValidate className="space-y-4">
               {error && (
-                <div ref={errorRef} className="bg-red-900/30 border border-red-800 rounded-[2px] px-4 py-3 text-red-300 text-sm">
+                <div id="signup-error" ref={errorRef} role="alert" className="bg-red-900/30 border border-red-800 rounded-[2px] px-4 py-3 text-red-300 text-sm">
                   {error}
                 </div>
               )}
@@ -192,42 +192,51 @@ export default function Signup() {
 
               {/* Email */}
               <div>
-                <label className={labelClass} style={labelStyle}>Email *</label>
+                <label htmlFor="signup-email" className={labelClass} style={labelStyle}>Email *</label>
                 <input
+                  id="signup-email"
                   type="email"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   placeholder="Email address"
                   required
                   autoComplete="email"
+                  aria-invalid={!!error}
+                  aria-describedby={error ? 'signup-error' : undefined}
                   className={inputClass}
                 />
               </div>
 
               {/* Password */}
               <div>
-                <label className={labelClass} style={labelStyle}>Password *</label>
+                <label htmlFor="signup-password" className={labelClass} style={labelStyle}>Password *</label>
                 <input
+                  id="signup-password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Create password"
                   required
                   autoComplete="new-password"
+                  aria-invalid={!!error}
+                  aria-describedby={error ? 'signup-error' : undefined}
                   className={inputClass}
                 />
               </div>
 
               {/* Confirm Password */}
               <div>
-                <label className={labelClass} style={labelStyle}>Confirm Password *</label>
+                <label htmlFor="signup-confirm" className={labelClass} style={labelStyle}>Confirm Password *</label>
                 <input
+                  id="signup-confirm"
                   type="password"
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
                   placeholder="Confirm password"
                   required
                   autoComplete="new-password"
+                  aria-invalid={!!error}
+                  aria-describedby={error ? 'signup-error' : undefined}
                   className={inputClass}
                 />
               </div>

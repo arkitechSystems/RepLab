@@ -254,8 +254,9 @@ export default function EditWorkout() {
 
           <div className="mt-5 pt-4 border-t border-white/5 space-y-4">
             <div>
-              <label className={labelClass} style={labelStyle}>Workout Name</label>
+              <label htmlFor="ew-workout-name" className={labelClass} style={labelStyle}>Workout Name</label>
               <input
+                id="ew-workout-name"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -265,11 +266,12 @@ export default function EditWorkout() {
             </div>
 
             <div>
-              <label className={labelClass} style={labelStyle}>
+              <label htmlFor="ew-workout-description" className={labelClass} style={labelStyle}>
                 Description{' '}
                 <span className="text-wf-gray-600 normal-case font-normal" style={{ letterSpacing: '0' }}>(optional)</span>
               </label>
               <input
+                id="ew-workout-description"
                 type="text"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}

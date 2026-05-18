@@ -882,8 +882,9 @@ function OneRepMaxEstimator({ onClose }) {
 
         {/* Exercise selector */}
         <div className="p-5 mb-4 fade-slide-up" style={NIKE_PANEL}>
-          <label className={labelClass} style={labelStyle}>Select Exercise</label>
+          <label htmlFor="util-exercise-select" className={labelClass} style={labelStyle}>Select Exercise</label>
           <button
+            id="util-exercise-select"
             onClick={() => setShowExerciseList(!showExerciseList)}
             className="w-full glass-input rounded-[2px] px-4 py-3 text-left flex items-center justify-between focus:outline-none"
           >
@@ -943,8 +944,9 @@ function OneRepMaxEstimator({ onClose }) {
         {selectedExercise && (
           <div className="p-5 mb-4 fade-slide-up space-y-4" style={NIKE_PANEL}>
             <div>
-              <label className={labelClass} style={labelStyle}>Weight Lifted (lbs)</label>
+              <label htmlFor="util-weight" className={labelClass} style={labelStyle}>Weight Lifted (lbs)</label>
               <input
+                id="util-weight"
                 type="number"
                 inputMode="decimal"
                 value={weight}
@@ -954,8 +956,9 @@ function OneRepMaxEstimator({ onClose }) {
               />
             </div>
             <div>
-              <label className={labelClass} style={labelStyle}>Reps Performed</label>
+              <label htmlFor="util-reps" className={labelClass} style={labelStyle}>Reps Performed</label>
               <input
+                id="util-reps"
                 type="number"
                 inputMode="numeric"
                 value={reps}

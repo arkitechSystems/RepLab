@@ -1098,7 +1098,7 @@ export default function Calendar() {
 
               {/* Error feedback */}
               {editError && (
-                <div className="px-5 pb-2 shrink-0">
+                <div role="alert" className="px-5 pb-2 shrink-0">
                   <p className="text-sm text-red-400 text-center">{editError}</p>
                 </div>
               )}
@@ -1337,7 +1337,7 @@ export default function Calendar() {
             </div>
 
             {editError && (
-              <div className="px-5 pb-4">
+              <div role="alert" className="px-5 pb-4">
                 <p className="text-sm text-red-400 text-center">{editError}</p>
               </div>
             )}
