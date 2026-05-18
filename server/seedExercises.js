@@ -193,6 +193,60 @@ const SEED_EXERCISES = [
   { name: 'Push-ups to Failure (Finisher)', muscle: 'Chest', tags: ['press', 'bodyweight', 'compound', 'burnout'] },
   { name: 'Cable Chest Flyes (Pre-Exhaust)', muscle: 'Chest', tags: ['fly', 'isolation', 'cable', 'pre-exhaust'] },
   { name: 'Chest Dips (Lean Forward)', muscle: 'Chest', tags: ['press', 'bodyweight', 'compound', 'dip'] },
+
+  // === OLYMPIC LIFTS ===
+  { name: 'Power Clean', muscle: 'Back', tags: ['olympic', 'compound', 'barbell', 'pull', 'power', 'explosive'] },
+  { name: 'Hang Clean', muscle: 'Back', tags: ['olympic', 'compound', 'barbell', 'pull', 'power', 'explosive', 'hang'] },
+  { name: 'Clean & Jerk', muscle: 'Shoulders', tags: ['olympic', 'compound', 'barbell', 'overhead', 'power', 'explosive'] },
+  { name: 'Hang Snatch', muscle: 'Shoulders', tags: ['olympic', 'compound', 'barbell', 'overhead', 'power', 'explosive', 'hang'] },
+  { name: 'High Pull', muscle: 'Back', tags: ['olympic', 'compound', 'barbell', 'pull', 'explosive'] },
+
+  // === CARDIO additions ===
+  { name: 'Stationary Bike', muscle: 'Cardio', tags: ['cardio', 'low-impact', 'machine', 'bike'] },
+  { name: 'Elliptical', muscle: 'Cardio', tags: ['cardio', 'low-impact', 'machine'] },
+  { name: 'Jump Rope', muscle: 'Cardio', tags: ['cardio', 'plyometric', 'bodyweight'] },
+  { name: 'Sled Push', muscle: 'Cardio', tags: ['cardio', 'conditioning', 'sled', 'compound', 'quads'] },
+  { name: 'Sled Drag', muscle: 'Cardio', tags: ['cardio', 'conditioning', 'sled', 'compound'] },
+
+  // === KETTLEBELL ===
+  { name: 'Kettlebell Swing', muscle: 'Glutes', tags: ['kettlebell', 'compound', 'hinge', 'explosive', 'hamstrings'] },
+  { name: 'Turkish Get-Up', muscle: 'Core', tags: ['kettlebell', 'compound', 'full-body', 'stability'] },
+  { name: 'Kettlebell Snatch', muscle: 'Shoulders', tags: ['kettlebell', 'compound', 'overhead', 'explosive'] },
+  { name: 'Kettlebell Clean', muscle: 'Back', tags: ['kettlebell', 'compound', 'pull', 'explosive'] },
+
+  // === FUNCTIONAL / CONDITIONING ===
+  { name: 'Burpees', muscle: 'Cardio', tags: ['cardio', 'bodyweight', 'compound', 'conditioning', 'full-body'] },
+  { name: 'Wall Balls', muscle: 'Quads', tags: ['compound', 'medball', 'squat', 'conditioning', 'shoulders'] },
+  { name: "Farmer's Carry", muscle: 'Traps', tags: ['compound', 'carry', 'grip', 'dumbbell', 'kettlebell'] },
+  { name: 'Suitcase Carry', muscle: 'Core', tags: ['compound', 'carry', 'unilateral', 'anti-lateral', 'dumbbell', 'kettlebell'] },
+
+  // === FOUNDATIONAL additions ===
+  { name: 'Inverted Row', muscle: 'Back', tags: ['pull', 'horizontal', 'bodyweight', 'compound'] },
+  { name: 'Push Press', muscle: 'Shoulders', tags: ['press', 'vertical', 'barbell', 'compound', 'explosive'] },
+  { name: 'Glute-Ham Raise', muscle: 'Hamstrings', tags: ['compound', 'machine', 'bodyweight', 'glutes'] },
+
+  // === CORE additions ===
+  { name: 'Pallof Press', muscle: 'Core', tags: ['anti-rotation', 'cable', 'isolation', 'stability'] },
+  { name: 'Side Plank', muscle: 'Core', tags: ['isometric', 'bodyweight', 'isolation', 'obliques'] },
+  { name: 'V-Ups', muscle: 'Core', tags: ['bodyweight', 'isolation', 'abs'] },
+  { name: 'Cable Woodchopper', muscle: 'Core', tags: ['rotation', 'cable', 'isolation', 'obliques'] },
+  { name: 'Decline Sit-Up', muscle: 'Core', tags: ['bodyweight', 'isolation', 'abs', 'decline'] },
+
+  // === BACK (medium priority) ===
+  { name: 'Chest-Supported Row', muscle: 'Back', tags: ['pull', 'horizontal', 'machine', 'dumbbell', 'compound', 'lats'] },
+  { name: 'Meadows Row', muscle: 'Back', tags: ['pull', 'horizontal', 'barbell', 'compound', 'lats', 'unilateral'] },
+  { name: 'Rack Pull', muscle: 'Back', tags: ['pull', 'barbell', 'compound', 'hinge', 'partial'] },
+  { name: 'Reverse-Grip Lat Pulldown', muscle: 'Back', tags: ['pull', 'vertical', 'cable', 'compound', 'lats', 'underhand'] },
+
+  // === LEGS (medium priority) ===
+  { name: 'Box Squat', muscle: 'Quads', tags: ['squat', 'barbell', 'compound', 'powerlifting'] },
+  { name: 'Belt Squat', muscle: 'Quads', tags: ['squat', 'machine', 'compound'] },
+  { name: 'Single-Leg Hip Thrust', muscle: 'Glutes', tags: ['compound', 'unilateral', 'hinge', 'bodyweight', 'barbell'] },
+  { name: 'Tibialis Raise', muscle: 'Calves', tags: ['isolation', 'bodyweight', 'shin'] },
+
+  // === BICEPS / TRICEPS (medium priority) ===
+  { name: 'Bayesian Cable Curl', muscle: 'Biceps', tags: ['curl', 'cable', 'isolation', 'stretch'] },
+  { name: 'JM Press', muscle: 'Triceps', tags: ['press', 'barbell', 'compound', 'triceps'] },
 ];
 
 export default SEED_EXERCISES;
