@@ -1276,6 +1276,10 @@ export default function WorkoutSession() {
     setShowAddExercise(false);
     // Mark that we want to scroll to this exercise after render
     scrollToExercise.current = insertIdx;
+    // If the user added the exercise while in full-screen mode, switch the
+    // overlay to show the newly-created card so they can start logging it
+    // immediately instead of being left on the previous exercise.
+    if (fullScreenIdx !== null) setFullScreenIdx(insertIdx);
   }
 
   const exerciseRefs = useRef({});
@@ -2398,9 +2402,9 @@ export default function WorkoutSession() {
       )}
 
       {UnsavedModal}
-      {showDateConfirm && (
+      {showDateConfirm && createPortal(
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center px-5"
+          className="fixed inset-0 z-[120] flex items-center justify-center px-5"
           onClick={() => setShowDateConfirm(false)}
           role="dialog"
           aria-modal="true"
@@ -2431,12 +2435,13 @@ export default function WorkoutSession() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {pendingSwap && (
+      {pendingSwap && createPortal(
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center px-5"
+          className="fixed inset-0 z-[120] flex items-center justify-center px-5"
           onClick={() => setPendingSwap(null)}
           role="dialog"
           aria-modal="true"
@@ -2467,7 +2472,8 @@ export default function WorkoutSession() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
       {/* Back button + Day navigation arrows */}
       <div className="px-4 pt-6 flex items-center justify-between">
@@ -3088,9 +3094,9 @@ export default function WorkoutSession() {
           {/* Undo toast after last exercise for exercise deletion at end */}
           {/* Begin Workout prompt popup — Nike style: eyebrow + display title,
               red accent stripe, ambient red spotlight, sharp 2px corners. */}
-      {showBeginPrompt && idx === 0 && (
+      {showBeginPrompt && idx === 0 && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-start justify-center pt-24 px-5"
+          className="fixed inset-0 z-[120] flex items-start justify-center pt-24 px-5"
           onClick={() => setShowBeginPrompt(false)}
           role="dialog"
           aria-modal="true"
@@ -3173,7 +3179,8 @@ export default function WorkoutSession() {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
       {/* Section header edit modal — opened by long-press on a section
           header. Lets the user rename, edit notes, or delete the section.
