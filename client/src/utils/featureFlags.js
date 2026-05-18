@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 
 export const FF_FEATURED = 'featured';
 export const FF_CHALLENGES = 'challenges';
+export const FF_TRAINERS = 'trainers';
 
 const STORAGE_PREFIX = 'rl_ff_';
 

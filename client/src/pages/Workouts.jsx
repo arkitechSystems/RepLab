@@ -8,7 +8,7 @@ import { iosFocusRef } from '../utils/iosFocus';
 import TrainerProfile from '../components/TrainerProfile';
 import { getTrainers, getTrainerById } from '../data/trainers';
 import { useAuth } from '../context/AuthContext';
-import { useFeatureFlag, FF_FEATURED, FF_CHALLENGES } from '../utils/featureFlags';
+import { useFeatureFlag, FF_FEATURED, FF_CHALLENGES, FF_TRAINERS } from '../utils/featureFlags';
 import { sharePR } from '../utils/prShare';
 import { useTutorial } from '../context/TutorialContext';
 import UndoToast from '../components/UndoToast';
@@ -1018,10 +1018,11 @@ export default function Workouts() {
 
   // Pre-launch gates — see client/src/utils/featureFlags.js for the unlock
   // instructions. Apple App Review's demo account never has these flags,
-  // so reviewers see the consistent "Coming Soon" state across both
-  // Featured Workouts and Challenges.
+  // so reviewers see the consistent "Coming Soon" state across Featured
+  // Workouts, Challenges, and Trainers.
   const featuredUnlocked = useFeatureFlag(FF_FEATURED);
   const challengesUnlocked = useFeatureFlag(FF_CHALLENGES);
+  const trainersUnlocked = useFeatureFlag(FF_TRAINERS);
   const [showPremiumGate, setShowPremiumGate] = useState(false);
   const [selectedChallenge, setSelectedChallenge] = useState(null);
   const [challengeTab, setChallengeTab] = useState('active');
@@ -1493,7 +1494,7 @@ export default function Workouts() {
   }
 
   function renderExternalShareButtons(workoutName) {
-    const text = `I'm doing ${workoutName || 'a workout'} today on RepLab and want you to join! 💪 Check it out at https://replab-fitness.com`;
+    const text = `I'm doing ${workoutName || 'a workout'} today on REPLAB and want you to join! 💪 Check it out at https://replab-fitness.com`;
     return (
       <>
         <div className="flex items-center gap-3 mt-4 mb-3">
@@ -3230,6 +3231,19 @@ export default function Workouts() {
         )}
       </>
     );
+  }
+
+  // Trainers section — pre-launch gate. If somehow selectedGroup gets set
+  // to 'partners' without the FF_TRAINERS flag (deep link via
+  // location.state.openSection, stale state, anything weird), bounce back
+  // to the default group instead of rendering the mock-trainer content.
+  // The card-level gate below is the primary defense; this is
+  // belt-and-suspenders. Also clears any selectedTrainer so the trainer
+  // profile sub-view can't render either.
+  if (selectedGroup === 'partners' && !trainersUnlocked) {
+    if (selectedTrainer) setSelectedTrainer(null);
+    setSelectedGroup(null);
+    return null;
   }
 
   // Trainer profile view
