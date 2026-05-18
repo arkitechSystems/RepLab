@@ -64,13 +64,21 @@ const DEPENDENT_TABLES = [
   ['password_reset_log', 'user_id'],
   ['trainer_login_history', 'user_id'],
   ['challenge_entries', 'user_id'],
+  ['cardio_entries', 'user_id'],
 ];
 
 // Tables whose rows are NOT deleted but where the FK column is set to NULL
 // (per privacy-audit policy: preserve the row, sever the linkage).
-// exercises.created_by is the only one today.
+// - exercises.created_by: custom exercises authored by the user stay in the
+//   library (other users may have copied them into templates) with the
+//   created_by reference cleared.
+// - pro_waiting_list.user_id: the pre-launch interest list is keyed on email
+//   (UNIQUE), not the user FK. Deleting the user nulls the link so the email
+//   row survives as a standalone waitlist entry. This matches the FK's
+//   ON DELETE SET NULL.
 const PRESERVE_BUT_NULL = [
   ['exercises', 'created_by'],
+  ['pro_waiting_list', 'user_id'],
 ];
 
 const describeIfDb = HAS_DB ? describe : describe.skip;
@@ -83,6 +91,11 @@ describeIfDb('db.deleteUser cascade (integration)', () => {
   // fails before the deleteUser step (e.g. a recipient user for the
   // shared_programs row).
   const auxUserIds = [];
+  // Preserve-but-NULL rows survive deleteUser by design (privacy policy:
+  // keep row, sever linkage). They have no user FK left after the test, so
+  // afterAll has to remove them explicitly or each run leaves debris.
+  // Map of table → array of row ids to delete on teardown.
+  const preserveButNullRowsToCleanup = { exercises: [], pro_waiting_list: [] };
 
   beforeAll(async () => {
     // Import lazily — dbPool.js opens a connection at module load.
@@ -109,6 +122,13 @@ describeIfDb('db.deleteUser cascade (integration)', () => {
       }
       for (const id of auxUserIds) {
         await db.deleteUser(id).catch(() => {});
+      }
+      for (const [table, ids] of Object.entries(preserveButNullRowsToCleanup)) {
+        for (const id of ids) {
+          await pool
+            .query(`DELETE FROM ${table} WHERE id = $1`, [id])
+            .catch(() => {});
+        }
       }
     } finally {
       // Don't end the pool — vitest may run other files in the same
@@ -306,6 +326,19 @@ describeIfDb('db.deleteUser cascade (integration)', () => {
       [testUserId]
     );
 
+    // cardio_entries — both standalone and session-linked. CASCADEd via the
+    // user_id FK, so it should disappear after deletion.
+    await pool.query(
+      `INSERT INTO cardio_entries (user_id, session_id, cardio_type, duration_secs, distance_m, calories)
+       VALUES ($1, $2, 'treadmill', 600, 1500, 80)`,
+      [testUserId, sessionId]
+    );
+    await pool.query(
+      `INSERT INTO cardio_entries (user_id, cardio_type, duration_secs)
+       VALUES ($1, 'rower', 1200)`,
+      [testUserId]
+    );
+
     // exercises (created_by) — preserved-but-NULLed, not deleted
     const { rows: exRows } = await pool.query(
       `INSERT INTO exercises (name, muscle_group, is_custom, created_by)
@@ -313,6 +346,18 @@ describeIfDb('db.deleteUser cascade (integration)', () => {
       [`Cascade Custom Exercise ${uniqueSuffix}`, testUserId]
     );
     const customExerciseId = exRows[0].id;
+    preserveButNullRowsToCleanup.exercises.push(customExerciseId);
+
+    // pro_waiting_list — preserved-but-NULLed. The email row survives as a
+    // standalone waitlist entry; only the user_id link is cleared.
+    const waitlistEmail = `cascade-waitlist-${uniqueSuffix}@example.com`;
+    const { rows: waitRows } = await pool.query(
+      `INSERT INTO pro_waiting_list (email, user_id, source)
+       VALUES ($1, $2, 'logged_in') RETURNING id`,
+      [waitlistEmail, testUserId]
+    );
+    const waitlistRowId = waitRows[0].id;
+    preserveButNullRowsToCleanup.pro_waiting_list.push(waitlistRowId);
 
     // -- 3. Sanity check: confirm setup populated every table.
     for (const [table, col] of DEPENDENT_TABLES) {
@@ -352,12 +397,23 @@ describeIfDb('db.deleteUser cascade (integration)', () => {
     );
     expect(userLeft, 'user row should be deleted').toBe(0);
 
-    // -- 7. Preserve-but-NULL: exercises.created_by should be NULL,
-    //       and the row itself must still exist.
+    // -- 7. Preserve-but-NULL: the row must still exist, FK column NULL.
+    //       Each preserved table tracks its own seeded row id (per-table
+    //       lookup — exercises uses customExerciseId, pro_waiting_list uses
+    //       waitlistRowId, etc).
+    const preservedRowIds = {
+      exercises: customExerciseId,
+      pro_waiting_list: waitlistRowId,
+    };
     for (const [table, col] of PRESERVE_BUT_NULL) {
+      const rowId = preservedRowIds[table];
+      expect(
+        rowId,
+        `test bug: PRESERVE_BUT_NULL includes ${table} but no seeded row id is tracked in preservedRowIds`
+      ).toBeDefined();
       const { rows: preserved } = await pool.query(
         `SELECT ${col} FROM ${table} WHERE id = $1`,
-        [customExerciseId]
+        [rowId]
       );
       expect(
         preserved.length,
