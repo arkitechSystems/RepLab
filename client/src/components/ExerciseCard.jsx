@@ -81,7 +81,7 @@ function SortableSetRow({ id, disabled, children }) {
   );
 }
 
-function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onReorderSets, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, onShowPRs, note, onNoteChange, weightSuggestion, onApplySuggestion, allWorkoutExercises, lastEntries, forceShowDemo, mode = 'session', dataTutorial, showGoalWeight = true, showGoalReps = true, showSetType = true, exerciseNumber, cardioEnabled = false, cardioSelections, onCardioChange, cardTheme = 'light' }) {
+function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onReorderSets, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, onShowPRs, note, onNoteChange, weightSuggestion, onApplySuggestion, allWorkoutExercises, lastEntries, forceShowDemo, mode = 'session', dataTutorial, showGoalWeight = true, showGoalReps = true, showSetType = true, exerciseNumber, cardioEnabled = false, cardioSelections, onCardioChange, cardTheme = 'light', onEnterFullScreen }) {
   // 'light' = #e8e8e8 card with dark text (default)
   // 'dark'  = transparent card, white text — page bg shows through
   const isDarkTheme = cardTheme === 'dark';
@@ -258,6 +258,30 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
   return (
     <>
     <div ref={cardRef} data-tutorial={dataTutorial ? 'exercise-card' : undefined} className={`${isDarkTheme ? 'exercise-card-transparent-test' : 'exercise-card-light-test'} glass-card rounded-xl overflow-hidden mb-3${EXERCISE_CARD_GRADIENT_BORDER && !isDarkTheme ? ' exercise-card-gradient-border' : ''}`} style={{ position: 'relative' }}>
+      {/* Viewfinder ⛶ row — sits slightly above the icon cluster
+          (PRs / ⚖ / Demo) in the card header. Tap to enter full-screen
+          mode for this exercise. Hidden in template mode and when the
+          parent doesn't supply onEnterFullScreen (e.g. read-only views). */}
+      {!isTemplate && onEnterFullScreen && (
+        <div className="px-3 pt-2 flex items-center justify-end" style={{ background: 'rgba(255,255,255,0.02)' }}>
+          <button
+            type="button"
+            data-tutorial={dataTutorial ? 'full-screen' : undefined}
+            onClick={(e) => { e.stopPropagation(); onEnterFullScreen(exerciseKey); }}
+            aria-label={`Enter full-screen mode for ${exercise.name}`}
+            title="Full-screen"
+            className="h-6 w-6 rounded-md flex items-center justify-center text-wf-gray-400 hover:text-white active:scale-90 active:bg-white/10 transition-all"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              {/* Four L-shaped corner brackets of a square */}
+              <path d="M4 9V5a1 1 0 011-1h4" />
+              <path d="M20 9V5a1 1 0 00-1-1h-4" />
+              <path d="M4 15v4a1 1 0 001 1h4" />
+              <path d="M20 15v4a1 1 0 01-1 1h-4" />
+            </svg>
+          </button>
+        </div>
+      )}
       {/* Exercise Header — name + demo button */}
       <div data-tutorial={dataTutorial} className="px-4 py-3 flex items-center justify-between" style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '3px double rgba(255,255,255,0.15)' }}>
         <div className="min-w-0">

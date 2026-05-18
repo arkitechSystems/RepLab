@@ -169,6 +169,16 @@ export default function WorkoutSession() {
   //   wf-default-pin-rest-timer
   //   wf-default-show-goal-weight
   //   wf-default-show-goal-reps
+  // Full-screen mode default — Profile → Preferences sets `wf-default-fullscreen-mode`.
+  // When ON, opening a session auto-opens the first exercise full-screen.
+  // The in-session gear popover writes to the same key so per-session changes
+  // persist as the new default.
+  const [fullScreenDefault, setFullScreenDefault] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('wf-default-fullscreen-mode')) ?? false; } catch { return false; }
+  });
+  // Active full-screen state: null = not in full-screen, number = which
+  // template.exercises index is shown (always a non-section exercise).
+  const [fullScreenIdx, setFullScreenIdx] = useState(null);
   const [pinWorkoutTimer, setPinWorkoutTimer] = useState(() => {
     try { return JSON.parse(localStorage.getItem('wf-default-pin-workout-timer')) ?? false; } catch { return false; }
   });
@@ -238,6 +248,7 @@ export default function WorkoutSession() {
       'set-controls': '[data-tutorial="set-controls"]',
       'set-row': '[data-tutorial="set-row"]',
       'plate-calc': '[data-tutorial="plate-calc"]',
+      'full-screen': '[data-tutorial="full-screen"]',
       'session-settings': '[data-tutorial="session-settings"]',
       'exercise-notes': '[data-tutorial="exercise-notes"]',
       'mark-complete': '[data-tutorial="mark-complete"]',
@@ -276,7 +287,7 @@ export default function WorkoutSession() {
         // scroll so the top is visible just below the sticky header rather than
         // centering (which can cause the tooltip to overlap the spotlight).
         const elRect = el.getBoundingClientRect();
-        const exerciseCardSteps = ['exercise-header', 'swap-exercise', 'add-delete-exercise', 'set-controls', 'set-row', 'plate-calc', 'exercise-notes'];
+        const exerciseCardSteps = ['exercise-header', 'swap-exercise', 'add-delete-exercise', 'set-controls', 'set-row', 'plate-calc', 'full-screen', 'exercise-notes'];
         const isExerciseCardStep = exerciseCardSteps.includes(tutorialTip);
         if (tutorialTip === 'exercise-card') {
           // Scroll the exercise card header to the very top of the viewport
@@ -949,6 +960,32 @@ export default function WorkoutSession() {
       .catch(() => {}); // Non-fatal
   }, [template]);
 
+  // Auto-open full-screen on first template load when the user has the
+  // Profile default ON. We track first-open with a ref so subsequent
+  // template updates (e.g. swap/delete) don't re-trigger.
+  const fullScreenAutoOpenedRef = useRef(false);
+  useEffect(() => {
+    if (fullScreenAutoOpenedRef.current) return;
+    if (!template || template.isRest) return;
+    if (!fullScreenDefault) { fullScreenAutoOpenedRef.current = true; return; }
+    // Pick the first non-section exercise index. If a rest day or all-section
+    // template somehow loads here, skip (no card to render).
+    const firstIdx = template.exercises.findIndex(e => !e.isSectionHeader);
+    if (firstIdx < 0) { fullScreenAutoOpenedRef.current = true; return; }
+    setFullScreenIdx(firstIdx);
+    fullScreenAutoOpenedRef.current = true;
+  }, [template, fullScreenDefault]);
+
+  // If the currently-displayed full-screen exercise gets deleted (or its idx
+  // goes out of bounds for any reason), auto-exit full-screen back to scroll.
+  useEffect(() => {
+    if (fullScreenIdx === null || !template) return;
+    const ex = template.exercises[fullScreenIdx];
+    if (!ex || ex.isSectionHeader) {
+      setFullScreenIdx(null);
+    }
+  }, [template, fullScreenIdx]);
+
   function handleChange(exerciseName, setIdx, field, value) {
     setPersisted(false);
     setEntries((prev) => {
@@ -1308,6 +1345,16 @@ export default function WorkoutSession() {
     // Snapshot before deleting
     const exerciseIdx = findExIdx(template.exercises, exerciseKey);
     if (exerciseIdx < 0) return;
+    // If we're full-screen viewing the exercise being deleted, auto-exit.
+    // (Indices shift on delete; without this, full-screen would silently
+    // jump to the next exercise.)
+    if (fullScreenIdx === exerciseIdx) {
+      setFullScreenIdx(null);
+    } else if (fullScreenIdx !== null && exerciseIdx < fullScreenIdx) {
+      // Deletion before us — slide our index back by one so we stay on
+      // the same exercise.
+      setFullScreenIdx(fullScreenIdx - 1);
+    }
     const exerciseData = template.exercises[exerciseIdx];
     const exerciseEntries = entries[exerciseKey];
     const exerciseCompletedKeys = [...completedSets].filter((k) => k.startsWith(exerciseKey + '-'));
@@ -2107,6 +2154,38 @@ export default function WorkoutSession() {
   const completedCount = completedSets.size;
   const progressPct = totalSets > 0 ? Math.round((completedCount / totalSets) * 100) : 0;
 
+  // Full-screen mode helpers. We navigate among non-section exercises only
+  // (section headers don't render an ExerciseCard). `fsList` is the ordered
+  // list of template.exercises indices that are real exercises.
+  const fsList = template.exercises
+    .map((e, i) => (e.isSectionHeader ? -1 : i))
+    .filter(i => i >= 0);
+  const fsPos = fullScreenIdx === null ? -1 : fsList.indexOf(fullScreenIdx);
+  const fsTotal = fsList.length;
+  const fsHasPrev = fsPos > 0;
+  const fsHasNext = fsPos >= 0 && fsPos < fsTotal - 1;
+  const fsExercise = fullScreenIdx === null ? null : template.exercises[fullScreenIdx];
+  const fsKey = fsExercise && !fsExercise.isSectionHeader
+    ? exKey(template.exercises, fsExercise, fullScreenIdx)
+    : null;
+
+  function exitFullScreen() {
+    const idx = fullScreenIdx;
+    setFullScreenIdx(null);
+    // Scroll the underlying view to the last-shown exercise after the
+    // overlay unmounts and the regular cards repaint.
+    if (idx !== null) {
+      const ex = template.exercises[idx];
+      if (ex && !ex.isSectionHeader) {
+        const key = exKey(template.exercises, ex, idx);
+        setTimeout(() => {
+          const el = exerciseRefs.current[key];
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 50);
+      }
+    }
+  }
+
   // completed sets only — planned/pre-filled values are excluded so the
   // session-level "Total Volume" tile reflects work actually done, not typed.
   const totalVolume = template.exercises.reduce((vol, ex, exIdx) => {
@@ -2124,6 +2203,170 @@ export default function WorkoutSession() {
   return (
     <div className={`pb-24${cardTheme === 'dark' ? ' wf-dark-cards' : ''}`}>
       <h1 className="sr-only">REPLAB Workout Session</h1>
+      {/* Full-screen mode overlay — portaled to document.body so it escapes
+          every stacking context on the page (sticky header, floating timers,
+          card-theme background). The top bar reuses the same elapsed/rest
+          state as the regular header (no duplicated interval logic), and
+          the ExerciseCard below is the SAME component used in the scroll
+          view, just unconstrained to fill the available space. */}
+      {fullScreenIdx !== null && fsExercise && !fsExercise.isSectionHeader && createPortal(
+        <div
+          className="fixed inset-0 z-[90] overflow-y-auto"
+          style={{ background: cardTheme === 'dark' ? '#e8e8e8' : '#0a0a0a' }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Exercise full-screen mode"
+        >
+          {/* Top bar: [←] Exercise N of M [→]  workout · rest  [⚙] [✕] */}
+          <div
+            className="sticky top-0 z-10 px-3 py-2 flex items-center gap-2"
+            style={{
+              background: 'linear-gradient(180deg, rgba(10,10,10,0.98) 0%, rgba(10,10,10,0.92) 100%)',
+              borderBottom: '1px solid rgba(255,255,255,0.08)',
+              paddingTop: 'max(8px, env(safe-area-inset-top))',
+            }}
+          >
+            {/* Prev arrow (hidden on first) */}
+            <div className="w-8 h-8 flex items-center justify-center shrink-0">
+              {fsHasPrev && (
+                <button
+                  onClick={() => setFullScreenIdx(fsList[fsPos - 1])}
+                  aria-label="Previous exercise"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-white/80 active:bg-white/10 active:scale-90 transition-all"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                  </svg>
+                </button>
+              )}
+            </div>
+            {/* Exercise N of M — center-ish */}
+            <div className="flex-1 min-w-0 text-center">
+              <span className="text-[11px] uppercase font-bold text-white/85 tracking-wider" style={{ letterSpacing: '0.15em' }}>
+                Exercise {fsPos + 1} of {fsTotal}
+              </span>
+            </div>
+            {/* Next arrow (hidden on last) */}
+            <div className="w-8 h-8 flex items-center justify-center shrink-0">
+              {fsHasNext && (
+                <button
+                  onClick={() => setFullScreenIdx(fsList[fsPos + 1])}
+                  aria-label="Next exercise"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-white/80 active:bg-white/10 active:scale-90 transition-all"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </button>
+              )}
+            </div>
+            {/* Workout · Rest timers — reuse the SAME elapsed/restRemaining
+                state ticking in the regular header; no duplicated intervals. */}
+            <div className="shrink-0 flex items-center gap-2 px-2 py-1 rounded-md" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <span className="text-[11px] font-light text-white/90 tabular-nums" style={{ fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.5px' }}>
+                {formatTime(elapsed)}
+              </span>
+              <span className="text-[10px] text-white/30">·</span>
+              <span
+                className="text-[11px] font-light tabular-nums"
+                style={{
+                  fontVariantNumeric: 'tabular-nums',
+                  letterSpacing: '-0.5px',
+                  color: restRemaining !== null && restRemaining <= 0
+                    ? 'rgba(34,197,94,0.95)'
+                    : restRemaining !== null
+                      ? 'rgba(239,68,68,0.95)'
+                      : 'rgba(255,255,255,0.45)',
+                }}
+              >
+                {restRemaining !== null ? formatTime(Math.max(0, restRemaining)) : '--:--'}
+              </span>
+            </div>
+            {/* Settings gear — opens the same in-session popover the regular
+                view uses (the popover renders at the gear's
+                data-tutorial="session-settings" anchor, which is in the
+                StickyHeader; toggling state is enough). */}
+            <button
+              data-fs-gear="1"
+              onClick={() => setShowSessionMenu(v => !v)}
+              aria-label="Session settings"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-white/80 active:bg-white/10 active:scale-90 transition-all shrink-0"
+            >
+              <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </button>
+            {/* Exit ✕ */}
+            <button
+              onClick={exitFullScreen}
+              aria-label="Exit full-screen"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-white/80 active:bg-white/10 active:scale-90 transition-all shrink-0"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Card area — no width constraints, fills the screen below the
+              top bar. The ExerciseCard is the SAME component used in the
+              scroll view, with the same handlers wired in. */}
+          <div className="px-3 pt-3 pb-24">
+            <ExerciseCard
+              exercise={fsExercise}
+              exerciseKey={fsKey}
+              entries={entries[fsKey]}
+              pbs={pbs}
+              readOnly={structureLocked}
+              inputsLocked={inputsLocked}
+              onShowPRs={(name) => { setPrModalSort('weight'); setPrModalExercise(name); }}
+              onLockedTap={inputsLocked ? () => setShowBeginPrompt(true) : undefined}
+              onChange={inputsLocked ? undefined : ((_n, ...args) => handleChange(fsKey, ...args))}
+              onBlur={inputsLocked ? undefined : ((_n, ...args) => handleBlur(fsKey, ...args))}
+              completedSets={completedSets}
+              autoFilled={autoFilled}
+              onToggleComplete={completionLocked ? () => setShowBeginPrompt(true) : ((_n, ...args) => handleToggleComplete(fsKey, ...args))}
+              onAddSet={structureLocked ? undefined : ((_n, ...args) => handleAddSet(fsKey, ...args))}
+              onDeleteSet={structureLocked ? undefined : ((_n, ...args) => handleDeleteSet(fsKey, ...args))}
+              onReorderSets={structureLocked ? undefined : (fromIdx, toIdx) => handleReorderSets(fsKey, fromIdx, toIdx)}
+              onSwapExercise={structureLocked ? undefined : (_oldName, newName) => handleSwapExercise(fsKey, newName)}
+              onAddExercise={structureLocked ? undefined : (name) => handleAddExercise(name, fullScreenIdx)}
+              onDeleteExercise={structureLocked ? undefined : () => handleDeleteExercise(fsKey)}
+              note={notes[fsKey] || ''}
+              onNoteChange={inputsLocked ? undefined : (_name, value) => handleNoteChange(fsKey, value)}
+              weightSuggestion={inputsLocked ? undefined : weightSuggestions[fsExercise.name]}
+              onApplySuggestion={inputsLocked ? undefined : (_exName, weight) => {
+                setEntries(prev => {
+                  const updated = { ...prev };
+                  updated[fsKey] = (updated[fsKey] || []).map((e, i) => {
+                    const k = `${fsKey}-${i}`;
+                    if (completedSets.has(k)) return e;
+                    return { ...e, weight };
+                  });
+                  return updated;
+                });
+                setWeightSuggestions(prev => { const next = { ...prev }; delete next[fsExercise.name]; return next; });
+              }}
+              allWorkoutExercises={template.exercises.map(e => e.name)}
+              lastEntries={lastSession[fsExercise.name]}
+              forceShowDemo={showAllDemos}
+              showGoalWeight={showGoalWeight}
+              showGoalReps={showGoalReps}
+              showSetType={showSetType}
+              exerciseNumber={fsPos + 1}
+              cardioEnabled={cardioEnabled}
+              cardioSelections={cardioSelections}
+              onCardioChange={((_n, ...args) => handleCardioChange(fsKey, ...args))}
+              cardTheme={cardTheme}
+              /* No onEnterFullScreen here — already in full-screen mode.
+                  Hides the viewfinder button on the card so the user doesn't
+                  see a no-op control. */
+            />
+          </div>
+        </div>,
+        document.body
+      )}
       {/* Dark-card mode swaps the page bg to the same gray (#e8e8e8) that
           light-mode cards use, so the surface and the cards trade places.
           Fixed + pointer-events-none so it sits behind everything in this
@@ -2554,11 +2797,14 @@ export default function WorkoutSession() {
                   would sit on top of the menu. Position the menu off the
                   gear's bounding rect since we're no longer the gear's
                   positioned ancestor. */}
-              <div className="fixed inset-0 z-[80]" onClick={() => setShowSessionMenu(false)} />
+              <div className="fixed inset-0 z-[95]" onClick={() => setShowSessionMenu(false)} />
               <div
-                className="fixed z-[81] w-52 rounded-xl bg-wf-gray-900 border border-white/10 shadow-2xl overflow-hidden"
+                className="fixed z-[96] w-52 rounded-xl bg-wf-gray-900 border border-white/10 shadow-2xl overflow-hidden"
                 style={(() => {
-                  const btn = document.querySelector('[data-tutorial="session-settings"]');
+                  // Prefer the full-screen overlay's gear when present (it's the
+                  // visible anchor); fall back to the StickyHeader gear otherwise.
+                  const btn = document.querySelector('[data-fs-gear="1"]')
+                    || document.querySelector('[data-tutorial="session-settings"]');
                   if (!btn) return { top: 64, right: 16 };
                   const r = btn.getBoundingClientRect();
                   return { top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) };
@@ -2617,6 +2863,32 @@ export default function WorkoutSession() {
                   <span>{cardTheme === 'dark' ? 'Light Cards' : 'Dark Cards'}</span>
                   <div className={`w-[37px] h-[23px] rounded-full transition-colors ${cardTheme === 'dark' ? 'bg-wf-red' : 'bg-wf-gray-600'}`}>
                     <div className={`w-[19px] h-[19px] rounded-full bg-white mt-0.5 transition-transform ${cardTheme === 'dark' ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                  </div>
+                </button>
+                {/* Full-screen mode toggle — flipping here writes back to the
+                    same Profile default key (wf-default-fullscreen-mode) so
+                    the change persists as the user's preference. Turning ON
+                    while a session is already open jumps the user straight
+                    into full-screen for the first non-section exercise;
+                    turning OFF exits if currently in full-screen. */}
+                <button
+                  onClick={() => {
+                    const v = !fullScreenDefault;
+                    setFullScreenDefault(v);
+                    try { localStorage.setItem('wf-default-fullscreen-mode', JSON.stringify(v)); } catch {}
+                    if (v) {
+                      const firstIdx = template.exercises.findIndex(e => !e.isSectionHeader);
+                      if (firstIdx >= 0) setFullScreenIdx(firstIdx);
+                    } else {
+                      setFullScreenIdx(null);
+                    }
+                    setShowSessionMenu(false);
+                  }}
+                  className="w-full px-3 py-2.5 flex items-center justify-between text-sm text-white active:bg-white/5 transition-colors border-t border-white/5"
+                >
+                  <span>Full-Screen Mode</span>
+                  <div className={`w-[37px] h-[23px] rounded-full transition-colors ${fullScreenDefault ? 'bg-wf-red' : 'bg-wf-gray-600'}`}>
+                    <div className={`w-[19px] h-[19px] rounded-full bg-white mt-0.5 transition-transform ${fullScreenDefault ? 'translate-x-4' : 'translate-x-0.5'}`} />
                   </div>
                 </button>
               </div>
@@ -2818,6 +3090,7 @@ export default function WorkoutSession() {
               cardioSelections={cardioSelections}
               onCardioChange={wrapCb(handleCardioChange)}
               cardTheme={cardTheme}
+              onEnterFullScreen={() => setFullScreenIdx(idx)}
             />
             {/* Inline undo toast for deleted set — show below this exercise */}
             {undoToast && undoToast.type === 'set' && undoToast.exerciseName === eKey && (
@@ -3845,6 +4118,14 @@ export default function WorkoutSession() {
             title: 'Plate Calculator',
             description: <>Not sure how to load the bar? The <span className="text-white font-semibold">⚖ icon</span> in the card header opens a plate calculator that shows exactly which plates to put on each side. You can also <span className="text-white font-semibold">long-press any weight input</span> on a set row to open the same calculator pre-filled with that set's weight.</>,
             prev: 'set-row',
+            next: 'full-screen',
+            position: 'below',
+          },
+          'full-screen': {
+            target: '[data-tutorial="full-screen"]',
+            title: 'Full-Screen Mode',
+            description: <>Tap the <span className="text-white font-semibold">viewfinder icon</span> to make this exercise fill the screen. Use the <span className="text-white font-semibold">← / → arrows</span> in the top bar to move between exercises, and tap <span className="text-white font-semibold">✕</span> to exit. Want this on by default? Turn it on in <span className="text-white font-semibold">Profile → Preferences → Full-Screen Mode</span>.</>,
+            prev: 'plate-calc',
             next: 'session-settings',
             position: 'below',
           },
@@ -3852,7 +4133,7 @@ export default function WorkoutSession() {
             target: '[data-tutorial="session-settings"]',
             title: 'Display Settings',
             description: <>Tap the <span className="text-white font-semibold">gear icon</span> to customize your workout view. You can toggle <span className="text-white font-semibold">Goal Weight / Reps</span> columns on or off, and show or hide the <span className="text-white font-semibold">Set Type</span> column to keep your layout clean.</>,
-            prev: 'plate-calc',
+            prev: 'full-screen',
             next: 'exercise-notes',
             position: 'below',
           },

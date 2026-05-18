@@ -253,6 +253,13 @@ export default function Profile() {
   // Workout-session defaults — keys shared with WorkoutSession.jsx so the
   // toggle here is the same value the session reads on mount. Any in-session
   // override (lock buttons, gear menu) writes back to the same key.
+  // Full-screen mode default — when ON, opening a workout session auto-opens
+  // the first exercise in full-screen. Per-session toggle in the in-session
+  // gear popover overrides for that session only. Shared key with
+  // WorkoutSession.jsx: `wf-default-fullscreen-mode`.
+  const [defaultFullScreenMode, setDefaultFullScreenMode] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('wf-default-fullscreen-mode')) ?? false; } catch { return false; }
+  });
   const [defaultPinWorkoutTimer, setDefaultPinWorkoutTimer] = useState(() => {
     try { return JSON.parse(localStorage.getItem('wf-default-pin-workout-timer')) ?? false; } catch { return false; }
   });
@@ -308,6 +315,9 @@ export default function Profile() {
 
   // Persist workout-session defaults. WorkoutSession.jsx reads these same
   // keys at mount so each new session inherits the latest preference.
+  useEffect(() => {
+    localStorage.setItem('wf-default-fullscreen-mode', JSON.stringify(defaultFullScreenMode));
+  }, [defaultFullScreenMode]);
   useEffect(() => {
     localStorage.setItem('wf-default-pin-workout-timer', JSON.stringify(defaultPinWorkoutTimer));
   }, [defaultPinWorkoutTimer]);
@@ -737,6 +747,30 @@ export default function Profile() {
                 <p className="text-[10px] uppercase font-bold" style={{ color: 'rgba(255,255,255,0.4)', letterSpacing: '0.2em' }}>
                   Workout Session Defaults
                 </p>
+
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between gap-px">
+                    <div className="flex items-center gap-px flex-1 min-w-0">
+                      {/* Viewfinder / corner-brackets icon — matches the
+                          ⛶ control on each exercise card header that
+                          enters full-screen mode. */}
+                      <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V5a1 1 0 011-1h3M20 8V5a1 1 0 00-1-1h-3M4 16v3a1 1 0 001 1h3M20 16v3a1 1 0 01-1 1h-3" />
+                      </svg>
+                      <span className="text-white/70 text-sm font-medium">Full-Screen Mode</span>
+                    </div>
+                    <button
+                      onClick={() => setDefaultFullScreenMode(!defaultFullScreenMode)}
+                      aria-label={defaultFullScreenMode ? 'Default off full-screen mode' : 'Default on full-screen mode'}
+                      className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${defaultFullScreenMode ? 'bg-wf-red' : 'bg-white/15'}`}
+                    >
+                      <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${defaultFullScreenMode ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-white/40 leading-snug pl-[1px]">
+                    Default to full-screen for each exercise when starting a workout. You can still toggle this per-session from the settings gear.
+                  </p>
+                </div>
 
                 <div className="flex items-center justify-between gap-px">
                   <div className="flex items-center gap-px flex-1 min-w-0">
