@@ -81,7 +81,7 @@ function SortableSetRow({ id, disabled, children }) {
   );
 }
 
-function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onReorderSets, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, onShowPRs, note, onNoteChange, weightSuggestion, onApplySuggestion, allWorkoutExercises, lastEntries, forceShowDemo, mode = 'session', dataTutorial, showGoalWeight = true, showGoalReps = true, showSetType = true, exerciseNumber, cardioEnabled = false, cardioSelections, onCardioChange, cardTheme = 'light', onEnterFullScreen }) {
+function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onReorderSets, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, onShowPRs, note, onNoteChange, weightSuggestion, onApplySuggestion, allWorkoutExercises, lastEntries, forceShowDemo, mode = 'session', dataTutorial, showGoalWeight = true, showGoalReps = true, showSetType = true, exerciseNumber, cardioEnabled = false, cardioSelections, onCardioChange, cardTheme = 'light', onEnterFullScreen, fullScreen = false }) {
   // 'light' = #e8e8e8 card with dark text (default)
   // 'dark'  = transparent card, white text — page bg shows through
   const isDarkTheme = cardTheme === 'dark';
@@ -257,7 +257,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
 
   return (
     <>
-    <div ref={cardRef} data-tutorial={dataTutorial ? 'exercise-card' : undefined} className={`${isDarkTheme ? 'exercise-card-transparent-test' : 'exercise-card-light-test'} glass-card rounded-xl overflow-hidden mb-3${EXERCISE_CARD_GRADIENT_BORDER && !isDarkTheme ? ' exercise-card-gradient-border' : ''}`} style={{ position: 'relative' }}>
+    <div ref={cardRef} data-tutorial={dataTutorial ? 'exercise-card' : undefined} className={`${isDarkTheme ? 'exercise-card-transparent-test' : 'exercise-card-light-test'} glass-card overflow-hidden${fullScreen ? ' min-h-full' : ' rounded-xl mb-3'}${EXERCISE_CARD_GRADIENT_BORDER && !isDarkTheme && !fullScreen ? ' exercise-card-gradient-border' : ''}`} style={{ position: 'relative' }}>
       {/* Viewfinder ⛶ row — sits slightly above the icon cluster
           (PRs / ⚖ / Demo) in the card header. Tap to enter full-screen
           mode for this exercise. Hidden in template mode and when the

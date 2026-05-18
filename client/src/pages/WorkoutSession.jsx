@@ -2211,7 +2211,7 @@ export default function WorkoutSession() {
           view, just unconstrained to fill the available space. */}
       {fullScreenIdx !== null && fsExercise && !fsExercise.isSectionHeader && createPortal(
         <div
-          className="fixed inset-0 z-[90] overflow-y-auto"
+          className="fixed inset-0 z-[90] flex flex-col"
           style={{ background: cardTheme === 'dark' ? '#e8e8e8' : '#0a0a0a' }}
           role="dialog"
           aria-modal="true"
@@ -2219,7 +2219,7 @@ export default function WorkoutSession() {
         >
           {/* Top bar: [←] Exercise N of M [→]  workout · rest  [⚙] [✕] */}
           <div
-            className="sticky top-0 z-10 px-3 py-2 flex items-center gap-2"
+            className="shrink-0 px-3 py-2 flex items-center gap-2"
             style={{
               background: 'linear-gradient(180deg, rgba(10,10,10,0.98) 0%, rgba(10,10,10,0.92) 100%)',
               borderBottom: '1px solid rgba(255,255,255,0.08)',
@@ -2309,11 +2309,13 @@ export default function WorkoutSession() {
             </button>
           </div>
 
-          {/* Card area — no width constraints, fills the screen below the
-              top bar. The ExerciseCard is the SAME component used in the
-              scroll view, with the same handlers wired in. */}
-          <div className="px-3 pt-3 pb-24">
+          {/* Card area — flex-1 so it fills all remaining height below the
+              top bar; the card inside gets fullScreen={true} which drops its
+              rounded corners + bottom margin and stretches to fill, so the
+              card visually covers the whole viewport even with only 2 sets. */}
+          <div className="flex-1 min-h-0 overflow-y-auto">
             <ExerciseCard
+              fullScreen={true}
               exercise={fsExercise}
               exerciseKey={fsKey}
               entries={entries[fsKey]}
@@ -2863,32 +2865,6 @@ export default function WorkoutSession() {
                   <span>{cardTheme === 'dark' ? 'Light Cards' : 'Dark Cards'}</span>
                   <div className={`w-[37px] h-[23px] rounded-full transition-colors ${cardTheme === 'dark' ? 'bg-wf-red' : 'bg-wf-gray-600'}`}>
                     <div className={`w-[19px] h-[19px] rounded-full bg-white mt-0.5 transition-transform ${cardTheme === 'dark' ? 'translate-x-4' : 'translate-x-0.5'}`} />
-                  </div>
-                </button>
-                {/* Full-screen mode toggle — flipping here writes back to the
-                    same Profile default key (wf-default-fullscreen-mode) so
-                    the change persists as the user's preference. Turning ON
-                    while a session is already open jumps the user straight
-                    into full-screen for the first non-section exercise;
-                    turning OFF exits if currently in full-screen. */}
-                <button
-                  onClick={() => {
-                    const v = !fullScreenDefault;
-                    setFullScreenDefault(v);
-                    try { localStorage.setItem('wf-default-fullscreen-mode', JSON.stringify(v)); } catch {}
-                    if (v) {
-                      const firstIdx = template.exercises.findIndex(e => !e.isSectionHeader);
-                      if (firstIdx >= 0) setFullScreenIdx(firstIdx);
-                    } else {
-                      setFullScreenIdx(null);
-                    }
-                    setShowSessionMenu(false);
-                  }}
-                  className="w-full px-3 py-2.5 flex items-center justify-between text-sm text-white active:bg-white/5 transition-colors border-t border-white/5"
-                >
-                  <span>Full-Screen Mode</span>
-                  <div className={`w-[37px] h-[23px] rounded-full transition-colors ${fullScreenDefault ? 'bg-wf-red' : 'bg-wf-gray-600'}`}>
-                    <div className={`w-[19px] h-[19px] rounded-full bg-white mt-0.5 transition-transform ${fullScreenDefault ? 'translate-x-4' : 'translate-x-0.5'}`} />
                   </div>
                 </button>
               </div>
