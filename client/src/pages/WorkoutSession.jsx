@@ -2168,6 +2168,11 @@ export default function WorkoutSession() {
   const fsKey = fsExercise && !fsExercise.isSectionHeader
     ? exKey(template.exercises, fsExercise, fullScreenIdx)
     : null;
+  // Workout is "all sets complete" the moment every set across every
+  // non-section exercise lands in completedSets. Used to trigger the
+  // animated red-and-white liquid pulse on the full-screen ✕ button so
+  // the user knows they're done and can exit to finalize.
+  const allSetsComplete = totalSets > 0 && completedCount === totalSets;
 
   function exitFullScreen() {
     const idx = fullScreenIdx;
@@ -2232,7 +2237,7 @@ export default function WorkoutSession() {
                 <button
                   onClick={() => setFullScreenIdx(fsList[fsPos - 1])}
                   aria-label="Previous exercise"
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-wf-red active:bg-white/10 active:scale-90 transition-all"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-wf-red bg-wf-red/10 border border-wf-red/30 active:scale-90 transition-all"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
@@ -2252,7 +2257,7 @@ export default function WorkoutSession() {
                 <button
                   onClick={() => setFullScreenIdx(fsList[fsPos + 1])}
                   aria-label="Next exercise"
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-wf-red active:bg-white/10 active:scale-90 transition-all"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-wf-red bg-wf-red/10 border border-wf-red/30 active:scale-90 transition-all"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
@@ -2297,11 +2302,13 @@ export default function WorkoutSession() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </button>
-            {/* Exit ✕ */}
+            {/* Exit ✕ — when every set has been marked complete, swap to
+                the .btn-liquid-pulse class to draw the user's eye toward
+                finishing the workout. */}
             <button
               onClick={exitFullScreen}
               aria-label="Exit full-screen"
-              className="w-8 h-8 rounded-full flex items-center justify-center text-white/80 active:bg-white/10 active:scale-90 transition-all shrink-0"
+              className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${allSetsComplete ? 'btn-liquid-pulse' : 'text-white/80 active:bg-white/10 active:scale-90 transition-all'}`}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />

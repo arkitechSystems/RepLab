@@ -498,6 +498,28 @@ input[type="number"] {
   100% { background-position: 300% 50%; }
 }
 
+/* Used on the full-screen mode "Exit ✕" button once every set across every
+   exercise has been marked complete — signals to the user that they're
+   done and can exit to finalize the workout. Reuses the .btn-liquid flowing
+   red-to-light-gray gradient and stacks a subtle 7% scale pulse on top. */
+.btn-liquid-pulse {
+  background: linear-gradient(90deg,
+    #dc2626 0%,
+    #ef4444 25%,
+    rgba(255, 255, 255, 0.7) 50%,
+    #ef4444 75%,
+    #dc2626 100%
+  );
+  background-size: 300% 100%;
+  animation: liquidFlow 5s linear infinite, fsXPulse 1.4s ease-in-out infinite;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.45);
+  color: white;
+}
+@keyframes fsXPulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.07); }
+}
+
 /* One-shot left-to-right white flash across the active bottom-nav cell.
    Mounted only when a tab becomes active, so the animation fires once per
    selection. The sweep is an inset child of an overflow-hidden wrapper so
