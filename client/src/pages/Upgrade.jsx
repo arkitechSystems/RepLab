@@ -248,7 +248,7 @@ export default function Upgrade() {
             </h1>
             {!isPremium && (
               <p className="text-sm text-white/55 mt-3 leading-relaxed">
-                Unlock featured trainer programs, AI workout generation, and the full RepLab toolkit.
+                Unlock featured trainer programs, AI workout generation, and the full REPLAB toolkit.
               </p>
             )}
           </div>

@@ -57,7 +57,7 @@ function clientLoginPage(error) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/jpeg" href="/RepLabLogo4.jpg">
   <link rel="apple-touch-icon" href="/RepLabLogo4.jpg">
-  <title>RepLab — Workout Dashboard Login</title>
+  <title>REPLAB — Workout Dashboard Login</title>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     ${DASHBOARD_CSS}
@@ -107,7 +107,7 @@ function clientPage(title, body, user) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/jpeg" href="/RepLabLogo4.jpg">
   <link rel="apple-touch-icon" href="/RepLabLogo4.jpg">
-  <title>RepLab — ${title}</title>
+  <title>REPLAB — ${title}</title>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>${DASHBOARD_CSS}</style>
 </head>

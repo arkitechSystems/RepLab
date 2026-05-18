@@ -193,7 +193,7 @@ export async function sharePR(pr) {
     .replace(/[^a-zA-Z0-9.\-]/g, '_');
   const file = new File([blob], filename, { type: 'image/png' });
 
-  const text = `${pr.exercise} — ${pr.weight} lbs × ${pr.reps} reps. New PR. 💪 #RepLab`;
+  const text = `${pr.exercise} — ${pr.weight} lbs × ${pr.reps} reps. New PR. 💪 #REPLAB`;
 
   // Best path: share file via Web Share API
   if (navigator.canShare && navigator.canShare({ files: [file] })) {

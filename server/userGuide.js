@@ -9,7 +9,7 @@ export function userGuidePage() {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/jpeg" href="/RepLabLogo4.jpg">
   <link rel="apple-touch-icon" href="/RepLabLogo4.jpg">
-  <title>RepLab — User Guide</title>
+  <title>REPLAB — User Guide</title>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -42,10 +42,10 @@ export function userGuidePage() {
 </head>
 <body>
 <div class="container">
-  <a href="${config.APP_URL}" class="back-btn">&larr; Back to RepLab</a>
+  <a href="${config.APP_URL}" class="back-btn">&larr; Back to REPLAB</a>
   <div class="logo">REP<span>LAB</span></div>
   <h1>User Guide</h1>
-  <p class="subtitle">Everything you need to know about using RepLab</p>
+  <p class="subtitle">Everything you need to know about using REPLAB</p>
 
   <!-- Table of Contents -->
   <div class="toc">
@@ -86,7 +86,7 @@ export function userGuidePage() {
   <!-- 1. Getting Started -->
   <div class="section" id="getting-started">
     <h2>1. Getting Started</h2>
-    <p>Welcome to RepLab. Here's how to get up and running in under a minute:</p>
+    <p>Welcome to REPLAB. Here's how to get up and running in under a minute:</p>
     <ol>
       <li><strong>Sign up</strong> with your email or phone number and create a password.</li>
       <li><strong>Take the tour</strong> &mdash; after signing up, you'll see a quick walkthrough of the app's main features. You can skip it, but it's worth the 30 seconds.</li>
@@ -315,7 +315,7 @@ export function userGuidePage() {
     </ul>
 
     <h3 id="feedback">Sending Feedback</h3>
-    <p>We're actively building RepLab and your feedback matters. To send feedback:</p>
+    <p>We're actively building REPLAB and your feedback matters. To send feedback:</p>
     <ol>
       <li>Go to the <strong>Profile</strong> tab.</li>
       <li>Tap <strong>Send Feedback</strong>.</li>

@@ -47,7 +47,7 @@ export default function Terms() {
           <div className="relative p-6">
             <h2 className="text-[11px] uppercase font-semibold text-white mb-3" style={{ letterSpacing: '0.25em' }}>2. Description of Service</h2>
             <div className="border-t border-white/5 pt-3">
-              <p>RepLab is a fitness tracking application that allows users to create workout programs, log exercises, track progress, and manage their fitness routine. The App is provided on an "as is" and "as available" basis.</p>
+              <p>REPLAB is a fitness tracking application that allows users to create workout programs, log exercises, track progress, and manage their fitness routine. The App is provided on an "as is" and "as available" basis.</p>
             </div>
           </div>
         </section>

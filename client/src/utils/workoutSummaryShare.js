@@ -272,7 +272,7 @@ export async function generateSummaryImage(opts) {
 
   ctx.font = `600 20px ${font}`;
   ctx.fillStyle = 'rgba(255,255,255,0.25)';
-  ctx.fillText('Logged with RepLab', W / 2, curY + 14);
+  ctx.fillText('Logged with REPLAB', W / 2, curY + 14);
 
   return canvas.toDataURL('image/png');
 }
@@ -314,6 +314,6 @@ export function composeShareText(opts) {
     });
     lines.push('');
   });
-  lines.push('Logged with RepLab');
+  lines.push('Logged with REPLAB');
   return lines.join('\n');
 }

@@ -19,7 +19,7 @@ export default function SplashScreen({ onDone, persistent }) {
       {/* Logo */}
       <img
         src="/RepLabLogo2.jpg"
-        alt="RepLab"
+        alt="REPLAB"
         className="relative z-10 rounded-3xl"
         style={{ width: '20.8rem' }}
       />

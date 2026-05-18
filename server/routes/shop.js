@@ -20,7 +20,7 @@ function shopAuth(req, res, next) {
     return res.send(shopPage('Login Required', `
       <div style="text-align:center;padding:60px 20px">
         <h2 style="font-size:24px;font-weight:800;margin-bottom:8px">Login Required</h2>
-        <p style="color:rgba(255,255,255,0.5);margin-bottom:24px">Open the RepLab app to access your workout dashboard.</p>
+        <p style="color:rgba(255,255,255,0.5);margin-bottom:24px">Open the REPLAB app to access your workout dashboard.</p>
       </div>
     `));
   }
@@ -52,7 +52,7 @@ function shopAuth(req, res, next) {
     return res.send(shopPage('Session Expired', `
       <div style="text-align:center;padding:60px 20px">
         <h2 style="font-size:24px;font-weight:800;margin-bottom:8px">Session Expired</h2>
-        <p style="color:rgba(255,255,255,0.5);margin-bottom:24px">Please open the RepLab app and navigate to your dashboard again.</p>
+        <p style="color:rgba(255,255,255,0.5);margin-bottom:24px">Please open the REPLAB app and navigate to your dashboard again.</p>
       </div>
     `));
   }
@@ -71,7 +71,7 @@ function shopPage(title, body) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/jpeg" href="/RepLabLogo4.jpg">
   <link rel="apple-touch-icon" href="/RepLabLogo4.jpg">
-  <title>RepLab — ${title}</title>
+  <title>REPLAB — ${title}</title>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }

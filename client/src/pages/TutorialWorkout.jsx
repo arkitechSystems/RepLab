@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 export const TUTORIAL_TEMPLATE = {
   id: 'tutorial',
   name: 'Tutorial Workout',
-  description: 'A sample workout to learn how RepLab tracks your sets, reps, and weight.',
+  description: 'A sample workout to learn how REPLAB tracks your sets, reps, and weight.',
   exercises: [
     {
       name: 'Barbell Back Squat',
@@ -117,7 +117,7 @@ export default function TutorialWorkout() {
             </div>
             <div className="pt-4 border-t border-white/5">
               <p className="text-wf-gray-400 text-sm leading-relaxed mb-5">
-                Spinning up a sample workout so you can see how RepLab tracks
+                Spinning up a sample workout so you can see how REPLAB tracks
                 sets, reps, and weight. Nothing here will be saved.
               </p>
               <div className="flex items-center gap-3">

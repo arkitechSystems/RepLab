@@ -210,7 +210,7 @@ export default function Welcome() {
       title: 'GET TO KNOW THE APP',
       body: (
         <p className="text-wf-gray-400 text-sm leading-relaxed mb-6">
-          Quick four-step tour of how RepLab works — programs, scheduling,
+          Quick four-step tour of how REPLAB works — programs, scheduling,
           tracking PRs, and the built-in tools. Skip anytime.
         </p>
       ),

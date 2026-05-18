@@ -532,7 +532,7 @@ export default function Profile() {
               </button>
               <div className="min-w-0">
                 <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(239,68,68,0.8)', letterSpacing: '0.3em' }}>
-                  RepLab Member
+                  REPLAB MEMBER
                 </p>
                 <h2 className="text-[22px] font-black text-white tracking-tight leading-[0.95] truncate">
                   {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : (user?.email || user?.phone || 'User')}
