@@ -2232,7 +2232,7 @@ export default function WorkoutSession() {
                 <button
                   onClick={() => setFullScreenIdx(fsList[fsPos - 1])}
                   aria-label="Previous exercise"
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-white/80 active:bg-white/10 active:scale-90 transition-all"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-wf-red active:bg-white/10 active:scale-90 transition-all"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
@@ -2242,7 +2242,7 @@ export default function WorkoutSession() {
             </div>
             {/* Exercise N of M — center-ish */}
             <div className="flex-1 min-w-0 text-center">
-              <span className="text-[11px] uppercase font-bold text-white/85 tracking-wider" style={{ letterSpacing: '0.15em' }}>
+              <span className="text-[11px] uppercase font-bold text-wf-red tracking-wider" style={{ letterSpacing: '0.15em' }}>
                 Exercise {fsPos + 1} of {fsTotal}
               </span>
             </div>
@@ -2252,7 +2252,7 @@ export default function WorkoutSession() {
                 <button
                   onClick={() => setFullScreenIdx(fsList[fsPos + 1])}
                   aria-label="Next exercise"
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-white/80 active:bg-white/10 active:scale-90 transition-all"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-wf-red active:bg-white/10 active:scale-90 transition-all"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
