@@ -4301,6 +4301,33 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
 
   const [expandedSummary, setExpandedSummary] = useState(new Set());
 
+  // PR lookup — fetch this template's personal bests on mount so we can
+  // tag the matching set rows in the breakdown with a yellow "PR" badge.
+  // Server returns {exercise_name, best_weight, best_reps, ...} per row;
+  // we key into a Set by "name::weight::reps" so per-set lookup is O(1).
+  // Empty-start sessions don't have a template.id yet → skip the fetch.
+  const [prKeys, setPrKeys] = useState(null);
+  useEffect(() => {
+    if (!template?.id) return;
+    let cancelled = false;
+    api(`/pbs?templateId=${template.id}`).then((data) => {
+      if (cancelled) return;
+      const keys = new Set();
+      for (const pr of data || []) {
+        const w = Number(pr.best_weight);
+        const r = Number(pr.best_reps);
+        if (!Number.isFinite(w) || !Number.isFinite(r)) continue;
+        keys.add(`${String(pr.exercise_name).toLowerCase()}::${w}::${r}`);
+      }
+      setPrKeys(keys);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [template?.id]);
+  function isPRSet(exerciseName, weight, reps) {
+    if (!prKeys || weight <= 0 || reps <= 0) return false;
+    return prKeys.has(`${String(exerciseName).toLowerCase()}::${Number(weight)}::${Number(reps)}`);
+  }
+
   // Per-exercise data with per-set volume breakdown (goal volume vs actual volume).
   // actualVolume / actualWeight / actualReps reflect completed sets only —
   // planned/pre-filled values are zeroed out so the breakdown's "actual" column
@@ -4414,7 +4441,7 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
     if (nameLines.length > 1) y += (nameLines.length - 1) * 52;
     y += 40; // "Workout Complete" subtitle
     y += 50; // spacing before stats
-    y += 120; // stats boxes
+    y += 120 + 20; // stats boxes (tile body 120 + bottom breathing room)
     y += 50; // spacing after stats
 
     // Exercise section height
@@ -4511,35 +4538,44 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
     ctx.fillText('Workout Complete  \u2713', W / 2, curY + 20);
     curY += 50;
 
-    // --- Stats boxes (3 columns) ---
-    const boxGap = 20;
-    const boxW = (contentWidth - boxGap * 2) / 3;
-    const boxH = 100;
-    const boxRadius = 16;
+    // --- Stats boxes (2 columns) — mirrors the in-app 2-tile summary:
+    //     Total Volume (green stripe) on the left, Total Sets (red stripe)
+    //     on the right. Each tile gets a colored top accent stripe to
+    //     match the modal's Nike-style panels.
+    const boxGap = 24;
+    const boxW = (contentWidth - boxGap) / 2;
+    const boxH = 120;
+    const boxRadius = 4;
     const statsData = [
-      { label: 'TIME', value: formatTime(elapsed) },
-      { label: 'SETS', value: `${completedSets.size}/${totalSets}` },
-      { label: 'VOLUME', value: `${totalVolume.toLocaleString()} lbs` },
+      { label: 'TOTAL VOLUME', value: `${totalVolume.toLocaleString()} lbs`, stripe: '#22c55e' },
+      { label: 'TOTAL SETS',   value: `${completedSets.size}/${totalSets}`,   stripe: '#ef4444' },
     ];
     statsData.forEach((stat, i) => {
       const bx = padding + i * (boxW + boxGap);
       const by = curY;
-      // Box background
+      // Box background — dark gradient mirroring the in-app glass-card.
+      const tileGrad = ctx.createLinearGradient(bx, by, bx, by + boxH);
+      tileGrad.addColorStop(0, '#1e1e1e');
+      tileGrad.addColorStop(1, '#141414');
       drawRoundRect(ctx, bx, by, boxW, boxH, boxRadius);
-      ctx.fillStyle = 'rgba(255,255,255,0.05)';
+      ctx.fillStyle = tileGrad;
       ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)';
       ctx.lineWidth = 1;
       ctx.stroke();
-      // Label
-      ctx.font = `600 16px ${font}`;
-      ctx.fillStyle = 'rgba(255,255,255,0.4)';
-      ctx.textAlign = 'center';
-      ctx.fillText(stat.label, bx + boxW / 2, by + 36);
-      // Value
-      ctx.font = `800 28px ${font}`;
+      // Top accent stripe (matches stripe(color) in the modal).
+      ctx.fillStyle = stat.stripe;
+      drawRoundRect(ctx, bx, by, boxW, 4, 2);
+      ctx.fill();
+      // Label — smaller, colored to match its stripe, tight letter spacing.
+      ctx.font = `700 18px ${font}`;
+      ctx.fillStyle = stat.stripe;
+      ctx.textAlign = 'left';
+      ctx.fillText(stat.label, bx + 24, by + 42);
+      // Value — heavy display number, white, left-aligned beneath the label.
+      ctx.font = `900 44px ${font}`;
       ctx.fillStyle = '#ffffff';
-      ctx.fillText(stat.value, bx + boxW / 2, by + 72);
+      ctx.fillText(stat.value, bx + 24, by + 92);
     });
     curY += boxH + 50;
 
@@ -4564,36 +4600,49 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
       ctx.fillText(ex.name, padding, curY + 30);
       curY += 50;
 
-      // Set rows
+      // Set rows \u2014 mirror the in-app breakdown layout:
+      //   [#] [type label] [PR (centered if applicable)] [weight \u00D7 reps RIGHT]
+      // Right-side lifted text is red, or yellow if the set hit a PR.
       const eKey = exKey(template.exercises, ex, exIdx);
       const exEntries = entries[eKey] || [];
       ex.sets.forEach((set, idx) => {
         const e = exEntries[idx];
         const actualWeight = Number(e?.weight) || 0;
         const actualReps = Number(e?.reps) || 0;
-        const goalReps = set.plannedReps || 0;
-        const weightStr = actualWeight === -1 ? 'BW' : `${actualWeight} lbs`;
-        const hitGoal = goalReps > 0 ? actualReps >= goalReps : true;
+        const isCompleted = completedSets.has(`${eKey}-${idx}`);
+        const weightStr = actualWeight === -1 ? 'BW' : actualWeight > 0 ? `${actualWeight} lbs` : null;
+        const repsStr = actualReps > 0 ? `${actualReps} ${actualReps === 1 ? 'rep' : 'reps'}` : null;
+        const lifted = isCompleted && repsStr ? (weightStr ? `${weightStr} \u00D7 ${repsStr}` : repsStr) : '\u2014';
+        const setType = e?.setType || set.setType || ex.setType || 'straight';
+        const typeLabel = setType === 'warm_up' ? 'WU' : setType === 'touch_up' ? 'TU' : setType === 'drop' ? 'DS' : setType === 'rest_pause' ? 'RP' : setType === 'superset' ? 'SS' : setType === 'alternating' ? 'Alt' : setType === 'pre_exhaust' ? 'PrEx' : 'REG';
+        const isWarmup = setType === 'warm_up' || setType === 'touch_up';
+        const isPR = isCompleted && isPRSet(ex.name, actualWeight, actualReps);
 
-        // Set number
-        ctx.font = `600 22px ${font}`;
+        // Set number \u2014 same dim style as the modal.
+        ctx.font = `700 22px ${font}`;
         ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.textAlign = 'left';
         ctx.fillText(`${idx + 1}`, padding + 8, curY + 24);
 
-        // Weight x Reps
-        ctx.font = `500 22px ${font}`;
-        ctx.fillStyle = 'rgba(255,255,255,0.8)';
-        ctx.fillText(`${weightStr}  \u00D7  ${actualReps} reps`, padding + 50, curY + 24);
+        // Type label \u2014 small badge text, yellow on warm-ups, gray otherwise.
+        ctx.font = `700 18px ${font}`;
+        ctx.fillStyle = isWarmup ? '#facc15' : 'rgba(255,255,255,0.45)';
+        ctx.fillText(typeLabel, padding + 50, curY + 24);
 
-        // Goal indicator
-        if (goalReps > 0) {
-          const goalText = `${actualReps}/${goalReps}`;
-          ctx.textAlign = 'right';
-          ctx.font = `700 20px ${font}`;
-          ctx.fillStyle = hitGoal ? '#22c55e' : '#ef4444';
-          ctx.fillText(goalText + (hitGoal ? '  \u2713' : '  \u2717'), W - padding, curY + 24);
-          ctx.textAlign = 'left';
+        // PR badge \u2014 centered, yellow uppercase. Only when set is a PR.
+        if (isPR) {
+          ctx.font = `900 18px ${font}`;
+          ctx.fillStyle = '#facc15';
+          ctx.textAlign = 'center';
+          ctx.fillText('PR', W / 2, curY + 24);
         }
+
+        // Lifted (weight \u00D7 reps) \u2014 right-aligned, red normally, yellow on PR.
+        ctx.font = `700 22px ${font}`;
+        ctx.fillStyle = isPR ? '#facc15' : '#ef4444';
+        ctx.textAlign = 'right';
+        ctx.fillText(lifted, W - padding, curY + 24);
+        ctx.textAlign = 'left';
 
         curY += 38;
       });
@@ -4786,16 +4835,14 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
               position: 'absolute', top: 0, left: 0, right: 0, height: '3px',
               background: `linear-gradient(90deg, ${color}, ${color}40 60%, transparent)`,
             });
+            // Two-tile summary: Total Volume (top-left) + Total Sets
+            // (top-right). The earlier 4-tile layout included Time + Heaviest
+            // — those numbers still live in `elapsed` / `heaviestSet` for the
+            // share image generator below; they're just not surfaced in the
+            // modal UI per the simplified post-workout snapshot.
             const stats = [
-              { label: 'Time',       color: '#ef4444', main: formatTime(elapsed),                  suffix: null },
-              { label: 'Sets',       color: '#f97316', main: String(completedSets.size),           suffix: ` / ${totalSets}` },
-              { label: 'Actual Vol', color: '#22c55e', main: totalVolume.toLocaleString(),         suffix: ' lbs' },
-              {
-                label: 'Heaviest',
-                color: '#a855f7',
-                main: heaviestSet ? `${heaviestSet.actualWeight} × ${heaviestSet.actualReps}` : '—',
-                suffix: null,
-              },
+              { label: 'Total Volume', color: '#22c55e', main: totalVolume.toLocaleString(), suffix: ' lbs' },
+              { label: 'Total Sets',   color: '#ef4444', main: String(completedSets.size),   suffix: ` / ${totalSets}` },
             ];
             return (
               <div className="grid grid-cols-2 gap-3 mb-6">
@@ -4910,7 +4957,7 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
                 >
                   <span className="text-sm font-medium text-white truncate flex-1 min-w-0">{ex.name}</span>
                   <div className="flex items-center gap-3 shrink-0">
-                    <span className="text-[11px] text-wf-gray-400 font-semibold tabular-nums">
+                    <span className="text-[11px] text-wf-red font-semibold tabular-nums">
                       {ex.setStats.length} {ex.setStats.length === 1 ? 'set' : 'sets'}
                     </span>
                     <svg
@@ -4937,11 +4984,19 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
                       const lifted = ss.completed && repsStr
                         ? (weightStr ? `${weightStr} × ${repsStr}` : repsStr)
                         : '—';
+                      // PR detection: set's weight/reps match a row in the
+                      // template's personal_bests fetched on mount. Yellow
+                      // beats red on PR rows; otherwise the lifted text is
+                      // red for visual hierarchy with the exercise header.
+                      const isPR = ss.completed && isPRSet(ex.name, ss.actualWeight, ss.actualReps);
                       return (
                         <div key={ss.setNumber} className="flex items-center py-1.5">
                           <span className="w-8 text-xs text-wf-gray-500 font-bold tabular-nums">{ss.setNumber}</span>
                           <span className={`w-12 text-[10px] font-bold ${isWarmup ? 'text-yellow-400' : 'text-wf-gray-400'}`}>{typeLabel}</span>
-                          <span className="flex-1 text-right text-sm text-white font-semibold tabular-nums">
+                          <span className="flex-1 text-center text-[10px] font-black tracking-[0.2em] uppercase text-yellow-400">
+                            {isPR ? 'PR' : ''}
+                          </span>
+                          <span className={`text-right text-sm font-semibold tabular-nums ${isPR ? 'text-yellow-400' : 'text-wf-red'}`}>
                             {lifted}
                           </span>
                         </div>
