@@ -40,7 +40,7 @@ END $$;
 
 UPDATE email_templates
 SET
-  subject = 'Welcome to REPLAB — You''re In!',
+  subject = 'Welcome to RepLab!',
   html = '
         <div style="font-family: -apple-system, BlinkMacSystemFont, ''Segoe UI'', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px; color: #333;">
           <!-- Logo -->
@@ -50,7 +50,7 @@ SET
 
           <h2 style="color: #111; font-size: 24px; font-weight: 800; margin: 0 0 8px 0;">Welcome to REPLAB!</h2>
           <p style="font-size: 16px; line-height: 1.7; margin: 0 0 24px 0; color: #444;">
-            Thanks for signing up! You''re now part of the <strong>alpha version</strong> of REPLAB — a fully functional gym companion that we''re still actively building out. Track every set, hit new PRs, and build the habits that move the needle. Your feedback shapes what ships next.
+            Thanks for signing up! Track every set, hit new PRs, and build the habits that move the needle. Here''s a quick tour of what''s inside.
           </p>
 
           <!-- Getting Started: the interactive tutorial -->
@@ -84,12 +84,37 @@ SET
               Log every set, rep, and weight in real time. Personal records are detected and stored automatically — tap the <strong>PRs</strong> button on any exercise card to see your bests for that movement. Workout summaries highlight new PRs in yellow so you can spot wins at a glance. For a focused logging view, tap the viewfinder icon to enter <strong>full-screen workout mode</strong>.
             </p>
           </div>
+          <div style="text-align: center; margin-bottom: 16px;">
+            <img
+              src="https://replab-fitness.com/email-img/workout-session.png"
+              alt="REPLAB workout session with set logging and timers"
+              style="max-width: 280px; width: 100%; height: auto; border-radius: 12px; border: 1px solid #eee;"
+            />
+          </div>
 
-          <!-- Built-in tools -->
-          <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">Built-in Tools</h3>
+          <!-- Plate Calculator (featured) -->
+          <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">Plate Calculator — In Your Workout</h3>
+          <div style="background: #fff5f5; border-left: 4px solid #ef4444; border-radius: 8px; padding: 16px 20px; margin-bottom: 16px;">
+            <p style="color: #333; font-size: 14px; line-height: 1.7; margin: 0 0 12px 0;">
+              Don''t know how much weight you''re doing during a workout? Open up the plate calculator without leaving your workout session and add how much weight you need to the bar.
+            </p>
+            <p style="color: #555; font-size: 13px; line-height: 1.6; margin: 0;">
+              Tap the <strong>PC</strong> button at the top of any exercise card, or long-press a weight input. It tells you exactly which plates to slide onto each side.
+            </p>
+          </div>
+          <div style="text-align: center; margin-bottom: 16px;">
+            <img
+              src="https://replab-fitness.com/email-img/plate-calc.png"
+              alt="REPLAB plate calculator open during a workout session, showing plates loaded on each side of the bar"
+              style="max-width: 280px; width: 100%; height: auto; border-radius: 12px; border: 1px solid #eee;"
+            />
+          </div>
+
+          <!-- Other built-in tools -->
+          <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">Other Built-in Tools</h3>
           <div style="background: #f0f0f0; border-radius: 8px; padding: 16px 20px; margin-bottom: 16px;">
             <p style="color: #333; font-size: 14px; line-height: 1.7; margin: 0;">
-              The <strong>Utilities</strong> tab has a <strong>Plate Calculator</strong> that shows exactly which plates to load on the bar, and a <strong>1 Rep Max Estimator</strong> that projects your max from any working set. The plate calculator is also accessible mid-workout — tap the <strong>PC</strong> button in any exercise card header, or long-press a weight input.
+              The <strong>Utilities</strong> tab also has a <strong>1 Rep Max Estimator</strong> that projects your max from any working set, plus a standalone version of the Plate Calculator for warmups and planning.
             </p>
           </div>
 
@@ -109,14 +134,6 @@ SET
             </p>
           </div>
 
-          <!-- Alpha Version -->
-          <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">Alpha Version</h3>
-          <div style="padding: 16px 20px; background: #f8f4e8; border-left: 4px solid #e6a817; border-radius: 8px; margin-bottom: 16px;">
-            <p style="color: #333; font-size: 13px; line-height: 1.7; margin: 0;">
-              <strong>This is an alpha release.</strong> You may encounter occasional bugs or rough edges as we continue to develop the app. New features are being added regularly. If you run into anything or have ideas for improvement, head to <strong>Profile &gt; Send Feedback</strong> — it goes directly to the dev team.
-            </p>
-          </div>
-
           <!-- User Guide -->
           <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">User Guide</h3>
           <div style="background: #f0f0f0; border-radius: 8px; padding: 16px 20px; margin-bottom: 24px;">
@@ -125,8 +142,15 @@ SET
             </p>
           </div>
 
+          <!-- We''d love your ideas -->
+          <div style="background: #f0f7ff; border-left: 4px solid #3b82f6; border-radius: 8px; padding: 16px 20px; margin-bottom: 16px;">
+            <p style="color: #333; font-size: 14px; line-height: 1.7; margin: 0;">
+              We''re always looking to improve the app. Let us know if you have any ideas you want incorporated — head to <strong>Profile &gt; Send Feedback</strong> and it goes straight to the dev team.
+            </p>
+          </div>
+
           <p style="color: #666; font-size: 13px; line-height: 1.6;">
-            Thanks for being an early adopter. We''re glad to have you.
+            Thanks for being here. We''re glad to have you.
           </p>
 
           <a href="https://replab-fitness.com"
