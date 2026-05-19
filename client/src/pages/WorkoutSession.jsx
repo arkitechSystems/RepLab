@@ -2382,14 +2382,17 @@ export default function WorkoutSession() {
       )}
       {/* Dark-card mode swaps the page bg to the same gray (#e8e8e8) that
           light-mode cards use, so the surface and the cards trade places.
-          Fixed + pointer-events-none so it sits behind everything in this
-          page without intercepting taps. The wf-dark-cards class on the
-          root scopes overrides for sticky-header chrome and exercise name
-          text color (see index.css). */}
+          Fixed + pointer-events-none + z-index: -1 so it sits behind every
+          piece of normal-flow content on this page (buttons, panels, etc.)
+          without intercepting taps. zIndex: 0 here was the previous value,
+          which painted the overlay ABOVE static-flow elements and hid the
+          Add Exercise / Add Cardio / Total Volume / Mark Complete buttons.
+          The wf-dark-cards class on the root scopes overrides for sticky-
+          header chrome and exercise name text color (see index.css). */}
       {cardTheme === 'dark' && (
         <div
           className="fixed inset-0 pointer-events-none"
-          style={{ background: '#e8e8e8', zIndex: 0 }}
+          style={{ background: '#e8e8e8', zIndex: -1 }}
           aria-hidden="true"
         />
       )}

@@ -67,13 +67,19 @@ export default function Layout({ children }) {
   return (
     <div className="min-h-screen bg-black text-white flex flex-col relative">
       <div className="ambient-bg" />
-      {/* Top bar with logo + profile avatar — hidden when embedded from dashboard */}
+      {/* Top bar with logo + profile avatar — hidden when embedded from dashboard.
+          Always renders on a solid black surface, even on routes that change
+          the surrounding page bg (e.g. the workout session's light-cards
+          mode swaps the page to #e8e8e8). The explicit background here keeps
+          the REPLAB logo + avatar pinned to the brand black regardless of
+          theme. */}
       {!isDashboardEmbed && (
         <div
           className="relative z-20 px-4 flex items-center justify-between"
           style={{
             paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.3rem)',
             paddingBottom: '0.05rem',
+            background: '#000',
           }}
         >
           <div className="flex items-center gap-2">
