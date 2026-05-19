@@ -26,9 +26,9 @@ const ANDROID_SIGNING_SHA256 =
   '00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00';
 
 const EMAIL_FROM_TRANSACTIONAL =
-  process.env.EMAIL_FROM_TRANSACTIONAL || 'RepLab <noreply@email.replab-fitness.com>';
+  process.env.EMAIL_FROM_TRANSACTIONAL || 'REPLAB <noreply@email.replab-fitness.com>';
 const EMAIL_FROM_ADMIN =
-  process.env.EMAIL_FROM_ADMIN || 'RepLab <noreply@email.replab-fitness.com>';
+  process.env.EMAIL_FROM_ADMIN || 'REPLAB <noreply@email.replab-fitness.com>';
 
 export default {
   APP_URL,

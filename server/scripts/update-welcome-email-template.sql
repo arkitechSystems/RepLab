@@ -50,30 +50,62 @@ SET
 
           <h2 style="color: #111; font-size: 24px; font-weight: 800; margin: 0 0 8px 0;">Welcome to REPLAB!</h2>
           <p style="font-size: 16px; line-height: 1.7; margin: 0 0 24px 0; color: #444;">
-            Thanks for signing up! You''re now part of the <strong>alpha version</strong> of REPLAB. The app is fully functional and ready for you to start tracking your workouts, but we''re still actively building and improving it. Your experience and feedback will help shape the final product.
+            Thanks for signing up! You''re now part of the <strong>alpha version</strong> of REPLAB — a fully functional gym companion that we''re still actively building out. Track every set, hit new PRs, and build the habits that move the needle. Your feedback shapes what ships next.
           </p>
 
-          <!-- Getting Started -->
-          <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">Getting Started</h3>
+          <!-- Getting Started: the interactive tutorial -->
+          <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">Take the Tutorial</h3>
           <div style="background: #f0f7ff; border-left: 4px solid #3b82f6; border-radius: 8px; padding: 16px 20px; margin-bottom: 16px;">
             <p style="color: #333; font-size: 14px; line-height: 1.7; margin: 0;">
-              <strong>New here? Take the tutorial.</strong> When you open the app, tap the <strong>Tutorial</strong> card on the Workouts page. It''ll walk you step by step through picking a program, scheduling it to your calendar, and logging your first workout.
+              If you completed the signup flow, the in-app tutorial popped up automatically after the 1RM step and walked you through logging a workout end-to-end. You can re-run it anytime — open the app, head to the <strong>Workouts</strong> tab, and tap the <strong>Tutorial</strong> card.
             </p>
           </div>
 
-          <!-- Trainer Dashboard -->
-          <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">Trainer Dashboard</h3>
+          <!-- Programs library -->
+          <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">Browse the Program Library</h3>
           <div style="background: #f8f8f8; border-radius: 8px; padding: 16px 20px; margin-bottom: 16px;">
             <p style="color: #333; font-size: 14px; line-height: 1.7; margin: 0;">
-              <strong>Prefer a bigger screen?</strong> You can create and manage your workouts from a computer using the <a href="https://replab-fitness.com/trainer" style="color: #EF4444; text-decoration: none; font-weight: 600;">Trainer Dashboard</a>. Just log in with the same credentials you used to sign up. Everything stays in sync with the app.
+              Pre-built programs ready to enroll in, including <strong>Jeff Nippard''s Push Pull Legs</strong>, the <strong>Muscle &amp; Fitness 5000 Rep</strong> arm specialization, <strong>Jim Stoppani''s Shortcut to Shred</strong>, Athlean-X Summer Shred, classic Bro Split, glute-focused hypertrophy blocks, and more. Tap <strong>Begin Program</strong> to auto-fill your calendar, or pull individual workouts from a program onto specific days.
             </p>
           </div>
 
-          <!-- AI-Powered Features -->
-          <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">AI-Powered Features</h3>
-          <div style="background: #f0f0ff; border-left: 4px solid #8b5cf6; border-radius: 8px; padding: 16px 20px; margin-bottom: 16px;">
+          <!-- Custom workouts + log as you go -->
+          <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">Build Your Own</h3>
+          <div style="background: #f8f8f8; border-radius: 8px; padding: 16px 20px; margin-bottom: 16px;">
             <p style="color: #333; font-size: 14px; line-height: 1.7; margin: 0;">
-              We''re working on <strong>AI-powered features</strong> for REPLAB. Soon you''ll be able to generate custom workouts tailored to your goals, experience level, and available equipment — powered by an <strong>AI trainer</strong> built right into the app. Stay tuned.
+              Create custom workouts from scratch in <strong>My Workouts</strong>, or start a <strong>blank session</strong> right from the Workouts tab to log sets on the fly — perfect for unplanned gym days.
+            </p>
+          </div>
+
+          <!-- Tracking + PRs -->
+          <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">Track Your Lifts</h3>
+          <div style="background: #fff5f5; border-left: 4px solid #ef4444; border-radius: 8px; padding: 16px 20px; margin-bottom: 16px;">
+            <p style="color: #333; font-size: 14px; line-height: 1.7; margin: 0;">
+              Log every set, rep, and weight in real time. Personal records are detected and stored automatically — tap the <strong>PRs</strong> button on any exercise card to see your bests for that movement. Workout summaries highlight new PRs in yellow so you can spot wins at a glance. For a focused logging view, tap the viewfinder icon to enter <strong>full-screen workout mode</strong>.
+            </p>
+          </div>
+
+          <!-- Built-in tools -->
+          <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">Built-in Tools</h3>
+          <div style="background: #f0f0f0; border-radius: 8px; padding: 16px 20px; margin-bottom: 16px;">
+            <p style="color: #333; font-size: 14px; line-height: 1.7; margin: 0;">
+              The <strong>Utilities</strong> tab has a <strong>Plate Calculator</strong> that shows exactly which plates to load on the bar, and a <strong>1 Rep Max Estimator</strong> that projects your max from any working set. The plate calculator is also accessible mid-workout — tap the <strong>PC</strong> button in any exercise card header, or long-press a weight input.
+            </p>
+          </div>
+
+          <!-- Reminders -->
+          <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">Workout Reminders</h3>
+          <div style="background: #f8f4e8; border-left: 4px solid #e6a817; border-radius: 8px; padding: 16px 20px; margin-bottom: 16px;">
+            <p style="color: #333; font-size: 14px; line-height: 1.7; margin: 0;">
+              REPLAB learns when you usually train and pings you around that time on days you have a workout scheduled. You''ll also get a celebration push when you hit a new PR and a weekly summary on Sunday evenings. Adjust notifications in <strong>Profile &gt; Preferences</strong> whenever you want.
+            </p>
+          </div>
+
+          <!-- Use on a computer (replaces old Trainer Dashboard section — that path is trainers-only) -->
+          <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">Use REPLAB on a Computer</h3>
+          <div style="background: #f8f8f8; border-radius: 8px; padding: 16px 20px; margin-bottom: 16px;">
+            <p style="color: #333; font-size: 14px; line-height: 1.7; margin: 0;">
+              Prefer a bigger screen for building workouts or reviewing progress? Open <a href="https://replab-fitness.com" style="color: #EF4444; text-decoration: none; font-weight: 600;">replab-fitness.com</a> in any browser and sign in with the same credentials you use on your phone. Everything stays in sync.
             </p>
           </div>
 
@@ -81,7 +113,7 @@ SET
           <h3 style="color: #111; font-size: 16px; font-weight: 700; margin: 0 0 12px 0; padding-top: 8px; border-top: 1px solid #eee;">Alpha Version</h3>
           <div style="padding: 16px 20px; background: #f8f4e8; border-left: 4px solid #e6a817; border-radius: 8px; margin-bottom: 16px;">
             <p style="color: #333; font-size: 13px; line-height: 1.7; margin: 0;">
-              <strong>This is an alpha release.</strong> You may encounter occasional bugs or rough edges as we continue to develop the app. New features are being added regularly. If you run into anything or have ideas for improvement, head to <strong>Profile > Send Feedback</strong> — it goes directly to the dev team.
+              <strong>This is an alpha release.</strong> You may encounter occasional bugs or rough edges as we continue to develop the app. New features are being added regularly. If you run into anything or have ideas for improvement, head to <strong>Profile &gt; Send Feedback</strong> — it goes directly to the dev team.
             </p>
           </div>
 
