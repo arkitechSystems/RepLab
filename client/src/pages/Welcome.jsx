@@ -12,7 +12,16 @@ const TOUR_STEPS = [
       </svg>
     ),
     title: 'Browse Workouts',
-    description: 'Explore pre-built programs like Push Pull Legs, Bro Split, and more — or create your own custom workouts from scratch.',
+    description: "Explore pre-built programs like Jeff Nippard's Push Pull Legs, Jim Stoppani's Shortcut to Shred, Athlean-X Summer Shred, and more from the workout library.",
+  },
+  {
+    icon: (
+      <svg className="w-16 h-16 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+      </svg>
+    ),
+    title: 'Create Your Own',
+    description: 'Build custom workouts from scratch in My Workouts, or start a blank session right from the Workouts tab to log sets on the fly — perfect for unplanned gym days.',
   },
   {
     icon: (
@@ -20,8 +29,8 @@ const TOUR_STEPS = [
         <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
       </svg>
     ),
-    title: 'Schedule Your Week',
-    description: 'Assign workouts to each day of the week on the Calendar tab. Tap a day to set your routine and stay consistent.',
+    title: 'Plan Your Training',
+    description: 'Tap Begin Program to enroll in a program and auto-fill your calendar, or assign individual workouts from a program to specific days for a custom schedule.',
   },
   {
     icon: (
@@ -39,7 +48,7 @@ const TOUR_STEPS = [
       </svg>
     ),
     title: 'Utilities & Tools',
-    description: 'Use built-in tools like the 1 Rep Max Estimator to calculate your strength. More tools coming soon!',
+    description: 'Use built-in tools like the Plate Calculator to figure out exactly which plates to load on the bar, the 1 Rep Max Estimator to project your max from any working set, and a Cardio Tracker for runs, rows, and rides. More tools coming soon.',
   },
 ];
 
@@ -131,19 +140,36 @@ export default function Welcome() {
 
   // Shared Nike panel wrapper — black gradient + red accent stripe +
   // ambient spotlight. Caller supplies eyebrow / title / body / CTA.
-  const renderPanel = ({ eyebrow, title, body, footer, showSkip = false }) => (
+  // showBack + onBack put a "← Back" button in the top-left of the panel
+  // so users can revisit a previous step. showSkip puts the existing Skip
+  // button in the top-right. When both are present they bookend the row.
+  const renderPanel = ({ eyebrow, title, body, footer, showSkip = false, showBack = false, onBack }) => (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center px-4 py-8 safe-top safe-bottom relative">
       <div className="ambient-bg" />
       <div className="w-full max-w-sm relative z-10">
-        {showSkip && (
-          <div className="flex justify-end mb-3">
-            <button
-              onClick={handleSkip}
-              className="text-[10px] uppercase font-bold text-white/40 active:text-white/80 transition-colors"
-              style={{ letterSpacing: '0.2em' }}
-            >
-              Skip
-            </button>
+        {(showBack || showSkip) && (
+          <div className="flex items-center justify-between mb-3">
+            {showBack ? (
+              <button
+                onClick={onBack}
+                className="text-[10px] uppercase font-bold text-white/40 active:text-white/80 transition-colors inline-flex items-center gap-1"
+                style={{ letterSpacing: '0.2em' }}
+              >
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                </svg>
+                Back
+              </button>
+            ) : (<span />)}
+            {showSkip ? (
+              <button
+                onClick={handleSkip}
+                className="text-[10px] uppercase font-bold text-white/40 active:text-white/80 transition-colors"
+                style={{ letterSpacing: '0.2em' }}
+              >
+                Skip
+              </button>
+            ) : (<span />)}
           </div>
         )}
         <div
@@ -210,8 +236,8 @@ export default function Welcome() {
       title: 'GET TO KNOW THE APP',
       body: (
         <p className="text-wf-gray-400 text-sm leading-relaxed mb-6">
-          Quick four-step tour of how REPLAB works — programs, scheduling,
-          tracking PRs, and the built-in tools. Skip anytime.
+          Quick five-step tour of how REPLAB works — programs, custom workouts,
+          scheduling, tracking PRs, and the built-in tools. Skip anytime.
         </p>
       ),
       footer: (
@@ -256,6 +282,8 @@ export default function Welcome() {
       eyebrow: 'Final Step',
       title: 'YOUR 1RMs',
       showSkip: true,
+      showBack: true,
+      onBack: () => setStep(TOUR_STEPS.length - 1), // back to the last tour step
       body: (
         <>
           <p className="text-wf-gray-400 text-sm leading-relaxed mb-2">
@@ -296,6 +324,8 @@ export default function Welcome() {
     eyebrow: `Step ${step + 1} of ${TOUR_STEPS.length}`,
     title: current.title.toUpperCase(),
     showSkip: true,
+    showBack: true,
+    onBack: () => setStep(step - 1), // step 0 → -1 (intro), steps 1+ → previous tour step
     body: (
       <div className="flex flex-col items-center text-center gap-5 mb-2">
         <div className="w-24 h-24 rounded-[2px] flex items-center justify-center" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.18)' }}>
