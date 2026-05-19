@@ -2364,9 +2364,9 @@ export default function WorkoutSession() {
               allWorkoutExercises={template.exercises.map(e => e.name)}
               lastEntries={lastSession[fsExercise.name]}
               forceShowDemo={showAllDemos}
-              showGoalWeight={showGoalWeight}
-              showGoalReps={showGoalReps}
-              showSetType={showSetType}
+              showGoalWeight={tutorialMode ? true : showGoalWeight}
+              showGoalReps={tutorialMode ? true : showGoalReps}
+              showSetType={tutorialMode ? true : showSetType}
               exerciseNumber={fsPos + 1}
               cardioEnabled={cardioEnabled}
               cardioSelections={cardioSelections}
@@ -3074,9 +3074,9 @@ export default function WorkoutSession() {
               lastEntries={lastSession[exercise.name]}
               forceShowDemo={showAllDemos}
               dataTutorial={tutorialMode && idx === 1 ? 'exercise-header' : undefined}
-              showGoalWeight={showGoalWeight}
-              showGoalReps={showGoalReps}
-              showSetType={showSetType}
+              showGoalWeight={tutorialMode ? true : showGoalWeight}
+              showGoalReps={tutorialMode ? true : showGoalReps}
+              showSetType={tutorialMode ? true : showSetType}
               exerciseNumber={exerciseNumber}
               cardioEnabled={cardioEnabled}
               cardioSelections={cardioSelections}
@@ -4223,7 +4223,11 @@ export default function WorkoutSession() {
                   onClick={() => { setTutorialTip(null); navigate('/app'); }}
                   className="text-sm font-semibold text-white/70 bg-white/10 hover:bg-white/15 active:bg-white/20 transition-colors py-2 px-5 rounded-xl border border-white/10"
                 >
-                  Skip tutorial
+                  {/* On the final tip (next == null), "Skip" reads as if the
+                      user is bailing — but they've actually reached the end.
+                      Swap to "Complete Tutorial" so the exit feels like an
+                      accomplishment, not an abandonment. */}
+                  {tip.next ? 'Skip tutorial' : 'Complete Tutorial'}
                 </button>
               </div>
             </div>
@@ -4418,31 +4422,49 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
     return lines;
   }
 
-  // Generate shareable workout summary image using HTML Canvas
+  // Cache the logo across multiple shares — mirrors the loadLogo pattern
+  // in client/src/utils/prShare.js so the workout-summary card can adopt
+  // the same visual language (image logo top-right, no wordmark text).
+  const _logoRef = useRef(null);
+  function loadLogo() {
+    if (_logoRef.current) return _logoRef.current;
+    _logoRef.current = new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+      img.src = '/RepLabLogo2.jpg';
+    });
+    return _logoRef.current;
+  }
+
+  // Generate shareable workout summary image. Modeled after the PR share
+  // card (client/src/utils/prShare.js): deep gradient base, red glow blob
+  // top-right + orange glow bottom-left, subtle diagonal hatch, big red
+  // eyebrow, REPLAB logo image top-right, oversized display numerics for
+  // the 2-tile stats, thin red underline + date footer. Workout-specific
+  // additions: program label + exercise breakdown with PR badges.
   async function generateSummaryImage() {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     const W = 1080;
-    const padding = 60;
+    const padding = 80; // bumped from 60 to match the PR card's outer margin
     const contentWidth = W - padding * 2;
     const font = 'system-ui, -apple-system, "Segoe UI", sans-serif';
 
     // --- Pre-calculate height ---
-    let y = 0;
-    y += padding; // top padding
-    y += 50; // logo
-    y += 20; // spacing after logo
-    if (programLabel) y += 36; // program name
-    y += 50; // workout name (base)
-    // Measure workout name wrap
+    // Measure the workout name early so we know how many lines it'll wrap.
     ctx.canvas.width = W;
-    ctx.font = `bold 44px ${font}`;
-    const nameLines = wrapText(ctx, template.name, contentWidth);
-    if (nameLines.length > 1) y += (nameLines.length - 1) * 52;
-    y += 40; // "Workout Complete" subtitle
-    y += 50; // spacing before stats
-    y += 120 + 20; // stats boxes (tile body 120 + bottom breathing room)
-    y += 50; // spacing after stats
+    ctx.font = `900 72px ${font}`;
+    const nameLines = wrapText(ctx, template.name.toUpperCase(), contentWidth);
+
+    let y = padding;
+    y += 120; // top: eyebrow + logo row (logo ~110 tall sits to the right of the eyebrow)
+    y += 50;  // spacing after eyebrow row
+    if (programLabel) y += 50; // program label line
+    y += nameLines.length * 82; // workout name lines
+    y += 70;  // spacing before stats
+    y += 200; // stats tile height
+    y += 70;  // spacing after stats
 
     // Exercise section height
     template.exercises.forEach((ex, exIdx) => {
@@ -4450,101 +4472,107 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
         y += 60; // section header
         return;
       }
-      y += 50; // exercise name
-      const eKey = exKey(template.exercises, ex, exIdx);
-      const exEntries = entries[eKey] || [];
-      y += ex.sets.length * 38; // each set row
-      y += 24; // spacing after exercise
+      y += 56; // exercise name
+      y += ex.sets.length * 44; // each set row
+      y += 28; // spacing after exercise
     });
 
-    y += 30; // spacing before footer
-    y += 60; // date line
-    y += 40; // footer text
-    y += padding; // bottom padding
+    y += 60; // spacing before red line
+    y += 70; // date row
+    y += padding;
 
     canvas.width = W;
     canvas.height = y;
 
-    // --- Background ---
-    const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    grad.addColorStop(0, '#0a0a0a');
-    grad.addColorStop(0.5, '#0f0f0f');
-    grad.addColorStop(1, '#111111');
-    ctx.fillStyle = grad;
+    // --- Background: deep base + red/orange glow blobs + diagonal hatch.
+    //     Same recipe as the PR card so the two share images visually
+    //     belong to the same family. ---
+    const bg = ctx.createLinearGradient(0, 0, W, canvas.height);
+    bg.addColorStop(0, '#0a0a0a');
+    bg.addColorStop(1, '#000');
+    ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, canvas.height);
 
-    // Subtle red glow at top
-    const glow = ctx.createRadialGradient(W / 2, 0, 0, W / 2, 0, W * 0.6);
-    glow.addColorStop(0, 'rgba(239, 68, 68, 0.08)');
-    glow.addColorStop(1, 'transparent');
-    ctx.fillStyle = glow;
-    ctx.fillRect(0, 0, W, canvas.height / 3);
+    // Red glow blob top-right
+    const glow1 = ctx.createRadialGradient(W * 0.85, canvas.height * 0.08, 50, W * 0.85, canvas.height * 0.08, Math.max(800, canvas.height * 0.5));
+    glow1.addColorStop(0, 'rgba(239, 68, 68, 0.55)');
+    glow1.addColorStop(1, 'rgba(239, 68, 68, 0)');
+    ctx.fillStyle = glow1;
+    ctx.fillRect(0, 0, W, canvas.height);
 
-    // Subtle border
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(1, 1, W - 2, canvas.height - 2);
+    // Orange glow blob bottom-left
+    const glow2 = ctx.createRadialGradient(W * 0.05, canvas.height * 0.95, 40, W * 0.05, canvas.height * 0.95, Math.max(700, canvas.height * 0.5));
+    glow2.addColorStop(0, 'rgba(249, 115, 22, 0.35)');
+    glow2.addColorStop(1, 'rgba(249, 115, 22, 0)');
+    ctx.fillStyle = glow2;
+    ctx.fillRect(0, 0, W, canvas.height);
+
+    // Subtle diagonal hatch
+    ctx.save();
+    ctx.globalAlpha = 0.04;
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1;
+    for (let i = -canvas.height; i < W; i += 14) {
+      ctx.beginPath();
+      ctx.moveTo(i, 0);
+      ctx.lineTo(i + canvas.height, canvas.height);
+      ctx.stroke();
+    }
+    ctx.restore();
 
     let curY = padding;
 
-    // --- Logo: "REP" in white, "LAB" in red — matches the in-app REPLAB
-    //     wordmark and the shared workoutSummaryShare util. ---
-    ctx.font = `900 46px ${font}`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    const repW = ctx.measureText('REP').width;
-    const labW = ctx.measureText('LAB').width;
-    const totalLogoW = repW + labW + 4;
-    const logoStartX = W / 2 - totalLogoW / 2;
+    // --- Eyebrow "WORKOUT COMPLETE" (red, big) + REPLAB logo image
+    //     top-right. Mirrors the PR card's "PERSONAL RECORD" eyebrow
+    //     treatment so the two share images feel like siblings. ---
+    ctx.fillStyle = 'rgba(239, 68, 68, 0.9)';
+    ctx.font = `700 60px ${font}`;
+    ctx.textBaseline = 'top';
     ctx.textAlign = 'left';
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText('REP', logoStartX, curY + 25);
-    ctx.fillStyle = '#ef4444';
-    ctx.fillText('LAB', logoStartX + repW + 4, curY + 25);
+    ctx.fillText('WORKOUT COMPLETE', padding, curY);
+
+    const logo = await loadLogo();
+    const logoSize = 110;
+    if (logo) {
+      ctx.drawImage(logo, W - padding - logoSize, curY - 10, logoSize, logoSize);
+    } else {
+      // Text fallback so the corner isn't empty when the image 404s.
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.font = `900 28px ${font}`;
+      ctx.textAlign = 'right';
+      ctx.fillText('REPLAB', W - padding, curY + 16);
+      ctx.textAlign = 'left';
+    }
+    curY += 120;
     curY += 50;
 
-    // Thin separator line
-    curY += 10;
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(padding, curY);
-    ctx.lineTo(W - padding, curY);
-    ctx.stroke();
-    curY += 20;
-
-    // --- Program name ---
+    // --- Program label (small, dim, uppercase) ---
     if (programLabel) {
-      ctx.font = `500 24px ${font}`;
-      ctx.fillStyle = 'rgba(255,255,255,0.4)';
-      ctx.textAlign = 'center';
-      ctx.fillText(programLabel, W / 2, curY + 14);
-      curY += 36;
+      ctx.fillStyle = 'rgba(255,255,255,0.45)';
+      ctx.font = `600 28px ${font}`;
+      ctx.textAlign = 'left';
+      ctx.fillText(programLabel.toUpperCase(), padding, curY);
+      curY += 50;
     }
 
-    // --- Workout name (wrapped) ---
-    ctx.font = `bold 44px ${font}`;
+    // --- Workout name (heavy display, uppercase, wrapped, left-aligned
+    //     so it occupies the same column as the eyebrow above). ---
     ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'center';
+    ctx.font = `900 72px ${font}`;
+    ctx.textAlign = 'left';
     nameLines.forEach((line, i) => {
-      ctx.fillText(line, W / 2, curY + 30 + i * 52);
+      ctx.fillText(line, padding, curY + i * 82);
     });
-    curY += 30 + nameLines.length * 52 - 20;
-
-    // --- "Workout Complete" subtitle ---
-    ctx.font = `600 22px ${font}`;
-    ctx.fillStyle = '#22c55e';
-    ctx.textAlign = 'center';
-    ctx.fillText('Workout Complete  \u2713', W / 2, curY + 20);
-    curY += 50;
+    curY += nameLines.length * 82;
+    curY += 70;
 
     // --- Stats boxes (2 columns) — mirrors the in-app 2-tile summary:
     //     Total Volume (green stripe) on the left, Total Sets (red stripe)
     //     on the right. Each tile gets a colored top accent stripe to
     //     match the modal's Nike-style panels.
-    const boxGap = 24;
+    const boxGap = 28;
     const boxW = (contentWidth - boxGap) / 2;
-    const boxH = 120;
+    const boxH = 200;
     const boxRadius = 4;
     const statsData = [
       { label: 'TOTAL VOLUME', value: `${totalVolume.toLocaleString()} lbs`, stripe: '#22c55e' },
@@ -4553,31 +4581,36 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
     statsData.forEach((stat, i) => {
       const bx = padding + i * (boxW + boxGap);
       const by = curY;
-      // Box background — dark gradient mirroring the in-app glass-card.
-      const tileGrad = ctx.createLinearGradient(bx, by, bx, by + boxH);
-      tileGrad.addColorStop(0, '#1e1e1e');
-      tileGrad.addColorStop(1, '#141414');
+      // Translucent panel — bg blob shows through (matches PR card vibe
+      // where blobs glow through transparent surfaces).
       drawRoundRect(ctx, bx, by, boxW, boxH, boxRadius);
-      ctx.fillStyle = tileGrad;
+      ctx.fillStyle = 'rgba(255,255,255,0.05)';
       ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+      ctx.strokeStyle = 'rgba(255,255,255,0.10)';
       ctx.lineWidth = 1;
       ctx.stroke();
-      // Top accent stripe (matches stripe(color) in the modal).
+      // Top accent stripe — colored band running across the tile's top edge.
       ctx.fillStyle = stat.stripe;
-      drawRoundRect(ctx, bx, by, boxW, 4, 2);
+      drawRoundRect(ctx, bx, by, boxW, 6, 2);
       ctx.fill();
-      // Label — smaller, colored to match its stripe, tight letter spacing.
-      ctx.font = `700 18px ${font}`;
+      // Label — large, colored to match its stripe.
+      ctx.font = `700 26px ${font}`;
       ctx.fillStyle = stat.stripe;
       ctx.textAlign = 'left';
-      ctx.fillText(stat.label, bx + 24, by + 42);
-      // Value — heavy display number, white, left-aligned beneath the label.
-      ctx.font = `900 44px ${font}`;
+      ctx.fillText(stat.label, bx + 32, by + 58);
+      // Value — heavy display number, white, left-aligned. Auto-shrinks
+      // to fit the tile width so huge volume numbers don't bleed out.
       ctx.fillStyle = '#ffffff';
-      ctx.fillText(stat.value, bx + 24, by + 92);
+      let valueFontPx = 88;
+      const maxValueWidth = boxW - 64;
+      do {
+        ctx.font = `900 ${valueFontPx}px ${font}`;
+        if (ctx.measureText(stat.value).width <= maxValueWidth) break;
+        valueFontPx -= 6;
+      } while (valueFontPx > 52);
+      ctx.fillText(stat.value, bx + 32, by + 110);
     });
-    curY += boxH + 50;
+    curY += boxH + 70;
 
     // --- Exercise list ---
     ctx.textAlign = 'left';
@@ -4585,20 +4618,21 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
       if (ex.isSectionHeader) {
         // Section header with red left accent
         ctx.fillStyle = '#ef4444';
-        drawRoundRect(ctx, padding, curY + 8, 4, 32, 2);
+        drawRoundRect(ctx, padding, curY + 8, 4, 36, 2);
         ctx.fill();
-        ctx.font = `700 20px ${font}`;
+        ctx.font = `700 22px ${font}`;
         ctx.fillStyle = 'rgba(255,255,255,0.6)';
-        ctx.fillText(ex.name.toUpperCase(), padding + 16, curY + 30);
+        ctx.fillText(ex.name.toUpperCase(), padding + 18, curY + 32);
         curY += 60;
         return;
       }
 
-      // Exercise name
-      ctx.font = `bold 28px ${font}`;
+      // Exercise name — heavier weight, slightly larger to match the
+      // bigger PR-card-styled hero numbers above.
+      ctx.font = `900 34px ${font}`;
       ctx.fillStyle = '#ffffff';
-      ctx.fillText(ex.name, padding, curY + 30);
-      curY += 50;
+      ctx.fillText(ex.name, padding, curY + 36);
+      curY += 56;
 
       // Set rows \u2014 mirror the in-app breakdown layout:
       //   [#] [type label] [PR (centered if applicable)] [weight \u00D7 reps RIGHT]
@@ -4618,59 +4652,54 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
         const isWarmup = setType === 'warm_up' || setType === 'touch_up';
         const isPR = isCompleted && isPRSet(ex.name, actualWeight, actualReps);
 
-        // Set number \u2014 same dim style as the modal.
-        ctx.font = `700 22px ${font}`;
-        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        // Set number \u2014 dim, monospace numerics.
+        ctx.font = `700 26px ${font}`;
+        ctx.fillStyle = 'rgba(255,255,255,0.35)';
         ctx.textAlign = 'left';
-        ctx.fillText(`${idx + 1}`, padding + 8, curY + 24);
+        ctx.fillText(`${idx + 1}`, padding + 8, curY + 28);
 
-        // Type label \u2014 small badge text, yellow on warm-ups, gray otherwise.
-        ctx.font = `700 18px ${font}`;
-        ctx.fillStyle = isWarmup ? '#facc15' : 'rgba(255,255,255,0.45)';
-        ctx.fillText(typeLabel, padding + 50, curY + 24);
+        // Type label \u2014 yellow on warm-ups, dim white otherwise.
+        ctx.font = `700 20px ${font}`;
+        ctx.fillStyle = isWarmup ? '#facc15' : 'rgba(255,255,255,0.5)';
+        ctx.fillText(typeLabel, padding + 56, curY + 28);
 
-        // PR badge \u2014 centered, yellow uppercase. Only when set is a PR.
+        // PR badge \u2014 centered, big yellow uppercase. Only when set is a PR.
         if (isPR) {
-          ctx.font = `900 18px ${font}`;
+          ctx.font = `900 22px ${font}`;
           ctx.fillStyle = '#facc15';
           ctx.textAlign = 'center';
-          ctx.fillText('PR', W / 2, curY + 24);
+          ctx.fillText('PR', W / 2, curY + 28);
         }
 
         // Lifted (weight \u00D7 reps) \u2014 right-aligned, red normally, yellow on PR.
-        ctx.font = `700 22px ${font}`;
+        ctx.font = `700 26px ${font}`;
         ctx.fillStyle = isPR ? '#facc15' : '#ef4444';
         ctx.textAlign = 'right';
-        ctx.fillText(lifted, W - padding, curY + 24);
+        ctx.fillText(lifted, W - padding, curY + 28);
         ctx.textAlign = 'left';
 
-        curY += 38;
+        curY += 44;
       });
 
-      curY += 24;
+      curY += 28;
     });
 
-    // --- Footer separator ---
-    curY += 10;
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-    ctx.lineWidth = 1;
+    // --- Footer: short red underline + date — mirrors the PR card's
+    //     bottom treatment exactly (140-wide red line then the date in
+    //     dim white, left-aligned at the same column as the eyebrow). ---
+    curY += 20;
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 4;
     ctx.beginPath();
     ctx.moveTo(padding, curY);
-    ctx.lineTo(W - padding, curY);
+    ctx.lineTo(padding + 140, curY);
     ctx.stroke();
     curY += 30;
 
-    // --- Date ---
-    ctx.font = `500 20px ${font}`;
-    ctx.fillStyle = 'rgba(255,255,255,0.3)';
-    ctx.textAlign = 'center';
-    ctx.fillText(new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }), W / 2, curY + 14);
-    curY += 40;
-
-    // --- "Logged with REPLAB" ---
-    ctx.font = `600 20px ${font}`;
-    ctx.fillStyle = 'rgba(255,255,255,0.25)';
-    ctx.fillText('Logged with REPLAB', W / 2, curY + 14);
+    ctx.fillStyle = 'rgba(255,255,255,0.65)';
+    ctx.font = `500 30px ${font}`;
+    ctx.textAlign = 'left';
+    ctx.fillText(new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }), padding, curY);
 
     return canvas.toDataURL('image/png');
   }

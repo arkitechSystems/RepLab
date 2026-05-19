@@ -13,7 +13,7 @@ const TOUR_STEPS = [
       </svg>
     ),
     title: 'Browse Workouts',
-    description: "Explore pre-built programs like Jeff Nippard's Push Pull Legs, Jim Stoppani's Shortcut to Shred, Athlean-X Summer Shred, and more from the workout library.",
+    description: "Explore pre-built programs like Jeff Nippard's Push Pull Legs, the Muscle & Fitness 5000 Rep workout, Jim Stoppani's Shortcut to Shred, and more from the workout library.",
   },
   {
     icon: (
@@ -49,7 +49,7 @@ const TOUR_STEPS = [
       </svg>
     ),
     title: 'Utilities & Tools',
-    description: 'Use built-in tools like the Plate Calculator to figure out exactly which plates to load on the bar, the 1 Rep Max Estimator to project your max from any working set, and a Cardio Tracker for runs, rows, and rides. More tools coming soon.',
+    description: 'Use built-in tools like the Plate Calculator to figure out exactly which plates to load on the bar and the 1 Rep Max Estimator to project your max from any working set. More tools coming soon.',
   },
 ];
 
