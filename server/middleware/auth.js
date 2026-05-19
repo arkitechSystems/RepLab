@@ -66,6 +66,7 @@ export function verifyRefreshToken(token) {
 export async function authMiddleware(req, res, next) {
   const header = req.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) {
+    if (process.env.DEBUG_AUTH === '1') console.warn('[auth] 401 no-bearer', req.method, req.originalUrl);
     return res.status(401).json({ error: 'No token provided' });
   }
 
@@ -77,6 +78,7 @@ export async function authMiddleware(req, res, next) {
     // (issued before this change) have no `type` claim — treat those as
     // access tokens for backwards compatibility during rollout.
     if (decoded.type && decoded.type !== 'access') {
+      if (process.env.DEBUG_AUTH === '1') console.warn('[auth] 401 wrong-type', { type: decoded.type, userId: decoded.userId, url: req.originalUrl });
       return res.status(401).json({ error: 'Invalid token' });
     }
 
@@ -85,11 +87,13 @@ export async function authMiddleware(req, res, next) {
     // JWT issued before the reset has a stale version and is rejected here.
     const { rows } = await pool.query('SELECT id, token_version FROM users WHERE id = $1', [decoded.userId]);
     if (rows.length === 0) {
+      if (process.env.DEBUG_AUTH === '1') console.warn('[auth] 401 user-not-found', { userId: decoded.userId, url: req.originalUrl });
       return res.status(401).json({ error: 'Account no longer exists' });
     }
     const currentVersion = rows[0].token_version ?? 0;
     const tokenVersion = decoded.tokenVersion ?? 0;
     if (tokenVersion !== currentVersion) {
+      if (process.env.DEBUG_AUTH === '1') console.warn('[auth] 401 version-mismatch', { userId: decoded.userId, jwtV: tokenVersion, dbV: currentVersion, url: req.originalUrl });
       return res.status(401).json({ error: 'Session expired. Please sign in again.' });
     }
 
@@ -98,6 +102,7 @@ export async function authMiddleware(req, res, next) {
     req.userRole = decoded.role || 'client';
     next();
   } catch (err) {
+    if (process.env.DEBUG_AUTH === '1') console.warn('[auth] 401 verify-failed', err.name, err.message, 'url=', req.originalUrl, 'hdr-len=', (header || '').length);
     return res.status(401).json({ error: 'Invalid token' });
   }
 }
