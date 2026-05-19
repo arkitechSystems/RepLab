@@ -7,7 +7,9 @@ const router = Router();
 // Shop pages use JWT auth from the app (Bearer token in cookie or header)
 // For server-rendered pages, we check for a cookie-based session
 import jwt from 'jsonwebtoken';
-const JWT_SECRET = process.env.JWT_SECRET;
+// .trim() defends against env-var paste accidents (trailing newline / space).
+// Matches the normalization in server/middleware/auth.js.
+const JWT_SECRET = (process.env.JWT_SECRET || '').trim();
 
 function shopAuth(req, res, next) {
   // Try cookie first (set when user visits from app link)

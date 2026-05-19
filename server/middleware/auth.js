@@ -4,13 +4,18 @@ import pool from '../dbPool.js';
 if (!process.env.JWT_SECRET) {
   throw new Error('JWT_SECRET environment variable is required');
 }
-if (process.env.JWT_SECRET.length < 32) {
+// Trim whitespace defensively. Render's UI sometimes appends a trailing
+// newline when an env var is pasted; without trimming, sign() and verify()
+// within one instance would use the value-with-newline (still functional),
+// but any cross-instance comparison or external test against the "clean"
+// secret would mismatch. .trim() makes this category of bug impossible.
+const JWT_SECRET = process.env.JWT_SECRET.trim();
+if (JWT_SECRET.length < 32) {
   throw new Error(
-    `JWT_SECRET must be at least 32 characters (got ${process.env.JWT_SECRET.length}). ` +
+    `JWT_SECRET must be at least 32 characters (got ${JWT_SECRET.length}). ` +
     `Generate with: node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`
   );
 }
-const JWT_SECRET = process.env.JWT_SECRET;
 
 // Short-lived access token. Kept short so a leaked token has a tight blast
 // radius; the refresh token extends the effective session to 30 days.

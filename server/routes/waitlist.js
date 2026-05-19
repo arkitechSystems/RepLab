@@ -3,7 +3,9 @@ import jwt from 'jsonwebtoken';
 import pool from '../dbPool.js';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET;
+// .trim() defends against env-var paste accidents (trailing newline / space).
+// Matches the normalization in server/middleware/auth.js.
+const JWT_SECRET = (process.env.JWT_SECRET || '').trim();
 
 // Permissive email regex. Server-side validation isn't trying to be RFC 5322
 // perfect — the goal is to reject obvious garbage. The actual delivery test
