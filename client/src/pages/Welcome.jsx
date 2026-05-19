@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { BibleVerseOverlay } from './BibleVerses';
 import { pickNextVerse } from '../utils/versePicker';
+import { useTutorial } from '../context/TutorialContext';
 
 const TOUR_STEPS = [
   {
@@ -68,11 +69,18 @@ export default function Welcome() {
   // user's verse rotation only burns one entry per onboarding completion.
   const [exitVerse, setExitVerse] = useState(null);
   const navigate = useNavigate();
+  const { startTutorial } = useTutorial();
 
   // Single funnel for "we're done with onboarding" — every exit goes through
   // here. Respects the wf-bible-verses preference (default on for new users
   // since the key is unset).
-  function exitToApp() {
+  //
+  // `withTutorial` arms the tutorial intro before navigating, so when the
+  // user lands on /app the Tutorial component finds active state and pops
+  // its walkthrough. We only set this from exits that came AFTER the 1RM
+  // step — earlier skips are an explicit "leave me alone" signal.
+  function exitToApp({ withTutorial = false } = {}) {
+    if (withTutorial) startTutorial();
     const versesEnabled = (() => {
       try { return localStorage.getItem('wf-bible-verses') !== 'off'; }
       catch { return true; }
@@ -100,7 +108,10 @@ export default function Welcome() {
   }
 
   function handleSkip() {
-    exitToApp();
+    // Only fire the tutorial when the skip happens at the 1RM step — that
+    // means the user walked through the whole onboarding flow. Skips from
+    // earlier steps are an explicit "just drop me in the app" signal.
+    exitToApp({ withTutorial: step === MAXES_STEP });
   }
 
   async function handleSaveMaxes() {
@@ -112,7 +123,7 @@ export default function Welcome() {
     if (squat > 0) payload.maxSquat = squat;
     if (deadlift > 0) payload.maxDeadlift = deadlift;
     if (Object.keys(payload).length === 0) {
-      exitToApp();
+      exitToApp({ withTutorial: true });
       return;
     }
     setSavingMaxes(true);
@@ -122,7 +133,7 @@ export default function Welcome() {
       if (import.meta.env.DEV) console.warn('Failed to save maxes during onboarding:', err);
     } finally {
       setSavingMaxes(false);
-      exitToApp();
+      exitToApp({ withTutorial: true });
     }
   }
 
