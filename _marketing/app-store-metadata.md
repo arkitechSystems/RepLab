@@ -226,12 +226,18 @@ All within limits.
 
 ---
 
+## Decisions (resolved 2026-05-20)
+
+1. **Secondary category — Lifestyle** (set in App Store Connect alongside
+   Health & Fitness primary).
+2. **App Review contact phone — 682-999-4947** (Will Martin's number; used
+   in `app-review-notes.md`).
+3. **PostHog session replay — keep enabled in production.** Disclosed in
+   privacy nutrition as `Usage Data` + `Other User Content` (User Content
+   category), both Linked to User and used for App Functionality + Analytics.
+
 ## TODOs / decisions for the developer
 
-1. **Secondary category** — recommendation is **Sports**. Confirm
-   you don't want **Lifestyle** instead.
-2. **Phone number for App Review contact** — surface or remove the
-   placeholder line in `app-review-notes.md`.
 3. **Promo text rotation** — the version above is the launch hook.
    Plan to refresh after launch novelty fades (promo text is editable
    without resubmission).

@@ -166,14 +166,12 @@ token.)
 
 - Developer email: wmartin@phgworks.com
 - Support email: support@replab-fitness.com
-- Phone: [REPLACE_WITH_PHONE_OR_REMOVE_LINE]
+- Phone: +1 (682) 999-4947
 
 ---
 
 ## TODO for the developer before submitting
 
-- [ ] Replace `[REPLACE_WITH_PHONE_OR_REMOVE_LINE]` above (or remove the
-      line) — App Review may call if they have questions during review.
 - [ ] Re-run the seed script against the production database with the
       exact reviewer password committed above:
       `REVIEWER_PASSWORD='Reviewer2026!' node --env-file=server/.env server/scripts/seed-apple-reviewer.js`

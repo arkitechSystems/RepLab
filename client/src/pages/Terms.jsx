@@ -119,7 +119,7 @@ export default function Terms() {
           <div className="relative p-6">
             <h2 className="text-[11px] uppercase font-semibold text-white mb-3" style={{ letterSpacing: '0.25em' }}>10. Governing Law</h2>
             <div className="border-t border-white/5 pt-3">
-              <p>These Terms are governed by and construed in accordance with the laws of the State of [STATE OF FORMATION], United States, without regard to its conflict-of-law principles. The exclusive jurisdiction and venue for any dispute arising out of or related to these Terms or the App shall be the state and federal courts located in [STATE OF FORMATION], and you consent to the personal jurisdiction of those courts.</p>
+              <p>These Terms are governed by and construed in accordance with the laws of the State of Texas, United States, without regard to its conflict-of-law principles. The exclusive jurisdiction and venue for any dispute arising out of or related to these Terms or the App shall be the state and federal courts located in Texas, and you consent to the personal jurisdiction of those courts.</p>
             </div>
           </div>
         </section>
