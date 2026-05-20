@@ -109,12 +109,12 @@ function trainerLoginPage(error) {
       ${error ? `<div class="error">${esc(error)}</div>` : ''}
       <form method="POST" action="/trainer/login">
         <div class="field">
-          <label>Email</label>
-          <input type="text" name="identifier" placeholder="Enter your email" required autocomplete="email" />
+          <label for="trainer-login-identifier">Email</label>
+          <input type="text" id="trainer-login-identifier" name="identifier" placeholder="Enter your email" required autocomplete="email" />
         </div>
         <div class="field">
-          <label>Password</label>
-          <input type="password" name="password" placeholder="Enter password" required autocomplete="current-password" />
+          <label for="trainer-login-password">Password</label>
+          <input type="password" id="trainer-login-password" name="password" placeholder="Enter password" required autocomplete="current-password" />
         </div>
         <button type="submit" class="btn-login">Sign In</button>
       </form>
@@ -620,12 +620,12 @@ router.get('/create-workout-legacy', trainerAuth, async (req, res) => {
       <div class="glass" style="padding:24px;border-radius:16px;margin-bottom:20px;overflow:visible;">
         <div style="display:flex;gap:16px;flex-wrap:wrap;">
           <div style="flex:1;min-width:200px;">
-            <label>Workout Name</label>
-            <input type="text" name="workoutName" placeholder="e.g. Upper Body A" required
+            <label for="trainer-cw-workout-name">Workout Name</label>
+            <input type="text" id="trainer-cw-workout-name" name="workoutName" placeholder="e.g. Upper Body A" required
               style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;" />
           </div>
           <div style="flex:1;min-width:200px;position:relative;">
-            <label>Program</label>
+            <label for="program-btn">Program</label>
             <input type="hidden" name="programId" id="program-value" value="" />
             <button type="button" id="program-btn" onclick="toggleProgramDropdown()"
               style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.5);font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
@@ -643,8 +643,8 @@ router.get('/create-workout-legacy', trainerAuth, async (req, res) => {
           </div>
         </div>
         <div style="margin-top:16px;">
-          <label>Description <span style="color:rgba(255,255,255,0.2);">(optional)</span></label>
-          <input type="text" name="description" placeholder="e.g. Chest, Shoulders, Triceps"
+          <label for="trainer-cw-description">Description <span style="color:rgba(255,255,255,0.2);">(optional)</span></label>
+          <input type="text" id="trainer-cw-description" name="description" placeholder="e.g. Chest, Shoulders, Triceps"
             style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;" />
         </div>
       </div>
@@ -678,12 +678,12 @@ router.get('/create-workout-legacy', trainerAuth, async (req, res) => {
       <div class="glass" style="padding:24px;max-width:400px;width:90%;border-radius:16px;">
         <h3 style="font-size:16px;font-weight:700;color:#fff;margin-bottom:16px;">Add Custom Exercise</h3>
         <div style="margin-bottom:12px;">
-          <label>Exercise Name</label>
+          <label for="custom-ex-name">Exercise Name</label>
           <input type="text" id="custom-ex-name" placeholder="e.g. Cable Lateral Raise"
             style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;" />
         </div>
         <div style="margin-bottom:16px;">
-          <label>Muscle Group</label>
+          <label for="custom-ex-muscle">Muscle Group</label>
           <select id="custom-ex-muscle" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;-webkit-appearance:none;">
             ${muscleGroups.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join('')}
           </select>
@@ -697,12 +697,12 @@ router.get('/create-workout-legacy', trainerAuth, async (req, res) => {
       <div class="glass" style="padding:24px;max-width:400px;width:90%;border-radius:16px;">
         <h3 style="font-size:16px;font-weight:700;color:#fff;margin-bottom:16px;">Create New Program</h3>
         <div style="margin-bottom:12px;">
-          <label>Program Name</label>
+          <label for="new-program-name">Program Name</label>
           <input type="text" id="new-program-name" placeholder="e.g. 4-Week Strength Program"
             style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;" />
         </div>
         <div style="margin-bottom:16px;">
-          <label>Description <span style="color:rgba(255,255,255,0.2);">(optional)</span></label>
+          <label for="new-program-desc">Description <span style="color:rgba(255,255,255,0.2);">(optional)</span></label>
           <input type="text" id="new-program-desc" placeholder="e.g. Progressive overload focused"
             style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;" />
         </div>
@@ -1099,20 +1099,20 @@ router.get('/edit-workout-legacy/:id', trainerAuth, async (req, res) => {
       <div class="glass" style="padding:24px;border-radius:16px;margin-bottom:20px;overflow:visible;">
         <div style="display:flex;gap:16px;flex-wrap:wrap;">
           <div style="flex:1;min-width:200px;">
-            <label>Workout Name</label>
-            <input type="text" name="workoutName" value="${esc(tmpl.name)}" required style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;" />
+            <label for="trainer-ew-workout-name">Workout Name</label>
+            <input type="text" id="trainer-ew-workout-name" name="workoutName" value="${esc(tmpl.name)}" required style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;" />
           </div>
           <div style="flex:1;min-width:200px;">
-            <label>Program</label>
-            <select name="programId" style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;">
+            <label for="trainer-ew-program-id">Program</label>
+            <select id="trainer-ew-program-id" name="programId" style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;">
               <option value="">— No Program —</option>
               ${programs.map(p => '<option value="' + p.id + '"' + (p.id === tmpl.program_id ? ' selected' : '') + '>' + esc(p.name) + '</option>').join('')}
             </select>
           </div>
         </div>
         <div style="margin-top:16px;">
-          <label>Description <span style="color:rgba(255,255,255,0.2);">(optional)</span></label>
-          <input type="text" name="description" value="${esc(tmpl.description || '')}" placeholder="e.g. Chest, Shoulders, Triceps" style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;" />
+          <label for="trainer-ew-description">Description <span style="color:rgba(255,255,255,0.2);">(optional)</span></label>
+          <input type="text" id="trainer-ew-description" name="description" value="${esc(tmpl.description || '')}" placeholder="e.g. Chest, Shoulders, Triceps" style="width:100%;padding:12px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;font-family:inherit;outline:none;box-sizing:border-box;" />
         </div>
       </div>
       <div id="exercises-container"></div>
@@ -1138,10 +1138,10 @@ router.get('/edit-workout-legacy/:id', trainerAuth, async (req, res) => {
     <div id="custom-ex-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);" onclick="if(event.target===this)this.style.display='none'">
       <div class="glass" style="padding:24px;max-width:400px;width:90%;border-radius:16px;">
         <h3 style="font-size:16px;font-weight:700;color:#fff;margin-bottom:16px;">Add Custom Exercise</h3>
-        <div style="margin-bottom:12px;"><label>Exercise Name</label>
+        <div style="margin-bottom:12px;"><label for="custom-ex-name">Exercise Name</label>
           <input type="text" id="custom-ex-name" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;" />
         </div>
-        <div style="margin-bottom:16px;"><label>Muscle Group</label>
+        <div style="margin-bottom:16px;"><label for="custom-ex-muscle">Muscle Group</label>
           <select id="custom-ex-muscle" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;">
             ${muscleGroups.map(g => '<option value="' + esc(g) + '">' + esc(g) + '</option>').join('')}
           </select>
