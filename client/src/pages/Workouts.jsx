@@ -4733,7 +4733,7 @@ export default function Workouts() {
           </button>
           <button
             data-tutorial="create-btn"
-            onClick={() => setShowCreateMenu(true)}
+            onClick={() => { setShowCreateMenu(true); completeTutorialAction('create-menu-opened'); }}
             className="active:scale-[0.97] transition-all text-white text-[11px] font-bold uppercase px-3.5 py-2 whitespace-nowrap shrink-0"
             style={{
               letterSpacing: '0.15em',
@@ -4928,14 +4928,14 @@ export default function Workouts() {
             <p className="text-red-400 mb-3">{loadError}</p>
             <button onClick={() => window.location.reload()} className="text-wf-cyan text-sm">Tap to retry</button>
           </div>
-        ) : (myPrograms.length === 0 && !featuredEnrollment.enrolled) ? (
-          /* Users with no programs yet — show a loading spinner (same style
-             as the Brainstorm /brainstorm page's Loading Button). Replaces
-             the old "Welcome to WillFit" empty-state card. */
-          <div className="flex justify-center items-center fade-slide-up" style={{ minHeight: '70vh' }}>
-            <span className="replab-spinner-gradient w-16 h-16" style={{ animationDuration: '0.91s' }} />
-          </div>
         ) : (
+          /* New users (no programs yet, not enrolled in Featured) used to get
+             an infinite spinner here — that left them with no way to browse
+             the library, start a custom workout, or do anything. The full
+             content tree below handles the empty case gracefully ("Up Next"
+             shows "Nothing scheduled", Browse Library + My Workouts cards
+             render with empty states inline). So we always render the full
+             content for any successfully-loaded session. */
           <div className="space-y-4 pb-4">
             {/* Your Next Workout — Nike style */}
             <div className="fade-slide-up mx-2" style={{ animationDelay: '0ms' }}>
