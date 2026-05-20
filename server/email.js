@@ -220,21 +220,39 @@ export async function sendPasswordResetEmail(email, token) {
       to: email,
       subject: 'Reset your REPLAB password',
       html: `
-        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 32px;">
-          <h1 style="color: #111; font-size: 28px; margin-bottom: 8px;">Reset Your Password</h1>
-          <p style="color: #444; font-size: 16px; line-height: 1.6;">
-            We received a request to reset your REPLAB password. Click the button below to set a new one.
-            This link expires in 1 hour.
-          </p>
-          <a href="${resetUrl}"
-             style="display: inline-block; margin-top: 24px; padding: 14px 28px;
-                    background: #111; color: #fff; text-decoration: none;
-                    border-radius: 8px; font-size: 16px; font-weight: 600;">
-            Reset Password
-          </a>
-          <p style="color: #999; font-size: 13px; margin-top: 32px;">
-            If you didn't request this, you can safely ignore this email. Your password won't change.
-          </p>
+        <div style="background: #000; margin: 0; padding: 0;">
+          <div style="background-color: #0a0a0a; background-image: radial-gradient(ellipse at 50% 0%, rgba(239,68,68,0.22) 0%, transparent 55%), linear-gradient(180deg, #0a0a0a 0%, #050505 50%, #000 100%); padding: 48px 16px;">
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; color: #fff;">
+
+              <!-- Logo -->
+              <div style="text-align: center; margin-bottom: 48px;">
+                <h1 style="font-size: 40px; font-weight: 900; letter-spacing: 4px; margin: 0; color: #fff; text-shadow: 0 2px 24px rgba(239,68,68,0.35);">REP<span style="color: #ef4444;">LAB</span></h1>
+                <div style="height: 3px; width: 72px; margin: 16px auto 0; background: linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent);"></div>
+              </div>
+
+              <!-- Reset panel -->
+              <div style="background: linear-gradient(160deg, #1e1e1e 0%, #141414 100%); border-radius: 2px; margin-bottom: 24px; box-shadow: 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);">
+                <div style="height: 3px; background: linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent);"></div>
+                <div style="padding: 32px 28px;">
+                  <p style="color: rgba(239,68,68,0.85); text-transform: uppercase; letter-spacing: 0.3em; font-size: 9px; font-weight: 700; margin: 0 0 8px 0;">Account</p>
+                  <h2 style="color: #fff; font-size: 32px; font-weight: 900; line-height: 1; margin: 0 0 18px 0; letter-spacing: -0.01em; text-transform: uppercase;">Reset Your Password</h2>
+                  <p style="color: rgba(255,255,255,0.6); font-size: 14px; line-height: 1.7; margin: 0 0 28px 0;">
+                    We received a request to reset your REPLAB password. Click the button below to set a new one. This link expires in <strong style="color: #fff;">1 hour</strong>.
+                  </p>
+                  <div style="text-align: center; margin-bottom: 8px;">
+                    <a href="${resetUrl}"
+                       style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, rgba(239,68,68,0.95) 0%, rgba(220,38,38,0.95) 100%); color: #fff; text-decoration: none; border-radius: 2px; font-size: 12px; font-weight: 700; letter-spacing: 0.25em; text-transform: uppercase; box-shadow: 0 4px 18px rgba(239,68,68,0.4), inset 0 1px 0 rgba(255,255,255,0.15);">
+                      Reset Password
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              <p style="color: rgba(255,255,255,0.25); font-size: 11px; line-height: 1.6; text-align: center; margin: 0;">
+                If you didn't request this, you can safely ignore this email. Your password won't change.
+              </p>
+            </div>
+          </div>
         </div>
       `,
     });
@@ -257,30 +275,49 @@ export async function sendNewSignupNotification(user, totalUsers) {
       to: process.env.ADMIN_EMAIL,
       subject: `New REPLAB Signup — ${name} (#${totalUsers})`,
       html: `
-        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 32px;">
-          <h1 style="color: #111; font-size: 24px; margin-bottom: 16px;">New User Signup</h1>
+        <div style="background: #000; margin: 0; padding: 0;">
+          <div style="background-color: #0a0a0a; background-image: radial-gradient(ellipse at 50% 0%, rgba(239,68,68,0.22) 0%, transparent 55%), linear-gradient(180deg, #0a0a0a 0%, #050505 50%, #000 100%); padding: 48px 16px;">
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; color: #fff;">
 
-          <div style="background: #f8f9fa; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-            <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
-              <tr><td style="padding: 6px 0; color: #888; width: 110px;">Name</td><td style="padding: 6px 0; font-weight: 600;">${name}</td></tr>
-              <tr><td style="padding: 6px 0; color: #888;">Email</td><td style="padding: 6px 0;">${user.email || '—'}</td></tr>
-              <tr><td style="padding: 6px 0; color: #888;">Phone</td><td style="padding: 6px 0;">${user.phone || '—'}</td></tr>
-              <tr><td style="padding: 6px 0; color: #888;">Username</td><td style="padding: 6px 0;">${user.username || '—'}</td></tr>
-              <tr><td style="padding: 6px 0; color: #888;">Gender</td><td style="padding: 6px 0;">${user.gender || '—'}</td></tr>
-              <tr><td style="padding: 6px 0; color: #888;">Device</td><td style="padding: 6px 0;">${user.signupDevice || '—'}</td></tr>
-              <tr><td style="padding: 6px 0; color: #888;">Zip Code</td><td style="padding: 6px 0;">${user.zipCode || '—'}</td></tr>
-              <tr><td style="padding: 6px 0; color: #888;">Location</td><td style="padding: 6px 0;">${[user.signupCity, user.signupState].filter(Boolean).join(', ') || '—'}</td></tr>
-              <tr><td style="padding: 6px 0; color: #888;">Referral</td><td style="padding: 6px 0;">${user.referralSource || '—'}</td></tr>
-              <tr><td style="padding: 6px 0; color: #888;">Referral Code</td><td style="padding: 6px 0;">${user.referralCode || '—'}</td></tr>
-              ${user.utmSource ? `<tr><td style="padding: 6px 0; color: #888;">UTM Source</td><td style="padding: 6px 0;">${user.utmSource}</td></tr>` : ''}
-              ${user.utmMedium ? `<tr><td style="padding: 6px 0; color: #888;">UTM Medium</td><td style="padding: 6px 0;">${user.utmMedium}</td></tr>` : ''}
-              ${user.utmCampaign ? `<tr><td style="padding: 6px 0; color: #888;">UTM Campaign</td><td style="padding: 6px 0;">${user.utmCampaign}</td></tr>` : ''}
-            </table>
-          </div>
+              <!-- Logo -->
+              <div style="text-align: center; margin-bottom: 48px;">
+                <h1 style="font-size: 40px; font-weight: 900; letter-spacing: 4px; margin: 0; color: #fff; text-shadow: 0 2px 24px rgba(239,68,68,0.35);">REP<span style="color: #ef4444;">LAB</span></h1>
+                <div style="height: 3px; width: 72px; margin: 16px auto 0; background: linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent);"></div>
+              </div>
 
-          <div style="background: #111; color: #fff; border-radius: 12px; padding: 20px; text-align: center;">
-            <div style="font-size: 36px; font-weight: 900;">${totalUsers}</div>
-            <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: #999; margin-top: 4px;">Total Users</div>
+              <!-- User details panel -->
+              <div style="background: linear-gradient(160deg, #1e1e1e 0%, #141414 100%); border-radius: 2px; margin-bottom: 16px; box-shadow: 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);">
+                <div style="height: 3px; background: linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent);"></div>
+                <div style="padding: 24px 28px;">
+                  <p style="color: rgba(239,68,68,0.85); text-transform: uppercase; letter-spacing: 0.3em; font-size: 9px; font-weight: 700; margin: 0 0 8px 0;">Signup</p>
+                  <h2 style="color: #fff; font-size: 26px; font-weight: 900; line-height: 1.1; margin: 0 0 20px 0; letter-spacing: -0.01em; text-transform: uppercase;">New User Signup</h2>
+                  <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
+                    <tr><td style="padding: 8px 0; color: rgba(255,255,255,0.45); width: 130px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em; border-bottom: 1px solid rgba(255,255,255,0.06);">Name</td><td style="padding: 8px 0; color: #fff; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.06);">${name}</td></tr>
+                    <tr><td style="padding: 8px 0; color: rgba(255,255,255,0.45); font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em; border-bottom: 1px solid rgba(255,255,255,0.06);">Email</td><td style="padding: 8px 0; color: rgba(255,255,255,0.85); border-bottom: 1px solid rgba(255,255,255,0.06);">${user.email || '—'}</td></tr>
+                    <tr><td style="padding: 8px 0; color: rgba(255,255,255,0.45); font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em; border-bottom: 1px solid rgba(255,255,255,0.06);">Phone</td><td style="padding: 8px 0; color: rgba(255,255,255,0.85); border-bottom: 1px solid rgba(255,255,255,0.06);">${user.phone || '—'}</td></tr>
+                    <tr><td style="padding: 8px 0; color: rgba(255,255,255,0.45); font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em; border-bottom: 1px solid rgba(255,255,255,0.06);">Username</td><td style="padding: 8px 0; color: rgba(255,255,255,0.85); border-bottom: 1px solid rgba(255,255,255,0.06);">${user.username || '—'}</td></tr>
+                    <tr><td style="padding: 8px 0; color: rgba(255,255,255,0.45); font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em; border-bottom: 1px solid rgba(255,255,255,0.06);">Gender</td><td style="padding: 8px 0; color: rgba(255,255,255,0.85); border-bottom: 1px solid rgba(255,255,255,0.06);">${user.gender || '—'}</td></tr>
+                    <tr><td style="padding: 8px 0; color: rgba(255,255,255,0.45); font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em; border-bottom: 1px solid rgba(255,255,255,0.06);">Device</td><td style="padding: 8px 0; color: rgba(255,255,255,0.85); border-bottom: 1px solid rgba(255,255,255,0.06);">${user.signupDevice || '—'}</td></tr>
+                    <tr><td style="padding: 8px 0; color: rgba(255,255,255,0.45); font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em; border-bottom: 1px solid rgba(255,255,255,0.06);">Zip Code</td><td style="padding: 8px 0; color: rgba(255,255,255,0.85); border-bottom: 1px solid rgba(255,255,255,0.06);">${user.zipCode || '—'}</td></tr>
+                    <tr><td style="padding: 8px 0; color: rgba(255,255,255,0.45); font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em; border-bottom: 1px solid rgba(255,255,255,0.06);">Location</td><td style="padding: 8px 0; color: rgba(255,255,255,0.85); border-bottom: 1px solid rgba(255,255,255,0.06);">${[user.signupCity, user.signupState].filter(Boolean).join(', ') || '—'}</td></tr>
+                    <tr><td style="padding: 8px 0; color: rgba(255,255,255,0.45); font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em; border-bottom: 1px solid rgba(255,255,255,0.06);">Referral</td><td style="padding: 8px 0; color: rgba(255,255,255,0.85); border-bottom: 1px solid rgba(255,255,255,0.06);">${user.referralSource || '—'}</td></tr>
+                    <tr><td style="padding: 8px 0; color: rgba(255,255,255,0.45); font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em; ${user.utmSource || user.utmMedium || user.utmCampaign ? 'border-bottom: 1px solid rgba(255,255,255,0.06);' : ''}">Referral Code</td><td style="padding: 8px 0; color: rgba(255,255,255,0.85); ${user.utmSource || user.utmMedium || user.utmCampaign ? 'border-bottom: 1px solid rgba(255,255,255,0.06);' : ''}">${user.referralCode || '—'}</td></tr>
+                    ${user.utmSource ? `<tr><td style="padding: 8px 0; color: rgba(255,255,255,0.45); font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em; ${user.utmMedium || user.utmCampaign ? 'border-bottom: 1px solid rgba(255,255,255,0.06);' : ''}">UTM Source</td><td style="padding: 8px 0; color: rgba(255,255,255,0.85); ${user.utmMedium || user.utmCampaign ? 'border-bottom: 1px solid rgba(255,255,255,0.06);' : ''}">${user.utmSource}</td></tr>` : ''}
+                    ${user.utmMedium ? `<tr><td style="padding: 8px 0; color: rgba(255,255,255,0.45); font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em; ${user.utmCampaign ? 'border-bottom: 1px solid rgba(255,255,255,0.06);' : ''}">UTM Medium</td><td style="padding: 8px 0; color: rgba(255,255,255,0.85); ${user.utmCampaign ? 'border-bottom: 1px solid rgba(255,255,255,0.06);' : ''}">${user.utmMedium}</td></tr>` : ''}
+                    ${user.utmCampaign ? `<tr><td style="padding: 8px 0; color: rgba(255,255,255,0.45); font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em;">UTM Campaign</td><td style="padding: 8px 0; color: rgba(255,255,255,0.85);">${user.utmCampaign}</td></tr>` : ''}
+                  </table>
+                </div>
+              </div>
+
+              <!-- Total users big number panel -->
+              <div style="background: linear-gradient(160deg, #1e1e1e 0%, #141414 100%); border-radius: 2px; box-shadow: 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);">
+                <div style="height: 3px; background: linear-gradient(90deg, #ef4444 0%, #ef4444 60%, rgba(239,68,68,0.25));"></div>
+                <div style="padding: 28px 20px; text-align: center;">
+                  <div style="font-size: 56px; font-weight: 900; color: #ef4444; line-height: 1; letter-spacing: -0.02em; text-shadow: 0 2px 24px rgba(239,68,68,0.35);">${totalUsers}</div>
+                  <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.3em; color: rgba(255,255,255,0.5); margin-top: 12px; font-weight: 700;">Total Users</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       `,
@@ -302,16 +339,16 @@ export async function sendDailySummaryEmail(stats) {
     const diff = current - previous;
     if (diff > 0) return `<span style="color: #22c55e; font-weight: 700;">+${diff} &#9650;</span>`;
     if (diff < 0) return `<span style="color: #ef4444; font-weight: 700;">${diff} &#9660;</span>`;
-    return `<span style="color: #888;">0 &#8212;</span>`;
+    return `<span style="color: rgba(255,255,255,0.4);">0 &#8212;</span>`;
   }
 
   const signupRows = stats.recentSignups.map((u) => {
     const name = [u.first_name, u.last_name].filter(Boolean).join(' ') || '—';
     const loc = [u.signup_city, u.signup_state].filter(Boolean).join(', ') || '—';
     return `<tr>
-      <td style="padding: 6px 12px; border-bottom: 1px solid #eee; font-size: 13px;">${name}</td>
-      <td style="padding: 6px 12px; border-bottom: 1px solid #eee; font-size: 13px;">${u.email || u.phone || '—'}</td>
-      <td style="padding: 6px 12px; border-bottom: 1px solid #eee; font-size: 13px;">${loc}</td>
+      <td style="padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px; color: #fff;">${name}</td>
+      <td style="padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px; color: rgba(255,255,255,0.75);">${u.email || u.phone || '—'}</td>
+      <td style="padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px; color: rgba(255,255,255,0.75);">${loc}</td>
     </tr>`;
   }).join('');
 
@@ -321,74 +358,118 @@ export async function sendDailySummaryEmail(stats) {
       to: process.env.ADMIN_EMAIL,
       subject: `REPLAB Daily Summary — ${stats.totalUsers} users`,
       html: `
-        <div style="font-family: sans-serif; max-width: 520px; margin: 0 auto; padding: 32px;">
-          <h1 style="color: #111; font-size: 24px; margin-bottom: 4px;">Daily Summary</h1>
-          <p style="color: #888; font-size: 13px; margin-bottom: 24px;">${today}</p>
+        <div style="background: #000; margin: 0; padding: 0;">
+          <div style="background-color: #0a0a0a; background-image: radial-gradient(ellipse at 50% 0%, rgba(239,68,68,0.22) 0%, transparent 55%), linear-gradient(180deg, #0a0a0a 0%, #050505 50%, #000 100%); padding: 48px 16px;">
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; color: #fff;">
 
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
-            <tr>
-              <td style="padding: 16px; background: #111; color: #fff; border-radius: 12px 0 0 0; text-align: center; width: 33%;">
-                <div style="font-size: 28px; font-weight: 900;">${stats.totalUsers}</div>
-                <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #999; margin-top: 4px;">Total Users</div>
-              </td>
-              <td style="padding: 16px; background: #111; color: #fff; text-align: center; width: 33%;">
-                <div style="font-size: 28px; font-weight: 900;">${stats.workoutsCurrent}</div>
-                <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #999; margin-top: 4px;">Workouts Today</div>
-              </td>
-              <td style="padding: 16px; background: #111; color: #fff; border-radius: 0 12px 0 0; text-align: center; width: 33%;">
-                <div style="font-size: 28px; font-weight: 900;">${stats.activeUsersCurrent}</div>
-                <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #999; margin-top: 4px;">Active Users</div>
-              </td>
-            </tr>
-          </table>
+              <!-- Logo -->
+              <div style="text-align: center; margin-bottom: 40px;">
+                <h1 style="font-size: 40px; font-weight: 900; letter-spacing: 4px; margin: 0; color: #fff; text-shadow: 0 2px 24px rgba(239,68,68,0.35);">REP<span style="color: #ef4444;">LAB</span></h1>
+                <div style="height: 3px; width: 72px; margin: 16px auto 0; background: linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent);"></div>
+              </div>
 
-          <table style="width: 100%; border-collapse: collapse; background: #f8f9fa; border-radius: 12px; overflow: hidden; margin-bottom: 24px;">
-            <tr>
-              <th style="text-align: left; padding: 10px 16px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #888; border-bottom: 1px solid #eee;">Metric</th>
-              <th style="text-align: right; padding: 10px 16px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #888; border-bottom: 1px solid #eee;">Today</th>
-              <th style="text-align: right; padding: 10px 16px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #888; border-bottom: 1px solid #eee;">Yesterday</th>
-              <th style="text-align: right; padding: 10px 16px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #888; border-bottom: 1px solid #eee;">Change</th>
-            </tr>
-            <tr>
-              <td style="padding: 10px 16px; font-size: 14px; font-weight: 600;">New Signups</td>
-              <td style="padding: 10px 16px; font-size: 14px; text-align: right;">${stats.newUsersCurrent}</td>
-              <td style="padding: 10px 16px; font-size: 14px; text-align: right; color: #888;">${stats.newUsersPrev}</td>
-              <td style="padding: 10px 16px; font-size: 14px; text-align: right;">${delta(stats.newUsersCurrent, stats.newUsersPrev)}</td>
-            </tr>
-            <tr>
-              <td style="padding: 10px 16px; font-size: 14px; font-weight: 600; border-top: 1px solid #eee;">Workouts Logged</td>
-              <td style="padding: 10px 16px; font-size: 14px; text-align: right; border-top: 1px solid #eee;">${stats.workoutsCurrent}</td>
-              <td style="padding: 10px 16px; font-size: 14px; text-align: right; color: #888; border-top: 1px solid #eee;">${stats.workoutsPrev}</td>
-              <td style="padding: 10px 16px; font-size: 14px; text-align: right; border-top: 1px solid #eee;">${delta(stats.workoutsCurrent, stats.workoutsPrev)}</td>
-            </tr>
-            <tr>
-              <td style="padding: 10px 16px; font-size: 14px; font-weight: 600; border-top: 1px solid #eee;">Active Users</td>
-              <td style="padding: 10px 16px; font-size: 14px; text-align: right; border-top: 1px solid #eee;">${stats.activeUsersCurrent}</td>
-              <td style="padding: 10px 16px; font-size: 14px; text-align: right; color: #888; border-top: 1px solid #eee;">${stats.activeUsersPrev}</td>
-              <td style="padding: 10px 16px; font-size: 14px; text-align: right; border-top: 1px solid #eee;">${delta(stats.activeUsersCurrent, stats.activeUsersPrev)}</td>
-            </tr>
-          </table>
+              <!-- Header -->
+              <p style="color: rgba(239,68,68,0.9); text-transform: uppercase; letter-spacing: 0.4em; font-size: 10px; font-weight: 700; margin: 0 0 12px 0;">Admin Digest</p>
+              <h2 style="color: #fff; font-size: 32px; font-weight: 900; line-height: 1; margin: 0 0 8px 0; letter-spacing: -0.02em; text-transform: uppercase;">Daily Summary</h2>
+              <p style="color: rgba(255,255,255,0.5); font-size: 13px; line-height: 1.6; margin: 0 0 32px 0; text-transform: uppercase; letter-spacing: 0.2em;">${today}</p>
 
-          <div style="background: #f0f0f0; border-radius: 8px; padding: 14px 16px; margin-bottom: 24px; font-size: 12px; color: #666; line-height: 1.6;">
-            <strong style="color: #444;">Workouts Logged</strong> — total workout sessions saved by all users that day.<br/>
-            <strong style="color: #444;">Active Users</strong> — unique users who logged at least one workout session that day.
+              <!-- Top stat tiles -->
+              <table style="width: 100%; border-collapse: separate; border-spacing: 8px 0; margin-bottom: 16px;">
+                <tr>
+                  <td style="background: linear-gradient(160deg, #1e1e1e 0%, #141414 100%); border-radius: 2px; padding: 0; text-align: center; width: 33%; box-shadow: 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);">
+                    <div style="height: 3px; background: linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent);"></div>
+                    <div style="padding: 20px 8px;">
+                      <div style="font-size: 32px; font-weight: 900; color: #ef4444; line-height: 1; letter-spacing: -0.02em;">${stats.totalUsers}</div>
+                      <div style="font-size: 9px; text-transform: uppercase; letter-spacing: 0.25em; color: rgba(255,255,255,0.5); margin-top: 10px; font-weight: 700;">Total Users</div>
+                    </div>
+                  </td>
+                  <td style="background: linear-gradient(160deg, #1e1e1e 0%, #141414 100%); border-radius: 2px; padding: 0; text-align: center; width: 33%; box-shadow: 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);">
+                    <div style="height: 3px; background: linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent);"></div>
+                    <div style="padding: 20px 8px;">
+                      <div style="font-size: 32px; font-weight: 900; color: #fff; line-height: 1; letter-spacing: -0.02em;">${stats.workoutsCurrent}</div>
+                      <div style="font-size: 9px; text-transform: uppercase; letter-spacing: 0.25em; color: rgba(255,255,255,0.5); margin-top: 10px; font-weight: 700;">Workouts Today</div>
+                    </div>
+                  </td>
+                  <td style="background: linear-gradient(160deg, #1e1e1e 0%, #141414 100%); border-radius: 2px; padding: 0; text-align: center; width: 33%; box-shadow: 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);">
+                    <div style="height: 3px; background: linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent);"></div>
+                    <div style="padding: 20px 8px;">
+                      <div style="font-size: 32px; font-weight: 900; color: #fff; line-height: 1; letter-spacing: -0.02em;">${stats.activeUsersCurrent}</div>
+                      <div style="font-size: 9px; text-transform: uppercase; letter-spacing: 0.25em; color: rgba(255,255,255,0.5); margin-top: 10px; font-weight: 700;">Active Users</div>
+                    </div>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Metrics table panel -->
+              <div style="background: linear-gradient(160deg, #1e1e1e 0%, #141414 100%); border-radius: 2px; margin-bottom: 16px; box-shadow: 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);">
+                <div style="height: 3px; background: linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent);"></div>
+                <div style="padding: 24px 28px;">
+                  <p style="color: rgba(239,68,68,0.85); text-transform: uppercase; letter-spacing: 0.3em; font-size: 9px; font-weight: 700; margin: 0 0 16px 0;">Day Over Day</p>
+                  <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                      <th style="text-align: left; padding: 8px 0; font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em; color: rgba(255,255,255,0.4); border-bottom: 1px solid rgba(255,255,255,0.08); font-weight: 700;">Metric</th>
+                      <th style="text-align: right; padding: 8px 0; font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em; color: rgba(255,255,255,0.4); border-bottom: 1px solid rgba(255,255,255,0.08); font-weight: 700;">Today</th>
+                      <th style="text-align: right; padding: 8px 0; font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em; color: rgba(255,255,255,0.4); border-bottom: 1px solid rgba(255,255,255,0.08); font-weight: 700;">Yesterday</th>
+                      <th style="text-align: right; padding: 8px 0; font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em; color: rgba(255,255,255,0.4); border-bottom: 1px solid rgba(255,255,255,0.08); font-weight: 700;">Change</th>
+                    </tr>
+                    <tr>
+                      <td style="padding: 12px 0; font-size: 14px; font-weight: 600; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.06);">New Signups</td>
+                      <td style="padding: 12px 0; font-size: 14px; text-align: right; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.06);">${stats.newUsersCurrent}</td>
+                      <td style="padding: 12px 0; font-size: 14px; text-align: right; color: rgba(255,255,255,0.5); border-bottom: 1px solid rgba(255,255,255,0.06);">${stats.newUsersPrev}</td>
+                      <td style="padding: 12px 0; font-size: 14px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.06);">${delta(stats.newUsersCurrent, stats.newUsersPrev)}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 12px 0; font-size: 14px; font-weight: 600; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.06);">Workouts Logged</td>
+                      <td style="padding: 12px 0; font-size: 14px; text-align: right; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.06);">${stats.workoutsCurrent}</td>
+                      <td style="padding: 12px 0; font-size: 14px; text-align: right; color: rgba(255,255,255,0.5); border-bottom: 1px solid rgba(255,255,255,0.06);">${stats.workoutsPrev}</td>
+                      <td style="padding: 12px 0; font-size: 14px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.06);">${delta(stats.workoutsCurrent, stats.workoutsPrev)}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 12px 0; font-size: 14px; font-weight: 600; color: #fff;">Active Users</td>
+                      <td style="padding: 12px 0; font-size: 14px; text-align: right; color: #fff;">${stats.activeUsersCurrent}</td>
+                      <td style="padding: 12px 0; font-size: 14px; text-align: right; color: rgba(255,255,255,0.5);">${stats.activeUsersPrev}</td>
+                      <td style="padding: 12px 0; font-size: 14px; text-align: right;">${delta(stats.activeUsersCurrent, stats.activeUsersPrev)}</td>
+                    </tr>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Legend -->
+              <div style="background: linear-gradient(160deg, #1e1e1e 0%, #141414 100%); border-left: 3px solid #ef4444; border-radius: 2px; padding: 16px 20px; margin-bottom: 16px; box-shadow: 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);">
+                <p style="color: rgba(255,255,255,0.6); font-size: 12px; line-height: 1.7; margin: 0;">
+                  <strong style="color: #fff;">Workouts Logged</strong> — total workout sessions saved by all users that day.<br/>
+                  <strong style="color: #fff;">Active Users</strong> — unique users who logged at least one workout session that day.
+                </p>
+              </div>
+
+              ${stats.recentSignups.length > 0 ? `
+              <!-- Recent signups panel -->
+              <div style="background: linear-gradient(160deg, #1e1e1e 0%, #141414 100%); border-radius: 2px; margin-bottom: 24px; box-shadow: 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);">
+                <div style="height: 3px; background: linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent);"></div>
+                <div style="padding: 24px 28px;">
+                  <p style="color: rgba(239,68,68,0.85); text-transform: uppercase; letter-spacing: 0.3em; font-size: 9px; font-weight: 700; margin: 0 0 8px 0;">Last 24h</p>
+                  <h3 style="color: #fff; font-size: 18px; font-weight: 900; line-height: 1.1; margin: 0 0 16px 0; letter-spacing: -0.01em; text-transform: uppercase;">New Signups</h3>
+                  <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                      <th style="text-align: left; padding: 8px 12px 8px 0; font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em; color: rgba(255,255,255,0.4); border-bottom: 1px solid rgba(255,255,255,0.12); font-weight: 700;">Name</th>
+                      <th style="text-align: left; padding: 8px 12px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em; color: rgba(255,255,255,0.4); border-bottom: 1px solid rgba(255,255,255,0.12); font-weight: 700;">Contact</th>
+                      <th style="text-align: left; padding: 8px 0 8px 12px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em; color: rgba(255,255,255,0.4); border-bottom: 1px solid rgba(255,255,255,0.12); font-weight: 700;">Location</th>
+                    </tr>
+                    ${signupRows}
+                  </table>
+                </div>
+              </div>
+              ` : `
+              <div style="background: linear-gradient(160deg, #1e1e1e 0%, #141414 100%); border-radius: 2px; margin-bottom: 24px; padding: 20px 28px; box-shadow: 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05); text-align: center;">
+                <p style="color: rgba(255,255,255,0.5); font-size: 13px; margin: 0;">No new signups in the last 24 hours.</p>
+              </div>
+              `}
+
+              <p style="color: rgba(255,255,255,0.5); font-size: 11px; margin: 8px 0 0 0; text-align: center; text-transform: uppercase; letter-spacing: 0.25em;">
+                <a href="${config.APP_URL}/admin" style="color: #ef4444; text-decoration: none; font-weight: 700;">Open Admin Dashboard</a>
+              </p>
+            </div>
           </div>
-
-          ${stats.recentSignups.length > 0 ? `
-          <h3 style="font-size: 14px; font-weight: 700; margin-bottom: 8px;">New Signups (Last 24h)</h3>
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
-            <tr>
-              <th style="text-align: left; padding: 6px 12px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #888; border-bottom: 2px solid #ddd;">Name</th>
-              <th style="text-align: left; padding: 6px 12px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #888; border-bottom: 2px solid #ddd;">Contact</th>
-              <th style="text-align: left; padding: 6px 12px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #888; border-bottom: 2px solid #ddd;">Location</th>
-            </tr>
-            ${signupRows}
-          </table>
-          ` : '<p style="color: #888; font-size: 13px;">No new signups in the last 24 hours.</p>'}
-
-          <p style="color: #999; font-size: 11px; margin-top: 24px; text-align: center;">
-            <a href="${config.APP_URL}/admin" style="color: #ef4444; text-decoration: none;">Open Admin Dashboard</a>
-          </p>
         </div>
       `,
     });
