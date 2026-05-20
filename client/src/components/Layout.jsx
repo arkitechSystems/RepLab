@@ -66,6 +66,15 @@ export default function Layout({ children }) {
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col relative">
+      {/* Skip-to-content link — invisible until focused (Tab from page load).
+          Lets keyboard / SR users bypass the logo, profile avatar, and
+          offline/sync banner chrome and jump straight to the route content. */}
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] bg-wf-red px-3 py-2 rounded text-white text-sm font-semibold"
+      >
+        Skip to content
+      </a>
       <div className="ambient-bg" />
       {/* Top bar with logo + profile avatar — hidden when embedded from dashboard.
           Always renders on a solid black surface, even on routes that change
@@ -124,6 +133,7 @@ export default function Layout({ children }) {
         </div>
       )}
       <main
+        id="main"
         className={`grow shrink-0 basis-auto relative z-10 ${isDashboardEmbed ? 'pb-4' : ''}`}
         style={
           !isDashboardEmbed

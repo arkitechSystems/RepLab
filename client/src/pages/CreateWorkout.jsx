@@ -379,6 +379,7 @@ export default function CreateWorkout() {
       <div className="fixed bottom-20 left-0 right-0 p-4 bg-gradient-to-t from-black via-black/95 to-transparent safe-bottom z-40">
         <div className="max-w-lg mx-auto">
           <button
+            data-tutorial="save-workout-btn"
             onClick={handleSave}
             disabled={saving}
             className={`w-full active:scale-[0.98] text-white font-bold uppercase py-4 text-sm transition-transform ${saving ? 'btn-liquid' : ''}`}
@@ -494,7 +495,7 @@ function TemplateExerciseWrapper({
     const suggestions = getSuggestions(ex.name);
     const hasExactMatch = suggestions.some(s => s.name.toLowerCase() === ex.name.toLowerCase());
     return (
-      <div className="glass-card rounded-xl mb-3">
+      <div data-tutorial={exIdx === 0 ? 'add-exercise-search' : undefined} className="glass-card rounded-xl mb-3">
         <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
           <div className="flex-1 relative min-w-0" ref={activeAutocomplete ? autocompleteRef : null}>
             <input

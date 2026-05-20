@@ -239,14 +239,18 @@ export default function WorkoutSession() {
 
     const targetMap = {
       'begin-workout': '[data-tutorial="begin-workout-btn"]',
+      'exit-workout': '[data-tutorial="exit-workout"]',
       timer: '[data-tutorial="workout-timer"]',
       rest: '[data-tutorial="rest-timer"]',
       'exercise-card': '[data-tutorial="exercise-card"]',
       'exercise-header': '[data-tutorial="move-buttons"]',
       'swap-exercise': '[data-tutorial="swap-button"]',
+      'demo-button': '[data-tutorial="demo-button"]',
+      'prs-button': '[data-tutorial="prs-button"]',
       'add-delete-exercise': '[data-tutorial="add-delete-buttons"]',
       'set-controls': '[data-tutorial="set-controls"]',
       'set-row': '[data-tutorial="set-row"]',
+      'set-type': '[data-tutorial="set-row"]',
       'plate-calc': '[data-tutorial="plate-calc"]',
       'full-screen': '[data-tutorial="full-screen"]',
       'session-settings': '[data-tutorial="session-settings"]',
@@ -287,7 +291,7 @@ export default function WorkoutSession() {
         // scroll so the top is visible just below the sticky header rather than
         // centering (which can cause the tooltip to overlap the spotlight).
         const elRect = el.getBoundingClientRect();
-        const exerciseCardSteps = ['exercise-header', 'swap-exercise', 'add-delete-exercise', 'set-controls', 'set-row', 'plate-calc', 'full-screen', 'exercise-notes'];
+        const exerciseCardSteps = ['exercise-header', 'swap-exercise', 'demo-button', 'prs-button', 'add-delete-exercise', 'set-controls', 'set-row', 'set-type', 'plate-calc', 'full-screen', 'exercise-notes'];
         const isExerciseCardStep = exerciseCardSteps.includes(tutorialTip);
         if (tutorialTip === 'exercise-card') {
           // Scroll the exercise card header to the very top of the viewport
@@ -413,7 +417,7 @@ export default function WorkoutSession() {
     if (tutorialMode) {
       setTutorialTip(null);
       startTimer();
-      setTimeout(() => setTutorialTip('timer'), 600);
+      setTimeout(() => setTutorialTip('exit-workout'), 600);
       return;
     }
     const sessionDate = parseDateLocal(date);
@@ -2480,7 +2484,7 @@ export default function WorkoutSession() {
       )}
       {/* Back button + Day navigation arrows */}
       <div className="px-4 pt-6 flex items-center justify-between">
-        <button onClick={() => tutorialMode ? navigate('/app') : guardedNavigate(() => navigate(-1))} className="flex items-center gap-1 text-[11px] uppercase font-bold mb-2 active:opacity-70" style={{ color: 'rgba(239,68,68,0.9)', letterSpacing: '0.2em' }}>
+        <button data-tutorial="exit-workout" onClick={() => tutorialMode ? navigate('/app') : guardedNavigate(() => navigate(-1))} className="flex items-center gap-1 text-[11px] uppercase font-bold mb-2 active:opacity-70" style={{ color: 'rgba(239,68,68,0.9)', letterSpacing: '0.2em' }}>
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>
@@ -4046,11 +4050,19 @@ export default function WorkoutSession() {
             position: 'below',
             interactive: true, // allow clicking the actual button
           },
+          'exit-workout': {
+            target: '[data-tutorial="exit-workout"]',
+            title: 'Leaving Mid-Workout',
+            description: <>Need to step away? Your sets save automatically. You can come back to this workout anytime from the <span className="text-white font-semibold">Calendar</span> tab — no progress lost.</>,
+            prev: null, // begin-workout was a tap-through interactive step
+            next: 'timer',
+            position: 'below',
+          },
           timer: {
             target: '[data-tutorial="workout-timer"]',
             title: 'Workout Timer',
             description: <>This timer tracks your total workout time. To the far right, use the <span className="text-white font-semibold">pop-out</span> button to float the timer on screen as you scroll, or the <span className="text-white font-semibold">lock toggle</span> to keep the timer visible as you scroll down.</>,
-            prev: null, // can't go back to begin-workout (already tapped)
+            prev: 'exit-workout',
             next: 'rest',
             position: 'below',
           },
@@ -4084,14 +4096,30 @@ export default function WorkoutSession() {
             title: 'Swap Exercise',
             description: <>Tap this button to <span className="text-white font-semibold">substitute</span> the current exercise with a different one. You can search the exercise library or type a custom exercise name.</>,
             prev: 'exercise-header',
+            next: 'demo-button',
+            position: 'below',
+          },
+          'demo-button': {
+            target: '[data-tutorial="demo-button"]',
+            title: 'Watch the Movement',
+            description: <>Not sure on form? Tap <span className="text-white font-semibold">Demo</span> in the card header to play the exercise video right inside the card.</>,
+            prev: 'swap-exercise',
+            next: 'prs-button',
+            position: 'below',
+          },
+          'prs-button': {
+            target: '[data-tutorial="prs-button"]',
+            title: 'See Your PRs',
+            description: <>Tap the <span className="text-white font-semibold">PRs</span> badge to view your personal records for this exercise — top weight at every rep count.</>,
+            prev: 'demo-button',
             next: 'add-delete-exercise',
             position: 'below',
           },
           'add-delete-exercise': {
             target: '[data-tutorial="add-delete-buttons"]',
             title: 'Add & Remove Exercises',
-            description: <>The <span className="text-white font-semibold">plus button</span> adds a new exercise below this one. The <span className="text-white font-semibold">X button</span> removes this exercise from the workout entirely. Need a refresher on the movement? Tap <span className="text-white font-semibold">Demo</span> in the card header to watch the video.</>,
-            prev: 'swap-exercise',
+            description: <>The <span className="text-white font-semibold">plus button</span> adds a new exercise below this one. The <span className="text-white font-semibold">X button</span> removes this exercise from the workout entirely.</>,
+            prev: 'prs-button',
             next: 'set-controls',
             position: 'below',
           },
@@ -4108,6 +4136,14 @@ export default function WorkoutSession() {
             title: 'Tracking a Set',
             description: <>Each row is one set. The <span className="text-white font-semibold">circle on the left</span> marks the set as complete. <span className="text-white font-semibold">Type</span> shows the set type (warm-up, regular, drop set, etc.) — tap to change it. <span className="text-white font-semibold">Goal Wt</span> shows the target weight. <span className="text-white font-semibold">Actual Wt</span> is where you enter the weight used. <span className="text-white font-semibold">Goal Reps</span> shows the target reps. <span className="text-white font-semibold">Actual Reps</span> is where you enter the reps you completed.</>,
             prev: 'set-controls',
+            next: 'set-type',
+            position: 'below',
+          },
+          'set-type': {
+            target: '[data-tutorial="set-row"]',
+            title: 'Mark Warm-Up & Drop Sets',
+            description: <>Tap the <span className="text-white font-semibold">Type</span> cell on any set to mark it as warm-up, drop set, or to failure. Warm-up sets don't count toward PRs.</>,
+            prev: 'set-row',
             next: 'plate-calc',
             position: 'below',
           },
@@ -4115,7 +4151,7 @@ export default function WorkoutSession() {
             target: '[data-tutorial="plate-calc"]',
             title: 'Plate Calculator',
             description: <>Not sure how to load the bar? The <span className="text-white font-semibold">PC button</span> in the card header opens a plate calculator that shows exactly which plates to put on each side. You can also <span className="text-white font-semibold">long-press any weight input</span> on a set row to open the same calculator pre-filled with that set's weight.</>,
-            prev: 'set-row',
+            prev: 'set-type',
             next: 'full-screen',
             position: 'below',
           },

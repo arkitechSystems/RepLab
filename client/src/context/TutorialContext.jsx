@@ -44,7 +44,7 @@ export function TutorialProvider({ children }) {
       active: true,
       screen: path ? null : 'intro',
       path,
-      phase: path === 'browse' ? '1a' : path === 'create' ? '1b' : null,
+      phase: path === 'browse' ? '1a' : path === 'create' ? '1b' : path === 'calendar' ? '2' : null,
       stepIndex: 0,
       completed: false,
     };

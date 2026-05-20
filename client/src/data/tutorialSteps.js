@@ -57,11 +57,59 @@ export const PHASE_1A = [
   },
 ];
 
-// Phase 1B: Create Workout Flow (future)
-export const PHASE_1B = [];
+// Phase 1B: Create Workout Flow
+//
+// Step 1 spotlights the "+ Create" button on the Workouts hub. The user taps
+// it, which fires the `create-menu-opened` action and advances the tutorial.
+// CreateWorkout itself is reached via the Create menu; the remaining two
+// steps spotlight the add-exercise search and the save button on that page.
+export const PHASE_1B = [
+  {
+    type: 'spotlight',
+    target: '[data-tutorial="create-btn"]',
+    title: 'Create from Scratch',
+    description: 'Tap + Create to build a workout. You\'ll name it, add exercises, set rep targets, and save it to My Workouts.',
+    position: 'bottom',
+    waitFor: 'create-menu-opened',
+    allowInteraction: true,
+  },
+  {
+    type: 'spotlight',
+    target: '[data-tutorial="add-exercise-search"]',
+    title: 'Add Exercises',
+    description: 'Search the REPLAB library or type a custom name. You can drag-reorder, set the rest interval, and pick a set type (straight, drop, pyramid).',
+    position: 'bottom',
+  },
+  {
+    type: 'spotlight',
+    target: '[data-tutorial="save-workout-btn"]',
+    title: 'Save Your Workout',
+    description: 'Tap Create Workout to save it. It lands in My Workouts so you can run it any time, share it, or schedule it on your calendar.',
+    position: 'top',
+  },
+];
 
-// Phase 2: Shared Calendar Flow (future)
-export const PHASE_2 = [];
+// Phase 2: Shared Calendar Flow
+//
+// Walks the user through the Calendar page itself — view toggle, day cell
+// tap (where they can swap a workout / insert a rest day), and the copy-week
+// feature that repeats a routine forward.
+export const PHASE_2 = [
+  {
+    type: 'spotlight',
+    target: '[data-tutorial="calendar-view-toggle"]',
+    title: 'Weekly or Monthly',
+    description: 'Use the Weekly / Monthly toggle to switch views. Weekly shows the full day cards; Monthly gives you a heatmap of the whole month at a glance.',
+    position: 'bottom',
+  },
+  {
+    type: 'spotlight',
+    target: '[data-tutorial="calendar-day-cell"]',
+    title: 'Your Calendar',
+    description: 'Tap any day to swap its workout, insert a rest day, or copy the entire week forward. Use the week/month toggle above to change views.',
+    position: 'top',
+  },
+];
 
 // Phase 3: Shared Workout Session Flow (future)
 export const PHASE_3 = [];

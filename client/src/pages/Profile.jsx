@@ -7,6 +7,7 @@ import StickyHeader from '../components/StickyHeader';
 import SplashScreen from '../components/SplashScreen';
 import { APP_VERSION } from '../version';
 import { getWorkoutColor } from '../utils/workoutColors';
+import useFocusTrap from '../hooks/useFocusTrap';
 
 // Touch-reactive ticker for the Personal Records strip. Scrolls left at a
 // steady speed; while a finger is down it freezes and the user can drag the
@@ -407,6 +408,7 @@ export default function Profile() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleteError, setDeleteError] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const deleteAccountTrapRef = useFocusTrap(showDeleteAccount);
 
   async function handleDeleteAccount() {
     if (deleteConfirmText !== 'DELETE') return;
@@ -1326,20 +1328,28 @@ export default function Profile() {
 
       {/* Delete Account Confirmation Modal */}
       {showDeleteAccount && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4" onClick={() => setShowDeleteAccount(false)}>
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center px-4"
+          onClick={() => setShowDeleteAccount(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="profile-delete-title"
+          aria-describedby="profile-delete-desc"
+        >
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
           <div
+            ref={deleteAccountTrapRef}
             className="relative w-full max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-5 pt-5 pb-4">
               <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-3">
-                <svg className="w-6 h-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="w-6 h-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-bold text-white text-center">Delete Account</h3>
-              <p className="text-sm text-wf-gray-400 text-center mt-2">
+              <h3 id="profile-delete-title" className="text-lg font-bold text-white text-center">Delete Account</h3>
+              <p id="profile-delete-desc" className="text-sm text-wf-gray-400 text-center mt-2">
                 This will permanently delete your account and all your data including workouts, programs, and history. This cannot be undone.
               </p>
 
