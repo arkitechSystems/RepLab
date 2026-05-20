@@ -1,80 +1,94 @@
 # REPLAB — App Store + Play Store Metadata
 
-Drafted 2026-04-29, refreshed **2026-05-17** after the Featured Workouts + Challenges pre-launch gating sweep. **Draft for the developer to edit, not final copy.** All character-limit-bound fields have been counted and are reported at the bottom. No emojis used (Apple rejects them in name/subtitle/keywords).
+Refreshed **2026-05-19** for submission day. All character-limit-bound
+fields counted and reported at the bottom. No emojis (Apple rejects
+them in name/subtitle/keywords). Brand wordmark is **REPLAB** (all
+caps) per the brand rule.
 
-## What changed since the 2026-04-29 draft
+## What's live in v1 (source of truth for marketing copy)
 
-- **Featured Workouts is now gated as "Coming Soon"** for the v1 launch. Will's Hypertrophy is in the codebase but not user-accessible from the demo Apple Review will use. Marketing copy below has been adjusted — Will's Hypertrophy block removed from the description; positioning shifts to the broader library + the lifter's-logbook value prop.
-- **Challenges section gated** the same way — non-interactive "Coming Soon" card.
-- **Library programs cleanup** (Path A) — exercise duplicates consolidated, 313 master exercises now. Program list below verified against current DB state.
-- **Apple Developer enrollment is Individual, not Organization** — Apple rejected the ArkiTech Systems LLC org name as a trademark conflict with ARKit. App will ship under Will Martin's personal Apple ID for v1, with a planned App Transfer to a renamed LLC entity post-launch. Copyright string updated below.
+- 322 exercises in the master library (post-cleanup).
+- Pre-built library programs accessible to every user:
+  Jeff Nippard's Push Pull Legs, Jim Stoppani's Shortcut to Shred,
+  Robin Gallant's Intensive Max Glute Hypertrophy, Muscle & Fitness
+  5000 Rep Arm Specialization, Katie Sonier's 6-Week Glute Building,
+  Athlean-X Summer Shred, Bro Split, Mike Mentzer Heavy Duty, and
+  glute programs.
+- Custom-program builder, calendar/schedule, full session logging,
+  PR auto-detection, progress charts, plate calculator (long-press a
+  weight or tap the **PC** button mid-session), full-screen workout
+  mode (viewfinder icon on each exercise card), 1RM estimator, HIIT
+  timer, rest timers, cardio logging across 7 machine types.
+- Personalized push notifications (workout reminders at the user's
+  usual workout time, PR celebrations, weekly summary).
+- Welcome email + tutorial that auto-launches after the 1RM step in
+  the signup flow.
+- iOS Free-only on launch. Stripe + AI Workout Generator are present
+  in the codebase but hidden from iOS native users per Apple 3.1.1.
+- **NOT marketed in v1 copy** (gated behind feature flags or hidden
+  on iOS): Featured Workouts (incl. Will's Hypertrophy), Challenges,
+  Trainers, AI Workout Generator. Do not surface these in App Store
+  copy until the gating is lifted.
 
-## Source-of-truth notes
+## Apple Developer enrollment
 
-- iOS v1 hides every Stripe-checkout path natively (App Store guideline 3.1.1) — copy below treats Pro/Elite as "membership features" without specifying purchase mechanism.
-- Currently-live library programs (after Path A consolidation): Jeff Nippard's Push Pull Legs, Jim Stoppani's Shortcut to Shred, Robin Gallant's Intensive Max Glute Hypertrophy, Muscle & Fitness 5000 Rep Arm Specialization, Katie Sonier's 6-Week Glute Building. Will's Hypertrophy exists but is gated.
-- AI Workout Generator and "Featured trainer workouts" exist in code as Pro-tier features (`client/src/pages/Upgrade.jsx`, `PLANS` array). Featured trainer workouts are gated (Coming Soon). Custom program builder, video exercise guides, nutrition tracking, and 1-on-1 trainer chat are listed as Elite-tier features.
-- "Trainers" tab still surfaces a single mock trainer (Zumba Jason) — flagged in `_marketing/DEMO-CONTENT-AUDIT.md` for resolution before launch.
+Individual enrollment under **Will Martin** (the LLC org-enrollment
+hit a trademark conflict with ARKit; switching to Individual to ship
+v1 on time). Plan: post-launch App Transfer to a renamed LLC entity.
+
+- Copyright string: `© 2026 Will Martin`
+- Seller / Account Holder: `Will Martin`
 
 ---
 
 ## App Store Connect (Apple)
 
 ### App name — 30 chars max
-**Value:** `REPLAB`
+**Value:** `REPLAB` (6 chars)
 
-> The brand wordmark is all-caps. **However** — the iOS home-screen label (the text that appears under the app icon on the user's device) is the `CFBundleDisplayName`, which the dev has set to mixed-case `RepLab` per personal preference. That value lives in the iOS project (`ios/App/App/Info.plist`, key `CFBundleDisplayName`) and is **independent** of the App Store Connect "App name" field above. Set the App Store Connect field to `REPLAB`; leave the on-device label as `RepLab` if that's the call.
+> The on-device home-screen label (`CFBundleDisplayName` in
+> `ios/App/App/Info.plist`) uses mixed-case `RepLab` by personal
+> preference. That field is independent of this one. Set the App
+> Store Connect **App name** to `REPLAB`.
 
 ### Subtitle — 30 chars max
-**Primary:** `Strength & Hypertrophy Coach` (28 chars)
-
-Alternates if the dev wants to A/B:
-- `Hypertrophy & Strength Built In` (31 — would need trim, e.g. `Hypertrophy + Strength Built` = 28)
-- `Lift. Track. Grow.` (18 — punchier, less search-optimized)
-- `Workout Tracker for Lifters` (27)
+**Value:** `Strength & Hypertrophy Coach` (28 chars)
 
 ### Promotional Text — 170 chars max
-Editable after launch without a resubmission, so use it for time-sensitive callouts. Three drafts:
+Editable after launch without resubmission. Use for time-sensitive
+callouts.
 
-**Option A (launch hook, 160 chars):**
+**Recommended (157 chars):**
 ```
-Now featuring Will's Hypertrophy — a free 12-week resistance training program built for serious lifters. Track every set, every rep, every PR. New on REPLAB.
-```
-
-**Option B (feature-led, 156 chars):**
-```
-Plan your splits, log every set, and chase progressive overload. REPLAB ships with Will's Hypertrophy — a 12-week flagship program — and a full library.
-```
-
-**Option C (community-led, 145 chars):**
-```
-Built by lifters, for lifters. Track workouts, beat your PRs, and run a 12-week hypertrophy program designed by Will Martin. Free on REPLAB.
+Plan your splits, log every set, and chase progressive overload. REPLAB ships with a full library of pro-designed programs and a plate calculator built in.
 ```
 
 ### Description — 4000 chars max
-
-**Note:** the Will's Hypertrophy block was removed for v1 since Featured Workouts is gated as "Coming Soon." Restore the block (or add a "Coming Soon: Will's Hypertrophy" tease) once the feature is launch-ready.
+(AI generator and Featured Workouts intentionally omitted — see
+"What's live in v1" above.)
 
 ```
 REPLAB is a workout tracker for people who actually lift. Plan your splits, log every set, and chase progressive overload — without the bloat.
 
 — WHAT YOU GET —
 - Workout logger built for the gym floor — clean, fast, one-handed
+- Full-screen workout mode — focus on one exercise at a time, swipe between them
 - Personal best tracking — PRs auto-detected by weight, reps, and volume
-- Progress page — see exercise-by-exercise progressive overload at a glance with Last 30 Days stats
-- Plan your week with a calendar that knows your splits
-- Program library with author-designed splits from Jeff Nippard, Jim Stoppani, Robin Gallant, and more
+- Progress page — see exercise-by-exercise progressive overload with Last 30 Days stats
+- Weekly calendar that knows your splits
+- Program library with pre-built splits from Jeff Nippard, Jim Stoppani, Robin Gallant, Katie Sonier, Muscle & Fitness, Athlean-X, and more
 - Build and edit your own programs from scratch
-- Exercise library with form videos hosted on the REPLAB CDN
+- 322 exercises with form videos hosted on the REPLAB CDN
 - Plate calculator — long-press any weight to load it with the right plates, with Both Sides / One Side / Machine modes
 - 1RM estimator, HIIT timer, rest timers, session notes, cardio logging across 7 machine types
+- Personalized reminders at your usual workout time, PR celebrations, and a weekly summary
 - Sync across iOS and the web — your data follows you
 
 — WHO IT'S FOR —
 Lifters running a structured split. Hypertrophy and strength athletes who want to track progressive overload without spreadsheets. Coaches running clients through programmed work. Anyone who wants their training log to be as serious as their training.
 
 — ABOUT YOUR DATA —
-Your training data is yours. We don't sell it, we don't share it with ad networks, we don't run third-party trackers across other apps. Your account, your custom exercises, and your private programs are visible only to you.
+Your training data is yours. We don't sell it, we don't share it with ad networks, we don't run third-party trackers across other apps. Your account, your custom exercises, and your private programs are visible only to you. Delete your account from Profile -> Delete Account at any time; the wipe is immediate.
 
 — BUILT BY LIFTERS, FOR LIFTERS —
 REPLAB was built because the existing apps either bury you in features you don't need or hide the ones you do. We focused on the loop that matters: plan, log, progress, repeat.
@@ -83,7 +97,24 @@ REPLAB is a fitness app, not a medical device or substitute for medical advice. 
 
 Questions or feedback? https://replab-fitness.com/support
 ```
-(Approximate length: ~2,000 chars — well under the 4000 cap.)
+(Approximate length: ~2,060 chars — well under the 4000 cap.)
+
+### "What's New in Version" — 4000 chars max (v1.0 first release)
+
+```
+Welcome to REPLAB.
+
+This is v1.0 — the first public release. Plan your splits, log every set, and chase progressive overload with a logger built for the gym floor.
+
+- Full-screen workout mode for focused training
+- 322-exercise library with form videos
+- Pre-built programs from Jeff Nippard, Jim Stoppani, Athlean-X, and more
+- Plate calculator, 1RM estimator, HIIT and rest timers
+- PR auto-detection and progress tracking
+- Personalized workout reminders
+
+Thanks for being an early lifter. Got feedback? hit us at support@replab-fitness.com.
+```
 
 ### Keywords — 100 chars max, comma-separated, NO SPACES
 **Value (97 chars):**
@@ -91,27 +122,41 @@ Questions or feedback? https://replab-fitness.com/support
 workout,hypertrophy,gym,strength,bodybuilding,lifting,muscle,fitness,trainer,split,reps,PRs,coach
 ```
 
-Reasoning: high-intent search terms only. Skipped filler words ("the/and/app"), skipped "exercise" (already implicit in "workout"), skipped "tracker" (Apple matches partials inside multi-word app titles, and your subtitle is doing that work). If the dev wants to swap one in, drop `coach` (5 chars) for `tracker` (7 chars) — that pushes total to 99. Or drop `PRs` for `progress` (8) — total 101, would need trimming.
+Reasoning: high-intent search terms only. Skipped filler words and
+skipped "tracker" (matched implicitly via subtitle). Apple matches
+partials across name + subtitle so `tracker`, `training`, and
+`exercise` are recoverable without using keyword budget on them.
 
 ### URLs
+
 - **Marketing URL:** `https://replab-fitness.com`
 - **Support URL:** `https://replab-fitness.com/support`
 - **Privacy Policy URL:** `https://replab-fitness.com/privacy`
 
 ### Copyright / Seller
 
-**v1 launch (Individual enrollment):**
 - **Copyright string:** `© 2026 Will Martin`
 - **Seller name (App Store Connect Account Holder):** `Will Martin`
 - **Display name in App Store:** `Will Martin`
 
-**Post-launch transfer (once a clean entity is set up):** plan to use Apple's App Transfer to move the app to the LLC's developer account. Copyright string then flips to `© 2026 ArkiTech Systems, LLC` (or whatever the renamed entity becomes). Privacy + Terms still reference the LLC as the legal entity owning the app — only the App Store seller identity is personal for v1.
+Post-launch transfer plan: move the app to a renamed LLC entity via
+Apple's App Transfer. Copyright string will flip to
+`© 2026 [LLC Entity Name]` then. Privacy + Terms continue to
+reference the LLC as the legal entity; only the App Store seller
+identity is personal for v1.
 
 ### Categories
+
 - **Primary:** Health & Fitness
 - **Secondary:** Sports
 
+> Open question: Will may prefer **Lifestyle** as the secondary if he
+> wants reach outside the athletics audience. Recommendation stays
+> **Sports** because the app's core loop is structured training, not
+> general wellness — that aligns with how App Store browsers filter.
+
 ### Age rating questionnaire answers (target: 4+)
+
 | Question | Answer |
 |---|---|
 | Cartoon or fantasy violence | None |
@@ -124,11 +169,11 @@ Reasoning: high-intent search terms only. Skipped filler words ("the/and/app"), 
 | Graphic sexual content and nudity | None |
 | Alcohol, tobacco, or drug use or references | None |
 | Simulated gambling | None |
-| Medical/treatment information | None (this is fitness — explicitly disclaimed in description) |
+| Medical/treatment information | None (fitness app — explicitly disclaimed in description) |
 | Contests | None |
 | Unrestricted web access | No (no third-party browser embedded) |
 | Gambling and contests | No |
-| User-generated content | Minimal — workout notes are private; reactions on a private feed |
+| User-generated content | Minimal — workout notes are private |
 
 Result: 4+.
 
@@ -136,61 +181,30 @@ Result: 4+.
 
 ## Play Store (Google)
 
+(Retained from earlier draft. Play allows the Pro-tier surface to
+remain visible since Android keeps Stripe billing, so the Play copy
+can mention membership features.)
+
 ### App name — 50 chars max
 **Value:** `REPLAB: Strength & Hypertrophy` (30 chars)
 
-Alternates:
-- `REPLAB - Workout Tracker & Hypertrophy` (38)
-- `REPLAB: Lift, Track, Grow.` (26)
-
 ### Short description — 80 chars max
-**Value:** `Strength training, hypertrophy programs, and a 12-week flagship by Will Martin.` (79 chars)
-
-Alternates:
-- `Workout tracker for lifters. Programs, PRs, and progressive overload built in.` (78)
-- `Plan splits. Log sets. Beat PRs. Featuring Will's Hypertrophy — 12 weeks free.` (78)
+**Value:** `Workout tracker for lifters. Programs, PRs, and progressive overload.` (69 chars)
 
 ### Full description — 4000 chars max
-Reuse the App Store description above. Play allows light formatting; you can swap the `—` block headers for `<b>` tags if you want them bolded in the listing. Below is a Play-tuned version with light HTML; the developer can paste either version.
-
-```
-<b>REPLAB is a workout tracker for people who actually lift.</b> Plan your splits, log every set, and chase progressive overload — without the bloat.
-
-<b>FEATURED PROGRAM</b>
-Will's Hypertrophy is the flagship program built into REPLAB: a 12-week, six-day-per-week resistance training plan focused on muscle hypertrophy. Designed by Will Martin, with progression that links every set across all 12 weeks so you always know what to beat. Free for every REPLAB user.
-
-<b>WHAT YOU GET</b>
-• Workout logger built for the gym floor — clean, fast, one-handed
-• Calendar that knows your splits
-• Personal best tracking — PRs auto-detected on weight and reps
-• Program library — Mike Mentzer Heavy Duty, Bro Split, Glute Hypertrophy, Athlean-X Summer Shred, and more
-• Build and edit your own programs from scratch
-• Exercise library with form videos
-• Plate calculator, rest timers, session notes
-• Progress charts and history
-• Sync across devices
-
-<b>MEMBERSHIP</b>
-REPLAB is free to use. A REPLAB membership unlocks featured trainer workouts, the AI Workout Generator, advanced analytics, custom program builder, video exercise guides, nutrition tracking, and direct trainer chat.
-
-<b>WHO IT'S FOR</b>
-Lifters running a structured split. Hypertrophy and strength athletes who want to track progressive overload without spreadsheets. Coaches running clients through programmed work.
-
-<b>BUILT BY LIFTERS, FOR LIFTERS</b>
-REPLAB was built because the existing apps either bury you in features you don't need or hide the ones you do. We focused on the loop that matters: plan, log, progress, repeat.
-
-REPLAB is a fitness app, not a medical device or substitute for medical advice. Talk to a qualified professional before starting any new exercise program, especially if you have an existing condition or injury.
-
-Support: https://replab-fitness.com/support
-```
+Reuse the App Store description above. Play allows light HTML; swap
+the `—` block headers for `<b>` tags if you want them bolded.
 
 ### Tags / categories
 - **Application type:** App
 - **Category:** Health & Fitness
-- **Tags:** Workout, Strength training, Bodybuilding, Hypertrophy, Personal trainer (Play allows up to 5 tags; pick from their fixed taxonomy in the console — these are the closest matches)
+- **Tags:** Workout, Strength training, Bodybuilding, Hypertrophy,
+  Personal trainer (pick the closest 5 from Play's fixed taxonomy
+  dropdown when filling the form).
 
 ### Content rating
-- **Everyone** (no violence, no sexual content, no profanity, no controlled-substance references, no gambling, minimal UGC).
+- **Everyone** (no violence, no sexual content, no profanity, no
+  controlled-substance references, no gambling, minimal UGC).
 
 ---
 
@@ -200,14 +214,13 @@ Support: https://replab-fitness.com/support
 |---|---|---|---|
 | App Store app name | 30 | `REPLAB` | 6 |
 | App Store subtitle | 30 | `Strength & Hypertrophy Coach` | 28 |
-| App Store promo text (A) | 170 | (option A above) | 160 |
-| App Store promo text (B) | 170 | (option B above) | 156 |
-| App Store promo text (C) | 170 | (option C above) | 145 |
+| App Store promo text | 170 | (see above) | 157 |
 | App Store keywords | 100 | (see above) | 97 |
-| App Store description | 4000 | (see above) | ~1,930 |
+| App Store description | 4000 | (see above) | ~2,060 |
+| App Store "What's New" | 4000 | (see above) | ~480 |
 | Play app name | 50 | `REPLAB: Strength & Hypertrophy` | 30 |
-| Play short description | 80 | (see above) | 79 |
-| Play full description | 4000 | (see above) | ~2,090 (with HTML) |
+| Play short description | 80 | (see above) | 69 |
+| Play full description | 4000 | (see above) | ~2,060 |
 
 All within limits.
 
@@ -215,13 +228,20 @@ All within limits.
 
 ## TODOs / decisions for the developer
 
-1. **Brand-name display split** — Apple App Store Connect "App name" set to `REPLAB`; iOS home-screen label (`CFBundleDisplayName` in `ios/App/App/Info.plist`) uses `RepLab`. Confirm both before submission. Play Console store listing also uses `REPLAB` in the app title.
-2. **Will's Hypertrophy length** — confirmed 12 weeks per `server/initDb.js` line 591 and the `seedWillsHypertrophy` data block. If the program ever changes length, update the description.
-3. **AI Workout Generator gating** — listed as a Pro-tier feature in `Upgrade.jsx`. The description above says it's unlocked with membership, which is accurate. Do **not** describe it as a free feature.
-4. **iOS purchase wording** — iOS-facing copy never says "buy" or "subscribe in-app" because v1 hides all Stripe paths on iOS. The phrase used is "A REPLAB membership unlocks…" — this is App Store-safe; if Apple review pushes back, fall back to "Web members get…" or remove the membership block entirely.
-5. **Trainer profile (Zumba Jason)** — there's a trainer profile in `client/src/data/trainers.js` (Zumba Jason, HIIT/Dance Fitness). The description doesn't currently call him out — if you want him surfaced as a v1 selling point, add a line under "WHO IT'S FOR" or reword "Featured trainer workouts" to name him. Decided not to since he's tied behind Pro and the marketing hook is Will's Hypertrophy.
-6. **Free-trial mechanics** — `FreeTrialOffer.jsx` exists but I didn't read it for terms. If the trial is meaningful for Play (Android keeps Stripe), consider adding a "Try free" line to the Play short description.
-7. **Medical disclaimer placement** — included once in the description body. Apple's review tends to like seeing this; if review flags any health-claim language, the line is already there to point at.
-8. **Promo text rotation** — pick option A for launch (it's the strongest hook). Plan to swap to B once the launch novelty fades, and use C for any community-driven moment (anniversary, milestone post).
-9. **Play tags** — the tag list in Google Play Console is a fixed taxonomy chosen from a dropdown, not free text. The names above are illustrative; the dev should pick the closest 5 from the actual dropdown when filling the form.
-10. **Localization** — this draft is English-only. If launching to non-English stores, the `keywords` field in particular needs a fresh, localized list (don't just translate — rebuild around local search intent).
+1. **Secondary category** — recommendation is **Sports**. Confirm
+   you don't want **Lifestyle** instead.
+2. **Phone number for App Review contact** — surface or remove the
+   placeholder line in `app-review-notes.md`.
+3. **Promo text rotation** — the version above is the launch hook.
+   Plan to refresh after launch novelty fades (promo text is editable
+   without resubmission).
+4. **Localization** — English-only for v1. Non-English stores need
+   freshly localized keywords (rebuild around local search intent,
+   don't translate).
+5. **App Transfer plan** — once the LLC entity is renamed and Apple
+   accepts a new D-U-N-S-backed enrollment, run App Transfer and
+   update the copyright string + seller name.
+6. **Post-launch copy refresh** — when the Featured Workouts,
+   Challenges, Trainers, or AI Generator gates are lifted, re-add
+   them to the description (don't forget the AI generator's Pro-only
+   framing).

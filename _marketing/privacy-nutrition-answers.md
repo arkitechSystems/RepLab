@@ -1,6 +1,19 @@
-# RepLab — Privacy Questionnaire Answers (App Store + Play Store)
+# REPLAB — Privacy Questionnaire Answers (App Store + Play Store)
 
-Generated 2026-04-29 by background audit of the codebase. Paste-ready answers below; a few TODOs flagged at the end.
+Refreshed **2026-05-19** for submission day. Paste-ready answers below; TODOs at the end.
+
+Tracking declaration: REPLAB does **NOT** use any data for tracking
+across apps or websites owned by other companies. All "tracking"
+columns in the tables below are therefore **No**. No third-party
+advertising SDKs are present.
+
+Data categories collected: Contact Info (name, email, phone), Health
+& Fitness (workout data, body metrics), Photos (profile picture
+upload only), User Content (session notes, feedback), Identifiers
+(user_id, device push token), Usage Data (PostHog product analytics),
+Diagnostics (Sentry error reports), Financial Info (subscription
+metadata only — card data never touches our servers; iOS Free build
+exposes no purchase path per Apple 3.1.1).
 
 ---
 
@@ -8,20 +21,21 @@ Generated 2026-04-29 by background audit of the codebase. Paste-ready answers be
 
 | Apple category | Collected? | Linked to identity? | Used for tracking? | Purpose |
 |---|---|---|---|---|
-| Contact Info | Yes | Yes | No | App Functionality (email/phone for auth; Resend for transactional email) |
-| Health & Fitness | Yes | Yes | No | App Functionality, Product Personalization (workout tracking) |
-| Financial Info | Yes | Yes | No | App Functionality (Stripe subscription metadata; cards never handled by app) |
-| Location | Yes | Yes | No | App Functionality (zip code at signup; IP-derived city/state) |
+| Contact Info (name, email, phone) | Yes | Yes | No | App Functionality (auth + Resend transactional email) |
+| Health & Fitness (workouts, sets/reps, weights, body metrics) | Yes | Yes | No | App Functionality, Product Personalization (workout tracking) |
+| Financial Info (subscription metadata only) | Yes | Yes | No | App Functionality (Stripe — web/Android only; iOS Free build exposes no purchase path) |
+| Location | Yes | Yes | No | App Functionality (zip code at signup; IP-derived city/state via ip-api.com) |
 | Sensitive Info | No | — | — | — |
-| Contacts | Yes | Yes | No | App Functionality (trainer-client relationships, program sharing) |
-| User Content | Yes | Yes | No | App Functionality (session notes, feedback, feed reactions) |
+| Contacts (trainer-client relationships only — no address book) | Yes | Yes | No | App Functionality (program sharing) |
+| User Content (session notes, feedback, feed reactions) | Yes | Yes | No | App Functionality |
 | Browsing History | No | — | — | — |
 | Search History | No | — | — | — |
-| Identifiers | Yes | Yes | No | App Functionality (device push tokens, user_id, username) |
-| Purchases | Yes | Yes | No | App Functionality (subscription metadata) |
-| Usage Data | Yes | Yes | No | App Functionality, Analytics (PostHog events + session replay; Sentry performance traces) |
-| Diagnostics | Yes | No | No | App Functionality (Sentry errors on frontend `@sentry/react` and backend `@sentry/node`; `sendDefaultPii: false`; no IPs, cookies, or request bodies sent) |
-| Other Data | Yes | Yes | No | App Functionality (UTM params, referral source, timezone, signup device, gender) |
+| Identifiers (user_id, username, device push token) | Yes | Yes | No | App Functionality |
+| Purchases (subscription metadata) | Yes | Yes | No | App Functionality |
+| Usage Data | Yes | Yes | No | App Functionality, Analytics (PostHog events + session replay) |
+| Diagnostics | Yes | No | No | App Functionality (Sentry frontend `@sentry/react` + backend `@sentry/node`; `sendDefaultPii: false`; no IPs, cookies, or request bodies sent) |
+| Photos (profile picture upload only — no photo library scanning) | Yes | Yes | No | App Functionality |
+| Other Data (UTM params, referral source, timezone, signup device, gender) | Yes | Yes | No | App Functionality |
 
 ---
 
@@ -47,20 +61,25 @@ Generated 2026-04-29 by background audit of the codebase. Paste-ready answers be
 
 ## Third-party data flows (declare in privacy policy)
 
-| Vendor | Status | What's sent | Linked to user ID? |
-|---|---|---|---|
-| **PostHog** | Active (`VITE_POSTHOG_KEY`; US Cloud, `https://us.i.posthog.com`) | (a) Auto-pageviews + custom events: `login_completed`, `signup_completed`, `program_created`, `workout_session_started`, `workout_session_completed`, `featured_program_viewed`. `identify(userId, {email, username})`. `person_profiles: 'identified_only'`. Opt-out in dev. (b) **Session replay** (enabled by default during PostHog onboarding; confirmed in prod via `us.i.posthog.com/s/` requests): records clicks, scrolls, mouse moves, form interactions, and DOM state changes (effectively a video of the in-app UI). Default masking covers password fields only — emails, names, and other free-text fields rendered in the UI ARE captured. Replays stored in PostHog US Cloud subject to PostHog's retention policy (default 30 days on free/paid tiers unless changed in project settings). | Yes (replays linked to `user_id` via `identify`) |
-| **Sentry** | Active on both frontend and backend (`@sentry/react` v10.47.0 with `VITE_SENTRY_DSN`; `@sentry/node` v10.47.0 with `SENTRY_DSN`) | Uncaught errors + 10% performance traces. `sendDefaultPii: false` on both clients — IP addresses, cookies, and request bodies are NOT sent. Events include URL, HTTP method, browser, OS, and runtime version. Source maps uploaded via `@sentry/vite-plugin` so stack traces resolve to original source. Org `arkitech-systems-llc`; projects `replab-frontend` and `node` (backend). Common non-actionable errors filtered (`ResizeObserver loop`, `Network request failed`, `Load failed`, `AbortError`). | No (no `setUser` call; events anonymous) |
-| **Stripe** | Active for paid plans | Customer email + user_id as metadata; subscription events. Card data never touches our servers. | Yes (Stripe customer ID ↔ user ID) |
-| **Resend** | Active | Recipient email + transactional content (welcome, password reset, admin notifications). | Yes |
-| **Firebase Cloud Messaging** | Optional (`FCM_SERVICE_ACCOUNT_JSON`) | Device push tokens + notification payload. | Yes |
-| **Anthropic Claude API** | Active (AI trainer feature) | Workout/training queries. Anthropic's own retention terms apply. | Indirect (we store token counts + cost per `user_id`) |
-| **ip-api.com** | Active (best-effort, non-blocking) | IP address only → returns city/state. | No (IP only; no user_id sent) |
+All vendors below process user data **only for app functionality** and
+not for third-party advertising or cross-app tracking. No third-party
+ad SDK is present in the app.
+
+| Vendor | Status | Apple privacy category | Retention | What's sent | Linked to user ID? |
+|---|---|---|---|---|---|
+| **PostHog** | Active (`VITE_POSTHOG_KEY`; US Cloud, `https://us.i.posthog.com`) | Usage Data, Diagnostics | PostHog default (30 days for session replay, configurable; events retained per PostHog plan settings) | (a) Auto-pageviews + custom events: `login_completed`, `signup_completed`, `program_created`, `workout_session_started`, `workout_session_completed`. `identify(userId, {email, username})`. `person_profiles: 'identified_only'`. Opt-out in dev. (b) **Session replay** (enabled by default during PostHog onboarding; confirmed in prod via `us.i.posthog.com/s/`): records clicks, scrolls, mouse moves, form interactions, and DOM state changes. Default masking covers password fields only — emails, names, and other free-text fields rendered in the UI ARE captured. | Yes (replays linked to `user_id` via `identify`) |
+| **Sentry** | Active on both frontend and backend (`@sentry/react` v10.47.0; `@sentry/node` v10.47.0) | Diagnostics | Sentry org retention (default 90 days for errors on paid plans) | Uncaught errors + 10% performance traces. `sendDefaultPii: false` on both clients — IP addresses, cookies, and request bodies are NOT sent. Events include URL, HTTP method, browser, OS, and runtime version. Source maps uploaded via `@sentry/vite-plugin`. Org `arkitech-systems-llc`; projects `replab-frontend` and `node`. Common non-actionable errors filtered. | No (no `setUser` call; events anonymous) |
+| **Stripe** | Active on web + Android. **Hidden on iOS** per Apple 3.1.1 — no purchase path is exposed on the iOS Free build. | Financial Info, Purchases | Stripe customer record retained for chargeback / refund window per Stripe terms | Customer email + user_id as metadata; subscription events. Card data never touches our servers. | Yes (Stripe customer ID ↔ user ID) |
+| **Resend** | Active | Contact Info | Resend default retention for transactional sends | Recipient email + transactional content (welcome, password reset). | Yes |
+| **Firebase Cloud Messaging** | Active on Android. **Pending on iOS** — Capacitor + `@capacitor-firebase/messaging` are wired; `GoogleService-Info.plist` must be present in the iOS Xcode project for FCM token exchange to succeed. The app silently skips push registration if the plist is missing. | Identifiers | Push token retained until user deletes account or revokes notification permission | Device push token + notification payload (workout reminders, PR celebrations, weekly summary). | Yes |
+| **Anthropic Claude API** | Active for the **AI Workout Generator** (Pro-tier feature). **Not reachable from the iOS Free build** — Pro is hidden on iOS per Apple 3.1.1. | User Content, Usage Data | Anthropic's zero-data-retention API tier where applicable; otherwise Anthropic's standard terms | User-submitted workout/training prompts (e.g. goals, equipment, experience level). | Indirect (we store token counts + cost per `user_id` server-side; Anthropic itself sees only the prompt, no `user_id`) |
+| **ip-api.com** | Active (best-effort, non-blocking) | Location (coarse) | ip-api does not retain per their public docs | IP address only → returns city/state. | No (IP only; no `user_id` sent) |
 
 ---
 
 ## Account deletion flow (already implemented)
 
+- **In-app path:** Profile tab -> **Delete Account** button (next to Export My Data, below Sign Out). User confirms by re-entering their password AND typing `DELETE` into the confirmation field. Satisfies Apple Guideline 5.1.1(v).
 - Endpoint: `DELETE /auth/delete-account` — password-verified
 - Cascades through 19+ tables: programs, templates, sessions, session_entries, personal_bests, schedule_days, user_metrics, ai_usage, feedback, subscriptions, device_tokens, feed_reactions, trainer_clients, trainer_applications, challenge_entries, shared_programs, page_visits, user_login_history, password_reset_log, trainer_sessions
 - Custom exercises kept but `created_by` set to NULL (attribution removed)
@@ -86,7 +105,7 @@ Tokens are signed; rotation on refresh; `tokenVersion` invalidates on password c
 1. ~~**Sentry DSN unset in prod**~~ — RESOLVED 2026-05-01. `VITE_SENTRY_DSN` and `SENTRY_DSN` are set on Render; both `@sentry/react` and `@sentry/node` are live in production with `sendDefaultPii: false`. Source maps upload via `@sentry/vite-plugin`.
 1a. **PostHog session replay disclosure** — replay is on by default and captures emails/names rendered in the UI. Either (i) add explicit replay disclosure to the privacy policy and consider an opt-out toggle, or (ii) tighten masking in the PostHog project (set `session_recording: { maskAllInputs: true, maskTextSelector: '...' }`) before launch.
 2. **Verify PostgreSQL encryption-at-rest on your Render plan** — confirm in Render docs/billing; affects the "encrypted at rest = Yes" claims above.
-3. **iOS push notifications** — Capacitor returns raw APNs tokens; for FCM you need to integrate the Firebase Messaging SDK in the iOS project. If skipping FCM on iOS, document that push is FCM-only on Android in the privacy policy.
+3. **iOS push notifications** — Capacitor + `@capacitor-firebase/messaging` are wired in `client/src/utils/push.js`; the iOS build swaps the raw APNs token for an FCM token before registering it with our server. The remaining step is on the Mac side: `GoogleService-Info.plist` must be added to the iOS Xcode project before the build is uploaded. Without it, push registration silently no-ops rather than storing a dead APNs token.
 4. **Data retention schedule** — currently nothing auto-purges (login history, password_reset_log, page_visits grow forever). Recommend: 90-day cap on `user_login_history` and `password_reset_log`. Not a blocker but worth flagging in policy.
 5. **COPPA** — code has no under-13 gating. If you're not targeting under-13, add a "13+" line to Terms; if you are, add COPPA-compliant flow.
 6. **Trainer session timeout** — `trainer_sessions` table has no visible timeout. Audit before launch.
