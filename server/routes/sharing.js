@@ -5,15 +5,26 @@ import pool from '../dbPool.js';
 
 const router = Router();
 
-// Get all users for share picker (lightweight — excludes current user and demo accounts)
+// Search users for share picker. Requires a search query (min 2 chars) so
+// authenticated callers can't scrape the full user directory — that was a
+// privacy violation and a Play Store / Apple data-safety risk. Excludes the
+// requesting user and demo accounts, capped at 25 results.
 router.get('/users', authMiddleware, async (req, res) => {
   try {
+    const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+    if (q.length < 2) {
+      return res.status(400).json({ error: 'please provide a search query of at least 2 characters' });
+    }
+    const pattern = `%${q}%`;
     const { rows } = await pool.query(
       `SELECT id, username, first_name, last_name, profile_photo
        FROM users
-       WHERE id != $1 AND (email NOT LIKE '%@willfit.demo' OR email IS NULL)
-       ORDER BY first_name, username`,
-      [req.userId]
+       WHERE id != $1
+         AND (email NOT LIKE '%@willfit.demo' OR email IS NULL)
+         AND (username ILIKE $2 OR (COALESCE(first_name, '') || ' ' || COALESCE(last_name, '')) ILIKE $2)
+       ORDER BY first_name, username
+       LIMIT 25`,
+      [req.userId, pattern]
     );
     res.json(rows.map(r => ({
       id: r.id,

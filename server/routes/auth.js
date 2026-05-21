@@ -289,6 +289,22 @@ router.post('/refresh', async (req, res) => {
   }
 });
 
+// Server-side revocation on logout. Bumps token_version so every access AND
+// refresh JWT previously issued for this account is rejected by authMiddleware
+// and /auth/refresh. Without this, a 30-day refresh token cached on a lost or
+// stolen device remains usable long after the owner "logs out." This logs out
+// every device on the account — same blast radius as a password change, which
+// is the correct semantics for an explicit security-event-driven action.
+router.post('/logout', authMiddleware, async (req, res) => {
+  try {
+    await db.bumpTokenVersion(req.userId);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Logout error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Per-email rate limit for password reset. The global IP-based limiter blocks
 // a single attacker hammering one IP, but an attacker with IP rotation could
 // still spam 1000 different email addresses. This caps any given email at 3
