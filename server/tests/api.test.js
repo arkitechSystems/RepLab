@@ -368,7 +368,11 @@ describe('Auth Routes', () => {
   describe('DELETE /auth/delete-account', () => {
     it('deletes account for authenticated user', async () => {
       mockAuthPoolQuery(1);
-      db.findUserById.mockResolvedValue({ ...TEST_USER, password_hash: null });
+      // Override the camelCase key so the route's `if (user.passwordHash)`
+      // branch skips the bcrypt verification (Apple 5.1.1(v) password gate
+      // added 2026-05-19). The previous `password_hash: null` overrode the
+      // wrong key, leaving the placeholder hash in place and tripping 401.
+      db.findUserById.mockResolvedValue({ ...TEST_USER, passwordHash: null });
       db.deleteUser.mockResolvedValue(undefined);
 
       const res = await request(app)
