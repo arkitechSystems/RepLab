@@ -5,14 +5,25 @@ import { api } from '../api';
 import { useAuth } from '../context/AuthContext';
 import StickyHeader from '../components/StickyHeader';
 
-// App Store guideline 3.1.1 prohibits in-app purchase mechanisms outside
-// StoreKit for digital subscriptions. Until StoreKit is wired, hide every
-// path that opens a Stripe checkout/portal when the app is running natively
-// on iOS. Tier comparison and plan info still render so iOS users can see
-// what's available; purchase happens out-of-app via the website. Web and
-// Android keep the full Stripe flow (Android allows external billing for
-// non-game apps).
-const IS_IOS_NATIVE = Capacitor.getPlatform() === 'ios';
+// Digital subscriptions cannot route through Stripe on native iOS (App Store
+// guideline 3.1.1 — StoreKit required) OR native Android (Google Play
+// Payments policy — Play Billing required for subscriptions; the user-choice
+// billing carve-out does NOT cover subscriptions). Until platform IAP
+// (StoreKit / Play Billing) is wired in a follow-up release, hide every
+// Stripe checkout/portal path on both native platforms. Tier comparison and
+// plan info still render so native users can see what's available; web
+// remains the only purchase surface. Per Apple 3.1.3(a) we also avoid any
+// "steering" CTAs (buttons, links) to external purchase inside the app —
+// only plain informational text is shown to native users.
+const IS_NATIVE_PLATFORM = Capacitor.isNativePlatform();
+
+function friendlyError(err, fallback = 'Something went wrong. Try again in a moment.') {
+  const msg = err?.message || '';
+  if (/network|fetch|offline/i.test(msg)) return "Couldn't reach our servers. Check your connection and try again.";
+  if (/auth|401|unauthor/i.test(msg)) return 'Your session expired. Please sign in again.';
+  if (/rate|429/i.test(msg)) return 'Too many requests. Wait a minute and try again.';
+  return fallback;
+}
 
 const PLANS = [
   {
@@ -91,7 +102,7 @@ export default function Upgrade() {
       });
       window.location.href = data.url;
     } catch (err) {
-      setError(err.message || 'Failed to start checkout. Please try again.');
+      setError(friendlyError(err, "We couldn't start checkout. Please try again."));
       setLoading(false);
     }
   }
@@ -102,7 +113,7 @@ export default function Upgrade() {
       const data = await api('/billing/create-portal-session', { method: 'POST' });
       window.location.href = data.url;
     } catch (err) {
-      setError(err.message || 'Failed to open billing portal.');
+      setError(friendlyError(err, "We couldn't open the billing portal. Please try again."));
       setPortalLoading(false);
     }
   }
@@ -295,7 +306,7 @@ export default function Upgrade() {
                   </svg>
                 </div>
               </div>
-              {!IS_IOS_NATIVE && (
+              {!IS_NATIVE_PLATFORM && (
                 <button
                   onClick={handleManageSubscription}
                   disabled={portalLoading}
@@ -501,7 +512,7 @@ export default function Upgrade() {
               </div>
             )}
 
-            {!IS_IOS_NATIVE && (
+            {!IS_NATIVE_PLATFORM && (
               <>
                 <button
                   onClick={handleCheckout}
@@ -529,6 +540,30 @@ export default function Upgrade() {
                   </span>
                 </div>
               </>
+            )}
+
+            {/* Native (iOS + Android) informational notice — NO button, NO link, NO tap target.
+                Apple 3.1.3(a) forbids steering CTAs to external purchase inside the app.
+                This is plain static text stating availability only. */}
+            {IS_NATIVE_PLATFORM && (
+              <div
+                className="mt-2 px-5 py-4 text-center"
+                style={{
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '2px',
+                }}
+              >
+                <p className="text-[10px] uppercase font-light mb-2" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.35em' }}>
+                  Membership
+                </p>
+                <p className="text-sm text-white/70 leading-relaxed">
+                  REPLAB Pro is currently only available on the web.
+                </p>
+                <p className="text-[11px] text-white/40 leading-relaxed mt-2">
+                  You can keep using the free version of REPLAB on this device.
+                </p>
+              </div>
             )}
           </>
         )}
