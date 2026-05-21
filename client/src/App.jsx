@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
+import { SplashScreen as CapSplashScreen } from '@capacitor/splash-screen';
 import { useAuth } from './context/AuthContext';
 import { api } from './api';
 import SplashScreen from './components/SplashScreen';
@@ -9,6 +10,7 @@ import { VideoPlayerProvider } from './context/VideoPlayerContext';
 import Layout from './components/Layout';
 import ErrorBoundary from './components/ErrorBoundary';
 import { useFeatureFlag, FF_FEATURED } from './utils/featureFlags';
+import { initDeepLinks } from './utils/deepLink';
 
 // Stale-chunk recovery: when a new build is deployed, the running tab's
 // `index-*.js` still references chunk hashes that no longer exist on the
@@ -109,6 +111,11 @@ function PublicRoute({ children }) {
 const TEST_EMAILS = ['willmartinmail@gmail.com', 'abilenerentals@gmail.com'];
 function TestRoute({ children }) {
   const { isAuthenticated, user } = useAuth();
+  // Hard production gate: in prod builds (including the Play Store pre-launch
+  // UI fuzzer, which crawls every route as an unauthenticated/synthetic user),
+  // refuse to render test surfaces at all so a crash in an experimental page
+  // can't sink the submission.
+  if (import.meta.env.PROD) return <Navigate to="/" replace />;
   if (!isAuthenticated || !user?.email || !TEST_EMAILS.includes(user.email.toLowerCase())) {
     return <Navigate to="/app" replace />;
   }
@@ -181,6 +188,7 @@ function PageTracker() {
 export default function App() {
   const { isAuthenticated } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [splashDone, setSplashDone] = useState(false);
 
   // Splash only gates entry to the app proper — the mobile (Capacitor) launch
@@ -211,6 +219,25 @@ export default function App() {
       try { localStorage.setItem('replab_utm', JSON.stringify(utm)); } catch {}
     }
   }, []);
+
+  // Native bootstrap: hide the Capacitor splash once the SPA is mounted.
+  // `launchAutoHide: false` in capacitor.config.json keeps the launch image
+  // visible until we dismiss it — without this call iOS + Android hang on
+  // the splash forever. Swallow any rejection (already-hidden is harmless).
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      CapSplashScreen.hide().catch(() => {});
+    }
+  }, []);
+
+  // Native bootstrap: wire Universal Links (iOS) / App Links (Android) into
+  // React Router so external links to replab-fitness.com routes activate the
+  // corresponding in-app screen. No-op on web. See utils/deepLink.js.
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      initDeepLinks(navigate);
+    }
+  }, [navigate]);
 
   return (
     <ErrorBoundary>
