@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import * as Sentry from '@sentry/node';
 import getStripe from '../stripe.js';
 import db from '../db.js';
 import pool from '../dbPool.js';
@@ -65,6 +66,20 @@ router.post('/create-checkout-session', authMiddleware, async (req, res) => {
 });
 
 // Stripe webhook
+//
+// Error-handling contract (do NOT loosen without thinking through revenue
+// implications):
+//   - Signature verification failure → 400. Permanent: Stripe MUST NOT retry
+//     a request it can't sign. Anything else is a request-smuggling vector.
+//   - Event with side effects (subscription state transitions, payment
+//     confirmations) throws → 500. Transient: Stripe auto-retries with
+//     exponential backoff for up to 3 days on 5xx. This is the ONLY way to
+//     recover from a transient DB outage during `checkout.session.completed`
+//     — otherwise the user pays Stripe but our DB never records it.
+//   - Unknown event type → 200. Stripe would otherwise retry indefinitely for
+//     events we have no intent to handle.
+//   - Every thrown error is reported to Sentry with the event type/id so
+//     on-call can correlate Stripe dashboard retries with our logs.
 router.post('/webhook', async (req, res) => {
   const sig = req.headers['stripe-signature'];
   let event;
@@ -72,8 +87,24 @@ router.post('/webhook', async (req, res) => {
   try {
     event = getStripe().webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
   } catch (err) {
-    console.error('Webhook signature verification failed:', err.message);
+    // Permanent reject — bad signature can't be fixed by retrying.
+    console.error('[stripe-webhook] PERMANENT REJECT — signature verification failed:', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // Events whose handler errors must propagate as 5xx so Stripe retries.
+  // Anything not listed here is treated as a no-op success.
+  const HANDLED_EVENTS = new Set([
+    'checkout.session.completed',
+    'invoice.paid',
+    'invoice.payment_failed',
+    'customer.subscription.updated',
+    'customer.subscription.deleted',
+  ]);
+
+  if (!HANDLED_EVENTS.has(event.type)) {
+    // Unhandled but well-formed — acknowledge so Stripe stops retrying.
+    return res.json({ received: true, handled: false });
   }
 
   try {
@@ -167,7 +198,16 @@ router.post('/webhook', async (req, res) => {
       }
     }
   } catch (err) {
-    console.error('Webhook handler error:', err);
+    // Transient — let Stripe retry. Capture to Sentry with full event context
+    // so on-call can correlate the Stripe dashboard retry log with our error.
+    console.error(`[stripe-webhook] TRANSIENT — Stripe will retry (event=${event.type}, id=${event.id}):`, err);
+    try {
+      Sentry.captureException(err, {
+        tags: { source: 'stripe-webhook', eventType: event.type },
+        extra: { eventId: event.id, eventType: event.type },
+      });
+    } catch (_) {}
+    return res.status(500).json({ error: 'Webhook handler failed', willRetry: true });
   }
 
   res.json({ received: true });
