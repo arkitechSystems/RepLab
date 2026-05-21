@@ -15,6 +15,7 @@ const REFERRAL_OPTIONS = [
   { value: 'youtube', label: 'YouTube Ad' },
   { value: 'tiktok', label: 'TikTok' },
   { value: 'google', label: 'Google Search' },
+  { value: 'info_card', label: 'Info card' },
   { value: 'friend', label: 'Friend / Word of Mouth' },
   { value: 'other', label: 'Other' },
 ];
