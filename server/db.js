@@ -1128,7 +1128,18 @@ const db = {
       "SELECT id, template_id, date FROM sessions WHERE user_id = $1 AND completed = TRUE",
       [userId]
     );
-    return rows.map((r) => ({ id: r.id, templateId: r.template_id, date: r.date }));
+    // Defensive YYYY-MM-DD format. Today `sessions.date` is TEXT so r.date
+    // arrives as a string; if the column ever migrates to DATE the driver
+    // returns a Date instance, and the client's `c.date === todayStr`
+    // comparison would silently start failing. Normalize at the boundary so
+    // the API contract doesn't depend on the column type.
+    return rows.map((r) => ({
+      id: r.id,
+      templateId: r.template_id,
+      date: r.date instanceof Date
+        ? r.date.toISOString().slice(0, 10)
+        : String(r.date).slice(0, 10),
+    }));
   },
 
   // Progressive overload data: every (exercise, weight) the user has logged

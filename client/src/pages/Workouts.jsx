@@ -1145,6 +1145,10 @@ export default function Workouts() {
   const location = useLocation();
   const beginDateRef = useRef(null);
   const addDateRef = useRef(null);
+  // Coalesces revalidation fetches triggered by visibility-change + the
+  // midnight-rollover timer so two refreshes can't race and write to
+  // setNextWorkoutInfo out of order.
+  const inFlightFetchRef = useRef(false);
   const [tutorialPointer, setTutorialPointer] = useState(null); // 'create' | null
   const [pointerRect, setPointerRect] = useState(null);
 
@@ -1299,10 +1303,17 @@ export default function Workouts() {
       }
     }
 
-    // Compute current program from today's or tomorrow's scheduled template
-    const activeSchedule = todaySchedule?.templateId ? todaySchedule : (tomorrowSchedule?.templateId ? tomorrowSchedule : null);
-    if (activeSchedule) {
-      const tmpl = tmpls.find(t => t.id === activeSchedule.templateId);
+    // Compute current program from the templateId the card is actually about
+    // to display — mirrors the same precedence as nextWorkoutInfo above so a
+    // rest-day "Today" card doesn't end up labeled with tomorrow's program.
+    let displayedTemplateId = null;
+    if (todaySchedule?.templateId && !todaySchedule.isRest && !todayCompleted) {
+      displayedTemplateId = todaySchedule.templateId;
+    } else if (tomorrowSchedule?.templateId && !tomorrowSchedule.isRest) {
+      displayedTemplateId = tomorrowSchedule.templateId;
+    }
+    if (displayedTemplateId) {
+      const tmpl = tmpls.find(t => t.id === displayedTemplateId);
       if (tmpl && tmpl.programId) {
         const prog = progs.find(p => p.id === tmpl.programId);
         if (prog) {
@@ -1397,15 +1408,42 @@ export default function Workouts() {
     return () => controller.abort();
   }, []);
 
-  // Refresh data when user returns to page (e.g. after completing a workout)
+  // Refresh data when user returns to page (e.g. after completing a workout).
+  // Gated by inFlightFetchRef so foreground/background flicker doesn't kick off
+  // overlapping fetches that race to setNextWorkoutInfo.
   useEffect(() => {
     function handleVisibility() {
-      if (document.visibilityState === 'visible') {
-        fetchData().catch(() => {});
-      }
+      if (document.visibilityState !== 'visible' || inFlightFetchRef.current) return;
+      inFlightFetchRef.current = true;
+      fetchData()
+        .catch(() => {})
+        .finally(() => { inFlightFetchRef.current = false; });
     }
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, []);
+
+  // Re-fetch right after midnight so the "Today/Tomorrow" copy on the Your
+  // Next Workout card stays accurate for users who leave the app foregrounded
+  // overnight (e.g. logging an evening workout then scrolling stats). Re-arms
+  // itself after each fire.
+  useEffect(() => {
+    let timeoutId;
+    function scheduleMidnightRefresh() {
+      const now = new Date();
+      const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 5);
+      timeoutId = setTimeout(() => {
+        if (!inFlightFetchRef.current) {
+          inFlightFetchRef.current = true;
+          fetchData()
+            .catch(() => {})
+            .finally(() => { inFlightFetchRef.current = false; });
+        }
+        scheduleMidnightRefresh();
+      }, midnight.getTime() - now.getTime());
+    }
+    scheduleMidnightRefresh();
+    return () => { if (timeoutId) clearTimeout(timeoutId); };
   }, []);
 
   // Breathing blob animation for streak card + featured waveform
@@ -5051,15 +5089,15 @@ export default function Workouts() {
 
                   {/* Workout info */}
                   <div className="mt-3 mb-4">
-                    <div className="flex items-center gap-3 mb-1">
-                      <span className="text-[15px] font-semibold text-white">
+                    <div className="flex items-center gap-3 mb-1 min-w-0">
+                      <span className="text-[15px] font-semibold text-white truncate min-w-0 flex-1">
                         {nextWorkoutInfo?.templateName || (nextWorkoutInfo?.status === 'rest' ? 'Rest Day' : nextWorkoutInfo?.status === 'none' ? 'Nothing scheduled' : 'Loading...')}
                       </span>
                       {nextWorkoutInfo?.dayLabel && (
-                        <>
+                        <span className="flex items-center gap-3 shrink-0">
                           <span className="w-px h-3.5 bg-white/10" />
                           <span className="text-[13px] text-white/35 font-light">{nextWorkoutInfo.dayLabel}</span>
-                        </>
+                        </span>
                       )}
                     </div>
                     {currentProgram && (
@@ -5110,6 +5148,20 @@ export default function Workouts() {
                     }
                     const bg = primary.bg || 'linear-gradient(135deg, #fff 0%, #e0e0e0 100%)';
                     const shadow = primary.shadow || '0 6px 20px rgba(255,255,255,0.1)';
+                    // Right-side button: when today's already done AND a real
+                    // next workout is displayed, surface "Preview Next" so the
+                    // post-completion CTA pair is "Review what I just did" +
+                    // "See what's next" instead of the orphan-feeling Browse.
+                    const showPreviewNext = info?.completedToday && info?.templateId;
+                    const secondary = showPreviewNext
+                      ? {
+                          label: 'Preview Next',
+                          onClick: () => navigateToWorkout(info.templateId, info.date),
+                        }
+                      : {
+                          label: 'Browse',
+                          onClick: () => { setSelectedGroup('browse'); completeTutorialAction?.('browse-library-tap'); },
+                        };
                     return (
                       <div className="flex gap-3">
                         <button
@@ -5121,12 +5173,12 @@ export default function Workouts() {
                           {primary.label}
                         </button>
                         <button
-                          onClick={() => { setSelectedGroup('browse'); completeTutorialAction?.('browse-library-tap'); }}
+                          onClick={(e) => { e.stopPropagation(); secondary.onClick(); }}
                           disabled={loading}
                           className="flex-1 py-3.5 rounded-full border border-white/15 text-white/50 text-[11px] font-medium uppercase active:bg-white/5 transition-colors disabled:opacity-50 disabled:pointer-events-none"
                           style={{ letterSpacing: '0.15em' }}
                         >
-                          Browse
+                          {secondary.label}
                         </button>
                       </div>
                     );
