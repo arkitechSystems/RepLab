@@ -37,6 +37,18 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => getApiToken());
 
   const logout = useCallback(() => {
+    // Tell the service worker to wipe its cache BEFORE we clear tokens.
+    // The SW currently caches authed GETs (/templates, /sessions, /pbs, …)
+    // keyed by URL only, so on a shared device the next user would see the
+    // outgoing user's data on first paint. CLEAR_AUTH_CACHE evicts the lot.
+    // Best-effort: missing controller (first load, hard refresh) is fine —
+    // there's nothing cached yet.
+    try {
+      if (typeof navigator !== 'undefined' && navigator.serviceWorker && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_AUTH_CACHE' });
+      }
+    } catch (_) {}
+
     // Clears access token, refresh token, and cached user.
     clearAuthTokens();
     setToken(null);

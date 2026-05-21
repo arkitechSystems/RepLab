@@ -1,14 +1,31 @@
-// Bumped to v5 (2026-05-11) to evict a poisoned cache of 404/text-html
-// responses that the static-asset handler used to store unconditionally.
-// Existing users get a clean activate-time cache wipe on their next visit.
-const CACHE_NAME = 'replab-v5';
+// Bumped to v6 (2026-05-20) to evict any cross-user leak from v5. v5 cached
+// authed API GETs by URL alone, so on a shared device User B briefly saw
+// User A's /templates and /sessions on first paint after login. v6 fixes
+// this two ways: (1) logout now posts CLEAR_AUTH_CACHE to wipe the cache,
+// and (2) cached authed responses older than MAX_AUTHED_CACHE_AGE_MS are
+// treated as stale and not served from cache (network-only fallback).
+const CACHE_NAME = 'replab-v6';
 const SHELL_ASSETS = ['/', '/index.html'];
 
-// API paths to cache (GET) for offline use
-const CACHEABLE_API = [
+// Stale-cache cutoff for authed API responses. 10 minutes is short enough
+// that a forgotten-to-logout session can't leak meaningful data, long enough
+// that a flaky network on the subway can still serve a recent /templates.
+const MAX_AUTHED_CACHE_AGE_MS = 10 * 60 * 1000;
+const CACHE_TIMESTAMP_HEADER = 'x-replab-sw-cached-at';
+
+// API paths that are SAFE TO CACHE without auth scoping. /exercises is the
+// public exercise library — same response for every user, no privacy issue.
+const PUBLIC_CACHEABLE_API = ['/exercises'];
+
+// API paths that are per-user. These are still cached for offline use, but
+// (a) the cache is wiped on logout via CLEAR_AUTH_CACHE, and (b) any cached
+// entry older than MAX_AUTHED_CACHE_AGE_MS is bypassed.
+const AUTHED_CACHEABLE_API = [
   '/templates', '/sessions', '/programs', '/schedule',
-  '/pbs', '/exercises', '/metrics', '/sharing',
+  '/pbs', '/metrics', '/sharing',
 ];
+
+const CACHEABLE_API = [...PUBLIC_CACHEABLE_API, ...AUTHED_CACHEABLE_API];
 
 // API paths to queue (POST/PUT/DELETE) when offline
 const QUEUEABLE_API = [
@@ -101,19 +118,44 @@ self.addEventListener('fetch', (event) => {
   // guard as the static-asset branch — don't cache 4xx/5xx responses or
   // we'll keep replaying errors instead of falling back to real data.
   if (CACHEABLE_API.some((p) => url.pathname.startsWith(p))) {
+    const isAuthed = AUTHED_CACHEABLE_API.some((p) => url.pathname.startsWith(p));
     event.respondWith(
       fetch(event.request)
         .then((response) => {
           if (response.ok) {
             const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+            // Stamp the cache time so the offline fallback can age-check
+            // authed entries (privacy: don't serve a stale logged-out user's
+            // data to whoever is in front of the device now).
+            caches.open(CACHE_NAME).then(async (cache) => {
+              const body = await clone.blob();
+              const headers = new Headers(clone.headers);
+              headers.set(CACHE_TIMESTAMP_HEADER, String(Date.now()));
+              const stamped = new Response(body, {
+                status: clone.status,
+                statusText: clone.statusText,
+                headers,
+              });
+              await cache.put(event.request, stamped);
+            });
           }
           return response;
         })
         .catch(() =>
-          caches.match(event.request).then((cached) =>
-            cached || new Response(JSON.stringify({ error: 'Offline', offline: true }), { status: 503, headers: { 'Content-Type': 'application/json' } })
-          )
+          caches.match(event.request).then((cached) => {
+            if (!cached) {
+              return new Response(JSON.stringify({ error: 'Offline', offline: true }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+            }
+            // For authed endpoints, refuse to serve cache older than the
+            // cutoff — better an offline error than a privacy leak.
+            if (isAuthed) {
+              const cachedAt = parseInt(cached.headers.get(CACHE_TIMESTAMP_HEADER) || '0', 10);
+              if (!cachedAt || (Date.now() - cachedAt) > MAX_AUTHED_CACHE_AGE_MS) {
+                return new Response(JSON.stringify({ error: 'Offline', offline: true, reason: 'stale' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+              }
+            }
+            return cached;
+          })
         )
     );
     return;
@@ -215,9 +257,29 @@ self.addEventListener('sync', (event) => {
   }
 });
 
-// Process queue when messaged by the client
+// Process queue when messaged by the client.
+//
+// Also handles CLEAR_AUTH_CACHE — fired by AuthContext.logout BEFORE
+// localStorage is cleared so we can wipe any cached per-user API responses
+// (/templates, /sessions, /pbs, etc.) before the next user logs in on the
+// same device. Without this, the SW would serve User A's cached data to
+// User B on first paint until the network responds.
 self.addEventListener('message', (event) => {
-  if (event.data === 'process-sync-queue') {
+  const data = event.data;
+  if (data === 'process-sync-queue') {
     processSyncQueue();
+    return;
+  }
+  if (data && typeof data === 'object' && data.type === 'CLEAR_AUTH_CACHE') {
+    event.waitUntil(
+      caches.keys().then((keys) =>
+        Promise.all(keys.map((k) => caches.delete(k)))
+      ).then(() => {
+        // Acknowledge so the client can clear localStorage afterward.
+        if (event.ports && event.ports[0]) {
+          try { event.ports[0].postMessage({ ok: true }); } catch (_) {}
+        }
+      })
+    );
   }
 });
