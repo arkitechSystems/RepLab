@@ -5067,44 +5067,70 @@ export default function Workouts() {
                     )}
                   </div>
 
-                  {/* CTAs — Create (left, primary) and Browse (right,
-                      outline). When today's workout has been completed, the
-                      left button swaps to a deeplink into that session's
-                      summary so the user can review what they just did from
-                      the app's main entry point. */}
-                  <div className="flex gap-3">
-                    {nextWorkoutInfo?.completedToday ? (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const { templateId, date } = nextWorkoutInfo.completedToday;
-                          navigate(`/session/${templateId}/${date}?summary=1`);
-                        }}
-                        className="flex-1 py-3.5 rounded-full text-[11px] font-bold uppercase active:scale-[0.97] transition-transform"
-                        style={{ background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)', color: '#000', letterSpacing: '0.15em', boxShadow: '0 6px 20px rgba(34,197,94,0.25)' }}
-                      >
-                        Workout Completed
-                      </button>
-                    ) : (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate('/clientworkouts/create');
-                        }}
-                        className="flex-1 py-3.5 rounded-full text-[11px] font-bold uppercase active:scale-[0.97] transition-transform"
-                        style={{ background: 'linear-gradient(135deg, #fff 0%, #e0e0e0 100%)', color: '#000', letterSpacing: '0.15em', boxShadow: '0 6px 20px rgba(255,255,255,0.1)' }}
-                      >
-                        Create a Workout
-                      </button>
-                    )}
-                    <button
-                      onClick={() => setSelectedGroup('browse')}
-                      className="flex-1 py-3.5 rounded-full border border-white/15 text-white/50 text-[11px] font-medium uppercase active:bg-white/5 transition-colors"
-                      style={{ letterSpacing: '0.15em' }}
-                    >
-                      Browse
-                    </button>
-                  </div>
+                  {/* CTAs — left primary action shifts with status so the
+                      card actually fulfils its "open app, go to next workout"
+                      promise. Order of precedence:
+                        completedToday → Workout Completed (deeplink to summary)
+                        status start/resume/upcoming → Start/Resume/Preview that workout
+                        status rest/none → fall back to Create a Workout
+                      Disabled while `nextWorkoutInfo` is still loading so a
+                      mid-revalidation tap can't fire against stale state. */}
+                  {(() => {
+                    const info = nextWorkoutInfo;
+                    const loading = !info;
+                    let primary;
+                    if (info?.completedToday) {
+                      const { templateId, date } = info.completedToday;
+                      primary = {
+                        label: 'Workout Completed',
+                        onClick: () => navigate(`/session/${templateId}/${date}?summary=1`),
+                        bg: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+                        shadow: '0 6px 20px rgba(34,197,94,0.25)',
+                      };
+                    } else if (info?.templateId && info.status === 'start') {
+                      primary = {
+                        label: 'Start Now',
+                        onClick: () => navigateToWorkout(info.templateId, info.date),
+                      };
+                    } else if (info?.templateId && info.status === 'resume') {
+                      primary = {
+                        label: 'Resume',
+                        onClick: () => navigateToWorkout(info.templateId, info.date),
+                      };
+                    } else if (info?.templateId && info.status === 'upcoming') {
+                      primary = {
+                        label: 'Preview',
+                        onClick: () => navigateToWorkout(info.templateId, info.date),
+                      };
+                    } else {
+                      primary = {
+                        label: 'Create a Workout',
+                        onClick: () => navigate('/clientworkouts/create'),
+                      };
+                    }
+                    const bg = primary.bg || 'linear-gradient(135deg, #fff 0%, #e0e0e0 100%)';
+                    const shadow = primary.shadow || '0 6px 20px rgba(255,255,255,0.1)';
+                    return (
+                      <div className="flex gap-3">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); primary.onClick(); }}
+                          disabled={loading}
+                          className="flex-1 py-3.5 rounded-full text-[11px] font-bold uppercase active:scale-[0.97] transition-transform disabled:opacity-50 disabled:pointer-events-none"
+                          style={{ background: bg, color: '#000', letterSpacing: '0.15em', boxShadow: shadow }}
+                        >
+                          {primary.label}
+                        </button>
+                        <button
+                          onClick={() => { setSelectedGroup('browse'); completeTutorialAction?.('browse-library-tap'); }}
+                          disabled={loading}
+                          className="flex-1 py-3.5 rounded-full border border-white/15 text-white/50 text-[11px] font-medium uppercase active:bg-white/5 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                          style={{ letterSpacing: '0.15em' }}
+                        >
+                          Browse
+                        </button>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </div>

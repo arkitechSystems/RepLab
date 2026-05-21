@@ -4023,7 +4023,12 @@ export default function WorkoutSession() {
             setShowSummary(false);
             // If this was a 7th-workout milestone, let the verse overlay take
             // over instead of navigating away. Navigation happens on its close.
-            if (!pendingVerse) navigate(tutorialMode ? '/' : '/calendar');
+            if (pendingVerse) return;
+            // Deeplinked from the Workouts-page "Workout Completed" CTA →
+            // return to /app where the user came from. Default destination
+            // (Calendar) only applies to the "just completed a workout" flow.
+            const cameFromCardDeeplink = location.search.includes('summary=1');
+            navigate(tutorialMode ? '/' : (cameFromCardDeeplink ? '/app' : '/calendar'));
           }}
         />
       )}
