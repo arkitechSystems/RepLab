@@ -647,9 +647,14 @@ router.delete('/delete-account', authMiddleware, async (req, res) => {
     const user = await db.findUserById(req.userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    // Verify password (skip for demo accounts which have no real password)
-    if (user.password_hash && password) {
-      const valid = await bcrypt.compare(password, user.password_hash);
+    // Verify password (skip for demo accounts which have no real password).
+    // Apple 5.1.1(v) compliance — a deletion must require the account's actual
+    // credentials, not just possession of an access token. If the user has a
+    // password set, the client MUST send a matching one; missing/empty password
+    // on a real account is treated as a failed attempt.
+    if (user.passwordHash) {
+      if (!password) return res.status(400).json({ error: 'Password is required to delete your account.' });
+      const valid = await bcrypt.compare(password, user.passwordHash);
       if (!valid) return res.status(401).json({ error: 'Incorrect password' });
     }
 

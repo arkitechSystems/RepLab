@@ -260,7 +260,12 @@ export default function App() {
         <Route path="/calendar" element={<Calendar />} />
         <Route path="/session/:templateId/:date" element={<WorkoutSession />} />
         <Route path="/clientworkouts/create" element={<CreateWorkout />} />
-        <Route path="/clientworkouts/ai" element={<AIWorkoutGenerator />} />
+        {/* Apple 3.1.1 — Pro feature, must not be reachable from iOS native
+            shell. Web + Android can use it normally. */}
+        <Route
+          path="/clientworkouts/ai"
+          element={Capacitor.getPlatform() === 'ios' ? <Navigate to="/" replace /> : <AIWorkoutGenerator />}
+        />
         <Route path="/exercises" element={<ExerciseLibrary />} />
         <Route path="/exercises/:slug" element={<ExerciseDetail />} />
         <Route path="/programs/create" element={<CreateProgram />} />
