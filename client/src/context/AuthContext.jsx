@@ -37,6 +37,12 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => getApiToken());
 
   const logout = useCallback(() => {
+    // Fire-and-forget server-side revocation. /auth/logout bumps token_version
+    // so the refresh token cached on this device can no longer mint new access
+    // tokens. Don't await — a network blip must not trap the user mid-logout,
+    // and local-state cleanup below should happen regardless of server result.
+    api('/auth/logout', { method: 'POST' }).catch(() => {});
+
     // Clears access token, refresh token, and cached user.
     clearAuthTokens();
     setToken(null);

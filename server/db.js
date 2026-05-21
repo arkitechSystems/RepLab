@@ -319,6 +319,16 @@ const db = {
     );
   },
 
+  async bumpTokenVersion(userId) {
+    // Invalidate every access AND refresh JWT previously issued for this user.
+    // Used by /auth/logout so a logged-out device's cached refresh token can no
+    // longer mint new access tokens. Same mechanism updatePassword uses.
+    await pool.query(
+      'UPDATE users SET token_version = token_version + 1 WHERE id = $1',
+      [userId]
+    );
+  },
+
   async deleteUser(id) {
     const client = await pool.connect();
     try {
