@@ -99,6 +99,8 @@ Living list of things that must be done before App Store / Play Store submission
 - [ ] Wire StoreKit IAP for iOS Pro tier (currently iOS is free-tier-only per 3.1.1)
 - [ ] App Transfer to LLC once new entity / renamed LLC has a clean Apple Dev account
 - [ ] Plate calculator + Plate Calculator Modal — fully deduplicated via `client/src/utils/plateMath.js`; visual components still per-file. Could extract further if drift becomes a problem.
+- [ ] **Welcome email — swap iOS + Android `href="#"` placeholders for real App Store + Google Play URLs.** Edit `server/scripts/update-welcome-email-template-2026-05-20.js` (or a follow-up script), rerun against prod. Currently both buttons render but are inert.
+- [ ] **Welcome email — restore screenshot images.** `client/public/email-img/workout-session.png` and `plate-calc.png` were never added (only `README.md` is in the folder). Image tags were stripped from the 2026-05-20 template. Re-add the `<img>` blocks once Will captures + drops in the actual screenshots per the folder's README.
 
 ---
 
