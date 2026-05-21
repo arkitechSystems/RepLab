@@ -270,7 +270,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
             onClick={(e) => { e.stopPropagation(); onEnterFullScreen(exerciseKey); }}
             aria-label={`Enter full-screen mode for ${exercise.name}`}
             title="Full-screen"
-            className="min-h-[44px] min-w-[44px] p-2.5 rounded-md flex items-center justify-center text-wf-gray-400 hover:text-white active:scale-90 active:bg-white/10 transition-all"
+            className="relative h-6 w-6 rounded-md flex items-center justify-center text-wf-gray-400 hover:text-white active:scale-90 active:bg-white/10 transition-all before:absolute before:content-[''] before:left-1/2 before:top-1/2 before:-translate-x-1/2 before:-translate-y-1/2 before:w-[44px] before:h-[44px]"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               {/* Four L-shaped corner brackets of a square */}
@@ -305,7 +305,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                 }}
                 aria-label={`Open plate calculator for ${exercise.name}`}
                 title="Plate calculator"
-                className="min-h-[44px] min-w-[44px] px-2.5 rounded-lg flex items-center justify-center active:scale-95 transition-all bg-wf-red/10 border border-wf-red/20"
+                className="relative h-7 w-7 rounded-lg flex items-center justify-center active:scale-95 transition-all bg-wf-red/10 border border-wf-red/20 before:absolute before:content-[''] before:left-1/2 before:top-1/2 before:-translate-x-1/2 before:-translate-y-1/2 before:w-[44px] before:h-[44px]"
               >
                 <span className="text-[10px] font-semibold text-wf-red">PC</span>
               </button>
@@ -316,9 +316,9 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                 data-tutorial={dataTutorial ? 'prs-button' : undefined}
                 onClick={(e) => { e.stopPropagation(); onShowPRs(exercise.name); }}
                 aria-label={`View personal records for ${exercise.name}`}
-                className="min-h-[44px] min-w-[44px] px-2.5 rounded-lg flex items-center gap-1.5 active:scale-95 transition-all bg-wf-red/10 border border-wf-red/20"
+                className="relative h-7 px-2.5 rounded-lg flex items-center gap-1.5 active:scale-95 transition-all bg-wf-red/10 border border-wf-red/20 before:absolute before:content-[''] before:left-0 before:right-0 before:top-1/2 before:-translate-y-1/2 before:min-h-[44px]"
               >
-                <svg className="w-3.5 h-3.5 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="w-3.5 h-3.5 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0" />
                 </svg>
                 <span className="text-[10px] font-semibold text-wf-red">PRs</span>
@@ -328,9 +328,9 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
               type="button"
               data-tutorial={dataTutorial ? 'demo-button' : undefined}
               onClick={(e) => { e.stopPropagation(); videoId ? setShowDemoLocal(!showDemoLocal) : handleVideoClick(); }}
-              className={`min-h-[44px] min-w-[44px] px-2.5 rounded-lg flex items-center gap-1.5 active:scale-95 transition-all ${showDemo ? 'bg-wf-red/20 border border-wf-red/40' : 'bg-wf-red/10 border border-wf-red/20'}`}
+              className={`relative h-7 px-2.5 rounded-lg flex items-center gap-1.5 active:scale-95 transition-all before:absolute before:content-[''] before:left-0 before:right-0 before:top-1/2 before:-translate-y-1/2 before:min-h-[44px] ${showDemo ? 'bg-wf-red/20 border border-wf-red/40' : 'bg-wf-red/10 border border-wf-red/20'}`}
             >
-              <svg className="w-3.5 h-3.5 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-3.5 h-3.5 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
               </svg>
               <span className="text-[10px] font-semibold text-wf-red">Demo</span>
@@ -367,30 +367,30 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
             <span data-tutorial={dataTutorial ? 'move-buttons' : undefined} className="flex items-center gap-1.5">
             {onMoveUp && (
               <button type="button" onClick={() => { wasJustClickedRef.current = true; onMoveUp(); }} aria-label="Move exercise up" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-white hover:bg-white/20 active:scale-90 transition-all">
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>
               </button>
             )}
             {onMoveDown && (
               <button type="button" onClick={() => { wasJustClickedRef.current = true; onMoveDown(); }} aria-label="Move exercise down" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-white hover:bg-white/20 active:scale-90 transition-all">
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
               </button>
             )}
             </span>
             {onSwapExercise && (
               <button type="button" data-tutorial={dataTutorial ? 'swap-button' : undefined} onClick={() => { setShowSwap(true); setSwapSearch(''); }} className="h-12 px-3 rounded-full bg-white/10 flex items-center gap-1 text-wf-gray-400 hover:text-blue-400 hover:bg-blue-500/20 active:scale-90 transition-all">
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" /></svg>
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" /></svg>
                 <span className="text-[10px] font-semibold">Swap</span>
               </button>
             )}
             <span data-tutorial={dataTutorial ? 'add-delete-buttons' : undefined} className="flex items-center gap-1.5">
             {onAddExercise && (
               <button type="button" onClick={() => { setShowAddBelow(true); setAddBelowSearch(''); }} aria-label="Add exercise below" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-green-400 hover:bg-green-500/20 active:scale-90 transition-all">
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
               </button>
             )}
             {onDeleteExercise && (
               <button type="button" onClick={onDeleteExercise} aria-label="Delete exercise" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-red-400 hover:bg-red-500/20 active:scale-90 transition-all">
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             )}
             </span>
@@ -410,7 +410,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
               onClick={() => onAddSet(exercise.name)}
               className="h-12 px-3 rounded-full bg-white/10 flex items-center justify-center gap-1 text-wf-gray-400 hover:text-white hover:bg-white/20 active:scale-90 transition-all"
             >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
               </svg>
               <span className="text-[10px] font-semibold uppercase tracking-wider">Add Set</span>
@@ -429,7 +429,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                 }}
                 className="h-12 px-3 rounded-full bg-white/10 flex items-center justify-center gap-1 text-wf-gray-400 hover:text-red-400 hover:bg-red-500/20 active:scale-90 transition-all"
               >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12h-15" />
                 </svg>
                 <span className="text-[10px] font-semibold uppercase tracking-wider">Remove</span>
@@ -514,7 +514,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                   }`}
                 >
                   {isCompleted && (
-                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3} aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                     </svg>
                   )}
@@ -653,9 +653,10 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                   <button
                     type="button"
                     onClick={() => onAddSet(exercise.name, idx)}
+                    aria-label="Add set"
                     className="w-6 h-6 rounded-full flex items-center justify-center text-wf-gray-600 hover:text-green-400 hover:bg-green-500/20 active:scale-90 transition-all"
                   >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                     </svg>
                   </button>
@@ -663,9 +664,10 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                     <button
                       type="button"
                       onClick={() => setDeleteIdx(idx)}
+                      aria-label="Delete set"
                       className="w-6 h-6 rounded-full flex items-center justify-center text-wf-gray-600 hover:text-red-400 hover:bg-red-500/20 active:scale-90 transition-all"
                     >
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12h-15" />
                       </svg>
                     </button>
@@ -718,7 +720,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                     aria-hidden="true"
                   >
                     <div className="flex flex-col items-center gap-0.5 text-white">
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3} aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                       </svg>
                       <span className="text-[10px] font-bold uppercase tracking-wider">Complete</span>
@@ -731,7 +733,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                     aria-hidden="true"
                   >
                     <div className="flex flex-col items-center gap-0.5 text-white">
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                       </svg>
                       <span className="text-[10px] font-bold uppercase tracking-wider">Delete</span>
@@ -976,7 +978,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
         return (
           <div className="glass-card rounded-xl overflow-hidden mb-3 border border-green-500/20 animate-drop-down">
             <div className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
-              <svg className="w-4 h-4 text-green-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-4 h-4 text-green-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
               </svg>
               <input
@@ -993,7 +995,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                 aria-label="Close"
                 className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90"
               >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -1006,7 +1008,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                   onClick={() => { addToRecent(addBelowSearch.trim()); onAddExercise(addBelowSearch.trim()); setShowAddBelow(false); }}
                   className="w-full text-left px-4 py-2.5 flex items-center gap-2 active:bg-white/10 transition-colors border-b border-white/5"
                 >
-                  <svg className="w-4 h-4 text-green-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <svg className="w-4 h-4 text-green-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                   </svg>
                   <span className="text-sm text-white">Add "<span className="font-semibold">{addBelowSearch}</span>"</span>
@@ -1140,7 +1142,7 @@ function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelec
           <div className="flex items-center justify-between mb-3">
             <h3 id="swap-title" className="text-lg font-black text-white">Swap Exercise</h3>
             <button onClick={onClose} aria-label="Close" className="text-wf-gray-400 active:opacity-70">
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
@@ -1150,7 +1152,7 @@ function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelec
           </p>
           {/* Search */}
           <div className="relative">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
             </svg>
             <input
@@ -1174,7 +1176,7 @@ function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelec
                 onClick={() => onSelect(search.trim())}
                 className="w-full text-left rounded-xl px-3 py-3 flex items-center gap-3 bg-wf-red/10 active:bg-wf-red/20 active:scale-[0.98] transition-all mb-2 mt-3"
               >
-                <svg className="w-5 h-5 text-wf-red shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="w-5 h-5 text-wf-red shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                 </svg>
                 <span className="text-sm text-white">Add "<span className="font-semibold">{search.trim()}</span>" as custom exercise</span>
@@ -1255,7 +1257,7 @@ function ExerciseOption({ exercise, onSelect, highlight }) {
         <span className="text-xs text-wf-gray-500 ml-2">{exercise.muscle}</span>
       </div>
       {highlight && (
-        <svg className="w-4 h-4 text-blue-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <svg className="w-4 h-4 text-blue-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
         </svg>
       )}

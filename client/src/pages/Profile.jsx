@@ -537,7 +537,7 @@ export default function Profile() {
                 ) : (
                   <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-end pb-0.5 pr-0.5">
                     <div className="w-5 h-5 rounded-full bg-wf-red flex items-center justify-center">
-                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
                         <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
                       </svg>
@@ -632,7 +632,7 @@ export default function Profile() {
         <div className="glass-card rounded-xl p-4 mb-4 fade-slide-up border border-wf-red/20 bg-wf-red/5">
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-lg bg-wf-red/15 flex items-center justify-center shrink-0 mt-0.5">
-              <svg className="w-4 h-4 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-4 h-4 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
               </svg>
             </div>
@@ -661,7 +661,7 @@ export default function Profile() {
               {feedbackSent ? (
                 <div className="text-center py-4">
                   <div className="w-12 h-12 rounded-full bg-green-500/15 flex items-center justify-center mx-auto mb-3">
-                    <svg className="w-6 h-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="w-6 h-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                     </svg>
                   </div>
@@ -759,7 +759,7 @@ export default function Profile() {
                       {/* Viewfinder / corner-brackets icon — matches the
                           ⛶ control on each exercise card header that
                           enters full-screen mode. */}
-                      <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V5a1 1 0 011-1h3M20 8V5a1 1 0 00-1-1h-3M4 16v3a1 1 0 001 1h3M20 16v3a1 1 0 01-1 1h-3" />
                       </svg>
                       <span className="text-white/70 text-sm font-medium">Full-Screen Mode</span>
@@ -779,7 +779,7 @@ export default function Profile() {
 
                 <div className="flex items-center justify-between gap-px">
                   <div className="flex items-center gap-px flex-1 min-w-0">
-                    <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <span className="text-white/70 text-sm font-medium">Workout Timer Locked</span>
@@ -795,7 +795,7 @@ export default function Profile() {
 
                 <div className="flex items-center justify-between gap-px">
                   <div className="flex items-center gap-px flex-1 min-w-0">
-                    <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z M12 7v5l3 3" />
                     </svg>
                     <span className="text-white/70 text-sm font-medium">Rest Timer Locked</span>
@@ -811,7 +811,7 @@ export default function Profile() {
 
                 <div className="flex items-center justify-between gap-px">
                   <div className="flex items-center gap-px flex-1 min-w-0">
-                    <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 8a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z M7 12h2m6 0h2" />
                     </svg>
                     <span className="text-white/70 text-sm font-medium">Show Goal Weight</span>
@@ -827,7 +827,7 @@ export default function Profile() {
 
                 <div className="flex items-center justify-between gap-px">
                   <div className="flex items-center gap-px flex-1 min-w-0">
-                    <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 12h.01M7 12h.01M11 12h.01M15 12h.01M19 12h.01" />
                     </svg>
                     <span className="text-white/70 text-sm font-medium">Show Goal Reps</span>
@@ -843,7 +843,7 @@ export default function Profile() {
 
                 <div className="flex items-center justify-between gap-px">
                   <div className="flex items-center gap-px flex-1 min-w-0">
-                    <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h10M7 12h10M7 17h6" />
                     </svg>
                     <span className="text-white/70 text-sm font-medium">Show Set Type</span>
@@ -868,7 +868,7 @@ export default function Profile() {
 
                 <div className="flex items-center justify-between gap-px">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
                     </svg>
                     <span className="text-white/70 text-sm font-medium">Share activity to community</span>
@@ -884,7 +884,7 @@ export default function Profile() {
 
                 <div className="flex items-center justify-between gap-px">
                   <div className="flex items-center gap-px flex-1 min-w-0">
-                    <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                     </svg>
                     <span className="text-white/70 text-sm font-medium">Bible Verses</span>
@@ -1020,7 +1020,7 @@ export default function Profile() {
                               {format(parseISO(session.date), 'EEEE, MMM d, yyyy')}
                             </p>
                           </div>
-                          <svg className="w-4 h-4 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <svg className="w-4 h-4 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                           </svg>
                         </div>
@@ -1093,7 +1093,7 @@ export default function Profile() {
                 <h3 className="text-[22px] font-black tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95', color: '#e5e7eb' }}>SECURITY</h3>
                 <p className="text-[10px] uppercase font-light mt-1" style={{ letterSpacing: '0.3em', color: 'rgba(239,68,68,0.9)' }}>Change Password</p>
               </div>
-              <svg className={`w-5 h-5 text-white/40 transition-transform shrink-0 ml-3 ${showChangePassword ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className={`w-5 h-5 text-white/40 transition-transform shrink-0 ml-3 ${showChangePassword ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
               </svg>
             </button>
@@ -1297,7 +1297,7 @@ export default function Profile() {
                   onClick={() => fileInputRef.current?.click()}
                   className="w-full px-5 py-4 text-left text-sm font-semibold text-white active:bg-white/5 transition-colors flex items-center gap-3"
                 >
-                  <svg className="w-5 h-5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <svg className="w-5 h-5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
                     <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
                   </svg>
@@ -1308,7 +1308,7 @@ export default function Profile() {
                   onClick={handleRemovePhoto}
                   className="w-full px-5 py-4 text-left text-sm font-semibold text-wf-red active:bg-white/5 transition-colors flex items-center gap-3"
                 >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                   </svg>
                   Remove Photo
@@ -1319,7 +1319,7 @@ export default function Profile() {
                 onClick={() => { setShowPhotoMenu(false); fileInputRef.current?.click(); }}
                 className="w-full px-5 py-4 text-left text-sm font-semibold text-white active:bg-white/5 transition-colors flex items-center gap-3"
               >
-                <svg className="w-5 h-5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <svg className="w-5 h-5 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
                   <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
                 </svg>
