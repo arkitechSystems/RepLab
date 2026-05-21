@@ -12,6 +12,19 @@ router.post('/', authMiddleware, async (req, res) => {
     if (!templateId || !date || !entries || !entries.length) {
       return res.status(400).json({ error: 'templateId, date, and entries are required' });
     }
+    // Ownership gate: prevents a caller from saving a session that attaches
+    // their data to another user's private template. Global (userId IS NULL)
+    // templates are allowed. Matches the check at /sessions/initialize.
+    const { rows: tmplRows } = await pool.query(
+      'SELECT user_id FROM templates WHERE id = $1',
+      [Number(templateId)]
+    );
+    if (tmplRows.length === 0) {
+      return res.status(404).json({ error: 'Template not found' });
+    }
+    if (tmplRows[0].user_id != null && tmplRows[0].user_id !== req.userId) {
+      return res.status(403).json({ error: 'Template does not belong to you' });
+    }
     const result = await db.createSession(
       req.userId,
       templateId,

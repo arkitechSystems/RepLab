@@ -233,6 +233,10 @@ export default function WorkoutSession() {
   const structureSaveRef = useRef(null);
   const structureSaveNeeded = useRef(false);
   const savingRef = useRef(false);
+  // Promise of the currently-in-flight handleSave, if any. Callers that race
+  // each other (e.g. autosave debounce vs. Mark Complete tapping within 500ms)
+  // can await this instead of getting a thrown "Save already in progress".
+  const inFlightSaveRef = useRef(null);
   const savedTimerRef = useRef(null);
 
   // Block scrolling when tutorial tip is active (native listener for non-passive)
@@ -457,27 +461,29 @@ export default function WorkoutSession() {
     initAudio(); // ensure audio context is ready (iOS)
     restEndFiredRef.current = false; // new countdown → arm the one-shot cue
     const duration = restDurationRef.current;
+    const startedAt = Date.now();
     setRestRemaining(duration);
+    // Recompute remaining from wall-clock each tick so iOS background-suspend
+    // can't desync the display. `lastTick` lets us suppress countdown beeps
+    // when the timer jumps multiple seconds in one interval (e.g. after a
+    // background suspend — the beep would be too late anyway).
+    let lastTick = duration;
     restTimerRef.current = setInterval(() => {
-      setRestRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(restTimerRef.current);
-          restTimerRef.current = null;
-          // Transition from positive → 0: fire the rest-over cue exactly once.
-          if (!restEndFiredRef.current) {
-            restEndFiredRef.current = true;
-            beepRestEnd(); // gentle two-beep (880 Hz → 1320 Hz)
-            // iOS Safari ignores vibrate; guard so other browsers still buzz.
-            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-          }
-          return 0;
+      const remaining = Math.max(0, duration - Math.floor((Date.now() - startedAt) / 1000));
+      setRestRemaining(remaining);
+      if (lastTick === remaining + 1 && (lastTick === 4 || lastTick === 3 || lastTick === 2)) {
+        beepCountdown();
+      }
+      lastTick = remaining;
+      if (remaining <= 0) {
+        clearInterval(restTimerRef.current);
+        restTimerRef.current = null;
+        if (!restEndFiredRef.current) {
+          restEndFiredRef.current = true;
+          beepRestEnd(); // gentle two-beep (880 Hz → 1320 Hz)
+          if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
         }
-        // Countdown beeps at 3, 2, 1
-        if (prev === 4 || prev === 3 || prev === 2) {
-          beepCountdown();
-        }
-        return prev - 1;
-      });
+      }
     }, 1000);
   }
 
@@ -1923,11 +1929,15 @@ export default function WorkoutSession() {
   async function handleSave() {
     if (tutorialMode) { setPersisted(true); setSaved(true); setTimeout(() => setSaved(false), 2000); return; }
     if (!template || template.isRest) return;
-    if (saving) throw new Error('Save already in progress');
+    // A save is already in flight — await it instead of throwing. Lets
+    // handleMarkComplete safely `await handleSave()` even if the autosave
+    // debounce just fired.
+    if (savingRef.current && inFlightSaveRef.current) return inFlightSaveRef.current;
 
     setSaving(true);
     savingRef.current = true;
-    try {
+    const savePromise = (async () => {
+     try {
       // Snapshot current PBs before saving (deep copy since nested)
       const oldPbs = JSON.parse(JSON.stringify(pbs));
 
@@ -1950,6 +1960,13 @@ export default function WorkoutSession() {
           });
         });
       }
+
+      // Nothing to POST — happens when the template momentarily has zero
+      // non-section exercises (mid-undo of "delete last exercise") or when
+      // start-empty is opened with no exercises yet. The server returns 400
+      // here, which would surface as a scary toast despite there being
+      // nothing wrong; bail cleanly instead.
+      if (allEntries.length === 0) return;
 
       // Save the full workout structure as an independent copy
       const workoutData = {
@@ -2062,12 +2079,16 @@ export default function WorkoutSession() {
         window.scrollTo(0, finalScrollY);
         requestAnimationFrame(() => window.scrollTo(0, finalScrollY));
       });
-    } catch (err) {
+     } catch (err) {
       showToast(friendlyError(err, "Couldn't save your workout. Your progress is still here — try again in a moment."), 'error', 5000);
-    } finally {
+     } finally {
       setSaving(false);
       savingRef.current = false;
-    }
+      inFlightSaveRef.current = null;
+     }
+    })();
+    inFlightSaveRef.current = savePromise;
+    return savePromise;
   }
 
   // Dirty if any entry has user-typed weight or reps

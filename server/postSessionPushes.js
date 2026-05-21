@@ -19,9 +19,13 @@ function formatWeight(w) {
 }
 
 // Sends a push when the just-completed session yielded one or more new
-// PRs. Detects via personal_bests.achieved_at falling inside the session
-// window (created_at → now). Caps body length at 3 named exercises with
-// "+N more" suffix so iOS doesn't truncate mid-name.
+// PRs. The window is the last 4 hours before `last_activity_at` —
+// `created_at` would be wrong for sessions where the row was created
+// hours/days before the user actually lifted (PRs from a different
+// session on the same template would satisfy `>= created_at` and re-fire
+// the push). 4 hours covers any realistic single workout. Caps body
+// length at 3 named exercises with "+N more" suffix so iOS doesn't
+// truncate mid-name.
 export async function notifyPRCelebration(userId, sessionId) {
   if (!isFcmConfigured()) return;
   try {
@@ -37,7 +41,8 @@ export async function notifyPRCelebration(userId, sessionId) {
        AND s.template_id = pb.template_id
        AND s.id = $2
       WHERE pb.user_id = $1
-        AND pb.achieved_at >= s.created_at
+        AND pb.achieved_at >= COALESCE(s.last_activity_at, s.created_at) - INTERVAL '4 hours'
+        AND pb.achieved_at <= COALESCE(s.last_activity_at, s.created_at) + INTERVAL '1 minute'
       ORDER BY pb.achieved_at DESC
     `, [userId, sessionId]);
 
