@@ -5,7 +5,7 @@ const REF_GAP_MS      = 600;   // delay after last word finishes, before referen
 const REF_ANIM_MS     = 1200;  // reference fade-in duration
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Reusable full-screen overlay. Shown in production after every 7th workout;
+// Reusable full-screen overlay. Shown in production after every 5th workout;
 // also used by the sandbox page below with prev/replay/next controls.
 // ─────────────────────────────────────────────────────────────────────────────
 export function BibleVerseOverlay({ verse, onClose, meta, runKey = 0 }) {

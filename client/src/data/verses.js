@@ -1,5 +1,5 @@
 // 40 Bible verses focused on strength, perseverance, discipline, and hope.
-// Shown to users on every 7th completed workout (opt-out in profile settings).
+// Shown to users on every 5th completed workout (opt-out in profile settings).
 // Add/edit freely — selection is non-repeating random via utils/versePicker.js.
 
 export const VERSES = [

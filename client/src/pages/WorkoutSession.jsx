@@ -1794,13 +1794,13 @@ export default function WorkoutSession() {
           elapsedSeconds: elapsed,
           source: 'standard',
         });
-        // Every-7th-workout Bible verse. Opt-out via Profile > App Settings.
+        // Every-5th-workout Bible verse. Opt-out via Profile > App Settings.
         // Kicked off in parallel — we don't need to block the summary on it.
         if (localStorage.getItem('wf-bible-verses') !== 'off') {
           api('/sessions/completed')
             .then((completed) => {
               const count = Array.isArray(completed) ? completed.length : 0;
-              if (count > 0 && count % 7 === 0) {
+              if (count > 0 && count % 5 === 0) {
                 const { verse } = pickNextVerse();
                 setPendingVerse(verse);
               }
@@ -4033,7 +4033,7 @@ export default function WorkoutSession() {
         />
       )}
 
-      {/* Bible verse overlay — shown after summary on every 7th completed workout */}
+      {/* Bible verse overlay — shown after summary on every 5th completed workout */}
       {pendingVerse && !showSummary && (
         <BibleVerseOverlay
           verse={pendingVerse}
