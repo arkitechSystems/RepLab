@@ -4,7 +4,8 @@ import db from '../db.js';
 import pool from '../dbPool.js';
 import crypto from 'crypto';
 import { generateToken, generateAccessToken, generateRefreshToken, verifyRefreshToken, authMiddleware } from '../middleware/auth.js';
-import { sendWelcomeEmail, sendPasswordResetEmail, sendNewSignupNotification } from '../email.js';
+import { sendWelcomeEmail, sendPasswordResetEmail, sendNewSignupNotification, sendDeletionConfirmationEmail } from '../email.js';
+import config from '../config.js';
 
 const router = Router();
 
@@ -364,6 +365,111 @@ router.post('/reset-password', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ---- Web-based account deletion (Google Play 2024 policy compliance) -----
+// The in-app DELETE /delete-account flow above handles signed-in users. This
+// pair (request-deletion + confirm-deletion) gives users WITHOUT the app
+// installed a way to delete their account through the public web at
+// https://replab-fitness.com/delete-account.
+//
+// Flow:
+//   1. User submits email at /delete-account (web page) → POST /auth/request-deletion
+//   2. Server generates a single-use token, emails a confirmation link
+//   3. User clicks the link → GET /auth/confirm-deletion?token=... performs
+//      the same cascade as the in-app delete (db.deleteUser)
+//
+// Enumeration safety: like /request-reset, we always return {ok:true} so an
+// attacker probing emails can't tell which addresses are registered.
+
+// Per-email rate limit for deletion requests. Same approach as canSendReset
+// above, but with a 1-hour window and a max of 3.
+const deletionEmailWindow = new Map(); // email -> [timestamp, timestamp, ...]
+const DELETION_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const DELETION_MAX_PER_EMAIL = 3;
+
+function canSendDeletion(email) {
+  const now = Date.now();
+  const recent = (deletionEmailWindow.get(email) || []).filter((t) => now - t < DELETION_WINDOW_MS);
+  if (recent.length >= DELETION_MAX_PER_EMAIL) {
+    deletionEmailWindow.set(email, recent);
+    return false;
+  }
+  recent.push(now);
+  deletionEmailWindow.set(email, recent);
+  return true;
+}
+
+router.post('/request-deletion', async (req, res) => {
+  try {
+    const { email } = req.body || {};
+    if (!email || typeof email !== 'string') {
+      // Even on bad input return {ok:true} — never leak validation details.
+      return res.json({ ok: true });
+    }
+
+    const normalized = email.toLowerCase().trim();
+    const user = await db.findUserByIdentifier(normalized);
+
+    // Always return success to prevent email enumeration. Only actually send
+    // the email + create the token if the email matches a real account.
+    if (!user || !user.email) {
+      return res.json({ ok: true });
+    }
+
+    // Cap per-email even if request came from a fresh IP.
+    if (!canSendDeletion(normalized)) {
+      return res.json({ ok: true });
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    await db.createAccountDeletionToken(user.id, token, expires, req.ip || null);
+    await sendDeletionConfirmationEmail(user.email, token);
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('request-deletion error:', err);
+    // Still return {ok:true} on errors to preserve enumeration safety. The
+    // user-visible behavior shouldn't change whether the server choked.
+    res.json({ ok: true });
+  }
+});
+
+// GET handler — the link in the deletion email points here. On success we
+// redirect to /account-deleted; on failure to /account-deletion-failed.
+// Using GET (rather than POST + an in-page button) keeps the flow to a single
+// click from the email, which matches how `/reset-password/:token` works.
+router.get('/confirm-deletion', async (req, res) => {
+  try {
+    const { token } = req.query || {};
+    if (!token || typeof token !== 'string') {
+      return res.redirect(`${config.APP_URL}/account-deletion-failed?reason=invalid`);
+    }
+
+    const row = await db.findAccountDeletionToken(token);
+    if (!row) {
+      return res.redirect(`${config.APP_URL}/account-deletion-failed?reason=invalid`);
+    }
+    if (row.used_at) {
+      return res.redirect(`${config.APP_URL}/account-deletion-failed?reason=used`);
+    }
+    if (row.expires_at && new Date(row.expires_at) < new Date()) {
+      return res.redirect(`${config.APP_URL}/account-deletion-failed?reason=expired`);
+    }
+
+    // Perform the same cascade as the in-app flow. db.deleteUser is wrapped
+    // in a transaction so a partial failure rolls back. account_deletion_tokens
+    // FK has ON DELETE CASCADE, so the user's other tokens go away with them;
+    // we mark this row used FIRST so a parallel click can't be reused mid-flight.
+    await db.markAccountDeletionTokenUsed(row.id);
+    await db.deleteUser(row.user_id);
+
+    return res.redirect(`${config.APP_URL}/account-deleted`);
+  } catch (err) {
+    console.error('confirm-deletion error:', err);
+    return res.redirect(`${config.APP_URL}/account-deletion-failed?reason=invalid`);
   }
 });
 
