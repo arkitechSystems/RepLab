@@ -348,6 +348,20 @@ export default async function initDb() {
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_password_reset_log_user ON password_reset_log(user_id)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_password_reset_log_token ON password_reset_log(token_hash)`);
 
+  // Migration: account deletion confirmation tokens (web-based deletion flow,
+  // Google Play 2024 policy compliance). See schema.sql for design notes.
+  await pool.query(`CREATE TABLE IF NOT EXISTS account_deletion_tokens (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    token_hash TEXT NOT NULL,
+    requested_at TIMESTAMPTZ DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL,
+    used_at TIMESTAMPTZ,
+    request_ip TEXT
+  )`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_account_deletion_tokens_user ON account_deletion_tokens(user_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_account_deletion_tokens_hash ON account_deletion_tokens(token_hash)`);
+
   // Add WARM UP section header to "Leg 1 (anterior chain)" before Leg Press (one-time migration)
   const { rows: leg1Templates } = await pool.query(
     `SELECT t.id FROM templates t JOIN programs p ON t.program_id = p.id WHERE t.name ILIKE '%Leg 1%' AND p.name ILIKE '%Upper/Lower/PPL%' LIMIT 1`

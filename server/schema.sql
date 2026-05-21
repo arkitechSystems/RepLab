@@ -302,6 +302,25 @@ CREATE TABLE IF NOT EXISTS password_reset_log (
 CREATE INDEX IF NOT EXISTS idx_password_reset_log_user ON password_reset_log(user_id);
 CREATE INDEX IF NOT EXISTS idx_password_reset_log_token ON password_reset_log(token_hash);
 
+-- Account deletion confirmation tokens (web-based deletion flow). Required by
+-- Google Play's 2024 account-deletion policy: users without the app installed
+-- must be able to delete their account from a public web page. The user enters
+-- their email at /delete-account, we email them a confirmation link with a
+-- single-use token, and GET /auth/confirm-deletion?token=... performs the same
+-- cascade as the in-app delete. Mirrors password_reset_log shape so the token
+-- hash + audit fields stay consistent across both flows.
+CREATE TABLE IF NOT EXISTS account_deletion_tokens (
+  id SERIAL PRIMARY KEY,
+  user_id INT REFERENCES users(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL,
+  requested_at TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at TIMESTAMPTZ,
+  request_ip TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_account_deletion_tokens_user ON account_deletion_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_account_deletion_tokens_hash ON account_deletion_tokens(token_hash);
+
 -- Cardio entries logged inside (or outside) a workout session. session_id is
 -- nullable so users can log standalone cardio. Common fields are columns;
 -- per-machine specifics (speed, incline, resistance, level, pace, stroke

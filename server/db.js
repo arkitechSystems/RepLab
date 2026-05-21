@@ -310,6 +310,35 @@ const db = {
     ).catch(() => { /* never block the reset flow on audit-log failure */ });
   },
 
+  // ---- Account deletion confirmation tokens (web /delete-account flow) ----
+  // Same hash-and-store discipline as the reset token: the raw token only
+  // lives in the email link; the DB only holds the SHA-256 so a leak can't
+  // be replayed.
+  async createAccountDeletionToken(userId, token, expires, requestIp = null) {
+    const tokenHash = hashResetToken(token);
+    await pool.query(
+      `INSERT INTO account_deletion_tokens (user_id, token_hash, expires_at, request_ip)
+       VALUES ($1, $2, $3, $4)`,
+      [userId, tokenHash, expires, requestIp]
+    );
+  },
+
+  async findAccountDeletionToken(token) {
+    const tokenHash = hashResetToken(token);
+    const { rows } = await pool.query(
+      `SELECT id, user_id, expires_at, used_at FROM account_deletion_tokens WHERE token_hash = $1`,
+      [tokenHash]
+    );
+    return rows[0] || null;
+  },
+
+  async markAccountDeletionTokenUsed(tokenId) {
+    await pool.query(
+      `UPDATE account_deletion_tokens SET used_at = NOW() WHERE id = $1`,
+      [tokenId]
+    ).catch(() => { /* never block the deletion flow on audit-log failure */ });
+  },
+
   async updatePassword(userId, passwordHash) {
     // Bump token_version so every JWT issued before this reset becomes invalid.
     // authMiddleware compares the JWT's tokenVersion to the user's current one.

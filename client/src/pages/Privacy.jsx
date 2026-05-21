@@ -107,7 +107,7 @@ export default function Privacy() {
               <ul className="list-disc pl-5 mt-2 space-y-1">
                 <li><strong className="text-white">Access and download your personal data</strong> — request a JSON export of every record we hold about you through the App's Profile settings (uses the <code className="text-white/80">/auth/export-data</code> endpoint).</li>
                 <li><strong className="text-white">Correct inaccurate information</strong> — edit your profile, account details, and body metrics directly in the App.</li>
-                <li><strong className="text-white">Delete your account and associated data</strong> — initiate from Profile → Delete Account. Cascade-deletes your sessions, templates, programs, personal records, and metrics from our database.</li>
+                <li><strong className="text-white">Delete your account and associated data</strong> — initiate from Profile → Delete Account inside the app, or visit <a href="https://replab-fitness.com/delete-account" className="text-wf-red underline">replab-fitness.com/delete-account</a> from any browser if you no longer have the app installed. Either path cascade-deletes your sessions, templates, programs, personal records, and metrics from our database.</li>
                 <li><strong className="text-white">Opt out of non-essential communications</strong> — manage email preferences in Profile settings.</li>
               </ul>
               <p className="mt-2">To exercise any of these rights, use the account settings in the App or email us at <a href="mailto:support@replab-fitness.com" className="text-wf-red underline">support@replab-fitness.com</a>.</p>

@@ -261,6 +261,65 @@ export async function sendPasswordResetEmail(email, token) {
   }
 }
 
+export async function sendDeletionConfirmationEmail(email, token) {
+  if (!process.env.RESEND_API_KEY) {
+    console.log('RESEND_API_KEY not set, skipping deletion confirmation email');
+    return;
+  }
+
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const confirmUrl = `${config.APP_URL}/auth/confirm-deletion?token=${token}`;
+
+  try {
+    await resend.emails.send({
+      from: config.EMAIL_FROM_TRANSACTIONAL,
+      to: email,
+      subject: 'Confirm your REPLAB account deletion',
+      html: `
+        <div style="background: #000; margin: 0; padding: 0;">
+          <div style="background-color: #0a0a0a; background-image: radial-gradient(ellipse at 50% 0%, rgba(239,68,68,0.22) 0%, transparent 55%), linear-gradient(180deg, #0a0a0a 0%, #050505 50%, #000 100%); padding: 48px 16px;">
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; color: #fff;">
+
+              <!-- Logo -->
+              <div style="text-align: center; margin-bottom: 48px;">
+                <h1 style="font-size: 40px; font-weight: 900; letter-spacing: 4px; margin: 0; color: #fff; text-shadow: 0 2px 24px rgba(239,68,68,0.35);">REP<span style="color: #ef4444;">LAB</span></h1>
+                <div style="height: 3px; width: 72px; margin: 16px auto 0; background: linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent);"></div>
+              </div>
+
+              <!-- Deletion panel -->
+              <div style="background: linear-gradient(160deg, #1e1e1e 0%, #141414 100%); border-radius: 2px; margin-bottom: 24px; box-shadow: 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);">
+                <div style="height: 3px; background: linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent);"></div>
+                <div style="padding: 32px 28px;">
+                  <p style="color: rgba(239,68,68,0.85); text-transform: uppercase; letter-spacing: 0.3em; font-size: 9px; font-weight: 700; margin: 0 0 8px 0;">Account Deletion</p>
+                  <h2 style="color: #fff; font-size: 30px; font-weight: 900; line-height: 1; margin: 0 0 18px 0; letter-spacing: -0.01em; text-transform: uppercase;">Confirm Account Deletion</h2>
+                  <p style="color: rgba(255,255,255,0.6); font-size: 14px; line-height: 1.7; margin: 0 0 16px 0;">
+                    We received a request to delete your REPLAB account. Clicking the button below will <strong style="color: #fff;">permanently delete</strong> your account and all associated data — workouts, programs, personal records, body metrics, schedule, and subscription history.
+                  </p>
+                  <p style="color: rgba(255,255,255,0.6); font-size: 14px; line-height: 1.7; margin: 0 0 28px 0;">
+                    This action <strong style="color: #fff;">cannot be undone</strong>. The link expires in <strong style="color: #fff;">24 hours</strong>.
+                  </p>
+                  <div style="text-align: center; margin-bottom: 8px;">
+                    <a href="${confirmUrl}"
+                       style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, rgba(239,68,68,0.95) 0%, rgba(220,38,38,0.95) 100%); color: #fff; text-decoration: none; border-radius: 2px; font-size: 12px; font-weight: 700; letter-spacing: 0.25em; text-transform: uppercase; box-shadow: 0 4px 18px rgba(239,68,68,0.4), inset 0 1px 0 rgba(255,255,255,0.15);">
+                      Delete My Account
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              <p style="color: rgba(255,255,255,0.25); font-size: 11px; line-height: 1.6; text-align: center; margin: 0;">
+                If you didn't request this deletion, you can safely ignore this email. Your account will remain active.
+              </p>
+            </div>
+          </div>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error('Failed to send deletion confirmation email:', err.message);
+  }
+}
+
 export async function sendNewSignupNotification(user, totalUsers) {
   if (!process.env.RESEND_API_KEY || !process.env.ADMIN_EMAIL) {
     return;
