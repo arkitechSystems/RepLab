@@ -288,8 +288,9 @@ export default function CreateWorkout() {
             {/* Program Picker — hidden in quick-create mode */}
             {!isQuickCreate && (
               <div>
-                <label className={labelClass} style={labelStyle}>Add to Program</label>
+                <label htmlFor="cw-program-select" className={labelClass} style={labelStyle}>Add to Program</label>
                 <select
+                  id="cw-program-select"
                   value={selectedProgramId}
                   onChange={(e) => setSelectedProgramId(e.target.value)}
                   className={`${inputClass} bg-transparent appearance-none cursor-pointer`}
@@ -304,8 +305,9 @@ export default function CreateWorkout() {
             )}
 
             <div>
-              <label className={labelClass} style={labelStyle}>Workout Name</label>
+              <label htmlFor="cw-workout-name" className={labelClass} style={labelStyle}>Workout Name</label>
               <input
+                id="cw-workout-name"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -315,11 +317,12 @@ export default function CreateWorkout() {
             </div>
 
             <div>
-              <label className={labelClass} style={labelStyle}>
+              <label htmlFor="cw-workout-description" className={labelClass} style={labelStyle}>
                 Description{' '}
                 <span className="text-wf-gray-600 normal-case font-normal" style={{ letterSpacing: '0' }}>(optional)</span>
               </label>
               <input
+                id="cw-workout-description"
                 type="text"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}

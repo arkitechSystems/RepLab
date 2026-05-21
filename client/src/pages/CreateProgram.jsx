@@ -83,15 +83,16 @@ export default function CreateProgram() {
           </p>
 
           {error && (
-            <div className="mb-4 px-4 py-3 text-red-300 text-sm" style={{ background: 'rgba(127,29,29,0.30)', border: '1px solid rgba(153,27,27,0.6)', borderRadius: '2px' }}>
+            <div role="alert" className="mb-4 px-4 py-3 text-red-300 text-sm" style={{ background: 'rgba(127,29,29,0.30)', border: '1px solid rgba(153,27,27,0.6)', borderRadius: '2px' }}>
               {error}
             </div>
           )}
 
           <div className="pt-3 border-t border-white/5 space-y-4">
             <div>
-              <label className={labelClass} style={labelStyle}>Program Name</label>
+              <label htmlFor="cp-program-name" className={labelClass} style={labelStyle}>Program Name</label>
               <input
+                id="cp-program-name"
                 type="text"
                 value={programName}
                 onChange={(e) => setProgramName(e.target.value)}
@@ -101,11 +102,12 @@ export default function CreateProgram() {
             </div>
 
             <div>
-              <label className={labelClass} style={labelStyle}>
+              <label htmlFor="cp-program-description" className={labelClass} style={labelStyle}>
                 Description{' '}
                 <span className="text-wf-gray-600 normal-case font-normal" style={{ letterSpacing: '0' }}>(optional)</span>
               </label>
               <input
+                id="cp-program-description"
                 type="text"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}

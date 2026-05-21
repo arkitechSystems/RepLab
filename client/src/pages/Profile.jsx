@@ -1101,7 +1101,7 @@ export default function Profile() {
             {showChangePassword && (
               <div className="mt-4 pt-4 border-t border-white/10 space-y-3">
                 {passwordError && (
-                  <div className="px-4 py-3 text-red-300 text-sm" style={{ background: 'rgba(127,29,29,0.3)', border: '1px solid rgba(153,27,27,0.6)', borderRadius: '2px' }}>
+                  <div role="alert" className="px-4 py-3 text-red-300 text-sm" style={{ background: 'rgba(127,29,29,0.3)', border: '1px solid rgba(153,27,27,0.6)', borderRadius: '2px' }}>
                     {passwordError}
                   </div>
                 )}
