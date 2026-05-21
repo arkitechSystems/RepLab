@@ -69,6 +69,9 @@ const Privacy = lazyWithRetry(() => import('./pages/Privacy'));
 const NotFound = lazyWithRetry(() => import('./pages/NotFound'));
 const WaitingList = lazyWithRetry(() => import('./pages/WaitingList'));
 const LandingPage = lazyWithRetry(() => import('./pages/LandingPage'));
+const DeleteAccountWeb = lazyWithRetry(() => import('./pages/DeleteAccountWeb'));
+const AccountDeleted = lazyWithRetry(() => import('./pages/AccountDeleted'));
+const AccountDeletionFailed = lazyWithRetry(() => import('./pages/AccountDeletionFailed'));
 
 // Test pages — only loaded by test users
 const Test = lazyWithRetry(() => import('./pages/Test'));
@@ -190,7 +193,7 @@ export default function App() {
   // dismissed across subsequent route changes. The path check matters for
   // authed users hitting `/` — without it they'd see splash on the marketing
   // landing every visit.
-  const PUBLIC_SURFACES = ['/', '/login', '/signup', '/forgot-password', '/waiting-list', '/privacy', '/terms'];
+  const PUBLIC_SURFACES = ['/', '/login', '/signup', '/forgot-password', '/waiting-list', '/privacy', '/terms', '/delete-account', '/account-deleted', '/account-deletion-failed'];
   const isPublicSurface =
     PUBLIC_SURFACES.includes(location.pathname) ||
     location.pathname.startsWith('/reset-password/');
@@ -227,6 +230,12 @@ export default function App() {
       <Route path="/terms" element={<Terms />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/waiting-list" element={<WaitingList />} />
+      {/* Public web account-deletion flow (Google Play 2024 policy compliance).
+          Reachable by users who don't have the app installed; the in-app
+          flow (Profile > Delete Account) is unaffected. */}
+      <Route path="/delete-account" element={<DeleteAccountWeb />} />
+      <Route path="/account-deleted" element={<AccountDeleted />} />
+      <Route path="/account-deletion-failed" element={<AccountDeletionFailed />} />
       <Route path="/welcome" element={<ProtectedRoute><Welcome /></ProtectedRoute>} />
       <Route path="/free-trial" element={<ProtectedRoute><FreeTrialOffer /></ProtectedRoute>} />
 
