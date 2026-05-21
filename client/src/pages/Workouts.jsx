@@ -1148,8 +1148,6 @@ export default function Workouts() {
     }
   }, [location.key]);
 
-  // Featured video ref
-  const featuredVideoRef = useRef(null);
   // Pull-to-refresh state
   const [refreshing, setRefreshing] = useState(false);
   const pullStartY = useRef(0);
@@ -5200,6 +5198,15 @@ export default function Workouts() {
                 Apple's App Review demo account does NOT have the flag, so
                 the reviewer sees a clean "COMING SOON"-tagged card with no
                 interaction — keeps the review story consistent. */}
+            {/* Pre-launch this card is locked, so the autoplaying CDN
+                background video used to play with no way to dismiss it —
+                read like a debug build to reviewers and wasted bandwidth
+                on every Workouts visit. Replaced with the same dark
+                gradient + "COMING SOON" treatment as Challenges and
+                Trainers so the three gated tiles read as a consistent
+                pre-launch set. The unlock path (featuredUnlocked === true)
+                is preserved; when launched, the autoplay video can come
+                back behind this gradient if desired. */}
             <div
               ref={featuredCardRef}
               onClick={featuredUnlocked ? () => {
@@ -5218,26 +5225,49 @@ export default function Workouts() {
                 setTimeout(() => { setFeaturedTransition(null); setFeaturedCardRect(null); setSelectedGroup('featured'); }, 3600);
               } : undefined}
               aria-disabled={!featuredUnlocked}
-              className={`w-full rounded-2xl overflow-hidden fade-slide-up relative transition-transform ${featuredUnlocked ? 'cursor-pointer active:scale-[0.98]' : 'cursor-default'}`}
-              style={{ animationDelay: '0ms', minHeight: '107px', opacity: featuredUnlocked ? 1 : 0.65 }}
+              className={`transition-transform fade-slide-up ${featuredUnlocked ? 'cursor-pointer active:scale-[0.98]' : 'cursor-default'}`}
+              style={{
+                position: 'relative',
+                overflow: 'hidden',
+                borderRadius: '2px',
+                background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+                animationDelay: '0ms',
+                opacity: featuredUnlocked ? 1 : 0.65,
+              }}
             >
-              <video
-                ref={featuredVideoRef}
-                className="absolute inset-0 w-full h-full object-cover"
-                autoPlay
-                loop
-                muted
-                playsInline
-                webkit-playsinline=""
-                preload="auto"
-                src="https://replab-videos.onrender.com/Gym cinematic promotion video.mp4"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
-              <div className="relative z-10 p-5 flex flex-col justify-end h-full" style={{ minHeight: '126px' }}>
-                <div className="mt-auto">
-                  <h2 className="text-2xl font-black text-white tracking-tight drop-shadow-lg">Featured Workouts</h2>
-                  <p className="text-white/60 text-xs mt-1 drop-shadow">Guided sessions · Coming Soon</p>
-                </div>
+              {/* Red accent bar — matches Featured's red brand tone */}
+              <div style={{ height: '3px', background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.5), transparent)' }} />
+              {/* Ambient red spotlight (mirrors Challenges/Trainers spotlight) */}
+              <div style={{
+                position: 'absolute',
+                top: '-30%', right: '-20%',
+                width: '70%', height: '160%',
+                background: 'radial-gradient(circle, rgba(239,68,68,0.10) 0%, transparent 60%)',
+                filter: 'blur(40px)',
+                pointerEvents: 'none',
+              }} />
+              <div style={{ position: 'relative', padding: '24px' }}>
+                <p className="text-[10px] uppercase font-light mb-2" style={{ color: 'rgba(239,68,68,0.7)', letterSpacing: '0.3em' }}>
+                  Coming Soon
+                </p>
+                <h3
+                  className="text-[28px] font-black text-white leading-[0.9] tracking-tight"
+                  style={{ fontFamily: 'system-ui', textShadow: '0 2px 20px rgba(0,0,0,0.5)' }}
+                >
+                  FEATURED WORKOUTS
+                </h3>
+                <p className="text-[11px] text-white/40 font-light mt-3 max-w-[280px] leading-relaxed">
+                  Guided sessions, hand-picked programs, and signature workouts from REPLAB.
+                </p>
+                {featuredUnlocked && (
+                  <div className="flex items-center gap-1.5 mt-4">
+                    <span className="text-[10px] text-white/40 uppercase font-medium" style={{ letterSpacing: '0.2em' }}>Explore</span>
+                    <svg className="w-3 h-3 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                    </svg>
+                  </div>
+                )}
               </div>
             </div>
 
