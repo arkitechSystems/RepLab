@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { api, setApiToken, setAuthTokens, getApiToken } from '../api';
 import StickyHeader from '../components/StickyHeader';
 import SplashScreen from '../components/SplashScreen';
+import useFocusTrap from '../hooks/useFocusTrap';
 import { APP_VERSION } from '../version';
 import { getWorkoutColor } from '../utils/workoutColors';
 import useFocusTrap from '../hooks/useFocusTrap';
@@ -293,6 +294,7 @@ export default function Profile() {
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordChanged, setPasswordChanged] = useState(false);
   const [showPhotoMenu, setShowPhotoMenu] = useState(false);
+  const photoMenuTrapRef = useFocusTrap(showPhotoMenu);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const fileInputRef = useRef(null);
   // Stats & Streak card moved to /test/brainstorm.
@@ -404,6 +406,7 @@ export default function Profile() {
   }
 
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
+  const deleteAccountTrapRef = useFocusTrap(showDeleteAccount);
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleteError, setDeleteError] = useState('');
@@ -1274,12 +1277,20 @@ export default function Profile() {
 
       {/* Photo Menu Modal */}
       {showPhotoMenu && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center px-4" onClick={() => setShowPhotoMenu(false)}>
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center px-4"
+          onClick={() => setShowPhotoMenu(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="profile-photo-menu-title"
+        >
           <div className="absolute inset-0 bg-black/70" />
           <div
+            ref={photoMenuTrapRef}
             className="relative w-full max-w-xs bg-wf-gray-900 border border-white/10 rounded-2xl overflow-hidden shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
+            <h3 id="profile-photo-menu-title" className="sr-only">Profile Photo Options</h3>
             {user?.photoUrl ? (
               <>
                 <button

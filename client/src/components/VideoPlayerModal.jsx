@@ -1,6 +1,9 @@
 import { useEffect } from 'react';
+import useFocusTrap from '../hooks/useFocusTrap';
 
 export default function VideoPlayerModal({ videoId, exerciseName, onClose }) {
+  const trapRef = useFocusTrap(true);
+
   // Close on Escape key
   useEffect(() => {
     const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
@@ -15,18 +18,25 @@ export default function VideoPlayerModal({ videoId, exerciseName, onClose }) {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="vpm-title"
+    >
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
 
       {/* Modal content */}
       <div
+        ref={trapRef}
         className="relative w-full max-w-lg mx-4 animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-white font-semibold text-sm truncate pr-4">{exerciseName}</h3>
+          <h3 id="vpm-title" className="text-white font-semibold text-sm truncate pr-4">{exerciseName}</h3>
           <button
             onClick={onClose}
             aria-label="Close"

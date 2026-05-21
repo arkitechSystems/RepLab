@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import useFocusTrap from '../hooks/useFocusTrap';
 
 /**
  * useUnsavedGuard — intercepts navigation when there are unsaved changes.
@@ -10,6 +11,7 @@ export function useUnsavedGuard({ isDirty, onSave, saveLabel = 'Save' }) {
   const [pendingPath, setPendingPath] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const unsavedTrapRef = useFocusTrap(showModal);
   const navigate = useNavigate();
   const location = useLocation();
   const isDirtyRef = useRef(isDirty);
@@ -137,9 +139,16 @@ export function useUnsavedGuard({ isDirty, onSave, saveLabel = 'Save' }) {
   // accent stripe + ambient red spotlight in the corner. Mirrors the
   // Begin Program / Workout Summary share sheet treatment used elsewhere.
   const UnsavedModal = showModal ? (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center px-5" onClick={handleStay}>
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center px-5"
+      onClick={handleStay}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="unsaved-guard-title"
+    >
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
       <div
+        ref={unsavedTrapRef}
         className="relative w-full max-w-xs overflow-hidden"
         style={{
           background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
@@ -155,7 +164,7 @@ export function useUnsavedGuard({ isDirty, onSave, saveLabel = 'Save' }) {
           <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.3em' }}>
             Heads Up
           </p>
-          <h3 className="text-[22px] font-black text-white tracking-tight mb-2" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>
+          <h3 id="unsaved-guard-title" className="text-[22px] font-black text-white tracking-tight mb-2" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>
             UNSAVED CHANGES
           </h3>
           <p className="text-[13px] text-white/65 leading-relaxed mb-5">

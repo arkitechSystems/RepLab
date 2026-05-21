@@ -1060,6 +1060,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
 }
 
 function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelect, onClose, allWorkoutExercises }) {
+  const swapTrapRef = useFocusTrap(true);
   // Ensure allExercises have required fields, AND dedupe by name.
   // The library sometimes has the same exercise name tagged to multiple muscles,
   // which produces React "duplicate key" warnings downstream. First occurrence wins.
@@ -1111,9 +1112,16 @@ function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelec
   // Guard against transient HMR / SSR states where document.body is not ready.
   if (typeof document === 'undefined' || !document.body) return null;
   return createPortal(
-    <div className="fixed inset-0 z-50 flex flex-col items-center" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex flex-col items-center"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="swap-title"
+    >
       <div className="absolute inset-0 bg-black/80" />
       <div
+        ref={swapTrapRef}
         className="relative mt-auto mb-20 w-[calc(100%-32px)] max-w-md h-[75vh] flex flex-col rounded-2xl overflow-hidden shadow-2xl"
         style={{
           // Static red -> white hotspot -> red gradient border, matching the
@@ -1130,7 +1138,7 @@ function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelec
         {/* Header */}
         <div className="px-4 pt-4 pb-2">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-black text-white">Swap Exercise</h3>
+            <h3 id="swap-title" className="text-lg font-black text-white">Swap Exercise</h3>
             <button onClick={onClose} aria-label="Close" className="text-wf-gray-400 active:opacity-70">
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />

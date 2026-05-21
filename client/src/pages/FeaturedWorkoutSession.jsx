@@ -5,6 +5,7 @@ import { exportProgramPDF } from '../utils/exportProgramPDF';
 import { track } from '../utils/analytics';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import StickyHeader from '../components/StickyHeader';
+import useFocusTrap from '../hooks/useFocusTrap';
 
 // RepLab exercise video CDN (Render static site, source: replab-videos/)
 const VIDEO_CDN = 'https://replab-videos.onrender.com';
@@ -975,6 +976,7 @@ export default function FeaturedWorkoutSession() {
   const [pinTimer, setPinTimer] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
+  const shareMenuTrapRef = useFocusTrap(showShareMenu);
   const [shareImage, setShareImage] = useState(null);
   const [generatingImage, setGeneratingImage] = useState(false);
   const [savedAsTemplate, setSavedAsTemplate] = useState(false);
@@ -2304,12 +2306,19 @@ export default function FeaturedWorkoutSession() {
 
             {/* Share menu bottom sheet */}
             {showShareMenu && (
-              <div className="fixed inset-0 flex flex-col" style={{ zIndex: 210 }} onClick={() => setShowShareMenu(false)}>
+              <div
+                className="fixed inset-0 flex flex-col"
+                style={{ zIndex: 210 }}
+                onClick={() => setShowShareMenu(false)}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="featured-share-title"
+              >
                 <div className="absolute inset-0 bg-black/60" />
-                <div className="relative flex-1 flex flex-col mt-12 bg-wf-gray-900 rounded-t-2xl shadow-2xl animate-drop-down overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                <div ref={shareMenuTrapRef} className="relative flex-1 flex flex-col mt-12 bg-wf-gray-900 rounded-t-2xl shadow-2xl animate-drop-down overflow-hidden" onClick={(e) => e.stopPropagation()}>
                   <div className="shrink-0 pt-3 pb-2 px-5">
                     <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-3" />
-                    <h3 className="text-lg font-black text-white">Share Workout</h3>
+                    <h3 id="featured-share-title" className="text-lg font-black text-white">Share Workout</h3>
                   </div>
                   <div className="flex-1 overflow-y-auto px-5 pb-24">
                     {generatingImage && (
