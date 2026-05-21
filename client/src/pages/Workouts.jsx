@@ -1554,14 +1554,35 @@ export default function Workouts() {
   const setShareUsersSafe = (v) => setShareUsers(Array.isArray(v) ? v : []);
 
   function openShareModal(program) {
+    // Results populate from the debounced search effect below once the user
+    // types 2+ chars. Loading the full directory up-front is no longer allowed
+    // by /sharing/users — that endpoint requires a `q` query for privacy.
     setShareResult(null); setShareInput(''); setShareUserSearch(''); setShareUsers([]); setShareModal(program);
-    api('/sharing/users').then(setShareUsersSafe).catch(() => setShareUsers([]));
   }
 
   function openInviteModal(template) {
     setInviteResult(null); setInviteInput(''); setShareUserSearch(''); setShareUsers([]); setInviteModal(template);
-    api('/sharing/users').then(setShareUsersSafe).catch(() => setShareUsers([]));
   }
+
+  // Debounced search against /sharing/users. Fires only when a share/invite
+  // modal is open AND the query is at least 2 chars (the server enforces this
+  // too — sending a shorter query would just 400). 200ms debounce keeps us
+  // from spamming the API on every keystroke.
+  useEffect(() => {
+    const q = shareUserSearch.trim();
+    if (!shareModal && !inviteModal) return;
+    if (q.length < 2) {
+      setShareUsers([]);
+      return;
+    }
+    let cancelled = false;
+    const handle = setTimeout(() => {
+      api(`/sharing/users?q=${encodeURIComponent(q)}`)
+        .then((v) => { if (!cancelled) setShareUsersSafe(v); })
+        .catch(() => { if (!cancelled) setShareUsers([]); });
+    }, 200);
+    return () => { cancelled = true; clearTimeout(handle); };
+  }, [shareUserSearch, shareModal, inviteModal]);
 
   async function handleShareProgram() {
     if (!shareInput.trim() || !shareModal) return;
@@ -2643,7 +2664,7 @@ export default function Workouts() {
                     </button>
                   ))}
                 {shareUsers.length === 0 && (
-                  <p className="text-center text-white/50 text-sm py-4">Loading users...</p>
+                  <p className="text-center text-white/50 text-sm py-4">{shareUserSearch.trim().length < 2 ? 'Type 2+ characters to search' : 'No users found'}</p>
                 )}
               </div>
               <div className="flex gap-2">
@@ -4434,7 +4455,7 @@ export default function Workouts() {
                       </button>
                     ))}
                   {shareUsers.length === 0 && (
-                    <p className="text-center text-white/50 text-sm py-4">Loading users...</p>
+                    <p className="text-center text-white/50 text-sm py-4">{shareUserSearch.trim().length < 2 ? 'Type 2+ characters to search' : 'No users found'}</p>
                   )}
                 </div>
                 <div className="flex gap-2">
@@ -4566,7 +4587,7 @@ export default function Workouts() {
                     </button>
                   ))}
                 {shareUsers.length === 0 && (
-                  <p className="text-center text-white/50 text-sm py-4">Loading users...</p>
+                  <p className="text-center text-white/50 text-sm py-4">{shareUserSearch.trim().length < 2 ? 'Type 2+ characters to search' : 'No users found'}</p>
                 )}
               </div>
               <div className="flex gap-2">
