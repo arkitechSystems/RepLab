@@ -3237,9 +3237,10 @@ export default function Workouts() {
   // to 'partners' without the FF_TRAINERS flag (deep link via
   // location.state.openSection, stale state, anything weird), bounce back
   // to the default group instead of rendering the mock-trainer content.
-  // The card-level gate below is the primary defense; this is
-  // belt-and-suspenders. Also clears any selectedTrainer so the trainer
-  // profile sub-view can't render either.
+  // The non-clickable Trainers card on the main Workouts page (search for
+  // "Trainers card — Nike style" further down in this file) is the
+  // primary defense; this is belt-and-suspenders. Also clears any
+  // selectedTrainer so the trainer profile sub-view can't render either.
   if (selectedGroup === 'partners' && !trainersUnlocked) {
     if (selectedTrainer) setSelectedTrainer(null);
     setSelectedGroup(null);
@@ -5806,6 +5807,67 @@ export default function Workouts() {
                   Compete, push your limits, and earn rewards.
                 </p>
                 {challengesUnlocked && (
+                  <div className="flex items-center gap-1.5 mt-4">
+                    <span className="text-[10px] text-white/40 uppercase font-medium" style={{ letterSpacing: '0.2em' }}>Explore</span>
+                    <svg className="w-3 h-3 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Trainers card — Nike style. Gated as "Coming Soon" pre-launch
+                via FF_TRAINERS (see featureFlags.js). When locked: no
+                onClick, no "Explore →" affordance, dimmed opacity. Apple
+                Review's demo account never has the flag, so reviewers see
+                a clean "COMING SOON" card and can't navigate into the
+                Featured Trainers list (which still ships a mock
+                Zumba Jason entry per client/src/data/trainers.js — kept
+                intact for the post-launch unlock).
+                Unlock with ?ff=trainers or
+                localStorage.setItem('rl_ff_trainers', '1'). */}
+            <div
+              onClick={trainersUnlocked ? () => setSelectedGroup('partners') : undefined}
+              aria-disabled={!trainersUnlocked}
+              className={`transition-transform fade-slide-up ${trainersUnlocked ? 'cursor-pointer active:scale-[0.98]' : 'cursor-default'}`}
+              style={{
+                position: 'relative',
+                overflow: 'hidden',
+                borderRadius: '2px',
+                background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+                animationDelay: '0ms',
+                opacity: trainersUnlocked ? 1 : 0.65,
+              }}
+            >
+              {/* Purple accent bar — matches the trainer profile accent */}
+              <div style={{ height: '3px', background: 'linear-gradient(90deg, #a855f7, rgba(168,85,247,0.5), transparent)' }} />
+
+              {/* Purple glow spotlight */}
+              <div style={{
+                position: 'absolute',
+                top: '-30%', right: '-20%',
+                width: '70%', height: '160%',
+                background: 'radial-gradient(circle, rgba(168,85,247,0.10) 0%, transparent 60%)',
+                filter: 'blur(40px)',
+                pointerEvents: 'none',
+              }} />
+
+              <div style={{ position: 'relative', padding: '24px' }}>
+                <p className="text-[10px] uppercase font-light mb-2" style={{ color: 'rgba(168,85,247,0.7)', letterSpacing: '0.3em' }}>
+                  Coming Soon
+                </p>
+                <h3
+                  className="text-[28px] font-black text-white leading-[0.9] tracking-tight"
+                  style={{ fontFamily: 'system-ui', textShadow: '0 2px 20px rgba(0,0,0,0.5)' }}
+                >
+                  TRAINERS
+                </h3>
+                <p className="text-[11px] text-white/40 font-light mt-3 max-w-[280px] leading-relaxed">
+                  Follow guided programs from certified coaches.
+                </p>
+                {trainersUnlocked && (
                   <div className="flex items-center gap-1.5 mt-4">
                     <span className="text-[10px] text-white/40 uppercase font-medium" style={{ letterSpacing: '0.2em' }}>Explore</span>
                     <svg className="w-3 h-3 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
