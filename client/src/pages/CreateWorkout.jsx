@@ -5,6 +5,7 @@ import { api } from '../api';
 import { useExercises } from '../hooks/useExercises';
 import { useUnsavedGuard } from '../components/UnsavedGuard';
 import ExerciseCard from '../components/ExerciseCard';
+import { friendlyError } from '../utils/errors';
 
 // Server-rendered admin/trainer dashboards are not part of the iOS app
 // surface. Redirecting into them would expose admin UI inside the iOS
@@ -54,13 +55,13 @@ export default function CreateWorkout() {
               setError('Failed to set up quick create. Please try again.');
             }
           } catch (err) {
-            setError('Failed to set up quick create: ' + err.message);
+            setError(friendlyError(err, "We couldn't set up quick create. Please try again."));
           }
         } else {
           if (!selectedProgramId && progs.length > 0) setSelectedProgramId(progs[0].id);
         }
       })
-      .catch((err) => setError('Failed to load programs: ' + err.message));
+      .catch((err) => setError(friendlyError(err, "We couldn't load your programs. Please try again.")));
   }, []);
 
   function addExercise() {
@@ -225,7 +226,7 @@ export default function CreateWorkout() {
       else if (from === 'admin' && !IS_IOS_NATIVE) { window.location.href = '/admin/workout-manager/workouts'; }
       else { navigate('/app'); }
     } catch (err) {
-      setError(err.message);
+      setError(friendlyError(err, "We couldn't save your workout. Please try again."));
     } finally {
       setSaving(false);
     }

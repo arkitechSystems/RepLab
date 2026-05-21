@@ -23,6 +23,7 @@ import CardioCard from '../components/CardioCard';
 import useFocusTrap from '../hooks/useFocusTrap';
 import { BibleVerseOverlay } from './BibleVerses';
 import { pickNextVerse } from '../utils/versePicker';
+import { friendlyError } from '../utils/errors';
 
 // Parse a 'YYYY-MM-DD' string as a LOCAL date (not UTC). parseISO('2026-04-24')
 // returns midnight UTC, which is the wrong calendar day for any user with a
@@ -142,6 +143,24 @@ export default function WorkoutSession() {
   const [restFloating, setRestFloating] = useState(false);
   const [restFloatPos, setRestFloatPos] = useState({ x: 16, y: 140 });
   const [showSummary, setShowSummary] = useState(false);
+  // Lightweight in-app toast: { message, kind: 'info' | 'error' } | null.
+  // Replaces window.alert() — those read like a debug build to App Review.
+  const [toast, setToast] = useState(null);
+  const toastTimerRef = useRef(null);
+  // Inline validation message under Mark Complete (e.g. "Log at least one set").
+  // Distinct from toast so it sits exactly where the failing action is.
+  const [completeError, setCompleteError] = useState('');
+  const completeErrorTimerRef = useRef(null);
+  function showToast(message, kind = 'info', ms = 3000) {
+    setToast({ message, kind });
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(null), ms);
+  }
+  function showCompleteError(message, ms = 4000) {
+    setCompleteError(message);
+    if (completeErrorTimerRef.current) clearTimeout(completeErrorTimerRef.current);
+    completeErrorTimerRef.current = setTimeout(() => setCompleteError(''), ms);
+  }
   const [pendingVerse, setPendingVerse] = useState(null); // set when this completion hits a 7-workout milestone
   const [showDateConfirm, setShowDateConfirm] = useState(false);
   const dateConfirmTrapRef = useFocusTrap(showDateConfirm);
@@ -1699,7 +1718,7 @@ export default function WorkoutSession() {
           sets.some((s) => Number(s.weight) > 0 || Number(s.weight) === -1 || Number(s.reps) > 0)
         );
         if (!hasData) {
-          alert('Log at least one set before completing your workout');
+          showCompleteError('Log at least one set before completing your workout.');
           return;
         }
       }
@@ -1744,7 +1763,7 @@ export default function WorkoutSession() {
         }
       }
     } catch (err) {
-      alert('Failed to update: ' + err.message);
+      showToast(friendlyError(err, "Couldn't update your workout. Try again in a moment."), 'error');
     }
   }
 
@@ -1898,7 +1917,7 @@ export default function WorkoutSession() {
       }
     } else {
       await navigator.clipboard.writeText(text);
-      alert('Workout copied to clipboard!');
+      showToast('Workout copied to clipboard.');
     }
   }
 
@@ -2045,7 +2064,7 @@ export default function WorkoutSession() {
         requestAnimationFrame(() => window.scrollTo(0, finalScrollY));
       });
     } catch (err) {
-      alert('Failed to save: ' + err.message);
+      showToast(friendlyError(err, "Couldn't save your workout. Your progress is still here — try again in a moment."), 'error', 5000);
     } finally {
       setSaving(false);
       savingRef.current = false;
@@ -2216,6 +2235,24 @@ export default function WorkoutSession() {
   return (
     <div className={`pb-24${cardTheme === 'dark' ? ' wf-dark-cards' : ''}`}>
       <h1 className="sr-only">REPLAB Workout Session</h1>
+      {/* In-app toast (replaces window.alert calls for save/update failures
+          and clipboard/share confirmations). Portaled so it sits above any
+          card or sticky header without forcing layout shifts in the page. */}
+      {toast && createPortal(
+        <div
+          className="fixed left-1/2 -translate-x-1/2 z-[120] px-4 py-2.5 rounded-full text-sm font-semibold shadow-xl pointer-events-none max-w-[90vw] text-center"
+          style={{
+            top: 'calc(env(safe-area-inset-top) + 16px)',
+            background: toast.kind === 'error' ? 'rgba(220,38,38,0.95)' : 'rgba(255,255,255,0.95)',
+            color: toast.kind === 'error' ? 'white' : 'black',
+          }}
+          role={toast.kind === 'error' ? 'alert' : 'status'}
+          aria-live="polite"
+        >
+          {toast.message}
+        </div>,
+        document.body
+      )}
       {/* Full-screen mode overlay — portaled to document.body so it escapes
           every stacking context on the page (sticky header, floating timers,
           card-theme background). The top bar reuses the same elapsed/rest
@@ -3898,6 +3935,18 @@ export default function WorkoutSession() {
           >
             {isCompleted ? 'Undo Completion' : `Mark Complete — ${completedCount}/${totalSets} Sets`}
           </button>
+          {/* Inline validation message (e.g. "Log at least one set"). Sits
+              right under Mark Complete so the feedback is anchored to the
+              failing action — much friendlier than a blocking alert. */}
+          {completeError && (
+            <div
+              className="mt-3 px-3 py-2 rounded-lg text-sm font-medium bg-wf-red/15 text-wf-red border border-wf-red/30 text-center"
+              role="alert"
+              aria-live="polite"
+            >
+              {completeError}
+            </div>
+          )}
         </div>
       )}
 
@@ -4282,6 +4331,15 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
   const [generatingImage, setGeneratingImage] = useState(false);
   const [savedAsTemplate, setSavedAsTemplate] = useState(false);
   const [savingTemplate, setSavingTemplate] = useState(false);
+  // Local toast for share/copy confirmation — keeps the summary screen flow
+  // intact (window.alert pauses the whole page and reads like a debug build).
+  const [summaryToast, setSummaryToast] = useState('');
+  const summaryToastTimerRef = useRef(null);
+  function showSummaryToast(message, ms = 3000) {
+    setSummaryToast(message);
+    if (summaryToastTimerRef.current) clearTimeout(summaryToastTimerRef.current);
+    summaryToastTimerRef.current = setTimeout(() => setSummaryToast(''), ms);
+  }
 
   // Append " program" after the program name unless the name already ends in
   // "program" (case-insensitive) — guards against e.g. "Will's Hypertrophy
@@ -4825,7 +4883,7 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
     if (navigator.share) {
       try { await navigator.share({ text }); } catch {}
     } else {
-      try { await navigator.clipboard.writeText(text); alert('Copied to clipboard!'); } catch {}
+      try { await navigator.clipboard.writeText(text); showSummaryToast('Copied to clipboard.'); } catch {}
     }
   }
 
@@ -4837,6 +4895,17 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
     <div className="fixed inset-0 z-[100] flex flex-col">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/90" />
+      {/* Local toast (share/copy confirmation). Positioned over the backdrop. */}
+      {summaryToast && (
+        <div
+          className="absolute left-1/2 -translate-x-1/2 z-30 px-4 py-2 rounded-full bg-white/95 text-black text-sm font-semibold shadow-lg pointer-events-none"
+          style={{ top: 'calc(env(safe-area-inset-top) + 16px)' }}
+          role="status"
+          aria-live="polite"
+        >
+          {summaryToast}
+        </div>
+      )}
 
       {/* Content */}
       <div className="relative z-20 flex-1 overflow-y-auto safe-top safe-bottom">

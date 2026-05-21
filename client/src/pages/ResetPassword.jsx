@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { api } from '../api';
+import { friendlyError } from '../utils/errors';
 
 export default function ResetPassword() {
   const { token } = useParams();
@@ -37,7 +38,7 @@ export default function ResetPassword() {
       });
       setSuccess(true);
     } catch (err) {
-      setError(err.message);
+      setError(friendlyError(err, "We couldn't reset your password. The link may have expired — request a new one."));
     } finally {
       setLoading(false);
     }

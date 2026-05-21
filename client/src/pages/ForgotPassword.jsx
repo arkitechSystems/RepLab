@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api';
+import { friendlyError } from '../utils/errors';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -20,7 +21,7 @@ export default function ForgotPassword() {
       });
       setSent(true);
     } catch (err) {
-      setError(err.message);
+      setError(friendlyError(err, "We couldn't send the reset link. Please try again."));
     } finally {
       setLoading(false);
     }
