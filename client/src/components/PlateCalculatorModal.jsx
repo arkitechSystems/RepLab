@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BAR_OPTIONS, PLATES, QUICK_PLATES, computePlatesPerSide } from '../utils/plateMath';
 
 // In-session plate calculator. Opens pre-filled with whatever weight the
@@ -58,6 +58,9 @@ function LegPressIcon() {
 
 export default function PlateCalculatorModal({ open, initialWeight = 0, onUse, onClose }) {
   const [bar, setBar] = useState(45);
+  // Remembers the user's last barbell weight while in Machine mode, so
+  // toggling back to Both/One Side restores their chosen bar (not a fixed 45).
+  const lastBarRef = useRef(45);
   // When no weight was passed in (set hasn't been entered yet), open at
   // the current bar weight so the visual shows just the bare bar — no
   // plates per side. The user adds plates from there via the +/- buttons
@@ -180,6 +183,10 @@ export default function PlateCalculatorModal({ open, initialWeight = 0, onUse, o
                     key={opt.v}
                     onClick={() => {
                       if (opt.kind === 'nobar') {
+                        // Stash the current bar so a return trip to a barbell
+                        // mode restores the user's chosen bar (e.g. 35) rather
+                        // than hard-resetting to 45.
+                        if (bar > 0) lastBarRef.current = bar;
                         setBar(0);
                         setMode('both');
                         // Reset to a blank machine so the user starts adding
@@ -187,8 +194,9 @@ export default function PlateCalculatorModal({ open, initialWeight = 0, onUse, o
                         setTarget('0');
                       } else {
                         if (bar === 0) {
-                          setBar(45);
-                          setTarget('45');
+                          const restore = lastBarRef.current || 45;
+                          setBar(restore);
+                          setTarget(String(restore));
                         }
                         setMode(opt.v);
                       }
@@ -393,7 +401,7 @@ export default function PlateCalculatorModal({ open, initialWeight = 0, onUse, o
                   return (
                     <button
                       key={b.value}
-                      onClick={() => { setBar(b.value); setTarget(String(b.value)); }}
+                      onClick={() => { setBar(b.value); lastBarRef.current = b.value; setTarget(String(b.value)); }}
                       className="text-[10px] font-bold uppercase whitespace-nowrap py-2 px-3 active:scale-[0.97] transition-transform"
                       style={{
                         letterSpacing: '0.15em',

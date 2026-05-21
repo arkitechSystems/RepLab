@@ -220,6 +220,7 @@ export default function WorkoutSession() {
     try { return localStorage.getItem('wf-default-card-theme') || 'light'; } catch { return 'light'; }
   });
   const [showSessionMenu, setShowSessionMenu] = useState(false);
+  const [sessionMenuPos, setSessionMenuPos] = useState({ top: 64, right: 16 });
   // Long-press-to-edit on section headers. `sectionEditing` is null when the
   // modal is closed; otherwise { idx, name, notes } — `idx` is the position
   // inside template.exercises (stable while the modal is open since the user
@@ -237,6 +238,10 @@ export default function WorkoutSession() {
   // each other (e.g. autosave debounce vs. Mark Complete tapping within 500ms)
   // can await this instead of getting a thrown "Save already in progress".
   const inFlightSaveRef = useRef(null);
+  // Always points at the latest handleSave so debounced timeouts read fresh
+  // closure state (entries/notes) even if the autosave was scheduled before
+  // the user's most recent typing.
+  const handleSaveRef = useRef(null);
   const savedTimerRef = useRef(null);
 
   // Block scrolling when tutorial tip is active (native listener for non-passive)
@@ -285,11 +290,18 @@ export default function WorkoutSession() {
 
     let attempts = 0;
     let cancelled = false;
+    // After ~6s of trying, the target element clearly isn't going to mount —
+    // bail out and dismiss the tip rather than leaving the user stuck under
+    // a translucent overlay with no exit affordance.
+    function giveUp() {
+      if (!cancelled) setTutorialTip(null);
+    }
     function tryFind() {
       if (cancelled) return;
       const el = document.querySelector(selector);
       if (!el || el.offsetWidth === 0) {
         if (attempts < 30) { attempts++; setTimeout(tryFind, 200); }
+        else giveUp();
         return;
       }
       // If the element is inside a sticky header, scroll to page top so the header
@@ -303,6 +315,7 @@ export default function WorkoutSession() {
           const freshRect = el.getBoundingClientRect();
           if (freshRect.width === 0 || freshRect.height === 0) {
             if (attempts < 30) { attempts++; setTimeout(tryFind, 200); }
+            else giveUp();
             return;
           }
           tutorialRectRef.current = freshRect;
@@ -337,6 +350,7 @@ export default function WorkoutSession() {
           const measured = el.getBoundingClientRect();
           if (measured.width === 0 || measured.height === 0) {
             if (attempts < 30) { attempts++; setTimeout(tryFind, 200); }
+            else giveUp();
             return;
           }
           tutorialRectRef.current = measured;
@@ -354,6 +368,22 @@ export default function WorkoutSession() {
   useEffect(() => { completedSetsRef.current = completedSets; }, [completedSets]);
   useEffect(() => { autoFilledRef.current = autoFilled; }, [autoFilled]);
   useEffect(() => { userEditedRef.current = userEdited; }, [userEdited]);
+  // No deps — runs every render so a debounced timeout that fires after typing
+  // (which doesn't re-trigger the autosave effect) still reaches the latest
+  // handleSave, with fresh `entries`/`notes`/`pbs` in its closure.
+  useEffect(() => { handleSaveRef.current = handleSave; });
+
+  // Measure the session-menu anchor once on open instead of on every render.
+  // The popover is transient and dismissed by backdrop tap, so a stale rect
+  // due to scroll mid-popover is not a real concern.
+  useEffect(() => {
+    if (!showSessionMenu) return;
+    const btn = document.querySelector('[data-fs-gear="1"]')
+      || document.querySelector('[data-tutorial="session-settings"]');
+    if (!btn) { setSessionMenuPos({ top: 64, right: 16 }); return; }
+    const r = btn.getBoundingClientRect();
+    setSessionMenuPos({ top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) });
+  }, [showSessionMenu]);
 
   // Auto-save after checkmark toggle (debounced 1.5s) — skip in tutorial mode
   useEffect(() => {
@@ -363,7 +393,7 @@ export default function WorkoutSession() {
     if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
     autoSaveRef.current = setTimeout(() => {
       if (!savingRef.current && template && !template.isRest) {
-        handleSave().catch((err) => { if (import.meta.env.DEV) console.error(err); });
+        handleSaveRef.current?.().catch((err) => { if (import.meta.env.DEV) console.error(err); });
       }
     }, 500);
     return () => { if (autoSaveRef.current) clearTimeout(autoSaveRef.current); };
@@ -377,7 +407,7 @@ export default function WorkoutSession() {
     if (structureSaveRef.current) clearTimeout(structureSaveRef.current);
     structureSaveRef.current = setTimeout(() => {
       if (!savingRef.current && template && !template.isRest) {
-        handleSave().catch((err) => { if (import.meta.env.DEV) console.error(err); });
+        handleSaveRef.current?.().catch((err) => { if (import.meta.env.DEV) console.error(err); });
       }
     }, 1500);
     return () => { if (structureSaveRef.current) clearTimeout(structureSaveRef.current); };
@@ -1000,7 +1030,11 @@ export default function WorkoutSession() {
     // Pick the first non-section exercise index. If a rest day or all-section
     // template somehow loads here, skip (no card to render).
     const firstIdx = template.exercises.findIndex(e => !e.isSectionHeader);
-    if (firstIdx < 0) { fullScreenAutoOpenedRef.current = true; return; }
+    // Empty shell (e.g. /sessions/start-empty before the user adds anything):
+    // leave the ref unset so the auto-open fires once the first real exercise
+    // is added. Otherwise an empty start would permanently disable auto-open
+    // for this session even after exercises appear.
+    if (firstIdx < 0) return;
     setFullScreenIdx(firstIdx);
     fullScreenAutoOpenedRef.current = true;
   }, [template, fullScreenDefault]);
@@ -1910,7 +1944,8 @@ export default function WorkoutSession() {
       }
     }
 
-    lines.push(`${completedSets.size}/${template.exercises.filter(e => !e.isSectionHeader).reduce((s, e) => s + e.sets.length, 0)} sets completed`);
+    const totalSets = template.exercises.filter(e => !e.isSectionHeader).reduce((s, e) => s + e.sets.length, 0);
+    lines.push(totalSets > 0 ? `${completedSets.size}/${totalSets} sets completed` : 'Workout in progress');
 
     const text = lines.join('\n');
 
@@ -2879,15 +2914,7 @@ export default function WorkoutSession() {
               <div className="fixed inset-0 z-[95]" onClick={() => setShowSessionMenu(false)} />
               <div
                 className="fixed z-[96] w-52 rounded-xl bg-wf-gray-900 border border-white/10 shadow-2xl overflow-hidden"
-                style={(() => {
-                  // Prefer the full-screen overlay's gear when present (it's the
-                  // visible anchor); fall back to the StickyHeader gear otherwise.
-                  const btn = document.querySelector('[data-fs-gear="1"]')
-                    || document.querySelector('[data-tutorial="session-settings"]');
-                  if (!btn) return { top: 64, right: 16 };
-                  const r = btn.getBoundingClientRect();
-                  return { top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) };
-                })()}
+                style={sessionMenuPos}
               >
                 <div className="px-3 py-2 border-b border-white/5 flex items-center justify-between">
                   <span className="text-[9px] text-wf-gray-500 uppercase tracking-wider font-semibold">Display</span>
@@ -3397,7 +3424,12 @@ export default function WorkoutSession() {
             const reps = Number(r.best_reps) || 0;
             return { weight: w, reps, volume: w * reps, achievedAt: r.achieved_at };
           })
-          .sort((a, b) => (byVolume ? b.volume - a.volume : b.weight - a.weight || b.reps - a.reps))
+          .sort((a, b) => {
+            const primary = byVolume ? b.volume - a.volume : (b.weight - a.weight || b.reps - a.reps);
+            // Stable tiebreak on achievedAt (newest first) so rows with identical
+            // (weight, reps) don't swap positions on re-render.
+            return primary || (new Date(b.achievedAt).getTime() - new Date(a.achievedAt).getTime());
+          })
           .slice(0, 10);
         // Portal to document.body so the modal can sit above the full-screen
         // overlay (also portaled to body at z-90). Without the portal it
@@ -4474,27 +4506,6 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
 
   const totalGoalVolume = exerciseStats.reduce((s, ex) => s + ex.totalGoalVol, 0);
 
-  // Heaviest single completed set across every exercise. Used as the 4th
-  // summary tile (replaces "Goal Vol", which only had a value when the
-  // template prescribed suggested_weight — empty-start workouts always
-  // showed 0). Ranks by actualVolume first so 225×5 (1125) beats 200×8
-  // (1600 — actually 1600 wins on volume). Ties broken by raw weight so a
-  // 225×1 single beats a 100×9 set when volume happens to match. Returns
-  // null if the session has zero logged sets.
-  const heaviestSet = exerciseStats.reduce((best, ex) => {
-    for (const ss of ex.setStats) {
-      if (!ss.completed || ss.actualWeight <= 0 || ss.actualReps <= 0) continue;
-      if (
-        !best ||
-        ss.actualVolume > best.actualVolume ||
-        (ss.actualVolume === best.actualVolume && ss.actualWeight > best.actualWeight)
-      ) {
-        best = ss;
-      }
-    }
-    return best;
-  }, null);
-
   // Per-muscle work share for the segmented ring + body heatmap.
   const muscleAllocation = buildMuscleAllocation({
     exercises: template.exercises,
@@ -4836,6 +4847,7 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
         setShareImage(img);
       } catch (err) {
         if (import.meta.env.DEV) console.error('Failed to generate share image:', err);
+        showSummaryToast("Couldn't make an image — try Share as Text below.");
       }
       setGeneratingImage(false);
     }
@@ -4989,11 +5001,7 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
               position: 'absolute', top: 0, left: 0, right: 0, height: '3px',
               background: `linear-gradient(90deg, ${color}, ${color}40 60%, transparent)`,
             });
-            // Two-tile summary: Total Volume (top-left) + Total Sets
-            // (top-right). The earlier 4-tile layout included Time + Heaviest
-            // — those numbers still live in `elapsed` / `heaviestSet` for the
-            // share image generator below; they're just not surfaced in the
-            // modal UI per the simplified post-workout snapshot.
+            // Two-tile summary: Total Volume + Total Sets.
             const stats = [
               { label: 'Total Volume', color: '#22c55e', main: totalVolume.toLocaleString(), suffix: ' lbs' },
               { label: 'Total Sets',   color: '#ef4444', main: String(completedSets.size),   suffix: ` / ${totalSets}` },
