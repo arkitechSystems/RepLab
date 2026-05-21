@@ -917,11 +917,13 @@ const db = {
   async getSessions(userId) {
     // total_volume + exercise_count count completed sets only — planned/pre-filled
     // sets are excluded so a user writing down plans ahead of time doesn't inflate
-    // their history totals or community feed stats.
+    // their history totals or community feed stats. The weight > 0 guard excludes
+    // bodyweight sets (weight = -1 sentinel), which would otherwise produce a
+    // negative contribution to volume.
     const { rows } = await pool.query(
       `SELECT s.id, s.date, s.template_id, s.created_at, s.completed,
               COALESCE(t.name, 'Unknown') AS template_name,
-              COALESCE(SUM(se.weight * se.reps) FILTER (WHERE se.is_completed = TRUE), 0)::NUMERIC AS total_volume,
+              COALESCE(SUM(se.weight * se.reps) FILTER (WHERE se.is_completed = TRUE AND se.weight > 0), 0)::NUMERIC AS total_volume,
               COUNT(DISTINCT se.exercise_name) FILTER (WHERE se.is_completed = TRUE) AS exercise_count
        FROM sessions s
        LEFT JOIN templates t ON t.id = s.template_id

@@ -1812,32 +1812,33 @@ export default function WorkoutSession() {
     // Trigger debounced auto-save
     autoSaveNeeded.current = true;
 
-    // When completing a set, auto-fill subsequent uncompleted sets for this exercise
-    setCompletedSets((latestCompleted) => {
-      const isCompleting = !latestCompleted.has(key);
-      if (isCompleting) {
-        const exEntries = entries[exerciseKey] || [];
-        const thisEntry = exEntries[setIdx];
-        const w = thisEntry?.weight;
-        const r = thisEntry?.reps;
-        if ((w !== '' && w !== undefined) || (r !== '' && r !== undefined)) {
-          let exercise = null;
-          for (let i = 0; i < template.exercises.length; i++) {
-            if (!template.exercises[i].isSectionHeader && exKey(template.exercises, template.exercises[i], i) === exerciseKey) { exercise = template.exercises[i]; break; }
-          }
-          if (exercise) {
-            // Per-field user-edit guard: never propagate over a weight or
-            // reps value the user typed manually. Read from the ref so we
-            // see the freshest marks even if a typed-then-completed sequence
-            // landed in the same tick.
-            const userEditedNow = userEditedRef.current;
-            setEntries((prev) => {
-              const updated = { ...prev };
-              updated[exerciseKey] = [...(updated[exerciseKey] || [])];
-              const newAutoFilled = new Set(autoFilled);
-              for (let i = setIdx + 1; i < exercise.sets.length; i++) {
-                const laterKey = `${exerciseKey}-${i}`;
-                if (!latestCompleted.has(laterKey)) {
+    // When completing a set, auto-fill subsequent uncompleted sets for this
+    // exercise. `completedSets` here is the pre-toggle closure value — the
+    // setCompletedSets updater above hasn't committed yet — so we use it
+    // both to detect completion direction and for the per-later-set check.
+    if (!completedSets.has(key)) {
+      const exEntries = entries[exerciseKey] || [];
+      const thisEntry = exEntries[setIdx];
+      const w = thisEntry?.weight;
+      const r = thisEntry?.reps;
+      if ((w !== '' && w !== undefined) || (r !== '' && r !== undefined)) {
+        let exercise = null;
+        for (let i = 0; i < template.exercises.length; i++) {
+          if (!template.exercises[i].isSectionHeader && exKey(template.exercises, template.exercises[i], i) === exerciseKey) { exercise = template.exercises[i]; break; }
+        }
+        if (exercise) {
+          // Per-field user-edit guard: never propagate over a weight or
+          // reps value the user typed manually. Read from the ref so we
+          // see the freshest marks even if a typed-then-completed sequence
+          // landed in the same tick.
+          const userEditedNow = userEditedRef.current;
+          setEntries((prev) => {
+            const updated = { ...prev };
+            updated[exerciseKey] = [...(updated[exerciseKey] || [])];
+            const newAutoFilled = new Set(autoFilled);
+            for (let i = setIdx + 1; i < exercise.sets.length; i++) {
+              const laterKey = `${exerciseKey}-${i}`;
+              if (!completedSets.has(laterKey)) {
                   const current = updated[exerciseKey][i] || {};
                   const currentWeight = current.weight;
                   const currentReps = current.reps;
@@ -1875,8 +1876,6 @@ export default function WorkoutSession() {
           }
         }
       }
-      return latestCompleted;
-    });
   }
 
   async function handleShare() {
