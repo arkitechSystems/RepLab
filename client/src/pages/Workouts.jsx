@@ -1261,6 +1261,13 @@ export default function Workouts() {
       ? sessions.some(s => s.templateId === todaySchedule.templateId && s.date === todayStr)
       : false;
 
+    // If today's workout was completed, surface that on nextWorkoutInfo so the
+    // card's bottom-left button can deeplink to the summary regardless of what
+    // the card itself ends up displaying (today's workout or tomorrow's).
+    const completedToday = todayCompleted && todaySchedule
+      ? { templateId: todaySchedule.templateId, date: todayStr, templateName: todaySchedule.templateName }
+      : null;
+
     if (todaySchedule && todaySchedule.templateId && !todaySchedule.isRest && !todayCompleted) {
       // Today has an active workout that's not completed
       setNextWorkoutInfo({
@@ -1269,10 +1276,11 @@ export default function Workouts() {
         templateId: todaySchedule.templateId,
         date: todayStr,
         dayLabel: 'Today',
+        completedToday,
       });
     } else if (todaySchedule && todaySchedule.isRest && !todayCompleted) {
       // Today is a rest day — show that first before looking at tomorrow
-      setNextWorkoutInfo({ status: 'rest', dayLabel: 'Today' });
+      setNextWorkoutInfo({ status: 'rest', dayLabel: 'Today', completedToday });
     } else {
       // Today is done/empty — look at tomorrow
       if (tomorrowSchedule && tomorrowSchedule.templateId && !tomorrowSchedule.isRest) {
@@ -1282,11 +1290,12 @@ export default function Workouts() {
           templateId: tomorrowSchedule.templateId,
           date: tomorrowStr,
           dayLabel: 'Tomorrow',
+          completedToday,
         });
       } else if (tomorrowSchedule && tomorrowSchedule.isRest) {
-        setNextWorkoutInfo({ status: 'rest', dayLabel: 'Tomorrow' });
+        setNextWorkoutInfo({ status: 'rest', dayLabel: 'Tomorrow', completedToday });
       } else {
-        setNextWorkoutInfo({ status: 'none' });
+        setNextWorkoutInfo({ status: 'none', completedToday });
       }
     }
 
@@ -5059,23 +5068,35 @@ export default function Workouts() {
                   </div>
 
                   {/* CTAs — Create (left, primary) and Browse (right,
-                      outline). Previously the left button started/resumed
-                      the next scheduled workout and the right was Browse,
-                      but they collapsed to the same destination when no
-                      workout was scheduled. Separating them into distinct
-                      destinations always (Create vs Browse) keeps the
-                      pair functional regardless of schedule state. */}
+                      outline). When today's workout has been completed, the
+                      left button swaps to a deeplink into that session's
+                      summary so the user can review what they just did from
+                      the app's main entry point. */}
                   <div className="flex gap-3">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate('/clientworkouts/create');
-                      }}
-                      className="flex-1 py-3.5 rounded-full text-[11px] font-bold uppercase active:scale-[0.97] transition-transform"
-                      style={{ background: 'linear-gradient(135deg, #fff 0%, #e0e0e0 100%)', color: '#000', letterSpacing: '0.15em', boxShadow: '0 6px 20px rgba(255,255,255,0.1)' }}
-                    >
-                      Create a Workout
-                    </button>
+                    {nextWorkoutInfo?.completedToday ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const { templateId, date } = nextWorkoutInfo.completedToday;
+                          navigate(`/session/${templateId}/${date}?summary=1`);
+                        }}
+                        className="flex-1 py-3.5 rounded-full text-[11px] font-bold uppercase active:scale-[0.97] transition-transform"
+                        style={{ background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)', color: '#000', letterSpacing: '0.15em', boxShadow: '0 6px 20px rgba(34,197,94,0.25)' }}
+                      >
+                        Workout Completed
+                      </button>
+                    ) : (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate('/clientworkouts/create');
+                        }}
+                        className="flex-1 py-3.5 rounded-full text-[11px] font-bold uppercase active:scale-[0.97] transition-transform"
+                        style={{ background: 'linear-gradient(135deg, #fff 0%, #e0e0e0 100%)', color: '#000', letterSpacing: '0.15em', boxShadow: '0 6px 20px rgba(255,255,255,0.1)' }}
+                      >
+                        Create a Workout
+                      </button>
+                    )}
                     <button
                       onClick={() => setSelectedGroup('browse')}
                       className="flex-1 py-3.5 rounded-full border border-white/15 text-white/50 text-[11px] font-medium uppercase active:bg-white/5 transition-colors"

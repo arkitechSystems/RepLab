@@ -937,7 +937,13 @@ export default function WorkoutSession() {
         setEntries(saved);
         setCompletedSets(restoredCompleted);
         if (session.notes) setNotes(session.notes);
-        if (session.completed) setIsCompleted(true);
+        if (session.completed) {
+          setIsCompleted(true);
+          // Deeplink from Workouts page's "Workout Completed" CTA — open the
+          // summary modal immediately so the user sees the post-workout view
+          // on first paint instead of an extra "View Summary" tap.
+          if (location.search.includes('summary=1')) setShowSummary(true);
+        }
         // Check localStorage for a persisted timer for this session
         const storedStart = (() => {
           try { return localStorage.getItem(`wf-timer-${templateId}-${date}`); } catch (_) { return null; }
