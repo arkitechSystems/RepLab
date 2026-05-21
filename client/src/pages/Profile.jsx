@@ -8,7 +8,6 @@ import SplashScreen from '../components/SplashScreen';
 import useFocusTrap from '../hooks/useFocusTrap';
 import { APP_VERSION } from '../version';
 import { getWorkoutColor } from '../utils/workoutColors';
-import useFocusTrap from '../hooks/useFocusTrap';
 
 // Touch-reactive ticker for the Personal Records strip. Scrolls left at a
 // steady speed; while a finger is down it freezes and the user can drag the
@@ -411,7 +410,6 @@ export default function Profile() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleteError, setDeleteError] = useState('');
   const [deleting, setDeleting] = useState(false);
-  const deleteAccountTrapRef = useFocusTrap(showDeleteAccount);
 
   async function handleDeleteAccount() {
     if (deleteConfirmText !== 'DELETE') return;
