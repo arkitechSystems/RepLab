@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { track } from '../utils/analytics';
 import { useUnsavedGuard } from '../components/UnsavedGuard';
+import { friendlyError } from '../utils/errors';
 
 export default function CreateProgram() {
   const navigate = useNavigate();
@@ -35,7 +36,7 @@ export default function CreateProgram() {
       });
       navigate('/app');
     } catch (err) {
-      setError(err.message);
+      setError(friendlyError(err, "We couldn't create your program. Please try again."));
     } finally {
       setSaving(false);
     }

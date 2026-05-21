@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getDeviceInfo } from '../utils/deviceInfo';
+import { friendlyError } from '../utils/errors';
 
 function isPhone(value) {
   return /^\+?\d[\d\s\-().]{6,}$/.test(value.trim());
@@ -129,7 +130,7 @@ export default function Signup() {
       // navigate() could land on /welcome, so we bypass the SPA here.
       window.location.replace('/welcome');
     } catch (err) {
-      setError(err.message);
+      setError(friendlyError(err, "We couldn't create your account. Please double-check the form and try again."));
     } finally {
       setLoading(false);
     }
@@ -217,8 +218,14 @@ export default function Signup() {
                   placeholder="Create password"
                   required
                   autoComplete="new-password"
+                  aria-describedby="signup-password-help"
                   className={inputClass}
                 />
+                {/* Server rules: min 8 chars, 1 uppercase, 1 number, no spaces.
+                    Showing them up-front avoids a submit/reject roundtrip. */}
+                <p id="signup-password-help" className="text-xs text-white/50 mt-1.5">
+                  8+ characters, including one uppercase letter and one number.
+                </p>
               </div>
 
               {/* Confirm Password */}

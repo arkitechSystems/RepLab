@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { friendlyError } from '../utils/errors';
 
 function isPhone(value) {
   return /^\+?\d[\d\s\-().]{6,}$/.test(value.trim());
@@ -69,7 +70,7 @@ export default function Login() {
       const target = REDIRECTS[searchParams.get('redirect')] || '/';
       navigate(target);
     } catch (err) {
-      setError(err.message);
+      setError(friendlyError(err, "Email or password didn't match. Try again or reset your password."));
     } finally {
       setLoading(false);
     }
