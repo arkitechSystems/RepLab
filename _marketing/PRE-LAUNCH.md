@@ -15,6 +15,7 @@ Living list of things that must be done before App Store / Play Store submission
 - [x] **Master library name uniqueness index** prevents future duplicate masters at the DB level.
 - [x] **Plate calculator in-session** — long-press a weight input OR tap the ⚖ icon → in-session plate calc modal matching the Utilities page layout. Defaults to bar-only state when set is empty.
 - [x] **Brand artwork** — RL logo wired as iOS/Android app icon, PWA icons, Add-to-Home-Screen apple-touch-icon, in-app header, landing nav. Brand spelling normalized to REPLAB everywhere user-facing.
+- [ ] **Public web account-deletion flow (Google Play 2024 policy)** — new `/delete-account` page on the public web that accepts an email, emails a single-use confirmation link, and on click performs the same cascade as the in-app delete. New routes `POST /auth/request-deletion` + `GET /auth/confirm-deletion`, table `account_deletion_tokens`, REPLAB-branded `sendDeletionConfirmationEmail`, plus SPA `/account-deleted` and `/account-deletion-failed` landing pages. Migration script: `server/scripts/migrations/2026-05-20-account-deletion-tokens.js`. Privacy policy section 5 updated to point at the new URL. Mark done after smoke-testing email delivery in staging.
 
 ## Blocking — Must do before submission
 
