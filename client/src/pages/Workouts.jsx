@@ -5465,8 +5465,45 @@ export default function Workouts() {
                 opacity: featuredUnlocked ? 1 : 0.65,
               }}
             >
+              {/* Cinematic background video — only renders when FF_FEATURED is
+                  unlocked. Sits at z-index 0 with a darkening overlay on top
+                  so the COMING SOON / FEATURED WORKOUTS headlines stay legible
+                  against any frame of the loop. muted + playsInline are
+                  required for iOS autoplay to start without a user gesture.
+                  preload="metadata" keeps locked-user bandwidth at zero
+                  (this branch can't be reached when locked anyway, but it
+                  also means slow networks load just the first frame quickly). */}
+              {featuredUnlocked && (
+                <>
+                  <video
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    preload="metadata"
+                    src="https://replab-videos.onrender.com/Gym%20cinematic%20promotion%20video.mp4"
+                    aria-hidden="true"
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      zIndex: 0,
+                      pointerEvents: 'none',
+                    }}
+                  />
+                  <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'linear-gradient(160deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.78) 100%)',
+                    zIndex: 0,
+                    pointerEvents: 'none',
+                  }} />
+                </>
+              )}
               {/* Red accent bar — matches Featured's red brand tone */}
-              <div style={{ height: '3px', background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.5), transparent)' }} />
+              <div style={{ height: '3px', background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.5), transparent)', position: 'relative', zIndex: 1 }} />
               {/* Ambient red spotlight (mirrors Challenges/Trainers spotlight) */}
               <div style={{
                 position: 'absolute',
@@ -5475,8 +5512,9 @@ export default function Workouts() {
                 background: 'radial-gradient(circle, rgba(239,68,68,0.10) 0%, transparent 60%)',
                 filter: 'blur(40px)',
                 pointerEvents: 'none',
+                zIndex: 1,
               }} />
-              <div style={{ position: 'relative', padding: '24px' }}>
+              <div style={{ position: 'relative', padding: '24px', zIndex: 1 }}>
                 <p className="text-[10px] uppercase font-light mb-2" style={{ color: 'rgba(239,68,68,0.7)', letterSpacing: '0.3em' }}>
                   Coming Soon
                 </p>
