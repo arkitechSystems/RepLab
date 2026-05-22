@@ -250,6 +250,9 @@ export default function Profile() {
   const [sessionsLoading, setSessionsLoading] = useState(true);
   const [theme, setTheme] = useState(() => localStorage.getItem('wf-theme') || 'dark');
   const [bibleVersesOn, setBibleVersesOn] = useState(() => localStorage.getItem('wf-bible-verses') !== 'off');
+  // Visual placeholder until i18n is wired. Persists across reloads so the
+  // pill on the landing page and this dropdown stay aligned once they're real.
+  const [languagePref, setLanguagePref] = useState(() => localStorage.getItem('replab_locale') || 'en');
   const [shareActivityOn, setShareActivityOn] = useState(() => localStorage.getItem('wf-share-activity-to-community') !== 'off');
   // Workout-session defaults — keys shared with WorkoutSession.jsx so the
   // toggle here is the same value the session reads on mount. Any in-session
@@ -1038,6 +1041,26 @@ export default function Profile() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Language Preference — placeholder dropdown; persists choice to
+            localStorage so the landing-page EN|ES pill (also unwired) and this
+            control share state once i18n is implemented. */}
+        <div className="glass-card rounded-xl p-6 mb-4 fade-slide-up" style={{ animationDelay: '275ms' }}>
+          <h3 className="text-base font-semibold text-white mb-3">Language Preference</h3>
+          <select
+            id="profile-language-pref"
+            aria-label="Language preference"
+            value={languagePref}
+            onChange={(e) => {
+              setLanguagePref(e.target.value);
+              try { localStorage.setItem('replab_locale', e.target.value); } catch (_) {}
+            }}
+            className="w-full bg-transparent text-white text-sm border border-white/10 rounded-lg px-3 py-2.5 focus:outline-none focus:border-white/30"
+          >
+            <option value="en" className="bg-wf-gray-900">English</option>
+            <option value="es" className="bg-wf-gray-900">Spanish (Español)</option>
+          </select>
         </div>
 
         {/* App Info */}
