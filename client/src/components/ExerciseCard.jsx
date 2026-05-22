@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useLayoutEffect, useMemo, memo } from 'react';
+import { useState, useRef, useCallback, useEffect, useLayoutEffect, useMemo, memo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   DndContext,
@@ -110,6 +110,27 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
   const [showSwap, setShowSwap] = useState(false);
   const [swapSearch, setSwapSearch] = useState('');
   const [showAddBelow, setShowAddBelow] = useState(false);
+  const addBelowRef = useRef(null);
+  // When the inline "add exercise below" panel mounts, scroll the page so its
+  // top edge sits at ~25% of viewport height (halfway between the top and the
+  // vertical center). Without this, cards with many sets push the search bar
+  // below the fold and new users can't see where to type. rAF defers the
+  // measurement to after layout so getBoundingClientRect reads the real rect
+  // rather than the pre-animation rect.
+  useEffect(() => {
+    if (!showAddBelow) return;
+    const raf = requestAnimationFrame(() => {
+      const el = addBelowRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const targetTop = window.innerHeight * 0.25;
+      const delta = rect.top - targetTop;
+      if (Math.abs(delta) > 4) {
+        window.scrollTo({ top: window.scrollY + delta, behavior: 'smooth' });
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [showAddBelow]);
   const [addBelowSearch, setAddBelowSearch] = useState('');
   // Index of the set whose weight input is currently driving the plate
   // calculator modal. null = modal closed. Set by long-press on a weight
@@ -976,7 +997,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
             })
           : [];
         return (
-          <div className="glass-card rounded-xl overflow-hidden mb-3 border border-green-500/20 animate-drop-down">
+          <div ref={addBelowRef} className="glass-card rounded-xl overflow-hidden mb-3 border border-green-500/20 animate-drop-down">
             <div className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
               <svg className="w-4 h-4 text-green-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
