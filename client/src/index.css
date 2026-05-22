@@ -607,6 +607,15 @@ input[type="number"] {
 .today-white-glow-week {
   animation: todayWhitePulseWeek 3s ease-in-out infinite;
 }
+/* When this lives on a .fade-slide-up element (the weekly calendar card),
+   the later-declared .fade-slide-up rule below would otherwise clobber the
+   pulse — CSS `animation` is a single-value property, so two class rules
+   that both set it leave only the last to win. Composing the entry fade and
+   the pulse on the same selector with a comma keeps both. Specificity is
+   bumped by chaining the two classes. */
+.fade-slide-up.today-white-glow-week {
+  animation: fadeSlideUp 0.4s ease-out forwards, todayWhitePulseWeek 3s ease-in-out infinite;
+}
 @keyframes todayWhitePulseWeek {
   0%, 100% {
     box-shadow:
@@ -627,7 +636,8 @@ input[type="number"] {
 }
 @media (prefers-reduced-motion: reduce) {
   .today-white-glow-month,
-  .today-white-glow-week { animation: none; }
+  .today-white-glow-week,
+  .fade-slide-up.today-white-glow-week { animation: none; }
 }
 
 /* PB badge glow */
