@@ -5170,6 +5170,11 @@ export default function Workouts() {
                       primary = {
                         label: 'Resume',
                         onClick: () => navigateToWorkout(info.templateId, info.date),
+                        // .btn-liquid is the app's red→white animated flowing
+                        // gradient (defined in index.css). Used here to draw
+                        // the eye toward the in-progress workout — the user
+                        // has an open session, the card should feel "live".
+                        liquid: true,
                       };
                     } else if (info?.templateId && info.status === 'upcoming') {
                       primary = {
@@ -5203,8 +5208,10 @@ export default function Workouts() {
                         <button
                           onClick={primary.onClick}
                           disabled={loading}
-                          className="flex-1 min-h-[48px] py-3.5 rounded-full text-[11px] font-bold uppercase active:scale-[0.97] transition-transform disabled:opacity-50 disabled:pointer-events-none"
-                          style={{ background: bg, color: '#000', letterSpacing: '0.15em', boxShadow: shadow }}
+                          className={`flex-1 min-h-[48px] py-3.5 rounded-full text-[11px] font-bold uppercase active:scale-[0.97] transition-transform disabled:opacity-50 disabled:pointer-events-none${primary.liquid ? ' btn-liquid' : ''}`}
+                          style={primary.liquid
+                            ? { letterSpacing: '0.15em' }
+                            : { background: bg, color: '#000', letterSpacing: '0.15em', boxShadow: shadow }}
                         >
                           {primary.label}
                         </button>
