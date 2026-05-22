@@ -1258,18 +1258,32 @@ export default function Workouts() {
     // Compute next workout info
     const todaySchedule = scheduleData.find(s => s.date === todayStr);
     const tomorrowSchedule = scheduleData.find(s => s.date === tomorrowStr);
+    // Session-existence fallback: if a session row exists for today (started
+    // but not completed), surface it as "Resume" regardless of whether the
+    // schedule_days lookup found a matching entry. Covers schedule rows that
+    // weren't written (e.g. /sessions/start-empty path), date-format edge
+    // cases between schedule_days.schedule_date (DATE) and the client's local
+    // todayStr, and workouts started from a non-schedule entry point.
+    const todayInProgressSession = sessions.find(s =>
+      s.date === todayStr && s.templateId != null && !s.completed
+    );
     const todayCompleted = todaySchedule && todaySchedule.templateId
       ? completedData.some(c => c.templateId === todaySchedule.templateId && c.date === todayStr)
-      : false;
+      : (todayInProgressSession
+          ? completedData.some(c => c.templateId === todayInProgressSession.templateId && c.date === todayStr)
+          : false);
     const todayStarted = todaySchedule && todaySchedule.templateId && !todaySchedule.isRest
       ? sessions.some(s => s.templateId === todaySchedule.templateId && s.date === todayStr)
-      : false;
+      : !!todayInProgressSession;
 
     // If today's workout was completed, surface that on nextWorkoutInfo so the
     // card's bottom-left button can deeplink to the summary regardless of what
     // the card itself ends up displaying (today's workout or tomorrow's).
-    const completedToday = todayCompleted && todaySchedule
-      ? { templateId: todaySchedule.templateId, date: todayStr }
+    const completedToday = todayCompleted
+      ? {
+          templateId: (todaySchedule?.templateId) ?? todayInProgressSession?.templateId,
+          date: todayStr,
+        }
       : null;
 
     if (todaySchedule && todaySchedule.templateId && !todaySchedule.isRest && !todayCompleted) {
@@ -1278,6 +1292,19 @@ export default function Workouts() {
         status: todayStarted ? 'resume' : 'start',
         templateName: todaySchedule.templateName,
         templateId: todaySchedule.templateId,
+        date: todayStr,
+        dayLabel: 'Today',
+        completedToday,
+      });
+    } else if (todayInProgressSession && !todayCompleted) {
+      // Schedule lookup found nothing for today (or didn't match), but a
+      // session row exists and isn't completed — the user has an in-progress
+      // workout and the card should let them return to it.
+      const tmpl = tmpls.find(t => t.id === todayInProgressSession.templateId);
+      setNextWorkoutInfo({
+        status: 'resume',
+        templateName: tmpl?.name || todayInProgressSession.templateName || 'Workout',
+        templateId: todayInProgressSession.templateId,
         date: todayStr,
         dayLabel: 'Today',
         completedToday,
@@ -1309,6 +1336,8 @@ export default function Workouts() {
     let displayedTemplateId = null;
     if (todaySchedule?.templateId && !todaySchedule.isRest && !todayCompleted) {
       displayedTemplateId = todaySchedule.templateId;
+    } else if (todayInProgressSession && !todayCompleted) {
+      displayedTemplateId = todayInProgressSession.templateId;
     } else if (tomorrowSchedule?.templateId && !tomorrowSchedule.isRest) {
       displayedTemplateId = tomorrowSchedule.templateId;
     }
