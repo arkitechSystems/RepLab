@@ -65,6 +65,7 @@ const DEPENDENT_TABLES = [
   ['trainer_login_history', 'user_id'],
   ['challenge_entries', 'user_id'],
   ['cardio_entries', 'user_id'],
+  ['account_deletion_tokens', 'user_id'],
 ];
 
 // Tables whose rows are NOT deleted but where the FK column is set to NULL
@@ -336,6 +337,16 @@ describeIfDb('db.deleteUser cascade (integration)', () => {
     await pool.query(
       `INSERT INTO cardio_entries (user_id, cardio_type, duration_secs)
        VALUES ($1, 'rower', 1200)`,
+      [testUserId]
+    );
+
+    // account_deletion_tokens — email-confirm tokens for the public delete
+    // flow (Google Play 2024 requirement). CASCADEd via user_id FK so the
+    // row disappears with the user. Hash is a placeholder; the test only
+    // checks row existence pre-delete and absence post-delete.
+    await pool.query(
+      `INSERT INTO account_deletion_tokens (user_id, token_hash, expires_at, request_ip)
+       VALUES ($1, 'placeholder-hash-for-cascade-test', NOW() + INTERVAL '1 hour', '127.0.0.1')`,
       [testUserId]
     );
 

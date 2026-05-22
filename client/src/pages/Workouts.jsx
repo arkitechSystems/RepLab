@@ -1269,7 +1269,7 @@ export default function Workouts() {
     // card's bottom-left button can deeplink to the summary regardless of what
     // the card itself ends up displaying (today's workout or tomorrow's).
     const completedToday = todayCompleted && todaySchedule
-      ? { templateId: todaySchedule.templateId, date: todayStr, templateName: todaySchedule.templateName }
+      ? { templateId: todaySchedule.templateId, date: todayStr }
       : null;
 
     if (todaySchedule && todaySchedule.templateId && !todaySchedule.isRest && !todayCompleted) {
@@ -1314,6 +1314,9 @@ export default function Workouts() {
     }
     if (displayedTemplateId) {
       const tmpl = tmpls.find(t => t.id === displayedTemplateId);
+      if (import.meta.env.DEV && !tmpl) {
+        console.warn(`[next-workout] displayedTemplateId ${displayedTemplateId} not found in tmpls — schedule references a missing template`);
+      }
       if (tmpl && tmpl.programId) {
         const prog = progs.find(p => p.id === tmpl.programId);
         if (prog) {
@@ -5084,11 +5087,15 @@ export default function Workouts() {
                 <div className="relative p-3.5">
                   <p className="text-[10px] text-white/30 uppercase font-light mb-2" style={{ letterSpacing: '0.3em' }}>Up Next</p>
                   <h2 className="text-[28px] font-black text-white tracking-tight mb-1" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>
-                    YOUR NEXT<br/>WORKOUT
+                    {nextWorkoutInfo?.status === 'rest'
+                      ? <>REST<br/>DAY</>
+                      : <>YOUR NEXT<br/>WORKOUT</>}
                   </h2>
 
-                  {/* Workout info */}
-                  <div className="mt-3 mb-4">
+                  {/* Workout info — fixed min-h reserves space so the card
+                      doesn't jolt vertically as nextWorkoutInfo + currentProgram
+                      resolve in staggered renders. */}
+                  <div className="mt-3 mb-4 min-h-[44px]">
                     <div className="flex items-center gap-3 mb-1 min-w-0">
                       <span className="text-[15px] font-semibold text-white truncate min-w-0 flex-1">
                         {nextWorkoutInfo?.templateName || (nextWorkoutInfo?.status === 'rest' ? 'Rest Day' : nextWorkoutInfo?.status === 'none' ? 'Nothing scheduled' : 'Loading...')}
@@ -5165,17 +5172,17 @@ export default function Workouts() {
                     return (
                       <div className="flex gap-3">
                         <button
-                          onClick={(e) => { e.stopPropagation(); primary.onClick(); }}
+                          onClick={primary.onClick}
                           disabled={loading}
-                          className="flex-1 py-3.5 rounded-full text-[11px] font-bold uppercase active:scale-[0.97] transition-transform disabled:opacity-50 disabled:pointer-events-none"
+                          className="flex-1 min-h-[48px] py-3.5 rounded-full text-[11px] font-bold uppercase active:scale-[0.97] transition-transform disabled:opacity-50 disabled:pointer-events-none"
                           style={{ background: bg, color: '#000', letterSpacing: '0.15em', boxShadow: shadow }}
                         >
                           {primary.label}
                         </button>
                         <button
-                          onClick={(e) => { e.stopPropagation(); secondary.onClick(); }}
+                          onClick={secondary.onClick}
                           disabled={loading}
-                          className="flex-1 py-3.5 rounded-full border border-white/15 text-white/50 text-[11px] font-medium uppercase active:bg-white/5 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                          className="flex-1 min-h-[48px] py-3.5 rounded-full border border-white/15 text-white/50 text-[11px] font-medium uppercase active:bg-white/5 transition-colors disabled:opacity-50 disabled:pointer-events-none"
                           style={{ letterSpacing: '0.15em' }}
                         >
                           {secondary.label}
