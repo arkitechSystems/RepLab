@@ -712,7 +712,7 @@ export default function Calendar() {
               else if (inMonth && workout?.isRest) bg = 'rgba(148,163,184,0.08)'; // muted blue-grey: visibly different from empty
 
               const dateNumberColor = dayIsToday
-                ? '#ef4444'
+                ? '#fff'
                 : inMonth
                   ? 'rgba(255,255,255,0.85)'
                   : 'rgba(255,255,255,0.4)';
@@ -743,12 +743,17 @@ export default function Calendar() {
                   }}
                   className={`relative min-h-[56px] transition-all ${
                     !inMonth ? 'opacity-20' : ''
-                  } ${hasWorkout ? 'cursor-pointer active:scale-[0.97]' : ''}`}
+                  } ${hasWorkout ? 'cursor-pointer active:scale-[0.97]' : ''} ${
+                    dayIsToday ? 'today-white-glow-month' : ''
+                  }`}
                   style={{
                     borderRadius: '4px',
                     background: bg,
+                    // The today cell's shadow comes from the .today-white-glow-month
+                    // class (animated white pulse). Non-today cells get a faint
+                    // hairline inset so the grid reads as a grid.
                     boxShadow: dayIsToday
-                      ? 'inset 0 0 0 2px #ef4444, 0 0 20px rgba(239,68,68,0.3)'
+                      ? undefined
                       : 'inset 0 0 0 1px rgba(255,255,255,0.04)',
                   }}
                 >
@@ -810,7 +815,7 @@ export default function Calendar() {
               Scheduled red "WO", Missed diagonal slash, Rest label). */}
           {(() => {
             const items = [
-              { label: 'Today',     bg: 'transparent', boxShadow: 'inset 0 0 0 2px #ef4444', dateColor: '#ef4444' },
+              { label: 'Today',     bg: 'transparent', boxShadow: 'inset 0 0 0 2px rgba(255,255,255,0.95), 0 0 10px rgba(255,255,255,0.3)', dateColor: '#fff' },
               { label: 'Completed', bg: 'rgba(34,197,94,0.32)', dateColor: '#fff', badge: 'check' },
               { label: 'Scheduled', bg: 'rgba(239,68,68,0.16)', dateColor: '#fff', abbr: 'WO' },
               { label: 'Missed',    bg: 'rgba(239,68,68,0.10)', dateColor: '#fff', slash: true },
@@ -1089,15 +1094,14 @@ export default function Calendar() {
                     : 'rgba(255,255,255,0.45)';
 
                 // Stacked-shadow approach so today + completed can co-exist:
-                //   today     → outer red glow + red hairline + soft inner red wash
-                //   completed → thick 4px green inset border (no outer glow)
-                // Listing the green inset AFTER the red one means it paints
-                // over the red hairline visually when both are present.
+                //   today     → animated white pulse via .today-white-glow-week
+                //               class (drives the entire box-shadow on today),
+                //               so this branch only handles the non-today layers.
+                //   completed → thick 4px green inset border (no outer glow).
+                // Listing the green inset AFTER means it paints over any other
+                // inset when both apply.
                 const shadowLayers = ['0 4px 12px rgba(0,0,0,0.3)', 'inset 0 1px 0 rgba(255,255,255,0.05)'];
-                if (dayIsToday) {
-                  shadowLayers.unshift('0 0 32px rgba(239,68,68,0.5)', '0 12px 44px rgba(239,68,68,0.6)');
-                  shadowLayers.push('inset 0 0 0 1.5px rgba(239,68,68,0.85)', 'inset 0 0 24px rgba(239,68,68,0.18)');
-                } else {
+                if (!dayIsToday) {
                   shadowLayers.unshift('0 12px 40px rgba(0,0,0,0.5)');
                 }
                 if (dayCompleted) {
@@ -1114,12 +1118,17 @@ export default function Calendar() {
                     style={{
                       animationDelay: `${idx * 60}ms`,
                       position: 'relative',
-                      overflow: 'hidden',
+                      // Today drops `overflow: hidden` so the white pulse's
+                      // outer glow isn't clipped by ancestor compositing.
+                      // Non-today keeps the clip to hide internal positioning.
+                      overflow: dayIsToday ? 'visible' : 'hidden',
                       borderRadius: '2px',
                       background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
-                      boxShadow: cardBoxShadow,
+                      // Today's box-shadow comes from .today-white-glow-week
+                      // (animated). Non-today uses the static stack above.
+                      boxShadow: dayIsToday ? undefined : cardBoxShadow,
                     }}
-                    className={`w-full fade-slide-up transition-all ${hasWorkout ? 'active:scale-[0.98] cursor-pointer' : 'opacity-70'}`}
+                    className={`w-full fade-slide-up transition-all ${hasWorkout ? 'active:scale-[0.98] cursor-pointer' : 'opacity-70'} ${dayIsToday ? 'today-white-glow-week' : ''}`}
                   >
                     {/* Shared accent for top bar + ambient spotlight — keep these linked so the card's right-side glow always matches the top line. Switches to green for completed days so they stand out. */}
                     {(() => {

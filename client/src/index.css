@@ -582,6 +582,54 @@ input[type="number"] {
   50% { box-shadow: 0 0 30px rgba(239, 68, 68, 0.35), 0 0 60px rgba(239, 68, 68, 0.1); }
 }
 
+/* Calendar "today" white-pulse — used on both the monthly cell and the
+   weekly card to mark today regardless of completion / skip state. Animates
+   a soft radiant white glow with an inset white border so it reads as a
+   white square/rectangle pulsing slowly. The two variants below differ only
+   in the surrounding card shadow they need to preserve. */
+.today-white-glow-month {
+  animation: todayWhitePulseMonth 3s ease-in-out infinite;
+}
+@keyframes todayWhitePulseMonth {
+  0%, 100% {
+    box-shadow:
+      inset 0 0 0 2px rgba(255, 255, 255, 0.85),
+      0 0 14px rgba(255, 255, 255, 0.30),
+      0 0 28px rgba(255, 255, 255, 0.12);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 0 2px rgba(255, 255, 255, 1),
+      0 0 26px rgba(255, 255, 255, 0.55),
+      0 0 52px rgba(255, 255, 255, 0.25);
+  }
+}
+.today-white-glow-week {
+  animation: todayWhitePulseWeek 3s ease-in-out infinite;
+}
+@keyframes todayWhitePulseWeek {
+  0%, 100% {
+    box-shadow:
+      0 4px 12px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      inset 0 0 0 2px rgba(255, 255, 255, 0.85),
+      0 0 18px rgba(255, 255, 255, 0.35),
+      0 0 36px rgba(255, 255, 255, 0.15);
+  }
+  50% {
+    box-shadow:
+      0 4px 12px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      inset 0 0 0 2px rgba(255, 255, 255, 1),
+      0 0 34px rgba(255, 255, 255, 0.6),
+      0 0 64px rgba(255, 255, 255, 0.3);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .today-white-glow-month,
+  .today-white-glow-week { animation: none; }
+}
+
 /* PB badge glow */
 .pb-badge {
   background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(251, 191, 36, 0.1) 100%);
