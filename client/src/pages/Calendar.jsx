@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { startOfWeek, startOfMonth, endOfMonth, addDays, format, isToday, isSameWeek, isSameMonth, isSameDay, isBefore, parseISO } from 'date-fns';
 import { api } from '../api';
@@ -31,6 +31,12 @@ export default function Calendar() {
   const [loadError, setLoadError] = useState(null);
   const [viewMode, setViewMode] = useState('week'); // 'week' | 'month'
   const [weekOffset, setWeekOffset] = useState(0);
+  // Captures the today card on the weekly view so we can auto-scroll it to
+  // viewport center after the cards finish their entry fade. Native
+  // scrollIntoView with block:'center' clamps automatically when the target
+  // is near the bottom of the document (Fri/Sat), so the card lands as
+  // close to center as the scroll bounds allow.
+  const weeklyTodayCardRef = useRef(null);
   const [monthOffset, setMonthOffset] = useState(0);
   const [editingDay, setEditingDay] = useState(null); // date object of day being edited
   const [expandedProgram, setExpandedProgram] = useState(null);
@@ -106,6 +112,22 @@ export default function Calendar() {
   const fetchTo = format(addDays(rangeEnd, 7), 'yyyy-MM-dd');
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
+
+  // Auto-scroll the today card to viewport center when the weekly view is
+  // showing the current week. Fires after loading completes so the cards
+  // exist in the DOM, and on viewMode/weekOffset changes so navigating
+  // back to "this week" re-centers. scrollIntoView({block:'center'}) clamps
+  // to scroll bounds, so Fri/Sat (end of week) land as close to center as
+  // the document allows rather than overshooting.
+  useEffect(() => {
+    if (viewMode !== 'week') return;
+    if (weekOffset !== 0) return;
+    if (loading || loadError) return;
+    const raf = requestAnimationFrame(() => {
+      weeklyTodayCardRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [viewMode, weekOffset, loading, loadError]);
 
   async function refreshSchedule(opts = {}) {
     const [s, completed] = await Promise.all([
@@ -1112,6 +1134,7 @@ export default function Calendar() {
                 return (
                   <div
                     key={date.toISOString()}
+                    ref={dayIsToday ? weeklyTodayCardRef : undefined}
                     data-tutorial={idx === 0 ? 'calendar-day-cell' : undefined}
                     onClick={() => handleDayTap(date)}
                     role={hasWorkout ? 'button' : undefined}
