@@ -1119,9 +1119,14 @@ export default function Calendar() {
                       animationDelay: `${idx * 60}ms`,
                       position: 'relative',
                       // Today drops `overflow: hidden` so the white pulse's
-                      // outer glow isn't clipped by ancestor compositing.
-                      // Non-today keeps the clip to hide internal positioning.
+                      // outer glow isn't clipped by ancestor compositing,
+                      // and bumps z-index so the radiant glow paints over
+                      // the next sibling card's opaque background. Without
+                      // this, only the upward glow shows because each
+                      // weekly card has its own gradient that overlaps the
+                      // 12px gap below today.
                       overflow: dayIsToday ? 'visible' : 'hidden',
+                      zIndex: dayIsToday ? 5 : undefined,
                       borderRadius: '2px',
                       background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
                       // Today's box-shadow comes from .today-white-glow-week
