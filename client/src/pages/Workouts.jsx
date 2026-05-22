@@ -6061,8 +6061,11 @@ export default function Workouts() {
                 >
                   CHALLENGES
                 </h3>
-                <p className="text-[11px] text-white/40 font-light mt-3 max-w-[280px] leading-relaxed">
-                  Compete, push your limits, and earn rewards.
+                <p className="text-[11px] text-white/55 font-light italic mt-3 max-w-[280px] leading-relaxed">
+                  &ldquo;As iron sharpens iron, so one person sharpens another.&rdquo;
+                </p>
+                <p className="text-[9px] text-white/35 uppercase font-medium mt-2" style={{ letterSpacing: '0.3em' }}>
+                  Proverbs 27:17
                 </p>
                 {challengesUnlocked && (
                   <div className="flex items-center gap-1.5 mt-4">
