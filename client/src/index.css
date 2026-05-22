@@ -634,9 +634,36 @@ input[type="number"] {
       0 0 64px rgba(255, 255, 255, 0.3);
   }
 }
+/* Week at a Glance carousel card today indicator. Base drop shadows are
+   heavier than the weekly calendar cards (0 12px 40px instead of 0 4px 12px)
+   so the white pulse composes those into the keyframes too. */
+.today-white-glow-glance {
+  animation: todayWhitePulseGlance 3s ease-in-out infinite;
+}
+@keyframes todayWhitePulseGlance {
+  0%, 100% {
+    box-shadow:
+      0 12px 40px rgba(0, 0, 0, 0.6),
+      0 4px 12px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      inset 0 0 0 2px rgba(255, 255, 255, 0.85),
+      0 0 18px rgba(255, 255, 255, 0.35),
+      0 0 36px rgba(255, 255, 255, 0.15);
+  }
+  50% {
+    box-shadow:
+      0 12px 40px rgba(0, 0, 0, 0.6),
+      0 4px 12px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      inset 0 0 0 2px rgba(255, 255, 255, 1),
+      0 0 34px rgba(255, 255, 255, 0.6),
+      0 0 64px rgba(255, 255, 255, 0.3);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .today-white-glow-month,
   .today-white-glow-week,
+  .today-white-glow-glance,
   .fade-slide-up.today-white-glow-week { animation: none; }
 }
 

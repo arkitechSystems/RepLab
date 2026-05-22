@@ -591,11 +591,18 @@ function WeekAtAGlanceCarousel({ templates = [] }) {
           return (
             <div
               key={date}
-              className="snap-start shrink-0 w-[190px] active:scale-[0.96] transition-transform"
+              className={`snap-start shrink-0 w-[190px] active:scale-[0.96] transition-transform${isToday ? ' today-white-glow-glance' : ''}`}
               style={{
+                position: 'relative',
+                // z-index bump so today's white glow paints over the next
+                // sibling carousel card's opaque background (same trick as
+                // the weekly Calendar list).
+                zIndex: isToday ? 5 : undefined,
                 background: 'linear-gradient(160deg, #1c1c1c 0%, #111 100%)',
+                // Today's shadow stack comes from .today-white-glow-glance
+                // (animated). Non-today uses the static stack.
                 boxShadow: isToday
-                  ? `0 0 0 1.5px rgba(239,68,68,0.85), 0 12px 40px rgba(239,68,68,0.25), 0 4px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)`
+                  ? undefined
                   : '0 12px 40px rgba(0,0,0,0.6), 0 4px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)',
                 borderRadius: '2px',
               }}
@@ -6116,20 +6123,17 @@ export default function Workouts() {
               </div>
             </div>
 
-            {/* Trainers card — Nike style. Gated as "Coming Soon" pre-launch
-                via FF_TRAINERS (see featureFlags.js). When locked: no
-                onClick, no "Explore →" affordance, dimmed opacity. Apple
-                Review's demo account never has the flag, so reviewers see
-                a clean "COMING SOON" card and can't navigate into the
-                Featured Trainers list (which still ships a mock
-                Zumba Jason entry per client/src/data/trainers.js — kept
-                intact for the post-launch unlock).
-                Unlock with ?ff=trainers or
-                localStorage.setItem('rl_ff_trainers', '1'). */}
+            {/* Trainers card — only rendered when FF_TRAINERS is unlocked.
+                Hidden from the homepage entirely for v1 launch (no Coming
+                Soon placeholder — the card simply doesn't appear). When the
+                flag is set post-launch (?ff=trainers or
+                localStorage.setItem('rl_ff_trainers', '1')) the full
+                Nike-style card returns and becomes clickable into the
+                Featured Trainers list. */}
+            {trainersUnlocked && (
             <div
-              onClick={trainersUnlocked ? () => setSelectedGroup('partners') : undefined}
-              aria-disabled={!trainersUnlocked}
-              className={`transition-transform fade-slide-up ${trainersUnlocked ? 'cursor-pointer active:scale-[0.98]' : 'cursor-default'}`}
+              onClick={() => setSelectedGroup('partners')}
+              className="transition-transform fade-slide-up cursor-pointer active:scale-[0.98]"
               style={{
                 position: 'relative',
                 overflow: 'hidden',
@@ -6137,7 +6141,6 @@ export default function Workouts() {
                 background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
                 boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
                 animationDelay: '0ms',
-                opacity: trainersUnlocked ? 1 : 0.65,
               }}
             >
               {/* Purple accent bar — matches the trainer profile accent */}
@@ -6154,9 +6157,6 @@ export default function Workouts() {
               }} />
 
               <div style={{ position: 'relative', padding: '24px' }}>
-                <p className="text-[10px] uppercase font-light mb-2" style={{ color: 'rgba(168,85,247,0.7)', letterSpacing: '0.3em' }}>
-                  Coming Soon
-                </p>
                 <h3
                   className="text-[28px] font-black text-white leading-[0.9] tracking-tight"
                   style={{ fontFamily: 'system-ui', textShadow: '0 2px 20px rgba(0,0,0,0.5)' }}
@@ -6166,16 +6166,15 @@ export default function Workouts() {
                 <p className="text-[11px] text-white/40 font-light mt-3 max-w-[280px] leading-relaxed">
                   Follow guided programs from certified coaches.
                 </p>
-                {trainersUnlocked && (
-                  <div className="flex items-center gap-1.5 mt-4">
-                    <span className="text-[10px] text-white/40 uppercase font-medium" style={{ letterSpacing: '0.2em' }}>Explore</span>
-                    <svg className="w-3 h-3 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                    </svg>
-                  </div>
-                )}
+                <div className="flex items-center gap-1.5 mt-4">
+                  <span className="text-[10px] text-white/40 uppercase font-medium" style={{ letterSpacing: '0.2em' }}>Explore</span>
+                  <svg className="w-3 h-3 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </div>
               </div>
             </div>
+            )}
 
             {/* Stats & Streak card moved to Profile page. */}
             {/* Stacked Paper PR Cards moved to the Brainstorm page. */}
