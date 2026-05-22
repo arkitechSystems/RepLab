@@ -5525,7 +5525,7 @@ export default function Workouts() {
                   FEATURED WORKOUTS
                 </h3>
                 <p className="text-[11px] text-white/40 font-light mt-3 max-w-[280px] leading-relaxed">
-                  Guided sessions, hand-picked programs, and signature workouts from REPLAB.
+                  REPLAB signature programs &mdash; guided sessions with video demos.
                 </p>
                 {featuredUnlocked && (
                   <div className="flex items-center gap-1.5 mt-4">
