@@ -132,12 +132,21 @@ export default function LandingPageTest() {
           <div className="text-xl font-black tracking-widest">
             REP<span className="text-wf-red">LAB</span>
           </div>
-          <button
-            onClick={() => navigate(isAuthenticated ? '/app' : '/login')}
-            className="text-xs font-bold uppercase tracking-wider px-4 py-2 rounded-full border border-white/20 hover:border-white/40 active:scale-95 transition-all"
-          >
-            {isAuthenticated ? 'Open App' : 'Log In'}
-          </button>
+          <div className="flex items-center gap-4">
+            {/* Language selector — visual only, no handler yet. Active state
+                is hardcoded to EN until the i18n wiring lands. */}
+            <div className="text-[11px] font-semibold tracking-wider flex items-center gap-2 select-none">
+              <span className="text-white">EN</span>
+              <span className="text-white/20">|</span>
+              <span className="text-white/30">ES</span>
+            </div>
+            <button
+              onClick={() => navigate(isAuthenticated ? '/app' : '/login')}
+              className="text-xs font-bold uppercase tracking-wider px-4 py-2 rounded-full border border-white/20 hover:border-white/40 active:scale-95 transition-all"
+            >
+              {isAuthenticated ? 'Open App' : 'Log In'}
+            </button>
+          </div>
         </div>
       </nav>
 
