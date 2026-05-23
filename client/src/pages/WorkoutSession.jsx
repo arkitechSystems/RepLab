@@ -1158,6 +1158,11 @@ export default function WorkoutSession() {
   function handleAddSet(exerciseKey, afterIdx) {
     setPersisted(false);
     structureSaveNeeded.current = true;
+    // Cards designated as a superset default new sets to setType='superset'.
+    // Read from current template state — supersetLabel isn't being mutated
+    // in this handler, so the outer closure value is current.
+    const tIdxOuter = findExIdx(template?.exercises || [], exerciseKey);
+    const isSupersetCard = tIdxOuter >= 0 && !!template.exercises[tIdxOuter].supersetLabel;
     setTemplate((prev) => {
       const tIdx = findExIdx(prev.exercises, exerciseKey);
       if (tIdx < 0) return prev;
@@ -1180,6 +1185,7 @@ export default function WorkoutSession() {
       const exEntries = prev[exerciseKey] || [];
       const refEntry = exEntries[afterIdx ?? exEntries.length - 1];
       const newEntry = { weight: refEntry?.weight ?? '', reps: '' };
+      if (isSupersetCard) newEntry.setType = 'superset';
       const insertAt = afterIdx !== undefined ? afterIdx + 1 : exEntries.length;
       return {
         ...prev,
@@ -3983,15 +3989,29 @@ export default function WorkoutSession() {
         onSave={handleSaveCardio}
       />
 
-      {/* Superset/circuit label picker — opened by long-pressing an exercise
-          name. Modal owns the two wheels; confirm/clear callbacks mutate
-          template.exercises and entries here in the parent. */}
+      {/* Superset/circuit label picker — opened by tapping an exercise name.
+          Modal owns the two wheels; confirm/clear callbacks mutate
+          template.exercises and entries here in the parent. usedLabels
+          excludes the current card so re-opening your own picker doesn't
+          flag your own label as a conflict. */}
       <SupersetPickerModal
         open={!!supersetPicker}
         initialLabel={(() => {
           if (!supersetPicker || !template) return '';
           const idx = findExIdx(template.exercises, supersetPicker.exerciseKey);
           return idx >= 0 ? (template.exercises[idx].supersetLabel || '') : '';
+        })()}
+        usedLabels={(() => {
+          if (!supersetPicker || !template?.exercises) return [];
+          const currentKey = supersetPicker.exerciseKey;
+          const out = [];
+          template.exercises.forEach((ex, i) => {
+            if (ex.isSectionHeader || !ex.supersetLabel) return;
+            const key = exKey(template.exercises, ex, i);
+            if (key === currentKey) return; // exclude self
+            out.push({ label: ex.supersetLabel, exerciseName: ex.name });
+          });
+          return out;
         })()}
         onConfirm={(label) => {
           if (supersetPicker) handleSetSupersetLabel(supersetPicker.exerciseKey, label);

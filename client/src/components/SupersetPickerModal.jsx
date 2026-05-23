@@ -16,6 +16,11 @@ import useFocusTrap from '../hooks/useFocusTrap.js';
 //                       the stored label but leave any per-set setType
 //                       overrides alone (the user might want to keep them).
 //   • onClose():        Cancel button OR backdrop tap. Discards changes.
+//   • usedLabels:       [{ label, exerciseName }, ...] of labels already in
+//                       use by OTHER cards in this session. The current
+//                       card's own label is excluded by the parent so a
+//                       user re-opening their own picker isn't blocked
+//                       from re-confirming the same label.
 //
 // Style follows the rest of the dark Nike-ish modal idiom (PlateCalculatorModal,
 // section-edit modal): 160deg gradient panel, 2px corners, red top accent bar,
@@ -30,21 +35,56 @@ function parseLabel(label) {
   return { letter, number };
 }
 
-export default function SupersetPickerModal({ open, initialLabel = '', onConfirm, onClear, onClose }) {
+// Suggest the next logical label when opening the picker on an UNLABELED
+// card. Walks A1, A2, A3, then B1, B2, B3, ..., G3 — capping each letter
+// at 3 because triplets are about as deep as supersets get in practice.
+// Once every primary slot is taken, spill over into A4..G7 before
+// defaulting to A1. Users can still dial anywhere on the wheels manually.
+function suggestNextLabel(usedLabels) {
+  const usedSet = new Set((usedLabels || []).map(u => u && u.label).filter(Boolean));
+  for (const L of LETTERS) {
+    for (let n = 1; n <= 3; n++) {
+      const candidate = `${L}${n}`;
+      if (!usedSet.has(candidate)) return candidate;
+    }
+  }
+  for (const L of LETTERS) {
+    for (let n = 4; n <= 7; n++) {
+      const candidate = `${L}${n}`;
+      if (!usedSet.has(candidate)) return candidate;
+    }
+  }
+  return 'A1';
+}
+
+export default function SupersetPickerModal({ open, initialLabel = '', usedLabels = [], onConfirm, onClear, onClose }) {
   const trapRef = useFocusTrap(open);
   const [letter, setLetter] = useState('A');
   const [number, setNumber] = useState('1');
 
-  // Reset wheel positions every time the modal opens. Without this, picking
-  // B2 → closing → re-opening on a card with no label would still show B2.
+  // Reset wheel positions every time the modal opens. Cards with an existing
+  // label open at that label; unlabeled cards open at the suggested next slot
+  // (A1 → A2 → A3 → B1 → ...). usedLabels is intentionally omitted from the
+  // deps — we want the suggestion captured once at open-time and not
+  // re-thrown if the parent re-renders with a new array reference mid-pick.
   useEffect(() => {
     if (!open) return;
-    const parsed = parseLabel(initialLabel);
+    const target = initialLabel || suggestNextLabel(usedLabels);
+    const parsed = parseLabel(target);
     setLetter(parsed.letter);
     setNumber(parsed.number);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialLabel]);
 
   if (!open) return null;
+
+  // Conflict check — every label is unique within a single workout session,
+  // so dialing onto a slot already used by another card disables Set and
+  // shows which card holds it. usedLabels excludes the current card's own
+  // label (handled in the parent), so re-confirming the same value never
+  // triggers a conflict.
+  const currentLabel = `${letter}${number}`;
+  const conflict = usedLabels.find(u => u && u.label === currentLabel);
 
   return (
     <div
@@ -132,6 +172,25 @@ export default function SupersetPickerModal({ open, initialLabel = '', onConfirm
             </div>
           </div>
 
+          {/* Conflict message — shown when the dialed label is already in
+              use by another card in this session. Sits between the wheels
+              and Clear so it's hard to miss as the user scrolls wheels. */}
+          {conflict && (
+            <div
+              role="alert"
+              className="mt-3 px-3 py-2 text-[11px] font-medium leading-snug"
+              style={{
+                borderRadius: '2px',
+                background: 'rgba(239,68,68,0.10)',
+                border: '1px solid rgba(239,68,68,0.35)',
+                color: 'rgba(255,200,200,0.95)',
+              }}
+            >
+              <span className="font-black uppercase tracking-wider mr-1" style={{ letterSpacing: '0.1em' }}>{currentLabel}</span>
+              is already used by <span className="font-bold">{conflict.exerciseName}</span>. Pick a different group.
+            </div>
+          )}
+
           {/* Clear button — lives BELOW the wheels so neither wheel has a "—"
               slot the user could accidentally pick. */}
           <button
@@ -154,18 +213,25 @@ export default function SupersetPickerModal({ open, initialLabel = '', onConfirm
         {/* Footer — Set + Cancel */}
         <div className="relative px-4 pb-4 pt-2 space-y-2 shrink-0 border-t border-white/5">
           <button
-            onClick={() => { onConfirm?.(`${letter}${number}`); onClose?.(); }}
-            className="w-full text-white font-bold uppercase active:scale-[0.98] transition-all"
+            onClick={() => { if (conflict) return; onConfirm?.(`${letter}${number}`); onClose?.(); }}
+            disabled={!!conflict}
+            aria-disabled={!!conflict}
+            className={`w-full text-white font-bold uppercase transition-all ${conflict ? 'cursor-not-allowed' : 'active:scale-[0.98]'}`}
             style={{
               letterSpacing: '0.15em',
               fontSize: '11px',
               padding: '14px',
               borderRadius: '2px',
-              background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
-              boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+              background: conflict
+                ? 'rgba(255,255,255,0.04)'
+                : 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+              boxShadow: conflict
+                ? 'inset 0 0 0 1px rgba(255,255,255,0.08)'
+                : '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+              color: conflict ? 'rgba(255,255,255,0.35)' : '#fff',
             }}
           >
-            Set {letter}{number}
+            {conflict ? `${letter}${number} Taken` : `Set ${letter}${number}`}
           </button>
           <button
             onClick={onClose}

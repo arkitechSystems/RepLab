@@ -38,6 +38,19 @@ function getRecent() {
   try { return JSON.parse(localStorage.getItem('replab_recent_exercises') || '[]'); } catch { return []; }
 }
 
+// Superset label letter -> ring color. Order mirrors the Week at a Glance
+// carousel's DAY_COLORS so the spectrum reads the same across the app:
+// A red, B orange, C yellow, D green, E blue, F purple, G pink.
+const SUPERSET_COLORS = {
+  A: '#ef4444',
+  B: '#f97316',
+  C: '#eab308',
+  D: '#22c55e',
+  E: '#3b82f6',
+  F: '#a855f7',
+  G: '#ec4899',
+};
+
 const SET_TYPES = [
   { value: 'warm_up',      short: 'WU',   label: 'Warm Up' },
   { value: 'touch_up',     short: 'TU',   label: 'Touch Up' },
@@ -278,7 +291,13 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
 
   return (
     <>
-    <div ref={cardRef} data-tutorial={dataTutorial ? 'exercise-card' : undefined} className={`${isDarkTheme ? 'exercise-card-transparent-test' : 'exercise-card-light-test'} glass-card${fullScreen ? ' min-h-full' : ' overflow-hidden rounded-xl mb-3'}${EXERCISE_CARD_GRADIENT_BORDER && !isDarkTheme && !fullScreen ? ' exercise-card-gradient-border' : ''}`} style={{ position: 'relative' }}>
+    <div ref={cardRef} data-tutorial={dataTutorial ? 'exercise-card' : undefined} className={`${isDarkTheme ? 'exercise-card-transparent-test' : 'exercise-card-light-test'} glass-card${fullScreen ? ' min-h-full' : ' overflow-hidden rounded-xl mb-3'}${EXERCISE_CARD_GRADIENT_BORDER && !isDarkTheme && !fullScreen ? ' exercise-card-gradient-border' : ''}`} style={{
+      position: 'relative',
+      // Colored inset ring tied to the superset letter — paints a visible
+      // group identifier without affecting layout. Falls back to the wf-red
+      // default if the label's first char isn't in the A-G map.
+      ...(exercise.supersetLabel ? { boxShadow: `inset 0 0 0 3px ${SUPERSET_COLORS[exercise.supersetLabel[0]] || '#ef4444'}` } : {}),
+    }}>
       {/* Viewfinder ⛶ row — sits slightly above the icon cluster
           (PRs / ⚖ / Demo) in the card header. Tap to enter full-screen
           mode for this exercise. Hidden in template mode and when the
