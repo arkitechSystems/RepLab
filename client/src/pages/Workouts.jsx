@@ -452,6 +452,11 @@ function WeekAtAGlanceCarousel({ templates = [] }) {
   const navigate = useNavigate();
   const [weekSchedule, setWeekSchedule] = useState([]);
   const [completedSessions, setCompletedSessions] = useState([]);
+  // Scroller ref so we can horizontally center today's card on mount.
+  // Without this, if today is late in the week (Fri/Sat), the card sits
+  // off-screen to the right and users have to manually scroll over.
+  const scrollerRef = useRef(null);
+  const didCenterRef = useRef(false);
 
   const { weekDates, todayStr } = useMemo(() => {
     const now = new Date();
@@ -479,6 +484,26 @@ function WeekAtAGlanceCarousel({ templates = [] }) {
     });
     return () => { cancelled = true; };
   }, [weekDates]);
+
+  // Center today's card horizontally on first render. Runs once after the
+  // schedule data lands (and the cards have therefore painted) — querying
+  // earlier would miss the today node. didCenterRef prevents the user's
+  // own scroll position from being clobbered on subsequent re-renders.
+  useEffect(() => {
+    if (didCenterRef.current) return;
+    if (!scrollerRef.current) return;
+    const todayEl = scrollerRef.current.querySelector('[data-today="1"]');
+    if (!todayEl) return;
+    const scroller = scrollerRef.current;
+    const scrollerRect = scroller.getBoundingClientRect();
+    const cardRect = todayEl.getBoundingClientRect();
+    // Where today's card currently sits, minus where it WOULD sit to be
+    // centered. scroller.scrollLeft adjusted by that delta = centered.
+    const cardCenter = cardRect.left - scrollerRect.left + cardRect.width / 2;
+    const target = scroller.scrollLeft + (cardCenter - scrollerRect.width / 2);
+    scroller.scrollTo({ left: Math.max(0, target), behavior: 'auto' });
+    didCenterRef.current = true;
+  }, [weekSchedule]);
 
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const monthShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -513,6 +538,7 @@ function WeekAtAGlanceCarousel({ templates = [] }) {
       </div>
 
       <div
+        ref={scrollerRef}
         className="-mx-4 px-4 flex gap-5 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-4"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
@@ -591,6 +617,7 @@ function WeekAtAGlanceCarousel({ templates = [] }) {
           return (
             <div
               key={date}
+              data-today={isToday ? '1' : undefined}
               className={`snap-start shrink-0 w-[190px] active:scale-[0.96] transition-transform${isToday ? ' today-white-glow-glance' : ''}`}
               style={{
                 position: 'relative',
