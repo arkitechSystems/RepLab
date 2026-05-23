@@ -3390,6 +3390,65 @@ export default function WorkoutSession() {
             </div>
 
             <div className="relative px-4 pb-4 space-y-2">
+              {/* Move Up / Move Down — reorder the section within the
+                  exercises array. Move Down is bounded by the last
+                  exercise index so the section can never end up after the
+                  Add Exercise button (which lives outside the array).
+                  Each tap updates sectionEditing.idx so subsequent moves
+                  step through the list while the modal stays open.
+                  Movement triggers structureSaveNeeded via handleMoveExercise. */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => {
+                    const from = sectionEditing.idx;
+                    const to = from - 1;
+                    if (to < 0) return;
+                    handleMoveExercise(from, to);
+                    setSectionEditing((prev) => ({ ...prev, idx: to }));
+                  }}
+                  disabled={sectionEditing.idx === 0}
+                  aria-label="Move section up"
+                  className="font-bold uppercase active:scale-[0.98] transition-all border border-white/15 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  style={{
+                    letterSpacing: '0.15em',
+                    fontSize: '11px',
+                    padding: '14px',
+                    borderRadius: '2px',
+                    background: 'rgba(255,255,255,0.04)',
+                    color: 'rgba(255,255,255,0.85)',
+                  }}
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                  </svg>
+                  Move Up
+                </button>
+                <button
+                  onClick={() => {
+                    const from = sectionEditing.idx;
+                    const to = from + 1;
+                    if (to >= template.exercises.length) return;
+                    handleMoveExercise(from, to);
+                    setSectionEditing((prev) => ({ ...prev, idx: to }));
+                  }}
+                  disabled={sectionEditing.idx >= template.exercises.length - 1}
+                  aria-label="Move section down"
+                  className="font-bold uppercase active:scale-[0.98] transition-all border border-white/15 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  style={{
+                    letterSpacing: '0.15em',
+                    fontSize: '11px',
+                    padding: '14px',
+                    borderRadius: '2px',
+                    background: 'rgba(255,255,255,0.04)',
+                    color: 'rgba(255,255,255,0.85)',
+                  }}
+                >
+                  Move Down
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+              </div>
               <button
                 onClick={() => handleSaveSection(sectionEditing.idx, sectionEditing.name, sectionEditing.notes)}
                 disabled={!sectionEditing.name.trim()}
