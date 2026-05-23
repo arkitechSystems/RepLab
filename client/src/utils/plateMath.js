@@ -22,12 +22,17 @@ export const BAR_OPTIONS = [
 // real plates (45 lb = tallest, 2.5 = shortest), and a label string
 // shown on the chip and the plate block. Ordered heaviest → lightest
 // for the greedy fill in computePlatesPerSide().
+// Plate colors match Olympic-style competition plates: 45 red, 25 dark
+// gray, 10 white, 5 dark gray. Heights stay proportional for at-a-glance
+// recognition on the bar visualization. 35 (women's bar plate) keeps the
+// IPF yellow for legibility; 2.5 micros stay red. Tokens align with the
+// plate-calc spec in the design handoff (Claude Design 2026-05-23).
 export const PLATES = [
-  { lb: 45,  color: '#1f2937', text: '#fff', height: 92, label: '45' },
+  { lb: 45,  color: '#e10600', text: '#fff', height: 92, label: '45' },
   { lb: 35,  color: '#fbbf24', text: '#000', height: 78, label: '35' },
-  { lb: 25,  color: '#16a34a', text: '#fff', height: 70, label: '25' },
+  { lb: 25,  color: '#444444', text: '#fff', height: 70, label: '25' },
   { lb: 10,  color: '#ffffff', text: '#000', height: 58, label: '10' },
-  { lb: 5,   color: '#3b82f6', text: '#fff', height: 48, label: '5' },
+  { lb: 5,   color: '#444444', text: '#fff', height: 48, label: '5' },
   { lb: 2.5, color: '#ef4444', text: '#fff', height: 40, label: '2.5' },
 ];
 

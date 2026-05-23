@@ -132,39 +132,88 @@ export default function PlateCalculatorModal({ open, initialWeight = 0, onUse, o
           </svg>
         </button>
 
-        {/* Body — scrolls if content exceeds modal height. Layout below
-            mirrors the /plate-calculator page section-for-section. */}
+        {/* Body — scrolls if content exceeds modal height. */}
         <div className="relative flex-1 overflow-y-auto p-5 pt-4 pr-7">
-          {/* Header: TOTAL WEIGHT + editable target inline */}
-          <div className="flex items-baseline mb-2">
-            <h2 id="plate-calc-modal-title" className="text-[20px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95', letterSpacing: '-0.02em' }}>
-              TOTAL WEIGHT
+          {/* Header: title + current bar config subtitle (read-only;
+              the bar selector chips lower in the modal change the value). */}
+          <div className="mb-4">
+            <h2 id="plate-calc-modal-title" className="text-[16px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: 1, letterSpacing: '-0.01em' }}>
+              Plate Calc
             </h2>
-            <div className="flex-1 flex items-baseline justify-center gap-1.5">
-              <input
-                type="number"
-                inputMode="decimal"
-                min="0"
-                step="2.5"
-                value={target}
-                onChange={(e) => setTarget(e.target.value)}
-                onFocus={(e) => e.target.select()}
-                className="bg-transparent font-black tracking-tight focus:outline-none tabular-nums text-center"
+            <p className="text-[11px] text-white/40 font-medium mt-1" style={{ letterSpacing: '0.04em' }}>
+              {bar > 0 ? `Barbell · ${bar} LB` : 'Machine · no bar'}
+            </p>
+          </div>
+
+          {/* Target weight — big Anton number with - on the left and + on
+              the right. Buttons drive adjustTarget which uses the
+              currently-selected plate size + the sides multiplier (so on
+              Both Sides, one tap adds two plates). The input is invisibly
+              overlaid on the number for direct keypad entry. */}
+          <div className="mb-4">
+            <p className="text-[10px] uppercase font-bold text-white/40 text-center mb-2" style={{ letterSpacing: '0.3em' }}>
+              Target Weight
+            </p>
+            <div className="flex items-center justify-center gap-3">
+              <button
+                onClick={() => adjustTarget(-1)}
+                disabled={!canDecrement}
+                aria-label={`Remove ${selectedPlate} lb plate`}
+                className={`shrink-0 w-11 h-11 flex items-center justify-center transition-transform ${canDecrement ? 'text-white/80 active:scale-90' : 'text-white/25 cursor-not-allowed'}`}
                 style={{
-                  // Inline fontSize required — same reason as the page
-                  // version: index.css's input[type=number] { font-size: 16px }
-                  // wins against Tailwind text-[Xpx].
-                  fontSize: 34,
-                  lineHeight: 0.95,
-                  fontFamily: 'system-ui',
-                  letterSpacing: '-0.02em',
-                  color: '#ef4444',
-                  width: `${Math.max(2, String(target || '0').length) * 0.62}em`,
-                  minWidth: '1.5em',
+                  background: 'rgba(255,255,255,0.05)',
+                  boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.10)',
+                  borderRadius: '2px',
+                  opacity: canDecrement ? 1 : 0.4,
                 }}
-                placeholder="0"
-              />
-              <span className="text-[12px] text-white/40 font-light">lbs</span>
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12h-15" />
+                </svg>
+              </button>
+
+              <div className="relative flex items-baseline" style={{ lineHeight: 0.95 }}>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="2.5"
+                  value={target}
+                  onChange={(e) => setTarget(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  className="bg-transparent font-black tracking-tight focus:outline-none tabular-nums text-center text-white"
+                  style={{
+                    // Inline fontSize defeats index.css's
+                    // input[type=number] { font-size: 16px } default. Anton
+                    // is the design system's display face for big numerics.
+                    fontFamily: "'Anton', system-ui, sans-serif",
+                    fontSize: 64,
+                    lineHeight: 0.95,
+                    letterSpacing: '0.01em',
+                    width: `${Math.max(2, String(target || '0').length) * 0.58}em`,
+                    minWidth: '1.5em',
+                  }}
+                  placeholder="0"
+                />
+                <span className="text-[18px] text-white/45 font-medium ml-1" style={{ fontFamily: "'Anton', system-ui, sans-serif", letterSpacing: '0.04em' }}>
+                  LB
+                </span>
+              </div>
+
+              <button
+                onClick={() => adjustTarget(+1)}
+                aria-label={`Add ${selectedPlate} lb plate`}
+                className="shrink-0 w-11 h-11 flex items-center justify-center text-white active:scale-90 transition-transform"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+                  boxShadow: '0 4px 12px rgba(239,68,68,0.30), inset 0 1px 0 rgba(255,255,255,0.15)',
+                  borderRadius: '2px',
+                }}
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+              </button>
             </div>
           </div>
 
@@ -235,49 +284,11 @@ export default function PlateCalculatorModal({ open, initialWeight = 0, onUse, o
               </div>
             </div>
 
-            {/* Bar + plates visual with +/- pinned at the RIGHT edge, to
-                match the /plate-calculator page exactly. Right padding
-                (52px) clears the button column with a 16px gap to the
-                bar; left padding (16px) mirrors the gap on the opposite
-                side. */}
+            {/* Bar + plates visual — +/- moved up to flank the target
+                weight, so the visualization centers freely now. */}
             {valid && (
               <div className="my-4 relative" style={{ minHeight: 100 }}>
-                {/* +/- adjust column — anchored to the RIGHT edge */}
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col gap-1.5 shrink-0 z-10">
-                  <button
-                    onClick={() => adjustTarget(+1)}
-                    aria-label={`Add ${selectedPlate} lb plate`}
-                    className="w-9 h-9 flex items-center justify-center text-white active:scale-90 transition-transform"
-                    style={{
-                      background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
-                      boxShadow: '0 4px 12px rgba(239,68,68,0.30), inset 0 1px 0 rgba(255,255,255,0.15)',
-                      borderRadius: '2px',
-                    }}
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => adjustTarget(-1)}
-                    disabled={!canDecrement}
-                    aria-label={`Remove ${selectedPlate} lb plate`}
-                    className={`w-9 h-9 flex items-center justify-center transition-transform ${canDecrement ? 'text-white/80 active:scale-90' : 'text-white/25 cursor-not-allowed'}`}
-                    style={{
-                      background: 'rgba(255,255,255,0.05)',
-                      boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.10)',
-                      borderRadius: '2px',
-                      opacity: canDecrement ? 1 : 0.4,
-                    }}
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12h-15" />
-                    </svg>
-                  </button>
-                </div>
-
-                {/* Centered bar + plates visual */}
-                <div className="flex items-center justify-center gap-2 h-full" style={{ paddingLeft: 16, paddingRight: 52, minHeight: 100 }}>
+                <div className="flex items-center justify-center gap-2 h-full" style={{ paddingLeft: 16, paddingRight: 16, minHeight: 100 }}>
                   {(mode === 'both' || bar === 0) && (
                     <div className="flex items-center" style={{ gap: 2 }}>
                       {plates.slice().reverse().map((p, i) =>
