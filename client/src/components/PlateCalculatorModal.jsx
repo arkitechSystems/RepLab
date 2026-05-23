@@ -101,7 +101,7 @@ export default function PlateCalculatorModal({ open, initialWeight = 0, onUse, o
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center px-4 pt-10"
+      className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6"
       onClick={onClose}
       role="dialog"
       aria-modal="true"

@@ -79,40 +79,85 @@ export default function PlateCalculator() {
           <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent)' }} />
           <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.10) 0%, transparent 60%)', filter: 'blur(40px)' }} />
           <div className="relative p-5 pt-2.5">
-            {/* Header row: title on the left, live total weight (red,
-                editable) on the right at the same display size as the
-                title so they read as a balanced pair. */}
-            <div className="flex items-baseline mb-2">
-              <h2 className="text-[24px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95', letterSpacing: '-0.02em' }}>
-                TOTAL WEIGHT
+            {/* Header: title + current bar config subtitle (read-only;
+                the bar selector chips lower change the value). Matches
+                the in-session PlateCalculatorModal so the two surfaces
+                read as one calculator. */}
+            <div className="mb-4">
+              <h2 className="text-[16px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: 1, letterSpacing: '-0.01em' }}>
+                Plate Calc
               </h2>
-              <div className="flex-1 flex items-baseline justify-center gap-1.5">
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  step="2.5"
-                  value={target}
-                  onChange={(e) => setTarget(e.target.value)}
-                  onFocus={(e) => e.target.select()}
-                  className="bg-transparent font-black tracking-tight focus:outline-none tabular-nums text-center"
+              <p className="text-[11px] text-white/40 font-medium mt-1" style={{ letterSpacing: '0.04em' }}>
+                {bar > 0 ? `Barbell · ${bar} LB` : 'Machine · no bar'}
+              </p>
+            </div>
+
+            {/* Target weight — big Anton number with - on the left and +
+                on the right. Buttons drive adjustTarget which uses the
+                currently-selected plate size + the sides multiplier. */}
+            <div className="mb-4">
+              <p className="text-[10px] uppercase font-bold text-white/40 text-center mb-2" style={{ letterSpacing: '0.3em' }}>
+                Target Weight
+              </p>
+              <div className="flex items-center justify-center gap-3">
+                <button
+                  onClick={() => adjustTarget(-1)}
+                  disabled={!canDecrement}
+                  aria-label={`Remove ${selectedPlate} lb plate`}
+                  className={`shrink-0 w-11 h-11 flex items-center justify-center transition-transform ${canDecrement ? 'text-white/80 active:scale-90' : 'text-white/25 cursor-not-allowed'}`}
                   style={{
-                    // Inline fontSize is required: the global
-                    // `input[type="number"] { font-size: 16px }` rule
-                    // in index.css has higher specificity than any
-                    // Tailwind text-[Xpx] class, so a className-based
-                    // size silently does nothing here. Inline style wins.
-                    fontSize: 41,
-                    lineHeight: 0.95,
-                    fontFamily: 'system-ui',
-                    letterSpacing: '-0.02em',
-                    color: '#ef4444',
-                    width: `${Math.max(2, String(target || '0').length) * 0.62}em`,
-                    minWidth: '1.5em',
+                    background: 'rgba(255,255,255,0.05)',
+                    boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.10)',
+                    borderRadius: '2px',
+                    opacity: canDecrement ? 1 : 0.4,
                   }}
-                  placeholder="0"
-                />
-                <span className="text-[14px] text-white/40 font-light">lbs</span>
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12h-15" />
+                  </svg>
+                </button>
+
+                <div className="relative flex items-baseline" style={{ lineHeight: 0.95 }}>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="2.5"
+                    value={target}
+                    onChange={(e) => setTarget(e.target.value)}
+                    onFocus={(e) => e.target.select()}
+                    className="bg-transparent font-black tracking-tight focus:outline-none tabular-nums text-center text-white"
+                    style={{
+                      // Inline fontSize defeats index.css's
+                      // input[type=number] { font-size: 16px } default.
+                      fontFamily: "'Anton', system-ui, sans-serif",
+                      fontSize: 64,
+                      lineHeight: 0.95,
+                      letterSpacing: '0.01em',
+                      width: `${Math.max(2, String(target || '0').length) * 0.58}em`,
+                      minWidth: '1.5em',
+                    }}
+                    placeholder="0"
+                  />
+                  <span className="text-[18px] text-white/45 font-medium ml-1" style={{ fontFamily: "'Anton', system-ui, sans-serif", letterSpacing: '0.04em' }}>
+                    LB
+                  </span>
+                </div>
+
+                <button
+                  onClick={() => adjustTarget(+1)}
+                  aria-label={`Add ${selectedPlate} lb plate`}
+                  className="shrink-0 w-11 h-11 flex items-center justify-center text-white active:scale-90 transition-transform"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+                    boxShadow: '0 4px 12px rgba(239,68,68,0.30), inset 0 1px 0 rgba(255,255,255,0.15)',
+                    borderRadius: '2px',
+                  }}
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                </button>
               </div>
             </div>
 
@@ -187,58 +232,14 @@ export default function PlateCalculator() {
               </div>
             </div>
 
-            {/* Bar + plates visual with +/- adjustment pinned at the far
-                right. The +/- column is absolutely positioned so it stays
-                anchored when plates are added/removed (the centered bar
-                visual would otherwise re-flow and shift the buttons).
-                In one-side mode we hide the left half of the bar so the
-                user can visualize a single-end load (landmine, T-bar).
-                In no-bar mode we render a small leg press machine icon
-                in the middle instead of the bar. */}
+            {/* Bar + plates visual — +/- moved up to flank the target
+                weight, so the visualization centers freely. In one-side
+                mode the left half of the bar hides for landmine / T-bar
+                loads. In no-bar (machine) mode a leg press icon stands
+                in for the bar. */}
             {valid && (
               <div className="my-5 relative" style={{ minHeight: 110 }}>
-                {/* +/- adjust column — anchored to the far right edge of
-                    the row so it doesn't drift as the bar+plates re-center. */}
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col gap-1.5 shrink-0 z-10">
-                  <button
-                    onClick={() => adjustTarget(+1)}
-                    aria-label={`Add ${selectedPlate} lb plate`}
-                    className="w-9 h-9 flex items-center justify-center text-white active:scale-90 transition-transform"
-                    style={{
-                      background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
-                      boxShadow: '0 4px 12px rgba(239,68,68,0.30), inset 0 1px 0 rgba(255,255,255,0.15)',
-                      borderRadius: '2px',
-                    }}
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => adjustTarget(-1)}
-                    disabled={!canDecrement}
-                    aria-label={`Remove ${selectedPlate} lb plate`}
-                    className={`w-9 h-9 flex items-center justify-center transition-transform ${canDecrement ? 'text-white/80 active:scale-90' : 'text-white/25 cursor-not-allowed'}`}
-                    style={{
-                      background: 'rgba(255,255,255,0.05)',
-                      boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.10)',
-                      borderRadius: '2px',
-                      opacity: canDecrement ? 1 : 0.4,
-                    }}
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12h-15" />
-                    </svg>
-                  </button>
-                </div>
-
-                {/* Centered bar + plates visual. Right padding (52px) clears
-                    the absolute +/- column with a 16px gap to the bar.
-                    Left padding mirrors that 16px gap to the card edge,
-                    so the bar sits visually centered between the left
-                    edge of the card and the left edge of the +/- buttons
-                    rather than the geometric center of the full row. */}
-                <div className="flex items-center justify-center gap-2 h-full" style={{ paddingLeft: 16, paddingRight: 52, minHeight: 110 }}>
+                <div className="flex items-center justify-center gap-2 h-full" style={{ paddingLeft: 16, paddingRight: 16, minHeight: 110 }}>
                   {/* Left side plates — hidden in one-side mode (landmine
                       / single-end load). Always visible in machine mode
                       (bar === 0) since plate-loaded machines load on
