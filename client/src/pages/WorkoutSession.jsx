@@ -3809,20 +3809,21 @@ export default function WorkoutSession() {
       {/* Add Exercise Modal */}
       {showAddExercise && (() => {
         const allExercises = allExercisesFromDB;
-        const existingNames = new Set(template.exercises.map((ex) => ex.name));
+        // Duplicate exercise names are explicitly allowed in a session —
+        // the data layer disambiguates with exKey() (`Bench Press::1`,
+        // etc.) so two Bench Press cards can co-exist with independent
+        // sets. The Add Exercise modal previously filtered out anything
+        // already in the workout, blocking common cases like supersets
+        // and second-attempt entries. `seen` still de-dupes the library
+        // listing itself (custom + library can collide on name).
         const q = addExerciseSearch.toLowerCase();
         const muscleFilter = addExerciseMuscleFilter;
         const matchesMuscleFilter = (ex) => muscleFilter === 'all' || ex.muscle === muscleFilter;
         const seen = new Set();
-        // Pre-filter by muscle so both the search-results path and the
-        // browse-by-muscle path respect the active filter pill.
         const muscleScoped = allExercises.filter(matchesMuscleFilter);
-        // No cap — the modal body is `overflow-y-auto flex-1` so the user
-        // can scroll through every matching exercise. Capping previously
-        // hid most of the library behind the first 12 results.
         const filtered = q
           ? muscleScoped.filter((ex) => {
-              if (existingNames.has(ex.name) || seen.has(ex.name)) return false;
+              if (seen.has(ex.name)) return false;
               seen.add(ex.name);
               return ex.name.toLowerCase().includes(q);
             })
@@ -3831,7 +3832,7 @@ export default function WorkoutSession() {
         const muscleGroups = {};
         if (!q) {
           for (const ex of muscleScoped) {
-            if (existingNames.has(ex.name) || seen.has(ex.name)) continue;
+            if (seen.has(ex.name)) continue;
             seen.add(ex.name);
             if (!muscleGroups[ex.muscle]) muscleGroups[ex.muscle] = [];
             muscleGroups[ex.muscle].push(ex);
