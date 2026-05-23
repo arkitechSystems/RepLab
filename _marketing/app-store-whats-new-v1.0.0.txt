@@ -1,0 +1,16 @@
+Welcome to REPLAB v1.0.0 — the launch.
+
+If you train, you should track. This release ships the full lifter's logbook:
+
+• Log every set, rep, weight, rest, and set type (warmup, working, drop set, failure)
+• Personal bests by lift, by weight, and by volume — celebrated the moment you hit them
+• Full-screen workout mode — one exercise at a time, swipe between exercises, no clutter
+• Plate calculator + 1RM estimator built in
+• Library programs to drop into your schedule — including Jeff Nippard's Push Pull Legs
+• Build your own programs from scratch — reorder exercises, swap, share with friends
+• Workout summaries with total volume, set count, and time
+• Cross-device sync — iOS, Android, and the web all stay in step
+• Personalized daily reminders at your usual workout time
+• A weekly summary every Sunday so you can see the week you just shipped
+
+Train. Track. Share. Welcome to the lab.

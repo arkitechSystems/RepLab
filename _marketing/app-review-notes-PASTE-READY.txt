@@ -1,0 +1,54 @@
+DEMO ACCOUNT
+Email: apple-reviewer@replab-fitness.com
+Password: Reviewer2026!
+
+The account is pre-seeded with: Free-tier user, the "Jeff Nippard's Push Pull Legs" program assigned to the next 7 days, 3-4 already-logged sessions in the past week so Progress and History are non-empty on first load, and body metrics pre-filled (70in / 175lb / 15% BF / bench 225 / squat 315 / deadlift 405).
+
+90-SECOND TEST FLOW
+1. Open the app. The iOS push permission prompt may appear; allow or deny — every feature works either way.
+2. Sign in with the credentials above.
+3. The Workouts tab shows the workout assigned for today. Tap into it.
+4. Tap any exercise card — set rows are tappable to mark complete. Long-press a weight value (or tap the "PC" button) to open the Plate Calculator.
+5. Tap the viewfinder icon on any exercise card for Full-Screen Workout Mode (one exercise at a time, swipe between).
+6. Mark a few sets complete, then tap Finish Workout. A new personal best is auto-detected.
+7. Open Progress (bottom nav) to see the new session and the new PR.
+8. Open Profile to verify account management (Export My Data, Delete Account, sign out, legal links).
+
+COMING SOON SECTIONS (gated for v1, not unfinished)
+Three sections render as non-interactive "Coming Soon" placeholders: Featured Workouts (including Will's Hypertrophy), Challenges, and Trainers. These are localStorage feature-flag gated (rl_ff_featured / rl_ff_challenges / rl_ff_trainers). The reviewer's device has a fresh keychain so the sections are locked from their perspective. The features exist in the codebase and will be enabled in a subsequent release.
+
+ACCOUNT DELETION (Guideline 5.1.1(v))
+Path: Profile tab > Delete Account button (below Sign Out).
+Confirmation: user re-enters their account password AND types the literal word DELETE into the confirmation field.
+Effect: immediate hard delete with CASCADE across 24 dependent tables (programs, templates, sessions, personal bests, schedule, metrics, feedback, subscriptions, push tokens, etc.). Custom exercises the user authored are anonymized (created_by set to NULL) rather than deleted, since other users may have copied them into templates.
+Endpoint: DELETE /auth/delete-account (password-verified).
+
+A full JSON data export is also available from the same screen via GET /auth/export-data.
+
+IOS PAYMENTS (Guideline 3.1.1)
+REPLAB v1 ships free-tier-only on iOS. All Stripe checkout paths are hidden when Capacitor.getPlatform() === 'ios'. The /upgrade screen renders informationally so iOS users can see what Pro and Elite contain, but no purchase or subscribe button is exposed. The AI Workout Generator is a Pro feature and therefore not reachable from the iOS Free build. In-app purchase via StoreKit is planned for a subsequent release.
+
+BRAND
+The app uses mixed-case "RepLab" on the iOS home-screen label (CFBundleDisplayName) and all-caps "REPLAB" in the App Store listing. Both are intentional brand decisions.
+
+ENCRYPTION
+The app uses only standard HTTPS for all network traffic. We claim the standard encryption-export exemption (Category 5 Part 2 Note 4 — using only encryption already exempted from EAR jurisdiction).
+
+THIRD-PARTY SERVICES
+- Anthropic Claude API (AI Workout Generator, Pro-only — not reachable on iOS Free)
+- Resend (transactional email)
+- Firebase Cloud Messaging (push notifications)
+- Sentry (error monitoring, no PII, sendDefaultPii: false)
+- PostHog (product analytics, identified-users only)
+- Stripe (billing, web + Android only — hidden on iOS)
+- Render (application hosting + PostgreSQL)
+
+LINKS
+Privacy policy: https://replab-fitness.com/privacy
+Terms of service: https://replab-fitness.com/terms
+Support: https://replab-fitness.com/support
+
+CONTACT
+Developer email: wmartin@phgworks.com
+Support email: support@replab-fitness.com
+Phone: +1 (682) 999-4947
