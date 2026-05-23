@@ -110,6 +110,14 @@ export default function WorkoutSession() {
   const [sessionId, setSessionId] = useState(null);
   const [cardioEntries, setCardioEntries] = useState([]);
   const [showAddCardio, setShowAddCardio] = useState(false);
+  // In-session section header creation. Headers are organizational dividers
+  // that group exercises (e.g. "Superset A", "Warmup", "Main Lifts"). They
+  // append to the end of template.exercises and the user reorders via the
+  // existing move/swap controls. Long-press on the resulting card opens the
+  // edit/delete modal (sectionEditing state).
+  const [showAddSection, setShowAddSection] = useState(false);
+  const [addSectionName, setAddSectionName] = useState('');
+  const addSectionTrapRef = useFocusTrap(showAddSection);
   const [autoFilled, setAutoFilled] = useState(new Set()); // tracks predicted entries
   // Tracks per-field user edits so autofill never clobbers a value the user
   // explicitly typed. Keys are `${exerciseKey}-${setIdx}:${field}` where field
@@ -1316,6 +1324,27 @@ export default function WorkoutSession() {
         });
       },
     });
+  }
+
+  // Insert a section-header row at the END of the exercises list. Users
+  // typically tap "Add Section Header" first, then add the exercises that
+  // belong under it — those exercises also append at the end (or after a
+  // specific card via the inline + button), so the resulting flow is
+  // header → exercise → exercise. Drag-reorder is available for repositioning.
+  function handleAddSectionHeader() {
+    const name = addSectionName.trim();
+    if (!name) return;
+    setPersisted(false);
+    structureSaveNeeded.current = true;
+    setTemplate((prev) => ({
+      ...prev,
+      exercises: [
+        ...prev.exercises,
+        { name, isSectionHeader: true, sectionNotes: '', sets: [] },
+      ],
+    }));
+    setAddSectionName('');
+    setShowAddSection(false);
   }
 
   function handleAddExercise(name, afterIndex) {
@@ -3760,6 +3789,30 @@ export default function WorkoutSession() {
           </button>
         )}
 
+        {/* Add Section Header Button — sits between Add Exercise and Add
+            Cardio. Section headers are organizational dividers used to
+            group exercises (supersets, warmup, main lifts). Neutral
+            border + label so it visually reads as "structural" rather
+            than action-y like Exercise (red on press) or Cardio (cyan). */}
+        {!structureLocked && (
+          <button
+            onClick={() => { setShowAddSection(true); setAddSectionName(''); }}
+            className="w-full border border-dashed rounded-xl py-3.5 text-sm font-medium transition-colors flex items-center justify-center gap-2 mb-3"
+            style={cardTheme === 'dark' ? {
+              borderColor: 'rgba(0,0,0,0.30)',
+              color: 'rgba(0,0,0,0.60)',
+            } : {
+              borderColor: 'rgba(255,255,255,0.25)',
+              color: 'rgba(255,255,255,0.65)',
+            }}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h10M4 18h16" />
+            </svg>
+            Add Section Header
+          </button>
+        )}
+
         {/* Cardio section — saved entries render here, Add Cardio button at
             the bottom. Hidden during read-only mode (e.g., reviewing a
             completed session) since the user shouldn't be modifying it. */}
@@ -3805,6 +3858,92 @@ export default function WorkoutSession() {
         onClose={() => setShowAddCardio(false)}
         onSave={handleSaveCardio}
       />
+
+      {/* Add Section Header Modal — single text input + Save/Cancel. Submits
+          on Enter so users can flow keyboard-only. Focus trap wraps the
+          panel so Tab cycles within it. */}
+      {showAddSection && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center px-4 pt-24"
+          onClick={() => setShowAddSection(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ws-add-section-title"
+        >
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <div
+            ref={addSectionTrapRef}
+            className="relative w-full max-w-sm overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+              borderRadius: '2px',
+              boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+            }}
+          >
+            <div className="h-[3px] shrink-0" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent)' }} />
+            <div className="px-5 pt-5 pb-3">
+              <div className="flex items-center justify-between mb-3">
+                <h3 id="ws-add-section-title" className="text-lg font-bold text-white">Add Section Header</h3>
+                <button
+                  onClick={() => setShowAddSection(false)}
+                  aria-label="Close"
+                  className="text-wf-gray-400 active:opacity-70"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <p className="text-[11px] text-white/40 font-light mb-3 leading-relaxed">
+                Section headers group the exercises that follow them. Useful for supersets, warmups, or main-lift blocks. Long-press the header later to rename or delete it.
+              </p>
+              <input
+                type="text"
+                aria-label="Section name"
+                value={addSectionName}
+                onChange={(e) => setAddSectionName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && addSectionName.trim()) handleAddSectionHeader(); }}
+                placeholder="e.g. Superset A, Warmup, Main Lifts"
+                autoFocus
+                ref={iosFocusRef}
+                className="w-full glass-input rounded-xl px-4 py-3 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none transition-all"
+              />
+            </div>
+            <div className="px-4 pb-4 pt-2 space-y-2 border-t border-white/5">
+              <button
+                onClick={handleAddSectionHeader}
+                disabled={!addSectionName.trim()}
+                className="w-full text-white font-bold uppercase active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  letterSpacing: '0.15em',
+                  fontSize: '11px',
+                  padding: '14px',
+                  borderRadius: '2px',
+                  background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+                  boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+                }}
+              >
+                Add Section
+              </button>
+              <button
+                onClick={() => setShowAddSection(false)}
+                className="w-full font-bold uppercase active:scale-[0.98] transition-all border border-white/15"
+                style={{
+                  letterSpacing: '0.15em',
+                  fontSize: '11px',
+                  padding: '14px',
+                  borderRadius: '2px',
+                  background: 'rgba(255,255,255,0.04)',
+                  color: 'rgba(255,255,255,0.85)',
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Exercise Modal */}
       {showAddExercise && (() => {
