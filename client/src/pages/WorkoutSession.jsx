@@ -20,6 +20,7 @@ import { beepCountdown, beepRestEnd, initAudio } from '../utils/sounds';
 import { track } from '../utils/analytics';
 import AddCardioModal from '../components/AddCardioModal';
 import CardioCard from '../components/CardioCard';
+import SupersetPickerModal from '../components/SupersetPickerModal';
 import useFocusTrap from '../hooks/useFocusTrap';
 import { BibleVerseOverlay } from './BibleVerses';
 import { pickNextVerse } from '../utils/versePicker';
@@ -118,6 +119,11 @@ export default function WorkoutSession() {
   const [showAddSection, setShowAddSection] = useState(false);
   const [addSectionName, setAddSectionName] = useState('');
   const addSectionTrapRef = useFocusTrap(showAddSection);
+  // Superset/circuit label picker. null = closed; { exerciseKey } = open for
+  // that card. State lives at the session level (not on the card) because
+  // applying a label mutates template.exercises + entries, and the parent
+  // owns both.
+  const [supersetPicker, setSupersetPicker] = useState(null);
   const [autoFilled, setAutoFilled] = useState(new Set()); // tracks predicted entries
   // Tracks per-field user edits so autofill never clobbers a value the user
   // explicitly typed. Keys are `${exerciseKey}-${setIdx}:${field}` where field
@@ -1347,6 +1353,59 @@ export default function WorkoutSession() {
     setShowAddSection(false);
   }
 
+  // Confirm handler from the two-wheel picker. Writes the label onto the
+  // exercise object AND flips every UNLOGGED entry's setType to 'superset'.
+  // Already-completed sets are left at whatever the user picked for them —
+  // those are durable history. The setType change is per-entry (not on
+  // exercise.setType) so the historical-fallback chain in ExerciseCard
+  // line 554 doesn't retroactively re-label completed sets.
+  function handleSetSupersetLabel(targetKey, label) {
+    if (!targetKey || !label) return;
+    setPersisted(false);
+    structureSaveNeeded.current = true;
+    setTemplate((prev) => {
+      if (!prev) return prev;
+      const tIdx = findExIdx(prev.exercises, targetKey);
+      if (tIdx < 0) return prev;
+      return {
+        ...prev,
+        exercises: prev.exercises.map((ex, i) => i === tIdx ? { ...ex, supersetLabel: label } : ex),
+      };
+    });
+    setEntries((prev) => {
+      const cur = prev[targetKey];
+      if (!cur || cur.length === 0) return prev;
+      const next = cur.map((entry, idx) => {
+        const key = `${targetKey}-${idx}`;
+        if (completedSets.has(key)) return entry; // leave logged sets alone
+        return { ...(entry || {}), setType: 'superset' };
+      });
+      return { ...prev, [targetKey]: next };
+    });
+  }
+
+  // Clear handler — wipe the label only. Setting an entry's setType back to
+  // 'straight' would erase a user's manual pick (e.g. they had this row as
+  // 'drop' already), so we leave the per-entry setTypes alone.
+  function handleClearSupersetLabel(targetKey) {
+    if (!targetKey) return;
+    setPersisted(false);
+    structureSaveNeeded.current = true;
+    setTemplate((prev) => {
+      if (!prev) return prev;
+      const tIdx = findExIdx(prev.exercises, targetKey);
+      if (tIdx < 0) return prev;
+      return {
+        ...prev,
+        exercises: prev.exercises.map((ex, i) => {
+          if (i !== tIdx) return ex;
+          const { supersetLabel: _drop, ...rest } = ex;
+          return rest;
+        }),
+      };
+    });
+  }
+
   function handleAddExercise(name, afterIndex) {
     if (!name?.trim()) return;
     setPersisted(false);
@@ -2047,6 +2106,10 @@ export default function WorkoutSession() {
           return {
             name: ex.name,
             setType: entries[eKey]?.find(e => e?.setType)?.setType || ex.setType || 'straight',
+            // Preserve superset/circuit grouping across save → reload. workout_data
+            // is JSONB so the server retains arbitrary fields; only the client's
+            // explicit-field map here would drop it.
+            ...(ex.supersetLabel ? { supersetLabel: ex.supersetLabel } : {}),
             sets: ex.sets.map((s, i) => {
               const entry = entries[eKey]?.[i];
               return {
@@ -2503,6 +2566,7 @@ export default function WorkoutSession() {
               cardioSelections={cardioSelections}
               onCardioChange={((_n, ...args) => handleCardioChange(fsKey, ...args))}
               cardTheme={cardTheme}
+              onOpenSupersetPicker={structureLocked ? undefined : (key) => setSupersetPicker({ exerciseKey: key })}
               /* No onEnterFullScreen here — already in full-screen mode.
                   Hides the viewfinder button on the card so the user doesn't
                   see a no-op control. */
@@ -3206,6 +3270,7 @@ export default function WorkoutSession() {
               onCardioChange={wrapCb(handleCardioChange)}
               cardTheme={cardTheme}
               onEnterFullScreen={() => setFullScreenIdx(idx)}
+              onOpenSupersetPicker={structureLocked ? undefined : (key) => setSupersetPicker({ exerciseKey: key })}
             />
             {/* Inline undo toast for deleted set — show below this exercise */}
             {undoToast && undoToast.type === 'set' && undoToast.exerciseName === eKey && (
@@ -3916,6 +3981,25 @@ export default function WorkoutSession() {
         open={showAddCardio}
         onClose={() => setShowAddCardio(false)}
         onSave={handleSaveCardio}
+      />
+
+      {/* Superset/circuit label picker — opened by long-pressing an exercise
+          name. Modal owns the two wheels; confirm/clear callbacks mutate
+          template.exercises and entries here in the parent. */}
+      <SupersetPickerModal
+        open={!!supersetPicker}
+        initialLabel={(() => {
+          if (!supersetPicker || !template) return '';
+          const idx = findExIdx(template.exercises, supersetPicker.exerciseKey);
+          return idx >= 0 ? (template.exercises[idx].supersetLabel || '') : '';
+        })()}
+        onConfirm={(label) => {
+          if (supersetPicker) handleSetSupersetLabel(supersetPicker.exerciseKey, label);
+        }}
+        onClear={() => {
+          if (supersetPicker) handleClearSupersetLabel(supersetPicker.exerciseKey);
+        }}
+        onClose={() => setSupersetPicker(null)}
       />
 
       {/* Add Section Header Modal — single text input + Save/Cancel. Submits

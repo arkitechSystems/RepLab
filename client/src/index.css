@@ -1200,3 +1200,20 @@ select:focus-visible {
   .splash-dot,
   .splash-tick { animation: none; }
 }
+
+/* Long-press targets that must not trigger iOS Safari's text-selection
+   callout ("Copy / Look Up / Share…"). Inline-style versions of these
+   properties are unreliable on iOS — the system gesture recognizer
+   sometimes wins the race. Stylesheet rules with !important applied to
+   both the element and its descendants are the most reliable defense. */
+.superset-press-target,
+.superset-press-target * {
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
+.superset-press-target {
+  touch-action: manipulation;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}

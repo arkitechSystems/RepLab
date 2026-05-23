@@ -81,7 +81,7 @@ function SortableSetRow({ id, disabled, children }) {
   );
 }
 
-function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onReorderSets, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, onShowPRs, note, onNoteChange, weightSuggestion, onApplySuggestion, allWorkoutExercises, lastEntries, forceShowDemo, mode = 'session', dataTutorial, showGoalWeight = true, showGoalReps = true, showSetType = true, exerciseNumber, cardioEnabled = false, cardioSelections, onCardioChange, cardTheme = 'light', onEnterFullScreen, fullScreen = false }) {
+function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onReorderSets, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, onShowPRs, note, onNoteChange, weightSuggestion, onApplySuggestion, allWorkoutExercises, lastEntries, forceShowDemo, mode = 'session', dataTutorial, showGoalWeight = true, showGoalReps = true, showSetType = true, exerciseNumber, cardioEnabled = false, cardioSelections, onCardioChange, cardTheme = 'light', onEnterFullScreen, fullScreen = false, onOpenSupersetPicker }) {
   // 'light' = #e8e8e8 card with dark text (default)
   // 'dark'  = transparent card, white text — page bg shows through
   const isDarkTheme = cardTheme === 'dark';
@@ -309,7 +309,26 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
           where every set might require referring back to the name + PRs. */}
       <div data-tutorial={dataTutorial} className="px-4 py-3 flex items-center justify-between sticky top-0 z-20 backdrop-blur-md" style={{ background: isDarkTheme ? 'rgba(20,20,20,0.9)' : 'rgba(242,242,242,0.9)', borderBottom: '3px double rgba(255,255,255,0.15)' }}>
         <div className="min-w-0">
-          <span className="text-[17px] font-bold text-white">{exercise.name}</span>
+          {onOpenSupersetPicker && !readOnly && !isTemplate ? (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onOpenSupersetPicker(exerciseKey || exercise.name); }}
+              aria-label={`Set superset group for ${exercise.name}`}
+              className="superset-press-target text-[17px] font-bold text-white text-left active:opacity-70 transition-opacity"
+            >
+              {exercise.supersetLabel ? (
+                <span className="text-wf-gray-500 mr-1">{exercise.supersetLabel} ·</span>
+              ) : null}
+              {exercise.name}
+            </button>
+          ) : (
+            <span className="text-[17px] font-bold text-white">
+              {exercise.supersetLabel ? (
+                <span className="text-wf-gray-500 mr-1">{exercise.supersetLabel} ·</span>
+              ) : null}
+              {exercise.name}
+            </span>
+          )}
           <div className="text-[10px] text-wf-gray-500 mt-0.5">
             {exercise.sets?.length || 0} sets{exercise.setType && exercise.setType !== 'straight' ? ` · ${exercise.setType.replace('_', ' ')}` : ''}
           </div>
