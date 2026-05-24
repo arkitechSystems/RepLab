@@ -2185,10 +2185,18 @@ export default function Workouts() {
     const program = enrichedPrograms.find((p) => p.id === selectedProgram);
     if (!program) return null;
 
+    // In My Workouts, hide rest-day templates from the program-detail list —
+    // they're scheduling placeholders, not workouts the user wants to see
+    // listed alongside their custom workouts. Browse (library) view keeps
+    // them so structured programs still show their full week shape.
+    const visibleTemplates = selectedGroup === 'my'
+      ? program.templates.filter((t) => !t.isRest)
+      : program.templates;
+
     // Group templates into weeks (7 days per week)
     const weeks = [];
-    for (let i = 0; i < program.templates.length; i += 7) {
-      weeks.push(program.templates.slice(i, i + 7));
+    for (let i = 0; i < visibleTemplates.length; i += 7) {
+      weeks.push(visibleTemplates.slice(i, i + 7));
     }
     // Show week picker when no week is selected
     if (selectedWeek === null) {
