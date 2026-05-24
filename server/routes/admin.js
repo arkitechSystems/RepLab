@@ -4727,6 +4727,7 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
     // treats as no-owner.
     const { rows } = await pool.query(
       `SELECT e.id, e.name, e.muscle_group, e.is_custom, e.tags, e.video_id,
+              e.video_linked_by,
               e.created_by, u.email AS owner_email, u.first_name AS owner_first
        FROM exercises e
        LEFT JOIN users u ON u.id = e.created_by
@@ -4742,6 +4743,7 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
       isCustom: e.is_custom,
       tags: e.tags || [],
       video_id: e.video_id || '',
+      videoLinkedBy: e.video_linked_by || '',
       ownerEmail: e.owner_email || '',
       ownerFirst: e.owner_first || '',
       createdBy: e.created_by,
@@ -4789,6 +4791,19 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
               ? `<div><span style="color:#22c55e;font-weight:600;">&#10003; Mapped</span><br><a href="https://www.youtube.com/watch?v=${videoId}" target="_blank" id="url-${e.id}" style="color:rgba(255,255,255,0.3);font-size:10px;font-family:monospace;text-decoration:none;word-break:break-all;" title="Click to open">youtube.com/watch?v=${videoId}</a></div>`
               : `<span style="color:#ef4444;font-weight:600;">No video</span>`
             }
+          </div>
+          <div class="linked-by-cell" style="flex-shrink:0;margin-right:12px;min-width:130px;">
+            <div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.35);font-weight:600;margin-bottom:2px;">Linked By</div>
+            <select
+              id="linked-by-${e.id}"
+              onchange="updateLinkedBy(${e.id}, this.value)"
+              aria-label="Who linked this video"
+              style="width:100%;padding:5px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:#111;color:#fff;font-size:11px;font-family:inherit;cursor:pointer;outline:none;"
+            >
+              <option value="" style="background:#111;" ${!e.videoLinkedBy ? 'selected' : ''}>&mdash;</option>
+              <option value="admin" style="background:#111;" ${e.videoLinkedBy === 'admin' ? 'selected' : ''}>Admin</option>
+              <option value="claude_code" style="background:#111;" ${e.videoLinkedBy === 'claude_code' ? 'selected' : ''}>Claude Code</option>
+            </select>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
             <input
@@ -4974,6 +4989,10 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
                   row.dataset.videoId = '';
                 }
               }
+              // Sync the linked-by dropdown — server stamped 'admin' for a new
+              // value or cleared to NULL when the video was removed.
+              var linkedBySelect = document.getElementById('linked-by-' + exerciseId);
+              if (linkedBySelect) linkedBySelect.value = videoId ? 'admin' : '';
               // Re-run filter so the row hides/shows based on the new state
               // (e.g. when "No Video" filter is active and the user just saved).
               if (typeof window.applyExerciseFilter === 'function') window.applyExerciseFilter();
@@ -4983,6 +5002,32 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
             }
           } catch (err) {
             alert('Failed to save: ' + err.message);
+          }
+        }
+
+        async function updateLinkedBy(exerciseId, value) {
+          var select = document.getElementById('linked-by-' + exerciseId);
+          var prev = select ? select.dataset.prevValue || '' : '';
+          try {
+            var resp = await fetch('/admin/exercise-library/linked-by/' + exerciseId, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ linkedBy: value || '' })
+            });
+            if (resp.ok) {
+              if (select) {
+                select.dataset.prevValue = value;
+                select.style.borderColor = '#22c55e';
+                setTimeout(function() { select.style.borderColor = 'rgba(255,255,255,0.1)'; }, 1200);
+              }
+            } else {
+              var data = await resp.json().catch(function() { return {}; });
+              alert(data.error || 'Failed to update linked-by');
+              if (select) select.value = prev;
+            }
+          } catch (err) {
+            alert('Failed to update linked-by: ' + err.message);
+            if (select) select.value = prev;
           }
         }
 
@@ -5611,15 +5656,52 @@ router.post('/exercise-library/merge', adminAuth, express.json(), async (req, re
   }
 });
 
-// PUT /admin/exercise-library/video/:id — Update video_id for an exercise
+// PUT /admin/exercise-library/video/:id — Update video_id for an exercise.
+// An admin manually editing the video automatically stamps video_linked_by as
+// 'admin' so the dashboard can distinguish hand-verified rows from
+// auto-linked ones. Clearing the video also clears the provenance.
 router.put('/exercise-library/video/:id', adminAuth, express.json(), async (req, res) => {
   try {
     const { videoId } = req.body;
-    await pool.query('UPDATE exercises SET video_id = $1 WHERE id = $2', [videoId || null, Number(req.params.id)]);
+    const trimmed = (videoId || '').trim();
+    if (trimmed) {
+      await pool.query(
+        `UPDATE exercises SET video_id = $1, video_linked_by = 'admin' WHERE id = $2`,
+        [trimmed, Number(req.params.id)]
+      );
+    } else {
+      await pool.query(
+        `UPDATE exercises SET video_id = NULL, video_linked_by = NULL WHERE id = $1`,
+        [Number(req.params.id)]
+      );
+    }
     res.json({ success: true });
   } catch (err) {
     console.error('Update video_id error:', err);
     res.status(500).json({ error: 'Failed to update video ID' });
+  }
+});
+
+// PUT /admin/exercise-library/linked-by/:id — Update video_linked_by alone.
+// Used by the dropdown in the Exercise Library table so the admin can flip
+// 'claude_code' to 'admin' after they've spot-checked an auto-linked video.
+// Accepts 'admin' | 'claude_code' | '' (empty clears to NULL).
+router.put('/exercise-library/linked-by/:id', adminAuth, express.json(), async (req, res) => {
+  try {
+    const { linkedBy } = req.body;
+    const allowed = ['admin', 'claude_code', '', null, undefined];
+    if (!allowed.includes(linkedBy)) {
+      return res.status(400).json({ error: "linkedBy must be 'admin', 'claude_code', or empty" });
+    }
+    const value = linkedBy === '' || linkedBy == null ? null : linkedBy;
+    await pool.query(
+      'UPDATE exercises SET video_linked_by = $1 WHERE id = $2',
+      [value, Number(req.params.id)]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Update video_linked_by error:', err);
+    res.status(500).json({ error: 'Failed to update linked-by' });
   }
 });
 

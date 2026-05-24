@@ -531,6 +531,12 @@ export default async function initDb() {
 
   // Video ID column for exercise YouTube videos
   await pool.query(`ALTER TABLE exercises ADD COLUMN IF NOT EXISTS video_id TEXT`);
+  // Provenance of the video link: 'admin' (manual) or 'claude_code' (auto-linked
+  // via server/scripts/auto-link-videos.js). NULL = unknown (rows linked
+  // before this column existed). Admin dashboard exposes a dropdown so the
+  // admin can recategorize after reviewing — e.g. flip 'claude_code' to
+  // 'admin' once verified.
+  await pool.query(`ALTER TABLE exercises ADD COLUMN IF NOT EXISTS video_linked_by TEXT`);
 
   // Streak-reminder push de-dupe: track when we last pinged a given user so
   // the scheduler doesn't double-send across overlapping ticks. 18h cooldown
