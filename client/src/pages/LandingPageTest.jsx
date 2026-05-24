@@ -528,9 +528,13 @@ export default function LandingPageTest() {
                 REPLAB is the lifter's logbook. Plan your splits, log every set, and chase progressive overload. No matter where you start, progress is built one workout at a time.
               </p>
               <div className="lp-hero-cta lp-fade lp-fade-3">
+                {/* Hero CTA — uses .btn-liquid (animated red <-> white gradient)
+                    like the Join Waiting List button so the most important
+                    action on the page reads as the most alive. .lp-btn-hero
+                    keeps the ~25% size bump. */}
                 <button
                   type="button"
-                  className="lp-btn lp-btn-red lp-btn-hero"
+                  className="lp-btn btn-liquid lp-btn-hero"
                   onClick={() => navigate(heroCta.target)}
                 >
                   {heroCta.label} <span className="lp-arrow">↗</span>
@@ -576,7 +580,7 @@ export default function LandingPageTest() {
         <div className="lp-container">
           <div className="lp-section-head">
             <h2>Built For<br />The Gym <span className="lp-red">Floor.</span></h2>
-            <p className="lp-desc">One-handed. Glove-friendly. Lock-screen ready. Every screen earns its place. The loop that matters — plan, log, progress — and nothing else.</p>
+            <p className="lp-desc">Log your sets, track your progress, and lean on the in-app utilities to enhance your workouts.</p>
           </div>
 
           <div className="lp-tour">
@@ -823,7 +827,7 @@ export default function LandingPageTest() {
                 <span className="lp-num">03</span>
                 <div>
                   <div className="lp-mtitle">Load.</div>
-                  <div className="lp-mdesc">Long-press any weight mid-session and REPLAB shows you the exact plates to load. Both Sides, One Side, Machine — handled.</div>
+                  <div className="lp-mdesc">Hit the PC button during workouts to access the plate calculator. Calculate how much weight is already on the bar or decide how much you need to load.</div>
                 </div>
               </div>
             </div>
