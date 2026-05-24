@@ -4758,7 +4758,7 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
         : '';
       const kindFilter = e.isCustom ? 'custom' : 'master';
       return `
-        <div class="ex-row" data-exercise-row data-id="${e.id}" data-name="${e.name.toLowerCase()}" data-muscle="${(e.muscle || '').toLowerCase()}" data-has-video="${videoId ? 'yes' : 'no'}" data-kind="${kindFilter}" data-is-custom="${e.isCustom ? '1' : '0'}">
+        <div class="ex-row" data-exercise-row data-id="${e.id}" data-name="${e.name.toLowerCase()}" data-muscle="${(e.muscle || '').toLowerCase()}" data-has-video="${videoId ? 'yes' : 'no'}" data-video-id="${(videoId || '').toLowerCase()}" data-kind="${kindFilter}" data-is-custom="${e.isCustom ? '1' : '0'}">
           <input
             type="checkbox"
             class="ex-merge-check"
@@ -4868,14 +4868,19 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
       </div>
 
       <div style="display:flex;gap:12px;margin-top:24px;align-items:center;flex-wrap:wrap;">
-        <input type="text" id="ex-search" placeholder="Search exercises..." aria-label="Search exercises" style="flex:1;min-width:200px;padding:10px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;" />
+        <input type="text" id="ex-search" placeholder="Search by exercise name or YouTube ID..." aria-label="Search exercises by name or YouTube ID" style="flex:1;min-width:200px;padding:10px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;" />
         <select id="ex-muscle-filter" aria-label="Filter by muscle group" style="padding:10px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:#111;color:#fff;font-size:14px;font-family:inherit;outline:none;">
           <option value="" style="background:#111;color:#fff;">All Muscles</option>
         </select>
-        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:rgba(255,255,255,0.5);cursor:pointer;white-space:nowrap;">
-          <input type="checkbox" id="ex-unmapped-only" style="accent-color:#ef4444;" />
-          Unmapped only
-        </label>
+      </div>
+
+      <!-- Video-status filter: All / Has Video / No Video. "No Video" is the
+           workflow for finding exercises that still need a YouTube link. -->
+      <div style="display:flex;gap:8px;margin-top:12px;align-items:center;flex-wrap:wrap;" role="group" aria-label="Filter by video status">
+        <span style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);font-weight:600;margin-right:4px;">Video:</span>
+        <button type="button" class="video-filter-btn" data-video-filter="all" aria-pressed="true" onclick="setVideoFilter('all')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(168,85,247,0.5);background:rgba(168,85,247,0.18);color:#c084fc;font-size:12px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:0.5px;">All</button>
+        <button type="button" class="video-filter-btn" data-video-filter="mapped" aria-pressed="false" onclick="setVideoFilter('mapped')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.7);font-size:12px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:0.5px;">&#10003; Has Video</button>
+        <button type="button" class="video-filter-btn" data-video-filter="unmapped" aria-pressed="false" onclick="setVideoFilter('unmapped')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.7);font-size:12px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:0.5px;">&#10007; No Video</button>
       </div>
 
       <div style="margin-top:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
@@ -4962,11 +4967,16 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
                 if (videoId) {
                   status.innerHTML = '<div><span style="color:#22c55e;font-weight:600;">&#10003; Mapped</span><br><a href="https://www.youtube.com/watch?v=' + videoId + '" target="_blank" style="color:rgba(255,255,255,0.3);font-size:10px;font-family:monospace;text-decoration:none;">youtube.com/watch?v=' + videoId + '</a></div>';
                   row.dataset.hasVideo = 'yes';
+                  row.dataset.videoId = videoId.toLowerCase();
                 } else {
                   status.innerHTML = '<span style="color:#ef4444;font-weight:600;">No video</span>';
                   row.dataset.hasVideo = 'no';
+                  row.dataset.videoId = '';
                 }
               }
+              // Re-run filter so the row hides/shows based on the new state
+              // (e.g. when "No Video" filter is active and the user just saved).
+              if (typeof window.applyExerciseFilter === 'function') window.applyExerciseFilter();
               // Flash green briefly
               input.style.borderColor = '#22c55e';
               setTimeout(function() { input.style.borderColor = 'rgba(255,255,255,0.1)'; }, 1500);
@@ -5150,11 +5160,26 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
           renderMergeBar();
         }
 
+        // Video-status filter is a 3-way toggle (all / mapped / unmapped).
+        // setVideoFilter is exposed on window so the inline onclick handlers
+        // can find it; it also restyles the buttons to mark the active one.
+        var videoFilter = 'all';
+        window.setVideoFilter = function(val) {
+          videoFilter = val;
+          document.querySelectorAll('.video-filter-btn').forEach(function(b) {
+            var active = b.dataset.videoFilter === val;
+            b.setAttribute('aria-pressed', active ? 'true' : 'false');
+            b.style.background = active ? 'rgba(168,85,247,0.18)' : 'rgba(255,255,255,0.03)';
+            b.style.borderColor = active ? 'rgba(168,85,247,0.5)' : 'rgba(255,255,255,0.1)';
+            b.style.color = active ? '#c084fc' : 'rgba(255,255,255,0.7)';
+          });
+          if (typeof window.applyExerciseFilter === 'function') window.applyExerciseFilter();
+        };
+
         (function() {
           const rows = document.querySelectorAll('.ex-row');
           const searchInput = document.getElementById('ex-search');
           const muscleFilter = document.getElementById('ex-muscle-filter');
-          const unmappedOnly = document.getElementById('ex-unmapped-only');
           const countEl = document.getElementById('ex-count');
 
           // Populate muscle filter
@@ -5170,22 +5195,28 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
           function applyFilter() {
             const q = searchInput.value.toLowerCase().trim();
             const muscle = muscleFilter.value;
-            const unmapped = unmappedOnly.checked;
             let shown = 0;
             rows.forEach(r => {
-              const matchName = !q || r.dataset.name.includes(q);
+              // Search matches name OR YouTube video ID — so pasting a video
+              // ID jumps straight to whichever exercise uses it.
+              const matchName = !q
+                || r.dataset.name.includes(q)
+                || (r.dataset.videoId || '').includes(q);
               const matchMuscle = !muscle || r.dataset.muscle === muscle;
-              const matchVideo = !unmapped || r.dataset.hasVideo === 'no';
+              let matchVideo = true;
+              if (videoFilter === 'mapped') matchVideo = r.dataset.hasVideo === 'yes';
+              else if (videoFilter === 'unmapped') matchVideo = r.dataset.hasVideo === 'no';
               const visible = matchName && matchMuscle && matchVideo;
               r.classList.toggle('hidden', !visible);
               if (visible) shown++;
             });
             countEl.textContent = 'Showing ' + shown + ' of ' + rows.length + ' exercises';
           }
+          // Expose so setVideoFilter (defined above this IIFE) can call back in.
+          window.applyExerciseFilter = applyFilter;
 
           searchInput.addEventListener('input', applyFilter);
           muscleFilter.addEventListener('change', applyFilter);
-          unmappedOnly.addEventListener('change', applyFilter);
           applyFilter();
 
           // Video modal
