@@ -890,21 +890,37 @@ function FilterPillsRow({ filters, value, onChange }) {
 }
 
 function ProgramCard({ program, idx, onSelect, onBegin, onDelete, onShare, dataTutorial, onNavigateFeatured }) {
+  // Nike-style face — matches the Browse Library LibraryFlipCard front face:
+  // dark linear gradient, 2px corner radius, 3px red accent stripe on top,
+  // ambient red spotlight, big uppercase title, deep shadow. Aligned 2026-05
+  // so My Workouts and the Browse Library share one visual treatment.
+  const FACE_BG = 'linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%)';
+  const FACE_BORDER = '1px solid rgba(255,255,255,0.10)';
+  const FACE_SHADOW = '0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)';
+  const accentColor = '#ef4444';
   return (
     <div
       data-tutorial={dataTutorial}
       onClick={() => program.isFeatured && onNavigateFeatured ? onNavigateFeatured() : onSelect(program.id)}
-      style={{ animationDelay: `${idx * 80}ms` }}
-      className="w-full text-left glass-card rounded-2xl overflow-hidden active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
+      style={{
+        animationDelay: `${idx * 80}ms`,
+        background: FACE_BG,
+        border: FACE_BORDER,
+        boxShadow: FACE_SHADOW,
+        borderRadius: '2px',
+      }}
+      className="relative w-full text-left overflow-hidden active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
     >
-      {/* Color strip */}
-      <div className="flex h-1.5">
-        {[...program.colorMap.values()].map((c, i) => (
-          <div key={i} className={`flex-1 ${c.dot}`} />
-        ))}
-      </div>
+      {/* Ambient red spotlight — fixed (no mouse-tracking) to keep the
+          static cards calm; matches the Browse face's red wash. */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: 'radial-gradient(circle at 80% 0%, rgba(239,68,68,0.18), transparent 55%)', borderRadius: '2px' }}
+      />
+      {/* 3px red accent stripe — same as the Browse LibraryFlipCard front. */}
+      <div className="h-[3px] relative" style={{ background: `linear-gradient(90deg, ${accentColor}, ${accentColor}40)` }} />
 
-      <div className="p-5">
+      <div className="relative p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
@@ -912,33 +928,38 @@ function ProgramCard({ program, idx, onSelect, onBegin, onDelete, onShare, dataT
                 <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">Featured</span>
               )}
               {program.programType && program.programType !== 'other' && (
-                <span className={`text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${
-                  program.programType === 'strength' ? 'bg-orange-500/20 text-orange-300 border-orange-500/30' :
-                  program.programType === 'hypertrophy' ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' :
-                  program.programType === 'hybrid' ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' :
-                  program.programType === 'conditioning' ? 'bg-green-500/20 text-green-300 border-green-500/30' :
-                  program.programType === 'strength_conditioning' ? 'bg-teal-500/20 text-teal-300 border-teal-500/30' :
-                  program.programType === 'hypertrophy_strength' ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' :
-                  program.programType === 'glute_focused' ? 'bg-pink-500/20 text-pink-300 border-pink-500/30' :
-                  'bg-white/10 text-wf-gray-400 border-white/10'
-                }`}>{
+                <span
+                  className="text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full"
+                  style={{ background: '#e8eaed', color: '#000000', boxShadow: '0 4px 12px rgba(255,255,255,0.10)' }}
+                >{
                   program.programType === 'strength_conditioning' ? 'Shred'
-                  : program.programType === 'hypertrophy_strength' ? 'Hypertrophy & Strength'
+                  : program.programType === 'hypertrophy_strength' ? 'Hyp & Str'
                   : program.programType === 'glute_focused' ? 'Glute-Focused'
                   : program.programType
                 }</span>
               )}
             </div>
-            <h2 className="text-xl font-black text-white tracking-tight uppercase">{program.name}</h2>
-            <p className="text-wf-gray-400 text-sm mt-1">
-              {program.weekCount} {program.weekCount === 1 ? 'week' : 'weeks'} &middot; {program.workoutCount} workouts
-            </p>
+            <h2
+              className="text-[22px] font-black text-white tracking-tight uppercase leading-[1.05] line-clamp-3"
+              style={{ textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}
+            >
+              {program.name}
+            </h2>
+            <div className="flex items-center flex-wrap gap-x-2 gap-y-1 mt-2">
+              <span className="text-[11px] text-white/80 font-light">{program.weekCount} {program.weekCount === 1 ? 'week' : 'weeks'}</span>
+              <span className="text-white/40 text-[11px] leading-none select-none">·</span>
+              <span className="text-[11px] text-white/80 font-light">{program.workoutCount} workouts</span>
+            </div>
             {program.description && (
-              <p className="text-wf-gray-500 text-xs mt-1.5 leading-relaxed line-clamp-2">{program.description}</p>
+              <p className="text-[13px] text-white/60 font-light mt-2 leading-relaxed line-clamp-2">{program.description}</p>
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {program.workoutCount > 0 && (
+            {/* Begin Program is gated by the parent — the caller controls
+                whether to pass onBegin. In My Workouts we omit onBegin so
+                user-owned programs don't get a Begin CTA (custom workouts
+                aren't scheduled programs in the Browse-library sense). */}
+            {onBegin && program.workoutCount > 0 && (
               <button
                 data-tutorial="begin-program-btn"
                 onClick={(e) => {
@@ -980,44 +1001,10 @@ function ProgramCard({ program, idx, onSelect, onBegin, onDelete, onShare, dataT
           </div>
         </div>
 
-        {/* Split summary */}
-        {program.templates && program.templates.length > 0 && program.templates.length <= 7 && (
-          <div className="mt-3 pt-3 border-t border-white/5">
-            <p className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-semibold mb-1.5">Weekly Split</p>
-            <div className="flex gap-1 flex-wrap">
-              {program.templates.slice(0, 7).map((t, i) => (
-                <span key={i} className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${t.isRest ? 'bg-white/5 text-wf-gray-600' : 'bg-wf-red/10 text-wf-red'}`}>
-                  {t.isRest ? 'Rest' : t.name.length > 15 ? t.name.substring(0, 15) + '…' : t.name}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Workout preview dots — unique names only, max 6 shown */}
-        {(() => {
-          const entries = [...program.colorMap.entries()];
-          const shown = entries.slice(0, 6);
-          const extra = entries.length - 6;
-          return (
-            <div className="flex items-center gap-3 mt-3 flex-wrap">
-              {shown.map(([name, color]) => (
-                <div key={name} className="flex items-center gap-1.5 max-w-[25ch]">
-                  <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${color.dot}`} />
-                  <span className="text-xs text-wf-gray-400 font-medium capitalize truncate">{name}</span>
-                </div>
-              ))}
-              {extra > 0 && (
-                <span className="text-[10px] text-wf-gray-500 font-medium">+{extra} more</span>
-              )}
-            </div>
-          );
-        })()}
-
         {/* Tap hint */}
-        <div className="flex items-center justify-end mt-3">
-          <span className="text-xs text-wf-gray-500 mr-1">View workouts</span>
-          <svg className="w-4 h-4 text-wf-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+        <div className="flex items-center justify-end mt-4">
+          <span className="text-[10px] text-white/40 mr-1 uppercase tracking-[0.2em] font-medium">View Workouts</span>
+          <svg className="w-3.5 h-3.5 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
           </svg>
         </div>
@@ -2208,7 +2195,9 @@ export default function Workouts() {
       return (
         <div>
           <StickyHeader title={program.shortName || program.name} titleStyle={{ fontSize: '26.4px' }}>
-            {program.workoutCount > 0 && (
+            {/* Begin Program only renders inside the Browse (library) tab.
+                User-owned programs in My Workouts don't get a Begin CTA. */}
+            {selectedGroup !== 'my' && program.workoutCount > 0 && (
               <button
                 data-tutorial="begin-program-btn"
                 onClick={(e) => openBeginProgram(e, program)}
@@ -2403,7 +2392,7 @@ export default function Workouts() {
                   </svg>
                 </button>
               )}
-              {program.workoutCount > 0 && (
+              {selectedGroup !== 'my' && program.workoutCount > 0 && (
                 <button
                   data-tutorial="begin-program-btn"
                   onClick={(e) => openBeginProgram(e, program)}
@@ -4166,9 +4155,18 @@ export default function Workouts() {
       <div>
         <StickyHeader title={groupTitle} titleStyle={{ fontSize: '26.4px' }}>
           {!isBrowse && (
+            // Matches the "+ Create" button on the main Workouts hub
+            // (StickyHeader CTA at the top of the Workouts page) so the two
+            // CTAs read as the same control across pages.
             <button
               onClick={() => setShowCreateMenu(true)}
-              className="btn-gradient active:scale-[0.98] text-white font-medium px-4 py-2.5 rounded-xl text-sm transition-all shrink-0"
+              className="active:scale-[0.97] transition-all text-white text-[11px] font-bold uppercase px-3.5 py-2 whitespace-nowrap shrink-0"
+              style={{
+                letterSpacing: '0.15em',
+                borderRadius: '2px',
+                background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+                boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+              }}
             >
               + Create
             </button>
@@ -4434,8 +4432,11 @@ export default function Workouts() {
                     </div>
                   ) : (
                     <div className="space-y-4 pb-4">
+                      {/* My Workouts list — onBegin is intentionally omitted
+                          so ProgramCard hides the Begin Program CTA. Begin
+                          stays in the Browse Library only. */}
                       {ownPrograms.map((program, idx) => (
-                        <ProgramCard key={program.id} program={program} idx={idx} dataTutorial={idx === 0 ? 'program-card' : undefined} onSelect={(id) => { setSelectedProgram(id); setSelectedWeek(null); setBrowseSearch(''); completeTutorialAction('program-selected'); }} onBegin={openBeginProgram} onDelete={!isBrowse ? handleDeleteProgram : undefined} onShare={!isBrowse ? (p) => { setShareResult(null); setShareInput(''); setShareModal(p); } : undefined} onNavigateFeatured={program.isFeatured ? () => navigate('/featured-session') : undefined} />
+                        <ProgramCard key={program.id} program={program} idx={idx} dataTutorial={idx === 0 ? 'program-card' : undefined} onSelect={(id) => { setSelectedProgram(id); setSelectedWeek(null); setBrowseSearch(''); completeTutorialAction('program-selected'); }} onDelete={!isBrowse ? handleDeleteProgram : undefined} onShare={!isBrowse ? (p) => { setShareResult(null); setShareInput(''); setShareModal(p); } : undefined} onNavigateFeatured={program.isFeatured ? () => navigate('/featured-session') : undefined} />
                       ))}
                     </div>
                   )
@@ -4460,7 +4461,10 @@ export default function Workouts() {
                               )}
                               <span className="text-xs text-wf-gray-500">From <span className="text-blue-400 font-semibold">{sender?.senderName || 'a user'}{sender?.senderUsername ? ` (@${sender.senderUsername})` : ''}</span></span>
                             </div>
-                            <ProgramCard program={program} idx={idx} onSelect={(id) => { setSelectedProgram(id); setSelectedWeek(null); setBrowseSearch(''); }} onBegin={openBeginProgram} onDelete={handleDeleteProgram} onShare={(p) => openShareModal(p)} onNavigateFeatured={program.isFeatured ? () => navigate('/featured-session') : undefined} />
+                            {/* Shared-With-Me programs live under My Workouts.
+                                onBegin is omitted to hide the Begin CTA, same
+                                as the user's own programs above. */}
+                            <ProgramCard program={program} idx={idx} onSelect={(id) => { setSelectedProgram(id); setSelectedWeek(null); setBrowseSearch(''); }} onDelete={handleDeleteProgram} onShare={(p) => openShareModal(p)} onNavigateFeatured={program.isFeatured ? () => navigate('/featured-session') : undefined} />
                           </div>
                         );
                       })}
@@ -5216,9 +5220,13 @@ export default function Workouts() {
                         onClick: () => navigateToWorkout(info.templateId, info.date),
                       };
                     } else {
+                      // No workout scheduled / no completion today: primary CTA
+                      // routes users into the Browse Programs library (same
+                      // target as the right-side Browse button) so they can
+                      // pick a workout instead of building one from scratch.
                       primary = {
-                        label: 'Create a Workout',
-                        onClick: () => navigate('/clientworkouts/create'),
+                        label: 'Add a Workout',
+                        onClick: () => { setSelectedGroup('browse'); completeTutorialAction?.('browse-library-tap'); },
                       };
                     }
                     const bg = primary.bg || 'linear-gradient(135deg, #fff 0%, #e0e0e0 100%)';

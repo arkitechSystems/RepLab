@@ -38,10 +38,15 @@ export default function CreateWorkout() {
   useEffect(() => {
     api('/programs')
       .then(async (progs) => {
-        setPrograms(progs);
+        // User content stays in My Workouts: only show programs the user
+        // owns (userId !== null). Library programs (admin-seeded, userId
+        // === null) are excluded from the "Add to Program" picker so users
+        // can't attach their custom workouts to admin content.
+        const ownedPrograms = (progs || []).filter((p) => p.userId !== null && p.userId !== undefined);
+        setPrograms(ownedPrograms);
         if (isQuickCreate) {
           try {
-            let quickProgram = progs.find((p) => p.name === 'My Workouts');
+            let quickProgram = ownedPrograms.find((p) => p.name === 'My Workouts');
             if (!quickProgram) {
               quickProgram = await api('/programs', {
                 method: 'POST',
@@ -58,7 +63,29 @@ export default function CreateWorkout() {
             setError(friendlyError(err, "We couldn't set up quick create. Please try again."));
           }
         } else {
-          if (!selectedProgramId && progs.length > 0) setSelectedProgramId(progs[0].id);
+          // Pre-select a sensible default: prefer the "My Workouts" bucket
+          // when it exists, otherwise the first owned program. If the user
+          // has none yet, auto-create the My Workouts catch-all bucket so
+          // there's always a valid destination for a new custom workout.
+          if (!selectedProgramId) {
+            if (ownedPrograms.length > 0) {
+              const myWorkouts = ownedPrograms.find((p) => p.name === 'My Workouts');
+              setSelectedProgramId(myWorkouts ? myWorkouts.id : ownedPrograms[0].id);
+            } else {
+              try {
+                const created = await api('/programs', {
+                  method: 'POST',
+                  body: JSON.stringify({ name: 'My Workouts', description: 'Quick-created workouts' }),
+                });
+                if (created?.id) {
+                  setPrograms([created]);
+                  setSelectedProgramId(created.id);
+                }
+              } catch (err) {
+                setError(friendlyError(err, "We couldn't load your programs. Please try again."));
+              }
+            }
+          }
         }
       })
       .catch((err) => setError(friendlyError(err, "We couldn't load your programs. Please try again.")));
@@ -180,6 +207,14 @@ export default function CreateWorkout() {
     }
     if (!selectedProgramId) {
       setError('Select a program');
+      return;
+    }
+    // Defense in depth: even though the dropdown already filters out library
+    // programs, re-resolve the selected id against the programs list and
+    // reject if it somehow points at a non-owned (library) program.
+    const targetProgram = programs.find((p) => String(p.id) === String(selectedProgramId));
+    if (!targetProgram || targetProgram.userId === null || targetProgram.userId === undefined) {
+      setError("You can only add workouts to your own programs. Pick one from My Workouts.");
       return;
     }
     if (!name.trim()) {
