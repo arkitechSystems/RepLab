@@ -35,7 +35,7 @@ const LANDING_STYLES = `
 .lp-phone-screen{background:#0a0a0a;border-radius:26px;height:100%;overflow:hidden;position:relative}
 .lp-phone-notch{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:74px;height:20px;background:#000;border-radius:0 0 12px 12px;z-index:5}
 .lp-phone-statusbar{position:absolute;top:0;left:0;right:0;height:30px;display:flex;justify-content:space-between;align-items:center;padding:8px 16px;font-size:9px;font-weight:600;z-index:4;color:#fff}
-.lp-phone-meta{margin-top:28px;padding-top:28px;border-top:1px solid rgba(245,245,242,0.10);display:flex;align-items:flex-start;gap:16px;color:#fff}
+.lp-phone-meta{margin-top:28px;padding-bottom:28px;border-bottom:1px solid rgba(245,245,242,0.10);display:flex;align-items:flex-start;gap:16px;color:#fff}
 .lp-phone-meta .lp-num{font-family:'Anton',sans-serif;font-size:36px;color:#e10600;line-height:1}
 .lp-phone-meta .lp-mtitle{font-family:'Anton',sans-serif;font-size:24px;text-transform:uppercase;line-height:1;margin-bottom:8px}
 .lp-phone-meta .lp-mdesc{font-size:13px;color:rgba(245,245,242,0.55);line-height:1.55}
@@ -245,17 +245,24 @@ const LANDING_STYLES = `
 .lp-btn-red{background:#e10600;color:#fff;border-color:#e10600}
 .lp-btn-red:hover{background:#ff1810;border-color:#ff1810}
 .lp-btn-red.lp-disabled,.lp-btn-red.lp-disabled:hover{cursor:not-allowed}
+/* Hero variant — ~25% larger than the base nav/CTA buttons for the
+   primary "Open Web App" / "Log In" call to action in the hero. */
+.lp-btn-hero{padding:15px 28px;font-size:14px}
 .lp-btn .lp-arrow{display:inline-block;transition:transform .2s}
 .lp-btn:hover .lp-arrow{transform:translate(3px,-3px)}
 
 /* Hero */
-.lp-hero{padding:140px 0 80px;position:relative;overflow:hidden;min-height:100vh;display:flex;align-items:center}
-@media (max-width:780px){.lp-hero{padding:120px 0 60px;min-height:auto}}
+.lp-hero{padding:90px 0 60px;position:relative;overflow:hidden;display:flex;align-items:center}
+@media (max-width:780px){.lp-hero{padding:80px 0 40px}}
 .lp-hero-glow{position:absolute;top:-300px;right:-300px;width:1000px;height:1000px;background:radial-gradient(circle,rgba(225,6,0,0.16) 0%,transparent 60%);pointer-events:none;z-index:0}
 .lp-hero-grid-bg{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.025) 1px,transparent 1px);background-size:80px 80px;pointer-events:none;mask:radial-gradient(ellipse at center,#000 0%,transparent 75%);-webkit-mask:radial-gradient(ellipse at center,#000 0%,transparent 75%);z-index:0}
 .lp-hero-grid{display:block;position:relative;z-index:1;width:100%}
 .lp-hero-left{max-width:920px;margin:0 auto;text-align:center}
 .lp-hero-left .lp-eyebrow{margin-bottom:36px;justify-content:center}
+/* Hide the small red rule before the hero eyebrow so 'Strength . Hypertrophy
+   . Conditioning' starts flush. The .lp-eyebrow::before rule in index.css
+   still applies to other eyebrows on the page (e.g. 'Available Now'). */
+.lp-hero-left .lp-eyebrow::before{content:none}
 .lp-h1{font-family:'Anton',sans-serif;font-weight:400;font-size:clamp(64px,9.5vw,168px);line-height:0.85;letter-spacing:-0.01em;text-transform:uppercase;color:#f5f5f2}
 @media (max-width:1100px){.lp-h1{font-size:clamp(56px,11vw,108px)}}
 @media (max-width:780px){.lp-h1{font-size:clamp(54px,12vw,84px)}}
@@ -499,7 +506,7 @@ export default function LandingPageTest() {
               <div className="lp-hero-cta lp-fade lp-fade-3">
                 <button
                   type="button"
-                  className="lp-btn lp-btn-red"
+                  className="lp-btn lp-btn-red lp-btn-hero"
                   onClick={() => navigate(heroCta.target)}
                 >
                   {heroCta.label} <span className="lp-arrow">↗</span>
