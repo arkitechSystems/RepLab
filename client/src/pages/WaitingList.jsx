@@ -86,10 +86,10 @@ export default function WaitingList() {
               : `We'll email ${email.trim()} the moment Pro opens up. No account created — you can sign up later.`}
           </p>
           <button
-            onClick={() => navigate('/test/landing')}
+            onClick={() => navigate('/')}
             className="px-8 py-3 rounded-full font-bold text-sm uppercase tracking-wider border border-white/20 hover:border-white/40 active:scale-95 transition-all"
           >
-            Back to Landing
+            Back to Home
           </button>
         </div>
       </div>

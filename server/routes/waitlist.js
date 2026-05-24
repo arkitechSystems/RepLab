@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import pool from '../dbPool.js';
+import { sendWaitlistThankYouEmail } from '../email.js';
 
 const router = Router();
 // .trim() defends against env-var paste accidents (trailing newline / space).
@@ -86,9 +87,20 @@ router.post('/', optionalAuth, async (req, res) => {
                WHEN pro_waiting_list.source = 'logged_in' THEN pro_waiting_list.source
                ELSE EXCLUDED.source
              END
-       RETURNING id, email, user_id, source, created_at`,
+       RETURNING id, email, user_id, source, created_at,
+                 (xmax = 0) AS inserted`,
       [email, userId, source]
     );
+
+    // Only send the thank-you on the first signup. Re-submitting with the
+    // same email is idempotent at the DB level; xmax=0 means a brand-new
+    // row (insert), non-zero means we hit the ON CONFLICT update path.
+    // Fire-and-forget so a Resend hiccup doesn't 500 the join request.
+    if (rows[0].inserted) {
+      sendWaitlistThankYouEmail(email).catch((err) =>
+        console.error('Waitlist thank-you email failed:', err.message)
+      );
+    }
 
     res.status(201).json({ ok: true, entry: rows[0] });
   } catch (err) {

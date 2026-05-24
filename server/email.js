@@ -205,6 +205,59 @@ export async function sendWelcomeEmail(email) {
   }
 }
 
+// Short thank-you sent when a user joins the REPLAB Pro waiting list.
+// Style mirrors the marketing landing: black bg with subtle red glow, big
+// REPLAB wordmark, eyebrow + heading + lede, ArkiTech footer. Kept short
+// on purpose -- the email exists to confirm signup, nothing more.
+export async function sendWaitlistThankYouEmail(email) {
+  if (!process.env.RESEND_API_KEY) {
+    console.log('RESEND_API_KEY not set, skipping waitlist thank-you email');
+    return;
+  }
+
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const subject = "You're on the REPLAB Pro waiting list";
+  const html = `
+    <div style="background: #000; margin: 0; padding: 0;">
+      <div style="background-color: #0a0a0a; background-image: radial-gradient(ellipse at 50% 0%, rgba(239,68,68,0.22) 0%, transparent 55%), linear-gradient(180deg, #0a0a0a 0%, #050505 50%, #000 100%); padding: 48px 16px;">
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; color: #fff;">
+
+          <!-- Header: REPLAB wordmark + red rule -->
+          <div style="text-align: center; margin-bottom: 48px;">
+            <h1 style="font-size: 40px; font-weight: 900; letter-spacing: 4px; margin: 0; color: #fff; text-shadow: 0 2px 24px rgba(239,68,68,0.35);">REP<span style="color: #ef4444;">LAB</span></h1>
+            <div style="height: 3px; width: 72px; margin: 16px auto 0; background: linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent);"></div>
+          </div>
+
+          <!-- Body -->
+          <p style="color: rgba(239,68,68,0.9); text-transform: uppercase; letter-spacing: 0.4em; font-size: 10px; font-weight: 700; margin: 0 0 12px 0; text-align: center;">Waiting List</p>
+          <h2 style="color: #fff; font-size: 36px; font-weight: 900; line-height: 1; margin: 0 0 18px 0; letter-spacing: -0.02em; text-transform: uppercase; text-align: center;">You're In.</h2>
+          <p style="color: rgba(255,255,255,0.65); font-size: 15px; line-height: 1.7; margin: 0 0 36px 0; text-align: center;">
+            Thank you for joining the waiting list. We'll let you know when Pro is released.
+          </p>
+
+          <!-- Footer -->
+          <div style="margin-top: 56px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.08); text-align: center;">
+            <p style="color: rgba(255,255,255,0.35); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 600; margin: 0;">Developed by ArkiTech Systems</p>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  `;
+
+  try {
+    await resend.emails.send({
+      from: config.EMAIL_FROM_TRANSACTIONAL,
+      to: email,
+      subject,
+      html,
+    });
+  } catch (err) {
+    // Don't fail the waitlist signup if email sending fails.
+    console.error('Failed to send waitlist thank-you email:', err.message);
+  }
+}
+
 export async function sendPasswordResetEmail(email, token) {
   if (!process.env.RESEND_API_KEY) {
     console.log('RESEND_API_KEY not set, skipping reset email');
