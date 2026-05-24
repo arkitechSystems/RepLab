@@ -194,6 +194,24 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
   const prevTopRef = useRef(null);
   const wasJustClickedRef = useRef(false);
 
+  // Superset tint — paint a very light colored gradient across the entire
+  // card so all exercises in the same group are visually linked. The card's
+  // base background is locked behind `!important` in index.css, so we use
+  // setProperty(..., 'important') from a ref to layer the tint on top via
+  // background-image (which renders below in-flow content automatically).
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    if (exercise.supersetLabel) {
+      const c = SUPERSET_COLORS[exercise.supersetLabel[0]] || '#ef4444';
+      // ~14% top -> ~4% bottom: subtle enough to read as a tint, strong
+      // enough to be obvious at a glance on both light and dark cards.
+      el.style.setProperty('background-image', `linear-gradient(160deg, ${c}24 0%, ${c}0A 100%)`, 'important');
+    } else {
+      el.style.removeProperty('background-image');
+    }
+  }, [exercise.supersetLabel]);
+
   useLayoutEffect(() => {
     const el = cardRef.current;
     if (!el) return;
@@ -291,13 +309,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
 
   return (
     <>
-    <div ref={cardRef} data-tutorial={dataTutorial ? 'exercise-card' : undefined} className={`${isDarkTheme ? 'exercise-card-transparent-test' : 'exercise-card-light-test'} glass-card${fullScreen ? ' min-h-full' : ' overflow-hidden rounded-xl mb-3'}${EXERCISE_CARD_GRADIENT_BORDER && !isDarkTheme && !fullScreen ? ' exercise-card-gradient-border' : ''}`} style={{
-      position: 'relative',
-      // Colored inset ring tied to the superset letter — paints a visible
-      // group identifier without affecting layout. Falls back to the wf-red
-      // default if the label's first char isn't in the A-G map.
-      ...(exercise.supersetLabel ? { boxShadow: `inset 0 0 0 3px ${SUPERSET_COLORS[exercise.supersetLabel[0]] || '#ef4444'}` } : {}),
-    }}>
+    <div ref={cardRef} data-tutorial={dataTutorial ? 'exercise-card' : undefined} className={`${isDarkTheme ? 'exercise-card-transparent-test' : 'exercise-card-light-test'} glass-card${fullScreen ? ' min-h-full' : ' overflow-hidden rounded-xl mb-3'}${EXERCISE_CARD_GRADIENT_BORDER && !isDarkTheme && !fullScreen ? ' exercise-card-gradient-border' : ''}`} style={{ position: 'relative' }}>
       {/* Viewfinder ⛶ row — sits slightly above the icon cluster
           (PRs / ⚖ / Demo) in the card header. Tap to enter full-screen
           mode for this exercise. Hidden in template mode and when the
