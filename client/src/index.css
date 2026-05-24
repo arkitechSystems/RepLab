@@ -1217,3 +1217,145 @@ select:focus-visible {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
+
+/* ──────────────────────────────────────────────────────────────
+   Landing page — handoff from Claude Design 2026-05-24.
+   All styles namespaced under `.lp-` so they can't leak into
+   the rest of the app. The landing imports these via the global
+   stylesheet (it doesn't have a CSS-in-JS pipeline), and the
+   selectors are deliberately scoped so the marquee, headline
+   reveal, marquee, etc. won't collide with anything else.
+   ──────────────────────────────────────────────────────────── */
+.lp-root {
+  --lp-bg: #0a0a0a;
+  --lp-fg: #f5f5f2;
+  --lp-muted: rgba(245, 245, 242, 0.55);
+  --lp-dim: rgba(245, 245, 242, 0.3);
+  --lp-line: rgba(245, 245, 242, 0.1);
+  --lp-red: #e10600;
+  --lp-red-2: #ff1810;
+  background: var(--lp-bg);
+  color: var(--lp-fg);
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+.lp-anton { font-family: 'Anton', sans-serif; font-weight: 400; letter-spacing: -0.005em; text-transform: uppercase; }
+.lp-mono { font-family: 'JetBrains Mono', monospace; letter-spacing: 0.06em; }
+.lp-stroke { -webkit-text-stroke: 1.5px var(--lp-fg); color: transparent; }
+.lp-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--lp-red);
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+}
+.lp-eyebrow::before { content: ""; width: 32px; height: 1px; background: var(--lp-red); }
+
+/* Headline word-reveal — letters slide up from below their clip mask. */
+.lp-h1 .lp-word {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+  padding-bottom: 0.08em;
+}
+.lp-h1 .lp-word > i {
+  display: inline-block;
+  font-style: normal;
+  transform: translateY(105%);
+  transition: transform 0.85s cubic-bezier(0.16, 1.36, 0.4, 1);
+}
+.lp-root.lp-is-loaded .lp-h1 .lp-word > i { transform: translateY(0); }
+.lp-h1 .lp-word.lp-d1 > i { transition-delay: 0.05s; }
+.lp-h1 .lp-word.lp-d2 > i { transition-delay: 0.18s; }
+.lp-h1 .lp-word.lp-d3 > i { transition-delay: 0.34s; }
+.lp-h1 .lp-word.lp-d4 > i { transition-delay: 0.48s; }
+.lp-h1 br { line-height: 0; }
+.lp-fade { opacity: 0; transform: translateY(8px); transition: opacity 0.6s ease, transform 0.6s ease; }
+.lp-root.lp-is-loaded .lp-fade.lp-fade-1 { opacity: 1; transform: none; transition-delay: 0.05s; }
+.lp-root.lp-is-loaded .lp-fade.lp-fade-2 { opacity: 1; transform: none; transition-delay: 0.85s; }
+.lp-root.lp-is-loaded .lp-fade.lp-fade-3 { opacity: 1; transform: none; transition-delay: 1.0s; }
+.lp-root.lp-is-loaded .lp-fade.lp-fade-4 { opacity: 1; transform: none; transition-delay: 1.15s; }
+
+/* Marquee — duplicated track scrolling left in a 50s linear loop. */
+@keyframes lp-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.lp-marquee-track {
+  display: flex;
+  gap: 60px;
+  white-space: nowrap;
+  animation: lp-marquee 50s linear infinite;
+  font-family: 'Anton', sans-serif;
+  font-size: 28px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--lp-fg);
+  width: max-content;
+}
+.lp-marquee-track .lp-dot { color: var(--lp-red); display: inline-flex; align-items: center; font-size: 14px; }
+
+/* Hero scroll-line indicator (decorative pulse). */
+@keyframes lp-scrollLine {
+  0%, 100% { transform: scaleY(1); opacity: 1; }
+  50% { transform: scaleY(0.4); opacity: 0.4; }
+}
+.lp-scroll-line::after {
+  content: "";
+  width: 1px;
+  height: 32px;
+  background: linear-gradient(180deg, var(--lp-muted), transparent);
+  animation: lp-scrollLine 2s ease-in-out infinite;
+}
+
+/* Pro section — slim red gradient that sweeps across the top border. */
+@keyframes lp-slide {
+  0%, 100% { transform: translateX(-100%); }
+  50% { transform: translateX(100%); }
+}
+.lp-pro-sweep {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--lp-red), transparent);
+  animation: lp-slide 4s ease-in-out infinite;
+}
+
+/* Stat label red sweep — used on the three big counters. */
+.lp-label-flash {
+  position: relative;
+  background-image: linear-gradient(90deg,
+    rgba(245, 245, 242, 0.55) 0%,
+    rgba(245, 245, 242, 0.55) 35%,
+    #E10600 50%,
+    rgba(245, 245, 242, 0.55) 65%,
+    rgba(245, 245, 242, 0.55) 100%);
+  background-size: 300% 100%;
+  background-position: 100% 0;
+  background-repeat: no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: lp-labelFlash var(--lp-flash-period, 2s) ease-in-out infinite;
+  animation-delay: var(--lp-flash-delay, 0s);
+}
+@keyframes lp-labelFlash {
+  0% { background-position: 100% 0; }
+  100% { background-position: 0% 0; }
+}
+
+/* Reduced-motion overrides for the landing's bigger animations. */
+@media (prefers-reduced-motion: reduce) {
+  .lp-h1 .lp-word > i { transform: none !important; transition: none !important; }
+  .lp-fade { opacity: 1 !important; transform: none !important; }
+  .lp-marquee-track { animation: none !important; }
+  .lp-pro-sweep { animation: none !important; }
+  .lp-label-flash { animation: none !important; }
+}
