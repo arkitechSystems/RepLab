@@ -82,6 +82,70 @@ async function batchInsertTemplateExercises(client, templateId, exercises, userI
   }
 }
 
+// Sync the structural exercise list of a session into `template_exercises`
+// — but ONLY when:
+//   1. The template is owned by `userId` (user_id matches; never library/global)
+//   2. The template currently has ZERO rows in `template_exercises`
+//
+// This makes "Start Empty Workout" templates show up as real, runnable
+// workouts in My Workouts once the user has actually populated the session.
+// After the first save, the template gains its initial exercise list and is
+// no longer empty — subsequent saves are no-ops because the empty-check
+// fails. If the user later edits the template via the template editor, those
+// edits stick because we only seed when empty.
+//
+// Must run inside an existing transaction (`client` already has BEGIN) so a
+// rollback of the session save also rolls back the template seed. Best-effort:
+// the caller should swallow errors — the session is the source of truth.
+async function syncEmptyTemplateFromWorkoutData(client, userId, templateId, workoutData) {
+  if (!templateId || !workoutData || !Array.isArray(workoutData.exercises)) return;
+
+  // Combined ownership + emptiness check in one round-trip. Returns a row
+  // iff the template is owned by this user AND has no template_exercises
+  // rows. user_id IS NOT NULL excludes library templates defensively.
+  const { rows } = await client.query(
+    `SELECT t.id
+       FROM templates t
+      WHERE t.id = $1
+        AND t.user_id = $2
+        AND NOT EXISTS (
+          SELECT 1 FROM template_exercises te WHERE te.template_id = t.id
+        )`,
+    [templateId, userId]
+  );
+  if (rows.length === 0) return;
+
+  // Translate workoutData.exercises (sets carry plannedReps / suggestedWeight)
+  // into the shape batchInsertTemplateExercises expects (sets carry reps /
+  // weight). Section headers pass straight through — the helper already
+  // handles isSectionHeader rows.
+  const normalized = workoutData.exercises.map((ex) => {
+    if (ex && ex.isSectionHeader) {
+      return {
+        name: ex.name,
+        isSectionHeader: true,
+        sectionNotes: ex.sectionNotes || '',
+      };
+    }
+    const sets = Array.isArray(ex && ex.sets) ? ex.sets : [];
+    return {
+      name: ex && ex.name,
+      setType: (ex && ex.setType) || 'straight',
+      sets: sets.map((s) => ({
+        reps: s && s.plannedReps != null ? s.plannedReps : 10,
+        // Seed the template's suggestedWeight from whatever weight the user
+        // logged in this first session — gives a sensible starting point
+        // when they re-run this workout.
+        weight: s && s.suggestedWeight != null ? s.suggestedWeight : 0,
+      })),
+    };
+  }).filter((ex) => ex && typeof ex.name === 'string' && ex.name.trim());
+
+  if (normalized.length === 0) return;
+
+  await batchInsertTemplateExercises(client, templateId, normalized, userId);
+}
+
 // Wipe-and-rebuild PB rows for one (user, template) using whatever
 // session_entries currently exist across that user's sessions for the
 // template. Called inside an existing transaction (`client` must already
@@ -879,6 +943,25 @@ const db = {
             [userId, templateId, exId, best.exerciseName, best.weight, best.reps]
           );
         }
+      }
+
+      // Seed an empty user-owned template with the session's exercise list
+      // so "Start Empty Workout" templates surface in My Workouts populated
+      // with whatever the user actually logged. Idempotent — the helper
+      // bails when the template already has template_exercises rows or
+      // isn't owned by this user. Wrapped in a SAVEPOINT so a failure here
+      // can be rolled back independently without aborting the outer
+      // transaction (pg marks transactions aborted on any query error,
+      // which would then cause COMMIT to fail). The session is the source
+      // of truth — a template-seed bug must not block a legitimate save.
+      await client.query('SAVEPOINT template_sync');
+      try {
+        await syncEmptyTemplateFromWorkoutData(client, userId, templateId, workoutData);
+        await client.query('RELEASE SAVEPOINT template_sync');
+      } catch (syncErr) {
+        try { await client.query('ROLLBACK TO SAVEPOINT template_sync'); } catch (_) {}
+        try { await client.query('RELEASE SAVEPOINT template_sync'); } catch (_) {}
+        console.error('syncEmptyTemplateFromWorkoutData failed:', syncErr);
       }
 
       await client.query('COMMIT');
