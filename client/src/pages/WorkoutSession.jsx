@@ -4332,7 +4332,11 @@ export default function WorkoutSession() {
             // return to /app where the user came from. Default destination
             // (Calendar) only applies to the "just completed a workout" flow.
             const cameFromCardDeeplink = location.search.includes('summary=1');
-            navigate(tutorialMode ? '/' : (cameFromCardDeeplink ? '/app' : '/calendar'));
+            // Tutorial workout finishes back at the Workouts hub (/app), not
+            // the marketing landing (/). The landing is for unauthenticated
+            // visitors; a user who just walked through the tutorial is
+            // signed in and should land where their workouts live.
+            navigate(tutorialMode ? '/app' : (cameFromCardDeeplink ? '/app' : '/calendar'));
           }}
         />
       )}
@@ -4343,7 +4347,7 @@ export default function WorkoutSession() {
           verse={pendingVerse}
           onClose={() => {
             setPendingVerse(null);
-            navigate(tutorialMode ? '/' : '/calendar');
+            navigate(tutorialMode ? '/app' : '/calendar');
           }}
         />
       )}
