@@ -87,14 +87,13 @@ export async function generateSummaryImage(opts) {
   y += 120; // stats
   y += 50;
 
+  // Condensed: one line per exercise instead of the old name + N set rows.
   workout.exercises.forEach((ex) => {
     if (ex.isSectionHeader) {
       y += 60;
       return;
     }
-    y += 50;
-    y += (ex.sets?.length || 0) * 38;
-    y += 24;
+    y += 56;
   });
 
   y += 30;
@@ -105,11 +104,13 @@ export async function generateSummaryImage(opts) {
   canvas.width = W;
   canvas.height = y;
 
-  // Background
+  // Background: black-to-gray gradient. Pure black at the top fading into
+  // a mid-gray at the bottom — more pronounced than the previous near-uniform
+  // dark wash so the share image has a clearer visual presence in feeds.
   const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-  grad.addColorStop(0, '#0a0a0a');
-  grad.addColorStop(0.5, '#0f0f0f');
-  grad.addColorStop(1, '#111111');
+  grad.addColorStop(0, '#000000');
+  grad.addColorStop(0.5, '#1a1a1a');
+  grad.addColorStop(1, '#2e2e2e');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, W, canvas.height);
 
@@ -202,9 +203,12 @@ export async function generateSummaryImage(opts) {
   });
   curY += boxH + 50;
 
-  // Exercise list
+  // Exercise list \u2014 condensed to one line per exercise. The detailed
+  // per-set weight/reps stays in the in-app summary and in composeShareText
+  // (which gets pasted as caption); the image stays scannable as a feed
+  // post. Format: bold exercise name, comma, lighter "N sets" suffix.
   ctx.textAlign = 'left';
-  workout.exercises.forEach((ex, exIdx) => {
+  workout.exercises.forEach((ex) => {
     if (ex.isSectionHeader) {
       ctx.fillStyle = '#ef4444';
       drawRoundRect(ctx, padding, curY + 8, 4, 32, 2);
@@ -215,40 +219,17 @@ export async function generateSummaryImage(opts) {
       curY += 60;
       return;
     }
+    const setCount = ex.sets?.length || 0;
+    const setsLabel = setCount === 1 ? 'set' : 'sets';
+    const namePart = `${ex.name}, `;
     ctx.font = `bold 28px ${font}`;
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(ex.name, padding, curY + 30);
-    curY += 50;
-
-    const eKey = getEntryKey(workout.exercises, ex, exIdx);
-    const exEntries = entries[eKey] || [];
-    (ex.sets || []).forEach((set, idx) => {
-      const e = exEntries[idx];
-      const actualWeight = Number(e?.weight) || 0;
-      const actualReps = Number(e?.reps) || 0;
-      const goalReps = set.plannedReps || 0;
-      const weightStr = actualWeight === -1 ? 'BW' : `${actualWeight} lbs`;
-      const hitGoal = goalReps > 0 ? actualReps >= goalReps : true;
-
-      ctx.font = `600 22px ${font}`;
-      ctx.fillStyle = 'rgba(255,255,255,0.3)';
-      ctx.fillText(`${idx + 1}`, padding + 8, curY + 24);
-
-      ctx.font = `500 22px ${font}`;
-      ctx.fillStyle = 'rgba(255,255,255,0.8)';
-      ctx.fillText(`${weightStr}  \u00D7  ${actualReps} reps`, padding + 50, curY + 24);
-
-      if (goalReps > 0) {
-        const goalText = `${actualReps}/${goalReps}`;
-        ctx.textAlign = 'right';
-        ctx.font = `700 20px ${font}`;
-        ctx.fillStyle = hitGoal ? '#22c55e' : '#ef4444';
-        ctx.fillText(goalText + (hitGoal ? '  \u2713' : '  \u2717'), W - padding, curY + 24);
-        ctx.textAlign = 'left';
-      }
-      curY += 38;
-    });
-    curY += 24;
+    ctx.fillText(namePart, padding, curY + 30);
+    const nameW = ctx.measureText(namePart).width;
+    ctx.font = `500 24px ${font}`;
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.fillText(`${setCount} ${setsLabel}`, padding + nameW, curY + 32);
+    curY += 56;
   });
 
   curY += 10;
