@@ -68,6 +68,7 @@ const ExerciseDetail = lazyWithRetry(() => import('./pages/ExerciseDetail'));
 const TutorialWorkout = lazyWithRetry(() => import('./pages/TutorialWorkout'));
 const Terms = lazyWithRetry(() => import('./pages/Terms'));
 const Privacy = lazyWithRetry(() => import('./pages/Privacy'));
+const Support = lazyWithRetry(() => import('./pages/Support'));
 const NotFound = lazyWithRetry(() => import('./pages/NotFound'));
 const WaitingList = lazyWithRetry(() => import('./pages/WaitingList'));
 const LandingPage = lazyWithRetry(() => import('./pages/LandingPage'));
@@ -201,7 +202,7 @@ export default function App() {
   // dismissed across subsequent route changes. The path check matters for
   // authed users hitting `/` — without it they'd see splash on the marketing
   // landing every visit.
-  const PUBLIC_SURFACES = ['/', '/login', '/signup', '/forgot-password', '/waiting-list', '/privacy', '/terms', '/delete-account', '/account-deleted', '/account-deletion-failed'];
+  const PUBLIC_SURFACES = ['/', '/login', '/signup', '/forgot-password', '/waiting-list', '/privacy', '/terms', '/support', '/delete-account', '/account-deleted', '/account-deletion-failed'];
   const isPublicSurface =
     PUBLIC_SURFACES.includes(location.pathname) ||
     location.pathname.startsWith('/reset-password/');
@@ -256,6 +257,7 @@ export default function App() {
       <Route path="/reset-password/:token" element={<PublicRoute><ResetPassword /></PublicRoute>} />
       <Route path="/terms" element={<Terms />} />
       <Route path="/privacy" element={<Privacy />} />
+      <Route path="/support" element={<Support />} />
       <Route path="/waiting-list" element={<WaitingList />} />
       {/* Public web account-deletion flow (Google Play 2024 policy compliance).
           Reachable by users who don't have the app installed; the in-app
