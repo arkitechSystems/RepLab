@@ -4683,11 +4683,11 @@ export default function WorkoutSession() {
                   onClick={() => { setTutorialTip(null); navigate('/app'); }}
                   className="text-sm font-semibold text-white/70 bg-white/10 hover:bg-white/15 active:bg-white/20 transition-colors py-2 px-5 rounded-xl border border-white/10"
                 >
-                  {/* On the final tip (next == null), "Skip" reads as if the
-                      user is bailing — but they've actually reached the end.
-                      Swap to "Complete Tutorial" so the exit feels like an
-                      accomplishment, not an abandonment. */}
-                  {tip.next ? 'Skip tutorial' : 'Complete Tutorial'}
+                  {/* Only the actual last tip (mark-complete) shows
+                      "Complete Tutorial"; every other step — including the
+                      interactive begin-workout opener that has no next — is
+                      a bail-out and should say "Skip tutorial". */}
+                  {tutorialTip === 'mark-complete' ? 'Complete Tutorial' : 'Skip tutorial'}
                 </button>
               </div>
             </div>
