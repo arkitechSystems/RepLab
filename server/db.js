@@ -97,7 +97,7 @@ async function batchInsertTemplateExercises(client, templateId, exercises, userI
 // Must run inside an existing transaction (`client` already has BEGIN) so a
 // rollback of the session save also rolls back the template seed. Best-effort:
 // the caller should swallow errors — the session is the source of truth.
-async function syncEmptyTemplateFromWorkoutData(client, userId, templateId, workoutData) {
+export async function syncEmptyTemplateFromWorkoutData(client, userId, templateId, workoutData) {
   if (!templateId || !workoutData || !Array.isArray(workoutData.exercises)) return;
 
   // Combined ownership + emptiness check in one round-trip. Returns a row
