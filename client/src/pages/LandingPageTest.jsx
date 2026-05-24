@@ -163,6 +163,11 @@ const LANDING_STYLES = `
 /* Section header */
 .lp-section{padding:140px 0;border-top:1px solid rgba(245,245,242,0.10);position:relative}
 @media (max-width:780px){.lp-section{padding:80px 0}}
+/* Tighten the gap between the marquee ticker and the first section
+   ("Built for the Gym Floor") -- the default 140px top padding was
+   creating dead space immediately after the ticker. 75% reduction. */
+.lp-marquee + .lp-section{padding-top:35px}
+@media (max-width:780px){.lp-marquee + .lp-section{padding-top:20px}}
 .lp-section-tag{position:absolute;top:48px;right:40px;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(245,245,242,0.30);letter-spacing:0.2em;text-transform:uppercase}
 @media (max-width:780px){.lp-section-tag{display:none}}
 .lp-section-head{display:grid;grid-template-columns:auto 1fr;align-items:end;justify-content:space-between;margin-bottom:64px;gap:48px}
@@ -201,8 +206,12 @@ const LANDING_STYLES = `
 .lp-pro-check{width:18px;height:18px;border-radius:50%;background:rgba(225,6,0,0.15);color:#e10600;display:grid;place-items:center;font-size:10px;flex-shrink:0}
 
 /* Download strip */
-.lp-download{padding:140px 0;border-top:1px solid rgba(245,245,242,0.10);text-align:center;position:relative;overflow:hidden}
-@media (max-width:780px){.lp-download{padding:80px 0}}
+/* Top padding reduced 75% (140 -> 35 / 80 -> 20) so the "Available Now"
+   eyebrow + "Stop Tracking. Start Lifting." headline sit closer to the
+   border line above the section. Bottom padding unchanged so the footer
+   still has breathing room. */
+.lp-download{padding:35px 0 140px;border-top:1px solid rgba(245,245,242,0.10);text-align:center;position:relative;overflow:hidden}
+@media (max-width:780px){.lp-download{padding:20px 0 80px}}
 .lp-download-bg{position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(225,6,0,0.10) 0%,transparent 60%);pointer-events:none}
 .lp-download-inner{position:relative;z-index:1}
 .lp-download h2{font-family:'Anton',sans-serif;font-size:clamp(72px,11vw,200px);line-height:0.86;text-transform:uppercase;letter-spacing:-0.012em;color:#fff}
@@ -224,9 +233,17 @@ const LANDING_STYLES = `
 .lp-foot-base{padding-top:28px;border-top:1px solid rgba(245,245,242,0.10);display:flex;justify-content:space-between;align-items:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(245,245,242,0.55);letter-spacing:0.14em;text-transform:uppercase;flex-wrap:wrap;gap:16px}
 
 /* Nav */
-.lp-nav{position:fixed;top:0;left:0;right:0;z-index:100;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);background:rgba(10,10,10,0.72);border-bottom:1px solid rgba(245,245,242,0.10)}
+.lp-nav{position:fixed;top:0;left:0;right:0;z-index:100;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);background:rgba(10,10,10,0.72);border-bottom:1px solid rgba(245,245,242,0.10);padding-top:env(safe-area-inset-top,0px)}
 .lp-nav-inner{display:flex;align-items:center;justify-content:space-between;height:68px;padding:0 40px;max-width:1440px;margin:0 auto}
 @media (max-width:780px){.lp-nav-inner{padding:0 20px;height:60px}}
+/* Mobile-only: hide the EN/ES language toggle and the "Get the App" ghost
+   button so only the brand mark + primary login/Go-to-Web-App CTA show.
+   The nav was overflowing on phones — the "Get the App" label got
+   truncated and the EN|ES switch wasn't doing anything yet. */
+@media (max-width:780px){
+  .lp-nav .lp-lang{display:none}
+  .lp-nav .lp-btn-ghost{display:none}
+}
 .lp-brand{display:flex;align-items:center;gap:12px}
 .lp-brand-mark{width:34px;height:34px;border-radius:6px;background:#000;display:grid;place-items:center;overflow:hidden;border:1px solid rgba(245,245,242,0.10)}
 .lp-brand-mark img{width:88%;height:88%;object-fit:contain}
@@ -245,6 +262,7 @@ const LANDING_STYLES = `
 .lp-btn-red{background:#e10600;color:#fff;border-color:#e10600}
 .lp-btn-red:hover{background:#ff1810;border-color:#ff1810}
 .lp-btn-red.lp-disabled,.lp-btn-red.lp-disabled:hover{cursor:not-allowed}
+.lp-btn-ghost.lp-disabled,.lp-btn-ghost.lp-disabled:hover{cursor:not-allowed}
 /* Hero variant — ~25% larger than the base nav/CTA buttons for the
    primary "Open Web App" / "Log In" call to action in the hero. */
 .lp-btn-hero{padding:15px 28px;font-size:14px}
@@ -252,8 +270,8 @@ const LANDING_STYLES = `
 .lp-btn:hover .lp-arrow{transform:translate(3px,-3px)}
 
 /* Hero */
-.lp-hero{padding:90px 0 60px;position:relative;overflow:hidden;display:flex;align-items:center}
-@media (max-width:780px){.lp-hero{padding:80px 0 40px}}
+.lp-hero{padding:calc(90px + env(safe-area-inset-top,0px)) 0 60px;position:relative;overflow:hidden;display:flex;align-items:center}
+@media (max-width:780px){.lp-hero{padding:calc(80px + env(safe-area-inset-top,0px)) 0 40px}}
 .lp-hero-glow{position:absolute;top:-300px;right:-300px;width:1000px;height:1000px;background:radial-gradient(circle,rgba(225,6,0,0.16) 0%,transparent 60%);pointer-events:none;z-index:0}
 .lp-hero-grid-bg{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.025) 1px,transparent 1px);background-size:80px 80px;pointer-events:none;mask:radial-gradient(ellipse at center,#000 0%,transparent 75%);-webkit-mask:radial-gradient(ellipse at center,#000 0%,transparent 75%);z-index:0}
 .lp-hero-grid{display:block;position:relative;z-index:1;width:100%}
@@ -464,18 +482,24 @@ export default function LandingPageTest() {
               <span className="lp-sep">/</span>
               <span>ES</span>
             </div>
+            {/* Primary CTA — red filled. When signed in this is "Go to Web App"
+                and visually matches the hero "Open Web App" button (also red);
+                when signed out it's a red "Log In" so the most important
+                action in the nav reads as the brand-colored pill. */}
             <button
               type="button"
-              className="lp-btn lp-btn-ghost"
+              className="lp-btn lp-btn-red"
               onClick={() => navigate(primaryCta.target)}
             >
               {primaryCta.label}
             </button>
-            {/* "Get the App" nav CTA — non-clickable (apps not in stores yet)
-                but keeps its hover treatment for visual parity. */}
+            {/* "Get the App" — ghost outline (was red previously). Non-clickable
+                until the apps are live in their stores; the styling swap with
+                primaryCta puts visual weight on the action that actually
+                works right now. */}
             <button
               type="button"
-              className="lp-btn lp-btn-red lp-disabled"
+              className="lp-btn lp-btn-ghost lp-disabled"
               onClick={swallow}
               aria-disabled="true"
               title="Coming soon to the App Store and Google Play"
@@ -841,11 +865,14 @@ export default function LandingPageTest() {
                 Pro unlocks AI workout generation that adapts to your equipment and recovery, advanced overload analytics, trainer hand-off, and priority feature drops. First 1,000 lifters get founder pricing for life.
               </p>
               <div style={{ marginTop: 32, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                {/* Waiting-list CTA — same behavior as the previous landing:
-                    routes to /waiting-list regardless of auth state. */}
+                {/* Waiting-list CTA — routes to /waiting-list regardless of
+                    auth state. .btn-liquid is the app's red <-> white animated
+                    flowing-gradient class from index.css; replaces the static
+                    .lp-btn-red so this Pro CTA visually stands out from
+                    every other red button on the page. */}
                 <button
                   type="button"
-                  className="lp-btn lp-btn-red"
+                  className="lp-btn btn-liquid"
                   onClick={() => navigate('/waiting-list')}
                 >
                   Join the Waiting List <span className="lp-arrow">↗</span>
