@@ -38,19 +38,6 @@ function getRecent() {
   try { return JSON.parse(localStorage.getItem('replab_recent_exercises') || '[]'); } catch { return []; }
 }
 
-// Superset label letter -> ring color. Order mirrors the Week at a Glance
-// carousel's DAY_COLORS so the spectrum reads the same across the app:
-// A red, B orange, C yellow, D green, E blue, F purple, G pink.
-const SUPERSET_COLORS = {
-  A: '#ef4444',
-  B: '#f97316',
-  C: '#eab308',
-  D: '#22c55e',
-  E: '#3b82f6',
-  F: '#a855f7',
-  G: '#ec4899',
-};
-
 const SET_TYPES = [
   { value: 'warm_up',      short: 'WU',   label: 'Warm Up' },
   { value: 'touch_up',     short: 'TU',   label: 'Touch Up' },
@@ -194,24 +181,6 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
   const prevTopRef = useRef(null);
   const wasJustClickedRef = useRef(false);
 
-  // Superset tint — paint a very light colored gradient across the entire
-  // card so all exercises in the same group are visually linked. The card's
-  // base background is locked behind `!important` in index.css, so we use
-  // setProperty(..., 'important') from a ref to layer the tint on top via
-  // background-image (which renders below in-flow content automatically).
-  useEffect(() => {
-    const el = cardRef.current;
-    if (!el) return;
-    if (exercise.supersetLabel) {
-      const c = SUPERSET_COLORS[exercise.supersetLabel[0]] || '#ef4444';
-      // ~14% top -> ~4% bottom: subtle enough to read as a tint, strong
-      // enough to be obvious at a glance on both light and dark cards.
-      el.style.setProperty('background-image', `linear-gradient(160deg, ${c}24 0%, ${c}0A 100%)`, 'important');
-    } else {
-      el.style.removeProperty('background-image');
-    }
-  }, [exercise.supersetLabel]);
-
   useLayoutEffect(() => {
     const el = cardRef.current;
     if (!el) return;
@@ -343,6 +312,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
           {onOpenSupersetPicker && !readOnly && !isTemplate ? (
             <button
               type="button"
+              data-tutorial={dataTutorial ? 'exercise-name' : undefined}
               onClick={(e) => { e.stopPropagation(); onOpenSupersetPicker(exerciseKey || exercise.name); }}
               aria-label={`Set superset group for ${exercise.name}`}
               className="superset-press-target text-[17px] font-bold text-white text-left active:opacity-70 transition-opacity"

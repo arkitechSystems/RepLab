@@ -285,6 +285,7 @@ export default function WorkoutSession() {
       timer: '[data-tutorial="workout-timer"]',
       rest: '[data-tutorial="rest-timer"]',
       'exercise-card': '[data-tutorial="exercise-card"]',
+      'exercise-name': '[data-tutorial="exercise-name"]',
       'exercise-header': '[data-tutorial="move-buttons"]',
       'swap-exercise': '[data-tutorial="swap-button"]',
       'demo-button': '[data-tutorial="demo-button"]',
@@ -341,7 +342,7 @@ export default function WorkoutSession() {
         // scroll so the top is visible just below the sticky header rather than
         // centering (which can cause the tooltip to overlap the spotlight).
         const elRect = el.getBoundingClientRect();
-        const exerciseCardSteps = ['exercise-header', 'swap-exercise', 'demo-button', 'prs-button', 'add-delete-exercise', 'set-controls', 'set-row', 'set-type', 'plate-calc', 'full-screen', 'exercise-notes'];
+        const exerciseCardSteps = ['exercise-name', 'exercise-header', 'swap-exercise', 'demo-button', 'prs-button', 'add-delete-exercise', 'set-controls', 'set-row', 'set-type', 'plate-calc', 'full-screen', 'exercise-notes'];
         const isExerciseCardStep = exerciseCardSteps.includes(tutorialTip);
         if (tutorialTip === 'exercise-card') {
           // Scroll the exercise card header to the very top of the viewport
@@ -4494,15 +4495,23 @@ export default function WorkoutSession() {
             title: 'Exercise Card',
             description: <>Each exercise in your workout has its own card. The card contains everything you need — the exercise name, set controls, your logged sets, and notes. Let's walk through each part.</>,
             prev: 'rest',
-            next: 'exercise-header',
+            next: 'exercise-name',
             position: 'below-anchor',
             tooltipAnchor: '[data-tutorial="set-row"]',
+          },
+          'exercise-name': {
+            target: '[data-tutorial="exercise-name"]',
+            title: 'Group Into Supersets',
+            description: <>Tap the <span className="text-white font-semibold">exercise name</span> to group it with others in a superset. Two wheels appear — pick a <span className="text-white font-semibold">letter (A–G)</span> for the group and a <span className="text-white font-semibold">number (1–7)</span> for the order within that group. So <span className="text-white font-semibold">A1</span> and <span className="text-white font-semibold">A2</span> are paired, <span className="text-white font-semibold">B1</span> and <span className="text-white font-semibold">B2</span> are paired, and so on. Each label can only be used once per workout.</>,
+            prev: 'exercise-card',
+            next: 'exercise-header',
+            position: 'below',
           },
           'exercise-header': {
             target: '[data-tutorial="move-buttons"]',
             title: 'Reorder Exercises',
             description: <>Use the <span className="text-white font-semibold">up</span> and <span className="text-white font-semibold">down arrows</span> to move this exercise higher or lower in your workout order.</>,
-            prev: 'exercise-card',
+            prev: 'exercise-name',
             next: 'swap-exercise',
             position: 'below',
           },
