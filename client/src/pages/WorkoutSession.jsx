@@ -4918,15 +4918,15 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
     y += 200; // stats tile height
     y += 70;  // spacing after stats
 
-    // Exercise section height
-    template.exercises.forEach((ex, exIdx) => {
+    // Exercise section height — condensed to a single line per exercise
+    // (no per-set breakdown on the share image; full detail lives in the
+    // in-app summary screen and in the text caption).
+    template.exercises.forEach((ex) => {
       if (ex.isSectionHeader) {
         y += 60; // section header
         return;
       }
-      y += 56; // exercise name
-      y += ex.sets.length * 44; // each set row
-      y += 28; // spacing after exercise
+      y += 60; // one condensed line per exercise (name + set count)
     });
 
     y += 60; // spacing before red line
@@ -4936,41 +4936,16 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
     canvas.width = W;
     canvas.height = y;
 
-    // --- Background: deep base + red/orange glow blobs + diagonal hatch.
-    //     Same recipe as the PR card so the two share images visually
-    //     belong to the same family. ---
-    const bg = ctx.createLinearGradient(0, 0, W, canvas.height);
-    bg.addColorStop(0, '#0a0a0a');
-    bg.addColorStop(1, '#000');
+    // --- Background: clean black-to-gray vertical gradient. Removed the
+    //     red + orange glow blobs and diagonal hatch that previously sat on
+    //     top so the background reads as actual gray rather than a colored
+    //     wash. ---
+    const bg = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    bg.addColorStop(0, '#000000');
+    bg.addColorStop(0.5, '#1a1a1a');
+    bg.addColorStop(1, '#2e2e2e');
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, canvas.height);
-
-    // Red glow blob top-right
-    const glow1 = ctx.createRadialGradient(W * 0.85, canvas.height * 0.08, 50, W * 0.85, canvas.height * 0.08, Math.max(800, canvas.height * 0.5));
-    glow1.addColorStop(0, 'rgba(239, 68, 68, 0.55)');
-    glow1.addColorStop(1, 'rgba(239, 68, 68, 0)');
-    ctx.fillStyle = glow1;
-    ctx.fillRect(0, 0, W, canvas.height);
-
-    // Orange glow blob bottom-left
-    const glow2 = ctx.createRadialGradient(W * 0.05, canvas.height * 0.95, 40, W * 0.05, canvas.height * 0.95, Math.max(700, canvas.height * 0.5));
-    glow2.addColorStop(0, 'rgba(249, 115, 22, 0.35)');
-    glow2.addColorStop(1, 'rgba(249, 115, 22, 0)');
-    ctx.fillStyle = glow2;
-    ctx.fillRect(0, 0, W, canvas.height);
-
-    // Subtle diagonal hatch
-    ctx.save();
-    ctx.globalAlpha = 0.04;
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 1;
-    for (let i = -canvas.height; i < W; i += 14) {
-      ctx.beginPath();
-      ctx.moveTo(i, 0);
-      ctx.lineTo(i + canvas.height, canvas.height);
-      ctx.stroke();
-    }
-    ctx.restore();
 
     let curY = padding;
 
@@ -5079,61 +5054,21 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
         return;
       }
 
-      // Exercise name — heavier weight, slightly larger to match the
-      // bigger PR-card-styled hero numbers above.
+      // Condensed: bold name + lighter "N sets" suffix on a single line.
+      // Per-set detail (type, PR, weight x reps) moved off the share image
+      // to keep it scannable in feeds; the in-app summary still shows it.
+      const setCount = ex.sets?.length || 0;
+      const setsLabel = setCount === 1 ? 'set' : 'sets';
+      const namePart = `${ex.name}, `;
       ctx.font = `900 34px ${font}`;
       ctx.fillStyle = '#ffffff';
-      ctx.fillText(ex.name, padding, curY + 36);
-      curY += 56;
+      ctx.fillText(namePart, padding, curY + 36);
+      const _nameW = ctx.measureText(namePart).width;
+      ctx.font = `500 30px ${font}`;
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.fillText(`${setCount} ${setsLabel}`, padding + _nameW, curY + 38);
+      curY += 60;
 
-      // Set rows \u2014 mirror the in-app breakdown layout:
-      //   [#] [type label] [PR (centered if applicable)] [weight \u00D7 reps RIGHT]
-      // Right-side lifted text is red, or yellow if the set hit a PR.
-      const eKey = exKey(template.exercises, ex, exIdx);
-      const exEntries = entries[eKey] || [];
-      ex.sets.forEach((set, idx) => {
-        const e = exEntries[idx];
-        const actualWeight = Number(e?.weight) || 0;
-        const actualReps = Number(e?.reps) || 0;
-        const isCompleted = completedSets.has(`${eKey}-${idx}`);
-        const weightStr = actualWeight === -1 ? 'BW' : actualWeight > 0 ? `${actualWeight} lbs` : null;
-        const repsStr = actualReps > 0 ? `${actualReps} ${actualReps === 1 ? 'rep' : 'reps'}` : null;
-        const lifted = isCompleted && repsStr ? (weightStr ? `${weightStr} \u00D7 ${repsStr}` : repsStr) : '\u2014';
-        const setType = e?.setType || set.setType || ex.setType || 'straight';
-        const typeLabel = setType === 'warm_up' ? 'WU' : setType === 'touch_up' ? 'TU' : setType === 'drop' ? 'DS' : setType === 'rest_pause' ? 'RP' : setType === 'superset' ? 'SS' : setType === 'alternating' ? 'Alt' : setType === 'pre_exhaust' ? 'PrEx' : 'REG';
-        const isWarmup = setType === 'warm_up' || setType === 'touch_up';
-        const isPR = isCompleted && isPRSet(ex.name, actualWeight, actualReps);
-
-        // Set number \u2014 dim, monospace numerics.
-        ctx.font = `700 26px ${font}`;
-        ctx.fillStyle = 'rgba(255,255,255,0.35)';
-        ctx.textAlign = 'left';
-        ctx.fillText(`${idx + 1}`, padding + 8, curY + 28);
-
-        // Type label \u2014 yellow on warm-ups, dim white otherwise.
-        ctx.font = `700 20px ${font}`;
-        ctx.fillStyle = isWarmup ? '#facc15' : 'rgba(255,255,255,0.5)';
-        ctx.fillText(typeLabel, padding + 56, curY + 28);
-
-        // PR badge \u2014 centered, big yellow uppercase. Only when set is a PR.
-        if (isPR) {
-          ctx.font = `900 22px ${font}`;
-          ctx.fillStyle = '#facc15';
-          ctx.textAlign = 'center';
-          ctx.fillText('PR', W / 2, curY + 28);
-        }
-
-        // Lifted (weight \u00D7 reps) \u2014 right-aligned, red normally, yellow on PR.
-        ctx.font = `700 26px ${font}`;
-        ctx.fillStyle = isPR ? '#facc15' : '#ef4444';
-        ctx.textAlign = 'right';
-        ctx.fillText(lifted, W - padding, curY + 28);
-        ctx.textAlign = 'left';
-
-        curY += 44;
-      });
-
-      curY += 28;
     });
 
     // --- Footer: short red underline + date — mirrors the PR card's
