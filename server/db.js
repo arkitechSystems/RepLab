@@ -533,6 +533,48 @@ const db = {
     return rowCount > 0;
   },
 
+  // Move a template to a different program owned by the same user. Returns
+  // { id, programId } on success, null on missing/ownership-mismatch, and
+  // throws on db errors. Defense in depth: the WHERE clause requires BOTH
+  // the template and the target program to belong to the requesting user,
+  // so library programs (userId IS NULL) can never be a target.
+  async moveTemplateToProgram(userId, templateId, programId) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      // Verify target program belongs to the user.
+      const { rows: progRows } = await client.query(
+        'SELECT id FROM programs WHERE id = $1 AND user_id = $2',
+        [programId, userId]
+      );
+      if (!progRows[0]) {
+        await client.query('ROLLBACK');
+        return null;
+      }
+      // Reserve next sort_order in the target program.
+      const { rows: orderRows } = await client.query(
+        'SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_order FROM templates WHERE program_id = $1',
+        [programId]
+      );
+      const sortOrder = orderRows[0].next_order;
+      const { rows } = await client.query(
+        'UPDATE templates SET program_id = $1, sort_order = $2 WHERE id = $3 AND user_id = $4 RETURNING id, program_id',
+        [programId, sortOrder, templateId, userId]
+      );
+      if (!rows[0]) {
+        await client.query('ROLLBACK');
+        return null;
+      }
+      await client.query('COMMIT');
+      return { id: rows[0].id, programId: rows[0].program_id };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  },
+
   async reorderTemplates(userId, programId, orderedIds) {
     const client = await pool.connect();
     try {

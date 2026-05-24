@@ -83,6 +83,31 @@ router.put('/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// Move a template to a different program. Body: { programId: number }.
+// Owner-only (enforced in db.moveTemplateToProgram via WHERE user_id = $).
+// Target program must also belong to the requesting user, so library
+// programs (user_id IS NULL) can never be a destination.
+router.put('/:id/program', authMiddleware, async (req, res) => {
+  try {
+    const templateId = Number(req.params.id);
+    const programId = Number(req.body?.programId);
+    if (!Number.isInteger(templateId) || templateId <= 0) {
+      return res.status(400).json({ error: 'Invalid template id' });
+    }
+    if (!Number.isInteger(programId) || programId <= 0) {
+      return res.status(400).json({ error: 'programId is required' });
+    }
+    const result = await db.moveTemplateToProgram(req.userId, templateId, programId);
+    if (!result) {
+      return res.status(404).json({ error: 'Template or target program not found' });
+    }
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const templateId = Number(req.params.id);

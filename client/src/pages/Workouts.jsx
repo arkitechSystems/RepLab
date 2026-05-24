@@ -1129,6 +1129,9 @@ export default function Workouts() {
   const [addDateInput, setAddDateInput] = useState('');
   const [showAddDatePicker, setShowAddDatePicker] = useState(false);
   const [addConflictInfo, setAddConflictInfo] = useState(null);
+  // Move-to-Program modal state (My Workouts flat list)
+  const [moveTemplateModal, setMoveTemplateModal] = useState(null); // template object
+  const [moveTemplateBusy, setMoveTemplateBusy] = useState(false);
   // Share program state
   const [shareModal, setShareModal] = useState(null); // program object
   const [shareInput, setShareInput] = useState('');
@@ -1148,6 +1151,7 @@ export default function Workouts() {
   const addWorkoutTrapRef = useFocusTrap(!!addWorkoutModal && !addConflictInfo);
   const addConflictTrapRef = useFocusTrap(!!addConflictInfo);
   const shareTrapRef = useFocusTrap(!!shareModal);
+  const moveTemplateTrapRef = useFocusTrap(!!moveTemplateModal);
   const [undoToast, setUndoToast] = useState(null); // { message, undoFn, commitFn }
   const [acceptedSharesMap, setAcceptedSharesMap] = useState({}); // { programId: { senderName, senderUsername, senderPhoto } }
   const [shareUsers, setShareUsers] = useState([]); // all users for share picker
@@ -2013,6 +2017,28 @@ export default function Workouts() {
       setTemplates((prev) => prev.filter((t) => t.id !== templateId));
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
+    }
+  }
+
+  // Move a template (from the My Workouts flat list) into one of the user's
+  // own programs. Server enforces owner-only on both the template and the
+  // target program. Optimistic update + rollback on failure.
+  async function handleMoveTemplateToProgram(templateId, targetProgramId) {
+    if (!templateId || !targetProgramId) return;
+    setMoveTemplateBusy(true);
+    const prev = templates;
+    setTemplates((cur) => cur.map((t) => (t.id === templateId ? { ...t, programId: targetProgramId } : t)));
+    try {
+      await api(`/templates/${templateId}/program`, {
+        method: 'PUT',
+        body: JSON.stringify({ programId: targetProgramId }),
+      });
+      setMoveTemplateModal(null);
+    } catch (err) {
+      setTemplates(prev);
+      alert(err.message || 'Failed to move workout. Please try again.');
+    } finally {
+      setMoveTemplateBusy(false);
     }
   }
 
@@ -4317,26 +4343,39 @@ export default function Workouts() {
               : [];
 
             // Split into own programs and shared programs (My Workouts only)
-            const ownPrograms = isBrowse ? filtered : filtered.filter((p) => !acceptedSharesMap[p.id]);
+            const ownProgramsRaw = isBrowse ? filtered : filtered.filter((p) => !acceptedSharesMap[p.id]);
             const sharedPrograms = isBrowse ? [] : filtered.filter((p) => acceptedSharesMap[p.id]);
 
-            // In My Workouts view, pin a program literally named "My Workouts"
-            // to the top so the catch-all bucket for custom + empty-start
-            // workouts is always the first card.
+            // Detect the "My Workouts" pseudo-program (server auto-creates
+            // it on first empty-start; partial unique index keeps it 1-per-
+            // user). In the My Workouts view we promote its templates into
+            // a flat list and hide the program-card itself; the user's
+            // OTHER custom programs still render below as cards.
+            const myWorkoutsProgram = !isBrowse
+              ? ownProgramsRaw.find((p) => (p.name || '').toLowerCase() === 'my workouts')
+              : null;
+            const ownPrograms = !isBrowse && myWorkoutsProgram
+              ? ownProgramsRaw.filter((p) => p.id !== myWorkoutsProgram.id)
+              : ownProgramsRaw;
+            // Flat list of uncategorized custom workouts. Excludes rest days
+            // (placeholders, no exercises to log) and prehab templates
+            // (getEnrichedPrograms already strips those out, but be explicit).
+            const myWorkoutsTemplates = !isBrowse && myWorkoutsProgram
+              ? (myWorkoutsProgram.templates || []).filter((t) => !t.isRest && !t.isPrehab)
+              : [];
+
+            // Sort the user's other custom programs by their existing
+            // sort_order (no more "My Workouts" pin — that program is now
+            // promoted into the flat list above).
             if (!isBrowse) {
-              ownPrograms.sort((a, b) => {
-                const aMine = (a.name || '').toLowerCase() === 'my workouts';
-                const bMine = (b.name || '').toLowerCase() === 'my workouts';
-                if (aMine && !bMine) return -1;
-                if (bMine && !aMine) return 1;
-                return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
-              });
+              ownPrograms.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
             }
 
             if (
               ownPrograms.length === 0 &&
               sharedPrograms.length === 0 &&
               matchingWorkouts.length === 0 &&
+              myWorkoutsTemplates.length === 0 &&
               browseSearch.trim()
             ) {
               return (
@@ -4345,7 +4384,12 @@ export default function Workouts() {
                 </div>
               );
             }
-            if (ownPrograms.length === 0 && sharedPrograms.length === 0 && pendingShares.length === 0) {
+            if (
+              ownPrograms.length === 0 &&
+              sharedPrograms.length === 0 &&
+              pendingShares.length === 0 &&
+              myWorkoutsTemplates.length === 0
+            ) {
               return (
                 <div className="glass-card rounded-2xl p-8 flex flex-col items-center text-center">
                   <div className="w-16 h-16 rounded-2xl bg-wf-red/10 flex items-center justify-center mb-4">
@@ -4408,6 +4452,126 @@ export default function Workouts() {
                   </div>
                 )}
 
+                {/* My Workouts — flat list of uncategorized custom workouts.
+                    The "My Workouts" pseudo-program is auto-created by
+                    /sessions/start-empty and is no longer rendered as a
+                    program card. Templates in it surface here with
+                    Add-to-Calendar (reuses openAddWorkout, same flow as
+                    Browse Library matchingWorkouts) and Move-to-Program
+                    (PUT /templates/:id/program — owner-only on both sides). */}
+                {!isBrowse && (myWorkoutsTemplates.length > 0 || myWorkoutsProgram) && (
+                  <div className="mb-6">
+                    <div className="flex items-baseline gap-2 mb-3">
+                      <p
+                        className="text-[11px] uppercase font-bold"
+                        style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.3em' }}
+                      >
+                        // Uncategorized
+                      </p>
+                      <h3 className="text-[16px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui' }}>
+                        MY WORKOUTS
+                      </h3>
+                    </div>
+                    {myWorkoutsTemplates.length === 0 ? (
+                      <div
+                        className="px-5 py-6 text-center"
+                        style={{
+                          background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                          borderRadius: '2px',
+                          boxShadow: '0 8px 30px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)',
+                        }}
+                      >
+                        <p className="text-[12px] text-white/50 font-light leading-relaxed">
+                          Start an empty workout from the calendar — it'll land here.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {myWorkoutsTemplates.map((t, idx) => (
+                          <div
+                            key={t.id}
+                            style={{
+                              animationDelay: `${idx * 60}ms`,
+                              position: 'relative',
+                              overflow: 'hidden',
+                              borderRadius: '2px',
+                              background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                              boxShadow: '0 8px 30px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)',
+                            }}
+                            className="fade-slide-up"
+                          >
+                            {/* Red accent stripe on the left edge — matches
+                                the program-detail week-card accent */}
+                            <div
+                              className="absolute left-0 top-0 bottom-0"
+                              style={{ width: '2px', background: 'linear-gradient(180deg, #ef4444, rgba(239,68,68,0.25))' }}
+                              aria-hidden="true"
+                            />
+                            <div style={{ padding: '14px 18px 14px 22px' }}>
+                              <div
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => navigate(`/clientworkouts/edit/${t.id}`)}
+                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/clientworkouts/edit/${t.id}`); } }}
+                                className="cursor-pointer active:opacity-80 transition-opacity"
+                              >
+                                <div className="text-[15px] font-black text-white tracking-tight uppercase truncate" style={{ fontFamily: 'system-ui' }}>
+                                  {t.name}
+                                </div>
+                                <div className="text-[11px] text-white/30 font-light mt-0.5">
+                                  {(t.exercises || []).length} {(t.exercises || []).length === 1 ? 'exercise' : 'exercises'}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  onClick={() => openAddWorkout(t)}
+                                  className="active:scale-[0.97] transition-all text-white text-[10px] font-bold uppercase px-3 py-2 whitespace-nowrap"
+                                  style={{
+                                    letterSpacing: '0.15em',
+                                    borderRadius: '2px',
+                                    background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+                                    boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+                                  }}
+                                  title="Add to calendar"
+                                >
+                                  + Calendar
+                                </button>
+                                <button
+                                  onClick={() => setMoveTemplateModal(t)}
+                                  className="active:scale-[0.97] transition-all text-white/80 text-[10px] font-bold uppercase px-3 py-2 whitespace-nowrap flex items-center gap-1.5"
+                                  style={{
+                                    letterSpacing: '0.15em',
+                                    borderRadius: '2px',
+                                    background: 'rgba(255,255,255,0.06)',
+                                    border: '1px solid rgba(255,255,255,0.12)',
+                                  }}
+                                  title="Move to a program"
+                                >
+                                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 7.5h12m0 0l-3-3m3 3l-3 3M21 16.5H9m0 0l3 3m-3-3l3-3" />
+                                  </svg>
+                                  Move
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteTemplate(t.id)}
+                                  aria-label="Delete workout"
+                                  className="ml-auto w-8 h-8 flex items-center justify-center active:bg-red-500/25 transition-colors"
+                                  style={{ borderRadius: '2px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)' }}
+                                  title="Delete workout"
+                                >
+                                  <svg className="w-3.5 h-3.5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {ownPrograms.length > 0 && (
                   isBrowse ? (
                     <div
@@ -4439,13 +4603,26 @@ export default function Workouts() {
                       })}
                     </div>
                   ) : (
-                    <div className="space-y-4 pb-4">
-                      {/* My Workouts list — onBegin is intentionally omitted
-                          so ProgramCard hides the Begin Program CTA. Begin
-                          stays in the Browse Library only. */}
-                      {ownPrograms.map((program, idx) => (
-                        <ProgramCard key={program.id} program={program} idx={idx} dataTutorial={idx === 0 ? 'program-card' : undefined} onSelect={(id) => { setSelectedProgram(id); setSelectedWeek(null); setBrowseSearch(''); completeTutorialAction('program-selected'); }} onDelete={!isBrowse ? handleDeleteProgram : undefined} onShare={!isBrowse ? (p) => { setShareResult(null); setShareInput(''); setShareModal(p); } : undefined} onNavigateFeatured={program.isFeatured ? () => navigate('/featured-session') : undefined} />
-                      ))}
+                    <div>
+                      <div className="flex items-baseline gap-2 mb-3">
+                        <p
+                          className="text-[11px] uppercase font-bold"
+                          style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.3em' }}
+                        >
+                          // Programs
+                        </p>
+                        <h3 className="text-[16px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui' }}>
+                          MY PROGRAMS
+                        </h3>
+                      </div>
+                      <div className="space-y-4 pb-4">
+                        {/* My Workouts list — onBegin is intentionally omitted
+                            so ProgramCard hides the Begin Program CTA. Begin
+                            stays in the Browse Library only. */}
+                        {ownPrograms.map((program, idx) => (
+                          <ProgramCard key={program.id} program={program} idx={idx} dataTutorial={idx === 0 ? 'program-card' : undefined} onSelect={(id) => { setSelectedProgram(id); setSelectedWeek(null); setBrowseSearch(''); completeTutorialAction('program-selected'); }} onDelete={!isBrowse ? handleDeleteProgram : undefined} onShare={!isBrowse ? (p) => { setShareResult(null); setShareInput(''); setShareModal(p); } : undefined} onNavigateFeatured={program.isFeatured ? () => navigate('/featured-session') : undefined} />
+                        ))}
+                      </div>
                     </div>
                   )
                 )}
@@ -4535,7 +4712,114 @@ export default function Workouts() {
         </div>
 
         {renderBeginModals()}
+        {renderAddWorkoutModals()}
         {showCreateMenu && renderCreateMenu()}
+
+        {/* Move-to-Program Modal — lists only the user's own custom
+            programs (excludes the My Workouts pseudo-program itself and
+            any admin-seeded library programs). Server enforces ownership
+            on both sides as a defense in depth. */}
+        {moveTemplateModal && (
+          <div
+            className="fixed inset-0 z-50 flex items-start justify-center pt-24 px-5"
+            onClick={() => !moveTemplateBusy && setMoveTemplateModal(null)}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="workouts-move-title"
+          >
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+            <div
+              ref={moveTemplateTrapRef}
+              className="relative w-full max-w-sm overflow-hidden animate-drop-down"
+              style={{
+                background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                borderRadius: '2px',
+                boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent)' }} />
+              <div className="relative p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <p className="text-[11px] uppercase font-light mb-2" style={{ letterSpacing: '0.3em', color: 'rgba(239,68,68,0.8)' }}>Organize</p>
+                    <h3 id="workouts-move-title" className="text-[22px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>MOVE TO PROGRAM</h3>
+                  </div>
+                  <button
+                    onClick={() => setMoveTemplateModal(null)}
+                    disabled={moveTemplateBusy}
+                    aria-label="Close"
+                    className="w-7 h-7 flex items-center justify-center active:scale-90 transition-all shrink-0 disabled:opacity-40"
+                    style={{ color: 'rgba(255,255,255,0.3)' }}
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <p className="text-[12px] text-white/50 font-light leading-relaxed mb-4">
+                  Move <span className="text-white font-semibold">{moveTemplateModal.name}</span> into one of your programs.
+                </p>
+                {(() => {
+                  // Filter rules match CreateWorkout's "Add to Program"
+                  // dropdown lockdown: user-owned programs only, and
+                  // exclude the My Workouts pseudo-program (the source).
+                  const targetPrograms = myPrograms.filter(
+                    (p) => (p.name || '').toLowerCase() !== 'my workouts'
+                  );
+                  if (targetPrograms.length === 0) {
+                    return (
+                      <div className="text-center py-6">
+                        <p className="text-[12px] text-white/50 font-light leading-relaxed mb-3">
+                          You don't have any other programs yet.
+                        </p>
+                        <button
+                          onClick={() => { setMoveTemplateModal(null); setShowCreateMenu(true); }}
+                          className="active:scale-[0.97] transition-all text-white text-[11px] font-bold uppercase px-4 py-2.5"
+                          style={{
+                            letterSpacing: '0.2em',
+                            borderRadius: '2px',
+                            background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+                            boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+                          }}
+                        >
+                          Create a Program
+                        </button>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="max-h-72 overflow-y-auto space-y-2">
+                      {targetPrograms.map((p) => (
+                        <button
+                          key={p.id}
+                          onClick={() => handleMoveTemplateToProgram(moveTemplateModal.id, p.id)}
+                          disabled={moveTemplateBusy}
+                          className="w-full text-left px-4 py-3 active:bg-white/10 transition-colors flex items-center gap-3 disabled:opacity-50"
+                          style={{
+                            background: 'rgba(255,255,255,0.04)',
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            borderRadius: '2px',
+                          }}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-semibold text-white truncate">{p.name}</div>
+                            <div className="text-[11px] text-wf-gray-500 truncate">
+                              {p.workoutCount} {p.workoutCount === 1 ? 'workout' : 'workouts'}
+                            </div>
+                          </div>
+                          <svg className="w-4 h-4 text-wf-gray-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                          </svg>
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Share Program Modal */}
         {shareModal && (
