@@ -29,7 +29,7 @@ export const BAR_OPTIONS = [
 // plate-calc spec in the design handoff (Claude Design 2026-05-23).
 export const PLATES = [
   { lb: 45,  color: '#e10600', text: '#fff', height: 92, label: '45' },
-  { lb: 35,  color: '#fbbf24', text: '#000', height: 78, label: '35' },
+  { lb: 35,  color: '#fbbf24', text: '#fff', height: 78, label: '35' },
   { lb: 25,  color: '#444444', text: '#fff', height: 70, label: '25' },
   { lb: 10,  color: '#ffffff', text: '#000', height: 58, label: '10' },
   { lb: 5,   color: '#444444', text: '#fff', height: 48, label: '5' },
