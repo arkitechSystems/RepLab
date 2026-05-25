@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
 
 // Show the install prompt after the user has been around long enough to
 // have a reason to install. Not immediately — that's annoying for new visitors.
@@ -44,6 +45,13 @@ export default function InstallPrompt() {
   const [visible, setVisible] = useState(true); // becomes false on dismiss/install
 
   useEffect(() => {
+    // Hard-block on native Capacitor wrappers (iOS/Android App Store builds).
+    // The 'install this as a PWA' banner is meaningless inside a real
+    // native app and would get flagged by App Review as broken UX.
+    if (Capacitor.isNativePlatform()) {
+      setVisible(false);
+      return;
+    }
     // Never show if already installed or recently dismissed.
     if (isStandalone() || wasRecentlyDismissed()) {
       setVisible(false);
