@@ -17,14 +17,23 @@ function PlateBlock({ plate }) {
   return (
     <div
       style={{
-        width: 10,
+        width: 14,
         height: plate.height,
         background: plate.color,
         boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.25)',
         borderRadius: '1px',
+        display: 'grid',
+        placeItems: 'center',
+        fontFamily: 'Anton, sans-serif',
+        fontSize: 9,
+        lineHeight: 1,
+        color: plate.text,
+        overflow: 'hidden',
       }}
       aria-label={`${plate.label} pound plate`}
-    />
+    >
+      {plate.label}
+    </div>
   );
 }
 
