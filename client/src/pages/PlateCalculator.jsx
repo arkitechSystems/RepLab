@@ -102,7 +102,16 @@ export default function PlateCalculator() {
 
   return (
     <div className="pb-24">
-      <StickyHeader title="PLATE CALCULATOR" titleStyle={{ fontSize: '26.4px' }}>
+      <StickyHeader
+        title="PLATE CALCULATOR"
+        titleStyle={{
+          fontFamily: 'Anton, sans-serif',
+          fontSize: '26.4px',
+          textTransform: 'uppercase',
+          letterSpacing: '0.01em',
+          lineHeight: 1,
+        }}
+      >
         <button
           onClick={() => navigate(-1)}
           className="text-[11px] uppercase font-bold text-wf-gray-400 active:text-white"
@@ -131,11 +140,27 @@ export default function PlateCalculator() {
                 the bar selector chips lower change the value). Matches
                 the in-session PlateCalculatorModal so the two surfaces
                 read as one calculator. */}
-            <div className="mb-4">
-              <h2 className="text-[16px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: 1, letterSpacing: '-0.01em' }}>
-                Plate Calc
+            <div className="mb-4 text-center">
+              <h2
+                className="font-black text-white uppercase"
+                style={{
+                  fontFamily: 'Anton, sans-serif',
+                  fontSize: 22,
+                  lineHeight: 1,
+                  letterSpacing: '0.01em',
+                }}
+              >
+                Plate Calculator
               </h2>
-              <p className="text-[11px] text-white/40 font-medium mt-1" style={{ letterSpacing: '0.04em' }}>
+              <p
+                className="text-white/30 mt-1.5"
+                style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: 9,
+                  letterSpacing: '0.16em',
+                  textTransform: 'uppercase',
+                }}
+              >
                 {bar > 0 ? `Barbell · ${bar} LB` : 'Machine · no bar'}
               </p>
             </div>

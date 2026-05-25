@@ -46,11 +46,21 @@ export default function StickyHeader({ title, subtitle, children, bottomContent,
             />
           ) : null}
           {title ? <div className={`min-w-0 flex-1${titleCentered ? ' text-center' : ''}`}>
+            {/* Title uses the landing page's Anton uppercase treatment so
+                the in-app page titles read in the same typographic voice
+                as the marketing surfaces. callers can still override
+                via titleStyle / titleClassName. */}
             <h1
-              className={`font-black text-white tracking-tight transition-all duration-300 ${
-                collapsed ? 'text-lg' : 'text-3xl'
+              className={`font-black text-white uppercase transition-all duration-300 ${
+                collapsed ? 'text-[18px]' : 'text-[28px]'
               } ${titleClassName}`}
-              style={{ overflowWrap: 'break-word', ...titleStyle }}
+              style={{
+                fontFamily: 'Anton, sans-serif',
+                letterSpacing: '0.01em',
+                lineHeight: 1,
+                overflowWrap: 'break-word',
+                ...titleStyle,
+              }}
             >
               {title}
             </h1>
