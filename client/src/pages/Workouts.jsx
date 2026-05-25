@@ -5592,9 +5592,14 @@ export default function Workouts() {
                             onClick: () => { setSelectedGroup('browse'); completeTutorialAction?.('browse-library-tap'); },
                           };
                         }
-                        const primaryBg = primary.bg || RL_RED;
-                        const primaryColor = primary.color || '#fff';
-                        const primaryShadow = primary.shadow || '0 6px 18px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)';
+                        // Defaults match the pre-redesign primary CTA: white
+                        // gradient pill with black text + soft glow. Workout
+                        // Completed overrides to a green gradient (set in the
+                        // info-branch above); Resume uses .btn-liquid via the
+                        // primary.liquid flag and ignores these.
+                        const primaryBg = primary.bg || 'linear-gradient(135deg, #fff 0%, #e0e0e0 100%)';
+                        const primaryColor = primary.color || '#000';
+                        const primaryShadow = primary.shadow || '0 6px 20px rgba(255,255,255,0.1)';
                         // Right-side button: when today's already done AND a real
                         // next workout is displayed, surface "Preview Next" so the
                         // post-completion CTA pair is "Review what I just did" +
@@ -5609,39 +5614,27 @@ export default function Workouts() {
                               label: 'Browse',
                               onClick: () => { setSelectedGroup('browse'); completeTutorialAction?.('browse-library-tap'); },
                             };
+                        // Buttons match the pre-redesign Your Next Workout CTA
+                        // pair: full-rounded pills, 11px uppercase, 0.15em
+                        // letter-spacing. White-on-black is the default; Resume
+                        // gets .btn-liquid; Completed gets the green gradient.
                         return (
-                          <div className="flex gap-2.5 mt-5">
+                          <div className="flex gap-3 mt-5">
                             <button
                               onClick={primary.onClick}
                               disabled={loading}
-                              className={`flex-1 active:scale-[0.97] transition-transform disabled:opacity-50 disabled:pointer-events-none${primary.liquid ? ' btn-liquid' : ''}`}
+                              className={`flex-1 min-h-[48px] py-3.5 rounded-full text-[11px] font-bold uppercase active:scale-[0.97] transition-transform disabled:opacity-50 disabled:pointer-events-none${primary.liquid ? ' btn-liquid' : ''}`}
                               style={primary.liquid
-                                ? {
-                                    padding: '14px 0', borderRadius: 12,
-                                    fontFamily: 'Inter, system-ui, sans-serif',
-                                    fontWeight: 700, fontSize: 12.5, letterSpacing: '0.04em',
-                                  }
-                                : {
-                                    padding: '14px 0', borderRadius: 12,
-                                    background: primaryBg, color: primaryColor,
-                                    fontFamily: 'Inter, system-ui, sans-serif',
-                                    fontWeight: 700, fontSize: 12.5, letterSpacing: '0.04em',
-                                    border: 'none', boxShadow: primaryShadow,
-                                  }}
+                                ? { letterSpacing: '0.15em' }
+                                : { background: primaryBg, color: primaryColor, letterSpacing: '0.15em', boxShadow: primaryShadow }}
                             >
                               {primary.label}
                             </button>
                             <button
                               onClick={secondary.onClick}
                               disabled={loading}
-                              className="active:scale-[0.97] transition-transform disabled:opacity-50 disabled:pointer-events-none"
-                              style={{
-                                padding: '14px 18px', borderRadius: 12,
-                                background: 'rgba(255,255,255,0.06)', color: '#fff',
-                                fontFamily: 'Inter, system-ui, sans-serif',
-                                fontWeight: 600, fontSize: 12.5,
-                                border: '1px solid rgba(255,255,255,0.08)',
-                              }}
+                              className="flex-1 min-h-[48px] py-3.5 rounded-full border border-white/15 text-white/50 text-[11px] font-medium uppercase active:bg-white/5 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                              style={{ letterSpacing: '0.15em' }}
                             >
                               {secondary.label}
                             </button>
@@ -6159,14 +6152,12 @@ export default function Workouts() {
                   )}
                   <button
                     onClick={(e) => { e.stopPropagation(); setShowCreateMenu(true); }}
-                    className="active:scale-[0.97] transition-all text-white whitespace-nowrap"
+                    className="active:scale-[0.97] transition-all text-white text-[11px] font-bold uppercase px-3.5 py-2 whitespace-nowrap shrink-0"
                     style={{
-                      fontFamily: 'Inter, system-ui, sans-serif',
-                      fontWeight: 700, fontSize: 11.5, letterSpacing: '0.04em',
-                      padding: '10px 16px', borderRadius: 12,
-                      background: '#ef4444',
-                      border: 'none',
-                      boxShadow: '0 6px 18px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+                      letterSpacing: '0.15em',
+                      borderRadius: '2px',
+                      background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+                      boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
                     }}
                   >
                     + Create Workout
