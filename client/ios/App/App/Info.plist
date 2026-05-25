@@ -48,10 +48,16 @@
 	<!-- Permission usage descriptions. Each must be present BEFORE the system
 	     prompt fires, or iOS aborts the request and Apple Review will reject. -->
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>RepLab uses your photo library to set or update your profile photo.</string>
+	<string>REPLAB uses your photo library to set or update your profile photo.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>RepLab saves shared workout and PR cards to your photos.</string>
+	<string>REPLAB saves shared workout and PR cards to your photos.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>RepLab uses your camera if you choose to take a new profile photo.</string>
+	<string>REPLAB uses your camera if you choose to take a new profile photo.</string>
+	<!-- Export compliance: REPLAB only uses standard HTTPS/TLS provided by
+	     iOS. That qualifies for the mass-market exemption under EAR
+	     §740.17(b). Setting this key to false skips the App Store Connect
+	     encryption question on every future build upload. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>
