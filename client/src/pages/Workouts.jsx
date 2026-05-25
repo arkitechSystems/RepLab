@@ -5431,153 +5431,256 @@ export default function Workouts() {
              render with empty states inline). So we always render the full
              content for any successfully-loaded session. */
           <div className="space-y-4 pb-4">
-            {/* Your Next Workout — Nike style */}
+            {/* Your Next Workout — Tactile B.3 (Claude Design handoff 2026-05-23).
+                Soft elevated card on dark BG: eyebrow + accent dot signals state,
+                title + program subtitle, embedded 3-up stats grid, CTA pair,
+                last-session ticker. Shell flexes across start/resume/upcoming/
+                completed/rest via the same precedence logic that drove the
+                prior Nike-style card — only the visuals changed. */}
             <div className="fade-slide-up mx-2" style={{ animationDelay: '0ms' }}>
-              <div className="relative overflow-hidden" style={{
-                background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
-                boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
-                borderRadius: '2px',
-              }}>
-                {/* Red accent line */}
-                <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25))' }} />
-                {/* Accent spotlight */}
-                <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+              {(() => {
+                const info = nextWorkoutInfo;
+                const loading = !info;
+                const isCompleted = !!info?.completedToday;
+                const isRest = info?.status === 'rest';
+                const isResume = info?.status === 'resume';
+                const RL_RED = '#ef4444';
+                const RL_GREEN = '#22c55e';
+                const accentColor = isCompleted ? RL_GREEN : RL_RED;
+                const eyebrow = isCompleted ? 'Completed Today'
+                  : isResume ? 'In Progress'
+                  : isRest ? 'Rest Day'
+                  : 'Up Next';
+                const haloColor = isCompleted ? 'rgba(34,197,94,0.10)' : 'rgba(239,68,68,0.10)';
+                const showStats = (streak > 0 || totalWorkouts > 0 || workoutsThisMonth > 0);
+                return (
+                  <div className="relative overflow-hidden" style={{
+                    background: 'linear-gradient(180deg, #1a1816 0%, #100f0d 100%)',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    boxShadow: '0 1px 0 rgba(255,255,255,0.06) inset, 0 16px 40px rgba(0,0,0,0.5)',
+                    borderRadius: '18px',
+                  }}>
+                    {/* Faint accent halo — sits behind everything */}
+                    <div className="absolute -top-10 -right-10 w-[180px] h-[180px] pointer-events-none" style={{
+                      background: `radial-gradient(circle, ${haloColor} 0%, transparent 70%)`,
+                      filter: 'blur(20px)',
+                    }} />
 
-                <div className="relative p-3.5">
-                  <p className="text-[10px] text-white/30 uppercase font-light mb-2" style={{ letterSpacing: '0.3em' }}>Up Next</p>
-                  <h2 className="text-[28px] font-black text-white tracking-tight mb-1" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>
-                    {nextWorkoutInfo?.status === 'rest'
-                      ? <>REST<br/>DAY</>
-                      : <>YOUR NEXT<br/>WORKOUT</>}
-                  </h2>
-
-                  {/* Workout info — fixed min-h reserves space so the card
-                      doesn't jolt vertically as nextWorkoutInfo + currentProgram
-                      resolve in staggered renders. */}
-                  <div className="mt-3 mb-4 min-h-[44px]">
-                    <div className="flex items-center gap-3 mb-1 min-w-0">
-                      <span className="text-[15px] font-semibold text-white truncate min-w-0 flex-1">
-                        {nextWorkoutInfo?.templateName || (nextWorkoutInfo?.status === 'rest' ? 'Rest Day' : nextWorkoutInfo?.status === 'none' ? 'Nothing scheduled' : 'Loading...')}
-                      </span>
-                      {nextWorkoutInfo?.dayLabel && (
-                        <span className="flex items-center gap-3 shrink-0">
-                          <span className="w-px h-3.5 bg-white/10" />
-                          <span className="text-[13px] text-white/35 font-light">{nextWorkoutInfo.dayLabel}</span>
+                    <div className="relative px-5 pt-5 pb-5">
+                      {/* Eyebrow row: accent dot + state + optional duration meta */}
+                      <div className="flex items-center justify-between mb-4 relative">
+                        <span className="inline-flex items-center gap-2 text-[9.5px] font-medium uppercase" style={{
+                          fontFamily: 'JetBrains Mono, ui-monospace, monospace',
+                          letterSpacing: '0.28em',
+                          color: accentColor,
+                        }}>
+                          <span style={{
+                            width: 6, height: 6, borderRadius: '50%', background: accentColor,
+                            boxShadow: `0 0 0 3px ${accentColor}22`,
+                          }} />
+                          {eyebrow}
                         </span>
+                        {info?.dayLabel && !isCompleted && (
+                          <span className="uppercase" style={{
+                            fontFamily: 'JetBrains Mono, ui-monospace, monospace',
+                            fontSize: 9, letterSpacing: '0.2em', color: 'rgba(255,255,255,0.35)',
+                          }}>
+                            {info.dayLabel}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Title + subtitle. Fixed min-h keeps the card from jolting
+                          while nextWorkoutInfo + currentProgram resolve. */}
+                      <div className="min-h-[60px]">
+                        <h1 className="text-white" style={{
+                          fontFamily: 'Inter, system-ui, sans-serif',
+                          fontWeight: 800, fontSize: 28, lineHeight: 1.0,
+                          letterSpacing: '-0.022em', margin: 0,
+                        }}>
+                          {info?.templateName || (isRest ? 'Rest Day' : info?.status === 'none' ? 'Nothing scheduled' : 'Loading...')}
+                        </h1>
+                        {currentProgram && !isRest && (
+                          <p className="mt-2" style={{
+                            fontFamily: 'Inter, system-ui, sans-serif',
+                            fontSize: 12.5, color: 'rgba(255,255,255,0.5)',
+                          }}>
+                            {currentProgram.name} <span style={{ color: 'rgba(255,255,255,0.25)' }}>·</span> Week {currentProgram.week}
+                          </p>
+                        )}
+                        {isRest && (
+                          <p className="mt-2" style={{
+                            fontFamily: 'Inter, system-ui, sans-serif',
+                            fontSize: 12.5, color: 'rgba(255,255,255,0.5)',
+                          }}>
+                            Recovery, mobility, hydration.
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Embedded stats — 3-up grid with hairline dividers.
+                          Absorbs the prior standalone Odometer row. */}
+                      {showStats && (
+                        <div className="mt-4 pt-4 grid grid-cols-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                          {[
+                            { n: streak,            l: 'Streak' },
+                            { n: totalWorkouts,     l: 'Total' },
+                            { n: workoutsThisMonth, l: 'This Month' },
+                          ].map((s, i, arr) => (
+                            <div key={i} className="text-center" style={{
+                              borderRight: i < arr.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                            }}>
+                              <div className="text-white" style={{
+                                fontFamily: 'Inter, system-ui, sans-serif',
+                                fontWeight: 700, fontSize: 22, lineHeight: 1, letterSpacing: '-0.02em',
+                              }}>{s.n}</div>
+                              <div className="mt-1.5" style={{
+                                fontFamily: 'Inter, system-ui, sans-serif',
+                                fontSize: 10, color: 'rgba(255,255,255,0.5)',
+                              }}>{s.l}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* CTAs — left primary action shifts with status so the
+                          card actually fulfils its "open app, go to next workout"
+                          promise. Order of precedence:
+                            completedToday → Workout Completed (deeplink to summary)
+                            status start/resume/upcoming → Start/Resume/Preview that workout
+                            status rest/none → fall back to Add a Workout
+                          Disabled while `nextWorkoutInfo` is still loading so a
+                          mid-revalidation tap can't fire against stale state. */}
+                      {(() => {
+                        let primary;
+                        if (info?.completedToday) {
+                          const { templateId, date } = info.completedToday;
+                          primary = {
+                            label: 'Workout Completed',
+                            onClick: () => navigate(`/session/${templateId}/${date}?summary=1`),
+                            bg: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+                            color: '#fff',
+                            shadow: '0 6px 18px rgba(34,197,94,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+                          };
+                        } else if (info?.templateId && info.status === 'start') {
+                          primary = {
+                            label: 'Start Workout',
+                            onClick: () => navigateToWorkout(info.templateId, info.date),
+                          };
+                        } else if (info?.templateId && info.status === 'resume') {
+                          primary = {
+                            label: 'Resume →',
+                            onClick: () => navigateToWorkout(info.templateId, info.date),
+                            // .btn-liquid is the app's red→white animated flowing
+                            // gradient (defined in index.css). Used here to draw
+                            // the eye toward the in-progress workout — the user
+                            // has an open session, the card should feel "live".
+                            liquid: true,
+                          };
+                        } else if (info?.templateId && info.status === 'upcoming') {
+                          primary = {
+                            label: 'Preview',
+                            onClick: () => navigateToWorkout(info.templateId, info.date),
+                          };
+                        } else {
+                          // No workout scheduled / no completion today: primary CTA
+                          // routes users into the Browse Programs library (same
+                          // target as the right-side Browse button) so they can
+                          // pick a workout instead of building one from scratch.
+                          primary = {
+                            label: 'Add a Workout',
+                            onClick: () => { setSelectedGroup('browse'); completeTutorialAction?.('browse-library-tap'); },
+                          };
+                        }
+                        const primaryBg = primary.bg || RL_RED;
+                        const primaryColor = primary.color || '#fff';
+                        const primaryShadow = primary.shadow || '0 6px 18px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)';
+                        // Right-side button: when today's already done AND a real
+                        // next workout is displayed, surface "Preview Next" so the
+                        // post-completion CTA pair is "Review what I just did" +
+                        // "See what's next" instead of the orphan-feeling Browse.
+                        const showPreviewNext = info?.completedToday && info?.templateId;
+                        const secondary = showPreviewNext
+                          ? {
+                              label: 'Preview Next',
+                              onClick: () => navigateToWorkout(info.templateId, info.date),
+                            }
+                          : {
+                              label: 'Browse',
+                              onClick: () => { setSelectedGroup('browse'); completeTutorialAction?.('browse-library-tap'); },
+                            };
+                        return (
+                          <div className="flex gap-2.5 mt-5">
+                            <button
+                              onClick={primary.onClick}
+                              disabled={loading}
+                              className={`flex-1 active:scale-[0.97] transition-transform disabled:opacity-50 disabled:pointer-events-none${primary.liquid ? ' btn-liquid' : ''}`}
+                              style={primary.liquid
+                                ? {
+                                    padding: '14px 0', borderRadius: 12,
+                                    fontFamily: 'Inter, system-ui, sans-serif',
+                                    fontWeight: 700, fontSize: 12.5, letterSpacing: '0.04em',
+                                  }
+                                : {
+                                    padding: '14px 0', borderRadius: 12,
+                                    background: primaryBg, color: primaryColor,
+                                    fontFamily: 'Inter, system-ui, sans-serif',
+                                    fontWeight: 700, fontSize: 12.5, letterSpacing: '0.04em',
+                                    border: 'none', boxShadow: primaryShadow,
+                                  }}
+                            >
+                              {primary.label}
+                            </button>
+                            <button
+                              onClick={secondary.onClick}
+                              disabled={loading}
+                              className="active:scale-[0.97] transition-transform disabled:opacity-50 disabled:pointer-events-none"
+                              style={{
+                                padding: '14px 18px', borderRadius: 12,
+                                background: 'rgba(255,255,255,0.06)', color: '#fff',
+                                fontFamily: 'Inter, system-ui, sans-serif',
+                                fontWeight: 600, fontSize: 12.5,
+                                border: '1px solid rgba(255,255,255,0.08)',
+                              }}
+                            >
+                              {secondary.label}
+                            </button>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Last-session ticker — quiet "what just happened" pinned
+                          to the bottom of the card. Hidden on completed/rest to
+                          keep those states tidy. */}
+                      {!isCompleted && !isRest && lastWorkout && (
+                        <div className="mt-4 pt-3 flex items-center gap-2.5" style={{
+                          borderTop: '1px solid rgba(255,255,255,0.06)',
+                        }}>
+                          <span className="uppercase" style={{
+                            fontFamily: 'JetBrains Mono, ui-monospace, monospace',
+                            fontSize: 8.5, letterSpacing: '0.28em', color: 'rgba(255,255,255,0.35)',
+                          }}>
+                            Last
+                          </span>
+                          <span className="flex-1 min-w-0 truncate" style={{
+                            fontFamily: 'Inter, system-ui, sans-serif',
+                            fontSize: 11.5, color: 'rgba(255,255,255,0.65)',
+                          }}>
+                            {lastWorkout.name}
+                          </span>
+                          <span className="uppercase" style={{
+                            fontFamily: 'JetBrains Mono, ui-monospace, monospace',
+                            fontSize: 9, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.35)',
+                          }}>
+                            {lastWorkout.ago}
+                          </span>
+                        </div>
                       )}
                     </div>
-                    {currentProgram && (
-                      <p className="text-[12px] text-white/25 font-light">{currentProgram.name} — Week {currentProgram.week}</p>
-                    )}
                   </div>
-
-                  {/* CTAs — left primary action shifts with status so the
-                      card actually fulfils its "open app, go to next workout"
-                      promise. Order of precedence:
-                        completedToday → Workout Completed (deeplink to summary)
-                        status start/resume/upcoming → Start/Resume/Preview that workout
-                        status rest/none → fall back to Create a Workout
-                      Disabled while `nextWorkoutInfo` is still loading so a
-                      mid-revalidation tap can't fire against stale state. */}
-                  {(() => {
-                    const info = nextWorkoutInfo;
-                    const loading = !info;
-                    let primary;
-                    if (info?.completedToday) {
-                      const { templateId, date } = info.completedToday;
-                      primary = {
-                        label: 'Workout Completed',
-                        onClick: () => navigate(`/session/${templateId}/${date}?summary=1`),
-                        bg: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
-                        shadow: '0 6px 20px rgba(34,197,94,0.25)',
-                      };
-                    } else if (info?.templateId && info.status === 'start') {
-                      primary = {
-                        label: 'Start Now',
-                        onClick: () => navigateToWorkout(info.templateId, info.date),
-                      };
-                    } else if (info?.templateId && info.status === 'resume') {
-                      primary = {
-                        label: 'Resume',
-                        onClick: () => navigateToWorkout(info.templateId, info.date),
-                        // .btn-liquid is the app's red→white animated flowing
-                        // gradient (defined in index.css). Used here to draw
-                        // the eye toward the in-progress workout — the user
-                        // has an open session, the card should feel "live".
-                        liquid: true,
-                      };
-                    } else if (info?.templateId && info.status === 'upcoming') {
-                      primary = {
-                        label: 'Preview',
-                        onClick: () => navigateToWorkout(info.templateId, info.date),
-                      };
-                    } else {
-                      // No workout scheduled / no completion today: primary CTA
-                      // routes users into the Browse Programs library (same
-                      // target as the right-side Browse button) so they can
-                      // pick a workout instead of building one from scratch.
-                      primary = {
-                        label: 'Add a Workout',
-                        onClick: () => { setSelectedGroup('browse'); completeTutorialAction?.('browse-library-tap'); },
-                      };
-                    }
-                    const bg = primary.bg || 'linear-gradient(135deg, #fff 0%, #e0e0e0 100%)';
-                    const shadow = primary.shadow || '0 6px 20px rgba(255,255,255,0.1)';
-                    // Right-side button: when today's already done AND a real
-                    // next workout is displayed, surface "Preview Next" so the
-                    // post-completion CTA pair is "Review what I just did" +
-                    // "See what's next" instead of the orphan-feeling Browse.
-                    const showPreviewNext = info?.completedToday && info?.templateId;
-                    const secondary = showPreviewNext
-                      ? {
-                          label: 'Preview Next',
-                          onClick: () => navigateToWorkout(info.templateId, info.date),
-                        }
-                      : {
-                          label: 'Browse',
-                          onClick: () => { setSelectedGroup('browse'); completeTutorialAction?.('browse-library-tap'); },
-                        };
-                    return (
-                      <div className="flex gap-3">
-                        <button
-                          onClick={primary.onClick}
-                          disabled={loading}
-                          className={`flex-1 min-h-[48px] py-3.5 rounded-full text-[11px] font-bold uppercase active:scale-[0.97] transition-transform disabled:opacity-50 disabled:pointer-events-none${primary.liquid ? ' btn-liquid' : ''}`}
-                          style={primary.liquid
-                            ? { letterSpacing: '0.15em' }
-                            : { background: bg, color: '#000', letterSpacing: '0.15em', boxShadow: shadow }}
-                        >
-                          {primary.label}
-                        </button>
-                        <button
-                          onClick={secondary.onClick}
-                          disabled={loading}
-                          className="flex-1 min-h-[48px] py-3.5 rounded-full border border-white/15 text-white/50 text-[11px] font-medium uppercase active:bg-white/5 transition-colors disabled:opacity-50 disabled:pointer-events-none"
-                          style={{ letterSpacing: '0.15em' }}
-                        >
-                          {secondary.label}
-                        </button>
-                      </div>
-                    );
-                  })()}
-                </div>
-              </div>
+                );
+              })()}
             </div>
-
-            {/* Stats row — Odometer style (matches brainstorm demo #5).
-                Negative top/bottom margins cancel the parent's space-y-4 gap so
-                this row butts directly against the cards above and below. */}
-            {(streak > 0 || totalWorkouts > 0 || workoutsThisMonth > 0) && (
-              <div className="grid grid-cols-3 gap-4 fade-slide-up -mt-4 -mb-4" style={{ animationDelay: '100ms' }}>
-                {[
-                  { value: streak,            labelTop: 'Day',      labelBottom: 'Streak' },
-                  { value: totalWorkouts,     labelTop: 'Total',    labelBottom: 'Workouts' },
-                  { value: workoutsThisMonth, labelTop: 'Workouts', labelBottom: 'This Month' },
-                ].map((stat, i) => (
-                  <OdometerStat key={i} value={stat.value} labelTop={stat.labelTop} labelBottom={stat.labelBottom} delay={100 + i * 80} />
-                ))}
-              </div>
-            )}
 
             {/* (Legacy Your Next Workout card — hidden for reference) */}
             <div className="fade-slide-up hidden" style={{
@@ -5872,38 +5975,48 @@ export default function Workouts() {
               </div>
             </div>
 
-            {/* Browse Workout Library card — Nike style */}
+            {/* Browse Workout Library card — Tactile rounded treatment to
+                match the new Up Next card. Quieter eyebrow, no hard red bar,
+                soft accent halo. Behavior + handlers unchanged. */}
             <div
               data-tutorial="browse-library"
               onClick={() => { setSelectedGroup('browse'); completeTutorialAction('browse-library-tap'); }}
-              className="w-full text-left active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
+              className="w-full text-left active:scale-[0.98] transition-transform fade-slide-up cursor-pointer mx-2"
               style={{
                 animationDelay: '0ms',
-                background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
-                borderRadius: '2px',
+                background: 'linear-gradient(180deg, #1a1816 0%, #100f0d 100%)',
+                border: '1px solid rgba(255,255,255,0.06)',
+                borderRadius: '18px',
                 position: 'relative',
                 overflow: 'hidden',
-                boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+                boxShadow: '0 1px 0 rgba(255,255,255,0.06) inset, 0 12px 28px rgba(0,0,0,0.4)',
               }}
             >
-              {/* Red accent line (matches Your Next Workout card) */}
-              <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25))' }} />
-              {/* Ambient red spotlight */}
-              <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+              {/* Ambient red halo */}
+              <div className="absolute -top-10 -right-10 w-[180px] h-[180px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.10) 0%, transparent 70%)', filter: 'blur(20px)' }} />
 
-              {/* Header row — "Browse Workout Library" spans as a single tracked uppercase line */}
-              <div className="relative px-6 pt-5 pb-4 border-b border-white/10">
-                <p className="text-[14px] text-white uppercase font-bold text-center" style={{ letterSpacing: '0.3em' }}>
-                  Browse Workout Library
+              {/* Eyebrow row */}
+              <div className="relative px-5 pt-5 pb-3">
+                <p className="uppercase" style={{
+                  fontFamily: 'JetBrains Mono, ui-monospace, monospace',
+                  fontSize: 9.5, letterSpacing: '0.28em', color: 'rgba(255,255,255,0.45)',
+                }}>
+                  Browse Library
                 </p>
               </div>
 
-              <div className="relative px-6 py-5 flex items-center justify-between gap-5">
+              <div className="relative px-5 pb-5 flex items-end justify-between gap-5">
                 <div>
-                  <div className="text-[44px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.9' }}>
+                  <div className="text-white" style={{
+                    fontFamily: 'Inter, system-ui, sans-serif',
+                    fontWeight: 800, fontSize: 40, lineHeight: 0.9, letterSpacing: '-0.025em',
+                  }}>
                     {browsePrograms.length}
                   </div>
-                  <div className="text-[10px] text-white/30 uppercase font-semibold mt-1" style={{ letterSpacing: '0.3em' }}>
+                  <div className="mt-1.5 uppercase" style={{
+                    fontFamily: 'Inter, system-ui, sans-serif',
+                    fontSize: 10.5, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.2em',
+                  }}>
                     Programs
                   </div>
                 </div>
@@ -5992,28 +6105,30 @@ export default function Workouts() {
             </div>
             */}
 
-            {/* My Workouts card — Nike style (matches Browse Library) */}
+            {/* My Workouts card — Tactile rounded treatment (matches Browse) */}
             <div
               data-tutorial="my-workouts"
               onClick={() => setSelectedGroup('my')}
-              className="w-full text-left active:scale-[0.98] transition-transform fade-slide-up cursor-pointer"
+              className="w-full text-left active:scale-[0.98] transition-transform fade-slide-up cursor-pointer mx-2"
               style={{
                 animationDelay: '0ms',
-                background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
-                borderRadius: '2px',
+                background: 'linear-gradient(180deg, #1a1816 0%, #100f0d 100%)',
+                border: '1px solid rgba(255,255,255,0.06)',
+                borderRadius: '18px',
                 position: 'relative',
                 overflow: 'hidden',
-                boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+                boxShadow: '0 1px 0 rgba(255,255,255,0.06) inset, 0 12px 28px rgba(0,0,0,0.4)',
               }}
             >
-              {/* Red accent line (matches Your Next Workout card) */}
-              <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25))' }} />
-              {/* Ambient red spotlight */}
-              <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+              {/* Ambient red halo */}
+              <div className="absolute -top-10 -right-10 w-[180px] h-[180px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.10) 0%, transparent 70%)', filter: 'blur(20px)' }} />
 
-              {/* Header row */}
-              <div className="relative px-6 pt-5 pb-4 border-b border-white/10 flex items-center gap-2">
-                <p className="text-[11px] text-white/40 uppercase font-light" style={{ letterSpacing: '0.3em' }}>
+              {/* Eyebrow row */}
+              <div className="relative px-5 pt-5 pb-3 flex items-center gap-2">
+                <p className="uppercase" style={{
+                  fontFamily: 'JetBrains Mono, ui-monospace, monospace',
+                  fontSize: 9.5, letterSpacing: '0.28em', color: 'rgba(255,255,255,0.45)',
+                }}>
                   My Workouts
                 </p>
                 {pendingShares.length > 0 && (
@@ -6021,32 +6136,37 @@ export default function Workouts() {
                 )}
               </div>
 
-              <div className="relative px-6 py-5 flex items-end justify-between gap-5">
+              <div className="relative px-5 pb-5 flex items-end justify-between gap-5">
                 <div>
-                  <div className="text-[44px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.9' }}>
+                  <div className="text-white" style={{
+                    fontFamily: 'Inter, system-ui, sans-serif',
+                    fontWeight: 800, fontSize: 40, lineHeight: 0.9, letterSpacing: '-0.025em',
+                  }}>
                     {myPrograms.length}
                   </div>
-                  <div className="text-[10px] text-white/30 uppercase font-semibold mt-1" style={{ letterSpacing: '0.3em' }}>
+                  <div className="mt-1.5 uppercase" style={{
+                    fontFamily: 'Inter, system-ui, sans-serif',
+                    fontSize: 10.5, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.2em',
+                  }}>
                     {myPrograms.length === 1 ? 'Program' : 'Programs'}
                   </div>
                 </div>
                 <div className="flex-1 flex flex-col items-end gap-3">
-                  <span className="text-[10px] font-bold uppercase" style={{ color: 'rgba(239,68,68,0.75)', letterSpacing: '0.25em' }}>
-                    Your Custom Workouts
-                  </span>
                   {myPrograms.length === 0 && (
-                    <div className="text-[11px] text-white/40 -mt-2">
+                    <div className="text-[11px] text-white/45" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
                       Create your first workout
                     </div>
                   )}
                   <button
                     onClick={(e) => { e.stopPropagation(); setShowCreateMenu(true); }}
-                    className="active:scale-[0.97] transition-all text-white text-[11px] font-bold uppercase px-3.5 py-2 whitespace-nowrap"
+                    className="active:scale-[0.97] transition-all text-white whitespace-nowrap"
                     style={{
-                      letterSpacing: '0.15em',
-                      borderRadius: '2px',
-                      background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
-                      boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+                      fontFamily: 'Inter, system-ui, sans-serif',
+                      fontWeight: 700, fontSize: 11.5, letterSpacing: '0.04em',
+                      padding: '10px 16px', borderRadius: 12,
+                      background: '#ef4444',
+                      border: 'none',
+                      boxShadow: '0 6px 18px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
                     }}
                   >
                     + Create Workout
