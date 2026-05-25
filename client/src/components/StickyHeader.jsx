@@ -51,11 +51,12 @@ export default function StickyHeader({ title, subtitle, children, bottomContent,
                 as the marketing surfaces. callers can still override
                 via titleStyle / titleClassName. */}
             <h1
-              className={`font-black text-white uppercase transition-all duration-300 ${
+              className={`text-white uppercase transition-all duration-300 ${
                 collapsed ? 'text-[18px]' : 'text-[28px]'
               } ${titleClassName}`}
               style={{
                 fontFamily: 'Anton, sans-serif',
+                fontWeight: 400,
                 letterSpacing: '0.01em',
                 lineHeight: 1,
                 overflowWrap: 'break-word',
