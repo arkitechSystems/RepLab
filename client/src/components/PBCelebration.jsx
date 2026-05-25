@@ -71,7 +71,17 @@ export default function PBCelebration({ prs, onDismiss }) {
         ))}
       </div>
 
-      <div role="status" aria-live="polite" className="fixed top-0 left-0 right-0 z-[100] flex justify-center pt-4 safe-top pointer-events-none">
+      {/* Anchor the toast BELOW the global Layout header (REPLAB wordmark
+          + avatar bar at the top of every authed page), not at viewport
+          top-0. Layout's header is safe-area-inset-top + ~44px tall on
+          devices with a notch, so we add ~56px of clearance plus the
+          safe-area inset and a small breathing gap. */}
+      <div
+        role="status"
+        aria-live="polite"
+        className="fixed left-0 right-0 z-[100] flex justify-center pointer-events-none"
+        style={{ top: 'calc(env(safe-area-inset-top, 0px) + 64px)' }}
+      >
         <div className={`pb-toast ${dismissing ? 'dismissing' : ''} pointer-events-auto`}>
           <div className="mx-4 glass-card !bg-amber-500/20 !border-amber-500/40 rounded-xl px-5 py-4 shadow-lg shadow-amber-500/20 relative">
             {/* Header */}
