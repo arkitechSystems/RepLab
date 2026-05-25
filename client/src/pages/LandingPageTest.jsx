@@ -636,10 +636,10 @@ export default function LandingPageTest() {
                         <div>Reps</div>
                       </div>
                       {[
-                        { done: true, set: 1, type: 'Normal', goal: '185', actual: '185', reps: '8' },
-                        { done: true, set: 2, type: 'Normal', goal: '185', actual: '185', reps: '8' },
-                        { active: true, set: 3, type: 'Normal', goal: '185', actual: '185', reps: '—' },
-                        { set: 4, type: 'Normal', goal: '185', actual: '—', reps: '—' },
+                        { done: true, set: 1, type: 'REG', goal: '185', actual: '185', reps: '8' },
+                        { done: true, set: 2, type: 'REG', goal: '185', actual: '185', reps: '8' },
+                        { active: true, set: 3, type: 'REG', goal: '185', actual: '185', reps: '—' },
+                        { set: 4, type: 'REG', goal: '185', actual: '—', reps: '—' },
                         { set: 5, type: 'Drop', goal: '155', actual: '—', reps: '—' },
                       ].map((r, i) => (
                         <div key={i} className={`lp-ec-row ${r.active ? 'lp-active' : ''}`}>
