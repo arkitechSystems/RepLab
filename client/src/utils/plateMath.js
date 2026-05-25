@@ -60,3 +60,37 @@ export function computePlatesPerSide(perSideWeight) {
   }
   return { plates: out, leftover: remaining };
 }
+
+// Flat per-side stack expansion: returns an array of plate lbs (e.g.
+// [45, 45, 25, 10] for 125 per side). Used to seed the manual stack from
+// a typed target weight — components then let the user push/pop entries
+// via the +/- chip without re-running greedy fill on every adjustment.
+// `leftover` is the unfilled remainder per side (same as computePlatesPerSide).
+export function expandPlatesPerSide(perSideWeight) {
+  const stack = [];
+  let remaining = perSideWeight;
+  for (const p of PLATES) {
+    const count = Math.floor(remaining / p.lb);
+    for (let i = 0; i < count; i += 1) stack.push(p.lb);
+    if (count > 0) {
+      remaining = +(remaining - count * p.lb).toFixed(3);
+    }
+  }
+  return { stack, leftover: remaining };
+}
+
+// Aggregate a flat per-side stack into the { lb, color, height, label, count }
+// shape the bar renderer expects. Preserves PLATES order (heaviest →
+// lightest) so the visualization stays consistent with greedy output.
+// Always returns leftover: 0 because the stack is user-built and exact —
+// there's no greedy mismatch to surface.
+export function countPlatesFromStack(stack) {
+  const counts = new Map();
+  for (const lb of stack) counts.set(lb, (counts.get(lb) || 0) + 1);
+  const plates = [];
+  for (const p of PLATES) {
+    const count = counts.get(p.lb);
+    if (count > 0) plates.push({ ...p, count });
+  }
+  return { plates, leftover: 0 };
+}

@@ -1,16 +1,29 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StickyHeader from '../components/StickyHeader';
-import { BAR_OPTIONS, PLATES, QUICK_PLATES, computePlatesPerSide } from '../utils/plateMath';
+import { BAR_OPTIONS, PLATES, QUICK_PLATES, expandPlatesPerSide, countPlatesFromStack } from '../utils/plateMath';
+
+// Helper: seed a per-side stack from a target weight + bar + mode. Used
+// when the user types a target, toggles mode, or changes bar weight.
+// The +/- chip never re-greedy-fills — it pushes/pops the user-built
+// stack directly so a 35 stays a 35.
+function seedStack(targetNum, bar, mode) {
+  const overBar = targetNum - bar;
+  if (!Number.isFinite(overBar) || overBar < 0) return [];
+  const perSide = mode === 'one' ? overBar : overBar / 2;
+  return expandPlatesPerSide(perSide).stack;
+}
 
 // Nike-styled plate calculator. Greedy-fills standard plate denominations
 // per side until the requested weight is reached. Doesn't handle kilo
 // plates or unusual sets (e.g. fractional 1.25/0.5) — keep this minimal
 // for now; iterate if users ask for more.
 //
-// Plate denominations + computePlatesPerSide() live in
-// client/src/utils/plateMath.js so the same math drives both this page
-// and the in-session PlateCalculatorModal popup.
+// Plate denominations + expandPlatesPerSide / countPlatesFromStack
+// helpers live in client/src/utils/plateMath.js so the same math drives
+// both this page and the in-session PlateCalculatorModal popup. The
+// in-session modal mirrors the same stack-based +/- behavior to keep
+// the two surfaces in lockstep.
 
 export default function PlateCalculator() {
   const navigate = useNavigate();
@@ -19,38 +32,73 @@ export default function PlateCalculator() {
   // natural than booting with a magic 135 pre-loaded.
   const [target, setTarget] = useState('45');
   const [bar, setBar] = useState(45);
-  // Selected manual-add plate. The +/- buttons on the bar use this value
-  // to bump the target weight up or down.
+  // Selected manual-add plate. The +/- buttons on the bar push/pop this
+  // denomination from the per-side stack below.
   const [selectedPlate, setSelectedPlate] = useState(45);
   // 'both' = standard barbell (plates loaded on both ends, default)
   // 'one'  = one-side / landmine setup (only show + load one end)
   const [mode, setMode] = useState('both');
+  // Stack-based plate model: flat per-side array (e.g. [45, 25, 10]).
+  // The +/- chip pushes/pops entries here directly so a user-added 35 lb
+  // plate stays a 35 lb plate — it doesn't get re-greedy-filled into a
+  // 45 + 10 combo just because the new total happens to factor that way.
+  const [manualPlates, setManualPlates] = useState(() => seedStack(45, 45, 'both'));
 
-  const targetNum = Number(target) || 0;
+  // Stack is the source of truth — total + per-side both derive from it.
+  // The `target` input string only mirrors the total for display and for
+  // the Quick Set / typed-input reseed path.
+  const sides = mode === 'both' ? 2 : 1;
+  const perSideWeight = manualPlates.reduce((sum, lb) => sum + lb, 0);
+  const stackTotal = bar + perSideWeight * sides;
+  // Validity comes from the typed target (which may be below the bar
+  // while the user is mid-edit). Stack total alone is always >= bar.
+  const typedNum = Number(target);
+  const valid = !Number.isFinite(typedNum) || typedNum >= bar;
+  const perSide = mode === 'one' ? perSideWeight * sides : perSideWeight;
+  const { plates, leftover } = countPlatesFromStack(manualPlates);
 
-  const { plates, leftover, perSide, valid } = useMemo(() => {
-    const overBar = targetNum - bar;
-    if (overBar < 0) return { plates: [], leftover: 0, perSide: 0, valid: false };
-    // In one-side mode the user is only loading + lifting one end of the
-    // bar (e.g. landmine row), so all the "over-bar" weight sits on that
-    // single side. In both-sides mode the over-bar weight splits 50/50.
-    const ps = mode === 'one' ? overBar : overBar / 2;
-    const { plates, leftover } = computePlatesPerSide(ps);
-    return { plates, leftover, perSide: ps, valid: true };
-  }, [targetNum, bar, mode]);
-
-  // +/- adjust target by N × selected plate value. Both-sides mode
-  // multiplies by 2 (one plate per side), one-side mode multiplies by 1.
-  // Floor is the bar weight itself: in standard mode you can't subtract
-  // below an empty bar; in machine mode (bar=0) the floor is 0.
-  const canDecrement = targetNum > bar;
-  function adjustTarget(direction) {
-    const sides = mode === 'both' ? 2 : 1;
-    const delta = direction * selectedPlate * sides;
-    const next = Math.max(bar, targetNum + delta);
-    // Strip trailing .0 so the input doesn't render "225.0"
-    setTarget(String(Number(next.toFixed(2))));
+  // + handler — pushes the selected denomination onto the stack. No
+  // greedy fill: a manually-added 35 stays a 35 on the visualization.
+  function addPlate() {
+    setManualPlates((prev) => {
+      const next = [...prev, selectedPlate];
+      const total = bar + next.reduce((sum, lb) => sum + lb, 0) * sides;
+      setTarget(String(Number(total.toFixed(2))));
+      return next;
+    });
   }
+
+  // - handler — removes ONE occurrence of the selected denomination.
+  // Gated by canDecrement, so this is mostly defensive.
+  function removePlate() {
+    setManualPlates((prev) => {
+      const idx = prev.lastIndexOf(selectedPlate);
+      if (idx < 0) return prev;
+      const next = prev.slice();
+      next.splice(idx, 1);
+      const total = bar + next.reduce((sum, lb) => sum + lb, 0) * sides;
+      setTarget(String(Number(total.toFixed(2))));
+      return next;
+    });
+  }
+
+  // Typed target — reseed the stack via greedy fill so the visualization
+  // matches the new number. Same path is used by Quick Set chips. If the
+  // typed value is below the bar, empty the stack so the visual matches.
+  function onTargetTextChange(text) {
+    setTarget(text);
+    const num = Number(text);
+    if (!Number.isFinite(num)) return;
+    if (num < bar) {
+      setManualPlates([]);
+    } else {
+      setManualPlates(seedStack(num, bar, mode));
+    }
+  }
+
+  // Disable - when there's no plate of the selected denomination on the
+  // stack. Per-denomination check, not "is bar loaded".
+  const canDecrement = manualPlates.includes(selectedPlate);
 
   return (
     <div className="pb-24">
@@ -93,15 +141,18 @@ export default function PlateCalculator() {
             </div>
 
             {/* Target weight — big Anton number with - on the left and +
-                on the right. Buttons drive adjustTarget which uses the
-                currently-selected plate size + the sides multiplier. */}
+                on the right. Buttons drive addPlate / removePlate which
+                push or pop the currently-selected plate denomination
+                from a flat per-side stack (so on Both Sides, +1 tap adds
+                one plate to each side, total moves by 2 × the plate).
+                Typing a number reseeds the stack via greedy fill. */}
             <div className="mb-4">
               <p className="text-[10px] uppercase font-bold text-white/40 text-center mb-2" style={{ letterSpacing: '0.3em' }}>
                 Target Weight
               </p>
               <div className="flex items-center justify-center gap-3">
                 <button
-                  onClick={() => adjustTarget(-1)}
+                  onClick={removePlate}
                   disabled={!canDecrement}
                   aria-label={`Remove ${selectedPlate} lb plate`}
                   className={`shrink-0 w-11 h-11 flex items-center justify-center transition-transform ${canDecrement ? 'text-white/80 active:scale-90' : 'text-white/25 cursor-not-allowed'}`}
@@ -124,7 +175,7 @@ export default function PlateCalculator() {
                     min="0"
                     step="2.5"
                     value={target}
-                    onChange={(e) => setTarget(e.target.value)}
+                    onChange={(e) => onTargetTextChange(e.target.value)}
                     onFocus={(e) => e.target.select()}
                     className="bg-transparent font-black tracking-tight focus:outline-none tabular-nums text-center text-white"
                     style={{
@@ -145,7 +196,7 @@ export default function PlateCalculator() {
                 </div>
 
                 <button
-                  onClick={() => adjustTarget(+1)}
+                  onClick={addPlate}
                   aria-label={`Add ${selectedPlate} lb plate`}
                   className="shrink-0 w-11 h-11 flex items-center justify-center text-white active:scale-90 transition-transform"
                   style={{
@@ -189,14 +240,22 @@ export default function PlateCalculator() {
                         // zero rather than inheriting whatever target was
                         // set for the previous bar config.
                         setTarget('0');
+                        setManualPlates([]);
                       } else {
                         // Restore a default bar weight if user is coming
                         // back from Machine; otherwise just flip mode.
                         if (bar === 0) {
                           setBar(45);
                           setTarget('45');
+                          setManualPlates([]);
+                          setMode(opt.v);
+                        } else {
+                          // Reseed stack from the current target against
+                          // the new mode — per-side splitting changes
+                          // between Both and One Side.
+                          setMode(opt.v);
+                          setManualPlates(seedStack(Number(target) || 0, bar, opt.v));
                         }
-                        setMode(opt.v);
                       }
                     }}
                     className="flex-1 text-[10px] font-bold uppercase whitespace-nowrap py-2 px-2 active:scale-[0.97] transition-transform"
@@ -377,7 +436,18 @@ export default function PlateCalculator() {
                   return (
                     <button
                       key={b.value}
-                      onClick={() => { setBar(b.value); setTarget(String(b.value)); }}
+                      onClick={() => {
+                        // Bar change re-seeds plate stack against the
+                        // new bar weight, using the existing target as
+                        // the floor — keeps the visualization honest
+                        // (no stale plates carrying over from a 45 → 35
+                        // bar switch).
+                        setBar(b.value);
+                        const curTarget = Number(target) || 0;
+                        const nextTarget = Math.max(curTarget, b.value);
+                        setTarget(String(nextTarget));
+                        setManualPlates(seedStack(nextTarget, b.value, mode));
+                      }}
                       className="text-[10px] font-bold uppercase whitespace-nowrap py-2 px-3 active:scale-[0.97] transition-transform"
                       style={{
                         letterSpacing: '0.15em',
@@ -410,7 +480,7 @@ export default function PlateCalculator() {
             {[95, 135, 185, 225, 275, 315, 365, 405].map((w) => (
               <button
                 key={w}
-                onClick={() => setTarget(String(w))}
+                onClick={() => onTargetTextChange(String(w))}
                 className="text-[11px] font-bold py-2 px-3 active:scale-[0.97] transition-transform tabular-nums"
                 style={{
                   letterSpacing: '0.05em',
