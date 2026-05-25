@@ -91,10 +91,14 @@ export default function Layout({ children }) {
             background: '#000',
           }}
         >
-          <div className="flex items-center gap-2">
-            <img src="/replab-logo.png" alt="REPLAB" className="h-8 w-8 rounded" />
-            <span className="text-base font-black tracking-widest">
-              REP<span className="text-wf-red">LAB</span>
+          {/* REPLAB wordmark — matches the landing page nav exactly. Uses
+              the landing-logo-mark.png (no rounded corners), w-7 h-7, and
+              text-[18px] font-black tracking-widest so the in-app header
+              and the marketing surfaces read as one continuous brand. */}
+          <div className="flex items-center gap-2.5">
+            <img src="/landing-logo-mark.png" alt="REPLAB" className="w-7 h-7" />
+            <span className="text-[18px] font-black tracking-widest">
+              REP<span style={{ color: '#e10600' }}>LAB</span>
             </span>
           </div>
           <button
