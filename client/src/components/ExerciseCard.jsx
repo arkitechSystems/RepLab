@@ -101,7 +101,17 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
   const overrideVideoId = ytIdMatch ? ytIdMatch[1] : (overrideVideoUrl || null);
   const videoId = overrideVideoId || getExerciseVideoId(exercise.name, dbExercise?.videoId);
   const [showVideo, setShowVideo] = useState(false);
-  const [showDemoLocal, setShowDemoLocal] = useState(false);
+  // Full-screen mode is positioned as a beginner-friendly view: when the
+  // exercise has a linked demo video, the inline demo opens automatically so
+  // the user sees the form video without hunting for the toggle. Regular
+  // (scrolling) mode is for advanced users — demo stays collapsed by default.
+  // The button still toggles per-exercise; on navigating to the next
+  // exercise in full-screen, the effect below re-opens the demo.
+  const [showDemoLocal, setShowDemoLocal] = useState(() => fullScreen && !!videoId);
+  useEffect(() => {
+    if (!fullScreen) return;
+    setShowDemoLocal(!!videoId);
+  }, [exerciseKey, fullScreen, videoId]);
   const showDemo = forceShowDemo || showDemoLocal;
   const [deleteIdx, setDeleteIdx] = useState(null);
   const deleteSetTrapRef = useFocusTrap(deleteIdx !== null);
