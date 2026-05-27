@@ -1416,10 +1416,16 @@ export default function Calendar() {
                   </div>
                 )}
 
-                {/* All workouts, grouped by program (filtered by search) */}
+                {/* All workouts, grouped by program (filtered by search).
+                    Featured programs (e.g. Will's Hypertrophy) are excluded
+                    here — they have their own dedicated entry flow via
+                    /featured-session and shouldn't be schedulable as ad-hoc
+                    one-off days from the calendar picker. */}
                 {(() => {
                   const q = pickerSearch.toLowerCase().trim();
-                  const filteredPrograms = enrichedPrograms.map((program) => {
+                  const filteredPrograms = enrichedPrograms
+                    .filter((p) => !p.isFeatured)
+                    .map((program) => {
                     const nonRest = program.templates.filter((t) => !t.isRest);
                     if (!q) return { ...program, filtered: nonRest };
                     const matched = nonRest.filter((t) =>
