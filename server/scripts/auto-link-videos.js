@@ -42,6 +42,7 @@ const DRY_RUN = !APPLY; // dry-run is the default; --apply opts in
 const VERBOSE = getFlag('verbose');
 const YES = getFlag('yes');
 const FALLBACK_GENERAL = !getFlag('no-fallback-general'); // default true
+const GENERAL_ONLY = getFlag('general-only'); // skip channel-first phase entirely
 const EXERCISE_NAME = getOpt('exercise', null);
 const MAX_DURATION = Number(getOpt('max-duration', 90));
 const CHANNEL_NAME = getOpt('channel', 'FlexXP');
@@ -93,14 +94,27 @@ function parseIsoDuration(iso) {
   return Number(h) * 3600 + Number(mn) * 60 + Number(s);
 }
 
-async function ytFetch(url) {
-  await ytLimiter.wait();
-  const res = await fetch(url);
-  if (!res.ok) {
+async function ytFetch(url, retries = 3) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    await ytLimiter.wait();
+    const res = await fetch(url);
+    if (res.ok) return res.json();
+
     const body = await res.text().catch(() => '');
+
+    // 429 = per-minute search rate limit on the project. Back off and retry —
+    // YouTube's "Search Queries per minute" window is usually short, so a few
+    // seconds of sleep is enough to recover. Daily quota exhaustion looks the
+    // same on the wire; if it's truly daily, the retries fail and we throw.
+    if (res.status === 429 && attempt < retries) {
+      const delaySec = [5, 15, 45][attempt] ?? 60;
+      console.log(`    ⏸ YouTube 429 — backing off ${delaySec}s (retry ${attempt + 1}/${retries})`);
+      await new Promise((r) => setTimeout(r, delaySec * 1000));
+      continue;
+    }
+
     throw new Error(`YouTube API ${res.status}: ${body.slice(0, 300)}`);
   }
-  return res.json();
 }
 
 async function resolveChannelId(name) {
@@ -223,25 +237,26 @@ async function main() {
   console.log(' RepLab — auto-link YouTube demos to exercises');
   console.log('─────────────────────────────────────────────');
   console.log(`Mode:             ${APPLY ? 'APPLY (writes to DB)' : 'DRY-RUN (no writes)'}`);
-  console.log(`Channel:          ${CHANNEL_NAME}`);
+  console.log(`Search mode:      ${GENERAL_ONLY ? 'GENERAL-ONLY' : `${CHANNEL_NAME}-first` + (FALLBACK_GENERAL ? ' + general fallback' : '')}`);
   console.log(`Max duration:     ${MAX_DURATION}s`);
-  console.log(`Fallback general: ${FALLBACK_GENERAL}`);
   console.log(`Model:            ${MODEL}`);
   if (EXERCISE_NAME) console.log(`Exercise filter:  ${EXERCISE_NAME}`);
   if (LIMIT) console.log(`Limit:            ${LIMIT}`);
   console.log('');
 
-  // 1. Resolve channel id
+  // 1. Resolve channel id (skipped in general-only mode — saves 100 quota units)
   let channel = null;
-  try {
-    channel = await resolveChannelId(CHANNEL_NAME);
-    if (channel) {
-      console.log(`Resolved channel "${channel.channelTitle}" -> ${channel.channelId}`);
-    } else {
-      console.warn(`Could not resolve channelId for "${CHANNEL_NAME}". Will filter by channelTitle in snippets instead.`);
+  if (!GENERAL_ONLY) {
+    try {
+      channel = await resolveChannelId(CHANNEL_NAME);
+      if (channel) {
+        console.log(`Resolved channel "${channel.channelTitle}" -> ${channel.channelId}`);
+      } else {
+        console.warn(`Could not resolve channelId for "${CHANNEL_NAME}". Will filter by channelTitle in snippets instead.`);
+      }
+    } catch (err) {
+      console.warn(`Channel lookup failed: ${err.message}. Will filter by channelTitle in snippets instead.`);
     }
-  } catch (err) {
-    console.warn(`Channel lookup failed: ${err.message}. Will filter by channelTitle in snippets instead.`);
   }
 
   // 2. Load target exercises
@@ -276,11 +291,15 @@ async function main() {
   }
 
   // 3. Quota estimate + confirm
-  // Per-exercise worst case: 1 FlexXP search (100) + 1 fallback search (100)
-  //   + 1 videos.list (1) = 201 units.
-  // Best case (FlexXP returns results): 1 search (100) + 1 videos.list (1) = 101.
-  const bestCase = exercises.length * 101 + 100; // +100 for channel lookup
-  const worstCase = exercises.length * 201 + 100;
+  // Per-exercise cost: 1 channel-first search (100) + 1 general search (100) + 1 videos.list (1) = 201 in worst case.
+  // General-only: 1 search (100) + 1 videos.list (1) = 101 per exercise, no upfront channel lookup.
+  // Channel-first best case (FlexXP has results): 101 per exercise.
+  const bestCase = GENERAL_ONLY
+    ? exercises.length * 101
+    : exercises.length * 101 + 100;
+  const worstCase = GENERAL_ONLY
+    ? exercises.length * 101
+    : exercises.length * 201 + 100;
   console.log(`\nEstimated YouTube quota: ${bestCase}–${worstCase} units (daily quota typically 10,000).`);
   if (worstCase > 10000) {
     console.warn('Worst-case exceeds default daily quota. Consider --limit to chunk this work.');
@@ -296,6 +315,9 @@ async function main() {
 
   // 4. Process each exercise
   const stats = { processed: 0, linked: 0, skipped: 0, none: 0, errored: 0 };
+  const ABORT_AFTER_CONSECUTIVE_429 = 5;
+  let consecutive429s = 0;
+  let abortedEarly = false;
 
   for (let i = 0; i < exercises.length; i++) {
     const ex = exercises[i];
@@ -306,16 +328,18 @@ async function main() {
     try {
       const query = `${ex.name} form demo`;
 
-      // 4a. First pass — FlexXP only
+      // 4a. First pass — channel-restricted search (skipped in general-only mode)
       let rawCandidates = [];
-      if (channel?.channelId) {
-        rawCandidates = await searchYouTube({ query, channelId: channel.channelId });
-      } else {
-        // No channelId — search broadly and filter by channelTitle later
-        const all = await searchYouTube({ query, channelId: null });
-        rawCandidates = all.filter(
-          (c) => (c.channelTitle || '').toLowerCase() === CHANNEL_NAME.toLowerCase()
-        );
+      if (!GENERAL_ONLY) {
+        if (channel?.channelId) {
+          rawCandidates = await searchYouTube({ query, channelId: channel.channelId });
+        } else {
+          // No channelId — search broadly and filter by channelTitle later
+          const all = await searchYouTube({ query, channelId: null });
+          rawCandidates = all.filter(
+            (c) => (c.channelTitle || '').toLowerCase() === CHANNEL_NAME.toLowerCase()
+          );
+        }
       }
 
       let candidates = [];
@@ -326,8 +350,8 @@ async function main() {
           .map((v) => ({ ...v, outsideFlexXP: false }));
       }
 
-      // 4b. Fallback — general search
-      if (!candidates.length && FALLBACK_GENERAL) {
+      // 4b. Fallback — general search (or primary, in general-only mode)
+      if (!candidates.length && (FALLBACK_GENERAL || GENERAL_ONLY)) {
         const general = await searchYouTube({ query, channelId: null });
         if (general.length) {
           const detailed = await fetchVideoDetails(general.map((c) => c.videoId));
@@ -377,15 +401,32 @@ async function main() {
         console.log(`  → would write: UPDATE exercises SET video_id='${picked.videoId}', video_linked_by='claude_code' WHERE id=${ex.id}`);
       }
       stats.linked++;
+      consecutive429s = 0;
     } catch (err) {
       console.error(`  ⚠ Error processing "${ex.name}": ${err.message}`);
       if (VERBOSE) console.error(err);
       stats.errored++;
+
+      // Circuit-breaker: if YouTube returns 429 even after the per-request
+      // backoff retries, that almost always means the daily quota is gone
+      // (per-minute would have cleared during the retries). Bail rather
+      // than spend hours of wall time grinding 65s of retries per exercise.
+      if (/YouTube API 429/.test(err.message)) {
+        consecutive429s++;
+        if (consecutive429s >= ABORT_AFTER_CONSECUTIVE_429) {
+          console.error(`\n✋ Aborting: ${consecutive429s} consecutive 429s after retries — daily YouTube quota is likely exhausted. Re-run after midnight Pacific.`);
+          abortedEarly = true;
+          break;
+        }
+      } else {
+        consecutive429s = 0;
+      }
     }
   }
 
   // 5. Summary
   console.log('\n─────────────────────────────────');
+  if (abortedEarly) console.log(`Aborted early after ${stats.processed}/${exercises.length} exercises (quota likely exhausted)`);
   console.log(`Processed: ${stats.processed}`);
   console.log(`Linked:    ${stats.linked}  ${APPLY ? '(written)' : '(would link in --apply mode)'}`);
   console.log(`Skipped:   ${stats.skipped}   (no candidates)`);
