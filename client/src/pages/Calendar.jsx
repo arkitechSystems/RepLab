@@ -41,6 +41,9 @@ export default function Calendar() {
   const [editingDay, setEditingDay] = useState(null); // date object of day being edited
   const [expandedProgram, setExpandedProgram] = useState(null);
   const [pickerSearch, setPickerSearch] = useState('');
+  // Pill-row filter in the day-picker. null = "All programs"; otherwise the
+  // program.id whose templates are currently being shown exclusively.
+  const [selectedProgramId, setSelectedProgramId] = useState(null);
   const [editError, setEditError] = useState('');
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [restDayPrompt, setRestDayPrompt] = useState(false); // show rest day options sub-modal
@@ -207,6 +210,7 @@ export default function Calendar() {
     if (e) e.stopPropagation();
     setExpandedProgram(null);
     setPickerSearch('');
+    setSelectedProgramId(null);
     setEditError('');
     setRestDayPrompt(false);
     setClearCalendarConfirm(false);
@@ -1313,6 +1317,50 @@ export default function Calendar() {
                 </div>
               </div>
 
+              {/* Program filter pills. Horizontally scrollable on small screens.
+                  Hidden when the user has 0 or 1 non-featured programs (an
+                  "All" + single pill is pointless). The pill row gives the
+                  user a one-tap shortcut to scope the picker to a single
+                  program; the search input still works inside the filtered
+                  view as a within-program refinement. */}
+              {(() => {
+                const nonFeaturedPrograms = enrichedPrograms.filter((p) => !p.isFeatured);
+                if (nonFeaturedPrograms.length < 2) return null;
+                return (
+                  <div className="px-5 pb-3 shrink-0">
+                    <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-1 px-1 pb-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedProgramId(null)}
+                        aria-pressed={selectedProgramId == null}
+                        className={`shrink-0 px-3.5 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
+                          selectedProgramId == null
+                            ? 'bg-wf-red/20 border border-wf-red/40 text-wf-red'
+                            : 'bg-white/5 border border-white/10 text-wf-gray-300 active:bg-white/10'
+                        }`}
+                      >
+                        All
+                      </button>
+                      {nonFeaturedPrograms.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => setSelectedProgramId((prev) => (prev === p.id ? null : p.id))}
+                          aria-pressed={selectedProgramId === p.id}
+                          className={`shrink-0 px-3.5 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
+                            selectedProgramId === p.id
+                              ? 'bg-wf-red/20 border border-wf-red/40 text-wf-red'
+                              : 'bg-white/5 border border-white/10 text-wf-gray-300 active:bg-white/10'
+                          }`}
+                        >
+                          {p.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Error feedback */}
               {editError && (
                 <div role="alert" className="px-5 pb-2 shrink-0">
@@ -1322,8 +1370,10 @@ export default function Calendar() {
 
               {/* Workout list — flat, grouped by program */}
               <div className="overflow-y-auto flex-1 px-5 py-3">
-                {/* Quick actions */}
-                {!pickerSearch && (
+                {/* Quick actions — hidden whenever the user is actively
+                    filtering (typed search OR a non-"All" program pill),
+                    so the filtered view stays clean. */}
+                {!pickerSearch && selectedProgramId == null && (
                   <div className="mb-4 space-y-1.5">
                     <button
                       onClick={() => { setEditingDay(null); navigate(`/clientworkouts/create?quick=1&date=${format(editingDay, 'yyyy-MM-dd')}`); }}
@@ -1425,9 +1475,16 @@ export default function Calendar() {
                   const q = pickerSearch.toLowerCase().trim();
                   const filteredPrograms = enrichedPrograms
                     .filter((p) => !p.isFeatured)
+                    .filter((p) => selectedProgramId == null || p.id === selectedProgramId)
                     .map((program) => {
                     const nonRest = program.templates.filter((t) => !t.isRest);
                     if (!q) return { ...program, filtered: nonRest };
+                    // Program name match → surface ALL of its templates. The
+                    // user is browsing the program by name rather than hunting
+                    // a specific exercise, so collapsing to per-template
+                    // matches would hide the very thing they searched for.
+                    const programNameMatches = program.name.toLowerCase().includes(q);
+                    if (programNameMatches) return { ...program, filtered: nonRest };
                     const matched = nonRest.filter((t) =>
                       t.name.toLowerCase().includes(q) ||
                       (t.exercises && t.exercises.some((ex) => ex.name.toLowerCase().includes(q)))
