@@ -1080,6 +1080,28 @@ export default function WorkoutSession() {
     fullScreenAutoOpenedRef.current = true;
   }, [template, fullScreenDefault]);
 
+  // Auto-pop the rest timer to the bottom-left of the viewport the first
+  // time the user enters full-screen mode this session. Full-screen is the
+  // "beginner" surface — having the rest timer card already popped + visible
+  // (rather than tucked into the in-page sticky header that's hidden by the
+  // overlay) means the countdown is in view the moment a set is completed.
+  // Subsequent re-entries don't re-fire; the user's manual dock / drag
+  // choices stick for the rest of the session.
+  const restFloatAutoPoppedRef = useRef(false);
+  useEffect(() => {
+    if (fullScreenIdx === null) return;
+    if (restFloatAutoPoppedRef.current) return;
+    restFloatAutoPoppedRef.current = true;
+    setRestFloating(true);
+    // Bottom-left: x=16 left margin, y = viewport height - approx card
+    // height (~170px includes the rounded card + outer red glow ring) -
+    // 16px bottom margin. window.innerHeight is fine here — the effect
+    // only fires in the browser after fullScreenIdx changes.
+    const cardH = 170;
+    const margin = 16;
+    setRestFloatPos({ x: margin, y: Math.max(80, window.innerHeight - cardH - margin) });
+  }, [fullScreenIdx]);
+
   // If the currently-displayed full-screen exercise gets deleted (or its idx
   // goes out of bounds for any reason), auto-exit full-screen back to scroll.
   useEffect(() => {
@@ -1174,6 +1196,79 @@ export default function WorkoutSession() {
       }
       return next;
     });
+  }
+
+  // Plate-calculator "Apply" button — writes the calculated weight to the
+  // first non-completed set on the exercise, then cascades the value forward
+  // to subsequent non-completed AND non-user-edited sets. Mirrors the cascade
+  // logic in handleBlur but operates atomically (a single setEntries call) so
+  // the timing race between handleChange and handleBlur doesn't apply. The
+  // first non-completed set gets marked user-edited (so future autofill from
+  // an earlier set won't clobber it), and the cascaded sets get marked
+  // autoFilled so the UI can visually distinguish predicted values.
+  function handleApplyCalculatedWeight(exerciseKey, weight) {
+    if (!template) return;
+    let exercise = null;
+    for (let i = 0; i < template.exercises.length; i++) {
+      const e = template.exercises[i];
+      if (!e.isSectionHeader && exKey(template.exercises, e, i) === exerciseKey) { exercise = e; break; }
+    }
+    if (!exercise) return;
+    const setCount = exercise.sets?.length || 0;
+    if (setCount === 0) return;
+
+    const completedNow = completedSetsRef.current;
+    const userEditedNow = userEditedRef.current;
+
+    // First non-completed set is the write target; everything after that
+    // which isn't completed AND hasn't been user-edited gets the cascade.
+    let firstUncompleted = -1;
+    for (let i = 0; i < setCount; i++) {
+      if (!completedNow.has(`${exerciseKey}-${i}`)) { firstUncompleted = i; break; }
+    }
+    if (firstUncompleted < 0) return; // every set already completed — no-op
+
+    setPersisted(false);
+    setEntries((prev) => {
+      const updated = { ...prev };
+      updated[exerciseKey] = [...(updated[exerciseKey] || [])];
+      updated[exerciseKey][firstUncompleted] = {
+        ...updated[exerciseKey][firstUncompleted],
+        weight,
+      };
+      for (let i = firstUncompleted + 1; i < setCount; i++) {
+        const key = `${exerciseKey}-${i}`;
+        if (completedNow.has(key)) continue;
+        if (userEditedNow.has(`${key}:weight`)) continue;
+        updated[exerciseKey][i] = {
+          ...updated[exerciseKey][i],
+          weight,
+        };
+      }
+      return updated;
+    });
+
+    setAutoFilled((prev) => {
+      const next = new Set(prev);
+      // The first uncompleted set is now an explicit apply — clear any
+      // stale autoFilled flag on it.
+      next.delete(`${exerciseKey}-${firstUncompleted}`);
+      for (let i = firstUncompleted + 1; i < setCount; i++) {
+        const key = `${exerciseKey}-${i}`;
+        if (completedNow.has(key)) continue;
+        if (userEditedNow.has(`${key}:weight`)) continue;
+        next.add(key);
+      }
+      return next;
+    });
+
+    setUserEdited((prev) => {
+      const next = new Set(prev);
+      next.add(`${exerciseKey}-${firstUncompleted}:weight`);
+      return next;
+    });
+
+    autoSaveNeeded.current = true;
   }
 
   function handleAddSet(exerciseKey, afterIdx) {
@@ -2620,6 +2715,7 @@ export default function WorkoutSession() {
                 });
                 setWeightSuggestions(prev => { const next = { ...prev }; delete next[fsExercise.name]; return next; });
               }}
+              onApplyCalculatedWeight={inputsLocked ? undefined : ((_n, weight) => handleApplyCalculatedWeight(fsKey, weight))}
               allWorkoutExercises={template.exercises.map(e => e.name)}
               lastEntries={lastSession[fsExercise.name]}
               forceShowDemo={showAllDemos}
@@ -3322,6 +3418,7 @@ export default function WorkoutSession() {
                 });
                 setWeightSuggestions(prev => { const next = { ...prev }; delete next[exercise.name]; return next; });
               }}
+              onApplyCalculatedWeight={inputsLocked ? undefined : ((_n, weight) => handleApplyCalculatedWeight(eKey, weight))}
               allWorkoutExercises={template.exercises.map(e => e.name)}
               lastEntries={lastSession[exercise.name]}
               forceShowDemo={showAllDemos}
