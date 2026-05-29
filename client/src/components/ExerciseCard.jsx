@@ -981,8 +981,18 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
             open={true}
             initialWeight={initial}
             onUse={(weight) => {
-              const idxAtOpen = plateCalcSetIdx;
-              if (onChange) onChange(exercise.name, idxAtOpen, 'weight', String(weight));
+              // Use writes to the first non-completed set and cascades to
+              // remaining non-completed-non-user-edited sets, same as the
+              // → Apply pill on the Per Side row. Falls back to writing
+              // directly to the originating set if the WorkoutSession parent
+              // didn't supply onApplyCalculatedWeight (e.g. the standalone
+              // /plate-calculator utility page, which doesn't render this
+              // modal from a card context).
+              if (onApplyCalculatedWeight) {
+                onApplyCalculatedWeight(exercise.name, Number(weight) || 0);
+              } else if (onChange) {
+                onChange(exercise.name, plateCalcSetIdx, 'weight', String(weight));
+              }
               setPlateCalcSetIdx(null);
             }}
             onApplyToFirstUncompleted={onApplyCalculatedWeight ? (weight) => {
@@ -1010,13 +1020,19 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
             open={true}
             initialWeight={initial}
             onUse={(weight) => {
-              // If the user had a specific set in focus when they opened
-              // the calc from the header, write the result back to that
-              // set. Otherwise just close — the header trigger is meant
-              // to be informational when no set is anchored.
-              const idx = lastFocusedSetIdxRef.current;
-              if (idx !== null && idx !== undefined && onChange) {
-                onChange(exercise.name, idx, 'weight', String(weight));
+              // Same unified behavior as the long-press path: Use writes
+              // to the first non-completed set (and cascades) regardless of
+              // which trigger opened the modal. Falls back to the original
+              // last-focused-set semantics if onApplyCalculatedWeight wasn't
+              // supplied by the parent — keeps the standalone
+              // /plate-calculator page working when it lacks session context.
+              if (onApplyCalculatedWeight) {
+                onApplyCalculatedWeight(exercise.name, Number(weight) || 0);
+              } else {
+                const idx = lastFocusedSetIdxRef.current;
+                if (idx !== null && idx !== undefined && onChange) {
+                  onChange(exercise.name, idx, 'weight', String(weight));
+                }
               }
               setPlateCalcFromHeader(false);
             }}
