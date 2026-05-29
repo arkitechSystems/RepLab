@@ -184,14 +184,17 @@ export default function ExerciseLibrary() {
       </div>
 
       {/* Muscle Group Filter — Nike pill row: white-bg/black-text inactive,
-          black-bg/white-text active. */}
+          black-bg/white-text active. Active pills get a 1.5px white border to
+          delineate them from the dark page background; inactive pills carry
+          a transparent border of the same width so toggling between states
+          doesn't shift the row's horizontal layout. */}
       <div className="flex gap-2 overflow-x-auto pb-3 scrollbar-none mb-3">
         <button
           onClick={() => setSelectedMuscle('')}
           className="shrink-0 px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all active:scale-[0.97]"
           style={!selectedMuscle
-            ? { background: '#000000', color: '#ffffff', boxShadow: '0 4px 12px rgba(0,0,0,0.35)' }
-            : { background: '#ffffff', color: '#000000', boxShadow: '0 4px 12px rgba(255,255,255,0.10)' }
+            ? { background: '#000000', color: '#ffffff', border: '1.5px solid #ffffff', boxShadow: '0 4px 12px rgba(0,0,0,0.35)' }
+            : { background: '#ffffff', color: '#000000', border: '1.5px solid transparent', boxShadow: '0 4px 12px rgba(255,255,255,0.10)' }
           }
         >
           All
@@ -202,8 +205,8 @@ export default function ExerciseLibrary() {
             onClick={() => setSelectedMuscle(selectedMuscle === m ? '' : m)}
             className="shrink-0 px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all active:scale-[0.97]"
             style={selectedMuscle === m
-              ? { background: '#000000', color: '#ffffff', boxShadow: '0 4px 12px rgba(0,0,0,0.35)' }
-              : { background: '#ffffff', color: '#000000', boxShadow: '0 4px 12px rgba(255,255,255,0.10)' }
+              ? { background: '#000000', color: '#ffffff', border: '1.5px solid #ffffff', boxShadow: '0 4px 12px rgba(0,0,0,0.35)' }
+              : { background: '#ffffff', color: '#000000', border: '1.5px solid transparent', boxShadow: '0 4px 12px rgba(255,255,255,0.10)' }
             }
           >
             {m}
