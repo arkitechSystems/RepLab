@@ -490,22 +490,30 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
         </div>
       )}
 
-      {/* Column Headers */}
+      {/* Column Headers. Completed / Set / Type stay fixed-width; the four
+          data columns (Goal Wt, Actual Wt, Goal Reps, Actual Reps) ALL use
+          flex-1 so they share the remaining row width equally. Previously
+          the Wt columns were a fixed 3.15rem while the Reps columns were
+          flex-1 — on a narrow phone that read fine because the row was
+          tight, but on wide web/tablet viewports the reps columns ballooned
+          to ~70% of the available space and the weight columns looked
+          comically small. flex-1 across all four restores even visual
+          weight at any viewport width. */}
       <div className="px-3 pt-2 pb-1 flex items-center gap-1.5 text-[9px] text-wf-gray-500 uppercase tracking-wider">
         {!isTemplate && !readOnly && onToggleComplete && <div className={showSetType ? 'w-5 shrink-0' : 'w-[1.8rem] shrink-0'} />}
         <div className={showSetType ? 'w-[1.43rem] shrink-0 text-center' : 'w-[2.8rem] shrink-0 text-center'}>Set</div>
         {showSetType && <div className="w-[2.8rem] shrink-0 text-center">Type</div>}
-        {!isTemplate && showGoalWeight && <div className="w-[3.15rem] shrink-0 text-center">Goal Wt</div>}
+        {!isTemplate && showGoalWeight && <div className="flex-1 text-center">Goal Wt</div>}
         {/* When the Goal column is hidden there's only one weight column,
             so the simpler "Weight" label reads cleaner than "Actual Wt"
             (which only makes sense as a contrast to "Goal Wt"). */}
-        <div className={showGoalWeight ? 'w-[3.15rem] shrink-0 text-center' : 'w-[6.5rem] shrink-0 text-center'}>{showGoalWeight ? 'Actual Wt' : 'Weight'}</div>
+        <div className="flex-1 text-center">{showGoalWeight ? 'Actual Wt' : 'Weight'}</div>
         {isTemplate ? (
           <div className="flex-1 text-center">Reps</div>
         ) : (
           <>
             {showGoalReps && <div className="flex-1 text-center">Goal Reps</div>}
-            <div className="text-center" style={{ flex: '1' }}>{showGoalReps ? 'Actual Reps' : 'Reps'}</div>
+            <div className="flex-1 text-center">{showGoalReps ? 'Actual Reps' : 'Reps'}</div>
           </>
         )}
       </div>
@@ -601,9 +609,11 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                 </div>
               )}
 
-              {/* Goal Weight (read-only, from template) — session mode only */}
+              {/* Goal Weight (read-only, from template) — session mode only.
+                  flex-1 so it matches the Actual Wt + reps columns width
+                  (see header comment). */}
               {!isTemplate && showGoalWeight && (
-                <div className="w-[3.15rem] shrink-0">
+                <div className="flex-1">
                   <div className="w-full rounded-lg px-1 py-2.5 text-center text-sm font-mono-stat bg-black/40 border border-white/5" style={{ color: 'rgba(239,68,68,0.6)' }}>
                     {set.suggestedWeight ?? '—'}
                   </div>
@@ -615,8 +625,10 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                   current weight. The discoverable affordance lives in the
                   card header (⚖ icon next to PRs); long-press is the
                   power-user shortcut. Movement during press cancels so
-                  scrolling doesn't trigger it. */}
-              <div className={`${showGoalWeight ? 'w-[3.15rem] shrink-0' : 'w-[6.5rem] shrink-0'} relative`}>
+                  scrolling doesn't trigger it. flex-1 so the column shares
+                  the remaining row width equally with the other three data
+                  columns. */}
+              <div className="flex-1 relative">
                 <input
                   type="number"
                   inputMode="decimal"
