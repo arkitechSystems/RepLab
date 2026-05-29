@@ -81,7 +81,7 @@ function SortableSetRow({ id, disabled, children }) {
   );
 }
 
-function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onReorderSets, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, onShowPRs, note, onNoteChange, weightSuggestion, onApplySuggestion, allWorkoutExercises, lastEntries, forceShowDemo, mode = 'session', dataTutorial, showGoalWeight = true, showGoalReps = true, showSetType = true, exerciseNumber, cardioEnabled = false, cardioSelections, onCardioChange, cardTheme = 'light', onEnterFullScreen, fullScreen = false, onOpenSupersetPicker }) {
+function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onReorderSets, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, onShowPRs, note, onNoteChange, weightSuggestion, onApplySuggestion, onApplyCalculatedWeight, allWorkoutExercises, lastEntries, forceShowDemo, mode = 'session', dataTutorial, showGoalWeight = true, showGoalReps = true, showSetType = true, exerciseNumber, cardioEnabled = false, cardioSelections, onCardioChange, cardTheme = 'light', onEnterFullScreen, fullScreen = false, onOpenSupersetPicker }) {
   // 'light' = #e8e8e8 card with dark text (default)
   // 'dark'  = transparent card, white text — page bg shows through
   const isDarkTheme = cardTheme === 'dark';
@@ -973,6 +973,10 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
               if (onChange) onChange(exercise.name, idxAtOpen, 'weight', String(weight));
               setPlateCalcSetIdx(null);
             }}
+            onApplyToFirstUncompleted={onApplyCalculatedWeight ? (weight) => {
+              onApplyCalculatedWeight(exercise.name, Number(weight) || 0);
+              setPlateCalcSetIdx(null);
+            } : undefined}
             onClose={() => setPlateCalcSetIdx(null)}
           />
         );
@@ -1004,6 +1008,10 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
               }
               setPlateCalcFromHeader(false);
             }}
+            onApplyToFirstUncompleted={onApplyCalculatedWeight ? (weight) => {
+              onApplyCalculatedWeight(exercise.name, Number(weight) || 0);
+              setPlateCalcFromHeader(false);
+            } : undefined}
             onClose={() => setPlateCalcFromHeader(false)}
           />
         );
@@ -1162,11 +1170,16 @@ function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelec
   // Portal to document.body to escape any transformed ancestor
   // (e.g. the `.fade-slide-up` wrapper around each exercise card), which would
   // otherwise trap our `position: fixed` inside the card.
+  // z-[110] so the modal renders ABOVE the full-screen exercise overlay
+  // (WorkoutSession.jsx:2482, portal'd to body at z-[90]); plain z-50 was
+  // hidden behind that overlay when the user opened swap from inside
+  // full-screen mode. Matches the tier other "above full-screen" modals
+  // in WorkoutSession.jsx already use.
   // Guard against transient HMR / SSR states where document.body is not ready.
   if (typeof document === 'undefined' || !document.body) return null;
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex flex-col items-center"
+      className="fixed inset-0 z-[110] flex flex-col items-center"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
