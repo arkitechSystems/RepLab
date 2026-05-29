@@ -274,12 +274,23 @@ async function main() {
       process.exit(1);
     }
   } else {
+    // Prioritize exercises that are actually referenced by at least one
+    // template (in_program=true) over orphan library rows that no template
+    // uses yet. Daily YouTube quota is the bottleneck, so spend it on
+    // exercises users can actually encounter in a workout before linking
+    // rows that only exist as library entries.
     const r = await pool.query(
-      `SELECT id, name, muscle_group, video_id FROM exercises
-       WHERE video_id IS NULL AND created_by IS NULL
-       ORDER BY LOWER(name)`
+      `SELECT e.id, e.name, e.muscle_group, e.video_id,
+              EXISTS (
+                SELECT 1 FROM template_exercises te WHERE te.exercise_id = e.id
+              ) AS in_program
+       FROM exercises e
+       WHERE e.video_id IS NULL AND e.created_by IS NULL
+       ORDER BY in_program DESC, LOWER(e.name)`
     );
     exercises = r.rows;
+    const inProgramCount = exercises.filter((e) => e.in_program).length;
+    console.log(`Ordering: ${inProgramCount} in-program first, then ${exercises.length - inProgramCount} library-only.`);
   }
   if (LIMIT) exercises = exercises.slice(0, LIMIT);
 
