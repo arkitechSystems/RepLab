@@ -4547,114 +4547,129 @@ export default function WorkoutSession() {
           onTouchMove={handleRestFloatTouchMove}
           onTouchEnd={handleRestFloatTouchEnd}
         >
-          {restRemaining !== null ? (
-            // ── Active countdown: ring + Up Next + controls ──
-            (() => {
-              const total = restDuration || 1;
-              const pct = Math.max(0, Math.min(1, restRemaining / total));
-              const R = 36, C = 2 * Math.PI * R;
-              const done = restRemaining <= 0;
-              const accent = done ? '#22c55e' : '#ef4444';
-              return (
-                <div
-                  className="rounded-[22px] p-[18px] shadow-2xl backdrop-blur-xl flex items-center gap-4"
-                  style={{
-                    background: 'rgba(20,18,16,0.96)',
-                    border: `1px solid ${done ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.25)'}`,
-                    boxShadow: `0 0 0 4px ${done ? 'rgba(34,197,94,0.06)' : 'rgba(239,68,68,0.06)'}, 0 14px 36px rgba(0,0,0,0.7)`,
-                    minWidth: 280,
-                  }}
-                >
-                  {/* progress ring */}
-                  <div className="relative shrink-0" style={{ width: 84, height: 84 }}>
-                    <svg width="84" height="84" viewBox="0 0 84 84" style={{ transform: 'rotate(-90deg)' }}>
-                      <circle cx="42" cy="42" r={R} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" />
-                      <circle
-                        cx="42" cy="42" r={R} fill="none" stroke={accent} strokeWidth="6" strokeLinecap="round"
-                        strokeDasharray={C} strokeDashoffset={C * (1 - pct)}
-                        style={{ filter: `drop-shadow(0 0 6px ${done ? 'rgba(34,197,94,0.6)' : 'rgba(239,68,68,0.6)'})`, transition: 'stroke-dashoffset 1s linear' }}
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      {done ? (
-                        <span className="font-mono-stat font-black text-green-400" style={{ fontSize: 20, lineHeight: 1 }}>GO!</span>
-                      ) : (
-                        <>
-                          <span className="text-white font-mono-stat tabular-nums" style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em', lineHeight: 1 }}>
-                            {formatTime(restRemaining)}
-                          </span>
-                          <span className="uppercase font-semibold" style={{ fontSize: 8, letterSpacing: '0.28em', color: 'rgba(255,255,255,0.45)', marginTop: 4 }}>Rest</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* right column */}
-                  <div className="flex-1 min-w-0">
-                    <div className="uppercase font-semibold" style={{ fontSize: 9, letterSpacing: '0.28em', color: 'rgba(255,255,255,0.45)' }}>
-                      Up Next
-                    </div>
-                    <div className="text-white" style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.012em', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {restContext
-                        ? `Set ${restContext.nextSetNumber} · ${restContext.exerciseName}`
-                        : 'Final set complete'}
-                    </div>
-                    <div className="flex gap-1.5" style={{ marginTop: 10 }}>
-                      <button onClick={() => adjustRest(-15)} className="active:scale-95 transition-transform" style={restChipStyle}>− 15s</button>
-                      <button onClick={() => adjustRest(15)} className="active:scale-95 transition-transform" style={restChipStyle}>+ 15s</button>
-                      <button onClick={stopRestTimer} className="active:scale-95 transition-transform" style={{ ...restChipStyle, background: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.25)' }}>Skip</button>
-                    </div>
-                  </div>
-
-                  {/* close (un-float) */}
-                  <button
-                    onClick={() => setRestFloating(false)}
-                    aria-label="Dock rest timer"
-                    className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90 shrink-0 self-start"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              );
-            })()
-          ) : (
-            // ── Idle: duration picker + Start (unchanged behavior, restyled shell) ──
-            <div
-              className="rounded-[22px] p-[18px] shadow-2xl backdrop-blur-xl flex items-center gap-3"
-              style={{ background: 'rgba(20,18,16,0.96)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 14px 36px rgba(0,0,0,0.7)' }}
-            >
-              <select
-                value={restDuration}
-                onChange={(e) => { const s = Number(e.target.value); setRestDuration(s); restDurationRef.current = s; }}
-                onTouchStart={(e) => e.stopPropagation()}
-                className="touch-auto active:scale-[0.97] transition-all"
+          {/* Unified card layout — ring is always visible. Inside the ring:
+              active countdown shows the formatted time; idle (no rest yet)
+              and done (timer hit 0) both show the duration dropdown so the
+              user can pick a new rest length and tap Start Rest. Right
+              column adapts: active shows Up Next + ±15s/Skip chips; idle/
+              done shows a Ready eyebrow + single Start Rest CTA chip. */}
+          {(() => {
+            const total = restDuration || 1;
+            const isActive = restRemaining !== null && restRemaining > 0;
+            const pct = isActive ? Math.max(0, Math.min(1, restRemaining / total)) : 0;
+            const R = 36, C = 2 * Math.PI * R;
+            return (
+              <div
+                className="rounded-[22px] p-[18px] shadow-2xl backdrop-blur-xl flex items-center gap-4"
                 style={{
-                  padding: '10px 34px 10px 14px', borderRadius: 12, fontSize: 14, fontWeight: 700,
-                  letterSpacing: '0.1em', textTransform: 'uppercase', color: '#ef4444',
-                  background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)',
-                  cursor: 'pointer', outline: 'none', appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none',
-                  backgroundImage: 'linear-gradient(45deg, transparent 50%, rgba(239,68,68,0.9) 50%), linear-gradient(135deg, rgba(239,68,68,0.9) 50%, transparent 50%)',
-                  backgroundPosition: 'calc(100% - 15px) 50%, calc(100% - 10px) 50%', backgroundSize: '6px 6px, 6px 6px', backgroundRepeat: 'no-repeat',
+                  background: 'rgba(20,18,16,0.96)',
+                  border: '1px solid rgba(239,68,68,0.25)',
+                  boxShadow: '0 0 0 4px rgba(239,68,68,0.06), 0 14px 36px rgba(0,0,0,0.7)',
+                  minWidth: 280,
                 }}
               >
-                {REST_OPTIONS.map((s) => (
-                  <option key={s} value={s} className="bg-wf-gray-900">{s >= 60 ? `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}` : `${s}s`}</option>
-                ))}
-              </select>
-              <button
-                onClick={startRestTimer}
-                className="flex-1 text-white font-bold active:scale-[0.98] transition-transform"
-                style={{ padding: '12px 0', borderRadius: 12, fontSize: 13, letterSpacing: '0.04em', background: '#ef4444', boxShadow: '0 6px 18px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)' }}
-              >
-                Start Rest
-              </button>
-              <button onClick={() => setRestFloating(false)} aria-label="Dock rest timer" className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90 shrink-0">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-          )}
+                {/* progress ring — track + progress arc (arc hidden when idle) */}
+                <div className="relative shrink-0" style={{ width: 84, height: 84 }}>
+                  <svg width="84" height="84" viewBox="0 0 84 84" style={{ transform: 'rotate(-90deg)' }}>
+                    <circle cx="42" cy="42" r={R} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" />
+                    {isActive ? (
+                      <circle
+                        cx="42" cy="42" r={R} fill="none" stroke="#ef4444" strokeWidth="6" strokeLinecap="round"
+                        strokeDasharray={C} strokeDashoffset={C * (1 - pct)}
+                        style={{ filter: 'drop-shadow(0 0 6px rgba(239,68,68,0.6))', transition: 'stroke-dashoffset 1s linear' }}
+                      />
+                    ) : (
+                      // Static full red outline when no countdown is active —
+                      // visually anchors the idle/done card to the same shape
+                      // as the active state instead of leaving the ring as a
+                      // bare track.
+                      <circle
+                        cx="42" cy="42" r={R} fill="none" stroke="#ef4444" strokeWidth="6"
+                        style={{ filter: 'drop-shadow(0 0 6px rgba(239,68,68,0.6))' }}
+                      />
+                    )}
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    {isActive ? (
+                      <>
+                        <span className="text-white font-mono-stat tabular-nums" style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em', lineHeight: 1 }}>
+                          {formatTime(restRemaining)}
+                        </span>
+                        <span className="uppercase font-semibold" style={{ fontSize: 8, letterSpacing: '0.28em', color: 'rgba(255,255,255,0.45)', marginTop: 4 }}>Rest</span>
+                      </>
+                    ) : (
+                      <>
+                        {/* Duration dropdown — sits inside the ring in place
+                            of the countdown text. Native <select> styled to
+                            be transparent so only the option label and a
+                            small caret read against the dark card; tap
+                            opens the system picker. touch-auto + the
+                            stopPropagation handler keep the drag-to-move
+                            handler on the outer wrapper from swallowing the
+                            tap. */}
+                        <select
+                          value={restDuration}
+                          onChange={(e) => { const s = Number(e.target.value); setRestDuration(s); restDurationRef.current = s; }}
+                          onTouchStart={(e) => e.stopPropagation()}
+                          aria-label="Rest duration"
+                          className="touch-auto"
+                          style={{
+                            background: 'transparent', border: 'none', color: '#fff',
+                            textAlign: 'center', textAlignLast: 'center',
+                            fontSize: 20, fontWeight: 600, letterSpacing: '-0.01em', lineHeight: 1,
+                            outline: 'none', cursor: 'pointer', padding: 0,
+                            appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none',
+                            fontVariantNumeric: 'tabular-nums',
+                            width: 60,
+                            fontFamily: 'inherit',
+                          }}
+                        >
+                          {REST_OPTIONS.map((s) => (
+                            <option key={s} value={s} className="bg-wf-gray-900">{s >= 60 ? `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}` : `${s}s`}</option>
+                          ))}
+                        </select>
+                        <span className="uppercase font-semibold" style={{ fontSize: 8, letterSpacing: '0.28em', color: 'rgba(255,255,255,0.45)', marginTop: 4 }}>Rest</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* right column */}
+                <div className="flex-1 min-w-0">
+                  <div className="uppercase font-semibold" style={{ fontSize: 9, letterSpacing: '0.28em', color: 'rgba(255,255,255,0.45)' }}>
+                    {isActive || restContext ? 'Up Next' : 'Ready'}
+                  </div>
+                  <div className="text-white" style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.012em', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {restContext
+                      ? `Set ${restContext.nextSetNumber} · ${restContext.exerciseName}`
+                      : (isActive ? 'Final set complete' : 'Set duration to start')}
+                  </div>
+                  <div className="flex gap-1.5" style={{ marginTop: 10 }}>
+                    {isActive ? (
+                      <>
+                        <button onClick={() => adjustRest(-15)} className="active:scale-95 transition-transform" style={restChipStyle}>− 15s</button>
+                        <button onClick={() => adjustRest(15)} className="active:scale-95 transition-transform" style={restChipStyle}>+ 15s</button>
+                        <button onClick={stopRestTimer} className="active:scale-95 transition-transform" style={{ ...restChipStyle, background: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.25)' }}>Skip</button>
+                      </>
+                    ) : (
+                      <button onClick={startRestTimer} className="active:scale-95 transition-transform" style={{ ...restChipStyle, background: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.25)' }}>Start Rest</button>
+                    )}
+                  </div>
+                </div>
+
+                {/* close (un-float) */}
+                <button
+                  onClick={() => setRestFloating(false)}
+                  aria-label="Dock rest timer"
+                  className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90 shrink-0 self-start"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            );
+          })()}
         </div>
       )}
 
