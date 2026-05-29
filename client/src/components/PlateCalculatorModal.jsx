@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { BAR_OPTIONS, PLATES, QUICK_PLATES, expandPlatesPerSide, countPlatesFromStack } from '../utils/plateMath';
 
 // In-session plate calculator. Opens pre-filled with whatever weight the
@@ -74,7 +75,7 @@ function seedStack(targetNum, bar, mode) {
   return expandPlatesPerSide(perSide).stack;
 }
 
-export default function PlateCalculatorModal({ open, initialWeight = 0, onUse, onClose }) {
+export default function PlateCalculatorModal({ open, initialWeight = 0, onUse, onApplyToFirstUncompleted, onClose }) {
   const [bar, setBar] = useState(45);
   // Remembers the user's last barbell weight while in Machine mode, so
   // toggling back to Both/One Side restores their chosen bar (not a fixed 45).
@@ -172,9 +173,15 @@ export default function PlateCalculatorModal({ open, initialWeight = 0, onUse, o
     if (onClose) onClose();
   };
 
-  return (
+  // Portal to document.body so the modal renders ABOVE the floating rest
+  // timer (z-50) and the full-screen exercise overlay (z-[90]). Inline
+  // rendering left it at z-50 in the same context as the rest timer, where
+  // DOM order made the later-rendered rest timer paint over the modal.
+  // Guard against transient HMR / SSR states where document.body is not ready.
+  if (typeof document === 'undefined' || !document.body) return null;
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6"
+      className="fixed inset-0 z-[110] flex items-center justify-center px-4 py-6"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -307,28 +314,36 @@ export default function PlateCalculatorModal({ open, initialWeight = 0, onUse, o
                     key={opt.v}
                     onClick={() => {
                       if (opt.kind === 'nobar') {
-                        // Stash the current bar so a return trip to a barbell
-                        // mode restores the user's chosen bar (e.g. 35) rather
-                        // than hard-resetting to 45.
+                        // → Machine: preserve the per-side plate stack
+                        // literally. The user "loaded the bar" with these
+                        // plates; switching to a plate-loaded machine
+                        // doesn't unload them — only the barbell goes away.
+                        // New total = perSideWeight * 2 (machine renders the
+                        // same stack on both sides, mode stays 'both').
                         if (bar > 0) lastBarRef.current = bar;
                         setBar(0);
                         setMode('both');
-                        // Reset to a blank machine so the user starts adding
-                        // plates from zero, not from a previous-bar target.
-                        setTarget('0');
-                        setManualPlates([]);
+                        const newTotal = manualPlates.reduce((sum, lb) => sum + lb, 0) * 2;
+                        setTarget(String(Number(newTotal.toFixed(2))));
                       } else {
                         if (bar === 0) {
+                          // ← from Machine to Barbell: restore the user's
+                          // chosen bar and PRESERVE the per-side stack
+                          // (same principle as the → Machine direction —
+                          // the plates "loaded" stay loaded; only the bar
+                          // re-enters the calc).
                           const restore = lastBarRef.current || 45;
+                          const sides = opt.v === 'both' ? 2 : 1;
+                          const newTotal = restore + manualPlates.reduce((sum, lb) => sum + lb, 0) * sides;
                           setBar(restore);
-                          setTarget(String(restore));
-                          setManualPlates([]);
                           setMode(opt.v);
+                          setTarget(String(Number(newTotal.toFixed(2))));
                         } else {
-                          // Reseed stack from the current target against
-                          // the new mode — per-side splitting changes
-                          // between Both and One Side, so the existing
-                          // stack would misrepresent the load.
+                          // Both ↔ One: keep the displayed total constant
+                          // and reseed the per-side stack via greedy fill.
+                          // Per-side splitting differs between the two
+                          // modes, so the existing stack would misrepresent
+                          // the new load if preserved literally.
                           setMode(opt.v);
                           setManualPlates(seedStack(Number(target) || 0, bar, opt.v));
                         }
@@ -353,18 +368,45 @@ export default function PlateCalculatorModal({ open, initialWeight = 0, onUse, o
               })}
             </div>
 
-            {/* Per Side display */}
+            {/* Per Side display — with optional "Apply" button anchored to
+                the right when the modal is opened mid-workout. Tapping Apply
+                writes the calculated total weight to the first non-completed
+                set on the card and cascades forward (handleApplyCalculatedWeight
+                in WorkoutSession.jsx). Hidden on the standalone
+                /plate-calculator utility page where no set context exists. */}
             <div className="mb-3">
               <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(255,255,255,0.4)', letterSpacing: '0.3em' }}>
                 {mode === 'one' ? 'One Side' : 'Per Side'}
               </p>
-              <div className="flex items-baseline gap-2">
-                <h2 className="text-[24px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>
-                  {valid ? perSide.toFixed(perSide % 1 ? 1 : 0) : '—'}
-                </h2>
-                <span className="text-[12px] text-white/40 font-light">
-                  {mode === 'one' ? 'lbs loaded' : 'lbs / side'}
-                </span>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-baseline gap-2">
+                  <h2 className="text-[24px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>
+                    {valid ? perSide.toFixed(perSide % 1 ? 1 : 0) : '—'}
+                  </h2>
+                  <span className="text-[12px] text-white/40 font-light">
+                    {mode === 'one' ? 'lbs loaded' : 'lbs / side'}
+                  </span>
+                </div>
+                {onApplyToFirstUncompleted && valid && (
+                  <button
+                    type="button"
+                    onClick={() => onApplyToFirstUncompleted(Number(target) || 0)}
+                    className="active:scale-95 transition-transform whitespace-nowrap"
+                    style={{
+                      padding: '7px 13px',
+                      borderRadius: 100,
+                      fontSize: 10,
+                      fontWeight: 700,
+                      letterSpacing: '0.15em',
+                      textTransform: 'uppercase',
+                      background: 'rgba(239,68,68,0.12)',
+                      border: '1px solid rgba(239,68,68,0.3)',
+                      color: '#ef4444',
+                    }}
+                  >
+                    → Apply
+                  </button>
+                )}
               </div>
             </div>
 
@@ -561,6 +603,7 @@ export default function PlateCalculatorModal({ open, initialWeight = 0, onUse, o
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
