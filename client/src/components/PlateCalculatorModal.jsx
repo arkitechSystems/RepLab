@@ -339,13 +339,19 @@ export default function PlateCalculatorModal({ open, initialWeight = 0, onUse, o
                           setMode(opt.v);
                           setTarget(String(Number(newTotal.toFixed(2))));
                         } else {
-                          // Both ↔ One: keep the displayed total constant
-                          // and reseed the per-side stack via greedy fill.
-                          // Per-side splitting differs between the two
-                          // modes, so the existing stack would misrepresent
-                          // the new load if preserved literally.
+                          // Both ↔ One: preserve the per-side plate stack
+                          // literally and recompute total = bar + stack ×
+                          // new sides multiplier. "Weight on the bar" (the
+                          // plates loaded per side) stays the same; only
+                          // the implied second-side load changes between
+                          // loaded (Both, total counts ×2) and empty (One,
+                          // total counts ×1). Consistent with the Machine
+                          // transitions above so all four mode toggles
+                          // follow the same principle.
+                          const newSides = opt.v === 'both' ? 2 : 1;
+                          const newTotal = bar + manualPlates.reduce((sum, lb) => sum + lb, 0) * newSides;
                           setMode(opt.v);
-                          setManualPlates(seedStack(Number(target) || 0, bar, opt.v));
+                          setTarget(String(Number(newTotal.toFixed(2))));
                         }
                       }
                     }}
