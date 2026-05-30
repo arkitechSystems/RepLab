@@ -38,15 +38,25 @@ export default function ExerciseLibrary() {
   const [customName, setCustomName] = useState('');
   const [customMuscle, setCustomMuscle] = useState('');
   const [customSaving, setCustomSaving] = useState(false);
+  // Hide the stat strip while the search field is in focus OR carries text,
+  // freeing vertical space for results. Restored when blurred AND empty.
+  const [searchFocused, setSearchFocused] = useState(false);
+
+  // Special pseudo-muscle value that filters the list to the user's custom
+  // exercises only (everything else hides customs to keep the master-library
+  // browse view clean). Driven by the "Custom" pill in the filter row and
+  // by tapping the Custom stat-strip card.
+  const CUSTOM_FILTER = 'custom';
 
   const filtered = useMemo(() => {
-    // Master library only — exclude user-created custom exercises. The
-    // Utilities → Exercise Library surface is the canonical seed library
-    // (one global source of truth for exercise names + metadata);
-    // user-specific custom exercises live elsewhere (the swap modal +
-    // their own templates) and shouldn't pollute the global browse view.
-    let result = (exercises || []).filter(e => !e.isCustom);
-    if (selectedMuscle) {
+    // Default: master library only — exclude user-created custom exercises.
+    // The "Custom" pill / stat card inverts this to show ONLY the user's
+    // own custom exercises. Per-muscle pills also stay master-only since
+    // customs don't belong to a single global muscle group in the same
+    // canonical sense.
+    const showOnlyCustom = selectedMuscle === CUSTOM_FILTER;
+    let result = (exercises || []).filter((e) => (showOnlyCustom ? e.isCustom : !e.isCustom));
+    if (selectedMuscle && !showOnlyCustom) {
       result = result.filter(e => e.muscle === selectedMuscle);
     }
     if (search.trim()) {
@@ -162,27 +172,64 @@ export default function ExerciseLibrary() {
           Utilities
         </button>
 
-        {/* Title block — eyebrow + single-line "Exercise Library" headline.
-            Add-custom-exercise button is removed per design feedback; custom
-            exercise creation still lives in the workout-session swap modal
-            for users who want to add one on the fly. */}
-        <div>
-          <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.32em', color: RED, textTransform: 'uppercase' }}>Library</div>
-          <h1 style={{ fontSize: 32, fontWeight: 800, color: '#fff', margin: '8px 0 0', letterSpacing: '-0.028em', lineHeight: 0.98, whiteSpace: 'nowrap' }}>Exercise Library</h1>
+        {/* Title block + Add Custom button. "Exercise Library" sits on a
+            single line with whiteSpace: 'nowrap'; the red + button anchors
+            top-right and opens the inline Add Custom Exercise form. */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.32em', color: RED, textTransform: 'uppercase' }}>Library</div>
+            <h1 style={{ fontSize: 32, fontWeight: 800, color: '#fff', margin: '8px 0 0', letterSpacing: '-0.028em', lineHeight: 0.98, whiteSpace: 'nowrap' }}>Exercise Library</h1>
+          </div>
+          <button
+            onClick={() => setShowCustomForm(!showCustomForm)}
+            aria-label="Add custom exercise"
+            style={{ width: 44, height: 44, borderRadius: 14, flexShrink: 0, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 16px rgba(239,68,68,0.18)' }}
+            className="active:scale-90 transition-transform"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={RED} strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+          </button>
         </div>
       </div>
 
-      {/* ── Count stat strip ── */}
-      <div style={{ margin: '18px 16px 0' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', borderRadius: 16, padding: '13px 4px', background: 'rgba(255,255,255,0.03)', border: LB_BORDER }}>
-          {[{ n: exerciseCount, l: 'Exercises' }, { n: groupCount, l: 'Muscle Groups' }, { n: customCount, l: 'Custom' }].map((s, i, arr) => (
-            <div key={i} style={{ textAlign: 'center', padding: '2px 8px', borderRight: i < arr.length - 1 ? LB_HAIRLINE : 'none' }}>
-              <div style={{ fontWeight: 700, fontSize: 22, color: '#fff', lineHeight: 1, letterSpacing: '-0.02em' }}>{s.n}</div>
-              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)', marginTop: 5 }}>{s.l}</div>
-            </div>
-          ))}
+      {/* ── Count stat strip ── Hidden while the search field is in focus
+          or carries text, so the user gets more vertical real estate for
+          results once they engage with search. The Custom card is a
+          tappable cell that flips the muscle filter to a special CUSTOM
+          value; the rest of the cells are informational. */}
+      {!(searchFocused || search.trim()) && (
+        <div style={{ margin: '18px 16px 0' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', borderRadius: 16, padding: '13px 4px', background: 'rgba(255,255,255,0.03)', border: LB_BORDER }}>
+            {[
+              { n: exerciseCount, l: 'Exercises', onClick: null },
+              { n: groupCount,    l: 'Groups',    onClick: null },
+              { n: customCount,   l: 'Custom',    onClick: () => setSelectedMuscle(selectedMuscle === CUSTOM_FILTER ? '' : CUSTOM_FILTER) },
+            ].map((s, i, arr) => {
+              const isCustomCard = !!s.onClick;
+              const selected = isCustomCard && selectedMuscle === CUSTOM_FILTER;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={s.onClick || undefined}
+                  disabled={!s.onClick}
+                  className={isCustomCard ? 'active:scale-[0.97] transition-transform' : ''}
+                  style={{
+                    background: selected ? 'rgba(239,68,68,0.10)' : 'transparent',
+                    border: 'none',
+                    textAlign: 'center',
+                    padding: '2px 8px',
+                    borderRight: i < arr.length - 1 ? LB_HAIRLINE : 'none',
+                    cursor: isCustomCard ? 'pointer' : 'default',
+                  }}
+                >
+                  <div style={{ fontWeight: 700, fontSize: 22, color: selected ? '#ef4444' : '#fff', lineHeight: 1, letterSpacing: '-0.02em' }}>{s.n}</div>
+                  <div style={{ fontSize: 10, color: selected ? 'rgba(239,68,68,0.85)' : 'rgba(255,255,255,0.5)', marginTop: 5 }}>{s.l}</div>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ── Custom Exercise Form ── */}
       {showCustomForm && (
@@ -230,6 +277,7 @@ export default function ExerciseLibrary() {
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2" strokeLinecap="round" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }}><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
         <input
           type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search exercises…"
+          onFocus={() => setSearchFocused(true)} onBlur={() => setSearchFocused(false)}
           style={{ width: '100%', boxSizing: 'border-box', borderRadius: 13, padding: '13px 14px 13px 40px', background: 'rgba(0,0,0,0.35)', border: LB_INPUT, color: '#fff', fontSize: 14, outline: 'none' }}
         />
         {search && (
@@ -239,10 +287,15 @@ export default function ExerciseLibrary() {
         )}
       </div>
 
-      {/* ── Muscle pills ── */}
+      {/* ── Muscle pills ── All, every muscle group, plus a final "Custom"
+          pill that flips the list to the user's custom exercises only. The
+          Custom pill mirrors the Custom stat-card tap target (both call
+          setSelectedMuscle(CUSTOM_FILTER)); selecting one syncs the other. */}
       <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '16px 16px 4px' }} className="scrollbar-none">
-        {['All', ...(muscleGroups || [])].map((g) => {
-          const val = g === 'All' ? '' : g;
+        {[...['All', ...(muscleGroups || [])], '__custom__'].map((g) => {
+          const isCustomPill = g === '__custom__';
+          const label = isCustomPill ? 'Custom' : g;
+          const val = isCustomPill ? CUSTOM_FILTER : (g === 'All' ? '' : g);
           const sel = selectedMuscle === val;
           return (
             <button
@@ -251,7 +304,7 @@ export default function ExerciseLibrary() {
               style={{ flexShrink: 0, padding: '8px 15px', borderRadius: 100, fontSize: 11.5, fontWeight: 600, letterSpacing: '0.02em', background: sel ? '#fff' : 'rgba(255,255,255,0.05)', color: sel ? '#000' : 'rgba(255,255,255,0.7)', border: sel ? '1px solid #fff' : LB_INPUT, boxShadow: sel ? '0 4px 14px rgba(255,255,255,0.12)' : 'none' }}
               className="active:scale-[0.97] transition-all"
             >
-              {g}
+              {label}
             </button>
           );
         })}
@@ -265,6 +318,18 @@ export default function ExerciseLibrary() {
           </div>
           <LoadingSpinnerOverlay />
         </>
+      )}
+
+      {/* ── Custom filter explainer ── Shown only when the Custom pill /
+          stat card is active, so the user knows they're looking at THEIR
+          exercises (not in the global REPLAB library) and that the list
+          comes from rows they authored themselves. */}
+      {!loading && selectedMuscle === CUSTOM_FILTER && (
+        <div style={{ padding: '16px 16px 0' }}>
+          <p style={{ fontSize: 12.5, lineHeight: 1.5, color: 'rgba(255,255,255,0.55)', margin: 0 }}>
+            These are exercises that you have created that aren't in the RepLab exercise library.
+          </p>
+        </div>
       )}
 
       {/* ── Search results (flat) ── */}
