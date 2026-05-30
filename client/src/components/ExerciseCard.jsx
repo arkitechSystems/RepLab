@@ -356,7 +356,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                 }}
                 aria-label={`Open plate calculator for ${exercise.name}`}
                 title="Plate calculator"
-                className="relative h-7 w-7 rounded-lg flex items-center justify-center active:scale-95 transition-all bg-wf-red/10 border border-wf-red/20 before:absolute before:content-[''] before:left-1/2 before:top-1/2 before:-translate-x-1/2 before:-translate-y-1/2 before:w-[44px] before:h-[44px]"
+                className="relative h-7 w-[38px] rounded-lg flex items-center justify-center active:scale-95 transition-all bg-wf-red/10 border border-wf-red/20 before:absolute before:content-[''] before:left-1/2 before:top-1/2 before:-translate-x-1/2 before:-translate-y-1/2 before:w-[44px] before:h-[44px]"
               >
                 <span className="text-[10px] font-semibold text-wf-red">PC</span>
               </button>
@@ -379,7 +379,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
               type="button"
               data-tutorial={dataTutorial ? 'demo-button' : undefined}
               onClick={(e) => { e.stopPropagation(); videoId ? setShowDemoLocal(!showDemoLocal) : handleVideoClick(); }}
-              className={`relative h-7 px-2.5 rounded-lg flex items-center gap-1.5 active:scale-95 transition-all before:absolute before:content-[''] before:left-0 before:right-0 before:top-1/2 before:-translate-y-1/2 before:min-h-[44px] ${showDemo ? 'bg-wf-red/20 border border-wf-red/40' : 'bg-wf-red/10 border border-wf-red/20'}`}
+              className={`relative h-7 px-[5px] rounded-lg flex items-center gap-1.5 active:scale-95 transition-all before:absolute before:content-[''] before:left-0 before:right-0 before:top-1/2 before:-translate-y-1/2 before:min-h-[44px] ${showDemo ? 'bg-wf-red/20 border border-wf-red/40' : 'bg-wf-red/10 border border-wf-red/20'}`}
             >
               <svg className="w-3.5 h-3.5 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
