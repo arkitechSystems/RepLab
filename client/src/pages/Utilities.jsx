@@ -1046,72 +1046,55 @@ function OneRepMaxEstimator({ onClose }) {
 // block — same color identity each card had in the old glass-card design,
 // just expressed in the Nike pattern (2px corners, square icon block,
 // uppercase letterspaced title).
-function UtilityRow({ color, icon, title, subtitle, onClick, href, locked = false, animationDelay = 0 }) {
-  const cardStyle = {
-    background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
-    borderRadius: '2px',
-    boxShadow: '0 8px 24px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
-    borderLeft: `3px solid ${color}`,
-    animationDelay: `${animationDelay}ms`,
-  };
-  const iconBlock = {
-    background: `linear-gradient(135deg, ${color}25 0%, ${color}10 100%)`,
-    borderRadius: '2px',
+// ── Tactile theme tokens ──
+const UT_CARD = 'linear-gradient(180deg, #1a1816 0%, #100f0d 100%)';
+const UT_BORDER = '1px solid rgba(255,255,255,0.06)';
+const MONO = "'JetBrains Mono', ui-monospace, monospace";
+
+// Per-tool tinted icon square — soft gradient in the tool's own color.
+function iconSquare(color, size = 44) {
+  return {
+    width: size, height: size, borderRadius: 13, flexShrink: 0,
+    background: `linear-gradient(135deg, ${color}22 0%, ${color}0d 100%)`,
+    border: `1px solid ${color}33`,
     boxShadow: `inset 0 1px 0 rgba(255,255,255,0.06), 0 4px 12px ${color}20`,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
   };
+}
+
+// Full-width tactile tool row. `icon` is an SVG element; `locked` swaps the
+// chevron for a Pro chip. (animationDelay was supported by the previous
+// design — kept here for backward call-site compat but not consulted; the
+// fade-slide-up class still drives the entrance animation timing.)
+function UtilityRow({ color, icon, title, subtitle, onClick, href, locked = false }) {
   const inner = (
-    <div className="p-5 flex items-center gap-4">
-      <div className="w-12 h-12 flex items-center justify-center shrink-0" style={iconBlock}>
-        {icon}
-      </div>
-      <div className="flex-1 min-w-0">
-        <h3 className="text-[13px] font-bold uppercase text-white tracking-wider" style={{ letterSpacing: '0.1em' }}>
-          {title}
-        </h3>
-        <p className="text-[11px] text-white/40 font-light mt-0.5 leading-relaxed">
-          {subtitle}
-        </p>
+    <>
+      <div style={iconSquare(color)}>{icon}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14.5, fontWeight: 600, color: '#fff', letterSpacing: '-0.012em' }}>{title}</div>
+        <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.45)', marginTop: 3 }}>{subtitle}</div>
       </div>
       {locked ? (
-        <span
-          className="text-[10px] font-bold uppercase tracking-wider shrink-0"
-          style={{
-            background: 'rgba(234,179,8,0.18)',
-            color: '#facc15',
-            border: '1px solid rgba(234,179,8,0.4)',
-            borderRadius: '2px',
-            padding: '2px 8px',
-            letterSpacing: '0.2em',
-          }}
-        >
-          Pro
-        </span>
+        <span style={{ fontFamily: MONO, fontSize: 8.5, letterSpacing: '0.2em', padding: '3px 8px', borderRadius: 100, flexShrink: 0, background: 'rgba(234,179,8,0.16)', color: '#facc15', border: '1px solid rgba(234,179,8,0.35)', textTransform: 'uppercase' }}>Pro</span>
       ) : (
-        <svg className="w-4 h-4 text-white/30 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-        </svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 5l7 7-7 7" /></svg>
       )}
-    </div>
+    </>
   );
+  const style = { width: '100%', textAlign: 'left', borderRadius: 16, padding: '13px 14px', display: 'flex', alignItems: 'center', gap: 13, background: UT_CARD, border: UT_BORDER, boxShadow: '0 6px 16px rgba(0,0,0,0.3)', cursor: locked ? 'default' : 'pointer', opacity: locked ? 0.6 : 1 };
+  const cls = 'fade-slide-up' + (locked ? '' : ' active:scale-[0.98] transition-transform');
+  if (locked) return <div className={cls} style={style}>{inner}</div>;
+  if (href)   return <a href={href} className={cls} style={style}>{inner}</a>;
+  return <button onClick={onClick} className={cls} style={style}>{inner}</button>;
+}
 
-  if (locked) {
-    return (
-      <div className="w-full overflow-hidden fade-slide-up text-left opacity-60" style={cardStyle}>
-        {inner}
-      </div>
-    );
-  }
-  if (href) {
-    return (
-      <a href={href} className="w-full overflow-hidden fade-slide-up text-left block active:scale-[0.98] transition-transform" style={cardStyle}>
-        {inner}
-      </a>
-    );
-  }
+// Mono section header + hairline rule
+function UtilSection({ label }) {
   return (
-    <button onClick={onClick} className="w-full overflow-hidden fade-slide-up text-left active:scale-[0.98] transition-transform" style={cardStyle}>
-      {inner}
-    </button>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '22px 4px 12px' }}>
+      <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.3em', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', flexShrink: 0 }}>{label}</span>
+      <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
+    </div>
   );
 }
 
@@ -1124,131 +1107,72 @@ export default function Utilities() {
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
   return (
-    <div>
+    <div style={{ background: '#0c0c0b', minHeight: '100vh', color: '#fff' }}>
       <StickyHeader title="UTILITIES" titleStyle={{ fontSize: '26.4px' }} />
 
-      <div className="px-4 pb-4">
-        {/* Nike-style intro panel — eyebrow + heavy display title with the
-            same red accent stripe + ambient spotlight pattern used on the
-            Profile and Workouts pages. */}
-        <div
-          className="relative overflow-hidden mb-4 fade-slide-up"
-          style={{
-            background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
-            borderRadius: '2px',
-            boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
-          }}
-        >
-          <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent)' }} />
-          <div className="absolute -top-10 -right-10 w-[280px] h-[280px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.10) 0%, transparent 60%)', filter: 'blur(40px)' }} />
-          <div className="relative p-6">
-            <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.4em' }}>
-              Toolkit
-            </p>
-            <h1 className="text-[28px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95', letterSpacing: '-0.02em' }}>
-              UTILITIES
-            </h1>
-            <p className="text-[12px] text-white/40 font-light mt-2 leading-relaxed">
-              Calculators, timers, and quick references that live alongside your workouts.
-            </p>
-          </div>
+      <div className="px-4 pb-24">
+        {/* Editorial header — eyebrow + tactile display title + subtitle. */}
+        <div style={{ padding: '8px 4px 0' }} className="fade-slide-up">
+          <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.32em', color: '#ef4444', textTransform: 'uppercase' }}>Toolkit</div>
+          <h1 style={{ fontSize: 34, fontWeight: 800, color: '#fff', margin: '8px 0 0', letterSpacing: '-0.03em', lineHeight: 0.98 }}>Utilities</h1>
+          <p style={{ fontSize: 13, lineHeight: 1.55, color: 'rgba(255,255,255,0.55)', margin: '12px 0 0', maxWidth: 320 }}>
+            Calculators, timers, and quick references that live alongside your workouts.
+          </p>
         </div>
 
-        <div className="space-y-2.5">
-          <UtilityRow
-            color="#a855f7"
-            onClick={() => navigate('/community')}
-            animationDelay={0}
-            title="Community"
-            subtitle="Activity feed, friends, and leaderboards"
-            icon={(
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="#c084fc" strokeWidth={1.7}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-              </svg>
-            )}
-          />
+        {/* COMMUNITY */}
+        <UtilSection label="Community" />
+        <UtilityRow
+          color="#a855f7" onClick={() => navigate('/community')}
+          title="Community" subtitle="Feed, friends & leaderboards"
+          icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="#c084fc" strokeWidth={1.7}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>}
+        />
 
+        {/* CALCULATORS */}
+        <UtilSection label="Calculators" />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <UtilityRow
-            color="#22c55e"
-            onClick={() => navigate('/progress')}
-            animationDelay={20}
-            title="Progress"
-            subtitle="Same weight, more reps? Set-by-set progressive overload."
-            icon={(
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="#4ade80" strokeWidth={1.7}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.5 4.5L21.75 6m0 0H15m6.75 0v6.75" />
-              </svg>
-            )}
+            color="#f43f5e" onClick={() => navigate('/plate-calculator')}
+            title="Plate Calculator" subtitle="Load each side of the bar"
+            icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="#fb7185" strokeWidth={1.7}><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v17.25m0 0c-1.472 0-2.882.265-4.185.75M12 20.25c1.472 0 2.882.265 4.185.75M18.75 4.97A48.416 48.416 0 0012 4.5c-2.291 0-4.545.16-6.75.47m13.5 0c1.01.143 2.01.317 3 .52m-3-.52l2.62 10.726c.122.499-.106 1.028-.589 1.202a5.988 5.988 0 01-2.031.352 5.988 5.988 0 01-2.031-.352c-.483-.174-.711-.703-.59-1.202L18.75 4.971zm-16.5.52c.99-.203 1.99-.377 3-.52m0 0l2.62 10.726c.122.499-.106 1.028-.589 1.202a5.989 5.989 0 01-2.031.352 5.989 5.989 0 01-2.031-.352c-.483-.174-.711-.703-.59-1.202L5.25 4.971z" /></svg>}
           />
-
           <UtilityRow
-            color="#f59e0b"
-            onClick={() => setShowPRs(true)}
-            animationDelay={60}
-            title="Personal Records"
-            subtitle="View your PRs by muscle group"
-            icon={(
-              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="#fbbf24">
-                <path fillRule="evenodd" d="M5.166 2.621v.858c-1.035.148-2.059.33-3.071.543a.75.75 0 00-.584.859 6.753 6.753 0 006.138 5.6 6.73 6.73 0 002.743 1.346A6.707 6.707 0 019.279 15H8.54c-1.036 0-1.875.84-1.875 1.875V19.5h-.75a.75.75 0 000 1.5h12.75a.75.75 0 000-1.5h-.75v-2.625c0-1.036-.84-1.875-1.875-1.875h-.739a6.707 6.707 0 01-1.112-3.173 6.73 6.73 0 002.743-1.347 6.753 6.753 0 006.139-5.6.75.75 0 00-.585-.858 47.077 47.077 0 00-3.07-.543V2.62a.75.75 0 00-.658-.744 49.22 49.22 0 00-6.093-.377c-2.063 0-4.096.128-6.093.377a.75.75 0 00-.657.744z" clipRule="evenodd" />
-              </svg>
-            )}
+            color="#06b6d4" onClick={() => setShow1RM(true)}
+            title="1 Rep Max Estimator" subtitle="Estimate your max from any set"
+            icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="#22d3ee" strokeWidth={1.7}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 15.75V18m-7.5-6.75h.008v.008H8.25v-.008zm0 2.25h.008v.008H8.25V13.5zm0 2.25h.008v.008H8.25v-.008zm0 2.25h.008v.008H8.25V18zm2.498-6.75h.007v.008h-.007v-.008zm0 2.25h.007v.008h-.007V13.5zm0 2.25h.007v.008h-.007v-.008zm0 2.25h.007v.008h-.007V18zm2.504-6.75h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V13.5zm0 2.25h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V18zm2.498-6.75h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V13.5zM8.25 6h7.5v2.25h-7.5V6zM12 2.25c-1.892 0-3.758.11-5.593.322C5.307 2.7 4.5 3.65 4.5 4.757V19.5a2.25 2.25 0 002.25 2.25h10.5a2.25 2.25 0 002.25-2.25V4.757c0-1.108-.806-2.057-1.907-2.185A48.507 48.507 0 0012 2.25z" /></svg>}
           />
-
-          <UtilityRow
-            color="#f43f5e"
-            onClick={() => navigate('/plate-calculator')}
-            animationDelay={100}
-            title="Plate Calculator"
-            subtitle="See which plates to load on each side of the bar"
-            icon={(
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="#fb7185" strokeWidth={1.7}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v17.25m0 0c-1.472 0-2.882.265-4.185.75M12 20.25c1.472 0 2.882.265 4.185.75M18.75 4.97A48.416 48.416 0 0012 4.5c-2.291 0-4.545.16-6.75.47m13.5 0c1.01.143 2.01.317 3 .52m-3-.52l2.62 10.726c.122.499-.106 1.028-.589 1.202a5.988 5.988 0 01-2.031.352 5.988 5.988 0 01-2.031-.352c-.483-.174-.711-.703-.59-1.202L18.75 4.971zm-16.5.52c.99-.203 1.99-.377 3-.52m0 0l2.62 10.726c.122.499-.106 1.028-.589 1.202a5.989 5.989 0 01-2.031.352 5.989 5.989 0 01-2.031-.352c-.483-.174-.711-.703-.59-1.202L5.25 4.971z" />
-              </svg>
-            )}
-          />
-
-          <UtilityRow
-            color="#06b6d4"
-            onClick={() => setShow1RM(true)}
-            animationDelay={120}
-            title="1 Rep Max Estimator"
-            subtitle="Estimate your max from any rep range"
-            icon={(
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="#22d3ee" strokeWidth={1.7}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 15.75V18m-7.5-6.75h.008v.008H8.25v-.008zm0 2.25h.008v.008H8.25V13.5zm0 2.25h.008v.008H8.25v-.008zm0 2.25h.008v.008H8.25V18zm2.498-6.75h.007v.008h-.007v-.008zm0 2.25h.007v.008h-.007V13.5zm0 2.25h.007v.008h-.007v-.008zm0 2.25h.007v.008h-.007V18zm2.504-6.75h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V13.5zm0 2.25h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V18zm2.498-6.75h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V13.5zM8.25 6h7.5v2.25h-7.5V6zM12 2.25c-1.892 0-3.758.11-5.593.322C5.307 2.7 4.5 3.65 4.5 4.757V19.5a2.25 2.25 0 002.25 2.25h10.5a2.25 2.25 0 002.25-2.25V4.757c0-1.108-.806-2.057-1.907-2.185A48.507 48.507 0 0012 2.25z" />
-              </svg>
-            )}
-          />
-
-          <UtilityRow
-            color="#22c55e"
-            onClick={() => setShowHIIT(true)}
-            animationDelay={140}
-            title="HIIT Timer"
-            subtitle="Interval timer for high-intensity workouts"
-            icon={(
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="#4ade80" strokeWidth={1.7}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            )}
-          />
-
-          <UtilityRow
-            color="#3b82f6"
-            onClick={() => navigate('/exercises')}
-            animationDelay={180}
-            title="Exercise Library"
-            subtitle="Browse exercises and add custom ones"
-            icon={(
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="#60a5fa" strokeWidth={1.7}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
-              </svg>
-            )}
-          />
-
-          {/* Pro-tier rows (BMR, Macros, Body Fat, Ideal Proportions, RPE/RIR)
-              are hidden until the calculators are built and Pro is offered. */}
         </div>
+
+        {/* LIBRARY & PROGRESS */}
+        <UtilSection label="Library & Progress" />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <UtilityRow
+            color="#3b82f6" onClick={() => navigate('/exercises')}
+            title="Exercise Library" subtitle="Browse & add custom exercises"
+            icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="#60a5fa" strokeWidth={1.7}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" /></svg>}
+          />
+          <UtilityRow
+            color="#f59e0b" onClick={() => setShowPRs(true)}
+            title="Personal Records" subtitle="Your PRs by muscle group"
+            icon={<svg className="w-6 h-6" viewBox="0 0 24 24" fill="#fbbf24"><path fillRule="evenodd" d="M5.166 2.621v.858c-1.035.148-2.059.33-3.071.543a.75.75 0 00-.584.859 6.753 6.753 0 006.138 5.6 6.73 6.73 0 002.743 1.346A6.707 6.707 0 019.279 15H8.54c-1.036 0-1.875.84-1.875 1.875V19.5h-.75a.75.75 0 000 1.5h12.75a.75.75 0 000-1.5h-.75v-2.625c0-1.036-.84-1.875-1.875-1.875h-.739a6.707 6.707 0 01-1.112-3.173 6.73 6.73 0 002.743-1.347 6.753 6.753 0 006.139-5.6.75.75 0 00-.585-.858 47.077 47.077 0 00-3.07-.543V2.62a.75.75 0 00-.658-.744 49.22 49.22 0 00-6.093-.377c-2.063 0-4.096.128-6.093.377a.75.75 0 00-.657.744z" clipRule="evenodd" /></svg>}
+          />
+          <UtilityRow
+            color="#22c55e" onClick={() => navigate('/progress')}
+            title="Progress" subtitle="Set-by-set progressive overload"
+            icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="#4ade80" strokeWidth={1.7}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.5 4.5L21.75 6m0 0H15m6.75 0v6.75" /></svg>}
+          />
+        </div>
+
+        {/* TIMERS */}
+        <UtilSection label="Timers" />
+        <UtilityRow
+          color="#22c55e" onClick={() => setShowHIIT(true)}
+          title="HIIT Timer" subtitle="Interval timer for conditioning"
+          icon={<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="#4ade80" strokeWidth={1.7}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
+        />
+
+        {/* Pro-tier rows (BMR, Macros, Body Fat, Ideal Proportions, RPE/RIR)
+            are hidden until the calculators are built and Pro is offered. */}
       </div>
 
       {showPRs && (
