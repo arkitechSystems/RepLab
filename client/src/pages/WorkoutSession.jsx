@@ -1080,18 +1080,19 @@ export default function WorkoutSession() {
     fullScreenAutoOpenedRef.current = true;
   }, [template, fullScreenDefault]);
 
-  // Auto-pop the rest timer to the bottom-left of the viewport the first
-  // time the user enters full-screen mode this session. Full-screen is the
-  // "beginner" surface — having the rest timer card already popped + visible
-  // (rather than tucked into the in-page sticky header that's hidden by the
-  // overlay) means the countdown is in view the moment a set is completed.
-  // Subsequent re-entries don't re-fire; the user's manual dock / drag
-  // choices stick for the rest of the session.
-  const restFloatAutoPoppedRef = useRef(false);
+  // Auto-pop the rest timer to the bottom-left of the viewport every time
+  // the user enters full-screen mode (null → non-null transition on
+  // fullScreenIdx). Re-pops on each fresh entry — exit full-screen, dock
+  // the timer, come back into full-screen — the popped card returns at the
+  // bottom-left. Navigating between exercises within full-screen (number →
+  // number) does NOT re-fire, so the user's mid-session drag/dock choices
+  // are still respected as long as they stay in full-screen.
+  const prevFullScreenIdxRef = useRef(null);
   useEffect(() => {
-    if (fullScreenIdx === null) return;
-    if (restFloatAutoPoppedRef.current) return;
-    restFloatAutoPoppedRef.current = true;
+    const wasOutside = prevFullScreenIdxRef.current === null;
+    prevFullScreenIdxRef.current = fullScreenIdx;
+    if (fullScreenIdx === null) return;   // exit full-screen — nothing to do
+    if (!wasOutside) return;              // intra-FS navigation (number → number) — leave the timer alone
     setRestFloating(true);
     // Bottom-left: x=16 left margin, y = viewport height - approx card
     // height (~170px includes the rounded card + outer red glow ring) -
