@@ -121,7 +121,7 @@ export default function ExerciseLibrary() {
       <div style={{ padding: '20px 20px 0' }}>
         {/* back pill */}
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/utilities')}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px 7px 9px', borderRadius: 100, background: 'rgba(255,255,255,0.04)', border: LB_INPUT, color: 'rgba(255,255,255,0.7)', fontSize: 11.5, fontWeight: 600, letterSpacing: '0.02em', marginBottom: 18 }}
           className="active:scale-95 transition-transform"
         >
