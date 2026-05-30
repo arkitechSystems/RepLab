@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getExerciseBySlug } from '../data/exercises/index.js';
+import { getExerciseBySlug, findMasterExerciseBySlug, buildMinimalExercise } from '../data/exercises/index.js';
+import { useExercises } from '../hooks/useExercises';
 import ExerciseDetailCard from '../components/ExerciseDetailCard.jsx';
 
 const RED = '#ef4444';
@@ -14,7 +15,30 @@ const iconCircle = {
 export default function ExerciseDetail() {
   const navigate = useNavigate();
   const { slug } = useParams();
-  const exercise = getExerciseBySlug(slug);
+  // Master library for the fallback path — when the slug isn't in the
+  // hand-authored static registry, we build a minimal exercise from the
+  // matching master library row so every library entry still renders a
+  // working detail page (sections collapse cleanly when data is missing).
+  const { exercises: masterExercises } = useExercises();
+
+  // Resolve the exercise from static first, then master library fallback.
+  // If a static file exists but lacks a videoId, merge in the master
+  // library's video_id so the hero thumbnail still works.
+  const exercise = useMemo(() => {
+    const staticEx = getExerciseBySlug(slug);
+    if (staticEx) {
+      if (!staticEx.videoId && masterExercises) {
+        const libRow = findMasterExerciseBySlug(slug, masterExercises);
+        if (libRow?.videoId) return { ...staticEx, videoId: libRow.videoId };
+      }
+      return staticEx;
+    }
+    if (masterExercises) {
+      const libRow = findMasterExerciseBySlug(slug, masterExercises);
+      if (libRow) return buildMinimalExercise(libRow);
+    }
+    return null;
+  }, [slug, masterExercises]);
 
   if (!exercise) {
     return (
@@ -72,11 +96,14 @@ export default function ExerciseDetail() {
             <h1 style={{ fontSize: 34, fontWeight: 800, color: '#fff', margin: '8px 0 0', letterSpacing: '-0.03em', lineHeight: 0.98 }}>
               {exercise.name}
             </h1>
-            <div style={{ display: 'flex', gap: 6, marginTop: 14, flexWrap: 'wrap' }}>
-              {[exercise.type, exercise.difficulty, exercise.equipment].filter(Boolean).map((t) => (
-                <span key={t} style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '0.16em', padding: '5px 9px', borderRadius: 100, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.85)', textTransform: 'uppercase', backdropFilter: 'blur(8px)' }}>{t}</span>
-              ))}
-            </div>
+            {/* Single equipment pill — was previously type + difficulty + equipment
+                stacked. Per design feedback, just the equipment (Barbell / Dumbbell
+                / Cable Machine / Bodyweight etc.) reads cleaner. */}
+            {exercise.equipment && (
+              <div style={{ display: 'flex', gap: 6, marginTop: 14, flexWrap: 'wrap' }}>
+                <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '0.16em', padding: '5px 9px', borderRadius: 100, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.85)', textTransform: 'uppercase', backdropFilter: 'blur(8px)' }}>{exercise.equipment}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>

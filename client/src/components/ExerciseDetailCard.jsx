@@ -76,22 +76,10 @@ export default function ExerciseDetailCard({ exercise }) {
         </Section>
       )}
 
-      {/* ── Common Mistakes ── */}
-      {exercise.commonMistakes?.length > 0 && (
-        <Section title="Common Mistakes">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {exercise.commonMistakes.map((m, i) => (
-              <div key={i} style={{ paddingLeft: 12, borderLeft: '2px solid rgba(239,68,68,0.5)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 }}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={RED} strokeWidth="2.4" strokeLinecap="round"><path d="M6 18L18 6M6 6l12 12" /></svg>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: '#f5a3a3', margin: 0 }}>{m.mistake}</p>
-                </div>
-                <p style={{ fontSize: 12.5, lineHeight: 1.5, color: 'rgba(255,255,255,0.55)', margin: 0, paddingLeft: 20 }}>{m.fix}</p>
-              </div>
-            ))}
-          </div>
-        </Section>
-      )}
+      {/* Common Mistakes section is intentionally hidden for now per design
+          feedback — the data is still authored in each exercise data file
+          (exercise.commonMistakes) so the section can be re-enabled without
+          a data migration when the team is ready to ship it. */}
     </>
   );
 }

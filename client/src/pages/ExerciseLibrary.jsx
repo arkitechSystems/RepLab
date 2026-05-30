@@ -2,9 +2,12 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useExercises } from '../hooks/useExercises';
 import LoadingSpinnerOverlay from '../components/LoadingSpinnerOverlay';
-import { getDetailSlugs } from '../data/exercises/index.js';
+import { getDetailSlugs, slugify } from '../data/exercises/index.js';
 
-// Auto-generated from registered exercise detail pages
+// Map of exercise.name → /exercises/<slug> for hand-authored detail pages.
+// Library rows whose name is in this map route to their canonical slug; rows
+// outside this map route to /exercises/<slugified name> and the detail page
+// builds a minimal exercise from the master library row at render time.
 const DETAIL_PAGES = getDetailSlugs();
 
 export default function ExerciseLibrary() {
@@ -74,20 +77,22 @@ export default function ExerciseLibrary() {
   const groupCount = (muscleGroups || []).length;
   const customCount = (exercises || []).filter((e) => e.isCustom).length;
 
-  // shared row renderer so search + grouped views stay identical
+  // shared row renderer so search + grouped views stay identical. Every row
+  // is tappable now: static (hand-authored) exercises route to their canonical
+  // slug from DETAIL_PAGES; everything else falls back to slugify(name) and
+  // ExerciseDetail's master-library fallback path builds the page from there.
   const renderRow = (ex, showMuscle) => {
-    const detailUrl = DETAIL_PAGES[ex.name];
-    const Row = detailUrl ? 'button' : 'div';
+    const detailUrl = DETAIL_PAGES[ex.name] || `/exercises/${slugify(ex.name)}`;
     return (
-      <Row
+      <button
         key={ex.id}
-        {...(detailUrl ? { onClick: () => navigate(detailUrl) } : {})}
-        className={detailUrl ? 'active:scale-[0.98] transition-transform' : ''}
+        onClick={() => navigate(detailUrl)}
+        className="active:scale-[0.98] transition-transform"
         style={{
           width: '100%', textAlign: 'left', position: 'relative', overflow: 'hidden',
           borderRadius: 14, padding: '13px 14px', display: 'flex', alignItems: 'center', gap: 12,
           background: LB_CARD, border: LB_BORDER, boxShadow: '0 6px 16px rgba(0,0,0,0.3)',
-          cursor: detailUrl ? 'pointer' : 'default',
+          cursor: 'pointer',
         }}
       >
         {ex.isCustom && <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 2.5, background: RED }} />}
@@ -108,10 +113,8 @@ export default function ExerciseLibrary() {
             </div>
           </div>
         </div>
-        {detailUrl && (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 5l7 7-7 7" /></svg>
-        )}
-      </Row>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 5l7 7-7 7" /></svg>
+      </button>
     );
   };
 
