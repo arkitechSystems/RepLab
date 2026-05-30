@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getExerciseBySlug, findMasterExerciseBySlug, buildMinimalExercise } from '../data/exercises/index.js';
 import { useExercises } from '../hooks/useExercises';
@@ -20,6 +20,17 @@ export default function ExerciseDetail() {
   // matching master library row so every library entry still renders a
   // working detail page (sections collapse cleanly when data is missing).
   const { exercises: masterExercises } = useExercises();
+
+  // Reset scroll to the top whenever the user lands on a new exercise.
+  // Tapping a library row navigates here via react-router which doesn't
+  // reset window.scrollY by default — without this, deep-scrolling a card
+  // then tapping a different exercise would land the user mid-page on the
+  // new detail. The effect also fires when the user navigates between
+  // exercises directly (e.g. from a future "related exercise" link) so
+  // each detail view starts from the hero.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [slug]);
 
   // Resolve the exercise from static first, then master library fallback.
   // If a static file exists but lacks a videoId, merge in the master
