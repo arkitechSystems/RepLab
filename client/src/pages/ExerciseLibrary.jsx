@@ -10,6 +10,25 @@ import { getDetailSlugs, slugify } from '../data/exercises/index.js';
 // builds a minimal exercise from the master library row at render time.
 const DETAIL_PAGES = getDetailSlugs();
 
+// Equipment derivation from the tags array. The master library doesn't have
+// a dedicated equipment column — instead each exercise carries a tags array
+// where equipment-flavored tags (barbell, dumbbell, cable, machine, etc.)
+// live alongside other descriptors. Library row cards render a single
+// equipment label after the muscle group; getEquipment finds the first tag
+// that matches a known equipment keyword. Substring match so tag values
+// like "barbell-row" or "Dumbbell Only" still resolve. Returns null when
+// the exercise has no equipment tag (rare — usually bodyweight-only
+// exercises that just lack the tag).
+const EQUIPMENT_KEYWORDS = ['barbell', 'dumbbell', 'cable', 'machine', 'bodyweight', 'kettlebell', 'band', 'smith'];
+function getEquipment(tags) {
+  if (!Array.isArray(tags)) return null;
+  for (const t of tags) {
+    const lower = String(t).toLowerCase();
+    if (EQUIPMENT_KEYWORDS.some((kw) => lower.includes(kw))) return t;
+  }
+  return null;
+}
+
 export default function ExerciseLibrary() {
   const navigate = useNavigate();
   const { exercises, muscleGroups, loading, createCustom } = useExercises();
@@ -86,8 +105,15 @@ export default function ExerciseLibrary() {
   // is tappable now: static (hand-authored) exercises route to their canonical
   // slug from DETAIL_PAGES; everything else falls back to slugify(name) and
   // ExerciseDetail's master-library fallback path builds the page from there.
-  const renderRow = (ex, showMuscle) => {
+  // Card layout is exercise name on top, "muscle · equipment" meta line on
+  // bottom — the old tag-chip row is gone per design feedback. The showMuscle
+  // arg is kept for backward call-site compat but is no longer consulted;
+  // muscle group renders on every card unconditionally because the bottom
+  // meta line is a single line of text per the spec.
+  const renderRow = (ex, _showMuscle) => {
     const detailUrl = DETAIL_PAGES[ex.name] || `/exercises/${slugify(ex.name)}`;
+    const equipment = getEquipment(ex.tags);
+    const metaStyle = { fontFamily: MONO, fontSize: 9, letterSpacing: '0.2em', color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase' };
     return (
       <button
         key={ex.id}
@@ -108,14 +134,13 @@ export default function ExerciseLibrary() {
               <span style={{ fontFamily: MONO, fontSize: 8, letterSpacing: '0.2em', padding: '2px 6px', borderRadius: 100, background: 'rgba(239,68,68,0.14)', color: '#f5a3a3', textTransform: 'uppercase', border: '1px solid rgba(239,68,68,0.25)', flexShrink: 0 }}>Custom</span>
             )}
           </div>
+          {/* Meta line: muscle group · equipment. Single line of text, no
+              tag chips. Equipment falls back to nothing when the exercise
+              has no equipment-flavored tag (most often bodyweight-only). */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 7 }}>
-            {showMuscle && <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '0.2em', color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase' }}>{ex.muscle}</span>}
-            {showMuscle && ex.tags?.length > 0 && <span style={{ color: 'rgba(255,255,255,0.2)' }}>·</span>}
-            <div style={{ display: 'flex', gap: 5 }}>
-              {(ex.tags || []).slice(0, 3).map((t) => (
-                <span key={t} style={{ fontFamily: MONO, fontSize: 8.5, letterSpacing: '0.16em', padding: '2px 7px', borderRadius: 100, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase' }}>{t}</span>
-              ))}
-            </div>
+            {ex.muscle && <span style={metaStyle}>{ex.muscle}</span>}
+            {ex.muscle && equipment && <span style={{ color: 'rgba(255,255,255,0.2)' }}>·</span>}
+            {equipment && <span style={metaStyle}>{equipment}</span>}
           </div>
         </div>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 5l7 7-7 7" /></svg>
