@@ -15,6 +15,10 @@ const iconCircle = {
 export default function ExerciseDetail() {
   const navigate = useNavigate();
   const { slug } = useParams();
+  // When true, the hero swaps the YouTube thumbnail for an embedded
+  // playing iframe in-place. Tap × on the iframe (or navigate to a
+  // different slug) returns to the thumbnail view.
+  const [videoPlaying, setVideoPlaying] = useState(false);
   // Master library for the fallback path — when the slug isn't in the
   // hand-authored static registry, we build a minimal exercise from the
   // matching master library row so every library entry still renders a
@@ -27,9 +31,11 @@ export default function ExerciseDetail() {
   // then tapping a different exercise would land the user mid-page on the
   // new detail. The effect also fires when the user navigates between
   // exercises directly (e.g. from a future "related exercise" link) so
-  // each detail view starts from the hero.
+  // each detail view starts from the hero. Also dismiss any in-place
+  // playing video so the new exercise's thumbnail shows on arrival.
   useEffect(() => {
     window.scrollTo(0, 0);
+    setVideoPlaying(false);
   }, [slug]);
 
   // Resolve the exercise from static first, then master library fallback.
@@ -65,10 +71,18 @@ export default function ExerciseDetail() {
     ? `https://img.youtube.com/vi/${exercise.videoId}/maxresdefault.jpg`
     : null;
   const openVideo = () => {
-    const url = exercise.videoId
-      ? `https://www.youtube.com/watch?v=${exercise.videoId}`
-      : `https://www.youtube.com/results?search_query=${encodeURIComponent(exercise.name + ' form')}`;
-    window.open(url, '_blank');
+    // Play the form video inline by toggling videoPlaying — the hero
+    // background swaps from the YouTube thumbnail to an iframe embed
+    // (youtube-nocookie, autoplay, modest branding) in the same 300px
+    // slot. If no videoId is known, fall back to the previous behavior
+    // and open a new tab pointing at a YouTube search for the exercise
+    // name, since there's nothing to embed in-page.
+    if (exercise.videoId) {
+      setVideoPlaying(true);
+    } else {
+      const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(exercise.name + ' form')}`;
+      window.open(url, '_blank');
+    }
   };
 
   return (
@@ -81,23 +95,49 @@ export default function ExerciseDetail() {
             ? `#15130f center/cover no-repeat url(${heroImg})`
             : 'linear-gradient(160deg, #2a2724 0%, #15130f 100%)',
         }}>
-          {/* scrim */}
-          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(10,10,9,0.45) 0%, transparent 30%, rgba(10,10,9,0.96) 100%)' }} />
+          {videoPlaying && exercise.videoId ? (
+            /* Embedded form video — fills the same 300px hero slot. Uses
+               youtube-nocookie for tracking hygiene, autoplay so the user
+               doesn't have to tap play twice, modestbranding to minimize
+               the YouTube UI overlay, playsinline so iOS doesn't kick the
+               video to full-screen Safari. Close button (×) returns to
+               the thumbnail view; back button still navigates out. */
+            <>
+              <iframe
+                src={`https://www.youtube-nocookie.com/embed/${exercise.videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
+                title={`${exercise.name} form video`}
+                style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+              <div style={{ position: 'absolute', top: 16, left: 16, right: 16, display: 'flex', justifyContent: 'space-between', zIndex: 10, pointerEvents: 'none' }}>
+                <button onClick={() => navigate(-1)} aria-label="Back" style={{ ...iconCircle, pointerEvents: 'auto' }} className="active:scale-90 transition-transform">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <button onClick={() => setVideoPlaying(false)} aria-label="Close video" style={{ ...iconCircle, pointerEvents: 'auto' }} className="active:scale-90 transition-transform">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* scrim */}
+              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(10,10,9,0.45) 0%, transparent 30%, rgba(10,10,9,0.96) 100%)' }} />
 
-          {/* back + play + save */}
-          <div style={{ position: 'absolute', top: 16, left: 16, right: 16, display: 'flex', justifyContent: 'space-between', zIndex: 10 }}>
-            <button onClick={() => navigate(-1)} aria-label="Back" style={iconCircle} className="active:scale-90 transition-transform">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 19l-7-7 7-7" /></svg>
-            </button>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={openVideo} aria-label="Watch form video" style={iconCircle} className="active:scale-90 transition-transform">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff" stroke="none"><polygon points="6 4 20 12 6 20 6 4" /></svg>
-              </button>
-              <button aria-label="Save" style={iconCircle} className="active:scale-90 transition-transform">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" /></svg>
-              </button>
-            </div>
-          </div>
+              {/* back + play + save */}
+              <div style={{ position: 'absolute', top: 16, left: 16, right: 16, display: 'flex', justifyContent: 'space-between', zIndex: 10 }}>
+                <button onClick={() => navigate(-1)} aria-label="Back" style={iconCircle} className="active:scale-90 transition-transform">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={openVideo} aria-label="Watch form video" style={iconCircle} className="active:scale-90 transition-transform">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff" stroke="none"><polygon points="6 4 20 12 6 20 6 4" /></svg>
+                  </button>
+                  <button aria-label="Save" style={iconCircle} className="active:scale-90 transition-transform">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" /></svg>
+                  </button>
+                </div>
+              </div>
 
           {/* title block */}
           <div style={{ position: 'absolute', left: 18, right: 18, bottom: 18, zIndex: 10 }}>
@@ -116,6 +156,8 @@ export default function ExerciseDetail() {
               </div>
             )}
           </div>
+            </>
+          )}
         </div>
       </div>
 
