@@ -162,19 +162,13 @@ export default function ExerciseLibrary() {
           Utilities
         </button>
 
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.32em', color: RED, textTransform: 'uppercase' }}>Library</div>
-            <h1 style={{ fontSize: 32, fontWeight: 800, color: '#fff', margin: '8px 0 0', letterSpacing: '-0.028em', lineHeight: 0.98 }}>Exercise<br />Library</h1>
-          </div>
-          <button
-            onClick={() => setShowCustomForm(!showCustomForm)}
-            aria-label="Add custom exercise"
-            style={{ width: 44, height: 44, borderRadius: 14, flexShrink: 0, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 16px rgba(239,68,68,0.18)' }}
-            className="active:scale-90 transition-transform"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={RED} strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-          </button>
+        {/* Title block — eyebrow + single-line "Exercise Library" headline.
+            Add-custom-exercise button is removed per design feedback; custom
+            exercise creation still lives in the workout-session swap modal
+            for users who want to add one on the fly. */}
+        <div>
+          <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.32em', color: RED, textTransform: 'uppercase' }}>Library</div>
+          <h1 style={{ fontSize: 32, fontWeight: 800, color: '#fff', margin: '8px 0 0', letterSpacing: '-0.028em', lineHeight: 0.98, whiteSpace: 'nowrap' }}>Exercise Library</h1>
         </div>
       </div>
 
