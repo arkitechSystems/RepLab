@@ -21,7 +21,12 @@ export default function ExerciseLibrary() {
   const [customSaving, setCustomSaving] = useState(false);
 
   const filtered = useMemo(() => {
-    let result = exercises || [];
+    // Master library only — exclude user-created custom exercises. The
+    // Utilities → Exercise Library surface is the canonical seed library
+    // (one global source of truth for exercise names + metadata);
+    // user-specific custom exercises live elsewhere (the swap modal +
+    // their own templates) and shouldn't pollute the global browse view.
+    let result = (exercises || []).filter(e => !e.isCustom);
     if (selectedMuscle) {
       result = result.filter(e => e.muscle === selectedMuscle);
     }
