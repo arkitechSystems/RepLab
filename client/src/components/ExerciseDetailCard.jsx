@@ -1,141 +1,97 @@
-/**
- * ExerciseDetailCard — full exercise breakdown used on detail pages.
- *
- * Renders all sections of an exercise detail page from an exercise data object:
- * - Header (name, tags)
- * - Anatomy diagram
- * - Video embed
- * - Overview
- * - Quick info grid
- * - Muscle activation chart
- * - Step-by-step instructions
- * - Form tips
- * - Common mistakes
- *
- * Props:
- *   exercise — a full exercise data object (see data/exercises/)
- */
+import ExerciseAnatomy from './ExerciseAnatomy.jsx'; // keep your existing anatomy SVG component
 
-import ExerciseAnatomy from './ExerciseAnatomy.jsx';
+const RED = '#ef4444';
+const GREEN = '#3ea868';
+const CARD = 'linear-gradient(180deg, #1a1816 0%, #100f0d 100%)';
+const BORDER = '1px solid rgba(255,255,255,0.06)';
+const MONO = "'JetBrains Mono', ui-monospace, monospace";
+
+function Section({ title, action, children }) {
+  return (
+    <div style={{ margin: '0 16px 12px', borderRadius: 18, padding: '16px 16px 18px', background: CARD, border: BORDER, boxShadow: '0 8px 20px rgba(0,0,0,0.35)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <h2 style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.3em', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', margin: 0 }}>{title}</h2>
+        {action}
+      </div>
+      {children}
+    </div>
+  );
+}
 
 export default function ExerciseDetailCard({ exercise }) {
-  if (!exercise) return null;
-
   return (
-    <div className="space-y-4">
-      {/* === HEADER === */}
-      <div>
-        <h1 className="text-3xl font-black text-white tracking-tight mb-1">{exercise.name}</h1>
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-wf-red/15 text-wf-red">
-            {exercise.category}
-          </span>
-          <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-white/5 text-wf-gray-400 border border-white/10">
-            {exercise.type}
-          </span>
-          <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-white/5 text-wf-gray-400 border border-white/10">
-            {exercise.difficulty}
-          </span>
-        </div>
-      </div>
-
-      {/* === ANATOMY DIAGRAM === */}
-      <ExerciseAnatomy figure={exercise.figure} />
-
-      {/* === VIDEO === */}
-      {exercise.videoId && (
-        <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black">
-          <iframe
-            src={`https://www.youtube.com/embed/${exercise.videoId}?rel=0`}
-            title={`${exercise.name} form guide`}
-            className="absolute inset-0 w-full h-full"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
-        </div>
+    <>
+      {/* ── Muscles Worked ── */}
+      {exercise.musclesWorked?.length > 0 && (
+        <Section title="Muscles Worked">
+          <div style={{ display: 'flex', gap: 14 }}>
+            {/* anatomy diagram from your existing component (figure prop) */}
+            {exercise.figure && (
+              <div style={{ flex: '0 0 96px', borderRadius: 12, overflow: 'hidden', background: 'rgba(255,255,255,0.03)' }}>
+                <ExerciseAnatomy figure={exercise.figure} />
+              </div>
+            )}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 14 }}>
+              {exercise.musclesWorked.map((m) => (
+                <div key={m.name}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>{m.name}</span>
+                    <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '0.16em', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>{m.role} · {m.percentage}%</span>
+                  </div>
+                  <div style={{ height: 6, borderRadius: 100, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                    <div style={{ width: `${m.percentage}%`, height: '100%', borderRadius: 100, background: m.color, boxShadow: `0 0 8px ${m.color}66` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Section>
       )}
 
-      {/* === OVERVIEW === */}
-      <div className="glass-card rounded-xl p-4">
-        <h2 className="text-sm font-semibold text-white uppercase tracking-wider mb-2">Overview</h2>
-        <p className="text-sm text-wf-gray-300 leading-relaxed">{exercise.description}</p>
-      </div>
+      {/* ── How To Perform ── */}
+      {exercise.instructions?.length > 0 && (
+        <Section title="How To Perform">
+          <ol style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {exercise.instructions.map((step, i) => (
+              <li key={i} style={{ display: 'flex', gap: 12 }}>
+                <span style={{ fontFamily: MONO, flexShrink: 0, width: 24, height: 24, borderRadius: 8, background: 'rgba(239,68,68,0.14)', color: RED, border: '1px solid rgba(239,68,68,0.22)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600, marginTop: 1 }}>{i + 1}</span>
+                <p style={{ fontSize: 13, lineHeight: 1.5, color: 'rgba(255,255,255,0.75)', margin: 0 }}>{step}</p>
+              </li>
+            ))}
+          </ol>
+        </Section>
+      )}
 
-      {/* === QUICK INFO === */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="glass-card rounded-xl p-4 text-center">
-          <p className="text-[10px] text-wf-gray-500 uppercase tracking-widest mb-1">Equipment</p>
-          <p className="text-sm font-semibold text-white">{exercise.equipment}</p>
-        </div>
-        <div className="glass-card rounded-xl p-4 text-center">
-          <p className="text-[10px] text-wf-gray-500 uppercase tracking-widest mb-1">Secondary Muscles</p>
-          <p className="text-sm font-semibold text-white">{exercise.secondaryMuscles.join(', ')}</p>
-        </div>
-      </div>
+      {/* ── Form Tips ── */}
+      {exercise.formTips?.length > 0 && (
+        <Section title="Form Tips">
+          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 11 }}>
+            {exercise.formTips.map((tip, i) => (
+              <li key={i} style={{ display: 'flex', gap: 10 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={GREEN} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}><polyline points="20 6 9 17 4 12" /></svg>
+                <p style={{ fontSize: 13, lineHeight: 1.5, color: 'rgba(255,255,255,0.75)', margin: 0 }}>{tip}</p>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
 
-      {/* === MUSCLE ACTIVATION === */}
-      <div className="glass-card rounded-xl p-4">
-        <h2 className="text-sm font-semibold text-white uppercase tracking-wider mb-3">Muscle Activation</h2>
-        <div className="space-y-3">
-          {exercise.musclesWorked.map(m => (
-            <div key={m.name}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm text-white">{m.name}</span>
-                <span className="text-xs text-wf-gray-500 capitalize">{m.role}</span>
+      {/* ── Common Mistakes ── */}
+      {exercise.commonMistakes?.length > 0 && (
+        <Section title="Common Mistakes">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {exercise.commonMistakes.map((m, i) => (
+              <div key={i} style={{ paddingLeft: 12, borderLeft: '2px solid rgba(239,68,68,0.5)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={RED} strokeWidth="2.4" strokeLinecap="round"><path d="M6 18L18 6M6 6l12 12" /></svg>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#f5a3a3', margin: 0 }}>{m.mistake}</p>
+                </div>
+                <p style={{ fontSize: 12.5, lineHeight: 1.5, color: 'rgba(255,255,255,0.55)', margin: 0, paddingLeft: 20 }}>{m.fix}</p>
               </div>
-              <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-700"
-                  style={{ width: `${m.percentage}%`, backgroundColor: m.color }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* === INSTRUCTIONS === */}
-      <div className="glass-card rounded-xl p-4">
-        <h2 className="text-sm font-semibold text-white uppercase tracking-wider mb-3">How To Perform</h2>
-        <ol className="space-y-3">
-          {exercise.instructions.map((step, i) => (
-            <li key={i} className="flex gap-3">
-              <span className="w-6 h-6 rounded-full bg-wf-red/15 text-wf-red text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
-                {i + 1}
-              </span>
-              <p className="text-sm text-wf-gray-300 leading-relaxed">{step}</p>
-            </li>
-          ))}
-        </ol>
-      </div>
-
-      {/* === FORM TIPS === */}
-      <div className="glass-card rounded-xl p-4">
-        <h2 className="text-sm font-semibold text-white uppercase tracking-wider mb-3">Form Tips</h2>
-        <ul className="space-y-2">
-          {exercise.formTips.map((tip, i) => (
-            <li key={i} className="flex gap-2">
-              <svg className="w-4 h-4 text-green-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-              </svg>
-              <p className="text-sm text-wf-gray-300 leading-relaxed">{tip}</p>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* === COMMON MISTAKES === */}
-      <div className="glass-card rounded-xl p-4">
-        <h2 className="text-sm font-semibold text-white uppercase tracking-wider mb-3">Common Mistakes</h2>
-        <div className="space-y-3">
-          {exercise.commonMistakes.map((item, i) => (
-            <div key={i} className="border-l-2 border-red-500/50 pl-3">
-              <p className="text-sm font-medium text-red-400 mb-0.5">{item.mistake}</p>
-              <p className="text-sm text-wf-gray-400">{item.fix}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
+            ))}
+          </div>
+        </Section>
+      )}
+    </>
   );
 }
