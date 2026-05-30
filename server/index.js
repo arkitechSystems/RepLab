@@ -268,6 +268,29 @@ app.get('/health', (req, res) => res.json({
   timestamp: new Date().toISOString(),
 }));
 
+// Public landing-page stats — exercise count + featured (Pro Coach) program
+// count. No auth, lightweight read. Used by the public marketing landing
+// page (LandingPageTest) to render live numbers instead of hard-coded
+// ones. Wrapped in a try/catch so a transient DB hiccup degrades to the
+// last-known fallback values the client ships with (no 500 to the
+// public root). Caches lightly at the CDN layer — counts move slowly.
+app.get('/api/public/stats', async (_req, res) => {
+  try {
+    const { default: pool } = await import('./dbPool.js');
+    const [exRes, progRes] = await Promise.all([
+      pool.query('SELECT COUNT(*)::int AS n FROM exercises WHERE created_by IS NULL'),
+      pool.query('SELECT COUNT(*)::int AS n FROM programs WHERE is_featured = TRUE'),
+    ]);
+    res.setHeader('Cache-Control', 'public, max-age=300'); // 5-minute CDN cache
+    res.json({
+      exercises: exRes.rows[0]?.n ?? 0,
+      programs: progRes.rows[0]?.n ?? 0,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'stats_unavailable' });
+  }
+});
+
 // Serve exercise demo videos
 app.use('/videos', express.static(path.join(__dirname, 'VidLib')));
 

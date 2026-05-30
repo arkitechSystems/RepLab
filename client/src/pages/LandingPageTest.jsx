@@ -357,6 +357,31 @@ function useLiveTimers() {
   return { workTime: fmt(workSec), restTime: fmt(restSec) };
 }
 
+// Live counts from the server for the stat strip + marquee. Public endpoint
+// (/api/public/stats, no auth), cached at the edge for 5 minutes. Fallback
+// values mirror what the page used to ship hard-coded so the numbers still
+// read sensible on slow networks / before the fetch resolves / if the
+// endpoint hiccups. As long as the fetch lands before the user scrolls to
+// the stats section, the IntersectionObserver-driven count-up reads the
+// updated data-lp-count-to attribute.
+function useLandingStats() {
+  const [stats, setStats] = useState({ exercises: 322, programs: 9 });
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/public/stats')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        if (typeof data.exercises === 'number' && typeof data.programs === 'number') {
+          setStats({ exercises: data.exercises, programs: data.programs });
+        }
+      })
+      .catch(() => { /* fallback values stay in place */ });
+    return () => { cancelled = true; };
+  }, []);
+  return stats;
+}
+
 // Bottom-nav matches the in-app shell: Workouts / Calendar / Utilities /
 // Profile. Tab icons are inline SVG mirrored from the design bundle.
 function PhoneBottomNav({ active = 'workouts' }) {
@@ -438,6 +463,7 @@ export default function LandingPageTest() {
   const rootRef = useRef(null);
   useLandingFx(rootRef);
   const { workTime, restTime } = useLiveTimers();
+  const stats = useLandingStats();
 
   // Used by both the nav and the hero primary CTA. Signed-in visitors
   // get a direct hop to /app; signed-out visitors land in the login
@@ -561,7 +587,7 @@ export default function LandingPageTest() {
               'Plate Calculator',
               '1RM Estimator',
               'Full-Screen Workout Mode',
-              '322 Exercises',
+              `${stats.exercises} Exercises`,
               'HIIT & Rest Timers',
               'Cross-Device Sync',
             ].map((t, i) => (
@@ -840,12 +866,12 @@ export default function LandingPageTest() {
         <div className="lp-stats">
           <div className="lp-stat">
             <div className="lp-stat-tag">// 01</div>
-            <div className="lp-stat-num" data-lp-count-to="322" data-lp-start-at="0">0</div>
+            <div className="lp-stat-num" data-lp-count-to={stats.exercises} data-lp-start-at="0">0</div>
             <div className="lp-stat-label lp-label-flash" style={{ '--lp-flash-period': '2s', '--lp-flash-delay': '0s' }}>Exercises in the Library</div>
           </div>
           <div className="lp-stat">
             <div className="lp-stat-tag">// 02</div>
-            <div className="lp-stat-num lp-red" data-lp-count-to="9" data-lp-start-at="450">0</div>
+            <div className="lp-stat-num lp-red" data-lp-count-to={stats.programs} data-lp-start-at="450">0</div>
             <div className="lp-stat-label lp-label-flash" style={{ '--lp-flash-period': '1.5s', '--lp-flash-delay': '0.25s' }}>Pro Coach Programs</div>
           </div>
           <div className="lp-stat">
