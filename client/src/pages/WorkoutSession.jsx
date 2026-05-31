@@ -3492,43 +3492,67 @@ export default function WorkoutSession() {
                   ? 'Scroll down and tap Undo Completion to edit this session.'
                   : (
                     <>
-                      Tap <span className="text-white font-semibold">Got It</span> to keep pre-filling planned weights and reps without starting the timer. Tap <span className="text-white font-semibold">Begin Workout</span> to start your session timer and unlock set completion.
+                      Tap <span className="text-white font-semibold">Begin Workout</span> to start your session timer and unlock set completion.
                     </>
                   )}
               </p>
             </div>
 
             <div className="relative px-4 pb-4 space-y-2">
-              <button
-                onClick={() => setShowBeginPrompt(false)}
-                className="w-full text-white font-bold uppercase active:scale-[0.98] transition-all"
-                style={{
-                  letterSpacing: '0.15em',
-                  fontSize: '11px',
-                  padding: '14px',
-                  borderRadius: '2px',
-                  background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
-                  boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
-                }}
-              >
-                Got It
-              </button>
-              {!isCompleted && (
+              {/* Primary CTA: Begin Workout — fires handleBeginWorkout and
+                  closes the prompt in one tap (was previously a two-step
+                  flow where "Got It" closed the prompt without starting,
+                  then the user had to find the Begin Workout button on the
+                  card header). Secondary slot is Cancel. For the
+                  isCompleted case there's no session to begin, so a single
+                  "Got It" ack button suffices. */}
+              {!isCompleted ? (
+                <>
+                  <button
+                    onClick={() => {
+                      setShowBeginPrompt(false);
+                      handleBeginWorkout();
+                    }}
+                    className="w-full text-white font-bold uppercase active:scale-[0.98] transition-all"
+                    style={{
+                      letterSpacing: '0.15em',
+                      fontSize: '11px',
+                      padding: '14px',
+                      borderRadius: '2px',
+                      background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+                      boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+                    }}
+                  >
+                    Begin Workout
+                  </button>
+                  <button
+                    onClick={() => setShowBeginPrompt(false)}
+                    className="w-full text-white font-bold uppercase active:scale-[0.98] transition-all border border-white/15 hover:border-white/30"
+                    style={{
+                      letterSpacing: '0.15em',
+                      fontSize: '11px',
+                      padding: '14px',
+                      borderRadius: '2px',
+                      background: 'rgba(255,255,255,0.04)',
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </>
+              ) : (
                 <button
-                  onClick={() => {
-                    setShowBeginPrompt(false);
-                    handleBeginWorkout();
-                  }}
-                  className="w-full text-white font-bold uppercase active:scale-[0.98] transition-all border border-white/15 hover:border-white/30"
+                  onClick={() => setShowBeginPrompt(false)}
+                  className="w-full text-white font-bold uppercase active:scale-[0.98] transition-all"
                   style={{
                     letterSpacing: '0.15em',
                     fontSize: '11px',
                     padding: '14px',
                     borderRadius: '2px',
-                    background: 'rgba(255,255,255,0.04)',
+                    background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+                    boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
                   }}
                 >
-                  Begin Workout
+                  Got It
                 </button>
               )}
             </div>
