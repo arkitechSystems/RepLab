@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080" width="1080" height="1080">
+<defs>
+  <linearGradient id="fireGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%"  stop-color="#EAB308"/>
+    <stop offset="45%" stop-color="#F97316"/>
+    <stop offset="100%" stop-color="#EF4444"/>
+  </linearGradient>
+  <linearGradient id="redGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" stop-color="#EF4444"/>
+    <stop offset="100%" stop-color="#DC2626"/>
+  </linearGradient>
+  <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+    <stop offset="0%" stop-color="#EF4444" stop-opacity="0.55"/>
+    <stop offset="60%" stop-color="#EF4444" stop-opacity="0.12"/>
+    <stop offset="100%" stop-color="#EF4444" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="fireGlow" cx="50%" cy="50%" r="50%">
+    <stop offset="0%" stop-color="#F97316" stop-opacity="0.7"/>
+    <stop offset="50%" stop-color="#EF4444" stop-opacity="0.25"/>
+    <stop offset="100%" stop-color="#EF4444" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="bgFade" x1="0%" y1="0%" x2="0%" y2="100%">
+    <stop offset="0%" stop-color="#141414"/>
+    <stop offset="100%" stop-color="#0A0A0A"/>
+  </linearGradient>
+  <pattern id="dotGrid" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+    <circle cx="2" cy="2" r="1" fill="#222222"/>
+  </pattern>
+  <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+    <feGaussianBlur in="SourceAlpha" stdDeviation="6"/>
+    <feOffset dx="0" dy="4" result="off"/>
+    <feComponentTransfer><feFuncA type="linear" slope="0.45"/></feComponentTransfer>
+    <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+</defs>
+<rect width="1080" height="1080" fill="url(#bgFade)"/>
+<rect width="1080" height="1080" fill="url(#dotGrid)" opacity="0.55"/>
+<circle cx="-108.0" cy="-54.0" r="648.0" fill="url(#fireGlow)"/>
+<circle cx="1134.0" cy="1134.0" r="594.0" fill="url(#fireGlow)"/><text x="60" y="320" font-family="Poppins, sans-serif" font-weight="700" font-size="130" fill="#FFFFFF">BUILT BY</text><text x="60" y="450" font-family="Poppins, sans-serif" font-weight="700" font-size="130" fill="#FFFFFF">LIFTERS,</text><text x="60" y="600" font-family="Poppins, sans-serif" font-weight="700" font-size="130" fill="url(#fireGrad)">FOR LIFTERS.</text><rect x="60" y="640" width="160" height="6" rx="3" fill="url(#redGrad)"/><text x="60" y="780" font-family="Poppins, sans-serif" font-weight="500" font-size="28" fill="#FFFFFF" opacity="0.9">No bloat. No streak guilt.</text><text x="60" y="822" font-family="Poppins, sans-serif" font-weight="500" font-size="28" fill="#FFFFFF" opacity="0.9">No "wellness" upsells.</text><text x="60" y="864" font-family="Poppins, sans-serif" font-weight="500" font-size="28" fill="#FFFFFF" opacity="0.9">Just the loop that matters:</text><text x="60" y="906" font-family="Poppins, sans-serif" font-weight="700" font-size="28" fill="#EF4444">plan · log · progress · repeat.</text><text x="1020" y="1010" font-family="Poppins, sans-serif" font-weight="700" letter-spacing="6" font-size="28" fill="#FFFFFF" text-anchor="end">REPLAB</text></svg>

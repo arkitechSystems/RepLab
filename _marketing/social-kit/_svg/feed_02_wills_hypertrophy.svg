@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080" width="1080" height="1080">
+<defs>
+  <linearGradient id="fireGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%"  stop-color="#EAB308"/>
+    <stop offset="45%" stop-color="#F97316"/>
+    <stop offset="100%" stop-color="#EF4444"/>
+  </linearGradient>
+  <linearGradient id="redGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" stop-color="#EF4444"/>
+    <stop offset="100%" stop-color="#DC2626"/>
+  </linearGradient>
+  <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+    <stop offset="0%" stop-color="#EF4444" stop-opacity="0.55"/>
+    <stop offset="60%" stop-color="#EF4444" stop-opacity="0.12"/>
+    <stop offset="100%" stop-color="#EF4444" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="fireGlow" cx="50%" cy="50%" r="50%">
+    <stop offset="0%" stop-color="#F97316" stop-opacity="0.7"/>
+    <stop offset="50%" stop-color="#EF4444" stop-opacity="0.25"/>
+    <stop offset="100%" stop-color="#EF4444" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="bgFade" x1="0%" y1="0%" x2="0%" y2="100%">
+    <stop offset="0%" stop-color="#141414"/>
+    <stop offset="100%" stop-color="#0A0A0A"/>
+  </linearGradient>
+  <pattern id="dotGrid" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+    <circle cx="2" cy="2" r="1" fill="#222222"/>
+  </pattern>
+  <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+    <feGaussianBlur in="SourceAlpha" stdDeviation="6"/>
+    <feOffset dx="0" dy="4" result="off"/>
+    <feComponentTransfer><feFuncA type="linear" slope="0.45"/></feComponentTransfer>
+    <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+</defs>
+<rect width="1080" height="1080" fill="url(#bgFade)"/>
+<rect width="1080" height="1080" fill="url(#dotGrid)" opacity="0.55"/><ellipse cx="540.0" cy="540.0" rx="520" ry="520" fill="url(#fireGlow)"/><rect x="94" y="214" width="892" height="652" rx="32" fill="url(#fireGrad)"/><rect x="100" y="220" width="880" height="640" rx="28" fill="#0F0F0F"/><rect x="140" y="260" width="180" height="40" rx="20.0" ry="20.0" fill="url(#redGrad)"/><text x="230.0" y="286.48" font-family="Poppins, sans-serif" font-weight="700" font-size="18" fill="#FFFFFF" text-anchor="middle" letter-spacing="2">FEATURED</text><text x="140" y="390" font-family="Poppins, sans-serif" font-weight="700" font-size="78" fill="#FFFFFF">WILL'S</text><text x="140" y="470" font-family="Poppins, sans-serif" font-weight="700" font-size="78" fill="url(#fireGrad)">HYPERTROPHY</text><text x="140" y="540" font-family="Poppins, sans-serif" font-weight="500" font-size="26" fill="#FFFFFF" opacity="0.85">A 12-week resistance training</text><text x="140" y="576" font-family="Poppins, sans-serif" font-weight="500" font-size="26" fill="#FFFFFF" opacity="0.85">program for serious lifters.</text><rect x="140.0" y="630" width="256.0" height="140" rx="18" fill="#181818" stroke="#2A2A2A"/><text x="268.0" y="700" font-family="Poppins, sans-serif" font-weight="700" font-size="56" fill="#FFFFFF" text-anchor="middle">12</text><text x="268.0" y="740" font-family="Poppins, sans-serif" font-weight="500" font-size="16" fill="#9CA3AF" text-anchor="middle" letter-spacing="2">WEEKS</text><rect x="412.0" y="630" width="256.0" height="140" rx="18" fill="#181818" stroke="#2A2A2A"/><text x="540.0" y="700" font-family="Poppins, sans-serif" font-weight="700" font-size="56" fill="#FFFFFF" text-anchor="middle">6</text><text x="540.0" y="740" font-family="Poppins, sans-serif" font-weight="500" font-size="16" fill="#9CA3AF" text-anchor="middle" letter-spacing="2">DAYS / WK</text><rect x="684.0" y="630" width="256.0" height="140" rx="18" fill="#181818" stroke="#2A2A2A"/><text x="812.0" y="700" font-family="Poppins, sans-serif" font-weight="700" font-size="56" fill="#FFFFFF" text-anchor="middle">$0</text><text x="812.0" y="740" font-family="Poppins, sans-serif" font-weight="500" font-size="16" fill="#9CA3AF" text-anchor="middle" letter-spacing="2">FREE</text><text x="140" y="830" font-family="Poppins, sans-serif" font-weight="700" letter-spacing="6" font-size="28" fill="#FFFFFF" text-anchor="start">REPLAB</text></svg>

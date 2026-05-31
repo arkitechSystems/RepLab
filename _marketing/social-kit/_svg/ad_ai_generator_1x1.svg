@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080" width="1080" height="1080">
+<defs>
+  <linearGradient id="fireGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%"  stop-color="#EAB308"/>
+    <stop offset="45%" stop-color="#F97316"/>
+    <stop offset="100%" stop-color="#EF4444"/>
+  </linearGradient>
+  <linearGradient id="redGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" stop-color="#EF4444"/>
+    <stop offset="100%" stop-color="#DC2626"/>
+  </linearGradient>
+  <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+    <stop offset="0%" stop-color="#EF4444" stop-opacity="0.55"/>
+    <stop offset="60%" stop-color="#EF4444" stop-opacity="0.12"/>
+    <stop offset="100%" stop-color="#EF4444" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="fireGlow" cx="50%" cy="50%" r="50%">
+    <stop offset="0%" stop-color="#F97316" stop-opacity="0.7"/>
+    <stop offset="50%" stop-color="#EF4444" stop-opacity="0.25"/>
+    <stop offset="100%" stop-color="#EF4444" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="bgFade" x1="0%" y1="0%" x2="0%" y2="100%">
+    <stop offset="0%" stop-color="#141414"/>
+    <stop offset="100%" stop-color="#0A0A0A"/>
+  </linearGradient>
+  <pattern id="dotGrid" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+    <circle cx="2" cy="2" r="1" fill="#222222"/>
+  </pattern>
+  <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+    <feGaussianBlur in="SourceAlpha" stdDeviation="6"/>
+    <feOffset dx="0" dy="4" result="off"/>
+    <feComponentTransfer><feFuncA type="linear" slope="0.45"/></feComponentTransfer>
+    <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+</defs>
+<rect width="1080" height="1080" fill="url(#bgFade)"/>
+<rect width="1080" height="1080" fill="url(#dotGrid)" opacity="0.55"/>
+<circle cx="-108.0" cy="-54.0" r="648.0" fill="url(#fireGlow)"/>
+<circle cx="1134.0" cy="1134.0" r="594.0" fill="url(#fireGlow)"/><rect x="420.0" y="64.8" width="240" height="44" rx="22.0" ry="22.0" fill="url(#redGrad)"/><text x="540.0" y="92.56" font-family="Poppins, sans-serif" font-weight="700" font-size="16" fill="#FFFFFF" text-anchor="middle" letter-spacing="2">NEW IN REPLAB</text><text x="540.0" y="237.6" font-family="Poppins, sans-serif" font-weight="700" font-size="88" fill="#FFFFFF" text-anchor="middle">AI Workout</text><text x="540.0" y="345.6" font-family="Poppins, sans-serif" font-weight="700" font-size="88" fill="#FFFFFF" text-anchor="middle">Generator.</text><text x="540.0" y="453.6" font-family="Poppins, sans-serif" font-weight="700" font-size="88" fill="url(#fireGrad)" text-anchor="middle">Built in.</text><text x="540.0" y="591.6" font-family="Poppins, sans-serif" font-weight="500" font-size="28" fill="#FFFFFF" text-anchor="middle" opacity="0.85">Tell it your split. It builds the session.</text><text x="540.0" y="629.6" font-family="Poppins, sans-serif" font-weight="500" font-size="28" fill="#FFFFFF" text-anchor="middle" opacity="0.85">You do the work.</text><rect x="304.0" y="836.4" width="472" height="104" rx="52.0" fill="url(#fireGrad)" opacity="0.45"/><rect x="310.0" y="842.4" width="460" height="92" rx="46.0" fill="url(#redGrad)"/><text x="540.0" y="899.92" font-family="Poppins, sans-serif" font-weight="700" font-size="32" fill="#FFFFFF" text-anchor="middle" letter-spacing="3">START LIFTING</text><text x="540.0" y="1020" font-family="Poppins, sans-serif" font-weight="700" letter-spacing="6" font-size="26" fill="#FFFFFF" text-anchor="middle">REPLAB</text></svg>
