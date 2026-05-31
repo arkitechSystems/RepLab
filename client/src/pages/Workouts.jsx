@@ -2247,8 +2247,14 @@ export default function Workouts() {
         weeks.push(visibleTemplates.slice(i, i + 7));
       }
     }
-    // Show week picker when no week is selected
-    if (selectedWeek === null) {
+    // Show week picker when no week is selected — but never in My Workouts
+    // mode. User-owned programs in My Workouts are flattened into a single
+    // bucket (weeks[0] = all visibleTemplates), so the "week picker" is
+    // degenerate (always one WEEK 1 card). Skip it entirely; we jump
+    // straight to the flat workout list and the back button below goes
+    // straight to My Workouts home. Browse Library still uses the week-by-
+    // week breakdown for structured programs.
+    if (selectedWeek === null && selectedGroup !== 'my') {
       return (
         <div>
           <StickyHeader title={program.shortName || program.name} titleStyle={{ fontSize: '26.4px' }}>
@@ -2412,9 +2418,15 @@ export default function Workouts() {
       );
     }
 
-    // Show workouts for selected week
-    const weekTemplates = weeks[selectedWeek - 1] || [];
-    const weekTitle = `${program.shortName || program.name} — Week ${selectedWeek}`;
+    // Show workouts for selected week. In My Workouts mode selectedWeek may
+    // be null (the picker was skipped above) — treat it as 1 so we read the
+    // flattened single-bucket weeks[0]. Title drops the "— Week N" suffix
+    // in my-mode since there is no weekly concept for user-owned programs.
+    const effectiveWeek = (selectedGroup === 'my' && selectedWeek === null) ? 1 : selectedWeek;
+    const weekTemplates = weeks[effectiveWeek - 1] || [];
+    const weekTitle = selectedGroup === 'my'
+      ? (program.shortName || program.name)
+      : `${program.shortName || program.name} — Week ${effectiveWeek}`;
 
     return (
       <div>
@@ -2471,10 +2483,17 @@ export default function Workouts() {
           )}
         </StickyHeader>
 
-        {/* Back button */}
+        {/* Back button. In My Workouts mode the week-picker stage is
+            skipped, so back goes ALL the way out to the My Workouts home
+            (clears both selectedProgram + selectedWeek) and the label is
+            "My Workouts". In Browse mode it goes back to the week picker
+            (clears only selectedWeek) and the label is the program name. */}
         <div className="px-4 mb-3">
           <button
             onClick={() => {
+              if (selectedGroup === 'my') {
+                setSelectedProgram(null);
+              }
               setSelectedWeek(null);
               setEditMode(false);
             }}
@@ -2483,7 +2502,7 @@ export default function Workouts() {
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
             </svg>
-            {program.shortName || program.name}
+            {selectedGroup === 'my' ? 'My Workouts' : (program.shortName || program.name)}
           </button>
         </div>
 
