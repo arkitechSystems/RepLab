@@ -4368,9 +4368,25 @@ export default function Workouts() {
             // Flat list of uncategorized custom workouts. Excludes rest days
             // (placeholders, no exercises to log) and prehab templates
             // (getEnrichedPrograms already strips those out, but be explicit).
-            const myWorkoutsTemplates = !isBrowse && myWorkoutsProgram
+            const myWorkoutsTemplatesAll = !isBrowse && myWorkoutsProgram
               ? (myWorkoutsProgram.templates || []).filter((t) => !t.isRest && !t.isPrehab)
               : [];
+            // Split by ownership so user-created workouts and workouts
+            // shared by other users live in separate sections on the My
+            // Workouts page. Template.userId comes from the /templates
+            // payload (server/db.js getTemplates: SELECT * FROM templates
+            // WHERE user_id IS NULL OR user_id = $1, mapped to userId on
+            // the way out). currentUserId is the auth user's id; null-
+            // userId templates (global seeds) are treated as owned for
+            // the user's surface since they're not "shared by another
+            // person".
+            const currentUserId = user?.id;
+            const myWorkoutsTemplates = myWorkoutsTemplatesAll.filter(
+              (t) => t.userId == null || t.userId === currentUserId
+            );
+            const sharedWorkoutsTemplates = myWorkoutsTemplatesAll.filter(
+              (t) => t.userId != null && t.userId !== currentUserId
+            );
 
             // Sort the user's other custom programs by their existing
             // sort_order (no more "My Workouts" pin — that program is now
@@ -4647,6 +4663,98 @@ export default function Workouts() {
                         ))}
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* Shared Workouts — individual templates whose userId
+                    doesn't match the current user (i.e. templates that came
+                    from another user, e.g. a workout-invite that copied a
+                    template into this user's account). Same row treatment
+                    as the "MY WORKOUTS" section above so the two read as
+                    parallel collections, just sourced from different
+                    ownership buckets. Hidden when there are no shared
+                    workouts in the auto-created My Workouts pseudo-program.
+                    Only renders in the My Workouts surface (!isBrowse). */}
+                {!isBrowse && sharedWorkoutsTemplates.length > 0 && (
+                  <div className="mb-6">
+                    <div className="flex items-baseline gap-2 mb-3">
+                      <p
+                        className="text-[11px] uppercase font-bold"
+                        style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.3em' }}
+                      >
+                        // Shared
+                      </p>
+                      <h3 className="text-[16px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui' }}>
+                        SHARED WORKOUTS
+                      </h3>
+                    </div>
+                    <div className="space-y-3">
+                      {sharedWorkoutsTemplates.map((t, idx) => (
+                        <div
+                          key={t.id}
+                          style={{
+                            animationDelay: `${idx * 60}ms`,
+                            position: 'relative',
+                            overflow: 'hidden',
+                            borderRadius: '2px',
+                            background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                            boxShadow: '0 8px 30px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)',
+                          }}
+                          className="fade-slide-up"
+                        >
+                          {/* Blue accent stripe on the left edge — visually
+                              differentiates shared rows from the red-rail
+                              user-created rows above. */}
+                          <div
+                            className="absolute left-0 top-0 bottom-0"
+                            style={{ width: '2px', background: 'linear-gradient(180deg, #3b82f6, rgba(59,130,246,0.25))' }}
+                            aria-hidden="true"
+                          />
+                          <div style={{ padding: '14px 18px 14px 22px' }}>
+                            <div
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => navigate(`/clientworkouts/edit/${t.id}`)}
+                              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/clientworkouts/edit/${t.id}`); } }}
+                              className="cursor-pointer active:opacity-80 transition-opacity"
+                            >
+                              <div className="text-[15px] font-black text-white tracking-tight uppercase truncate" style={{ fontFamily: 'system-ui' }}>
+                                {t.name}
+                              </div>
+                              <div className="text-[11px] text-white/30 font-light mt-0.5">
+                                {(t.exercises || []).length} {(t.exercises || []).length === 1 ? 'exercise' : 'exercises'}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                onClick={() => openAddWorkout(t)}
+                                className="active:scale-[0.97] transition-all text-white text-[10px] font-bold uppercase px-3 py-2 whitespace-nowrap"
+                                style={{
+                                  letterSpacing: '0.15em',
+                                  borderRadius: '2px',
+                                  background: 'linear-gradient(135deg, rgba(59,130,246,0.9) 0%, rgba(37,99,235,0.9) 100%)',
+                                  boxShadow: '0 4px 14px rgba(59,130,246,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+                                }}
+                                title="Add to calendar"
+                              >
+                                + Calendar
+                              </button>
+                              <button
+                                onClick={() => handleDeleteTemplate(t.id)}
+                                aria-label="Remove shared workout"
+                                className="ml-auto w-8 h-8 flex items-center justify-center active:bg-red-500/25 transition-colors"
+                                style={{ borderRadius: '2px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)' }}
+                                title="Remove from my workouts"
+                              >
+                                <svg className="w-3.5 h-3.5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
