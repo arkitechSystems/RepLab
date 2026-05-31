@@ -80,31 +80,34 @@ export default function PlateCalculatorModal({ open, initialWeight = 0, onUse, o
   // Remembers the user's last barbell weight while in Machine mode, so
   // toggling back to Both/One Side restores their chosen bar (not a fixed 45).
   const lastBarRef = useRef(45);
-  // When no weight was passed in (set hasn't been entered yet), open at
-  // the current bar weight so the visual shows just the bare bar — no
-  // plates per side. The user adds plates from there via the +/- buttons
-  // or by typing a new target.
-  const [target, setTarget] = useState(() => String(initialWeight > 0 ? initialWeight : 45));
+  // Per user spec: anytime the calc is pulled up, default to zero plates
+  // on both sides — i.e. the bar-only state, total = bar weight (45 by
+  // default), with an empty plate stack. initialWeight is intentionally
+  // NOT consulted; the user wants a clean slate every time the modal
+  // opens, even when invoked from a set that already has a weight entered.
+  // They can type a target weight to greedy-fill plates, or add plates one
+  // by one via the +/- buttons to build up from the bare bar.
+  const [target, setTarget] = useState('45');
   const [mode, setMode] = useState('both');
   const [selectedPlate, setSelectedPlate] = useState(45);
   // Stack-based plate model: flat per-side array (e.g. [45, 25, 10]).
   // The +/- chip pushes/pops entries here directly so a user-added 35 lb
   // plate stays a 35 lb plate — it doesn't get re-greedy-filled into a
   // 45 + 10 combo just because the new total happens to factor that way.
-  const [manualPlates, setManualPlates] = useState(() =>
-    seedStack(Number(initialWeight > 0 ? initialWeight : 45) || 0, 45, 'both')
-  );
+  // Starts empty (no plates per side) to match the bar-only default.
+  const [manualPlates, setManualPlates] = useState([]);
 
-  // Reset target + reseed stack whenever the modal is freshly opened with
-  // a new initial weight. Same bar-only fallback as the initial useState.
+  // Reset to the bar-only zero-plates state whenever the modal is freshly
+  // opened. initialWeight is ignored on purpose — see the useState
+  // initializers above for the rationale.
   useEffect(() => {
     if (open) {
-      const next = String(initialWeight > 0 ? initialWeight : (bar || 45));
-      setTarget(next);
-      setManualPlates(seedStack(Number(next) || 0, bar, mode));
+      const barOnly = String(bar || 45);
+      setTarget(barOnly);
+      setManualPlates([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, initialWeight]);
+  }, [open]);
 
   if (!open) return null;
 
