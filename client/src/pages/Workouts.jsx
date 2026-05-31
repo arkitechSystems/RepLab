@@ -1690,17 +1690,14 @@ export default function Workouts() {
     setInviteResult(null); setInviteInput(''); setShareUserSearch(''); setShareUsers([]); setInviteModal(template);
   }
 
-  // Debounced search against /sharing/users. Fires only when a share/invite
-  // modal is open AND the query is at least 2 chars (the server enforces this
-  // too — sending a shorter query would just 400). 200ms debounce keeps us
-  // from spamming the API on every keystroke.
+  // Debounced search against /sharing/users. Fires whenever a share/invite
+  // modal is open — empty query is allowed now (server returns the first 25
+  // users alphabetically) so the picker shows a default list as soon as the
+  // modal opens, then filters in-place as the user types. 200ms debounce
+  // keeps us from spamming the API on every keystroke.
   useEffect(() => {
-    const q = shareUserSearch.trim();
     if (!shareModal && !inviteModal) return;
-    if (q.length < 2) {
-      setShareUsers([]);
-      return;
-    }
+    const q = shareUserSearch.trim();
     let cancelled = false;
     const handle = setTimeout(() => {
       api(`/sharing/users?q=${encodeURIComponent(q)}`)
@@ -2889,7 +2886,7 @@ export default function Workouts() {
                     </button>
                   ))}
                 {shareUsers.length === 0 && (
-                  <p className="text-center text-white/50 text-sm py-4">{shareUserSearch.trim().length < 2 ? 'Type 2+ characters to search' : 'No users found'}</p>
+                  <p className="text-center text-white/50 text-sm py-4">No users found</p>
                 )}
               </div>
               <div className="flex gap-2">
@@ -5136,7 +5133,7 @@ export default function Workouts() {
                       </button>
                     ))}
                   {shareUsers.length === 0 && (
-                    <p className="text-center text-white/50 text-sm py-4">{shareUserSearch.trim().length < 2 ? 'Type 2+ characters to search' : 'No users found'}</p>
+                    <p className="text-center text-white/50 text-sm py-4">No users found</p>
                   )}
                 </div>
                 <div className="flex gap-2">
@@ -5274,7 +5271,7 @@ export default function Workouts() {
                     </button>
                   ))}
                 {shareUsers.length === 0 && (
-                  <p className="text-center text-white/50 text-sm py-4">{shareUserSearch.trim().length < 2 ? 'Type 2+ characters to search' : 'No users found'}</p>
+                  <p className="text-center text-white/50 text-sm py-4">No users found</p>
                 )}
               </div>
               <div className="flex gap-2">

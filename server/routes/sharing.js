@@ -5,16 +5,17 @@ import pool from '../dbPool.js';
 
 const router = Router();
 
-// Search users for share picker. Requires a search query (min 2 chars) so
-// authenticated callers can't scrape the full user directory — that was a
-// privacy violation and a Play Store / Apple data-safety risk. Excludes the
-// requesting user and demo accounts, capped at 25 results.
+// Search users for share picker. An empty query returns the first 25 users
+// alphabetically by username so the picker can render a default list as soon
+// as the modal opens (and the user can refine by typing). Excludes the
+// requesting user and demo accounts, capped at 25 results — the LIMIT plus
+// no-pagination contract is what keeps this from becoming a directory-scrape
+// surface even with the empty-query case allowed.
 router.get('/users', authMiddleware, async (req, res) => {
   try {
     const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
-    if (q.length < 2) {
-      return res.status(400).json({ error: 'please provide a search query of at least 2 characters' });
-    }
+    // ILIKE '%%' matches any non-null value; combined with the LIMIT 25 below
+    // this returns the first page of users alphabetically when q is empty.
     const pattern = `%${q}%`;
     const { rows } = await pool.query(
       // Match on username, email, OR the user's display name (first + last).
