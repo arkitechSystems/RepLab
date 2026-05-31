@@ -54,6 +54,15 @@ export default function CreateWorkout() {
               });
             }
             if (quickProgram?.id) {
+              // Make sure the program is in local state — when we just
+              // POSTed a new "My Workouts" it isn't in `ownedPrograms` yet,
+              // and handleSave's defense-in-depth check (programs.find by
+              // id) would otherwise fail and fire the "pick one from My
+              // Workouts" guard, leaving the user stuck (no picker is
+              // rendered in quick mode).
+              setPrograms((prev) =>
+                prev.some((p) => p.id === quickProgram.id) ? prev : [...prev, quickProgram]
+              );
               setSelectedProgramId(quickProgram.id);
               setQuickReady(true);
             } else {
