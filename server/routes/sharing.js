@@ -18,19 +18,30 @@ router.get('/users', authMiddleware, async (req, res) => {
     // this returns the first page of users alphabetically when q is empty.
     const pattern = `%${q}%`;
     const { rows } = await pool.query(
-      // Match on username, email, OR the user's display name (first + last).
-      // Email is checked server-side only — it stays out of the response
-      // payload below, so searchers can find a user by typing their email
-      // without ever seeing other users' email addresses on the wire.
-      // ORDER BY username ASC so the share picker reads alphabetically by
-      // handle; nulls come last under PostgreSQL's default ASC sort.
+      // Match on username, email, first name, last name, OR the full display
+      // name (first + last). first_name + last_name are matched explicitly
+      // as their own ILIKE conditions so a typed query lands on either field
+      // independently — typing "Smith" finds a user whose last_name is Smith
+      // even if their first_name is null, and vice versa. Email is checked
+      // server-side only — it stays out of the response payload below, so
+      // searchers can find a user by typing their email without ever seeing
+      // other users' email addresses on the wire. The Apple App Review demo
+      // account (seeded by server/scripts/seed-apple-reviewer-account.js) is
+      // hidden via an explicit email match so it never surfaces in any
+      // user's share / invite picker; the reviewer is for App Review use
+      // only and shouldn't show up as a real social contact. ORDER BY
+      // username ASC so the picker reads alphabetically by handle; nulls
+      // come last under PostgreSQL's default ASC sort.
       `SELECT id, username, first_name, last_name, profile_photo
        FROM users
        WHERE id != $1
          AND (email NOT LIKE '%@willfit.demo' OR email IS NULL)
+         AND (email IS NULL OR LOWER(email) != LOWER('apple.reviewer@arkitechsystems.com'))
          AND (
               username ILIKE $2
            OR email ILIKE $2
+           OR first_name ILIKE $2
+           OR last_name ILIKE $2
            OR (COALESCE(first_name, '') || ' ' || COALESCE(last_name, '')) ILIKE $2
          )
        ORDER BY username ASC NULLS LAST
