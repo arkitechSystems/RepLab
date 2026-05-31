@@ -148,9 +148,17 @@ function LibraryFlipCard({ program, programColor, idx, isFlipped, onFlip, onView
               {program.name}
             </h4>
             <div className="flex items-center justify-center flex-wrap gap-x-2 gap-y-1 mb-5">
-              <span className="text-[11px] text-white/80 font-light">{program.weekCount} {program.weekCount === 1 ? 'week' : 'weeks'}</span>
-              <span className="text-white/40 text-[11px] leading-none select-none">·</span>
-              <span className="text-[11px] text-white/80 font-light">{program.workoutCount} workouts</span>
+              {/* "My Workouts" is the auto-created Quick-Create bucket — it
+                  holds ad-hoc one-off workouts that aren't part of a weekly
+                  schedule, so the "X weeks" stat (programTemplates / 7) is
+                  meaningless there. Show only the workout count. */}
+              {program.name !== 'My Workouts' && (
+                <>
+                  <span className="text-[11px] text-white/80 font-light">{program.weekCount} {program.weekCount === 1 ? 'week' : 'weeks'}</span>
+                  <span className="text-white/40 text-[11px] leading-none select-none">·</span>
+                </>
+              )}
+              <span className="text-[11px] text-white/80 font-light">{program.workoutCount} {program.workoutCount === 1 ? 'workout' : 'workouts'}</span>
               {program.programType && program.programType !== 'other' && (
                 <>
                   <span className="text-white/40 text-[11px] leading-none select-none">·</span>
@@ -946,9 +954,16 @@ function ProgramCard({ program, idx, onSelect, onBegin, onDelete, onShare, dataT
               {program.name}
             </h2>
             <div className="flex items-center flex-wrap gap-x-2 gap-y-1 mt-2">
-              <span className="text-[11px] text-white/80 font-light">{program.weekCount} {program.weekCount === 1 ? 'week' : 'weeks'}</span>
-              <span className="text-white/40 text-[11px] leading-none select-none">·</span>
-              <span className="text-[11px] text-white/80 font-light">{program.workoutCount} workouts</span>
+              {/* "My Workouts" is the auto-created Quick-Create bucket — no
+                  weekly schedule, so the "X weeks" stat is meaningless and
+                  hidden here. Workout count is always shown. */}
+              {program.name !== 'My Workouts' && (
+                <>
+                  <span className="text-[11px] text-white/80 font-light">{program.weekCount} {program.weekCount === 1 ? 'week' : 'weeks'}</span>
+                  <span className="text-white/40 text-[11px] leading-none select-none">·</span>
+                </>
+              )}
+              <span className="text-[11px] text-white/80 font-light">{program.workoutCount} {program.workoutCount === 1 ? 'workout' : 'workouts'}</span>
             </div>
             {program.description && (
               <p className="text-[13px] text-white/60 font-light mt-2 leading-relaxed line-clamp-2">{program.description}</p>
@@ -2505,18 +2520,21 @@ export default function Workouts() {
                     className={(editMode || t.isRest) ? '' : 'cursor-pointer active:scale-[0.99] transition-transform'}
                     style={{ padding: '16px 20px' }}
                   >
-                    {/* Title spans the full card width — overlaps the buttons row below visually but truncates safely if too long. */}
+                    {/* Title + exercise-count subtitle, then a full-width
+                        action button row. Restructured to mirror the MY
+                        WORKOUTS uncategorized card pattern (line 4599+):
+                        + Calendar / Move / Share on the left, Delete pushed
+                        to the far right via ml-auto. Replaces the previous
+                        Add/Share/Edit cluster so the two surfaces look the
+                        same — title row + count + button row. */}
                     <div className="text-[17.1px] font-black text-white tracking-tight uppercase truncate" style={{ fontFamily: 'system-ui' }}>
                       {t.name}
                     </div>
-                    {/* Bottom row — exercise-count subtitle on the left, action buttons on the right. */}
-                    <div className="flex items-center justify-between gap-3 mt-1">
-                      <div className="text-[11px] text-white/25 font-light shrink-0">
-                        {t.isRest ? 'Rest day' : `${(t.exercises || []).length} ${(t.exercises || []).length === 1 ? 'exercise' : 'exercises'}`}
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <div className="text-[11px] text-white/25 font-light mt-1">
+                      {t.isRest ? 'Rest day' : `${(t.exercises || []).length} ${(t.exercises || []).length === 1 ? 'exercise' : 'exercises'}`}
+                    </div>
                     {editMode ? (
-                      <>
+                      <div className="flex items-center gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => handleMoveTemplate(program, idx, -1)}
                           disabled={idx === 0}
@@ -2537,80 +2555,111 @@ export default function Workouts() {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
                           </svg>
                         </button>
-                      </>
-                    ) : null}
-                    {/* Right: action buttons (only when not in editMode and not a rest day) */}
-                    {editMode ? (
-                      <button
-                        onClick={() => handleDeleteTemplate(t.id)}
-                        aria-label="Delete workout"
-                        className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center shrink-0 active:bg-red-500/40 transition-colors"
-                      >
-                        <svg className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    ) : !t.isRest ? (
-                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          onClick={() => handleDeleteTemplate(t.id)}
+                          aria-label="Delete workout"
+                          className="ml-auto w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center shrink-0 active:bg-red-500/40 transition-colors"
+                        >
+                          <svg className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    ) : !t.isRest && program.userId !== null ? (
+                      <div className="flex items-center gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
                         <button
                           data-tutorial={idx === weekTemplates.findIndex(w => !w.isRest) ? 'week-add-btn' : undefined}
                           onClick={() => openAddWorkout(t)}
-                          className="active:scale-[0.97] transition-all text-white text-[11px] font-bold uppercase px-3.5 py-2 whitespace-nowrap shrink-0"
+                          className="active:scale-[0.97] transition-all text-white text-[10px] font-bold uppercase px-3 py-2 whitespace-nowrap"
                           style={{
                             letterSpacing: '0.15em',
                             borderRadius: '2px',
                             background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
                             boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
                           }}
+                          title="Add to calendar"
                         >
-                          + Add
+                          + Calendar
                         </button>
-                        {program.userId !== null ? (
-                          <>
-                            <button
-                              onClick={() => { openShareModal(program); }}
-                              className="active:scale-[0.97] transition-all flex items-center justify-center px-3.5 py-2 whitespace-nowrap shrink-0"
-                              style={{
-                                borderRadius: '2px',
-                                background: 'linear-gradient(135deg, rgba(59,130,246,0.9) 0%, rgba(37,99,235,0.9) 100%)',
-                                boxShadow: '0 4px 14px rgba(59,130,246,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
-                              }}
-                              title="Share workout"
-                            >
-                              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
-                              </svg>
-                            </button>
-                            <button
-                              onClick={() => navigate(`/clientworkouts/edit/${t.id}`)}
-                              aria-label="Edit workout"
-                              className="w-9 h-9 rounded-lg bg-wf-red/20 flex items-center justify-center shrink-0 active:bg-wf-red/40 transition-colors"
-                            >
-                              <svg className="w-4 h-4 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-                              </svg>
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            onClick={() => { openInviteModal(t); }}
-                            className="w-9 h-9 flex items-center justify-center shrink-0 active:bg-blue-500/25 transition-colors"
-                            style={{
-                              borderRadius: '2px',
-                              background: 'rgba(59,130,246,0.12)',
-                              border: '1px solid rgba(59,130,246,0.3)',
-                            }}
-                            title="Invite a friend"
-                          >
-                            <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
-                            </svg>
-                          </button>
-                        )}
+                        <button
+                          onClick={() => setMoveTemplateModal(t)}
+                          className="active:scale-[0.97] transition-all text-white/80 text-[10px] font-bold uppercase px-3 py-2 whitespace-nowrap flex items-center gap-1.5"
+                          style={{
+                            letterSpacing: '0.15em',
+                            borderRadius: '2px',
+                            background: 'rgba(255,255,255,0.06)',
+                            border: '1px solid rgba(255,255,255,0.12)',
+                          }}
+                          title="Move to a program"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 7.5h12m0 0l-3-3m3 3l-3 3M21 16.5H9m0 0l3 3m-3-3l3-3" />
+                          </svg>
+                          Move
+                        </button>
+                        <button
+                          onClick={() => setInviteModal(t)}
+                          className="active:scale-[0.97] transition-all text-white/80 text-[10px] font-bold uppercase px-3 py-2 whitespace-nowrap flex items-center gap-1.5"
+                          style={{
+                            letterSpacing: '0.15em',
+                            borderRadius: '2px',
+                            background: 'rgba(255,255,255,0.06)',
+                            border: '1px solid rgba(255,255,255,0.12)',
+                          }}
+                          title="Share workout"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
+                          </svg>
+                          Share
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTemplate(t.id)}
+                          aria-label="Delete workout"
+                          className="ml-auto w-8 h-8 flex items-center justify-center active:bg-red-500/25 transition-colors"
+                          style={{ borderRadius: '2px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)' }}
+                          title="Delete workout"
+                        >
+                          <svg className="w-3.5 h-3.5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                          </svg>
+                        </button>
+                      </div>
+                    ) : !t.isRest ? (
+                      // Library program (program.userId === null) — owner of
+                      // the program is the admin/seed, so users can only Add
+                      // to calendar + Invite a friend. No Move/Delete since
+                      // they don't own the underlying template.
+                      <div className="flex items-center gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={() => openAddWorkout(t)}
+                          className="active:scale-[0.97] transition-all text-white text-[10px] font-bold uppercase px-3 py-2 whitespace-nowrap"
+                          style={{
+                            letterSpacing: '0.15em',
+                            borderRadius: '2px',
+                            background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+                            boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+                          }}
+                          title="Add to calendar"
+                        >
+                          + Calendar
+                        </button>
+                        <button
+                          onClick={() => { openInviteModal(t); }}
+                          className="ml-auto w-9 h-9 flex items-center justify-center shrink-0 active:bg-blue-500/25 transition-colors"
+                          style={{
+                            borderRadius: '2px',
+                            background: 'rgba(59,130,246,0.12)',
+                            border: '1px solid rgba(59,130,246,0.3)',
+                          }}
+                          title="Invite a friend"
+                        >
+                          <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
+                          </svg>
+                        </button>
                       </div>
                     ) : null}
-                      </div>
-                    </div>
                   </div>
 
                   {/* Exercise accordion cards — primary accordion (hidden in edit mode, shown when card expanded) */}
@@ -4645,6 +4694,22 @@ export default function Workouts() {
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 7.5h12m0 0l-3-3m3 3l-3 3M21 16.5H9m0 0l3 3m-3-3l3-3" />
                                   </svg>
                                   Move
+                                </button>
+                                <button
+                                  onClick={() => setInviteModal(t)}
+                                  className="active:scale-[0.97] transition-all text-white/80 text-[10px] font-bold uppercase px-3 py-2 whitespace-nowrap flex items-center gap-1.5"
+                                  style={{
+                                    letterSpacing: '0.15em',
+                                    borderRadius: '2px',
+                                    background: 'rgba(255,255,255,0.06)',
+                                    border: '1px solid rgba(255,255,255,0.12)',
+                                  }}
+                                  title="Share workout"
+                                >
+                                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
+                                  </svg>
+                                  Share
                                 </button>
                                 <button
                                   onClick={() => handleDeleteTemplate(t.id)}
