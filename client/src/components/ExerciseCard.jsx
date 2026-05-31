@@ -153,6 +153,28 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
   // writing back. null = modal closed; true = open from header.
   const [plateCalcFromHeader, setPlateCalcFromHeader] = useState(false);
   const plateCalcLongPressRef = useRef(null);
+  // Goal Weight / Goal Reps edit affordance — cells render as read-only
+  // <div> displays by default (matching the original visual treatment,
+  // dash shown as content not placeholder). Long-press (600ms, same
+  // window as plate-calc) flips a single cell to a focused <input>
+  // for editing; the input blurs back to display on focus loss. Key
+  // format: `${setIdx}-weight` or `${setIdx}-reps`.
+  const [editingGoalKey, setEditingGoalKey] = useState(null);
+  const goalLongPressRef = useRef(null);
+  function startGoalLongPress(setIdx, field) {
+    if (!onGoalChange || readOnly || inputsLocked) return;
+    if (goalLongPressRef.current) clearTimeout(goalLongPressRef.current);
+    goalLongPressRef.current = setTimeout(() => {
+      setEditingGoalKey(`${setIdx}-${field}`);
+      goalLongPressRef.current = null;
+    }, 600);
+  }
+  function cancelGoalLongPress() {
+    if (goalLongPressRef.current) {
+      clearTimeout(goalLongPressRef.current);
+      goalLongPressRef.current = null;
+    }
+  }
   // Tracks the most recently focused set's weight input so the header
   // ⚖ icon can pre-fill the modal with the user's current row of focus.
   const lastFocusedSetIdxRef = useRef(null);
@@ -609,14 +631,16 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                 </div>
               )}
 
-              {/* Goal Weight — editable. Default value is sourced from the
-                  user's last completed session for this exercise at the same
-                  set position (lastEntries[idx].weight). Sets beyond the
-                  previous session's count fall back to lastEntries[0].weight
-                  (the user's first-set value last time). If no prior session
-                  exists, the cell renders blank. Manual edits write to
-                  goalOverrides (per-session) via onGoalChange and take
-                  precedence over the lastEntries lookup. */}
+              {/* Goal Weight — long-press to edit. Renders as a read-only
+                  <div> by default (looks like the original immutable goal
+                  cell — dash shown as content for empty, distinct visual
+                  from the actual-weight <input> beside it). Long-press
+                  (600ms) flips this single cell into a focused <input>;
+                  blur returns to display. Value priority: goalOverrides
+                  (per-session edit) → lastEntries[idx].weight (last
+                  session, same set position) → lastEntries[0].weight
+                  (first-set fallback for sets beyond previous count) →
+                  blank dash. */}
               {!isTemplate && showGoalWeight && (() => {
                 const overrideWeight = goalOverrides?.[idx]?.weight;
                 const lastAt = lastEntries?.[idx]?.weight;
@@ -626,22 +650,42 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                   : (lastAt !== undefined && lastAt !== null && lastAt !== ''
                     ? lastAt
                     : (idx >= (lastEntries?.length || 0) && lastFirst !== undefined && lastFirst !== null && lastFirst !== '' ? lastFirst : ''));
+                const editingThis = editingGoalKey === `${idx}-weight`;
+                const editable = !!onGoalChange && !readOnly && !inputsLocked;
                 return (
                   <div className="flex-1">
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      min="0"
-                      max="9999"
-                      aria-label={`Set ${idx + 1} goal weight`}
-                      value={displayValue}
-                      placeholder="—"
-                      onChange={(e) => onGoalChange?.(exercise.name, idx, 'weight', e.target.value)}
-                      onFocus={(e) => e.target.select()}
-                      readOnly={!onGoalChange || readOnly || inputsLocked}
-                      className="w-full rounded-lg px-1 py-2.5 text-center text-sm font-mono-stat bg-black/40 border border-white/5 focus:outline-none"
-                      style={{ color: 'rgba(239,68,68,0.6)' }}
-                    />
+                    {editingThis ? (
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        min="0"
+                        max="9999"
+                        aria-label={`Set ${idx + 1} goal weight`}
+                        value={displayValue}
+                        autoFocus
+                        onChange={(e) => onGoalChange?.(exercise.name, idx, 'weight', e.target.value)}
+                        onFocus={(e) => e.target.select()}
+                        onBlur={() => setEditingGoalKey(null)}
+                        className="w-full rounded-lg px-1 py-2.5 text-center text-sm font-mono-stat bg-black/40 border border-white/5 focus:outline-none"
+                        style={{ color: 'rgba(239,68,68,0.6)' }}
+                      />
+                    ) : (
+                      <div
+                        role={editable ? 'button' : undefined}
+                        tabIndex={editable ? 0 : undefined}
+                        aria-label={editable ? `Set ${idx + 1} goal weight (long-press to edit)` : undefined}
+                        onPointerDown={editable ? () => startGoalLongPress(idx, 'weight') : undefined}
+                        onPointerUp={editable ? cancelGoalLongPress : undefined}
+                        onPointerLeave={editable ? cancelGoalLongPress : undefined}
+                        onPointerMove={editable ? cancelGoalLongPress : undefined}
+                        onPointerCancel={editable ? cancelGoalLongPress : undefined}
+                        onContextMenu={editable ? (e) => e.preventDefault() : undefined}
+                        className="w-full rounded-lg px-1 py-2.5 text-center text-sm font-mono-stat bg-black/40 border border-white/5 select-none"
+                        style={{ color: 'rgba(239,68,68,0.6)', cursor: editable ? 'pointer' : 'default' }}
+                      >
+                        {displayValue === '' || displayValue === undefined || displayValue === null ? '—' : displayValue}
+                      </div>
+                    )}
                   </div>
                 );
               })()}
@@ -705,10 +749,11 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                 </div>
               ) : (
                 <>
-                  {/* Goal Reps — editable. Same priority chain as Goal
-                      Weight (override > lastEntries[idx] > lastEntries[0]
-                      for extra sets > blank). Manual edits write to
-                      goalOverrides (per-session) via onGoalChange. */}
+                  {/* Goal Reps — same long-press-to-edit pattern as Goal
+                      Weight above. Read-only <div> by default, becomes a
+                      focused <input> on 600ms long-press; blurs back on
+                      focus loss. Same priority chain (override → lastEntries
+                      [idx] → lastEntries[0] for extra sets → blank dash). */}
                   {showGoalReps && (() => {
                     const overrideReps = goalOverrides?.[idx]?.reps;
                     const lastAt = lastEntries?.[idx]?.reps;
@@ -718,23 +763,43 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                       : (lastAt !== undefined && lastAt !== null && lastAt !== ''
                         ? lastAt
                         : (idx >= (lastEntries?.length || 0) && lastFirst !== undefined && lastFirst !== null && lastFirst !== '' ? lastFirst : ''));
+                    const editingThis = editingGoalKey === `${idx}-reps`;
+                    const editable = !!onGoalChange && !readOnly && !inputsLocked;
                     return (
                       <div className="flex-1">
-                        <input
-                          type="number"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          min="0"
-                          max="9999"
-                          aria-label={`Set ${idx + 1} goal reps`}
-                          value={displayValue}
-                          placeholder="—"
-                          onChange={(e) => onGoalChange?.(exercise.name, idx, 'reps', e.target.value)}
-                          onFocus={(e) => e.target.select()}
-                          readOnly={!onGoalChange || readOnly || inputsLocked}
-                          className="w-full rounded-lg px-2 py-2.5 text-center text-base font-mono-stat bg-black/40 border border-white/5 focus:outline-none"
-                          style={{ color: 'rgba(239,68,68,0.6)' }}
-                        />
+                        {editingThis ? (
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            min="0"
+                            max="9999"
+                            aria-label={`Set ${idx + 1} goal reps`}
+                            value={displayValue}
+                            autoFocus
+                            onChange={(e) => onGoalChange?.(exercise.name, idx, 'reps', e.target.value)}
+                            onFocus={(e) => e.target.select()}
+                            onBlur={() => setEditingGoalKey(null)}
+                            className="w-full rounded-lg px-2 py-2.5 text-center text-base font-mono-stat bg-black/40 border border-white/5 focus:outline-none"
+                            style={{ color: 'rgba(239,68,68,0.6)' }}
+                          />
+                        ) : (
+                          <div
+                            role={editable ? 'button' : undefined}
+                            tabIndex={editable ? 0 : undefined}
+                            aria-label={editable ? `Set ${idx + 1} goal reps (long-press to edit)` : undefined}
+                            onPointerDown={editable ? () => startGoalLongPress(idx, 'reps') : undefined}
+                            onPointerUp={editable ? cancelGoalLongPress : undefined}
+                            onPointerLeave={editable ? cancelGoalLongPress : undefined}
+                            onPointerMove={editable ? cancelGoalLongPress : undefined}
+                            onPointerCancel={editable ? cancelGoalLongPress : undefined}
+                            onContextMenu={editable ? (e) => e.preventDefault() : undefined}
+                            className="w-full rounded-lg px-2 py-2.5 text-center text-base font-mono-stat bg-black/40 border border-white/5 select-none"
+                            style={{ color: 'rgba(239,68,68,0.6)', cursor: editable ? 'pointer' : 'default' }}
+                          >
+                            {displayValue === '' || displayValue === undefined || displayValue === null ? '—' : displayValue}
+                          </div>
+                        )}
                       </div>
                     );
                   })()}
