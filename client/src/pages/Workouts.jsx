@@ -2219,10 +2219,18 @@ export default function Workouts() {
       ? program.templates.filter((t) => !t.isRest)
       : program.templates;
 
-    // Group templates into weeks (7 days per week)
+    // Group templates into weeks (7 days per week) — Browse Library only.
+    // My Workouts mode flattens everything into a single bucket so user
+    // programs don't get an artificial weekly breakdown; combined with
+    // the auto-selectedWeek=1 set on program tap (below), the user goes
+    // straight to a flat list of workouts in their program.
     const weeks = [];
-    for (let i = 0; i < visibleTemplates.length; i += 7) {
-      weeks.push(visibleTemplates.slice(i, i + 7));
+    if (selectedGroup === 'my') {
+      if (visibleTemplates.length) weeks.push(visibleTemplates);
+    } else {
+      for (let i = 0; i < visibleTemplates.length; i += 7) {
+        weeks.push(visibleTemplates.slice(i, i + 7));
+      }
     }
     // Show week picker when no week is selected
     if (selectedWeek === null) {
@@ -4452,13 +4460,83 @@ export default function Workouts() {
                   </div>
                 )}
 
+                {/* My Workouts landing order per user spec — program cards
+                    render FIRST (this block, immediately below); the
+                    uncategorized "MY WORKOUTS" flat list renders AFTER.
+                    The Browse Library view (isBrowse=true) still flows the
+                    same way: the uncategorized block is `!isBrowse`-gated
+                    so it disappears entirely in Browse mode and the
+                    programs render as the FlipCard scroller. */}
+                {ownPrograms.length > 0 && (
+                  isBrowse ? (
+                    <div
+                      className="flex flex-col gap-4 overflow-y-auto scrollbar-hide snap-y snap-mandatory pb-4"
+                      style={{ WebkitOverflowScrolling: 'touch', maxHeight: 'calc(100vh - 260px)' }}
+                    >
+                      {ownPrograms.map((program, idx) => {
+                        const BROWSE_COLORS = ['#ef4444', '#3b82f6', '#22c55e', '#a855f7'];
+                        const programColor = BROWSE_COLORS[idx % BROWSE_COLORS.length];
+                        return (
+                          <LibraryFlipCard
+                            key={program.id}
+                            program={program}
+                            programColor={programColor}
+                            idx={idx}
+                            isFlipped={flippedLibraryCards.has(program.id)}
+                            onFlip={toggleLibraryFlip}
+                            onView={(id) => {
+                              setSelectedProgram(id);
+                              setSelectedWeek(null);
+                              setBrowseSearch('');
+                              completeTutorialAction('program-selected');
+                            }}
+                            navigate={navigate}
+                            openBeginProgram={openBeginProgram}
+                            dataTutorial={idx === 0 ? 'program-card' : undefined}
+                          />
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="flex items-baseline gap-2 mb-3">
+                        <p
+                          className="text-[11px] uppercase font-bold"
+                          style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.3em' }}
+                        >
+                          // Programs
+                        </p>
+                        <h3 className="text-[16px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui' }}>
+                          MY PROGRAMS
+                        </h3>
+                      </div>
+                      <div className="space-y-4 pb-4">
+                        {/* My Workouts list — onBegin is intentionally omitted
+                            so ProgramCard hides the Begin Program CTA. Begin
+                            stays in the Browse Library only. */}
+                        {ownPrograms.map((program, idx) => (
+                          // In My Workouts, jump straight to the program's
+                          // workout list (selectedWeek=1) so the user never
+                          // sees the week-card breakdown — their programs
+                          // get rendered as one flat bucket via the
+                          // selectedGroup==='my' branch in the weeks split
+                          // above. Browse Library still uses selectedWeek=null
+                          // (the existing onSelect for the Browse mount).
+                          <ProgramCard key={program.id} program={program} idx={idx} dataTutorial={idx === 0 ? 'program-card' : undefined} onSelect={(id) => { setSelectedProgram(id); setSelectedWeek(1); setBrowseSearch(''); completeTutorialAction('program-selected'); }} onDelete={!isBrowse ? handleDeleteProgram : undefined} onShare={!isBrowse ? (p) => { setShareResult(null); setShareInput(''); setShareModal(p); } : undefined} onNavigateFeatured={program.isFeatured ? () => navigate('/featured-session') : undefined} />
+                        ))}
+                      </div>
+                    </div>
+                  )
+                )}
+
                 {/* My Workouts — flat list of uncategorized custom workouts.
+                    Renders AFTER the programs block above per user spec
+                    ("programs on top, uncategorized workouts below").
                     The "My Workouts" pseudo-program is auto-created by
                     /sessions/start-empty and is no longer rendered as a
                     program card. Templates in it surface here with
-                    Add-to-Calendar (reuses openAddWorkout, same flow as
-                    Browse Library matchingWorkouts) and Move-to-Program
-                    (PUT /templates/:id/program — owner-only on both sides). */}
+                    Add-to-Calendar (reuses openAddWorkout) and
+                    Move-to-Program (PUT /templates/:id/program). */}
                 {!isBrowse && (myWorkoutsTemplates.length > 0 || myWorkoutsProgram) && (
                   <div className="mb-6">
                     <div className="flex items-baseline gap-2 mb-3">
@@ -4572,61 +4650,6 @@ export default function Workouts() {
                   </div>
                 )}
 
-                {ownPrograms.length > 0 && (
-                  isBrowse ? (
-                    <div
-                      className="flex flex-col gap-4 overflow-y-auto scrollbar-hide snap-y snap-mandatory pb-4"
-                      style={{ WebkitOverflowScrolling: 'touch', maxHeight: 'calc(100vh - 260px)' }}
-                    >
-                      {ownPrograms.map((program, idx) => {
-                        const BROWSE_COLORS = ['#ef4444', '#3b82f6', '#22c55e', '#a855f7'];
-                        const programColor = BROWSE_COLORS[idx % BROWSE_COLORS.length];
-                        return (
-                          <LibraryFlipCard
-                            key={program.id}
-                            program={program}
-                            programColor={programColor}
-                            idx={idx}
-                            isFlipped={flippedLibraryCards.has(program.id)}
-                            onFlip={toggleLibraryFlip}
-                            onView={(id) => {
-                              setSelectedProgram(id);
-                              setSelectedWeek(null);
-                              setBrowseSearch('');
-                              completeTutorialAction('program-selected');
-                            }}
-                            navigate={navigate}
-                            openBeginProgram={openBeginProgram}
-                            dataTutorial={idx === 0 ? 'program-card' : undefined}
-                          />
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div>
-                      <div className="flex items-baseline gap-2 mb-3">
-                        <p
-                          className="text-[11px] uppercase font-bold"
-                          style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.3em' }}
-                        >
-                          // Programs
-                        </p>
-                        <h3 className="text-[16px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui' }}>
-                          MY PROGRAMS
-                        </h3>
-                      </div>
-                      <div className="space-y-4 pb-4">
-                        {/* My Workouts list — onBegin is intentionally omitted
-                            so ProgramCard hides the Begin Program CTA. Begin
-                            stays in the Browse Library only. */}
-                        {ownPrograms.map((program, idx) => (
-                          <ProgramCard key={program.id} program={program} idx={idx} dataTutorial={idx === 0 ? 'program-card' : undefined} onSelect={(id) => { setSelectedProgram(id); setSelectedWeek(null); setBrowseSearch(''); completeTutorialAction('program-selected'); }} onDelete={!isBrowse ? handleDeleteProgram : undefined} onShare={!isBrowse ? (p) => { setShareResult(null); setShareInput(''); setShareModal(p); } : undefined} onNavigateFeatured={program.isFeatured ? () => navigate('/featured-session') : undefined} />
-                        ))}
-                      </div>
-                    </div>
-                  )
-                )}
-
                 {/* Shared With Me — accepted programs */}
                 {!isBrowse && sharedPrograms.length > 0 && (
                   <div className="mt-6 pb-4">
@@ -4649,7 +4672,9 @@ export default function Workouts() {
                             {/* Shared-With-Me programs live under My Workouts.
                                 onBegin is omitted to hide the Begin CTA, same
                                 as the user's own programs above. */}
-                            <ProgramCard program={program} idx={idx} onSelect={(id) => { setSelectedProgram(id); setSelectedWeek(null); setBrowseSearch(''); }} onDelete={handleDeleteProgram} onShare={(p) => openShareModal(p)} onNavigateFeatured={program.isFeatured ? () => navigate('/featured-session') : undefined} />
+                            {/* Shared-With-Me programs live under My Workouts —
+                                same straight-to-workout-list behavior. */}
+                            <ProgramCard program={program} idx={idx} onSelect={(id) => { setSelectedProgram(id); setSelectedWeek(1); setBrowseSearch(''); }} onDelete={handleDeleteProgram} onShare={(p) => openShareModal(p)} onNavigateFeatured={program.isFeatured ? () => navigate('/featured-session') : undefined} />
                           </div>
                         );
                       })}
