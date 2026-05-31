@@ -2859,7 +2859,6 @@ export default function Workouts() {
               )}
               <div className="max-h-64 overflow-y-auto space-y-1 mb-3">
                 {shareUsers
-                  .filter(u => !shareUserSearch.trim() || u.name.toLowerCase().includes(shareUserSearch.toLowerCase()) || u.username.toLowerCase().includes(shareUserSearch.toLowerCase()))
                   .map(u => (
                     <button
                       key={u.id}
@@ -5107,7 +5106,6 @@ export default function Workouts() {
                 )}
                 <div className="max-h-64 overflow-y-auto space-y-1 mb-3">
                   {shareUsers
-                    .filter(u => !shareUserSearch.trim() || u.name.toLowerCase().includes(shareUserSearch.toLowerCase()) || u.username.toLowerCase().includes(shareUserSearch.toLowerCase()))
                     .map(u => (
                       <button
                         key={u.id}
@@ -5246,7 +5244,6 @@ export default function Workouts() {
               )}
               <div className="max-h-64 overflow-y-auto space-y-1 mb-3">
                 {shareUsers
-                  .filter(u => !shareUserSearch.trim() || u.name.toLowerCase().includes(shareUserSearch.toLowerCase()) || u.username.toLowerCase().includes(shareUserSearch.toLowerCase()))
                   .map(u => (
                     <button
                       key={u.id}

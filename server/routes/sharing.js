@@ -17,12 +17,22 @@ router.get('/users', authMiddleware, async (req, res) => {
     }
     const pattern = `%${q}%`;
     const { rows } = await pool.query(
+      // Match on username, email, OR the user's display name (first + last).
+      // Email is checked server-side only — it stays out of the response
+      // payload below, so searchers can find a user by typing their email
+      // without ever seeing other users' email addresses on the wire.
+      // ORDER BY username ASC so the share picker reads alphabetically by
+      // handle; nulls come last under PostgreSQL's default ASC sort.
       `SELECT id, username, first_name, last_name, profile_photo
        FROM users
        WHERE id != $1
          AND (email NOT LIKE '%@willfit.demo' OR email IS NULL)
-         AND (username ILIKE $2 OR (COALESCE(first_name, '') || ' ' || COALESCE(last_name, '')) ILIKE $2)
-       ORDER BY first_name, username
+         AND (
+              username ILIKE $2
+           OR email ILIKE $2
+           OR (COALESCE(first_name, '') || ' ' || COALESCE(last_name, '')) ILIKE $2
+         )
+       ORDER BY username ASC NULLS LAST
        LIMIT 25`,
       [req.userId, pattern]
     );
