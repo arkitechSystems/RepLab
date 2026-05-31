@@ -81,7 +81,7 @@ function SortableSetRow({ id, disabled, children }) {
   );
 }
 
-function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onReorderSets, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, onShowPRs, note, onNoteChange, weightSuggestion, onApplySuggestion, onApplyCalculatedWeight, allWorkoutExercises, lastEntries, forceShowDemo, mode = 'session', dataTutorial, showGoalWeight = true, showGoalReps = true, showSetType = true, exerciseNumber, cardioEnabled = false, cardioSelections, onCardioChange, cardTheme = 'light', onEnterFullScreen, fullScreen = false, onOpenSupersetPicker }) {
+function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onReorderSets, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, onShowPRs, note, onNoteChange, weightSuggestion, onApplySuggestion, onApplyCalculatedWeight, goalOverrides, onGoalChange, allWorkoutExercises, lastEntries, forceShowDemo, mode = 'session', dataTutorial, showGoalWeight = true, showGoalReps = true, showSetType = true, exerciseNumber, cardioEnabled = false, cardioSelections, onCardioChange, cardTheme = 'light', onEnterFullScreen, fullScreen = false, onOpenSupersetPicker }) {
   // 'light' = #e8e8e8 card with dark text (default)
   // 'dark'  = transparent card, white text — page bg shows through
   const isDarkTheme = cardTheme === 'dark';
@@ -609,16 +609,42 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                 </div>
               )}
 
-              {/* Goal Weight (read-only, from template) — session mode only.
-                  flex-1 so it matches the Actual Wt + reps columns width
-                  (see header comment). */}
-              {!isTemplate && showGoalWeight && (
-                <div className="flex-1">
-                  <div className="w-full rounded-lg px-1 py-2.5 text-center text-sm font-mono-stat bg-black/40 border border-white/5" style={{ color: 'rgba(239,68,68,0.6)' }}>
-                    {set.suggestedWeight ?? '—'}
+              {/* Goal Weight — editable. Default value is sourced from the
+                  user's last completed session for this exercise at the same
+                  set position (lastEntries[idx].weight). Sets beyond the
+                  previous session's count fall back to lastEntries[0].weight
+                  (the user's first-set value last time). If no prior session
+                  exists, the cell renders blank. Manual edits write to
+                  goalOverrides (per-session) via onGoalChange and take
+                  precedence over the lastEntries lookup. */}
+              {!isTemplate && showGoalWeight && (() => {
+                const overrideWeight = goalOverrides?.[idx]?.weight;
+                const lastAt = lastEntries?.[idx]?.weight;
+                const lastFirst = lastEntries?.[0]?.weight;
+                const displayValue = overrideWeight !== undefined
+                  ? overrideWeight
+                  : (lastAt !== undefined && lastAt !== null && lastAt !== ''
+                    ? lastAt
+                    : (idx >= (lastEntries?.length || 0) && lastFirst !== undefined && lastFirst !== null && lastFirst !== '' ? lastFirst : ''));
+                return (
+                  <div className="flex-1">
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      max="9999"
+                      aria-label={`Set ${idx + 1} goal weight`}
+                      value={displayValue}
+                      placeholder="—"
+                      onChange={(e) => onGoalChange?.(exercise.name, idx, 'weight', e.target.value)}
+                      onFocus={(e) => e.target.select()}
+                      readOnly={!onGoalChange || readOnly || inputsLocked}
+                      className="w-full rounded-lg px-1 py-2.5 text-center text-sm font-mono-stat bg-black/40 border border-white/5 focus:outline-none"
+                      style={{ color: 'rgba(239,68,68,0.6)' }}
+                    />
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Weight input — long-press (600ms) on the input opens the
                   in-session plate calculator pre-filled with this set's
@@ -679,14 +705,39 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                 </div>
               ) : (
                 <>
-                  {/* Goal reps (read-only, from template) */}
-                  {showGoalReps && (
-                    <div className="flex-1">
-                      <div className="w-full rounded-lg px-2 py-2.5 text-center text-base font-mono-stat bg-black/40 border border-white/5" style={{ color: 'rgba(239,68,68,0.6)' }}>
-                        {set.plannedReps ?? '—'}
+                  {/* Goal Reps — editable. Same priority chain as Goal
+                      Weight (override > lastEntries[idx] > lastEntries[0]
+                      for extra sets > blank). Manual edits write to
+                      goalOverrides (per-session) via onGoalChange. */}
+                  {showGoalReps && (() => {
+                    const overrideReps = goalOverrides?.[idx]?.reps;
+                    const lastAt = lastEntries?.[idx]?.reps;
+                    const lastFirst = lastEntries?.[0]?.reps;
+                    const displayValue = overrideReps !== undefined
+                      ? overrideReps
+                      : (lastAt !== undefined && lastAt !== null && lastAt !== ''
+                        ? lastAt
+                        : (idx >= (lastEntries?.length || 0) && lastFirst !== undefined && lastFirst !== null && lastFirst !== '' ? lastFirst : ''));
+                    return (
+                      <div className="flex-1">
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          min="0"
+                          max="9999"
+                          aria-label={`Set ${idx + 1} goal reps`}
+                          value={displayValue}
+                          placeholder="—"
+                          onChange={(e) => onGoalChange?.(exercise.name, idx, 'reps', e.target.value)}
+                          onFocus={(e) => e.target.select()}
+                          readOnly={!onGoalChange || readOnly || inputsLocked}
+                          className="w-full rounded-lg px-2 py-2.5 text-center text-base font-mono-stat bg-black/40 border border-white/5 focus:outline-none"
+                          style={{ color: 'rgba(239,68,68,0.6)' }}
+                        />
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {/* Actual reps (editable) */}
                   <div style={{ flex: '1' }}>

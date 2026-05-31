@@ -141,6 +141,15 @@ export default function WorkoutSession() {
   const [isCompleted, setIsCompleted] = useState(false);
   const [weightSuggestions, setWeightSuggestions] = useState({});
   const [lastSession, setLastSession] = useState({});
+  // Per-session goal overrides — keyed by exerciseKey, value is an array
+  // of { weight, reps } indexed by set position. Populated only when the
+  // user manually edits a Goal Weight / Goal Reps cell mid-session; the
+  // default render path reads from lastSession (last completed session)
+  // and falls back to lastSession's set-0 entry for sets beyond the
+  // previous count. Overrides are NOT persisted to the template — the
+  // next session's autofill comes from the actual entries logged this
+  // session, not from these aspirational overrides.
+  const [goalOverrides, setGoalOverrides] = useState({});
   const [timerStarted, setTimerStarted] = useState(false);
   const [showBeginPrompt, setShowBeginPrompt] = useState(false);
   const beginPromptTrapRef = useFocusTrap(showBeginPrompt);
@@ -1195,6 +1204,26 @@ export default function WorkoutSession() {
         if (userEditedNow.has(`${key}:${field}`)) continue;
         next.add(key);
       }
+      return next;
+    });
+  }
+
+  // Goal Weight / Goal Reps cell edit handler — writes to goalOverrides
+  // (per-session aspirational target) without touching the template or
+  // the actual entries. The cell render reads override first, falling back
+  // to lastSession[exerciseName][setIdx] (positional match), then to
+  // lastSession[exerciseName][0] (first-set fallback for extra sets), then
+  // to blank if no prior session for the exercise exists.
+  function handleGoalChange(exerciseKey, setIdx, field, value) {
+    setGoalOverrides((prev) => {
+      const next = { ...prev };
+      const list = (next[exerciseKey] || []).slice();
+      while (list.length <= setIdx) list.push(undefined);
+      list[setIdx] = {
+        ...(list[setIdx] || {}),
+        [field]: value === '' ? '' : value,
+      };
+      next[exerciseKey] = list;
       return next;
     });
   }
@@ -2717,6 +2746,8 @@ export default function WorkoutSession() {
                 setWeightSuggestions(prev => { const next = { ...prev }; delete next[fsExercise.name]; return next; });
               }}
               onApplyCalculatedWeight={inputsLocked ? undefined : ((_n, weight) => handleApplyCalculatedWeight(fsKey, weight))}
+              goalOverrides={goalOverrides[fsKey]}
+              onGoalChange={inputsLocked ? undefined : ((_n, setIdx, field, value) => handleGoalChange(fsKey, setIdx, field, value))}
               allWorkoutExercises={template.exercises.map(e => e.name)}
               lastEntries={lastSession[fsExercise.name]}
               forceShowDemo={showAllDemos}
@@ -3420,6 +3451,8 @@ export default function WorkoutSession() {
                 setWeightSuggestions(prev => { const next = { ...prev }; delete next[exercise.name]; return next; });
               }}
               onApplyCalculatedWeight={inputsLocked ? undefined : ((_n, weight) => handleApplyCalculatedWeight(eKey, weight))}
+              goalOverrides={goalOverrides[eKey]}
+              onGoalChange={inputsLocked ? undefined : ((_n, setIdx, field, value) => handleGoalChange(eKey, setIdx, field, value))}
               allWorkoutExercises={template.exercises.map(e => e.name)}
               lastEntries={lastSession[exercise.name]}
               forceShowDemo={showAllDemos}
