@@ -113,9 +113,16 @@ export default function CreateWorkout() {
   }
 
   function updateExercise(idx, field, value) {
-    const updated = [...exercises];
-    updated[idx] = { ...updated[idx], [field]: value };
-    setExercises(updated);
+    // Functional setter so two back-to-back updateExercise() calls (e.g. the
+    // autocomplete suggestion click that sets name THEN nameConfirmed) don't
+    // both read the same stale `exercises` snapshot and have the second call
+    // clobber the first — that bug let typed text overwrite the picked
+    // suggestion's name.
+    setExercises((prev) => {
+      const updated = [...prev];
+      updated[idx] = { ...updated[idx], [field]: value };
+      return updated;
+    });
   }
 
   function addSet(exIdx) {
