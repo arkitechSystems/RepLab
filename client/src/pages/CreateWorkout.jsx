@@ -603,17 +603,15 @@ function TemplateExerciseWrapper({
               </div>
             )}
           </div>
-          {exercises.length > 1 && (
-            <button
-              onClick={() => removeExercise(exIdx)}
-              aria-label="Remove exercise"
-              className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-red-400 hover:bg-red-500/20 active:scale-90 transition-all shrink-0 ml-2"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          )}
+          <button
+            onClick={() => removeExercise(exIdx)}
+            aria-label="Remove exercise"
+            className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-red-400 hover:bg-red-500/20 active:scale-90 transition-all shrink-0 ml-2"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
       </div>
     );
@@ -633,7 +631,7 @@ function TemplateExerciseWrapper({
       onDeleteSet={(_name, setIdx) => removeSet(exIdx, setIdx)}
       onSwapExercise={handleSwapExercise(exIdx)}
       onAddExercise={handleAddExerciseBelow(exIdx)}
-      onDeleteExercise={exercises.length > 1 ? () => removeExercise(exIdx) : undefined}
+      onDeleteExercise={() => removeExercise(exIdx)}
       onMoveUp={handleMoveUp(exIdx)}
       onMoveDown={handleMoveDown(exIdx)}
     />
