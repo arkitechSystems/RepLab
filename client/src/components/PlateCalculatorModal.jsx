@@ -301,59 +301,50 @@ export default function PlateCalculatorModal({ open, initialWeight = 0, onUse, o
 
           {/* Per-side sub-section starts here, mirroring the page divider */}
           <div className="pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.10)' }}>
-            {/* Both Sides / One Side / Machine toggle — full-width row */}
+            {/* Both Sides / Free Load / Machine toggle — full-width row.
+                Free Load (formerly One Side) is now a no-bar mode used for
+                dip belts, weighted pull-ups/dips, weighted vests, chains,
+                or any single-load setup that isn't a barbell — bar is
+                forced to 0 and the total is just the sum of plates added
+                (no doubling, no bar weight). Visual shows a single plate
+                stack (no mirrored second side, no central barbell/machine
+                icon). */}
             <div className="flex gap-1.5 mb-4">
               {[
                 { v: 'both',  label: 'Both Sides', kind: 'mode' },
-                { v: 'one',   label: 'One Side',   kind: 'mode' },
+                { v: 'one',   label: 'Free Load',  kind: 'mode' },
                 { v: 'nobar', label: 'Machine',    kind: 'nobar' },
               ].map((opt) => {
-                const on = opt.kind === 'nobar' ? bar === 0 : (bar > 0 && mode === opt.v);
+                // Each button is "on" when the calc's current (bar, mode)
+                // matches the option's full state. Both = bar>0 + mode='both';
+                // Free Load = bar=0 + mode='one'; Machine = bar=0 + mode='both'.
+                const on = opt.kind === 'nobar'
+                  ? (bar === 0 && mode === 'both')
+                  : (opt.v === 'one'
+                    ? (bar === 0 && mode === 'one')
+                    : (bar > 0 && mode === opt.v));
                 return (
                   <button
                     key={opt.v}
                     onClick={() => {
-                      if (opt.kind === 'nobar') {
-                        // → Machine: preserve the per-side plate stack
-                        // literally. The user "loaded the bar" with these
-                        // plates; switching to a plate-loaded machine
-                        // doesn't unload them — only the barbell goes away.
-                        // New total = perSideWeight * 2 (machine renders the
-                        // same stack on both sides, mode stays 'both').
-                        if (bar > 0) lastBarRef.current = bar;
-                        setBar(0);
-                        setMode('both');
-                        const newTotal = manualPlates.reduce((sum, lb) => sum + lb, 0) * 2;
-                        setTarget(String(Number(newTotal.toFixed(2))));
-                      } else {
-                        if (bar === 0) {
-                          // ← from Machine to Barbell: restore the user's
-                          // chosen bar and PRESERVE the per-side stack
-                          // (same principle as the → Machine direction —
-                          // the plates "loaded" stay loaded; only the bar
-                          // re-enters the calc).
-                          const restore = lastBarRef.current || 45;
-                          const sides = opt.v === 'both' ? 2 : 1;
-                          const newTotal = restore + manualPlates.reduce((sum, lb) => sum + lb, 0) * sides;
-                          setBar(restore);
-                          setMode(opt.v);
-                          setTarget(String(Number(newTotal.toFixed(2))));
-                        } else {
-                          // Both ↔ One: preserve the per-side plate stack
-                          // literally and recompute total = bar + stack ×
-                          // new sides multiplier. "Weight on the bar" (the
-                          // plates loaded per side) stays the same; only
-                          // the implied second-side load changes between
-                          // loaded (Both, total counts ×2) and empty (One,
-                          // total counts ×1). Consistent with the Machine
-                          // transitions above so all four mode toggles
-                          // follow the same principle.
-                          const newSides = opt.v === 'both' ? 2 : 1;
-                          const newTotal = bar + manualPlates.reduce((sum, lb) => sum + lb, 0) * newSides;
-                          setMode(opt.v);
-                          setTarget(String(Number(newTotal.toFixed(2))));
-                        }
-                      }
+                      // Unified mode-switch: preserves manualPlates literally
+                      // across every transition (Both/Free Load/Machine in
+                      // any direction) so the user's loaded plates stay put;
+                      // only the bar weight and sides multiplier change to
+                      // match the new mode.
+                      const newMode = opt.kind === 'nobar' ? 'both' : opt.v;
+                      const goingNoBar = opt.kind === 'nobar' || opt.v === 'one';
+                      const newBar = goingNoBar
+                        ? 0
+                        : (bar > 0 ? bar : (lastBarRef.current || 45));
+                      // Stash the current bar before zeroing so a return
+                      // trip to Both restores the user's chosen bar (e.g. 35).
+                      if (bar > 0 && newBar === 0) lastBarRef.current = bar;
+                      const newSides = newMode === 'both' ? 2 : 1;
+                      const newTotal = newBar + manualPlates.reduce((sum, lb) => sum + lb, 0) * newSides;
+                      setBar(newBar);
+                      setMode(newMode);
+                      setTarget(String(Number(newTotal.toFixed(2))));
                     }}
                     className="flex-1 text-[10px] font-bold uppercase whitespace-nowrap py-2 px-2 active:scale-[0.97] transition-transform"
                     style={{
@@ -382,7 +373,7 @@ export default function PlateCalculatorModal({ open, initialWeight = 0, onUse, o
                 /plate-calculator utility page where no set context exists. */}
             <div className="mb-3">
               <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(255,255,255,0.4)', letterSpacing: '0.3em' }}>
-                {mode === 'one' ? 'One Side' : 'Per Side'}
+                {mode === 'one' ? 'Free Load' : 'Per Side'}
               </p>
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-baseline gap-2">
@@ -417,11 +408,16 @@ export default function PlateCalculatorModal({ open, initialWeight = 0, onUse, o
             </div>
 
             {/* Bar + plates visual — +/- moved up to flank the target
-                weight, so the visualization centers freely now. */}
+                weight, so the visualization centers freely now. Free Load
+                (mode='one', bar=0) renders just a single right-side stack
+                with no central barbell or machine icon — it's an abstract
+                "weight you loaded onto something" view (dip belt, vest,
+                chain, etc.). Machine (mode='both', bar=0) keeps the
+                mirrored both-sides + LegPressIcon look. */}
             {valid && (
               <div className="my-4 relative" style={{ minHeight: 100 }}>
                 <div className="flex items-center justify-center gap-2 h-full" style={{ paddingLeft: 16, paddingRight: 16, minHeight: 100 }}>
-                  {(mode === 'both' || bar === 0) && (
+                  {mode === 'both' && (
                     <div className="flex items-center" style={{ gap: 2 }}>
                       {plates.slice().reverse().map((p, i) =>
                         Array.from({ length: p.count }).map((_, n) => (
@@ -436,9 +432,9 @@ export default function PlateCalculatorModal({ open, initialWeight = 0, onUse, o
                       <div style={{ width: mode === 'both' ? 50 : 25, height: 6, background: '#6b7280' }} />
                       <div style={{ width: 8, height: 14, background: '#9ca3af', borderRadius: '0 1px 1px 0' }} />
                     </div>
-                  ) : (
+                  ) : mode === 'both' ? (
                     <LegPressIcon />
-                  )}
+                  ) : null}
                   <div className="flex items-center" style={{ gap: 2 }}>
                     {plates.map((p, i) =>
                       Array.from({ length: p.count }).map((_, n) => (
