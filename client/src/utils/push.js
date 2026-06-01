@@ -39,11 +39,17 @@ async function registerTokenOnServer(token, platform) {
   }
 }
 
+// initPushNotifications(): SAFE for auto-call on auth. Never triggers the
+// OS permission prompt — only attaches listeners and finishes registering
+// if the user has ALREADY granted permission (via a previous explicit
+// requestPushPermission() call). Apple guideline 4.5.4 requires push
+// permission requests to follow a contextualized user action, so the
+// prompt is gated behind requestPushPermission() below — call that from
+// an "Enable Notifications" button with explanatory copy, NOT from app
+// launch / auth state changes.
 export async function initPushNotifications() {
   if (initialized) return;
   if (!Capacitor.isNativePlatform()) return; // web: no-op
-
-  initialized = true;
 
   let PushNotifications;
   try {
@@ -54,15 +60,13 @@ export async function initPushNotifications() {
   }
 
   try {
-    // On iOS this triggers the system permission prompt the first time.
-    // Android 13+ also requires runtime POST_NOTIFICATIONS permission; the
-    // plugin handles both under one call.
-    let perm = await PushNotifications.checkPermissions();
-    if (perm.receive === 'prompt' || perm.receive === 'prompt-with-rationale') {
-      perm = await PushNotifications.requestPermissions();
-    }
+    // ONLY check current status — never call requestPermissions() from this
+    // path. If the user hasn't granted yet, exit silently; the explicit
+    // requestPushPermission() function below is the only path that prompts.
+    const perm = await PushNotifications.checkPermissions();
     if (perm.receive !== 'granted') return;
 
+    initialized = true;
     const platform = Capacitor.getPlatform(); // 'ios' | 'android'
 
     PushNotifications.addListener('registration', async (tokenObj) => {
@@ -113,6 +117,40 @@ export async function initPushNotifications() {
     await PushNotifications.register();
   } catch (err) {
     if (import.meta.env.DEV) console.warn('[push] init failed:', err?.message || err);
+  }
+}
+
+// requestPushPermission(): explicit user-initiated permission flow. CALL
+// THIS from an "Enable Notifications" button (or similar) that has already
+// shown the user explanatory copy ("Get reminders for your scheduled
+// workouts"). Returns 'granted' / 'denied' / 'unavailable'. Apple guideline
+// 4.5.4: the OS permission prompt must follow a contextualized user
+// action, NOT fire automatically on app launch.
+export async function requestPushPermission() {
+  if (!Capacitor.isNativePlatform()) return 'unavailable';
+
+  let PushNotifications;
+  try {
+    ({ PushNotifications } = await import('@capacitor/push-notifications'));
+  } catch (err) {
+    if (import.meta.env.DEV) console.warn('[push] plugin not available:', err?.message || err);
+    return 'unavailable';
+  }
+
+  try {
+    let perm = await PushNotifications.checkPermissions();
+    if (perm.receive === 'prompt' || perm.receive === 'prompt-with-rationale') {
+      perm = await PushNotifications.requestPermissions();
+    }
+    if (perm.receive !== 'granted') return perm.receive || 'denied';
+
+    // Permission granted — drive initialization so listeners + token
+    // registration happen. initPushNotifications() is idempotent.
+    await initPushNotifications();
+    return 'granted';
+  } catch (err) {
+    if (import.meta.env.DEV) console.warn('[push] requestPushPermission failed:', err?.message || err);
+    return 'denied';
   }
 }
 

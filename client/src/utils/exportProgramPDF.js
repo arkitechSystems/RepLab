@@ -459,8 +459,9 @@ export function exportProgramPDF({ program, workouts, weeklySchedule }) {
 
   const win = window.open('', '_blank');
   if (!win) {
-    alert('Please allow pop-ups to export the PDF.');
-    return;
+    // Caller surfaces this via the global toast — alert() reads as a debug
+    // build to App Review so we throw and let the click handler catch.
+    throw new Error('Please allow pop-ups to export the PDF.');
   }
   win.document.open();
   win.document.write(html);

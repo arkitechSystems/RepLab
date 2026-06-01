@@ -3,6 +3,7 @@ import { Outlet, useSearchParams, useLocation, useNavigate } from 'react-router-
 import BottomNav from './BottomNav';
 import Tutorial from './Tutorial';
 import InstallPrompt from './InstallPrompt';
+import PushPermissionPrompt from './PushPermissionPrompt';
 import { useTutorial } from '../context/TutorialContext';
 import { useAuth } from '../context/AuthContext';
 import { MiniPlayer, useVideoPlayer } from '../context/VideoPlayerContext';
@@ -164,6 +165,7 @@ export default function Layout({ children }) {
       {!isDashboardEmbed && <MiniPlayer />}
       {tutorial.active && <Tutorial />}
       {!isDashboardEmbed && !tutorial.active && <InstallPrompt />}
+      {!isDashboardEmbed && !tutorial.active && <PushPermissionPrompt />}
     </div>
   );
 }

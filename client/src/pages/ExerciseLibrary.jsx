@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useExercises } from '../hooks/useExercises';
+import { useToast } from '../context/ToastContext';
 import LoadingSpinnerOverlay from '../components/LoadingSpinnerOverlay';
 import { getDetailSlugs, slugify } from '../data/exercises/index.js';
 
@@ -31,6 +32,7 @@ function getEquipment(tags) {
 
 export default function ExerciseLibrary() {
   const navigate = useNavigate();
+  const showToast = useToast();
   const { exercises, muscleGroups, loading, createCustom } = useExercises();
   const [search, setSearch] = useState('');
   const [selectedMuscle, setSelectedMuscle] = useState('');
@@ -92,7 +94,7 @@ export default function ExerciseLibrary() {
       setCustomMuscle('');
       setShowCustomForm(false);
     } catch (err) {
-      alert('Failed to create exercise: ' + err.message);
+      showToast('Failed to create exercise: ' + err.message, 'error');
     } finally {
       setCustomSaving(false);
     }

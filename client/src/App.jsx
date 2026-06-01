@@ -7,6 +7,8 @@ import { api } from './api';
 import SplashScreen from './components/SplashScreen';
 import { TutorialProvider } from './context/TutorialContext';
 import { VideoPlayerProvider } from './context/VideoPlayerContext';
+import { ToastProvider } from './context/ToastContext';
+import { ConfirmProvider } from './context/ConfirmContext';
 import Layout from './components/Layout';
 import ErrorBoundary from './components/ErrorBoundary';
 import { useFeatureFlag, FF_FEATURED } from './utils/featureFlags';
@@ -245,6 +247,8 @@ export default function App() {
 
   return (
     <ErrorBoundary>
+    <ToastProvider>
+    <ConfirmProvider>
     <TutorialProvider>
     <VideoPlayerProvider>
       <PageTracker />
@@ -345,6 +349,8 @@ export default function App() {
     </Suspense>
     </VideoPlayerProvider>
     </TutorialProvider>
+    </ConfirmProvider>
+    </ToastProvider>
     </ErrorBoundary>
   );
 }

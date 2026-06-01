@@ -11,6 +11,8 @@ import { useAuth } from '../context/AuthContext';
 import { useFeatureFlag, FF_FEATURED, FF_CHALLENGES, FF_TRAINERS } from '../utils/featureFlags';
 import { sharePR } from '../utils/prShare';
 import { useTutorial } from '../context/TutorialContext';
+import { useToast } from '../context/ToastContext';
+import { useConfirm } from '../context/ConfirmContext';
 import UndoToast from '../components/UndoToast';
 import LoadingSpinnerOverlay from '../components/LoadingSpinnerOverlay';
 import { track } from '../utils/analytics';
@@ -1050,6 +1052,8 @@ function AnimatedCounter({ target, visible, duration = 1200 }) {
 
 export default function Workouts() {
   const { user } = useAuth();
+  const showToast = useToast();
+  const confirmDialog = useConfirm();
   const { tutorial, startTutorial, completeTutorialAction, skipTutorial } = useTutorial();
   const isPremium = user?.plan && user.plan !== 'Free';
 
@@ -1587,7 +1591,7 @@ export default function Workouts() {
         await applyEntries(entries);
       }
     } catch (err) {
-      alert(err.message || 'Failed to load schedule. Please try again.');
+      showToast(err.message || 'Failed to load schedule. Please try again.', 'error');
     } finally {
       setBeginSaving(false);
     }
@@ -1605,7 +1609,7 @@ export default function Workouts() {
       closeBeginModal();
       navigate(tutorial.active ? '/calendar?tutorialDone=1' : '/calendar');
     } catch (err) {
-      alert(err.message || 'Failed to save schedule. Please try again.');
+      showToast(err.message || 'Failed to save schedule. Please try again.', 'error');
     }
   }
 
@@ -1634,7 +1638,7 @@ export default function Workouts() {
               if (navigator.share) {
                 try { await navigator.share({ text }); } catch {}
               } else {
-                try { await navigator.clipboard.writeText(text); alert('Copied to clipboard!'); } catch {}
+                try { await navigator.clipboard.writeText(text); showToast('Copied to clipboard!'); } catch {}
               }
             }}
             className="flex-1 flex items-center justify-center gap-2 px-3 py-3 rounded-xl bg-blue-500/10 border border-blue-500/20 active:bg-blue-500/20 transition-colors"
@@ -1758,7 +1762,7 @@ export default function Workouts() {
         setTemplates(tmpls);
       }
     } catch (err) {
-      alert(err.message || 'Failed to accept');
+      showToast(err.message || 'Failed to accept', 'error');
     }
   }
 
@@ -1789,7 +1793,7 @@ export default function Workouts() {
       setShowTrainerForm(false);
       setTrainerAppMsg('');
     } catch (err) {
-      alert(err.message || 'Failed to submit application');
+      showToast(err.message || 'Failed to submit application', 'error');
     } finally {
       setTrainerAppSubmitting(false);
     }
@@ -1827,7 +1831,7 @@ export default function Workouts() {
         await applyAddWorkout({ date: dateStr, templateId: template.id });
       }
     } catch (err) {
-      alert(err.message || 'Failed to add workout. Please try again.');
+      showToast(err.message || 'Failed to add workout. Please try again.', 'error');
     }
   }
 
@@ -1847,7 +1851,7 @@ export default function Workouts() {
         navigate('/calendar');
       }
     } catch (err) {
-      alert(err.message || 'Failed to save. Please try again.');
+      showToast(err.message || 'Failed to save. Please try again.', 'error');
     }
   }
 
@@ -2023,7 +2027,12 @@ export default function Workouts() {
   }
 
   async function handleDeleteTemplate(templateId) {
-    if (!confirm('Delete this workout? This will also remove its history and personal bests.')) return;
+    if (!(await confirmDialog({
+      title: 'Delete this workout?',
+      message: 'This will also remove its history and personal bests.',
+      confirmLabel: 'Delete',
+      danger: true,
+    }))) return;
     try {
       await api(`/templates/${templateId}`, { method: 'DELETE' });
       setTemplates((prev) => prev.filter((t) => t.id !== templateId));
@@ -2048,14 +2057,19 @@ export default function Workouts() {
       setMoveTemplateModal(null);
     } catch (err) {
       setTemplates(prev);
-      alert(err.message || 'Failed to move workout. Please try again.');
+      showToast(err.message || 'Failed to move workout. Please try again.', 'error');
     } finally {
       setMoveTemplateBusy(false);
     }
   }
 
   async function handleDeleteProgram(programId) {
-    if (!confirm('Delete this entire program and all its workouts? Personal records tied to these workouts will also be removed. This cannot be undone.')) return;
+    if (!(await confirmDialog({
+      title: 'Delete this program?',
+      message: 'All workouts in this program will be deleted, along with their history and personal records. This cannot be undone.',
+      confirmLabel: 'Delete Program',
+      danger: true,
+    }))) return;
     try {
       await api(`/programs/${programId}`, { method: 'DELETE' });
       setPrograms((prev) => prev.filter((p) => p.id !== programId));
@@ -2075,7 +2089,12 @@ export default function Workouts() {
     }
     const weekToDelete = weeks[weekIndex];
     if (!weekToDelete) return;
-    if (!confirm(`Delete Week ${weekIndex + 1} and all its workouts? Personal records tied to these workouts will also be removed. Remaining weeks will be renumbered. This cannot be undone.`)) return;
+    if (!(await confirmDialog({
+      title: `Delete Week ${weekIndex + 1}?`,
+      message: 'All workouts in this week will be deleted, along with their history and personal records. Remaining weeks will be renumbered. This cannot be undone.',
+      confirmLabel: 'Delete Week',
+      danger: true,
+    }))) return;
     try {
       // Delete all templates in this week
       for (const t of weekToDelete) {
@@ -7030,6 +7049,7 @@ export default function Workouts() {
 
 function MaxPushupsChallenge() {
   const { user } = useAuth();
+  const showToast = useToast();
   const [entries, setEntries] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(true);
@@ -7089,7 +7109,7 @@ function MaxPushupsChallenge() {
       setShowOverwriteConfirm(false);
       setPendingValue(null);
     } catch (err) {
-      alert(err.message);
+      showToast(err.message || 'Failed to log push-ups', 'error');
     } finally {
       setPosting(false);
     }

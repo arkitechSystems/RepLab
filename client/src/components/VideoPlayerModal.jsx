@@ -52,7 +52,7 @@ export default function VideoPlayerModal({ videoId, exerciseName, onClose }) {
         <div className="relative w-full rounded-xl overflow-hidden" style={{ paddingBottom: '56.25%' }}>
           <iframe
             className="absolute inset-0 w-full h-full"
-            src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`}
+            src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
             title={exerciseName}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen

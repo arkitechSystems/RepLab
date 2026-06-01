@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, Fragment } from 'react';
 import { api } from '../api';
 import { generateSummaryImage, composeShareText, dataURLtoBlob } from '../utils/workoutSummaryShare';
 import { exportProgramPDF } from '../utils/exportProgramPDF';
+import { useToast } from '../context/ToastContext';
 import { track } from '../utils/analytics';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import StickyHeader from '../components/StickyHeader';
@@ -904,6 +905,7 @@ function VideoLoop({ src }) {
 
 export default function FeaturedWorkoutSession() {
   const navigate = useNavigate();
+  const showToast = useToast();
   const { workoutId } = useParams();
   const location = useLocation();
 
@@ -1218,7 +1220,13 @@ export default function FeaturedWorkoutSession() {
               Built as a 2-week cycle that repeats six times across 12 weeks. Weeks one and two will be used as a baseline to set your goal weight and reps for the future weeks. Every cycle after, you'll repeat the same workouts and aim to beat your previous numbers by adding weight or completing more reps.
             </p>
             <button
-              onClick={() => exportProgramPDF({ program: PROGRAM, workouts: WORKOUTS, weeklySchedule: WEEKLY_SCHEDULE })}
+              onClick={() => {
+                try {
+                  exportProgramPDF({ program: PROGRAM, workouts: WORKOUTS, weeklySchedule: WEEKLY_SCHEDULE });
+                } catch (err) {
+                  showToast(err.message || 'Failed to export PDF.', 'error');
+                }
+              }}
               className="active:scale-[0.97] transition-all mt-5 flex items-center gap-2"
               style={{
                 padding: '10px 20px', borderRadius: '100px',
@@ -2116,7 +2124,7 @@ export default function FeaturedWorkoutSession() {
           if (navigator.share) {
             try { await navigator.share({ text }); } catch {}
           } else {
-            try { await navigator.clipboard.writeText(text); alert('Copied to clipboard!'); } catch {}
+            try { await navigator.clipboard.writeText(text); showToast('Copied to clipboard!'); } catch {}
           }
         };
 

@@ -4,6 +4,7 @@ import { api } from '../api';
 import StickyHeader from '../components/StickyHeader';
 import { beepCountdown, beepPhaseChange, beepComplete, initAudio } from '../utils/sounds';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { MUSCLE_GROUPS, classifyExercise } from '../utils/muscleGroup';
 
 function PRsSection() {
@@ -765,8 +766,9 @@ function exportPercentageBreakdownPDF({ exercise, oneRM, weight, reps, percentag
 
   const win = window.open('', '_blank');
   if (!win) {
-    alert('Please allow pop-ups to export to PDF.');
-    return;
+    // Caller surfaces this via the global toast — alert() reads as a debug
+    // build to App Review so we throw and let the click handler catch.
+    throw new Error('Please allow pop-ups to export to PDF.');
   }
   win.document.open();
   win.document.write(html);
@@ -984,7 +986,13 @@ function OneRepMaxEstimator({ onClose }) {
                   </h4>
                 </div>
                 <button
-                  onClick={() => exportPercentageBreakdownPDF({ exercise: selectedExercise, oneRM, weight: w, reps: r, percentages })}
+                  onClick={() => {
+                    try {
+                      exportPercentageBreakdownPDF({ exercise: selectedExercise, oneRM, weight: w, reps: r, percentages });
+                    } catch (err) {
+                      showToast(err.message || 'Failed to export PDF.', 'error');
+                    }
+                  }}
                   className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 text-[10px] uppercase font-bold tracking-wider text-white active:scale-[0.97] transition-transform"
                   style={{
                     background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
@@ -1100,6 +1108,7 @@ function UtilSection({ label }) {
 
 export default function Utilities() {
   const navigate = useNavigate();
+  const showToast = useToast();
   const [showHIIT, setShowHIIT] = useState(false);
   const [showPRs, setShowPRs] = useState(false);
   const [show1RM, setShow1RM] = useState(false);

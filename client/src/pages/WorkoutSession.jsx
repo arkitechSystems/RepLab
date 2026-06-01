@@ -1614,7 +1614,7 @@ export default function WorkoutSession() {
     try {
       await api(`/cardio/${id}`, { method: 'DELETE' });
     } catch (err) {
-      console.error('Failed to delete cardio entry', err);
+      if (import.meta.env.DEV) console.error('Failed to delete cardio entry', err);
       setCardioEntries(before);
     }
   }
