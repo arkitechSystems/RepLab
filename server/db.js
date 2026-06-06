@@ -1248,6 +1248,36 @@ const db = {
     return rows[0] || null;
   },
 
+  // Auto-complete sessions the user started but walked away from. Marks as
+  // complete every in-progress session whose last activity was more than
+  // `idleHours` ago AND that has at least one real logged set (a completed
+  // entry with weight or reps). The logged-data guard is important: blank
+  // sessions (opened via /initialize but never worked) are left alone so we
+  // never drop an empty "completed" workout into the user's history. PRs are
+  // already upserted on every autosave (see createSession), so flipping the
+  // flag is all that's needed to finalize the workout into history. Idempotent
+  // — the completed = FALSE filter means a session is only ever picked up once.
+  // Returns the affected rows (id, user_id) so the scheduler can fire the same
+  // post-complete notifications a manual completion would.
+  async autoCompleteIdleSessions(idleHours) {
+    const { rows } = await pool.query(
+      `UPDATE sessions s
+          SET completed = TRUE
+        WHERE s.completed = FALSE
+          AND s.last_activity_at IS NOT NULL
+          AND s.last_activity_at < NOW() - ($1 || ' hours')::interval
+          AND EXISTS (
+            SELECT 1 FROM session_entries se
+             WHERE se.session_id = s.id
+               AND se.is_completed = TRUE
+               AND (se.weight > 0 OR se.reps > 0)
+          )
+        RETURNING s.id, s.user_id`,
+      [String(idleHours)]
+    );
+    return rows;
+  },
+
   async getCompletedSessions(userId) {
     const { rows } = await pool.query(
       "SELECT id, template_id, date FROM sessions WHERE user_id = $1 AND completed = TRUE",
