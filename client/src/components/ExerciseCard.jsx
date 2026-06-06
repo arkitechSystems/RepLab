@@ -153,6 +153,15 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
   // writing back. null = modal closed; true = open from header.
   const [plateCalcFromHeader, setPlateCalcFromHeader] = useState(false);
   const plateCalcLongPressRef = useRef(null);
+  // Per-exercise-card plate-calculator memory, keyed by keyName. Each card
+  // remembers the plate setup (weight/plates/bar/mode) it was last left with,
+  // so reopening the calc for this exercise restores the user's real-world
+  // load — they add or strip plates instead of rebuilding from the bare bar.
+  // A freshly-switched card has no entry yet, so it opens at zero. Lives in a
+  // ref because the modal unmounts on close (its own state can't survive), and
+  // it's scoped to this card's lifetime (clears when the card unmounts at
+  // session end). Both triggers (long-press + header ⚖) share this one slot.
+  const plateCalcMemoryRef = useRef({});
   // Goal Weight / Goal Reps edit affordance — cells render as read-only
   // <div> displays by default (matching the original visual treatment,
   // dash shown as content not placeholder). Long-press (600ms, same
@@ -1115,6 +1124,8 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
               onApplyCalculatedWeight(exercise.name, Number(weight) || 0);
               setPlateCalcSetIdx(null);
             } : undefined}
+            restoreState={plateCalcMemoryRef.current[keyName] || null}
+            onPersist={(s) => { plateCalcMemoryRef.current[keyName] = s; }}
             onClose={() => setPlateCalcSetIdx(null)}
           />
         );
@@ -1156,6 +1167,8 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
               onApplyCalculatedWeight(exercise.name, Number(weight) || 0);
               setPlateCalcFromHeader(false);
             } : undefined}
+            restoreState={plateCalcMemoryRef.current[keyName] || null}
+            onPersist={(s) => { plateCalcMemoryRef.current[keyName] = s; }}
             onClose={() => setPlateCalcFromHeader(false)}
           />
         );

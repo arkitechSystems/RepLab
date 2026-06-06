@@ -270,6 +270,12 @@ export default function Profile() {
   const [defaultPinRestTimer, setDefaultPinRestTimer] = useState(() => {
     try { return JSON.parse(localStorage.getItem('wf-default-pin-rest-timer')) ?? true; } catch { return true; }
   });
+  // Default ON — the rest timer pops out into its floating card at session
+  // start so it's available as the user scrolls. Shared key with
+  // WorkoutSession.jsx: `wf-default-float-rest-timer`.
+  const [defaultFloatRestTimer, setDefaultFloatRestTimer] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('wf-default-float-rest-timer')) ?? true; } catch { return true; }
+  });
   // Default OFF for new users — keeps the workout view minimal on first run.
   // Users who want goal-weight / goal-reps / set-type columns can opt in
   // here, and that choice persists for subsequent sessions via the same
@@ -329,6 +335,9 @@ export default function Profile() {
   useEffect(() => {
     localStorage.setItem('wf-default-pin-rest-timer', JSON.stringify(defaultPinRestTimer));
   }, [defaultPinRestTimer]);
+  useEffect(() => {
+    localStorage.setItem('wf-default-float-rest-timer', JSON.stringify(defaultFloatRestTimer));
+  }, [defaultFloatRestTimer]);
   useEffect(() => {
     localStorage.setItem('wf-default-show-goal-weight', JSON.stringify(defaultShowGoalWeight));
   }, [defaultShowGoalWeight]);
@@ -807,6 +816,22 @@ export default function Profile() {
                     className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${defaultPinRestTimer ? 'bg-wf-red' : 'bg-white/15'}`}
                   >
                     <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${defaultPinRestTimer ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between gap-px">
+                  <div className="flex items-center gap-px flex-1 min-w-0">
+                    <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 5H1v14h18v-6M15 3h6m0 0v6m0-6L10 14" />
+                    </svg>
+                    <span className="text-white/70 text-sm font-medium">Rest Timer Popped Out</span>
+                  </div>
+                  <button
+                    onClick={() => setDefaultFloatRestTimer(!defaultFloatRestTimer)}
+                    aria-label={defaultFloatRestTimer ? 'Default to docked rest timer' : 'Default to popped-out rest timer'}
+                    className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${defaultFloatRestTimer ? 'bg-wf-red' : 'bg-white/15'}`}
+                  >
+                    <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${defaultFloatRestTimer ? 'translate-x-5' : 'translate-x-0.5'}`} />
                   </button>
                 </div>
 

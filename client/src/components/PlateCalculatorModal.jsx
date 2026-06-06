@@ -75,36 +75,48 @@ function seedStack(targetNum, bar, mode) {
   return expandPlatesPerSide(perSide).stack;
 }
 
-export default function PlateCalculatorModal({ open, initialWeight = 0, onUse, onApplyToFirstUncompleted, onClose }) {
-  const [bar, setBar] = useState(45);
+export default function PlateCalculatorModal({ open, initialWeight = 0, restoreState = null, onUse, onApplyToFirstUncompleted, onPersist, onClose }) {
+  const [bar, setBar] = useState(restoreState?.bar ?? 45);
   // Remembers the user's last barbell weight while in Machine mode, so
   // toggling back to Both/One Side restores their chosen bar (not a fixed 45).
-  const lastBarRef = useRef(45);
-  // Per user spec: anytime the calc is pulled up, default to zero plates
-  // on both sides — i.e. the bar-only state, total = bar weight (45 by
-  // default), with an empty plate stack. initialWeight is intentionally
-  // NOT consulted; the user wants a clean slate every time the modal
-  // opens, even when invoked from a set that already has a weight entered.
-  // They can type a target weight to greedy-fill plates, or add plates one
-  // by one via the +/- buttons to build up from the bare bar.
-  const [target, setTarget] = useState('45');
-  const [mode, setMode] = useState('both');
+  const lastBarRef = useRef(restoreState?.bar > 0 ? restoreState.bar : 45);
+  // Per-exercise-card memory: when the parent passes restoreState (the plate
+  // setup the user last left on THIS card), seed from it so the weight +
+  // plates + bar + mode come back exactly as they left them — they can
+  // add/strip plates from their real-world load without rebuilding it. With
+  // NO restoreState (first open on a card, or a freshly-switched card), fall
+  // back to the bar-only zero-plates state: total = bar weight (45 default),
+  // empty plate stack. initialWeight is intentionally NOT consulted in either
+  // case — the per-card memory is the only source of a non-default open.
+  const [target, setTarget] = useState(restoreState ? restoreState.target : '45');
+  const [mode, setMode] = useState(restoreState?.mode ?? 'both');
   const [selectedPlate, setSelectedPlate] = useState(45);
   // Stack-based plate model: flat per-side array (e.g. [45, 25, 10]).
   // The +/- chip pushes/pops entries here directly so a user-added 35 lb
   // plate stays a 35 lb plate — it doesn't get re-greedy-filled into a
   // 45 + 10 combo just because the new total happens to factor that way.
-  // Starts empty (no plates per side) to match the bar-only default.
-  const [manualPlates, setManualPlates] = useState([]);
+  // Seeded from this card's remembered stack when one exists; otherwise empty
+  // (bar-only default).
+  const [manualPlates, setManualPlates] = useState(restoreState?.manualPlates ?? []);
 
-  // Reset to the bar-only zero-plates state whenever the modal is freshly
-  // opened. initialWeight is ignored on purpose — see the useState
-  // initializers above for the rationale.
+  // On open: restore this card's remembered setup if the parent supplied one,
+  // else reset to the bar-only zero-plates state. (The modal unmounts on
+  // close, so this also covers every fresh open.)
   useEffect(() => {
-    if (open) {
-      const barOnly = String(bar || 45);
-      setTarget(barOnly);
+    if (!open) return;
+    if (restoreState) {
+      setBar(restoreState.bar ?? 45);
+      setMode(restoreState.mode ?? 'both');
+      setManualPlates(restoreState.manualPlates ?? []);
+      setTarget(restoreState.target ?? String(restoreState.bar ?? 45));
+      if ((restoreState.bar ?? 0) > 0) lastBarRef.current = restoreState.bar;
+    } else {
+      setBar(45);
+      setMode('both');
+      setSelectedPlate(45);
       setManualPlates([]);
+      setTarget('45');
+      lastBarRef.current = 45;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -171,7 +183,21 @@ export default function PlateCalculatorModal({ open, initialWeight = 0, onUse, o
   // stack — that's a per-denomination check, not a "is bar loaded" check.
   const canDecrement = manualPlates.includes(selectedPlate);
 
+  // Snapshot the current setup so the parent can remember it for this card.
+  // Stored verbatim (bar/mode/manualPlates/target) so a re-open restores the
+  // exact same plates — no greedy re-fill, a hand-loaded 35 stays a 35.
+  const snapshot = () => ({ bar, mode, manualPlates, target });
+  const persist = () => { if (onPersist) onPersist(snapshot()); };
+
+  // Any exit persists first (Use, Apply, X, Cancel, backdrop tap) so however
+  // the user leaves the calc, this card reopens with the same weight loaded.
+  const handleClose = () => {
+    persist();
+    if (onClose) onClose();
+  };
+
   const handleUse = () => {
+    persist();
     if (onUse) onUse(Number(target) || 0);
     if (onClose) onClose();
   };
@@ -185,7 +211,7 @@ export default function PlateCalculatorModal({ open, initialWeight = 0, onUse, o
   return createPortal(
     <div
       className="fixed inset-0 z-[110] flex items-center justify-center px-4 py-6"
-      onClick={onClose}
+      onClick={handleClose}
       role="dialog"
       aria-modal="true"
       aria-labelledby="plate-calc-modal-title"
@@ -206,7 +232,7 @@ export default function PlateCalculatorModal({ open, initialWeight = 0, onUse, o
 
         {/* Close X — absolute so it doesn't disturb the title row */}
         <button
-          onClick={onClose}
+          onClick={handleClose}
           aria-label="Close"
           className="absolute top-3 right-3 z-10 text-wf-gray-400 active:opacity-70"
         >
@@ -390,7 +416,7 @@ export default function PlateCalculatorModal({ open, initialWeight = 0, onUse, o
                 {onApplyToFirstUncompleted && valid && (
                   <button
                     type="button"
-                    onClick={() => onApplyToFirstUncompleted(Number(target) || 0)}
+                    onClick={() => { persist(); onApplyToFirstUncompleted(Number(target) || 0); }}
                     className="active:scale-95 transition-transform whitespace-nowrap"
                     style={{
                       padding: '7px 13px',
@@ -593,7 +619,7 @@ export default function PlateCalculatorModal({ open, initialWeight = 0, onUse, o
             Use {Number(target) || 0} lbs
           </button>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="w-full font-bold uppercase active:scale-[0.98] transition-all border border-white/15"
             style={{
               letterSpacing: '0.15em',

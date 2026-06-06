@@ -246,9 +246,13 @@ function HIITTimer({ onClose }) {
   const [sets, setSets] = useState(8);
   const [workTime, setWorkTime] = useState(30);
   const [restTime, setRestTime] = useState(15);
+  // Intro countdown (seconds) that runs after Start and before the first work
+  // interval, so the user can set the phone down and get into position. 0
+  // disables it (start jumps straight to the first work interval).
+  const [countdownTime, setCountdownTime] = useState(10);
 
   const [currentSet, setCurrentSet] = useState(1);
-  const [phase, setPhase] = useState('work'); // 'work' | 'rest' | 'done'
+  const [phase, setPhase] = useState('work'); // 'intro' | 'work' | 'rest' | 'done'
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [running, setRunning] = useState(false);
   const [paused, setPaused] = useState(false);
@@ -256,7 +260,7 @@ function HIITTimer({ onClose }) {
   const [skipTransition, setSkipTransition] = useState(false);
 
   const totalSets = sets;
-  const totalTime = sets * workTime + (sets - 1) * restTime;
+  const totalTime = countdownTime + sets * workTime + (sets - 1) * restTime;
 
   const clearTimer = useCallback(() => {
     if (intervalRef.current) {
@@ -271,11 +275,18 @@ function HIITTimer({ onClose }) {
     initAudio(); // iOS requires user gesture to unlock audio
     setSetup(false);
     setCurrentSet(1);
-    setPhase('work');
-    setSecondsLeft(workTime);
     setRunning(true);
     setPaused(false);
     setSkipTransition(true);
+    // Lead in with the intro countdown when one is set; otherwise jump
+    // straight into the first work interval (legacy behavior).
+    if (countdownTime > 0) {
+      setPhase('intro');
+      setSecondsLeft(countdownTime);
+    } else {
+      setPhase('work');
+      setSecondsLeft(workTime);
+    }
   }
 
   function togglePause() {
@@ -307,6 +318,15 @@ function HIITTimer({ onClose }) {
 
         if (prev <= 1) {
           // Time's up for this interval
+          if (phase === 'intro') {
+            // Intro countdown finished — kick off the first work interval.
+            setSkipTransition(true);
+            setCurrentSet(1);
+            setPhase('work');
+            navigator.vibrate?.([40, 30, 40]);
+            if (soundEnabled) beepPhaseChange();
+            return workTime;
+          }
           if (phase === 'work') {
             if (currentSet >= totalSets) {
               setPhase('done');
@@ -343,9 +363,9 @@ function HIITTimer({ onClose }) {
     return `${m}:${sec.toString().padStart(2, '0')}`;
   };
 
-  const phaseColor = phase === 'work' ? 'text-green-400' : phase === 'rest' ? 'text-yellow-400' : 'text-red-500';
-  const phaseBg = phase === 'work' ? 'bg-green-500' : phase === 'rest' ? 'bg-yellow-500' : 'bg-red-500';
-  const phaseRingColor = phase === 'work' ? '#22c55e' : phase === 'rest' ? '#eab308' : '#ef4444';
+  const phaseColor = phase === 'intro' ? 'text-sky-400' : phase === 'work' ? 'text-green-400' : phase === 'rest' ? 'text-yellow-400' : 'text-red-500';
+  const phaseBg = phase === 'intro' ? 'bg-sky-500' : phase === 'work' ? 'bg-green-500' : phase === 'rest' ? 'bg-yellow-500' : 'bg-red-500';
+  const phaseRingColor = phase === 'intro' ? '#38bdf8' : phase === 'work' ? '#22c55e' : phase === 'rest' ? '#eab308' : '#ef4444';
 
   // Re-enable transition after skip
   useEffect(() => {
@@ -356,7 +376,7 @@ function HIITTimer({ onClose }) {
   }, [skipTransition]);
 
   // Progress ring — aim one step ahead so the 1s CSS transition stays in sync
-  const maxTime = phase === 'work' ? workTime : phase === 'rest' ? restTime : 1;
+  const maxTime = phase === 'intro' ? countdownTime : phase === 'work' ? workTime : phase === 'rest' ? restTime : 1;
   const progress = phase === 'done' ? 1 : skipTransition ? 0 : Math.min(1, (maxTime - secondsLeft + 1) / maxTime);
   const circumference = 2 * Math.PI * 90;
   const strokeDashoffset = circumference * (1 - progress);
@@ -456,6 +476,17 @@ function HIITTimer({ onClose }) {
               <div className="border-t border-white/5" />
 
               <div className="flex items-center justify-between">
+                <span className="text-[11px] uppercase font-bold" style={{ color: 'rgba(255,255,255,0.6)', letterSpacing: '0.2em' }}>Get Ready</span>
+                <div className="flex items-center gap-3">
+                  <button onClick={() => setCountdownTime((t) => Math.max(0, t - 5))} className={stepperBtn} style={stepperBtnStyle}>−</button>
+                  <span className="text-white text-2xl font-black w-14 text-center tabular-nums">{countdownTime}<span className="text-base text-white/40 ml-0.5">s</span></span>
+                  <button onClick={() => setCountdownTime((t) => t + 5)} className={stepperBtn} style={stepperBtnStyle}>+</button>
+                </div>
+              </div>
+
+              <div className="border-t border-white/5" />
+
+              <div className="flex items-center justify-between">
                 <span className="text-[11px] uppercase font-bold" style={{ color: 'rgba(255,255,255,0.6)', letterSpacing: '0.2em' }}>Total</span>
                 <span className="text-white text-2xl font-black tabular-nums">{formatTime(totalTime)}</span>
               </div>
@@ -547,7 +578,7 @@ function HIITTimer({ onClose }) {
       <div className="flex-1 flex flex-col items-center justify-center px-6">
         {/* Phase label */}
         <p className={`text-lg font-black uppercase mb-4 ${phaseColor}`} style={{ letterSpacing: '0.4em' }}>
-          {phase === 'work' ? 'Work' : phase === 'rest' ? 'Rest' : 'Complete'}
+          {phase === 'intro' ? 'Get Ready' : phase === 'work' ? 'Work' : phase === 'rest' ? 'Rest' : 'Complete'}
         </p>
 
         {/* Ring timer — scales to fill available space */}
@@ -571,7 +602,7 @@ function HIITTimer({ onClose }) {
               {phase === 'done' ? '0:00' : formatTime(secondsLeft)}
             </span>
             <span className="text-wf-gray-500 text-xs uppercase tracking-widest mt-1">
-              {phase === 'done' ? 'Done' : phase === 'work' ? `${secondsLeft}s remaining` : `${secondsLeft}s rest`}
+              {phase === 'done' ? 'Done' : phase === 'intro' ? 'get ready' : phase === 'work' ? `${secondsLeft}s remaining` : `${secondsLeft}s rest`}
             </span>
           </div>
         </div>

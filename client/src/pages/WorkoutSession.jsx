@@ -163,7 +163,14 @@ export default function WorkoutSession() {
   const [timerHidden, setTimerHidden] = useState(false);
   const [timerFloating, setTimerFloating] = useState(false);
   const [floatPos, setFloatPos] = useState({ x: 16, y: 80 });
-  const [restFloating, setRestFloating] = useState(false);
+  // Whether the rest timer is "popped out" into the floating card. Defaults
+  // ON (popped out) so the timer is available as the user scrolls the
+  // session, unless they've docked it — Profile → Preferences sets
+  // `wf-default-float-rest-timer`, and the in-session pop-out/dock buttons
+  // write the same key so a mid-session choice becomes the new default.
+  const [restFloating, setRestFloating] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('wf-default-float-rest-timer')) ?? true; } catch { return true; }
+  });
   const [restFloatPos, setRestFloatPos] = useState({ x: 16, y: 140 });
   const [showSummary, setShowSummary] = useState(false);
   // Lightweight in-app toast: { message, kind: 'info' | 'error' } | null.
@@ -566,6 +573,19 @@ export default function WorkoutSession() {
   function adjustRest(delta) {
     restAdjustRef.current += delta;
     setRestRemaining((r) => Math.max(0, (r ?? 0) + delta));
+  }
+
+  // Bump the chosen rest *duration* (not an in-flight countdown) by ±15s.
+  // Used by the idle/done popped-out timer so the user can dial in their rest
+  // length before tapping Start. Clamped to the REST_OPTIONS range [15,180]
+  // and kept on the 15s grid (current values are on-grid + delta is 15), and
+  // mirrored into restDurationRef so startRestTimer() reads the new value.
+  function adjustRestDuration(delta) {
+    setRestDuration((d) => {
+      const next = Math.min(180, Math.max(15, (d || 0) + delta));
+      restDurationRef.current = next;
+      return next;
+    });
   }
 
   useEffect(() => {
@@ -3157,7 +3177,7 @@ export default function WorkoutSession() {
                         </div>
                       )}
                       {/* Pop-out */}
-                      <button onClick={() => setRestFloating(true)} aria-label="Pop out rest timer" className="w-6 h-6 flex items-center justify-center active:scale-90 transition-all" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                      <button onClick={() => { setRestFloating(true); try { localStorage.setItem('wf-default-float-rest-timer', JSON.stringify(true)); } catch {} }} aria-label="Pop out rest timer" className="w-6 h-6 flex items-center justify-center active:scale-90 transition-all" style={{ color: 'rgba(255,255,255,0.4)' }}>
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M13 5H1v14h18v-6M15 3h6m0 0v6m0-6L10 14" />
                         </svg>
@@ -4710,14 +4730,21 @@ export default function WorkoutSession() {
                         <button onClick={stopRestTimer} className="active:scale-95 transition-transform" style={{ ...restChipStyle, background: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.25)' }}>Skip</button>
                       </>
                     ) : (
-                      <button onClick={startRestTimer} className="active:scale-95 transition-transform" style={{ ...restChipStyle, background: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.25)' }}>Start Rest</button>
+                      <>
+                        {/* Idle/done: let the user dial rest length with ±15s
+                            (mirrors the duration dropdown in the ring) before
+                            tapping Start, rather than only being able to start. */}
+                        <button onClick={() => adjustRestDuration(-15)} className="active:scale-95 transition-transform" style={restChipStyle}>− 15s</button>
+                        <button onClick={() => adjustRestDuration(15)} className="active:scale-95 transition-transform" style={restChipStyle}>+ 15s</button>
+                        <button onClick={startRestTimer} className="active:scale-95 transition-transform" style={{ ...restChipStyle, background: 'rgba(239,68,68,0.12)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.25)' }}>Start</button>
+                      </>
                     )}
                   </div>
                 </div>
 
                 {/* close (un-float) */}
                 <button
-                  onClick={() => setRestFloating(false)}
+                  onClick={() => { setRestFloating(false); try { localStorage.setItem('wf-default-float-rest-timer', JSON.stringify(false)); } catch {} }}
                   aria-label="Dock rest timer"
                   className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 active:scale-90 shrink-0 self-start"
                 >
