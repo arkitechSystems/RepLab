@@ -577,6 +577,15 @@ export default function LandingPageTest() {
         </div>
       </header>
 
+      {/* Scripture reference — vertically centered in the gap between the hero
+          store badges and the marquee, with ~21px of space on each side. The
+          hero adds 60px below the badges (.lp-hero bottom padding); a -39px top
+          margin pulls the verse up so the space above is 60-39=21px, matched by
+          21px below — both 65% smaller than the original 60px gap, still even. */}
+      <div style={{ textAlign: 'center', marginTop: '-39px', padding: '0 16px 21px', fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', letterSpacing: '0.25em', textTransform: 'uppercase', color: 'rgba(245,245,242,0.45)' }}>
+        Proverbs 27:17
+      </div>
+
       {/* ============== MARQUEE ============== */}
       <div className="lp-marquee" aria-hidden="true">
         <div className="lp-marquee-track">
