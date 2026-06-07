@@ -638,106 +638,6 @@ export default function Profile() {
           );
         })()}
 
-        {/* Beta banner + feedback */}
-        <div className="glass-card rounded-xl p-4 mb-4 fade-slide-up border border-wf-red/20 bg-wf-red/5">
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-wf-red/15 flex items-center justify-center shrink-0 mt-0.5">
-              <svg className="w-4 h-4 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
-              </svg>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white">Alpha Version</p>
-              <p className="text-xs text-wf-gray-400 mt-0.5 leading-relaxed">We are constantly improving the app. Send us any improvements or new features you would like to see in the app to help you reach your fitness goals.</p>
-            </div>
-            {!showFeedback && (
-              <button
-                onClick={() => setShowFeedback(true)}
-                className="active:scale-[0.97] transition-all text-white text-[11px] font-bold uppercase px-3.5 py-2 whitespace-nowrap shrink-0 self-center"
-                style={{
-                  letterSpacing: '0.15em',
-                  borderRadius: '2px',
-                  background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
-                  boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
-                }}
-              >
-                Send Feedback
-              </button>
-            )}
-          </div>
-
-          {showFeedback && (
-            <form onSubmit={handleFeedbackSubmit} className="mt-4 border-t border-white/10 pt-4">
-              {feedbackSent ? (
-                <div className="text-center py-4">
-                  <div className="w-12 h-12 rounded-full bg-green-500/15 flex items-center justify-center mx-auto mb-3">
-                    <svg className="w-6 h-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                    </svg>
-                  </div>
-                  <p className="text-sm font-semibold text-white">Thanks for your feedback!</p>
-                  <p className="text-xs text-wf-gray-400 mt-1">We'll review it shortly.</p>
-                </div>
-              ) : (
-                <>
-                  {/* Type selector */}
-                  <div className="flex gap-2 mb-3">
-                    <button
-                      type="button"
-                      onClick={() => setFeedbackType('bug')}
-                      className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${
-                        feedbackType === 'bug'
-                          ? 'bg-wf-red/20 border border-wf-red/40 text-wf-red'
-                          : 'glass-card text-wf-gray-400'
-                      }`}
-                    >
-                      Bug Report
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFeedbackType('idea')}
-                      className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${
-                        feedbackType === 'idea'
-                          ? 'bg-wf-blue/20 border border-wf-blue/40 text-wf-blue'
-                          : 'glass-card text-wf-gray-400'
-                      }`}
-                    >
-                      Improvement Idea
-                    </button>
-                  </div>
-
-                  {/* Message */}
-                  <textarea
-                    value={feedbackMsg}
-                    onChange={(e) => setFeedbackMsg(e.target.value)}
-                    placeholder={feedbackType === 'bug' ? 'Describe the bug...' : 'Share your idea...'}
-                    rows={3}
-                    className="w-full glass-input rounded-xl px-3 py-3 text-white text-sm focus:outline-none resize-none placeholder:text-wf-gray-600"
-                  />
-
-                  {/* Actions */}
-                  <div className="flex gap-2 mt-3">
-                    <button
-                      type="button"
-                      onClick={() => { setShowFeedback(false); setFeedbackMsg(''); }}
-                      className="flex-1 glass-card text-wf-gray-400 font-semibold py-2.5 rounded-xl text-xs active:scale-[0.98] transition-all"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={!feedbackMsg.trim() || feedbackSending}
-                      className="flex-1 btn-gradient text-white font-semibold py-2.5 rounded-xl text-xs active:scale-[0.98] transition-all disabled:opacity-40"
-                    >
-                      {feedbackSending ? 'Sending...' : 'Submit'}
-                    </button>
-                  </div>
-                </>
-              )}
-            </form>
-          )}
-        </div>
-
         {/* Stats & Streak card moved to /test/brainstorm. */}
 
         {/* App Settings — Nike style */}
@@ -930,72 +830,6 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Body Metrics — Nike style */}
-        <div
-          className="relative overflow-hidden mb-4 fade-slide-up"
-          style={{
-            background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
-            borderRadius: '2px',
-            boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
-            animationDelay: '60ms',
-          }}
-        >
-          <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #22c55e, rgba(34,197,94,0.25), transparent)' }} />
-          <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(34,197,94,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
-          <div className="relative p-6">
-            <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(34,197,94,0.85)', letterSpacing: '0.3em' }}>Your Body</p>
-            <h3 className="text-[22px] font-black text-white tracking-tight mb-4" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>BODY METRICS</h3>
-            <div className="space-y-3 pt-3 border-t border-white/10">
-              <HeightInput label="Height" value={metrics.height} onChange={(v) => updateMetric('height', v)} />
-              <MetricInput label="Weight" value={metrics.weight} unit="lbs" onChange={(v) => updateMetric('weight', v)} />
-              <MetricInput label="Body Fat" value={metrics.bodyFat} unit="%" onChange={(v) => updateMetric('bodyFat', v)} />
-            </div>
-          </div>
-        </div>
-
-        {/* Performance Metrics — Nike style */}
-        <div
-          className="relative overflow-hidden mb-4 fade-slide-up"
-          style={{
-            background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
-            borderRadius: '2px',
-            boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
-            animationDelay: '120ms',
-          }}
-        >
-          <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent)' }} />
-          <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
-          <div className="relative p-6">
-            <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.3em' }}>1 Rep Max</p>
-            <h3 className="text-[22px] font-black text-white tracking-tight mb-4" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>PERFORMANCE</h3>
-            <div className="space-y-3 pt-3 border-t border-white/10">
-              <MetricInput label="Bench Press" value={metrics.maxBench} unit="lbs" onChange={(v) => updateMetric('maxBench', v)} />
-              <MetricInput label="Squat" value={metrics.maxSquat} unit="lbs" onChange={(v) => updateMetric('maxSquat', v)} />
-              <MetricInput label="Deadlift" value={metrics.maxDeadlift} unit="lbs" onChange={(v) => updateMetric('maxDeadlift', v)} />
-            </div>
-          </div>
-        </div>
-
-        {/* Save Metrics Button — matches Send Feedback style */}
-        <button
-          onClick={handleSaveMetrics}
-          disabled={saving}
-          className="w-full active:scale-[0.97] transition-all text-white text-[11px] font-bold uppercase py-3.5 mb-4 fade-slide-up disabled:opacity-50 whitespace-nowrap"
-          style={{
-            animationDelay: '180ms',
-            letterSpacing: '0.15em',
-            borderRadius: '2px',
-            background: saved
-              ? 'linear-gradient(135deg, rgba(34,197,94,0.9) 0%, rgba(22,163,74,0.9) 100%)'
-              : 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
-            boxShadow: saved
-              ? '0 4px 14px rgba(34,197,94,0.35), inset 0 1px 0 rgba(255,255,255,0.15)'
-              : '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
-          }}
-        >
-          {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Metrics'}
-        </button>
-
         {/* Workout History — Nike style */}
         <div
           className="relative overflow-hidden mb-4 fade-slide-up"
@@ -1067,6 +901,172 @@ export default function Profile() {
             )}
           </div>
         </div>
+
+        {/* Beta banner + feedback */}
+        <div className="glass-card rounded-xl p-4 mb-4 fade-slide-up border border-wf-red/20 bg-wf-red/5">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-wf-red/15 flex items-center justify-center shrink-0 mt-0.5">
+              <svg className="w-4 h-4 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-white">Alpha Version</p>
+              <p className="text-xs text-wf-gray-400 mt-0.5 leading-relaxed">We are constantly improving the app. Send us any improvements or new features you would like to see in the app to help you reach your fitness goals.</p>
+            </div>
+            {!showFeedback && (
+              <button
+                onClick={() => setShowFeedback(true)}
+                className="active:scale-[0.97] transition-all text-white text-[11px] font-bold uppercase px-3.5 py-2 whitespace-nowrap shrink-0 self-center"
+                style={{
+                  letterSpacing: '0.15em',
+                  borderRadius: '2px',
+                  background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+                  boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+                }}
+              >
+                Send Feedback
+              </button>
+            )}
+          </div>
+
+          {showFeedback && (
+            <form onSubmit={handleFeedbackSubmit} className="mt-4 border-t border-white/10 pt-4">
+              {feedbackSent ? (
+                <div className="text-center py-4">
+                  <div className="w-12 h-12 rounded-full bg-green-500/15 flex items-center justify-center mx-auto mb-3">
+                    <svg className="w-6 h-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
+                  </div>
+                  <p className="text-sm font-semibold text-white">Thanks for your feedback!</p>
+                  <p className="text-xs text-wf-gray-400 mt-1">We'll review it shortly.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Type selector */}
+                  <div className="flex gap-2 mb-3">
+                    <button
+                      type="button"
+                      onClick={() => setFeedbackType('bug')}
+                      className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${
+                        feedbackType === 'bug'
+                          ? 'bg-wf-red/20 border border-wf-red/40 text-wf-red'
+                          : 'glass-card text-wf-gray-400'
+                      }`}
+                    >
+                      Bug Report
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFeedbackType('idea')}
+                      className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${
+                        feedbackType === 'idea'
+                          ? 'bg-wf-blue/20 border border-wf-blue/40 text-wf-blue'
+                          : 'glass-card text-wf-gray-400'
+                      }`}
+                    >
+                      Improvement Idea
+                    </button>
+                  </div>
+
+                  {/* Message */}
+                  <textarea
+                    value={feedbackMsg}
+                    onChange={(e) => setFeedbackMsg(e.target.value)}
+                    placeholder={feedbackType === 'bug' ? 'Describe the bug...' : 'Share your idea...'}
+                    rows={3}
+                    className="w-full glass-input rounded-xl px-3 py-3 text-white text-sm focus:outline-none resize-none placeholder:text-wf-gray-600"
+                  />
+
+                  {/* Actions */}
+                  <div className="flex gap-2 mt-3">
+                    <button
+                      type="button"
+                      onClick={() => { setShowFeedback(false); setFeedbackMsg(''); }}
+                      className="flex-1 glass-card text-wf-gray-400 font-semibold py-2.5 rounded-xl text-xs active:scale-[0.98] transition-all"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={!feedbackMsg.trim() || feedbackSending}
+                      className="flex-1 btn-gradient text-white font-semibold py-2.5 rounded-xl text-xs active:scale-[0.98] transition-all disabled:opacity-40"
+                    >
+                      {feedbackSending ? 'Sending...' : 'Submit'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </form>
+          )}
+        </div>
+
+        {/* Body Metrics — Nike style */}
+        <div
+          className="relative overflow-hidden mb-4 fade-slide-up"
+          style={{
+            background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+            borderRadius: '2px',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+            animationDelay: '60ms',
+          }}
+        >
+          <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #22c55e, rgba(34,197,94,0.25), transparent)' }} />
+          <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(34,197,94,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+          <div className="relative p-6">
+            <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(34,197,94,0.85)', letterSpacing: '0.3em' }}>Your Body</p>
+            <h3 className="text-[22px] font-black text-white tracking-tight mb-4" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>BODY METRICS</h3>
+            <div className="space-y-3 pt-3 border-t border-white/10">
+              <HeightInput label="Height" value={metrics.height} onChange={(v) => updateMetric('height', v)} />
+              <MetricInput label="Weight" value={metrics.weight} unit="lbs" onChange={(v) => updateMetric('weight', v)} />
+              <MetricInput label="Body Fat" value={metrics.bodyFat} unit="%" onChange={(v) => updateMetric('bodyFat', v)} />
+            </div>
+          </div>
+        </div>
+
+        {/* Performance Metrics — Nike style */}
+        <div
+          className="relative overflow-hidden mb-4 fade-slide-up"
+          style={{
+            background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+            borderRadius: '2px',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+            animationDelay: '120ms',
+          }}
+        >
+          <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent)' }} />
+          <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
+          <div className="relative p-6">
+            <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.3em' }}>1 Rep Max</p>
+            <h3 className="text-[22px] font-black text-white tracking-tight mb-4" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>PERFORMANCE</h3>
+            <div className="space-y-3 pt-3 border-t border-white/10">
+              <MetricInput label="Bench Press" value={metrics.maxBench} unit="lbs" onChange={(v) => updateMetric('maxBench', v)} />
+              <MetricInput label="Squat" value={metrics.maxSquat} unit="lbs" onChange={(v) => updateMetric('maxSquat', v)} />
+              <MetricInput label="Deadlift" value={metrics.maxDeadlift} unit="lbs" onChange={(v) => updateMetric('maxDeadlift', v)} />
+            </div>
+          </div>
+        </div>
+
+        {/* Save Metrics Button — matches Send Feedback style */}
+        <button
+          onClick={handleSaveMetrics}
+          disabled={saving}
+          className="w-full active:scale-[0.97] transition-all text-white text-[11px] font-bold uppercase py-3.5 mb-4 fade-slide-up disabled:opacity-50 whitespace-nowrap"
+          style={{
+            animationDelay: '180ms',
+            letterSpacing: '0.15em',
+            borderRadius: '2px',
+            background: saved
+              ? 'linear-gradient(135deg, rgba(34,197,94,0.9) 0%, rgba(22,163,74,0.9) 100%)'
+              : 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+            boxShadow: saved
+              ? '0 4px 14px rgba(34,197,94,0.35), inset 0 1px 0 rgba(255,255,255,0.15)'
+              : '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+          }}
+        >
+          {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Metrics'}
+        </button>
 
         {/* Language Preference — placeholder dropdown; persists choice to
             localStorage so the landing-page EN|ES pill (also unwired) and this
