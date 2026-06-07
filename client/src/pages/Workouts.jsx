@@ -1151,6 +1151,11 @@ export default function Workouts() {
   // Move-to-Program modal state (My Workouts flat list)
   const [moveTemplateModal, setMoveTemplateModal] = useState(null); // template object
   const [moveTemplateBusy, setMoveTemplateBusy] = useState(false);
+  // Rename-workout modal state (My Workouts cards). renameModal holds the
+  // template being renamed; renameValue is the live input text.
+  const [renameModal, setRenameModal] = useState(null); // template object
+  const [renameValue, setRenameValue] = useState('');
+  const [renameBusy, setRenameBusy] = useState(false);
   // Share program state
   const [shareModal, setShareModal] = useState(null); // program object
   const [shareInput, setShareInput] = useState('');
@@ -1171,6 +1176,7 @@ export default function Workouts() {
   const addConflictTrapRef = useFocusTrap(!!addConflictInfo);
   const shareTrapRef = useFocusTrap(!!shareModal);
   const moveTemplateTrapRef = useFocusTrap(!!moveTemplateModal);
+  const renameTrapRef = useFocusTrap(!!renameModal);
   const [undoToast, setUndoToast] = useState(null); // { message, undoFn, commitFn }
   const [acceptedSharesMap, setAcceptedSharesMap] = useState({}); // { programId: { senderName, senderUsername, senderPhoto } }
   const [shareUsers, setShareUsers] = useState([]); // all users for share picker
@@ -2063,6 +2069,36 @@ export default function Workouts() {
     }
   }
 
+  // Open the rename modal for a template, seeding the input with its name.
+  function openRenameTemplate(t) {
+    setRenameValue(t.name || '');
+    setRenameModal(t);
+  }
+
+  // Save a renamed workout (name only — exercises untouched, see
+  // PUT /templates/:id/name). Optimistic update with rollback on failure.
+  async function handleRenameTemplate() {
+    if (!renameModal) return;
+    const id = renameModal.id;
+    const prevName = renameModal.name;
+    const newName = renameValue.trim();
+    if (!newName || newName === prevName) { setRenameModal(null); return; }
+    setRenameBusy(true);
+    setTemplates((cur) => cur.map((t) => (t.id === id ? { ...t, name: newName } : t)));
+    try {
+      await api(`/templates/${id}/name`, {
+        method: 'PUT',
+        body: JSON.stringify({ name: newName }),
+      });
+      setRenameModal(null);
+    } catch (err) {
+      setTemplates((cur) => cur.map((t) => (t.id === id ? { ...t, name: prevName } : t)));
+      showToast(err.message || 'Could not rename workout. Please try again.', 'error');
+    } finally {
+      setRenameBusy(false);
+    }
+  }
+
   async function handleDeleteProgram(programId) {
     if (!(await confirmDialog({
       title: 'Delete this program?',
@@ -2490,7 +2526,7 @@ export default function Workouts() {
               {program.userId !== null && (
                 <button
                   onClick={() => navigate(`/clientworkouts/create?programId=${program.id}`)}
-                  className="btn-gradient active:scale-[0.98] text-white font-medium px-4 py-2.5 rounded-xl text-sm transition-all shrink-0"
+                  className="btn-gradient text-white font-semibold px-5 py-3 rounded-xl text-sm active:scale-[0.98] transition-all shrink-0"
                 >
                   Add Workout
                 </button>
@@ -2562,8 +2598,25 @@ export default function Workouts() {
                         to the far right via ml-auto. Replaces the previous
                         Add/Share/Edit cluster so the two surfaces look the
                         same — title row + count + button row. */}
-                    <div className="text-[17.1px] font-black text-white tracking-tight uppercase truncate" style={{ fontFamily: 'system-ui' }}>
-                      {t.name}
+                    <div className="flex items-start gap-2">
+                      <div className="flex-1 min-w-0 text-[17.1px] font-black text-white tracking-tight uppercase truncate" style={{ fontFamily: 'system-ui' }}>
+                        {t.name}
+                      </div>
+                      {/* Rename — top-right of the card. Owner-only, non-rest;
+                          edit-mode has its own controls so it's omitted there. */}
+                      {!editMode && !t.isRest && program.userId !== null && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); openRenameTemplate(t); }}
+                          aria-label="Rename workout"
+                          title="Rename workout"
+                          className="shrink-0 w-8 h-8 -mr-1 -mt-0.5 flex items-center justify-center active:scale-90 transition-all"
+                          style={{ borderRadius: '2px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.65)' }}
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
+                          </svg>
+                        </button>
+                      )}
                     </div>
                     <div className="text-[11px] text-white/25 font-light mt-1">
                       {t.isRest ? 'Rest day' : `${(t.exercises || []).length} ${(t.exercises || []).length === 1 ? 'exercise' : 'exercises'}`}
@@ -4951,6 +5004,80 @@ export default function Workouts() {
             programs (excludes the My Workouts pseudo-program itself and
             any admin-seeded library programs). Server enforces ownership
             on both sides as a defense in depth. */}
+        {renameModal && (
+          <div
+            className="fixed inset-0 z-50 flex items-start justify-center pt-24 px-5"
+            onClick={() => !renameBusy && setRenameModal(null)}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="workouts-rename-title"
+          >
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+            <div
+              ref={renameTrapRef}
+              className="relative w-full max-w-sm overflow-hidden animate-drop-down"
+              style={{
+                background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
+                borderRadius: '2px',
+                boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent)' }} />
+              <div className="relative p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <p className="text-[11px] uppercase font-light mb-2" style={{ letterSpacing: '0.3em', color: 'rgba(239,68,68,0.8)' }}>Rename</p>
+                    <h3 id="workouts-rename-title" className="text-[22px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>EDIT NAME</h3>
+                  </div>
+                  <button
+                    onClick={() => setRenameModal(null)}
+                    disabled={renameBusy}
+                    aria-label="Close"
+                    className="w-7 h-7 flex items-center justify-center active:scale-90 transition-all shrink-0 disabled:opacity-40"
+                    style={{ color: 'rgba(255,255,255,0.3)' }}
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <form onSubmit={(e) => { e.preventDefault(); handleRenameTemplate(); }}>
+                  <input
+                    type="text"
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    autoFocus
+                    maxLength={200}
+                    placeholder="Workout name"
+                    className="w-full text-white text-[15px] font-medium px-3.5 py-3 mb-4 focus:outline-none"
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '2px' }}
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setRenameModal(null)}
+                      disabled={renameBusy}
+                      className="flex-1 text-white/80 text-[11px] font-bold uppercase py-3 active:scale-[0.98] transition-all disabled:opacity-40"
+                      style={{ letterSpacing: '0.15em', borderRadius: '2px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={renameBusy || !renameValue.trim()}
+                      className="flex-1 text-white text-[11px] font-bold uppercase py-3 active:scale-[0.98] transition-all disabled:opacity-40"
+                      style={{ letterSpacing: '0.15em', borderRadius: '2px', background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)', boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)' }}
+                    >
+                      {renameBusy ? 'Saving…' : 'Save'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
         {moveTemplateModal && (
           <div
             className="fixed inset-0 z-50 flex items-start justify-center pt-24 px-5"
