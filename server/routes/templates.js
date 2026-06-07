@@ -108,6 +108,30 @@ router.put('/:id/program', authMiddleware, async (req, res) => {
   }
 });
 
+// Rename a template (name only). Owner-only — db.renameTemplate matches on
+// user_id, so library templates (user_id IS NULL) can't be renamed. Kept
+// separate from PUT /:id (which replaces the exercise list) so a rename can
+// never accidentally wipe a workout's exercises.
+router.put('/:id/name', authMiddleware, async (req, res) => {
+  try {
+    const templateId = Number(req.params.id);
+    const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+    if (!Number.isInteger(templateId) || templateId <= 0) {
+      return res.status(400).json({ error: 'Invalid template id' });
+    }
+    if (!name) return res.status(400).json({ error: 'Template name is required' });
+    if (name.length > MAX_NAME_LEN) {
+      return res.status(400).json({ error: `Template name must be ${MAX_NAME_LEN} characters or fewer` });
+    }
+    const result = await db.renameTemplate(req.userId, templateId, name);
+    if (!result) return res.status(404).json({ error: 'Template not found' });
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const templateId = Number(req.params.id);

@@ -156,12 +156,15 @@ router.post('/initialize', authMiddleware, async (req, res) => {
     if (!tmpl || tmpl.isRest) return res.status(404).json({ error: 'Template not found' });
     if (tmpl.userId && tmpl.userId !== req.userId) return res.status(403).json({ error: 'Template does not belong to you' });
 
-    // Look up best previous performance per exercise/set from completed sessions.
-    // If the template has a group_id, look up by group (links repeated workouts across weeks).
-    // Otherwise fall back to template-level lookup.
-    const previousBests = tmpl.groupId
-      ? await db.getBestPerformanceByGroup(req.userId, tmpl.groupId)
-      : await db.getBestPerformanceByTemplate(req.userId, Number(templateId));
+    // Goal weight/reps seed: for each exercise, the greater-by-volume of the
+    // user's last completed performance vs their all-time volume PR, matched by
+    // exercise NAME across every workout (not scoped to this template). One
+    // goal per exercise, applied to all its sets. See
+    // db.getVolumeGoalsByExerciseName.
+    const exerciseNames = tmpl.exercises
+      .filter((ex) => !ex.isSectionHeader)
+      .map((ex) => ex.name);
+    const volumeGoals = await db.getVolumeGoalsByExerciseName(req.userId, exerciseNames);
 
     // Build workout_data — the independent copy, with previous bests as goals
     const workoutData = {
@@ -172,11 +175,11 @@ router.post('/initialize', authMiddleware, async (req, res) => {
         ...(ex.exerciseDescription ? { exerciseDescription: ex.exerciseDescription } : {}),
         ...(ex.isSectionHeader ? { isSectionHeader: true, sectionNotes: ex.sectionNotes || '' } : {}),
         sets: ex.sets.map(s => {
-          const best = previousBests[ex.name]?.[s.setNumber];
+          const goal = volumeGoals[ex.name];
           return {
             setNumber: s.setNumber,
-            plannedReps: best ? best.reps : (s.plannedReps ?? 10),
-            suggestedWeight: best ? best.weight : (s.suggestedWeight ?? 0),
+            plannedReps: goal ? goal.reps : (s.plannedReps ?? 10),
+            suggestedWeight: goal ? goal.weight : (s.suggestedWeight ?? 0),
           };
         }),
       })),

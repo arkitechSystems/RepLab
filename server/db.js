@@ -575,6 +575,17 @@ const db = {
     }
   },
 
+  // Rename a template (name only). Owner-only via user_id, so admin/seed
+  // library templates (user_id IS NULL) are never matched. Leaves exercises,
+  // program, and ordering untouched.
+  async renameTemplate(userId, templateId, name) {
+    const { rows } = await pool.query(
+      'UPDATE templates SET name = $1 WHERE id = $2 AND user_id = $3 RETURNING id, name',
+      [name, templateId, userId]
+    );
+    return rows[0] || null;
+  },
+
   async reorderTemplates(userId, programId, orderedIds) {
     const client = await pool.connect();
     try {
@@ -1217,6 +1228,76 @@ const db = {
       };
     }
     return result;
+  },
+
+  // Goal-weight/goal-reps seed for newly-initialized sessions. For each
+  // exercise (matched by NAME across ALL the user's completed sessions — not
+  // scoped to one template), returns a single { weight, reps } goal equal to
+  // the GREATER, by volume (weight × reps), of:
+  //   (a) "last completed" — the best-volume set in the most recent completed
+  //       session that included this exercise, and
+  //   (b) "PR by volume" — the user's highest-volume completed set for this
+  //       exercise, ever.
+  // On a volume tie, (a) wins (it reflects what they most recently did). Only
+  // completed sets with weight > 0 and reps > 0 are considered. The single goal
+  // is applied to every set of the exercise (chosen granularity). Note: because
+  // (b) is the all-time max it is >= (a) by volume except when the last session
+  // tied it, so in practice the goal tracks the volume PR with the last session
+  // breaking ties toward the more recent numbers.
+  async getVolumeGoalsByExerciseName(userId, exerciseNames) {
+    if (!exerciseNames || exerciseNames.length === 0) return {};
+    const names = [...new Set(exerciseNames)];
+
+    // (b) PR by volume — per exercise, the single highest-volume set ever.
+    const { rows: prRows } = await pool.query(
+      `SELECT DISTINCT ON (se.exercise_name)
+         se.exercise_name, se.weight, se.reps
+       FROM session_entries se
+       JOIN sessions s ON s.id = se.session_id
+       WHERE s.user_id = $1
+         AND se.exercise_name = ANY($2)
+         AND s.completed = TRUE
+         AND se.is_completed = TRUE
+         AND se.weight > 0
+         AND se.reps > 0
+       ORDER BY se.exercise_name, (se.weight * se.reps) DESC, se.weight DESC`,
+      [userId, names]
+    );
+
+    // (a) Last completed — per exercise, the best-volume set within the most
+    // recent completed session that contained it (s.date is YYYY-MM-DD text,
+    // so DESC sorts most-recent first).
+    const { rows: lastRows } = await pool.query(
+      `SELECT DISTINCT ON (se.exercise_name)
+         se.exercise_name, se.weight, se.reps
+       FROM session_entries se
+       JOIN sessions s ON s.id = se.session_id
+       WHERE s.user_id = $1
+         AND se.exercise_name = ANY($2)
+         AND s.completed = TRUE
+         AND se.is_completed = TRUE
+         AND se.weight > 0
+         AND se.reps > 0
+       ORDER BY se.exercise_name, s.date DESC, (se.weight * se.reps) DESC, se.weight DESC`,
+      [userId, names]
+    );
+
+    const pr = {};
+    for (const r of prRows) pr[r.exercise_name] = { weight: Number(r.weight), reps: Number(r.reps) };
+    const last = {};
+    for (const r of lastRows) last[r.exercise_name] = { weight: Number(r.weight), reps: Number(r.reps) };
+
+    const goals = {};
+    for (const name of names) {
+      const p = pr[name];
+      const l = last[name];
+      if (!p && !l) continue;
+      if (!p) { goals[name] = l; continue; }
+      if (!l) { goals[name] = p; continue; }
+      // Greater by volume; tie -> last completed (more recent).
+      goals[name] = (l.weight * l.reps) >= (p.weight * p.reps) ? l : p;
+    }
+    return goals;
   },
 
   async getLastSessionEntries(userId, templateId) {
