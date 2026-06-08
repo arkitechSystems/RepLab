@@ -59,7 +59,7 @@ export default function BottomNav() {
       className="fixed bottom-0 left-0 right-0 safe-bottom z-50"
       style={{ background: '#0a0a0a', borderTop: '1px solid rgba(255,255,255,0.05)' }}
     >
-      <div className="flex items-stretch h-16 max-w-lg mx-auto">
+      <div className="flex items-stretch h-16">
         {tabs.map((tab) => (
           <NavLink
             key={tab.to}

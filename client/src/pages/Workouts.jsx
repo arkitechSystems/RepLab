@@ -3078,31 +3078,6 @@ export default function Workouts() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                 </svg>
               </button>
-              <div className="border-t border-white/5 mx-3" />
-              {/* AI workout generation is shipped behind "Coming soon" until
-                  the backend is ready — disabled + grayed out for now.
-                  Heroicons cpu-chip used as the AI/circuit-board icon. */}
-              <button
-                disabled
-                aria-disabled="true"
-                className="w-full text-left p-3 flex items-center gap-3.5 opacity-50 cursor-not-allowed"
-                style={{ borderRadius: '2px' }}
-              >
-                <div className="btn-liquid w-10 h-10 flex items-center justify-center shrink-0" style={{ borderRadius: '2px' }}>
-                  <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 002.25-2.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25zm.75-12h9v9h-9v-9z" />
-                  </svg>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h4 className="text-[11.05px] font-bold uppercase text-white/60 tracking-wider" style={{ letterSpacing: '0.1em' }}>Create a Workout for Me</h4>
-                    <span className="btn-liquid text-[7.65px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded whitespace-nowrap">
-                      Coming Soon
-                    </span>
-                  </div>
-                  <p className="text-[9.35px] text-white/40 font-light mt-0.5">AI-powered personalized workout</p>
-                </div>
-              </button>
             </div>
           </div>
         </div>
@@ -6859,15 +6834,14 @@ export default function Workouts() {
             </div>
             */}
 
-            {/* Challenges card — Nike style. Gated as "Coming Soon"
-                pre-launch via FF_CHALLENGES (see featureFlags.js). When
-                locked: no onClick, no "Explore →" affordance, dimmed
-                opacity. Unlock with ?ff=challenges or
-                localStorage.setItem('rl_ff_challenges', '1'). */}
+            {/* Challenges card — only rendered when FF_CHALLENGES is unlocked.
+                Hidden from the homepage entirely for v1 launch (no Coming Soon
+                placeholder — the card simply doesn't appear). Unlock with
+                ?ff=challenges or localStorage.setItem('rl_ff_challenges', '1'). */}
+            {challengesUnlocked && (
             <div
-              onClick={challengesUnlocked ? () => setSelectedGroup('challenges') : undefined}
-              aria-disabled={!challengesUnlocked}
-              className={`transition-transform fade-slide-up ${challengesUnlocked ? 'cursor-pointer active:scale-[0.98]' : 'cursor-default'}`}
+              onClick={() => setSelectedGroup('challenges')}
+              className="transition-transform fade-slide-up cursor-pointer active:scale-[0.98]"
               style={{
                 position: 'relative',
                 overflow: 'hidden',
@@ -6875,7 +6849,6 @@ export default function Workouts() {
                 background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
                 boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
                 animationDelay: '0ms',
-                opacity: challengesUnlocked ? 1 : 0.65,
               }}
             >
               {/* Orange accent bar */}
@@ -6917,6 +6890,7 @@ export default function Workouts() {
                 )}
               </div>
             </div>
+            )}
 
             {/* Trainers card — only rendered when FF_TRAINERS is unlocked.
                 Hidden from the homepage entirely for v1 launch (no Coming
