@@ -1295,13 +1295,27 @@ function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelec
   }, [allExercises]);
   const substitutes = useMemo(() => getSubstitutesFromList(exerciseName, safeExercises), [exerciseName, safeExercises]);
 
+  // Body-part filter for the swap search. Pills are derived from the muscles
+  // actually present in the available exercises ('all' first), mirroring the
+  // Add Exercise search filter in WorkoutSession.
+  const [muscleFilter, setMuscleFilter] = useState('all');
+  const muscleList = useMemo(
+    () => Array.from(new Set(safeExercises.map((e) => e.muscle).filter(Boolean))).sort(),
+    [safeExercises]
+  );
+
   const filtered = useMemo(() => {
-    if (!search.trim()) return substitutes;
+    // Apply the body-part pill filter first, then the text search on top.
+    let base = substitutes;
+    if (muscleFilter !== 'all') {
+      base = base.filter((e) => (e.muscle || '').toLowerCase() === muscleFilter.toLowerCase());
+    }
+    if (!search.trim()) return base;
     const q = search.toLowerCase().trim();
     // Score results by match quality so prefix/word-start matches rank above
     // buried substring matches. Keeps "row" → "Barbell Row" above
     // "Single-Arm Arrow Shoulder Fly" (contrived example).
-    return substitutes
+    return base
       .map((e) => {
         const name = (e.name || '').toLowerCase();
         const muscle = (e.muscle || '').toLowerCase();
@@ -1317,7 +1331,7 @@ function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelec
       })
       .filter((e) => e.relevance > 0)
       .sort((a, b) => b.relevance - a.relevance || a.name.localeCompare(b.name));
-  }, [substitutes, search]);
+  }, [substitutes, search, muscleFilter]);
 
   // Only used when NOT searching: group by same-muscle score.
   // When searching, we render a single flat relevance-sorted list.
@@ -1385,6 +1399,29 @@ function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelec
               className="w-full glass-input rounded-xl pl-10 pr-4 py-3 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none"
             />
           </div>
+          {/* Body-part filter pills — narrow the swap results by muscle group.
+              Horizontal scroll so the row never blows out the modal width. */}
+          {muscleList.length > 0 && (
+            <div className="-mx-4 mt-3 px-4 flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+              {[{ value: 'all', label: 'All' }, ...muscleList.map((m) => ({ value: m, label: m }))].map((f) => {
+                const isActive = muscleFilter === f.value;
+                return (
+                  <button
+                    key={f.value}
+                    type="button"
+                    onClick={() => setMuscleFilter(f.value)}
+                    className={`shrink-0 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all active:scale-[0.97] ${
+                      isActive
+                        ? 'bg-wf-red text-white'
+                        : 'bg-white/5 text-white/60 border border-white/10'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Exercise List */}
