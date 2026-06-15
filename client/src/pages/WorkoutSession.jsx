@@ -243,6 +243,19 @@ export default function WorkoutSession() {
   const [pinRestTimer, setPinRestTimer] = useState(() => {
     try { return JSON.parse(localStorage.getItem('wf-default-pin-rest-timer')) ?? true; } catch { return true; }
   });
+  // Popped-out and locked are mutually exclusive. "Locked" pins the docked rest
+  // timer to the top of the screen; leaving it locked while the timer is also
+  // popped out means two rest timers fighting for screen space (one frozen at
+  // the top, one floating). So whenever the timer is popped out, auto-unlock
+  // the docked copy. With pinRestTimer false, the docked timer scrolls away
+  // normally (and the hide-while-floating guard already keeps it off-screen
+  // while the floating card is up). In-session only — we don't overwrite the
+  // saved wf-default-pin-rest-timer preference, so a fully-docked timer can
+  // still be locked via its toggle.
+  useEffect(() => {
+    if (restFloating) setPinRestTimer(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restFloating]);
   const [undoToast, setUndoToast] = useState(null); // { message, undoFn }
   const [showGoalWeight, setShowGoalWeight] = useState(() => {
     try { return JSON.parse(localStorage.getItem('wf-default-show-goal-weight')) ?? false; } catch { return false; }
