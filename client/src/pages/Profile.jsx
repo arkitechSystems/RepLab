@@ -289,11 +289,6 @@ export default function Profile() {
   const [defaultShowSetType, setDefaultShowSetType] = useState(() => {
     try { return JSON.parse(localStorage.getItem('replab_show_set_type')) ?? false; } catch { return false; }
   });
-  const [showFeedback, setShowFeedback] = useState(false);
-  const [feedbackType, setFeedbackType] = useState('bug');
-  const [feedbackMsg, setFeedbackMsg] = useState('');
-  const [feedbackSending, setFeedbackSending] = useState(false);
-  const [feedbackSent, setFeedbackSent] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -383,31 +378,6 @@ export default function Profile() {
       if (import.meta.env.DEV) console.error(err);
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function handleFeedbackSubmit(e) {
-    e.preventDefault();
-    if (!feedbackMsg.trim()) return;
-    setFeedbackSending(true);
-    try {
-      await api('/feedback', {
-        method: 'POST',
-        body: JSON.stringify({
-          type: feedbackType === 'bug' ? 'Bug Report' : 'Improvement Idea',
-          message: feedbackMsg.trim(),
-        }),
-      });
-      setFeedbackSent(true);
-      setFeedbackMsg('');
-      setTimeout(() => {
-        setFeedbackSent(false);
-        setShowFeedback(false);
-      }, 2500);
-    } catch (err) {
-      if (import.meta.env.DEV) console.error(err);
-    } finally {
-      setFeedbackSending(false);
     }
   }
 

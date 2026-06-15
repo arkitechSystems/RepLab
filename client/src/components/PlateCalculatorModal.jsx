@@ -183,11 +183,10 @@ export default function PlateCalculatorModal({ open, initialWeight = 0, restoreS
   // stack — that's a per-denomination check, not a "is bar loaded" check.
   const canDecrement = manualPlates.includes(selectedPlate);
 
-  // Snapshot the current setup so the parent can remember it for this card.
+  // Persist the current setup so the parent can remember it for this card.
   // Stored verbatim (bar/mode/manualPlates/target) so a re-open restores the
   // exact same plates — no greedy re-fill, a hand-loaded 35 stays a 35.
-  const snapshot = () => ({ bar, mode, manualPlates, target });
-  const persist = () => { if (onPersist) onPersist(snapshot()); };
+  const persist = () => { if (onPersist) onPersist({ bar, mode, manualPlates, target }); };
 
   // Any exit persists first (Use, Apply, X, Cancel, backdrop tap) so however
   // the user leaves the calc, this card reopens with the same weight loaded.

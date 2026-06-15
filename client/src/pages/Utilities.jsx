@@ -363,9 +363,18 @@ function HIITTimer({ onClose }) {
     return `${m}:${sec.toString().padStart(2, '0')}`;
   };
 
-  const phaseColor = phase === 'intro' ? 'text-sky-400' : phase === 'work' ? 'text-green-400' : phase === 'rest' ? 'text-yellow-400' : 'text-red-500';
-  const phaseBg = phase === 'intro' ? 'bg-sky-500' : phase === 'work' ? 'bg-green-500' : phase === 'rest' ? 'bg-yellow-500' : 'bg-red-500';
-  const phaseRingColor = phase === 'intro' ? '#38bdf8' : phase === 'work' ? '#22c55e' : phase === 'rest' ? '#eab308' : '#ef4444';
+  // Per-phase colors keyed by phase value — add a phase, add one entry, and the
+  // text/bar/ring colors all flow through. `done` (and any unknown) falls back
+  // to the red treatment.
+  const PHASE_COLORS = {
+    intro: { color: 'text-sky-400', bg: 'bg-sky-500', ring: '#38bdf8' },
+    work: { color: 'text-green-400', bg: 'bg-green-500', ring: '#22c55e' },
+    rest: { color: 'text-yellow-400', bg: 'bg-yellow-500', ring: '#eab308' },
+  };
+  const phaseTheme = PHASE_COLORS[phase] || { color: 'text-red-500', bg: 'bg-red-500', ring: '#ef4444' };
+  const phaseColor = phaseTheme.color;
+  const phaseBg = phaseTheme.bg;
+  const phaseRingColor = phaseTheme.ring;
 
   // Re-enable transition after skip
   useEffect(() => {

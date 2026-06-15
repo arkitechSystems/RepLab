@@ -6198,9 +6198,10 @@ export default function Workouts() {
                 pre-launch set. The unlock path (featuredUnlocked === true)
                 is preserved; when launched, the autoplay video can come
                 back behind this gradient if desired. */}
+            {featuredUnlocked && (
             <div
               ref={featuredCardRef}
-              onClick={featuredUnlocked ? () => {
+              onClick={() => {
                 const rect = featuredCardRef.current?.getBoundingClientRect();
                 if (rect) setFeaturedCardRect(rect);
                 setFeaturedTransition('card');
@@ -6214,9 +6215,8 @@ export default function Workouts() {
                 setTimeout(() => setFeaturedTransition('fade'), 3100);
                 // Done
                 setTimeout(() => { setFeaturedTransition(null); setFeaturedCardRect(null); setSelectedGroup('featured'); }, 3600);
-              } : undefined}
-              aria-disabled={!featuredUnlocked}
-              className={`transition-transform fade-slide-up ${featuredUnlocked ? 'cursor-pointer active:scale-[0.98]' : 'cursor-default'}`}
+              }}
+              className="transition-transform fade-slide-up cursor-pointer active:scale-[0.98]"
               style={{
                 position: 'relative',
                 overflow: 'hidden',
@@ -6224,7 +6224,6 @@ export default function Workouts() {
                 background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
                 boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
                 animationDelay: '0ms',
-                opacity: featuredUnlocked ? 1 : 0.65,
               }}
             >
               {/* Cinematic background video — only renders when FF_FEATURED is
@@ -6299,6 +6298,7 @@ export default function Workouts() {
                 )}
               </div>
             </div>
+            )}
 
             {/* Browse Workout Library card — Tactile rounded treatment to
                 match the new Up Next card. Quieter eyebrow, no hard red bar,
@@ -6880,14 +6880,12 @@ export default function Workouts() {
                 <p className="text-[9px] text-white/35 uppercase font-medium mt-2" style={{ letterSpacing: '0.3em' }}>
                   Proverbs 27:17
                 </p>
-                {challengesUnlocked && (
-                  <div className="flex items-center gap-1.5 mt-4">
-                    <span className="text-[10px] text-white/40 uppercase font-medium" style={{ letterSpacing: '0.2em' }}>Explore</span>
-                    <svg className="w-3 h-3 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                    </svg>
-                  </div>
-                )}
+                <div className="flex items-center gap-1.5 mt-4">
+                  <span className="text-[10px] text-white/40 uppercase font-medium" style={{ letterSpacing: '0.2em' }}>Explore</span>
+                  <svg className="w-3 h-3 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </div>
               </div>
             </div>
             )}

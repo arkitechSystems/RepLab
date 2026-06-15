@@ -1249,38 +1249,40 @@ const db = {
     const names = [...new Set(exerciseNames)];
 
     // (b) PR by volume — per exercise, the single highest-volume set ever.
-    const { rows: prRows } = await pool.query(
-      `SELECT DISTINCT ON (se.exercise_name)
-         se.exercise_name, se.weight, se.reps
-       FROM session_entries se
-       JOIN sessions s ON s.id = se.session_id
-       WHERE s.user_id = $1
-         AND se.exercise_name = ANY($2)
-         AND s.completed = TRUE
-         AND se.is_completed = TRUE
-         AND se.weight > 0
-         AND se.reps > 0
-       ORDER BY se.exercise_name, (se.weight * se.reps) DESC, se.weight DESC`,
-      [userId, names]
-    );
-
     // (a) Last completed — per exercise, the best-volume set within the most
-    // recent completed session that contained it (s.date is YYYY-MM-DD text,
-    // so DESC sorts most-recent first).
-    const { rows: lastRows } = await pool.query(
-      `SELECT DISTINCT ON (se.exercise_name)
-         se.exercise_name, se.weight, se.reps
-       FROM session_entries se
-       JOIN sessions s ON s.id = se.session_id
-       WHERE s.user_id = $1
-         AND se.exercise_name = ANY($2)
-         AND s.completed = TRUE
-         AND se.is_completed = TRUE
-         AND se.weight > 0
-         AND se.reps > 0
-       ORDER BY se.exercise_name, s.date DESC, (se.weight * se.reps) DESC, se.weight DESC`,
-      [userId, names]
-    );
+    //     recent completed session that contained it (s.date is YYYY-MM-DD
+    //     text, so DESC sorts most-recent first).
+    // The two reads are independent — run them concurrently.
+    const [{ rows: prRows }, { rows: lastRows }] = await Promise.all([
+      pool.query(
+        `SELECT DISTINCT ON (se.exercise_name)
+           se.exercise_name, se.weight, se.reps
+         FROM session_entries se
+         JOIN sessions s ON s.id = se.session_id
+         WHERE s.user_id = $1
+           AND se.exercise_name = ANY($2)
+           AND s.completed = TRUE
+           AND se.is_completed = TRUE
+           AND se.weight > 0
+           AND se.reps > 0
+         ORDER BY se.exercise_name, (se.weight * se.reps) DESC, se.weight DESC`,
+        [userId, names]
+      ),
+      pool.query(
+        `SELECT DISTINCT ON (se.exercise_name)
+           se.exercise_name, se.weight, se.reps
+         FROM session_entries se
+         JOIN sessions s ON s.id = se.session_id
+         WHERE s.user_id = $1
+           AND se.exercise_name = ANY($2)
+           AND s.completed = TRUE
+           AND se.is_completed = TRUE
+           AND se.weight > 0
+           AND se.reps > 0
+         ORDER BY se.exercise_name, s.date DESC, (se.weight * se.reps) DESC, se.weight DESC`,
+        [userId, names]
+      ),
+    ]);
 
     const pr = {};
     for (const r of prRows) pr[r.exercise_name] = { weight: Number(r.weight), reps: Number(r.reps) };
