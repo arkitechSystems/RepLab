@@ -1,6 +1,6 @@
 {
   "name": "replab",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "private": true,
   "scripts": {
     "install:all": "cd client && npm install && cd ../server && npm install",

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { version as appVersion } from '../../package.json';
 
 // Splash / loading screen — Tactile system.
 //
@@ -172,6 +173,19 @@ export default function SplashScreen({ onDone, persistent }) {
               />
             ))}
           </span>
+        </div>
+
+        {/* Version label — sits just under the status pill */}
+        <div
+          style={{
+            marginTop: 14,
+            fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+            fontSize: 9,
+            letterSpacing: '0.2em',
+            color: 'rgba(255,255,255,0.24)',
+          }}
+        >
+          v{appVersion}
         </div>
       </div>
 
