@@ -18,16 +18,19 @@
 // Token flow:
 //   - Android: getToken() returns an FCM token directly once Firebase is
 //     configured; notification permission only gates the visible alert on
-//     Android 13+, not FCM token generation.
+//     Android 13+, not FCM token generation. FCM's onNewToken (surfaced here
+//     as 'tokenReceived') only fires when a token is first created or
+//     rotated, NOT on every launch, so we pull with getToken() immediately
+//     on init rather than waiting on that listener.
 //   - iOS: the native plugin calls UIApplication.registerForRemoteNotifications()
 //     as soon as it loads (every launch — this does NOT show a permission
 //     prompt, it just opens the APNs channel). Once AppDelegate forwards the
 //     resulting device token, the plugin sets it as the Firebase APNs token
-//     and fires 'apnsTokenReceived', at which point getToken() can produce
-//     a real FCM token. We also listen for 'tokenReceived' (Firebase's own
-//     refresh callback) and do an immediate getToken() pull on init, to
-//     cover both "listener attaches before/after the native token arrives"
-//     race directions.
+//     and fires 'apnsTokenReceived' — since that reliably fires every launch,
+//     we pull the FCM token via getToken() from that listener rather than
+//     also doing an unconditional pull (which would just double the call).
+//     'tokenReceived' is still wired up on both platforms to catch token
+//     rotation after init.
 //   - Prerequisites for iOS FCM: GoogleService-Info.plist must be in the
 //     Xcode project and Firebase Messaging pod must be installed. See
 //     _marketing/iOS-SUBMISSION-PLAYBOOK.md.
@@ -89,8 +92,10 @@ export async function initPushNotifications() {
 
     if (platform === 'ios') {
       // Fires once AppDelegate forwards the APNs device token and the
-      // plugin sets it on Messaging — pull the FCM token explicitly here
-      // in case 'tokenReceived' doesn't also fire for this transition.
+      // plugin sets it on Messaging — pull the FCM token explicitly here.
+      // registerForRemoteNotifications() runs on every launch (native plugin
+      // init), so this reliably fires each time; events are also retained
+      // until consumed, so a listener attached after the fact still gets it.
       FirebaseMessaging.addListener('apnsTokenReceived', async () => {
         try {
           const fcm = await FirebaseMessaging.getToken();
@@ -99,6 +104,16 @@ export async function initPushNotifications() {
           if (import.meta.env.DEV) console.warn('[push] getToken after APNs registration failed:', err?.message || err);
         }
       });
+    } else {
+      // Android has no APNs handshake to wait for, and FCM's onNewToken only
+      // fires when a token is first created or rotated — not on every
+      // launch — so a stable, already-issued token needs an explicit pull.
+      try {
+        const fcm = await FirebaseMessaging.getToken();
+        if (fcm?.token) registerTokenOnServer(fcm.token, platform);
+      } catch (err) {
+        if (import.meta.env.DEV) console.warn('[push] initial getToken failed, relying on listeners:', err?.message || err);
+      }
     }
 
     // Foreground receipt — no-op for now; we can wire an in-app toast later.
@@ -113,16 +128,6 @@ export async function initPushNotifications() {
         if (typeof window !== 'undefined') window.location.assign(target);
       }
     });
-
-    // Pull path: covers the case where APNs/FCM registration already
-    // completed earlier in this launch (e.g. permission was granted in a
-    // prior session) before the listeners above were attached.
-    try {
-      const fcm = await FirebaseMessaging.getToken();
-      if (fcm?.token) registerTokenOnServer(fcm.token, platform);
-    } catch (err) {
-      if (import.meta.env.DEV) console.warn('[push] initial getToken failed, relying on listeners:', err?.message || err);
-    }
   } catch (err) {
     if (import.meta.env.DEV) console.warn('[push] init failed:', err?.message || err);
   }

@@ -8,10 +8,9 @@ const router = Router();
 const VALID_PLATFORMS = new Set(['ios', 'android', 'web']);
 
 // Register a push token for the authenticated user.
-// Capacitor's @capacitor/push-notifications plugin returns platform-native tokens
-// (APNs raw token on iOS, FCM registration token on Android). When the app is
-// set up with the Firebase Messaging iOS SDK (added at app-store-prep time),
-// iOS also returns an FCM token — which is what the server expects for FCM sends.
+// Capacitor's @capacitor-firebase/messaging plugin returns an FCM registration
+// token directly on both iOS and Android — that's what firebase-admin (see
+// pushProvider.js) expects for sends, so no per-platform handling is needed here.
 router.post('/register', authMiddleware, async (req, res) => {
   try {
     const { pushToken, platform } = req.body;

@@ -43,6 +43,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        // CapacitorFirebaseMessaging doesn't observe this notification name (it
+        // only listens for the success case), so log directly here or this
+        // failure vanishes with no diagnostic trace at all.
+        print("[push] APNs registration failed: \(error.localizedDescription)")
         NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)
     }
 
