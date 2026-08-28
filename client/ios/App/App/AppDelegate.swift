@@ -35,9 +35,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     // Remote-notification (APNs) registration callbacks. Capacitor does NOT
     // swizzle these, so without them the device token never reaches the
-    // push plugins and registration silently never completes. Forward both
-    // outcomes onto the NotificationCenter names that @capacitor/push-
-    // notifications and @capacitor-firebase/messaging observe.
+    // push plugin and registration silently never completes. Forward both
+    // outcomes onto the NotificationCenter names that @capacitor-firebase/
+    // messaging observes.
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)
     }

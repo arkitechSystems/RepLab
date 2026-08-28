@@ -34,8 +34,8 @@ export default function PushPermissionPrompt() {
         if (localStorage.getItem(SEEN_KEY)) return;
       } catch (_) { /* SSR / private mode — bail */ return; }
       try {
-        const { PushNotifications } = await import('@capacitor/push-notifications');
-        const perm = await PushNotifications.checkPermissions();
+        const { FirebaseMessaging } = await import('@capacitor-firebase/messaging');
+        const perm = await FirebaseMessaging.checkPermissions();
         if (cancelled) return;
         if (perm.receive === 'prompt' || perm.receive === 'prompt-with-rationale') {
           // Small delay so the prompt doesn't appear DURING the splash → home

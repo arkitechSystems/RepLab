@@ -9,14 +9,25 @@
 // idempotent — guarded by a module-level flag — so re-running on every
 // auth state change is safe and cheap.
 //
+// Single plugin: @capacitor-firebase/messaging handles permissions,
+// registration, and FCM tokens on both platforms directly — no separate
+// @capacitor/push-notifications plugin. (Previously we ran both, which
+// meant they fought over the native foreground-notification handler; only
+// one plugin can own it at a time.)
+//
 // Token flow:
-//   - Android: @capacitor/push-notifications returns an FCM token directly
-//     (Capacitor wraps Google Play Services on Android).
-//   - iOS: @capacitor/push-notifications returns a raw APNs token, which
-//     our firebase-admin server can't deliver to. So on iOS we ADDITIONALLY
-//     call @capacitor-firebase/messaging's getToken() to retrieve an FCM
-//     token (which Firebase produces internally once APNs registration
-//     succeeds), and register THAT with our server.
+//   - Android: getToken() returns an FCM token directly once Firebase is
+//     configured; notification permission only gates the visible alert on
+//     Android 13+, not FCM token generation.
+//   - iOS: the native plugin calls UIApplication.registerForRemoteNotifications()
+//     as soon as it loads (every launch — this does NOT show a permission
+//     prompt, it just opens the APNs channel). Once AppDelegate forwards the
+//     resulting device token, the plugin sets it as the Firebase APNs token
+//     and fires 'apnsTokenReceived', at which point getToken() can produce
+//     a real FCM token. We also listen for 'tokenReceived' (Firebase's own
+//     refresh callback) and do an immediate getToken() pull on init, to
+//     cover both "listener attaches before/after the native token arrives"
+//     race directions.
 //   - Prerequisites for iOS FCM: GoogleService-Info.plist must be in the
 //     Xcode project and Firebase Messaging pod must be installed. See
 //     _marketing/iOS-SUBMISSION-PLAYBOOK.md.
@@ -51,9 +62,9 @@ export async function initPushNotifications() {
   if (initialized) return;
   if (!Capacitor.isNativePlatform()) return; // web: no-op
 
-  let PushNotifications;
+  let FirebaseMessaging;
   try {
-    ({ PushNotifications } = await import('@capacitor/push-notifications'));
+    ({ FirebaseMessaging } = await import('@capacitor-firebase/messaging'));
   } catch (err) {
     if (import.meta.env.DEV) console.warn('[push] plugin not available:', err?.message || err);
     return;
@@ -63,50 +74,39 @@ export async function initPushNotifications() {
     // ONLY check current status — never call requestPermissions() from this
     // path. If the user hasn't granted yet, exit silently; the explicit
     // requestPushPermission() function below is the only path that prompts.
-    const perm = await PushNotifications.checkPermissions();
+    const perm = await FirebaseMessaging.checkPermissions();
     if (perm.receive !== 'granted') return;
 
     initialized = true;
     const platform = Capacitor.getPlatform(); // 'ios' | 'android'
 
-    PushNotifications.addListener('registration', async (tokenObj) => {
-      // On Android, tokenObj.value is already an FCM token — register as-is.
-      // On iOS, tokenObj.value is a raw APNs token; swap it for the FCM
-      // token that Firebase produces once APNs registration succeeds. The
-      // server's firebase-admin can only deliver to FCM tokens, so if FCM
-      // is unavailable on the iOS build (GoogleService-Info.plist missing,
-      // Firebase pod not linked) we skip registration entirely rather than
-      // store a dead APNs token.
-      let token = tokenObj?.value;
-      if (!token) return;
-      if (platform === 'ios') {
-        try {
-          const { FirebaseMessaging } = await import('@capacitor-firebase/messaging');
-          const fcm = await FirebaseMessaging.getToken();
-          if (fcm?.token) {
-            token = fcm.token;
-          } else {
-            if (import.meta.env.DEV) console.warn('[push] FCM getToken returned empty on iOS — skipping registration');
-            return;
-          }
-        } catch (err) {
-          if (import.meta.env.DEV) console.warn('[push] FCM unavailable on iOS, skipping registration:', err?.message || err);
-          return;
-        }
-      }
-      registerTokenOnServer(token, platform);
+    // Fires with a ready-to-use FCM token — on Android this is the primary
+    // path; on iOS it's Firebase's token-refresh callback (fires once the
+    // APNs token has been set, see apnsTokenReceived below).
+    FirebaseMessaging.addListener('tokenReceived', (event) => {
+      if (event?.token) registerTokenOnServer(event.token, platform);
     });
 
-    PushNotifications.addListener('registrationError', (err) => {
-      if (import.meta.env.DEV) console.warn('[push] registration error:', err?.error || err);
-    });
+    if (platform === 'ios') {
+      // Fires once AppDelegate forwards the APNs device token and the
+      // plugin sets it on Messaging — pull the FCM token explicitly here
+      // in case 'tokenReceived' doesn't also fire for this transition.
+      FirebaseMessaging.addListener('apnsTokenReceived', async () => {
+        try {
+          const fcm = await FirebaseMessaging.getToken();
+          if (fcm?.token) registerTokenOnServer(fcm.token, platform);
+        } catch (err) {
+          if (import.meta.env.DEV) console.warn('[push] getToken after APNs registration failed:', err?.message || err);
+        }
+      });
+    }
 
     // Foreground receipt — no-op for now; we can wire an in-app toast later.
-    PushNotifications.addListener('pushNotificationReceived', () => {});
+    FirebaseMessaging.addListener('notificationReceived', () => {});
 
     // User tapped the notification. Navigate to the session if the payload
     // carries templateId/date (see server/pushScheduler.js data fields).
-    PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
+    FirebaseMessaging.addListener('notificationActionPerformed', (action) => {
       const data = action?.notification?.data || {};
       if (data.templateId && data.date) {
         const target = `/session/${data.templateId}/${data.date}`;
@@ -114,7 +114,15 @@ export async function initPushNotifications() {
       }
     });
 
-    await PushNotifications.register();
+    // Pull path: covers the case where APNs/FCM registration already
+    // completed earlier in this launch (e.g. permission was granted in a
+    // prior session) before the listeners above were attached.
+    try {
+      const fcm = await FirebaseMessaging.getToken();
+      if (fcm?.token) registerTokenOnServer(fcm.token, platform);
+    } catch (err) {
+      if (import.meta.env.DEV) console.warn('[push] initial getToken failed, relying on listeners:', err?.message || err);
+    }
   } catch (err) {
     if (import.meta.env.DEV) console.warn('[push] init failed:', err?.message || err);
   }
@@ -129,18 +137,18 @@ export async function initPushNotifications() {
 export async function requestPushPermission() {
   if (!Capacitor.isNativePlatform()) return 'unavailable';
 
-  let PushNotifications;
+  let FirebaseMessaging;
   try {
-    ({ PushNotifications } = await import('@capacitor/push-notifications'));
+    ({ FirebaseMessaging } = await import('@capacitor-firebase/messaging'));
   } catch (err) {
     if (import.meta.env.DEV) console.warn('[push] plugin not available:', err?.message || err);
     return 'unavailable';
   }
 
   try {
-    let perm = await PushNotifications.checkPermissions();
+    let perm = await FirebaseMessaging.checkPermissions();
     if (perm.receive === 'prompt' || perm.receive === 'prompt-with-rationale') {
-      perm = await PushNotifications.requestPermissions();
+      perm = await FirebaseMessaging.requestPermissions();
     }
     if (perm.receive !== 'granted') return perm.receive || 'denied';
 
@@ -173,8 +181,8 @@ export async function teardownPushNotifications() {
   }
 
   try {
-    const { PushNotifications } = await import('@capacitor/push-notifications');
-    await PushNotifications.removeAllListeners();
+    const { FirebaseMessaging } = await import('@capacitor-firebase/messaging');
+    await FirebaseMessaging.removeAllListeners();
   } catch (_) {}
 
   initialized = false;

@@ -55,6 +55,6 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Required by Android 13+ for runtime push notification permission. The
-         Capacitor push plugin requests it at runtime via PushNotifications.requestPermissions(). -->
+         Firebase Messaging plugin requests it at runtime via FirebaseMessaging.requestPermissions(). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 </manifest>
