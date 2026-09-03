@@ -1,7 +1,42 @@
 import { useState } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { friendlyError } from '../utils/errors';
+import { API_BASE } from '../api';
+
+// TEMPORARY — remove once the native login/network issue is confirmed fixed.
+// Runs a raw, unwrapped fetch (bypasses api.js's friendly-error translation)
+// against the backend and dumps everything relevant into a native alert()
+// so a TestFlight tester with no attached Xcode console can screenshot it.
+async function runDiagnostics() {
+  const lines = [];
+  lines.push(`platform: ${Capacitor.getPlatform()}`);
+  lines.push(`isNative: ${Capacitor.isNativePlatform()}`);
+  lines.push(`API_BASE: ${API_BASE || '(empty — relative paths)'}`);
+  lines.push(`navigator.onLine: ${navigator.onLine}`);
+
+  const url = `${API_BASE}/health`;
+  lines.push(`\nGET ${url}`);
+  try {
+    const start = Date.now();
+    const res = await fetch(url);
+    const ms = Date.now() - start;
+    lines.push(`status: ${res.status} (${ms}ms)`);
+    try {
+      const text = await res.text();
+      lines.push(`body: ${text.slice(0, 300)}`);
+    } catch (bodyErr) {
+      lines.push(`body read failed: ${bodyErr.name}: ${bodyErr.message}`);
+    }
+  } catch (err) {
+    lines.push(`FETCH THREW`);
+    lines.push(`name: ${err.name}`);
+    lines.push(`message: ${err.message}`);
+  }
+
+  window.alert(lines.join('\n'));
+}
 
 function isPhone(value) {
   return /^\+?\d[\d\s\-().]{6,}$/.test(value.trim());
@@ -70,6 +105,13 @@ export default function Login() {
       const target = REDIRECTS[searchParams.get('redirect')] || '/';
       navigate(target);
     } catch (err) {
+      // TEMPORARY diagnostic — surfaces the raw error alongside the friendly
+      // one so a TestFlight tester can screenshot what actually happened
+      // (network error vs. bad credentials vs. server error) instead of the
+      // deliberately-vague copy from friendlyError().
+      if (Capacitor.isNativePlatform()) {
+        window.alert(`Login failed\nname: ${err.name}\nmessage: ${err.message}\nstatus: ${err.status ?? 'n/a'}`);
+      }
       setError(friendlyError(err, "Email or password didn't match. Try again or reset your password."));
     } finally {
       setLoading(false);
@@ -238,6 +280,23 @@ export default function Login() {
             Sign Up
           </Link>
         </p>
+
+        {/* TEMPORARY — diagnostics for the native login/network investigation.
+            Remove once confirmed fixed in a TestFlight build. */}
+        {Capacitor.isNativePlatform() && (
+          <button
+            type="button"
+            onClick={runDiagnostics}
+            style={{
+              display: 'block', margin: '20px auto 0', background: 'none',
+              border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8,
+              padding: '8px 14px', color: 'rgba(255,255,255,0.4)',
+              fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em',
+            }}
+          >
+            Run Diagnostics
+          </button>
+        )}
       </div>
     </div>
   );

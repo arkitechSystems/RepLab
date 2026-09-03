@@ -9,6 +9,11 @@ import { Capacitor } from '@capacitor/core';
 // fallback below) and login looked like it "succeeded" with no token.
 const API_BASE = Capacitor.isNativePlatform() ? 'https://replab-fitness.com' : '';
 
+// Exposed for the on-device diagnostics button (Login.jsx) — TestFlight
+// builds have no attached console, so that button needs the raw base URL
+// to report exactly what host it's hitting.
+export { API_BASE };
+
 // In-memory token fallback for Safari/iOS where localStorage can be unreliable
 let memoryToken = null;
 let memoryRefreshToken = null;
