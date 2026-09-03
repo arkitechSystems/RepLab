@@ -1,4 +1,13 @@
-const API_BASE = '';
+import { Capacitor } from '@capacitor/core';
+
+// On web the SPA is served from the same origin as the API (Express serves
+// client/dist directly), so relative paths work. The native app's WebView is
+// NOT on that origin — Capacitor serves the bundled dist/ from its own local
+// scheme (capacitor://localhost on iOS) and falls back to index.html for any
+// unmatched path, which meant every relative API call was silently hitting
+// the app's own HTML instead of the server (see api()'s 2xx/non-JSON -> {}
+// fallback below) and login looked like it "succeeded" with no token.
+const API_BASE = Capacitor.isNativePlatform() ? 'https://replab-fitness.com' : '';
 
 // In-memory token fallback for Safari/iOS where localStorage can be unreliable
 let memoryToken = null;
