@@ -226,6 +226,7 @@ html, body {
   font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior: none;
+  overflow-x: hidden;
 }
 
 /* Reusable loading spinner — matches the bs-spinner on /brainstorm. */
