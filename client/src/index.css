@@ -227,6 +227,20 @@ html, body {
   -webkit-font-smoothing: antialiased;
   overscroll-behavior: none;
   overflow-x: hidden;
+  /* Leaving overflow-y unset here is inconsistent across browsers once
+     overflow-x is set — some desktop browsers stop vertical scroll
+     entirely instead of just clipping the x-axis. Spell it out. */
+  overflow-y: auto;
+}
+
+/* Scroll still works via wheel/touch/keyboard; this just hides the
+   track/thumb so desktop browsers match the scrollbar-less look of
+   Safari/WKWebView on mobile and in the native app. */
+html {
+  scrollbar-width: none; /* Firefox */
+}
+html::-webkit-scrollbar {
+  display: none; /* Chrome, Edge, desktop Safari */
 }
 
 /* Reusable loading spinner — matches the bs-spinner on /brainstorm. */
