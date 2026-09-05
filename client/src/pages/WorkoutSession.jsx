@@ -3937,7 +3937,7 @@ export default function WorkoutSession() {
               </div>
 
               {/* Scrollable list — top 10 best lifts */}
-              <div style={{ overflowY: 'auto', flex: 1 }}>
+              <div style={{ overflowY: 'auto', overflowX: 'hidden', flex: 1 }}>
                 {lifts.length === 0 ? (
                   <div style={{ padding: '32px 20px', textAlign: 'center' }}>
                     <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>

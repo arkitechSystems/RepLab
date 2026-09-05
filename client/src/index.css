@@ -233,6 +233,19 @@ html, body {
   overflow-y: auto;
 }
 
+/* html/body's overflow-x:hidden only clips the outer document — it has no
+   effect on independently-scrolling containers nested inside a
+   position:fixed overlay (e.g. the full-screen workout-session views),
+   since those establish their own scrolling box. Any element using
+   Tailwind's overflow-y-auto is meant to scroll vertically only; per the
+   CSS overflow spec, leaving overflow-x unset there quietly computes it
+   to `auto` too, so anything even slightly wider than the box becomes
+   sideways-scrollable. Nothing in this codebase pairs overflow-y-auto
+   with an intentional overflow-x-auto, so this is safe app-wide. */
+.overflow-y-auto {
+  overflow-x: hidden;
+}
+
 /* Scroll still works via wheel/touch/keyboard; this just hides the
    track/thumb so desktop browsers match the scrollbar-less look of
    Safari/WKWebView on mobile and in the native app. */
