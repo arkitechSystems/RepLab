@@ -2,6 +2,9 @@
   "appId": "com.replab.fitness",
   "appName": "RepLab",
   "webDir": "dist",
+  "server": {
+    "iosScheme": "https"
+  },
   "plugins": {
     "SplashScreen": {
       "launchAutoHide": false,
