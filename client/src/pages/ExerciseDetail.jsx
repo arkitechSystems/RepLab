@@ -3,7 +3,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { getExerciseBySlug, findMasterExerciseBySlug, buildMinimalExercise } from '../data/exercises/index.js';
 import { useExercises } from '../hooks/useExercises';
 import ExerciseDetailCard from '../components/ExerciseDetailCard.jsx';
-import YouTubeEmbed from '../components/YouTubeEmbed.jsx';
 
 const RED = '#ef4444';
 const MONO = "'JetBrains Mono', ui-monospace, monospace";
@@ -76,14 +75,17 @@ export default function ExerciseDetail() {
     ? `https://img.youtube.com/vi/${exercise.videoId}/maxresdefault.jpg`
     : null;
   const openVideo = () => {
-    // Play the form video inline by toggling videoPlaying — the hero
-    // background swaps from the YouTube thumbnail to an iframe embed
-    // (youtube-nocookie, autoplay, modest branding) in the same 300px
-    // slot. If no videoId is known, fall back to the previous behavior
-    // and open a new tab pointing at a YouTube search for the exercise
-    // name, since there's nothing to embed in-page.
-    if (exercise.videoId) {
+    // CDN-hosted videos play inline by toggling videoPlaying — the hero
+    // background swaps from the thumbnail to a <video> embed in the same
+    // 300px slot. YouTube videos open externally instead (the native
+    // app's WebView doesn't run on a real http(s) origin, which YouTube's
+    // embedded player requires) — this is a placeholder until each
+    // exercise has its own CDN-hosted video. No videoId at all falls back
+    // to a YouTube search for the exercise name.
+    if (isCdnVideo) {
       setVideoPlaying(true);
+    } else if (exercise.videoId) {
+      window.open(`https://www.youtube.com/watch?v=${exercise.videoId}`, '_blank');
     } else {
       const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(exercise.name + ' form')}`;
       window.open(url, '_blank');
@@ -100,33 +102,22 @@ export default function ExerciseDetail() {
             ? `#15130f center/cover no-repeat url(${heroImg})`
             : 'linear-gradient(160deg, #2a2724 0%, #15130f 100%)',
         }}>
-          {videoPlaying && exercise.videoId ? (
-            /* Embedded form video — fills the same 300px hero slot. Uses
-               youtube-nocookie for tracking hygiene, autoplay so the user
-               doesn't have to tap play twice, modestbranding to minimize
-               the YouTube UI overlay, playsinline so iOS doesn't kick the
-               video to full-screen Safari. Close button (×) returns to
-               the thumbnail view; back button still navigates out. */
+          {videoPlaying && isCdnVideo ? (
+            /* CDN-hosted form video — fills the same 300px hero slot.
+               Close button (×) returns to the thumbnail view; back
+               button still navigates out. (YouTube videos never reach
+               this branch — openVideo() opens those externally instead.) */
             <>
-              {isCdnVideo ? (
-                <video
-                  src={exercise.videoId}
-                  title={`${exercise.name} form video`}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                  autoPlay
-                  controls
-                  playsInline
-                  preload="metadata"
-                  controlsList="nodownload"
-                />
-              ) : (
-                <YouTubeEmbed
-                  videoId={exercise.videoId}
-                  title={`${exercise.name} form video`}
-                  className="w-full h-full"
-                  autoplay={true}
-                />
-              )}
+              <video
+                src={exercise.videoId}
+                title={`${exercise.name} form video`}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                autoPlay
+                controls
+                playsInline
+                preload="metadata"
+                controlsList="nodownload"
+              />
               <div style={{ position: 'absolute', top: 16, left: 16, right: 16, display: 'flex', justifyContent: 'space-between', zIndex: 10, pointerEvents: 'none' }}>
                 <button onClick={() => navigate(-1)} aria-label="Back" style={{ ...iconCircle, pointerEvents: 'auto' }} className="active:scale-90 transition-transform">
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 19l-7-7 7-7" /></svg>

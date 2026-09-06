@@ -17,7 +17,6 @@ import { CSS } from '@dnd-kit/utilities';
 import { getExerciseVideoId, getExerciseSearchUrl } from '../utils/exerciseVideos.js';
 import { useExercises, getSubstitutesFromList } from '../hooks/useExercises.js';
 import VideoPlayerModal from './VideoPlayerModal.jsx';
-import YouTubeEmbed from './YouTubeEmbed.jsx';
 import PlateCalculatorModal from './PlateCalculatorModal.jsx';
 import CardioAccelerationCard from './CardioAccelerationCard.jsx';
 import { iosFocusRef } from '../utils/iosFocus.js';
@@ -101,6 +100,12 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
     : null;
   const overrideVideoId = ytIdMatch ? ytIdMatch[1] : (overrideVideoUrl || null);
   const videoId = overrideVideoId || getExerciseVideoId(exercise.name, dbExercise?.videoId);
+  // CDN-hosted demo videos (e.g. replab-videos.onrender.com) play inline
+  // via <video src>. YouTube IDs open externally instead — the native
+  // app's WebView doesn't run on a real http(s) origin, which YouTube's
+  // embedded player requires, so an in-app iframe just errors out. This
+  // is a placeholder until each exercise has its own CDN-hosted video.
+  const isCdnVideo = !!videoId && (videoId.startsWith('http') || videoId.startsWith('/'));
   const [showVideo, setShowVideo] = useState(false);
   // Full-screen mode is positioned as a beginner-friendly view: when the
   // exercise has a linked demo video, the inline demo opens automatically so
@@ -427,10 +432,19 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
         <div className="border-t border-white/5 bg-black/20">
           <div className="p-3">
             <div className="rounded-xl overflow-hidden bg-black aspect-video">
-              {videoId.startsWith('http') || videoId.startsWith('/') ? (
+              {isCdnVideo ? (
                 <video src={videoId} className="w-full h-full object-contain" controls playsInline preload="metadata" controlsList="nodownload" />
               ) : (
-                <YouTubeEmbed videoId={videoId} title={`${exercise.name} demo`} className="w-full h-full" autoplay={false} />
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); window.open(`https://www.youtube.com/watch?v=${videoId}`, '_blank'); }}
+                  className="w-full h-full flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform"
+                >
+                  <svg className="w-10 h-10 text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M21.582 7.203a2.51 2.51 0 00-1.768-1.774C18.254 5 12 5 12 5s-6.254 0-7.814.429A2.51 2.51 0 002.418 7.203 26.14 26.14 0 002 12a26.14 26.14 0 00.418 4.797 2.51 2.51 0 001.768 1.774C5.746 19 12 19 12 19s6.254 0 7.814-.429a2.51 2.51 0 001.768-1.774A26.14 26.14 0 0022 12a26.14 26.14 0 00-.418-4.797zM9.75 15.02V8.98L15.5 12l-5.75 3.02z" />
+                  </svg>
+                  <span className="text-[11px] font-semibold text-white/80">Watch on YouTube</span>
+                </button>
               )}
             </div>
           </div>
