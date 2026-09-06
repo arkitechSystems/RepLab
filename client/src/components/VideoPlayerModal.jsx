@@ -1,30 +1,9 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import useFocusTrap from '../hooks/useFocusTrap';
-
-// Loads the YouTube IFrame Player API script exactly once, reusing any
-// window.onYouTubeIframeAPIReady callback another instance already set up.
-let ytApiPromise = null;
-function loadYouTubeApi() {
-  if (window.YT && window.YT.Player) return Promise.resolve(window.YT);
-  if (ytApiPromise) return ytApiPromise;
-  ytApiPromise = new Promise((resolve, reject) => {
-    const prevReady = window.onYouTubeIframeAPIReady;
-    window.onYouTubeIframeAPIReady = () => {
-      if (prevReady) prevReady();
-      resolve(window.YT);
-    };
-    const script = document.createElement('script');
-    script.src = 'https://www.youtube.com/iframe_api';
-    script.onerror = () => reject(new Error('Failed to load YouTube IFrame API script'));
-    document.head.appendChild(script);
-  });
-  return ytApiPromise;
-}
+import YouTubeEmbed from './YouTubeEmbed.jsx';
 
 export default function VideoPlayerModal({ videoId, exerciseName, onClose }) {
   const trapRef = useFocusTrap(true);
-  const containerRef = useRef(null);
-  const playerRef = useRef(null);
 
   // Close on Escape key
   useEffect(() => {
@@ -38,54 +17,6 @@ export default function VideoPlayerModal({ videoId, exerciseName, onClose }) {
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = ''; };
   }, []);
-
-  // TEMPORARY diagnostic — a bare <iframe src="youtube..."> gives no way to
-  // see why an embed fails: no JS callback fires for content-level errors
-  // (e.g. YouTube's own "Video player configuration error" card) inside a
-  // cross-origin iframe. Switching to the postMessage-based IFrame Player
-  // API gives a real onError callback with YouTube's numeric error code
-  // (2 = bad parameter, 5 = HTML5 player error, 100 = video not found,
-  // 101/150 = embedding blocked by the video owner), surfaced via a native
-  // alert() so a TestFlight tester with no console can screenshot it.
-  useEffect(() => {
-    let cancelled = false;
-
-    loadYouTubeApi()
-      .then((YT) => {
-        if (cancelled || !containerRef.current) return;
-        playerRef.current = new YT.Player(containerRef.current, {
-          videoId,
-          host: 'https://www.youtube-nocookie.com',
-          width: '100%',
-          height: '100%',
-          playerVars: { autoplay: 1, rel: 0, modestbranding: 1, playsinline: 1 },
-          events: {
-            onReady: (e) => {
-              const iframe = e.target.getIframe && e.target.getIframe();
-              if (iframe) {
-                iframe.className = 'absolute inset-0 w-full h-full';
-              }
-            },
-            onError: (e) => {
-              window.alert(
-                `YouTube player error\ncode: ${e.data}\nvideoId: ${videoId}\norigin: ${window.location.origin}`
-              );
-            },
-          },
-        });
-      })
-      .catch((err) => {
-        window.alert(`YouTube API failed to load\n${err.name}: ${err.message}\norigin: ${window.location.origin}`);
-      });
-
-    return () => {
-      cancelled = true;
-      if (playerRef.current && playerRef.current.destroy) {
-        playerRef.current.destroy();
-        playerRef.current = null;
-      }
-    };
-  }, [videoId]);
 
   return (
     <div
@@ -120,7 +51,7 @@ export default function VideoPlayerModal({ videoId, exerciseName, onClose }) {
 
         {/* Video player - 16:9 aspect ratio */}
         <div className="relative w-full rounded-xl overflow-hidden" style={{ paddingBottom: '56.25%' }}>
-          <div ref={containerRef} className="absolute inset-0 w-full h-full" />
+          <YouTubeEmbed videoId={videoId} title={exerciseName} className="absolute inset-0 w-full h-full" autoplay={true} />
         </div>
       </div>
     </div>

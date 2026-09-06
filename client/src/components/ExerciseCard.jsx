@@ -17,6 +17,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { getExerciseVideoId, getExerciseSearchUrl } from '../utils/exerciseVideos.js';
 import { useExercises, getSubstitutesFromList } from '../hooks/useExercises.js';
 import VideoPlayerModal from './VideoPlayerModal.jsx';
+import YouTubeEmbed from './YouTubeEmbed.jsx';
 import PlateCalculatorModal from './PlateCalculatorModal.jsx';
 import CardioAccelerationCard from './CardioAccelerationCard.jsx';
 import { iosFocusRef } from '../utils/iosFocus.js';
@@ -429,7 +430,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
               {videoId.startsWith('http') || videoId.startsWith('/') ? (
                 <video src={videoId} className="w-full h-full object-contain" controls playsInline preload="metadata" controlsList="nodownload" />
               ) : (
-                <iframe src={`https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1&origin=${window.location.origin}`} className="w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen title={`${exercise.name} demo`} />
+                <YouTubeEmbed videoId={videoId} title={`${exercise.name} demo`} className="w-full h-full" autoplay={false} />
               )}
             </div>
           </div>

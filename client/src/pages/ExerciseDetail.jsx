@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { getExerciseBySlug, findMasterExerciseBySlug, buildMinimalExercise } from '../data/exercises/index.js';
 import { useExercises } from '../hooks/useExercises';
 import ExerciseDetailCard from '../components/ExerciseDetailCard.jsx';
+import YouTubeEmbed from '../components/YouTubeEmbed.jsx';
 
 const RED = '#ef4444';
 const MONO = "'JetBrains Mono', ui-monospace, monospace";
@@ -119,12 +120,11 @@ export default function ExerciseDetail() {
                   controlsList="nodownload"
                 />
               ) : (
-                <iframe
-                  src={`https://www.youtube-nocookie.com/embed/${exercise.videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
+                <YouTubeEmbed
+                  videoId={exercise.videoId}
                   title={`${exercise.name} form video`}
-                  style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
+                  className="w-full h-full"
+                  autoplay={true}
                 />
               )}
               <div style={{ position: 'absolute', top: 16, left: 16, right: 16, display: 'flex', justifyContent: 'space-between', zIndex: 10, pointerEvents: 'none' }}>

@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
+import YouTubeEmbed from '../components/YouTubeEmbed.jsx';
 
 const VideoPlayerContext = createContext(null);
 
@@ -77,7 +78,6 @@ export function MiniPlayer() {
 
   if (!video) return null;
 
-  const iframeSrc = `https://www.youtube-nocookie.com/embed/${video.videoId}?autoplay=1&playsinline=1&rel=0&modestbranding=1`;
   const youtubeUrl = `https://www.youtube.com/watch?v=${video.videoId}`;
 
   const dragging = touchStartY.current != null;
@@ -125,17 +125,19 @@ export function MiniPlayer() {
         onTouchEnd={handleTouchEnd}
         style={{ aspectRatio: '16 / 9' }}
       >
-        <iframe
+        <div
           key={video.videoId}
           className="absolute inset-0 w-full h-full"
-          src={iframeSrc}
-          title={video.title}
-          frameBorder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-          allowFullScreen
-          onLoad={() => setLoaded(true)}
           style={{ opacity: loaded ? 1 : 0, transition: 'opacity 0.3s' }}
-        />
+        >
+          <YouTubeEmbed
+            videoId={video.videoId}
+            title={video.title}
+            className="absolute inset-0 w-full h-full"
+            autoplay={true}
+            onReady={() => setLoaded(true)}
+          />
+        </div>
 
         {/* Loading spinner — covers the iframe until onLoad fires */}
         {!loaded && (
