@@ -67,7 +67,11 @@ export default function ExerciseDetail() {
     );
   }
 
-  const heroImg = exercise.videoId
+  // A videoId starting with "http"/"/" is a direct CDN-hosted file (e.g.
+  // replab-videos.onrender.com), not a YouTube ID — same convention as
+  // ExerciseCard.jsx. There's no YouTube thumbnail to fetch for those.
+  const isCdnVideo = !!exercise.videoId && (exercise.videoId.startsWith('http') || exercise.videoId.startsWith('/'));
+  const heroImg = exercise.videoId && !isCdnVideo
     ? `https://img.youtube.com/vi/${exercise.videoId}/maxresdefault.jpg`
     : null;
   const openVideo = () => {
@@ -103,13 +107,26 @@ export default function ExerciseDetail() {
                video to full-screen Safari. Close button (×) returns to
                the thumbnail view; back button still navigates out. */
             <>
-              <iframe
-                src={`https://www.youtube-nocookie.com/embed/${exercise.videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
-                title={`${exercise.name} form video`}
-                style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-              />
+              {isCdnVideo ? (
+                <video
+                  src={exercise.videoId}
+                  title={`${exercise.name} form video`}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  autoPlay
+                  controls
+                  playsInline
+                  preload="metadata"
+                  controlsList="nodownload"
+                />
+              ) : (
+                <iframe
+                  src={`https://www.youtube-nocookie.com/embed/${exercise.videoId}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
+                  title={`${exercise.name} form video`}
+                  style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              )}
               <div style={{ position: 'absolute', top: 16, left: 16, right: 16, display: 'flex', justifyContent: 'space-between', zIndex: 10, pointerEvents: 'none' }}>
                 <button onClick={() => navigate(-1)} aria-label="Back" style={{ ...iconCircle, pointerEvents: 'auto' }} className="active:scale-90 transition-transform">
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 19l-7-7 7-7" /></svg>
