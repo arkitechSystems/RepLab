@@ -112,7 +112,7 @@ export default function SplashScreen({ onDone, persistent }) {
             letterSpacing: '0.01em',
           }}
         >
-          Outlift yesterday, every day.
+          Outwork yesterday, every day.
         </div>
 
         {/* Animated rule — 200px track, red fill grows left→right and oscillates */}

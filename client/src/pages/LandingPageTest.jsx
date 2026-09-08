@@ -545,7 +545,7 @@ export default function LandingPageTest() {
             <div className="lp-hero-left">
               <div className="lp-eyebrow lp-fade lp-fade-1">Strength · Hypertrophy · Conditioning</div>
               <h1 className="lp-h1">
-                <span className="lp-word lp-d1"><i>Outlift</i></span><br />
+                <span className="lp-word lp-d1"><i>Outwork</i></span><br />
                 <span className="lp-word lp-d2"><i className="lp-red">Yesterday.</i></span><br />
                 <span className="lp-word lp-d3"><i className="lp-stroke">Every</i></span>{' '}
                 <span className="lp-word lp-d4"><i>Day.</i></span>
