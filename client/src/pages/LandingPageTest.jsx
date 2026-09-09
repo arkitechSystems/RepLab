@@ -582,8 +582,13 @@ export default function LandingPageTest() {
           hero adds 60px below the badges (.lp-hero bottom padding); a -39px top
           margin pulls the verse up so the space above is 60-39=21px, matched by
           21px below — both 65% smaller than the original 60px gap, still even. */}
-      <div style={{ textAlign: 'center', marginTop: '-39px', padding: '0 16px 21px', fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', letterSpacing: '0.25em', textTransform: 'uppercase', color: 'rgba(245,245,242,0.45)' }}>
-        Proverbs 27:17
+      <div style={{ textAlign: 'center', marginTop: '-39px', padding: '0 16px 21px', fontSize: '12px' }}>
+        <span style={{ fontStyle: 'italic', fontWeight: 300, color: '#ffffff' }}>
+          &ldquo;As iron sharpens iron, so one person sharpens another.&rdquo;
+        </span>{' '}
+        <span style={{ fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.25em', textTransform: 'uppercase', color: 'rgba(245,245,242,0.45)' }}>
+          Proverbs 27:17
+        </span>
       </div>
 
       {/* ============== MARQUEE ============== */}
