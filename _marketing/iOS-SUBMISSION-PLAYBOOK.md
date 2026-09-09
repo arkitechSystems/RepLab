@@ -67,9 +67,9 @@ All of these can be done from a browser. No Xcode needed. Knock them out so the 
        - Promotional text, Description, Keywords, Support URL, Marketing URL — from `app-store-metadata.md`
        - Screenshots: see step 1.4
        - App Review Information → Notes — from `app-review-notes.md` (full body)
-       - App Review Information → Sign-In Information → check "Sign-in required" → paste demo account from `app-review-notes.md` (`apple-reviewer@replab-fitness.com` / `Reviewer2026!`)
+       - App Review Information → Sign-In Information → check "Sign-in required" → paste demo account from `app-review-notes.md` (`apple.reviewer@arkitechsystems.com` / `ApplePassReview-2026!`)
        - Contact Information → your email + phone (App Review may call)
-       - Version 1.0.0
+       - Version — whatever `MARKETING_VERSION` currently is in `client/ios/App/App.xcodeproj/project.pbxproj` (no need to reset to 1.0.0 for a first submission — ship the current version as-is)
        - Copyright: `© 2026 Will Martin` (Individual enrollment — `app-store-metadata.md` "Copyright / Seller" section)
        - Routing App Coverage File: leave blank
        - Age Rating: walk the questionnaire using the answers in `app-store-metadata.md` § "Age rating questionnaire answers (target: 4+)"
@@ -119,9 +119,9 @@ All of these can be done from a browser. No Xcode needed. Knock them out so the 
 - **Owner:** Will (Windows)
 - **Time:** 5 min
 - **Steps:**
-  1. Make sure the credentials in `app-review-notes.md` (`apple-reviewer@replab-fitness.com` / `Reviewer2026!`) match what the seed script creates. Read the script header at `server/scripts/seed-apple-reviewer.js` to confirm.
-  2. From the repo root: `node --env-file=server/.env server/scripts/seed-apple-reviewer.js`
-  3. Verify by logging into https://replab-fitness.com with the demo credentials and confirming the seeded data renders (populated calendar, history, metrics)
+  1. Credentials are `apple.reviewer@arkitechsystems.com` / `ApplePassReview-2026!` — a hardcoded constant in `server/scripts/seed-apple-reviewer-account.js`, already run against production (user id=54). Re-run with `--force` only if the seeded data ever needs refreshing.
+  2. From `server/`: `node --env-file=.env scripts/seed-apple-reviewer-account.js --force`
+  3. Verify by logging into https://replab-fitness.com with the demo credentials and confirming the seeded data renders (populated calendar, history, metrics) — last verified 2026-09-08 via a direct production login request, works.
 - **Why:** Apple Review will use this account. If the login fails or the screen is empty, you'll get a Metadata Rejected within 24 hours and lose 2-3 days of review time.
 
 ### 1.8 Set the `APPLE_TEAM_ID` env var on Render
@@ -405,7 +405,7 @@ Install the TestFlight build on a real iPhone and run this list before hitting S
 
 ### 6.2 Reviewer-facing flows
 - [ ] **Sign-up flow** — create a new account on the device (NOT the demo account). Welcome email lands within 60s.
-- [ ] **Log in** — log out, log back in with the demo `apple-reviewer@replab-fitness.com` / `Reviewer2026!` credentials. Confirm the seeded calendar, history, metrics, and assigned program all render.
+- [ ] **Log in** — log out, log back in with the demo `apple.reviewer@arkitechsystems.com` / `ApplePassReview-2026!` credentials. Confirm the seeded calendar, history, metrics, and assigned program all render.
 - [ ] **Start a workout session** — tap into a scheduled session from the calendar. Loads without crashing.
 - [ ] **Log a set** — enter weight + reps, hit save, confirm the value persists when you back out and reopen.
 - [ ] **Complete a workout** — finish a session, confirm the summary screen renders + history reflects it.

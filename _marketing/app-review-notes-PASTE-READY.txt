@@ -1,6 +1,6 @@
 DEMO ACCOUNT
-Email: apple-reviewer@replab-fitness.com
-Password: Reviewer2026!
+Email: apple.reviewer@arkitechsystems.com
+Password: ApplePassReview-2026!
 
 The account is pre-seeded with: Free-tier user, the "Jeff Nippard's Push Pull Legs" program assigned to the next 7 days, 3-4 already-logged sessions in the past week so Progress and History are non-empty on first load, and body metrics pre-filled (70in / 175lb / 15% BF / bench 225 / squat 315 / deadlift 405).
 

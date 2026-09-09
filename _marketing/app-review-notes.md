@@ -9,10 +9,10 @@ Last refreshed: 2026-05-19 (submission day).
 
 ## Demo reviewer account
 
-- Email: `apple-reviewer@replab-fitness.com`
-- Password: `Reviewer2026!`
+- Email: `apple.reviewer@arkitechsystems.com`
+- Password: `ApplePassReview-2026!`
 
-The account is pre-seeded by `server/scripts/seed-apple-reviewer.js` and
+The account is pre-seeded by `server/scripts/seed-apple-reviewer-account.js` and
 is idempotent — running it again before submission refreshes the
 password, profile, schedule, and historical sessions in a single
 transaction.
@@ -172,12 +172,16 @@ token.)
 
 ## TODO for the developer before submitting
 
-- [ ] Re-run the seed script against the production database with the
-      exact reviewer password committed above:
-      `REVIEWER_PASSWORD='Reviewer2026!' node --env-file=server/.env server/scripts/seed-apple-reviewer.js`
-- [ ] Verify login at https://replab-fitness.com (web) with the
-      credentials above to confirm the seeded schedule and history are
-      visible.
+- [x] Seed script already run against production — account exists
+      (user id=54, created 2026-05-25). Current script is
+      `server/scripts/seed-apple-reviewer-account.js`; the password is a
+      hardcoded constant in the script (`REVIEWER_PASSWORD`), not an env
+      override — run it plainly with `node --env-file=.env
+      server/scripts/seed-apple-reviewer-account.js` (add `--force` to
+      re-seed against the existing row) if it ever needs refreshing.
+- [x] Verified 2026-09-08 via a direct login request against production
+      (`POST /auth/login`) — the credentials above return a valid token,
+      confirming the reviewer can actually log in.
 - [ ] Confirm the Delete Account flow works end-to-end against
       production (try with a throwaway user, not the reviewer
       account).
