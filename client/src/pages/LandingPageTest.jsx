@@ -583,9 +583,9 @@ export default function LandingPageTest() {
           margin pulls the verse up so the space above is 60-39=21px, matched by
           21px below — both 65% smaller than the original 60px gap, still even. */}
       <div style={{ textAlign: 'center', marginTop: '-39px', padding: '0 16px 21px', fontSize: '12px' }}>
-        <span style={{ fontStyle: 'italic', fontWeight: 300, color: '#ffffff' }}>
+        <span style={{ fontStyle: 'italic', fontWeight: 200, color: '#ffffff', marginRight: '12px' }}>
           &ldquo;As iron sharpens iron, so one person sharpens another.&rdquo;
-        </span>{' '}
+        </span>
         <span style={{ fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.25em', textTransform: 'uppercase', color: 'rgba(245,245,242,0.45)' }}>
           Proverbs 27:17
         </span>
