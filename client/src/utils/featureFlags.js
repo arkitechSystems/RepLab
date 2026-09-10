@@ -18,6 +18,12 @@ export const FF_TRAINERS = 'trainers';
 const STORAGE_PREFIX = 'rl_ff_';
 
 function readFlag(key) {
+  // Always unlocked under `vite dev` (npm run dev) — no reason to fight
+  // localStorage while actively building a gated feature. import.meta.env.DEV
+  // is baked in at build time, so `npm run build` (web prod, and what ships
+  // in the native app) is completely unaffected — reviewers/real users still
+  // see the locked "Coming Soon" state exactly as before.
+  if (import.meta.env.DEV) return true;
   try { return localStorage.getItem(STORAGE_PREFIX + key) === '1'; } catch { return false; }
 }
 
