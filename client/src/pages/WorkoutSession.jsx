@@ -1135,6 +1135,7 @@ export default function WorkoutSession() {
     prevFullScreenIdxRef.current = fullScreenIdx;
     if (fullScreenIdx === null) return;   // exit full-screen — nothing to do
     if (!wasOutside) return;              // intra-FS navigation (number → number) — leave the timer alone
+    if (tutorialMode) return;             // tutorial: keep the rest timer docked, don't auto-pop it out
     setRestFloating(true);
     // Bottom-left: x=16 left margin, y = viewport height - approx card
     // height (~170px includes the rounded card + outer red glow ring) -
