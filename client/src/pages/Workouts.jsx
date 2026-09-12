@@ -3928,6 +3928,38 @@ export default function Workouts() {
         </div>
 
         <div className="px-4 pb-4 space-y-3">
+          {/* Will's Beginner Program — teaser card, sits above Hypertrophy.
+              Static for now (no onClick / cursor-pointer): the body-part +
+              equipment filter builder this card will lead into hasn't been
+              built yet, so there's nowhere real to send a tap. Swap in a
+              real onClick once that destination exists. */}
+          <div
+            className="fade-slide-up"
+            style={{ position: 'relative', overflow: 'hidden', borderRadius: '4px' }}
+          >
+            {/* Shimmering blue accent bar at top — distinct from Hypertrophy's red */}
+            <div style={{
+              position: 'absolute', top: 0, left: 0, right: 0, height: '3px', zIndex: 3,
+              background: 'linear-gradient(90deg, rgba(56,189,248,0.15) 0%, rgba(56,189,248,1) 45%, rgba(255,255,255,0.8) 50%, rgba(56,189,248,1) 55%, rgba(56,189,248,0.15) 100%)',
+              backgroundSize: '200% 100%',
+              animation: 'heroAccentShimmer 8s linear infinite',
+            }} />
+            {/* Studio backdrop gradient */}
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, #1a1a1a 0%, #252525 30%, #2a2a2a 50%, #1a1a1a 80%, #0d0d0d 100%)', borderRadius: '4px' }} />
+            {/* Spotlight glow */}
+            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '500px', height: '500px', background: 'radial-gradient(circle, rgba(56,189,248,0.06) 0%, rgba(56,189,248,0.02) 40%, transparent 70%)', filter: 'blur(20px)', pointerEvents: 'none' }} />
+
+            <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '28px 32px 32px' }}>
+              <p style={{ fontSize: '10px', color: 'rgba(56,189,248,0.7)', letterSpacing: '0.3em', textTransform: 'uppercase', fontWeight: 600, marginBottom: '10px' }}>Coming Soon</p>
+              <h2 style={{ fontSize: '26px', fontWeight: 900, lineHeight: 1, letterSpacing: '-0.5px', marginBottom: '14px', textAlign: 'center', fontFamily: 'system-ui', color: 'white' }}>
+                WILL'S BEGINNER PROGRAM
+              </h2>
+              <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.45)', fontWeight: 300, textAlign: 'center', maxWidth: '320px', lineHeight: 1.5 }}>
+                An at-home starter program for anyone not quite ready for the gym yet — pick your body parts and whatever equipment you have (bodyweight, bands, dumbbells, a pull-up bar) and build your own workout.
+              </p>
+            </div>
+          </div>
+
           {/* ----- Original Will's Hypertrophy Program card — kept so you can swap back (flip `false` → `true` below, and flip the animated version off) ----- */}
           {false && (
           <div
