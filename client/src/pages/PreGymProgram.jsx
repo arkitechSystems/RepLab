@@ -16,7 +16,7 @@ const EQUIPMENT = [
   { id: 'dumbbell', title: 'Dumbbells',   sub: 'Any adjustable or fixed pair',  items: ['dumbbell'] },
 ];
 
-const BODY_PARTS = ['Chest', 'Back', 'Shoulders', 'Arms', 'Legs', 'Glutes', 'Core'];
+const BODY_PARTS = ['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Quads', 'Hamstrings', 'Calves', 'Glutes', 'Abs'];
 
 // Replace with a real fetch from the exercise library, filtered to at-home
 // movements. Shape: { equip, part } drive the two filters.
@@ -28,7 +28,7 @@ const EXERCISES = [
   { name: 'Band Front Raise',    muscles: 'Front Delts',        sets: 2, reps: 15,     level: 1, equip: 'band',     part: 'Shoulders', cue: 'Straight arms up to eye level, slow on the way down.' },
   { name: 'Pull-Up',             muscles: 'Back · Biceps',      sets: 3, reps: '5–8',  level: 3, equip: 'pullup',   part: 'Back',      cue: 'Chest to the bar, control the way down.' },
   { name: 'Dumbbell Floor Press',muscles: 'Chest · Triceps',    sets: 3, reps: 10,     level: 2, equip: 'dumbbell', part: 'Chest',     cue: 'Let the triceps touch down, then drive back up.' },
-  { name: 'Goblet Squat',        muscles: 'Quads · Glutes',     sets: 3, reps: 10,     level: 2, equip: 'dumbbell', part: 'Legs',      cue: 'Chest tall, knees track the toes, sit between the hips.' },
+  { name: 'Goblet Squat',        muscles: 'Quads · Glutes',     sets: 3, reps: 10,     level: 2, equip: 'dumbbell', part: 'Quads',     cue: 'Chest tall, knees track the toes, sit between the hips.' },
 ];
 
 // Equipment glyphs — stroked line icons in the app ink.
@@ -128,8 +128,8 @@ function ExerciseRow({ e }) {
 
 export default function PreGymProgram() {
   const navigate = useNavigate();
-  const [equip, setEquip] = useState(['band']);          // selected equipment card ids
-  const [parts, setParts] = useState(['Chest', 'Shoulders']); // selected body parts
+  const [equip, setEquip] = useState([]);          // selected equipment card ids
+  const [parts, setParts] = useState([]); // selected body parts
 
   const toggle = (list, setList, id) =>
     setList(list.includes(id) ? list.filter(x => x !== id) : [...list, id]);

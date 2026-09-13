@@ -317,7 +317,7 @@ export default function App() {
         <Route path="/history/:id" element={<SessionDetail />} />
         <Route path="/summary/:id" element={<SessionSummary />} />
         <Route path="/utilities" element={<Utilities />} />
-        <Route path="/pre-gym" element={<PreGymProgram />} />
+        <Route path="/pre-gym" element={<FeaturedGate><PreGymProgram /></FeaturedGate>} />
         <Route path="/community" element={<Community />} />
         <Route path="/plate-calculator" element={<PlateCalculator />} />
         <Route path="/progress" element={<Progress />} />

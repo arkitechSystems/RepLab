@@ -6305,9 +6305,6 @@ export default function Workouts() {
                 zIndex: 1,
               }} />
               <div style={{ position: 'relative', padding: '24px', zIndex: 1 }}>
-                <p className="text-[10px] uppercase font-light mb-2" style={{ color: 'rgba(239,68,68,0.7)', letterSpacing: '0.3em' }}>
-                  Coming Soon
-                </p>
                 <h3
                   className="text-[28px] font-black text-white leading-[0.9] tracking-tight"
                   style={{ fontFamily: 'system-ui', textShadow: '0 2px 20px rgba(0,0,0,0.5)' }}
