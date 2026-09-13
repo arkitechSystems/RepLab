@@ -7,6 +7,14 @@
 // Run with:
 //   node --env-file=.env server/scripts/seed-apple-reviewer-account.js
 //   node --env-file=.env server/scripts/seed-apple-reviewer-account.js --force
+//   node --env-file=.env server/scripts/seed-apple-reviewer-account.js --force --start=2026-09-14
+//
+// --start=YYYY-MM-DD anchors the first day of the 7-day forward schedule to
+// a specific date instead of the real current date (useful when seeding
+// ahead of a submission so the reviewer's calendar reads as current on the
+// day they actually review). Completed-session history and PR dates always
+// stay anchored to the real "now" — those represent days already in the
+// past, independent of where the upcoming schedule starts.
 //
 // The --force flag DELETES the existing reviewer user (cascade-cleaning all
 // of their sessions, schedule, PBs, custom workouts) and recreates them from
@@ -33,8 +41,23 @@ const REVIEWER_TIMEZONE   = 'America/New_York';
 const BCRYPT_SALT_ROUNDS  = 10;
 // -----------------------------------------------------------------
 
-const args = new Set(process.argv.slice(2));
+const argv = process.argv.slice(2);
+const args = new Set(argv);
 const FORCE = args.has('--force');
+
+// Optional --start=YYYY-MM-DD overrides the first day of the forward
+// schedule (seedSchedule below). Defaults to the real current date.
+// Completed-session history and PR dates stay anchored to the real
+// "now" regardless — those represent days that have already happened,
+// independent of where the upcoming schedule starts.
+const startArg = argv.find((a) => a.startsWith('--start='));
+const SCHEDULE_START_DATE = startArg
+  ? new Date(`${startArg.slice('--start='.length)}T00:00:00.000Z`)
+  : new Date();
+if (Number.isNaN(SCHEDULE_START_DATE.getTime())) {
+  console.error(`Invalid --start date: "${startArg}". Expected YYYY-MM-DD.`);
+  process.exit(1);
+}
 
 // Format a Date as YYYY-MM-DD (UTC). sessions.date is TEXT in this shape.
 function ymd(d) {
@@ -246,7 +269,7 @@ async function seedSchedule(client, userId, programs) {
   // 0 = Sunday in JS getUTCDay.
   // Pull non-rest templates from each program in round-robin order.
   const workoutDows = new Set([1, 3, 5, 6]);
-  const today = new Date();
+  const today = new Date(SCHEDULE_START_DATE);
   today.setUTCHours(0, 0, 0, 0);
 
   // Flatten workout templates from all candidate programs, round-robin
