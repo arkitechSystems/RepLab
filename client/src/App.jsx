@@ -59,6 +59,7 @@ const SessionDetail = lazyWithRetry(() => import('./pages/SessionDetail'));
 const SessionSummary = lazyWithRetry(() => import('./pages/SessionSummary'));
 const Profile = lazyWithRetry(() => import('./pages/Profile'));
 const Utilities = lazyWithRetry(() => import('./pages/Utilities'));
+const PreGymProgram = lazyWithRetry(() => import('./pages/PreGymProgram'));
 const Welcome = lazyWithRetry(() => import('./pages/Welcome'));
 const ForgotPassword = lazyWithRetry(() => import('./pages/ForgotPassword'));
 const FreeTrialOffer = lazyWithRetry(() => import('./pages/FreeTrialOffer'));
@@ -316,6 +317,7 @@ export default function App() {
         <Route path="/history/:id" element={<SessionDetail />} />
         <Route path="/summary/:id" element={<SessionSummary />} />
         <Route path="/utilities" element={<Utilities />} />
+        <Route path="/pre-gym" element={<PreGymProgram />} />
         <Route path="/community" element={<Community />} />
         <Route path="/plate-calculator" element={<PlateCalculator />} />
         <Route path="/progress" element={<Progress />} />

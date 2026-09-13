@@ -3928,14 +3928,11 @@ export default function Workouts() {
         </div>
 
         <div className="px-4 pb-4 space-y-3">
-          {/* Will's Beginner Program — teaser card, sits above Hypertrophy.
-              Static for now (no onClick / cursor-pointer): the body-part +
-              equipment filter builder this card will lead into hasn't been
-              built yet, so there's nowhere real to send a tap. Swap in a
-              real onClick once that destination exists. */}
+          {/* Will's Beginner Program — teaser card, sits above Hypertrophy. */}
           <div
+            onClick={() => navigate('/pre-gym')}
             className="fade-slide-up"
-            style={{ position: 'relative', overflow: 'hidden', borderRadius: '4px' }}
+            style={{ position: 'relative', overflow: 'hidden', borderRadius: '4px', cursor: 'pointer' }}
           >
             {/* Shimmering blue accent bar at top — distinct from Hypertrophy's red */}
             <div style={{
@@ -3950,7 +3947,7 @@ export default function Workouts() {
             <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '500px', height: '500px', background: 'radial-gradient(circle, rgba(56,189,248,0.06) 0%, rgba(56,189,248,0.02) 40%, transparent 70%)', filter: 'blur(20px)', pointerEvents: 'none' }} />
 
             <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '28px 32px 32px' }}>
-              <p style={{ fontSize: '10px', color: 'rgba(56,189,248,0.7)', letterSpacing: '0.3em', textTransform: 'uppercase', fontWeight: 600, marginBottom: '10px' }}>Coming Soon</p>
+              <p style={{ fontSize: '10px', color: 'rgba(56,189,248,0.7)', letterSpacing: '0.3em', textTransform: 'uppercase', fontWeight: 600, marginBottom: '10px' }}>New Program</p>
               <h2 style={{ fontSize: '26px', fontWeight: 900, lineHeight: 1, letterSpacing: '-0.5px', marginBottom: '14px', textAlign: 'center', fontFamily: 'system-ui', color: 'white' }}>
                 WILL'S BEGINNER PROGRAM
               </h2>
