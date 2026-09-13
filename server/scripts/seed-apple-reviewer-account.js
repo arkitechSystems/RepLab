@@ -23,7 +23,7 @@ import pool from '../dbPool.js';
 import bcrypt from 'bcryptjs';
 
 // ---------- HARDCODED CREDENTIALS (edit before running) ----------
-const REVIEWER_EMAIL      = 'apple.reviewer@arkitechsystems.com';
+const REVIEWER_EMAIL      = 'apple-reviewer@replab-fitness.com';
 const REVIEWER_PASSWORD   = 'ApplePassReview-2026!';
 const REVIEWER_FIRST_NAME = 'Apple';
 const REVIEWER_LAST_NAME  = 'Reviewer';

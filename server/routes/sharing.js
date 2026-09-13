@@ -36,7 +36,7 @@ router.get('/users', authMiddleware, async (req, res) => {
        FROM users
        WHERE id != $1
          AND (email NOT LIKE '%@willfit.demo' OR email IS NULL)
-         AND (email IS NULL OR LOWER(email) != LOWER('apple.reviewer@arkitechsystems.com'))
+         AND (email IS NULL OR LOWER(email) != LOWER('apple-reviewer@replab-fitness.com'))
          AND (
               username ILIKE $2
            OR email ILIKE $2

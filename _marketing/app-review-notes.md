@@ -9,7 +9,7 @@ Last refreshed: 2026-05-19 (submission day).
 
 ## Demo reviewer account
 
-- Email: `apple.reviewer@arkitechsystems.com`
+- Email: `apple-reviewer@replab-fitness.com`
 - Password: `ApplePassReview-2026!`
 
 The account is pre-seeded by `server/scripts/seed-apple-reviewer-account.js` and
@@ -179,9 +179,14 @@ token.)
       override — run it plainly with `node --env-file=.env
       server/scripts/seed-apple-reviewer-account.js` (add `--force` to
       re-seed against the existing row) if it ever needs refreshing.
-- [x] Verified 2026-09-08 via a direct login request against production
+- [x] Verified 2026-09-13 via a direct login request against production
       (`POST /auth/login`) — the credentials above return a valid token,
-      confirming the reviewer can actually log in.
+      confirming the reviewer can actually log in. Note: the account's
+      email was changed 2026-09-13 to match what was already saved in
+      App Store Connect (rejection #2, 2026-09-11, tried this exact
+      email with the already-correct password) rather than the other
+      way around — App Store Connect's Sign-In Information field should
+      NOT need to change again.
 - [ ] Confirm the Delete Account flow works end-to-end against
       production (try with a throwaway user, not the reviewer
       account).
