@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { startOfWeek, startOfMonth, endOfMonth, addDays, format, isToday, isSameWeek, isSameMonth, isSameDay, isBefore, parseISO } from 'date-fns';
 import { api } from '../api';
-import { useAuth } from '../context/AuthContext';
 import { getWorkoutColor } from '../utils/workoutColors';
 import StickyHeader from '../components/StickyHeader';
 import LoadingSpinnerOverlay from '../components/LoadingSpinnerOverlay';
@@ -21,8 +20,6 @@ const WEEK_ACCENT_COLORS = ['#ef4444', '#3b82f6', '#22c55e', '#a855f7', '#f97316
 const MONTHLY_ALL_RED = true;
 
 export default function Calendar() {
-  const { user } = useAuth();
-  const isPremium = user?.plan && user.plan !== 'Free';
   const [schedule, setSchedule] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [programs, setPrograms] = useState([]);
@@ -1399,29 +1396,17 @@ export default function Calendar() {
                       <span className="text-sm font-medium text-white">Start Empty Workout</span>
                     </button>
                     {hasWorkout && (
-                      isPremium ? (
-                        <button
-                          onClick={() => startCopy(currentWorkout, editingDay)}
-                          className="w-full text-left rounded-xl px-4 py-3 flex items-center gap-3 bg-white/5 active:bg-white/10 active:scale-[0.98] transition-all"
-                        >
-                          <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
-                            <svg className="w-4 h-4 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75" />
-                            </svg>
-                          </div>
-                          <span className="text-sm font-medium text-wf-gray-300">Copy Workout</span>
-                        </button>
-                      ) : (
-                        <div className="w-full text-left rounded-xl px-4 py-3 flex items-center gap-3 bg-white/5 opacity-50 cursor-not-allowed">
-                          <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
-                            <svg className="w-4 h-4 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75" />
-                            </svg>
-                          </div>
-                          <span className="text-sm font-medium text-wf-gray-300">Copy Workout</span>
-                          <span className="ml-auto px-2 py-0.5 rounded-full bg-yellow-500/20 border border-yellow-500/40 text-[10px] font-bold text-yellow-400 uppercase tracking-wider">Pro</span>
+                      <button
+                        onClick={() => startCopy(currentWorkout, editingDay)}
+                        className="w-full text-left rounded-xl px-4 py-3 flex items-center gap-3 bg-white/5 active:bg-white/10 active:scale-[0.98] transition-all"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+                          <svg className="w-4 h-4 text-wf-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75" />
+                          </svg>
                         </div>
-                      )
+                        <span className="text-sm font-medium text-wf-gray-300">Copy Workout</span>
+                      </button>
                     )}
                     {(hasWorkout || isCurrentRest) && (
                       <button

@@ -3,14 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import StickyHeader from '../components/StickyHeader';
 import { beepCountdown, beepPhaseChange, beepComplete, initAudio } from '../utils/sounds';
-import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { MUSCLE_GROUPS, classifyExercise } from '../utils/muscleGroup';
 
 function PRsSection() {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const isPremium = user?.plan && user.plan !== 'Free';
   const [pbs, setPbs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
@@ -64,8 +61,8 @@ function PRsSection() {
 
   const hasAny = Object.keys(grouped).length > 0;
 
-  // Filter by search (Pro only)
-  const q = isPremium ? prSearch.toLowerCase().trim() : '';
+  // Filter by search
+  const q = prSearch.toLowerCase().trim();
   const filteredGroups = MUSCLE_GROUPS.filter((g) => {
     if (!grouped[g]) return false;
     if (!q) return true;
