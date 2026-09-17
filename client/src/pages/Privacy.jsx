@@ -46,7 +46,7 @@ export default function Privacy() {
                 <li><strong className="text-white">Profile Information:</strong> Profile photo (optional) and display preferences.</li>
                 <li><strong className="text-white">Approximate Location:</strong> ZIP code you enter during signup and city/state derived from your IP address at signup and login (used for analytics and abuse prevention; never precise GPS coordinates).</li>
                 <li><strong className="text-white">Usage Data:</strong> Page views, feature interactions, session-replay recordings (see Section 8), error reports, device and browser identifiers, and login history. Used to improve the service and diagnose issues.</li>
-                <li><strong className="text-white">Subscription Data:</strong> Stripe customer and subscription identifiers if you purchase a paid plan. We never see or store full payment card details.</li>
+                <li><strong className="text-white">Subscription Data:</strong> The App is currently free, with no paid plans. If paid subscriptions are introduced in the future, this section will be updated to describe the Stripe customer and subscription identifiers we'd process — we would never see or store full payment card details.</li>
               </ul>
             </div>
           </div>
@@ -61,7 +61,6 @@ export default function Privacy() {
                 <li>Provide, maintain, and improve the App's functionality</li>
                 <li>Track your workout progress and personal records</li>
                 <li>Sync your data across devices</li>
-                <li>Process subscription payments</li>
                 <li>Send important service-related communications</li>
                 <li>Provide customer support</li>
               </ul>
@@ -87,7 +86,6 @@ export default function Privacy() {
                 <li><strong className="text-white">Hosting and database:</strong> Render (US) hosts our web service and PostgreSQL database.</li>
                 <li><strong className="text-white">Product analytics:</strong> PostHog (US Cloud) receives identified usage events and session-replay data tied to your user ID. See Section 8.</li>
                 <li><strong className="text-white">Error monitoring:</strong> Sentry (US) receives anonymized error reports from the web and mobile apps. We disable Sentry's default PII collection (`sendDefaultPii: false`); reports include URL, browser/OS, and stack traces only.</li>
-                <li><strong className="text-white">Payments:</strong> Stripe processes paid subscriptions. Stripe receives your email and payment method directly; we receive only the customer and subscription identifiers needed for billing.</li>
                 <li><strong className="text-white">Transactional email:</strong> Resend (US) delivers account email such as password resets and order confirmations.</li>
                 <li><strong className="text-white">Push notifications (mobile):</strong> Firebase Cloud Messaging (Google, US) routes push notifications to registered devices. We send the FCM device token plus the notification payload — no other personal data.</li>
                 <li><strong className="text-white">AI workout generation:</strong> Anthropic Claude API (US) processes your training goals and equipment list to generate workout suggestions. We send the prompt you provide; Anthropic does not retain it for training per their commercial terms.</li>

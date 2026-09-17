@@ -65,7 +65,7 @@ export default function Terms() {
           <div className="relative p-6">
             <h2 className="text-[11px] uppercase font-semibold text-white mb-3" style={{ letterSpacing: '0.25em' }}>4. Subscriptions and Payments</h2>
             <div className="border-t border-white/5 pt-3">
-              <p>Some features of the App require a paid subscription. By purchasing a subscription, you agree to pay the applicable fees. Subscriptions automatically renew unless cancelled before the end of the current billing period. Refunds are handled in accordance with the policies of the platform through which you purchased the subscription.</p>
+              <p>The App is currently free to use, with no paid subscriptions or purchases required to access any feature. If we introduce paid subscriptions in the future, these Terms will be updated accordingly, and any such subscriptions would be disclosed clearly before purchase, would automatically renew unless cancelled before the end of the current billing period, and would be subject to the refund policies of the platform through which they were purchased.</p>
             </div>
           </div>
         </section>

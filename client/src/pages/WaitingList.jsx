@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../context/AuthContext';
 
-// Pre-launch interest capture for REPLAB Pro. Two paths to join:
+// Pre-launch interest capture for upcoming features. Two paths to join:
 //   A. Has an account → "Log In to Join" → /login?redirect=waitlist → comes
 //      back here with ?auto=1 and we auto-POST /waitlist using the JWT.
 //   B. No account → enter email → POST /waitlist with { email }.
@@ -15,8 +15,8 @@ import { useAuth } from '../context/AuthContext';
 // Visual treatment mirrors the marketing landing (LandingPageTest.jsx):
 // black bg with subtle red glow, REPLAB wordmark + back arrow nav, Anton
 // uppercase headline, 160deg-gradient Nike panels with 2px corners + red
-// top accent stripe, .btn-liquid primary CTA matching the landing's Pro
-// section button.
+// top accent stripe, .btn-liquid primary CTA matching the landing's
+// upcoming-features section button.
 export default function WaitingList() {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
@@ -108,7 +108,7 @@ export default function WaitingList() {
                 className="text-[10px] uppercase font-light mb-3"
                 style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.4em' }}
               >
-                REPLAB Pro
+                Coming Soon
               </p>
               <h1
                 className="text-[44px] md:text-[56px] font-black tracking-tight uppercase mb-4"
@@ -118,8 +118,8 @@ export default function WaitingList() {
               </h1>
               <p className="text-white/55 text-[14px] leading-relaxed mb-8">
                 {state === 'success-loggedin'
-                  ? `We'll email ${user?.email || 'you'} the moment Pro opens up.`
-                  : `We'll email ${email.trim()} the moment Pro opens up. No account created — you can sign up later.`}
+                  ? `We'll email ${user?.email || 'you'} the moment new features launch.`
+                  : `We'll email ${email.trim()} the moment new features launch. No account created — you can sign up later.`}
               </p>
               <button
                 onClick={() => navigate('/')}
@@ -189,7 +189,7 @@ export default function WaitingList() {
             className="text-[10px] uppercase font-light mb-4"
             style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.4em' }}
           >
-            REPLAB Pro
+            Coming Soon
           </p>
           <h1
             className="font-black uppercase tracking-tight"
@@ -282,7 +282,7 @@ export default function WaitingList() {
                 Just Take My Email
               </h2>
               <p className="text-[13px] text-white/55 leading-relaxed mb-4">
-                We'll only email you about Pro. Sign up later when it's ready.
+                We'll only email you when new features launch. Sign up later when it's ready.
               </p>
               <label
                 htmlFor="waitlist-email"

@@ -39,7 +39,7 @@ async function optionalAuth(req, _res, next) {
   next();
 }
 
-// POST /waitlist — join the REPLAB Pro waiting list.
+// POST /waitlist — join the waiting list for upcoming features.
 //
 // Behavior:
 //  - If a valid JWT is presented, we use the user's id + email from the

@@ -1055,7 +1055,6 @@ export default function Workouts() {
   const showToast = useToast();
   const confirmDialog = useConfirm();
   const { tutorial, startTutorial, completeTutorialAction, skipTutorial } = useTutorial();
-  const isPremium = user?.plan && user.plan !== 'Free';
 
   // Pre-launch gates — see client/src/utils/featureFlags.js for the unlock
   // instructions. Apple App Review's demo account never has these flags,
@@ -1064,7 +1063,6 @@ export default function Workouts() {
   const featuredUnlocked = useFeatureFlag(FF_FEATURED);
   const challengesUnlocked = useFeatureFlag(FF_CHALLENGES);
   const trainersUnlocked = useFeatureFlag(FF_TRAINERS);
-  const [showPremiumGate, setShowPremiumGate] = useState(false);
   const [selectedChallenge, setSelectedChallenge] = useState(null);
   const [challengeTab, setChallengeTab] = useState('active');
   const [challengeAccordion, setChallengeAccordion] = useState(null);

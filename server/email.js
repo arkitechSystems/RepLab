@@ -205,10 +205,10 @@ export async function sendWelcomeEmail(email) {
   }
 }
 
-// Short thank-you sent when a user joins the REPLAB Pro waiting list.
-// Style mirrors the marketing landing: black bg with subtle red glow, big
-// REPLAB wordmark, eyebrow + heading + lede, ArkiTech footer. Kept short
-// on purpose -- the email exists to confirm signup, nothing more.
+// Short thank-you sent when a user joins the waiting list for upcoming
+// features. Style mirrors the marketing landing: black bg with subtle red
+// glow, big REPLAB wordmark, eyebrow + heading + lede, ArkiTech footer.
+// Kept short on purpose -- the email exists to confirm signup, nothing more.
 export async function sendWaitlistThankYouEmail(email) {
   if (!process.env.RESEND_API_KEY) {
     console.log('RESEND_API_KEY not set, skipping waitlist thank-you email');
@@ -216,7 +216,7 @@ export async function sendWaitlistThankYouEmail(email) {
   }
 
   const resend = new Resend(process.env.RESEND_API_KEY);
-  const subject = "You're on the REPLAB Pro waiting list";
+  const subject = "You're on the REPLAB waiting list";
   const html = `
     <div style="background: #000; margin: 0; padding: 0;">
       <div style="background-color: #0a0a0a; background-image: radial-gradient(ellipse at 50% 0%, rgba(239,68,68,0.22) 0%, transparent 55%), linear-gradient(180deg, #0a0a0a 0%, #050505 50%, #000 100%); padding: 48px 16px;">
@@ -232,7 +232,7 @@ export async function sendWaitlistThankYouEmail(email) {
           <p style="color: rgba(239,68,68,0.9); text-transform: uppercase; letter-spacing: 0.4em; font-size: 10px; font-weight: 700; margin: 0 0 12px 0; text-align: center;">Waiting List</p>
           <h2 style="color: #fff; font-size: 36px; font-weight: 900; line-height: 1; margin: 0 0 18px 0; letter-spacing: -0.02em; text-transform: uppercase; text-align: center;">You're In.</h2>
           <p style="color: rgba(255,255,255,0.65); font-size: 15px; line-height: 1.7; margin: 0 0 36px 0; text-align: center;">
-            Thank you for joining the waiting list. We'll let you know when Pro is released.
+            Thank you for joining the waiting list. We'll let you know when new features launch.
           </p>
 
           <!-- Footer -->

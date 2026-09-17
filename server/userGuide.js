@@ -260,7 +260,7 @@ export function userGuidePage() {
       <li>Tap an exercise to see your best reps at each weight.</li>
       <li>Each PR shows the <strong>date it was set</strong> &mdash; tap the date to view that workout session in your history.</li>
     </ul>
-    <p>Pro users can use the <strong>search bar</strong> at the top to quickly find a specific exercise's PRs.</p>
+    <p>Use the <strong>search bar</strong> at the top to quickly find a specific exercise's PRs.</p>
 
     <h3 id="one-rep-max">One Rep Max Estimator</h3>
     <p>The 1RM Estimator calculates your estimated one-rep max based on the weight and reps you enter.</p>
@@ -311,7 +311,6 @@ export function userGuidePage() {
       <li><strong>Body metrics</strong> &mdash; track your height, weight, body fat, and max lifts.</li>
       <li><strong>Workout history</strong> &mdash; scroll through your recent sessions with dates and exercise summaries.</li>
       <li><strong>Change password</strong> &mdash; update your password anytime.</li>
-      <li><strong>Plan</strong> &mdash; view your current plan (Free, Pro, or Elite).</li>
     </ul>
 
     <h3 id="feedback">Sending Feedback</h3>

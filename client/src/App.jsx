@@ -62,7 +62,6 @@ const Utilities = lazyWithRetry(() => import('./pages/Utilities'));
 const PreGymProgram = lazyWithRetry(() => import('./pages/PreGymProgram'));
 const Welcome = lazyWithRetry(() => import('./pages/Welcome'));
 const ForgotPassword = lazyWithRetry(() => import('./pages/ForgotPassword'));
-const FreeTrialOffer = lazyWithRetry(() => import('./pages/FreeTrialOffer'));
 const Upgrade = lazyWithRetry(() => import('./pages/Upgrade'));
 const ResetPassword = lazyWithRetry(() => import('./pages/ResetPassword'));
 const AIWorkoutGenerator = lazyWithRetry(() => import('./pages/AIWorkoutGenerator'));
@@ -271,7 +270,10 @@ export default function App() {
       <Route path="/account-deleted" element={<AccountDeleted />} />
       <Route path="/account-deletion-failed" element={<AccountDeletionFailed />} />
       <Route path="/welcome" element={<ProtectedRoute><Welcome /></ProtectedRoute>} />
-      <Route path="/free-trial" element={<ProtectedRoute><FreeTrialOffer /></ProtectedRoute>} />
+      {/* No paid plans exist right now — /free-trial (once a Pro/Elite
+          trial signup page) is retired; redirect any stale link/bookmark
+          straight into the app instead of 404ing. */}
+      <Route path="/free-trial" element={<ProtectedRoute><Navigate to="/app" replace /></ProtectedRoute>} />
 
       {/* Root URL — see RootRoute. The web always renders the marketing
           LandingPageTest (regardless of auth); Capacitor (native) users skip

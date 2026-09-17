@@ -902,11 +902,11 @@ export default function LandingPageTest() {
           <div className="lp-pro">
             <div>
               <div className="lp-pro-tag">
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#e10600' }} /> REPLAB PRO
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#e10600' }} /> COMING SOON
               </div>
               <h2>Smarter Programming.<br /><span className="lp-red">On Demand.</span></h2>
               <p className="lp-pro-lede">
-                Pro unlocks AI workout generation that adapts to your equipment and recovery, advanced overload analytics, trainer hand-off, and priority feature drops. First 1,000 lifters get founder pricing for life.
+                We're building AI workout generation that adapts to your equipment and recovery, advanced overload analytics, and trainer hand-off — all coming to REPLAB, all free.
               </p>
               <div style={{ marginTop: 32, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
                 {/* Waiting-list CTA — routes to /waiting-list regardless of
@@ -931,7 +931,6 @@ export default function LandingPageTest() {
                 <li><span className="lp-pro-check">✓</span> Advanced Overload &amp; Fatigue Charts</li>
                 <li><span className="lp-pro-check">✓</span> Trainer Hand-off &amp; Client Programs</li>
                 <li><span className="lp-pro-check">✓</span> Custom Periodization Templates</li>
-                <li><span className="lp-pro-check">✓</span> Founder Pricing · Locked Forever</li>
               </ul>
             </div>
           </div>
