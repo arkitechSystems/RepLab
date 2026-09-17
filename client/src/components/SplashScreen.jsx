@@ -39,18 +39,18 @@ export default function SplashScreen({ onDone, persistent }) {
     return () => clearInterval(t);
   }, [phrases.length]);
 
-  // Footer telemetry. NET is live so the chrome reflects real connectivity.
-  // SYNC + WK/D are derived once on mount — they're decorative, not data.
-  const online = typeof navigator !== 'undefined' ? navigator.onLine : true;
-  const { week, day } = useMemo(() => {
-    const now = new Date();
-    const start = new Date(now.getFullYear(), 0, 1);
-    const diffDays = Math.floor((now - start) / 86400000);
-    const wk = Math.ceil((diffDays + start.getDay() + 1) / 7);
-    // ISO weekday: Mon=1 … Sun=7
-    const d = ((now.getDay() + 6) % 7) + 1;
-    return { week: wk, day: d };
-  }, []);
+  // Footer — copyright line, typed out character by character (terminal-
+  // style) with a blinking block cursor. Runs once on mount; the cursor
+  // keeps blinking at the end even after typing finishes, matching a real
+  // terminal's idle cursor. Fits well within the 2.2s visible-time budget
+  // above at ~45ms/char (~1s for the full string).
+  const COPYRIGHT_TEXT = '© 2026 ArkiTechSystems';
+  const [typedLen, setTypedLen] = useState(0);
+  useEffect(() => {
+    if (typedLen >= COPYRIGHT_TEXT.length) return;
+    const t = setTimeout(() => setTypedLen((n) => n + 1), 45);
+    return () => clearTimeout(t);
+  }, [typedLen]);
 
   return (
     <div
@@ -189,7 +189,7 @@ export default function SplashScreen({ onDone, persistent }) {
         </div>
       </div>
 
-      {/* Footer telemetry — 3-column mono row with a hairline above */}
+      {/* Footer — centered, typed-out copyright line with a hairline above */}
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 22px 28px' }}>
         <div
           style={{
@@ -197,15 +197,13 @@ export default function SplashScreen({ onDone, persistent }) {
             fontSize: 8.5,
             letterSpacing: '0.28em',
             color: 'rgba(255,255,255,0.28)',
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr 1fr',
+            textAlign: 'center',
             borderTop: '1px solid rgba(255,255,255,0.06)',
             paddingTop: 14,
           }}
         >
-          <span>NET ● {online ? 'ONLINE' : 'OFFLINE'}</span>
-          <span style={{ textAlign: 'center' }}>SYNC</span>
-          <span style={{ textAlign: 'right' }}>WK {week} · D{day}</span>
+          <span>{COPYRIGHT_TEXT.slice(0, typedLen)}</span>
+          <span className="splash-cursor-block" aria-hidden="true" />
         </div>
       </div>
     </div>
