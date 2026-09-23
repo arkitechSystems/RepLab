@@ -111,7 +111,9 @@ export default function ExerciseDetail() {
               <video
                 src={exercise.videoId}
                 title={`${exercise.name} form video`}
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                width="100%"
+                height="100%"
+                style={{ width: '100%', height: '100%', maxWidth: '100%', objectFit: 'cover', display: 'block' }}
                 autoPlay
                 controls
                 playsInline

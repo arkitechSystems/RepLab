@@ -3,10 +3,10 @@
 // asset pipeline. Visually mirrors Apple's + Google's standard marketing
 // badges (black background, white border, brand glyph, two-line label).
 //
-// Both badges are disabled pre-launch — they render as the canonical visual
-// but are non-interactive (cursor-not-allowed + title tooltip). Once the
-// apps are live in their stores, flip the disabled prop off and wire each
-// to its store URL via the href prop.
+// Both badges default to disabled pre-launch — they render as the canonical
+// visual but are non-interactive (cursor-not-allowed + title tooltip). Once
+// an app is live in its store, pass its href and flip that badge's disabled
+// prop off individually (appStoreDisabled / googlePlayDisabled).
 
 function AppStoreBadge({ href, disabled = true }) {
   const Tag = href && !disabled ? 'a' : 'button';
@@ -92,11 +92,18 @@ function GooglePlayBadge({ href, disabled = true }) {
   );
 }
 
-export default function AppStoreBadges({ appStoreHref, googlePlayHref, disabled = true, className = '' }) {
+export default function AppStoreBadges({
+  appStoreHref,
+  googlePlayHref,
+  disabled = true,
+  appStoreDisabled = disabled,
+  googlePlayDisabled = disabled,
+  className = '',
+}) {
   return (
     <div className={`flex flex-row gap-3 justify-center items-center ${className}`}>
-      <AppStoreBadge href={appStoreHref} disabled={disabled} />
-      <GooglePlayBadge href={googlePlayHref} disabled={disabled} />
+      <AppStoreBadge href={appStoreHref} disabled={appStoreDisabled} />
+      <GooglePlayBadge href={googlePlayHref} disabled={googlePlayDisabled} />
     </div>
   );
 }

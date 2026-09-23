@@ -8,11 +8,12 @@ import { useAuth } from '../context/AuthContext';
 // Auth-aware: signed-in visitors see "Go to Web App" CTAs that route to
 // /app; signed-out visitors see "Log In" CTAs that route to /login. The
 // "Join the Waiting List" CTA always navigates to /waiting-list.
-// App Store + Google Play badges are intentionally non-clickable (the
-// shared `<AppStoreBadges>` component renders them as `disabled` buttons
-// that preserve their hover/active visual states). The bottom-of-page
+// App Store badge links to the live RepLab Fitness listing (approved
+// 2026-09-22); Google Play badge stays non-clickable via the shared
+// `<AppStoreBadges>` component until Android ships. The bottom-of-page
 // store badges reuse the SAME component as the hero so the visual
 // treatment cannot drift.
+const APP_STORE_URL = 'https://apps.apple.com/app/replab-fitness/id6772774807';
 //
 // The dense CSS that powers the phone-tour mockups, marquee, headline
 // reveal, stat counters, and pro-section sweep all lives globally in
@@ -566,11 +567,12 @@ export default function LandingPageTest() {
                   {heroCta.label} <span className="lp-arrow">↗</span>
                 </button>
               </div>
-              {/* Hero store badges — shared component, already disabled +
-                  hover-preserved. Bottom-of-page badges reuse the SAME
-                  component so the visual treatment can't drift. */}
+              {/* Hero store badges — App Store links live, Google Play
+                  stays disabled + hover-preserved until Android ships.
+                  Bottom-of-page badges reuse the SAME component so the
+                  visual treatment can't drift. */}
               <div className="lp-hero-badges lp-fade lp-fade-4">
-                <AppStoreBadges />
+                <AppStoreBadges appStoreHref={APP_STORE_URL} appStoreDisabled={false} />
               </div>
             </div>
           </div>
@@ -947,10 +949,10 @@ export default function LandingPageTest() {
           <h2>Stop<br />Tracking.<br /><span className="lp-red">Start</span> <span className="lp-stroke">Lifting.</span></h2>
           <p>REPLAB is free on iOS, Android, and the web. Your data syncs across every device. One logbook. Everywhere you train.</p>
           {/* Bottom store badges — SAME shared component as the hero so
-              the visual treatment cannot drift. Non-clickable, hover
-              preserved. */}
+              the visual treatment cannot drift. App Store live, Google
+              Play non-clickable/hover-preserved until Android ships. */}
           <div style={{ marginTop: 56 }}>
-            <AppStoreBadges />
+            <AppStoreBadges appStoreHref={APP_STORE_URL} appStoreDisabled={false} />
           </div>
         </div>
       </section>

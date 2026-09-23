@@ -27,6 +27,7 @@ import romanianDeadlift from './romanianDeadlift.js';
 import dumbbellLateralRaise from './dumbbellLateralRaise.js';
 import bulgarianSplitSquat from './bulgarianSplitSquat.js';
 import cableTricepPushdown from './cableTricepPushdown.js';
+import oneArmLatPullIn from './oneArmLatPullIn.js';
 
 // slug → exercise data
 const EXERCISES = {
@@ -41,6 +42,7 @@ const EXERCISES = {
   'dumbbell-lateral-raise': dumbbellLateralRaise,
   'bulgarian-split-squat': bulgarianSplitSquat,
   'cable-tricep-pushdown': cableTricepPushdown,
+  '1-arm-lat-pull-in': oneArmLatPullIn,
 };
 
 /** URL-safe slug from any string (used for the fallback path) */
