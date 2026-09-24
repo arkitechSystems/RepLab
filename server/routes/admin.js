@@ -394,6 +394,7 @@ function adminPage(title, body) {
     <a href="/admin/active"${title === 'Active Users' ? ' class="active"' : ''}>Active Users</a>
     <a href="/admin/referrals"${title === 'Referrals' ? ' class="active"' : ''}>Referrals</a>
     <a href="/admin/devices"${title === 'Devices' ? ' class="active"' : ''}>Devices</a>
+    <a href="/admin/installs"${title === 'App Installs' ? ' class="active"' : ''}>App Installs</a>
   </div>
   <div class="sidebar-section" onclick="toggleSection('content')">
     <span>Content</span>
@@ -775,6 +776,11 @@ router.get('/', adminAuth, async (req, res) => {
       <div class="card-icon">${ICONS.phone}</div>
       <div class="card-title">Device Breakdown</div>
       <div class="card-desc">Signup device distribution across your user base.</div>
+    </a>
+    <a class="card glass" href="/admin/installs" style="border-color:rgba(59,130,246,0.25);">
+      <div class="card-icon">${ICONS.download}</div>
+      <div class="card-title">App Installs</div>
+      <div class="card-desc">Native iOS/Android installs, daily trend, and install-to-account conversion.</div>
     </a>
     <a class="card glass" href="/admin/workouts">
       <div class="card-icon">${ICONS.barbell}</div>
@@ -1671,6 +1677,178 @@ router.get('/devices', adminAuth, async (req, res) => {
     ${bars || '<p style="color:rgba(255,255,255,0.3);text-align:center;">No device data yet</p>'}
   </div>
   ${helpBlock('Device Breakdown shows what devices and browsers your users are signing up from. On the web, this is detected automatically from the browser\'s User-Agent header and shows results like "iPhone (Safari)", "Windows (Chrome)", or "Mac (Safari)". When the app is converted to a native iOS app via Capacitor, it will capture richer device information including the exact model (e.g. "iPhone 15 Pro") and OS version (e.g. "iOS 18.2"). This data helps you prioritize which platforms to test on and optimize for. If most of your users are on iPhone Safari, that\'s your primary testing target. If you see a lot of Android users, you may want to consider building an Android version as well. "Unknown" entries are from users who signed up before device tracking was added.')}`));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
+// 4b. App Installs (native iOS/Android first launches)
+// ============================================================
+// Rows come from POST /installs (client reports on first native launch) and
+// POST /installs/link (attaches user_id after sign-in). Days are UTC.
+async function getInstallStats() {
+  const [totalsRes, dailyRes, recentRes] = await Promise.all([
+    pool.query(`
+      SELECT
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE platform = 'ios')::int AS ios,
+        COUNT(*) FILTER (WHERE platform = 'android')::int AS android,
+        COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days')::int AS last7d,
+        COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '30 days')::int AS last30d,
+        COUNT(*) FILTER (WHERE user_id IS NOT NULL)::int AS linked
+      FROM app_installs
+    `),
+    pool.query(`
+      SELECT to_char(d.day, 'YYYY-MM-DD') AS day,
+        COUNT(i.id) FILTER (WHERE i.platform = 'ios')::int AS ios,
+        COUNT(i.id) FILTER (WHERE i.platform = 'android')::int AS android,
+        COUNT(i.id)::int AS total
+      FROM generate_series(
+        (NOW() AT TIME ZONE 'UTC')::date - 29,
+        (NOW() AT TIME ZONE 'UTC')::date,
+        INTERVAL '1 day'
+      ) AS d(day)
+      LEFT JOIN app_installs i
+        ON (i.created_at AT TIME ZONE 'UTC')::date = d.day::date
+      GROUP BY d.day
+      ORDER BY d.day
+    `),
+    pool.query(`
+      SELECT i.install_id, i.platform, i.app_version, i.created_at, i.linked_at,
+        u.id AS user_id, u.first_name, u.last_name, u.email, u.username
+      FROM app_installs i
+      LEFT JOIN users u ON u.id = i.user_id
+      ORDER BY i.created_at DESC
+      LIMIT 50
+    `),
+  ]);
+  const t = totalsRes.rows[0];
+  return {
+    total: t.total,
+    ios: t.ios,
+    android: t.android,
+    last7d: t.last7d,
+    last30d: t.last30d,
+    linked: t.linked,
+    conversionPct: t.total > 0 ? Number(((t.linked / t.total) * 100).toFixed(1)) : 0,
+    daily: dailyRes.rows,
+    recent: recentRes.rows.map(r => ({
+      installId: r.install_id,
+      platform: r.platform,
+      appVersion: r.app_version,
+      createdAt: r.created_at,
+      linkedAt: r.linked_at,
+      user: r.user_id ? {
+        id: r.user_id,
+        name: [r.first_name, r.last_name].filter(Boolean).join(' ') || r.username || null,
+        email: r.email || null,
+      } : null,
+    })),
+  };
+}
+
+// GET /admin/installs/data — JSON for the App Installs view.
+router.get('/installs/data', adminAuth, async (req, res) => {
+  try {
+    res.json(await getInstallStats());
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /admin/installs — App Installs page.
+router.get('/installs', adminAuth, async (req, res) => {
+  try {
+    const s = await getInstallStats();
+    const maxDay = Math.max(1, ...s.daily.map(d => d.total));
+    const bars = s.daily.map(d => {
+      const iosH = ((d.ios / maxDay) * 100).toFixed(1);
+      const andH = ((d.android / maxDay) * 100).toFixed(1);
+      const label = new Date(d.day + 'T00:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' });
+      return `<div title="${label}: ${d.total} (iOS ${d.ios} / Android ${d.android})" style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;height:100%;">
+        ${d.total > 0 ? `<div style="font-size:9px;color:rgba(255,255,255,0.5);text-align:center;margin-bottom:2px;">${d.total}</div>` : ''}
+        <div style="height:${andH}%;background:#4ade80;border-radius:3px 3px 0 0;"></div>
+        <div style="height:${iosH}%;background:#60a5fa;border-radius:${d.android > 0 ? '0' : '3px 3px 0 0'};"></div>
+      </div>`;
+    }).join('');
+    const firstLabel = s.daily.length ? new Date(s.daily[0].day + 'T00:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' }) : '';
+    const lastLabel = s.daily.length ? new Date(s.daily[s.daily.length - 1].day + 'T00:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' }) : '';
+
+    const platformBadge = (p) => p === 'ios'
+      ? '<span style="background:rgba(59,130,246,0.15);color:#60a5fa;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">iOS</span>'
+      : '<span style="background:rgba(34,197,94,0.15);color:#4ade80;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">Android</span>';
+
+    const rows = s.recent.map(r => `
+      <tr>
+        <td>${new Date(r.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</td>
+        <td>${platformBadge(r.platform)}</td>
+        <td>${r.appVersion ? esc(r.appVersion) : '—'}</td>
+        <td>${r.user
+          ? `${esc(r.user.name || '—')}${r.user.email ? `<div style="font-size:11px;color:rgba(255,255,255,0.4);">${esc(r.user.email)}</div>` : ''}`
+          : '<span style="color:rgba(255,255,255,0.3);">No account yet</span>'}</td>
+      </tr>`).join('');
+
+    res.send(adminPage('App Installs', `
+  <div class="breadcrumb"><a href="/admin">Dashboard</a> / App Installs</div>
+  <div class="header">
+    <h1>Admin Dashboard</h1>
+    <h2>App Installs</h2>
+    <p>Generated ${new Date().toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+  </div>
+  <div class="stats">
+    <div class="stat glass">
+      <div class="value">${s.total}</div>
+      <div class="label">Total Installs</div>
+    </div>
+    <div class="stat glass">
+      <div class="value">${s.ios}</div>
+      <div class="label">iOS</div>
+    </div>
+    <div class="stat glass">
+      <div class="value">${s.android}</div>
+      <div class="label">Android</div>
+    </div>
+    <div class="stat glass">
+      <div class="value">${s.last7d}</div>
+      <div class="label">Last 7 Days</div>
+    </div>
+    <div class="stat glass">
+      <div class="value">${s.last30d}</div>
+      <div class="label">Last 30 Days</div>
+    </div>
+    <div class="stat glass">
+      <div class="value">${s.conversionPct}%</div>
+      <div class="label">Install &rarr; Account <span style="opacity:0.55;font-weight:500;">(${s.linked} linked)</span></div>
+    </div>
+  </div>
+
+  <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 12px; color: rgba(255,255,255,0.7);">Installs per Day (last 30 days, UTC)</h3>
+  <div class="glass" style="padding:20px 24px;margin-bottom:32px;">
+    <div style="display:flex;gap:12px;font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:12px;">
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#60a5fa;margin-right:4px;vertical-align:middle;"></span>iOS</span>
+      <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#4ade80;margin-right:4px;vertical-align:middle;"></span>Android</span>
+    </div>
+    <div style="display:flex;align-items:flex-end;gap:3px;height:140px;border-bottom:1px solid rgba(255,255,255,0.1);">
+      ${bars}
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(255,255,255,0.35);margin-top:6px;">
+      <span>${firstLabel}</span><span>${lastLabel}</span>
+    </div>
+  </div>
+
+  <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 12px; color: rgba(255,255,255,0.7);">Recent Installs</h3>
+  <div class="glass table-wrap" style="border-radius:16px;">
+  <table>
+    <thead>
+      <tr><th>Date</th><th>Platform</th><th>App Version</th><th>Account</th></tr>
+    </thead>
+    <tbody>${rows || '<tr><td colspan="4" style="text-align:center; color:rgba(255,255,255,0.3);">No installs recorded yet</td></tr>'}</tbody>
+  </table>
+  </div>
+  ${helpBlock('App Installs counts first launches of the native REPLAB app on iOS and Android. On the very first open, the app generates a random install ID, sends a first_app_open event to PostHog, and reports the install to the server. Web visitors are not counted. When someone signs in or creates an account on that device, the install is linked to their account, which drives the Install &rarr; Account conversion rate. Installs that happened before this tracking shipped are not counted, and reinstalling the app (or clearing its data) produces a new install ID. The per-day chart and the 7/30 day counts use UTC days. The Recent Installs table shows the latest 50 installs. The same data is available as JSON at /admin/installs/data.')}`));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });

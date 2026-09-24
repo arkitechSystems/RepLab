@@ -5,10 +5,15 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { AuthProvider } from './context/AuthContext';
 import { initAnalytics } from './utils/analytics';
+import { reportInstall } from './utils/installTracking';
 import './index.css';
 
 // Initialize Posthog analytics (no-op if VITE_POSTHOG_KEY is not set)
 initAnalytics();
+
+// Native app install tracking (first_app_open + POST /installs). No-op on web;
+// fire-and-forget, retries on next launch if the report fails.
+reportInstall();
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect } from 'rea
 import { api, setApiToken, getApiToken, setOnUnauthorized, setAuthTokens, clearAuthTokens, setRefreshToken } from '../api';
 import { identify as analyticsIdentify, reset as analyticsReset, track } from '../utils/analytics';
 import { initPushNotifications, teardownPushNotifications } from '../utils/push';
+import { linkInstallToUser } from '../utils/installTracking';
 
 const AuthContext = createContext(null);
 
@@ -69,6 +70,14 @@ export function AuthProvider({ children }) {
     if (!user) return;
     initPushNotifications().catch(() => {});
   }, [user]);
+
+  // Attach the signed-in account to this native install (admin install ->
+  // account conversion). Covers login, signup, and app start with a saved
+  // session. No-op on web or once linked; retries on next run if it fails.
+  useEffect(() => {
+    if (!user || !token) return;
+    linkInstallToUser();
+  }, [user, token]);
 
   // Register 401 handler — clears auth state without page reload
   useEffect(() => {

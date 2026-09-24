@@ -356,3 +356,19 @@ CREATE TABLE IF NOT EXISTS pro_waiting_list (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_pro_waiting_list_user ON pro_waiting_list(user_id);
+
+-- Native app installs (first launch of the Capacitor iOS/Android app). The
+-- client generates a random install_id on first open and reports it
+-- unauthenticated; once the user logs in, /installs/link attaches user_id.
+-- install_id is UNIQUE so retried reports are idempotent.
+CREATE TABLE IF NOT EXISTS app_installs (
+  id SERIAL PRIMARY KEY,
+  install_id TEXT NOT NULL UNIQUE,
+  platform TEXT NOT NULL,          -- 'ios' | 'android'
+  app_version TEXT,
+  user_id INT REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  linked_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_app_installs_created ON app_installs(created_at);
+CREATE INDEX IF NOT EXISTS idx_app_installs_user ON app_installs(user_id);

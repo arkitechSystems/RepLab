@@ -616,6 +616,20 @@ export default async function initDb() {
     created_at TIMESTAMPTZ DEFAULT NOW()
   )`);
 
+  // Native app installs (first launch of the iOS/Android app). Also defined in
+  // schema.sql; repeated here so existing DBs pick it up via the migration path.
+  await pool.query(`CREATE TABLE IF NOT EXISTS app_installs (
+    id SERIAL PRIMARY KEY,
+    install_id TEXT NOT NULL UNIQUE,
+    platform TEXT NOT NULL,
+    app_version TEXT,
+    user_id INT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    linked_at TIMESTAMPTZ
+  )`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_app_installs_created ON app_installs(created_at)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_app_installs_user ON app_installs(user_id)`);
+
   // PPL expansion migration removed — Will's PPL is no longer in the public
   // library (see comment above near the seed block). The user_id IS NULL
   // lookup wouldn't match the migrated program anyway.

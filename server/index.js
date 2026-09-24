@@ -40,6 +40,7 @@ import pushRoutes from './routes/push.js';
 import feedReactionsRoutes from './routes/feedReactions.js';
 import cardioRoutes from './routes/cardio.js';
 import waitlistRoutes from './routes/waitlist.js';
+import installRoutes from './routes/installs.js';
 import db from './db.js';
 import config from './config.js';
 import { sendDailySummaryEmail } from './email.js';
@@ -260,6 +261,15 @@ app.use('/push', pushRoutes);
 app.use('/feed/reactions', apiLimiter, feedReactionsRoutes);
 app.use('/cardio', cardioRoutes);
 app.use('/waitlist', apiLimiter, waitlistRoutes);
+// Unauthenticated install reporting — a real device hits this once or twice
+// per install (report + link), so a tight per-IP cap is plenty.
+app.use('/installs', rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: process.env.NODE_ENV === 'production' ? 20 : 200,
+  message: { error: 'Too many requests. Please slow down.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+}), installRoutes);
 
 // Health check — pinged by UptimeRobot to prevent Render free-tier sleep
 app.get('/health', (req, res) => res.json({
