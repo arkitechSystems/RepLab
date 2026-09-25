@@ -1256,7 +1256,8 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                 onChange={(e) => setAddBelowSearch(e.target.value)}
                 placeholder="Search for an exercise..."
                 ref={iosFocusRef}
-                className="flex-1 bg-transparent text-white text-sm font-semibold placeholder:text-wf-gray-500 focus:outline-none"
+                // 16px (text-base) so iOS doesn't auto-zoom the page on focus.
+                className="flex-1 bg-transparent text-white text-base font-semibold placeholder:text-wf-gray-500 focus:outline-none"
               />
               <button
                 type="button"

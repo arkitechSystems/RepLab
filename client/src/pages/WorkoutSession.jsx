@@ -4438,7 +4438,11 @@ export default function WorkoutSession() {
                   onChange={(e) => setAddExerciseSearch(e.target.value)}
                   placeholder="Search exercises or type a custom name..."
                   ref={iosFocusRef}
-                  className="w-full glass-input rounded-xl px-4 py-3 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none transition-all"
+                  // text-base (16px), not text-sm: iOS auto-zooms any focused
+                  // input under 16px and stays zoomed after the modal closes,
+                  // leaving the session pannable sideways and the fixed nav
+                  // sliding off-screen.
+                  className="w-full glass-input rounded-xl px-4 py-3 text-white text-base placeholder:text-wf-gray-500 focus:outline-none transition-all"
                 />
                 {/* Body-part filter pills — same interaction pattern as the
                     Browse Workout Library at /workouts, scoped to muscle
