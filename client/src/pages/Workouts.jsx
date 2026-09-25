@@ -1327,9 +1327,15 @@ export default function Workouts() {
     // If today's workout was completed, surface that on nextWorkoutInfo so the
     // card's bottom-left button can deeplink to the summary regardless of what
     // the card itself ends up displaying (today's workout or tomorrow's).
+    const completedTemplateId = (todaySchedule?.templateId) ?? todayInProgressSession?.templateId;
     const completedToday = todayCompleted
       ? {
-          templateId: (todaySchedule?.templateId) ?? todayInProgressSession?.templateId,
+          templateId: completedTemplateId,
+          // Shown as the card title ("<name> Completed") once today is done.
+          templateName: todaySchedule?.templateName
+            || tmpls.find(t => t.id === completedTemplateId)?.name
+            || todayInProgressSession?.templateName
+            || 'Workout',
           date: todayStr,
         }
       : null;
@@ -5857,9 +5863,31 @@ export default function Workouts() {
                           fontWeight: 800, fontSize: 28, lineHeight: 1.0,
                           letterSpacing: '-0.022em', margin: 0,
                         }}>
-                          {info?.templateName || (isRest ? 'Rest Day' : info?.status === 'none' ? 'Nothing scheduled' : 'Loading...')}
+                          {/* Once today's workout is done, the title shows it
+                              instead of whatever comes next (tomorrow's
+                              workout / rest / nothing): the name, then a small
+                              "COMPLETED" pill whose border and text carry the
+                              red sweep (.replab-badge-shimmer). Wraps below
+                              the name when the name is long. */}
+                          {isCompleted ? (
+                            <>
+                              {info.completedToday.templateName}{' '}
+                              <span className="replab-badge-shimmer align-middle relative -top-[3px] ml-1">
+                                <span>
+                                  <span className="replab-title-shimmer uppercase" style={{
+                                    fontFamily: 'JetBrains Mono, ui-monospace, monospace',
+                                    fontSize: 10, fontWeight: 600, letterSpacing: '0.24em', lineHeight: 1.2,
+                                  }}>
+                                    Completed
+                                  </span>
+                                </span>
+                              </span>
+                            </>
+                          ) : (
+                            info?.templateName || (isRest ? 'Rest Day' : info?.status === 'none' ? 'Nothing scheduled' : 'Loading...')
+                          )}
                         </h1>
-                        {currentProgram && !isRest && (
+                        {currentProgram && (!isRest || isCompleted) && (
                           <p className="mt-2" style={{
                             fontFamily: 'Inter, system-ui, sans-serif',
                             fontSize: 12.5, color: 'rgba(255,255,255,0.5)',
@@ -5867,7 +5895,7 @@ export default function Workouts() {
                             {currentProgram.name} <span style={{ color: 'rgba(255,255,255,0.25)' }}>·</span> Week {currentProgram.week}
                           </p>
                         )}
-                        {isRest && (
+                        {isRest && !isCompleted && (
                           <p className="mt-2" style={{
                             fontFamily: 'Inter, system-ui, sans-serif',
                             fontSize: 12.5, color: 'rgba(255,255,255,0.5)',

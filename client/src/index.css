@@ -1153,6 +1153,27 @@ input[type="number"] {
   animation: replab-title-shimmer 6s linear infinite;
 }
 
+/* Badge variant — small pill whose 1px border carries the same red sweep
+   as .replab-title-shimmer (reuses its keyframes). The outer element paints
+   the moving gradient; the inner span covers it with the card color,
+   leaving only a 1px ring. Put .replab-title-shimmer on the inner text for
+   a matching sweep through the label. Used for the "Completed" badge on
+   the Workouts page top card. */
+.replab-badge-shimmer {
+  display: inline-flex;
+  padding: 1px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.22) 35%, #ef4444 50%, rgba(255,255,255,0.22) 65%, rgba(255,255,255,0.22) 100%);
+  background-size: 200% 100%;
+  animation: replab-title-shimmer 6s linear infinite;
+}
+.replab-badge-shimmer > span {
+  display: inline-flex;
+  border-radius: 999px;
+  background: #15130f;
+  padding: 4px 10px;
+}
+
 /* Accessibility — even when components set `focus:outline-none` for the
    default :focus state (to keep the touch UI quiet), keyboard users still
    need a visible focus ring. :focus-visible only matches keyboard traversal

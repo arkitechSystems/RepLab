@@ -81,6 +81,31 @@ function SortableSetRow({ id, disabled, children }) {
   );
 }
 
+// One button in the card-controls row: icon in a circle with a text label
+// underneath, so each control explains itself without the tutorial.
+// variant: 'red' (move/swap/remove) or 'green' (add).
+const CARD_CONTROL_VARIANTS = {
+  red: { circle: 'bg-wf-red/15 border-wf-red/40 text-wf-red', label: 'text-wf-red/80' },
+  green: { circle: 'bg-green-500/15 border-green-500/40 text-green-400', label: 'text-green-400/80' },
+};
+function CardControlButton({ label, ariaLabel, variant = 'red', onClick, dataTutorial, children }) {
+  const v = CARD_CONTROL_VARIANTS[variant];
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={ariaLabel}
+      data-tutorial={dataTutorial}
+      className="w-11 flex flex-col items-center gap-1 active:scale-90 transition-transform"
+    >
+      <span className={`w-9 h-9 rounded-full border flex items-center justify-center ${v.circle}`}>
+        {children}
+      </span>
+      <span className={`text-[9px] font-semibold uppercase tracking-wide leading-none ${v.label}`}>{label}</span>
+    </button>
+  );
+}
+
 function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onReorderSets, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, onShowPRs, note, onNoteChange, weightSuggestion, onApplySuggestion, onApplyCalculatedWeight, goalOverrides, onGoalChange, allWorkoutExercises, lastEntries, forceShowDemo, mode = 'session', dataTutorial, showGoalWeight = true, showGoalReps = true, showSetType = true, exerciseNumber, cardioEnabled = false, cardioSelections, onCardioChange, cardTheme = 'light', onEnterFullScreen, fullScreen = false, onOpenSupersetPicker }) {
   // 'light' = #e8e8e8 card with dark text (default)
   // 'dark'  = transparent card, white text — page bg shows through
@@ -460,35 +485,44 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
 
       {/* Controls subheader — move, swap, add exercise, delete exercise */}
       {!readOnly && (
-        <div className="px-4 py-2 border-b border-white/5 flex items-center gap-1.5 bg-white/[0.015]">
-            <span data-tutorial={dataTutorial ? 'move-buttons' : undefined} className="flex items-center gap-1.5">
+        // Red left accent bar (same accent as section headers)
+        // mark this as its own control strip. Buttons carry text labels so
+        // the row is self-explanatory. Fixed-width buttons + justify-between
+        // keep it inside a 375px screen (overflow here re-triggers the
+        // sideways-scroll bug).
+        <div className="pl-3 pr-4 py-2 border-b border-white/5 border-l-[3px] border-l-wf-red flex items-start justify-between bg-white/[0.015]">
+            {/* Left group: Up / Down / Swap. Swap sits outside the
+                move-buttons span so the tutorial's move highlight still
+                covers only the arrows. */}
+            <span className="flex items-start gap-1.5">
+            <span data-tutorial={dataTutorial ? 'move-buttons' : undefined} className="flex items-start gap-1.5">
             {onMoveUp && (
-              <button type="button" onClick={() => { wasJustClickedRef.current = true; onMoveUp(); }} aria-label="Move exercise up" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-white hover:bg-white/20 active:scale-90 transition-all">
+              <CardControlButton label="Up" ariaLabel="Move exercise up" onClick={() => { wasJustClickedRef.current = true; onMoveUp(); }}>
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>
-              </button>
+              </CardControlButton>
             )}
             {onMoveDown && (
-              <button type="button" onClick={() => { wasJustClickedRef.current = true; onMoveDown(); }} aria-label="Move exercise down" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-white hover:bg-white/20 active:scale-90 transition-all">
+              <CardControlButton label="Down" ariaLabel="Move exercise down" onClick={() => { wasJustClickedRef.current = true; onMoveDown(); }}>
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
-              </button>
+              </CardControlButton>
             )}
             </span>
             {onSwapExercise && (
-              <button type="button" data-tutorial={dataTutorial ? 'swap-button' : undefined} onClick={() => { setShowSwap(true); setSwapSearch(''); }} className="h-12 px-3 rounded-full bg-white/10 flex items-center gap-1 text-wf-gray-400 hover:text-blue-400 hover:bg-blue-500/20 active:scale-90 transition-all">
+              <CardControlButton label="Swap" ariaLabel="Swap exercise" dataTutorial={dataTutorial ? 'swap-button' : undefined} onClick={() => { setShowSwap(true); setSwapSearch(''); }}>
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" /></svg>
-                <span className="text-[10px] font-semibold">Swap</span>
-              </button>
+              </CardControlButton>
             )}
-            <span data-tutorial={dataTutorial ? 'add-delete-buttons' : undefined} className="flex items-center gap-1.5">
+            </span>
+            <span data-tutorial={dataTutorial ? 'add-delete-buttons' : undefined} className="flex items-start gap-1.5">
             {onAddExercise && (
-              <button type="button" onClick={() => { setShowAddBelow(true); setAddBelowSearch(''); }} aria-label="Add exercise below" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-green-400 hover:bg-green-500/20 active:scale-90 transition-all">
+              <CardControlButton label="Add" ariaLabel="Add exercise below" variant="green" onClick={() => { setShowAddBelow(true); setAddBelowSearch(''); }}>
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-              </button>
+              </CardControlButton>
             )}
             {onDeleteExercise && (
-              <button type="button" onClick={onDeleteExercise} aria-label="Delete exercise" className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-wf-gray-400 hover:text-red-400 hover:bg-red-500/20 active:scale-90 transition-all">
+              <CardControlButton label="Remove" ariaLabel="Delete exercise" onClick={onDeleteExercise}>
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
+              </CardControlButton>
             )}
             </span>
         </div>
@@ -501,17 +535,11 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
           <span className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-medium">
             {exercise.sets.length} set{exercise.sets.length !== 1 ? 's' : ''}
           </span>
+          {/* Remove sits left of Add Set so Add Set stays anchored at the
+              right edge — Remove appearing after the 2nd set doesn't shift
+              it, so repeated taps land in the same spot. Colors match the
+              card-controls Add (green) / Remove (red) buttons. */}
           <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => onAddSet(exercise.name)}
-              className="h-12 px-3 rounded-full bg-white/10 flex items-center justify-center gap-1 text-wf-gray-400 hover:text-white hover:bg-white/20 active:scale-90 transition-all"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
-              <span className="text-[10px] font-semibold uppercase tracking-wider">Add Set</span>
-            </button>
             {onDeleteSet && exercise.sets.length > 1 && (
               <button
                 type="button"
@@ -524,7 +552,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                     onDeleteSet(exercise.name, lastIdx);
                   }
                 }}
-                className="h-12 px-3 rounded-full bg-white/10 flex items-center justify-center gap-1 text-wf-gray-400 hover:text-red-400 hover:bg-red-500/20 active:scale-90 transition-all"
+                className={`h-12 px-3 rounded-full border flex items-center justify-center gap-1 active:scale-90 transition-all ${CARD_CONTROL_VARIANTS.red.circle}`}
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12h-15" />
@@ -532,6 +560,16 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                 <span className="text-[10px] font-semibold uppercase tracking-wider">Remove</span>
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => onAddSet(exercise.name)}
+              className={`h-12 px-3 rounded-full border flex items-center justify-center gap-1 active:scale-90 transition-all ${CARD_CONTROL_VARIANTS.green.circle}`}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              <span className="text-[10px] font-semibold uppercase tracking-wider">Add Set</span>
+            </button>
           </div>
         </div>
       )}

@@ -16,7 +16,46 @@ import { version as appVersion } from '../../package.json';
 //
 // Visible-time budget is 2.2s so the 1.4s wordmark reveal can settle
 // before the fade. With the 0.5s fade, total occupancy is 2.7s.
+// Verses shown under the version label, rotating one per app launch.
+const SPLASH_VERSES = [
+  { text: '“Whatever you do, work at it with all your heart, as working for the Lord.”', ref: 'Colossians 3:23' },
+  { text: '“I can do all things through Christ who strengthens me.”', ref: 'Philippians 4:13' },
+  { text: '“Whatever you do, do it all for the glory of God.”', ref: '1 Corinthians 10:31' },
+  { text: '“Those who hope in the Lord will renew their strength.”', ref: 'Isaiah 40:31' },
+  { text: '“Let us not become weary in doing good.”', ref: 'Galatians 6:9' },
+  { text: '“Commit to the Lord whatever you do, and he will establish your plans.”', ref: 'Proverbs 16:3' },
+  { text: '“Be strong and courageous. Do not be afraid; do not be discouraged.”', ref: 'Joshua 1:9' },
+  { text: '“It is God who arms me with strength and keeps my way secure.”', ref: 'Psalm 18:32' },
+  { text: '“Do not fear, for I am with you… I will strengthen you and help you.”', ref: 'Isaiah 41:10' },
+  { text: '“For God gave us a spirit not of fear but of power, love and self-control.”', ref: '2 Timothy 1:7' },
+  { text: '“Though the righteous fall seven times, they rise again.”', ref: 'Proverbs 24:16' },
+  { text: '“The Lord is my strength and my shield.”', ref: 'Psalm 28:7' },
+  { text: '“God is our refuge and strength, an ever-present help in trouble.”', ref: 'Psalm 46:1' },
+  { text: '“Let us run with perseverance the race marked out for us.”', ref: 'Hebrews 12:1' },
+];
+
+// Advance the rotation once per page load (module-level cache, so React
+// StrictMode's double render and repeat splash mounts — e.g. the Profile
+// > Load Screen preview — don't skip ahead). Index persists across launches.
+let splashVerseThisLoad = null;
+function getSplashVerse() {
+  if (splashVerseThisLoad) return splashVerseThisLoad;
+  let idx = 0;
+  try {
+    const last = Number(localStorage.getItem('wf-splash-verse-idx'));
+    if (Number.isInteger(last) && last >= 0) idx = (last + 1) % SPLASH_VERSES.length;
+    localStorage.setItem('wf-splash-verse-idx', String(idx));
+  } catch {}
+  splashVerseThisLoad = SPLASH_VERSES[idx];
+  return splashVerseThisLoad;
+}
+
 export default function SplashScreen({ onDone, persistent }) {
+  // Respect Profile > Bible Verses (same key the post-workout verse uses).
+  // When off, no verse renders and the rotation doesn't advance.
+  let versesOn = true;
+  try { versesOn = localStorage.getItem('wf-bible-verses') !== 'off'; } catch {}
+  const verse = versesOn ? getSplashVerse() : null;
   const phrases = useMemo(
     () => ['LOADING SESSION', 'SYNCING PROGRAMS', 'PREPARING WORKOUT'],
     []
@@ -187,6 +226,41 @@ export default function SplashScreen({ onDone, persistent }) {
         >
           v{appVersion}
         </div>
+
+        {/* Rotating Bible verse — same type treatment as the in-app
+            BibleVerseOverlay (italic Georgia verse, uppercase spaced
+            reference), scaled down to roughly the version label's size.
+            Hidden when Profile > Bible Verses is off (wf-bible-verses). */}
+        {verse && (
+        <div style={{ marginTop: 14, maxWidth: 260, marginLeft: 'auto', marginRight: 'auto', textAlign: 'center' }}>
+          <p
+            style={{
+              margin: 0,
+              fontFamily: 'Georgia, serif',
+              fontStyle: 'italic',
+              fontWeight: 300,
+              fontSize: 10,
+              lineHeight: 1.5,
+              color: 'rgba(255,255,255,0.45)',
+            }}
+          >
+            {verse.text}
+          </p>
+          <p
+            style={{
+              margin: '6px 0 0',
+              fontFamily: '-apple-system, sans-serif',
+              fontSize: 7.5,
+              letterSpacing: '0.3em',
+              textTransform: 'uppercase',
+              fontWeight: 600,
+              color: 'rgba(255,255,255,0.3)',
+            }}
+          >
+            {verse.ref}
+          </p>
+        </div>
+        )}
       </div>
 
       {/* Footer — centered, typed-out copyright line with a hairline above */}

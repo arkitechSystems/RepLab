@@ -280,6 +280,16 @@ export default function Profile() {
   // Users who want goal-weight / goal-reps / set-type columns can opt in
   // here, and that choice persists for subsequent sessions via the same
   // localStorage key WorkoutSession.jsx reads.
+  // Starting rest length for each new workout session (seconds, 15–180 in
+  // 15s steps, default 1:30). In-session ±15s / dropdown changes don't write
+  // back here. Shared key with WorkoutSession.jsx: `wf-default-rest-duration`.
+  const [defaultRestDuration, setDefaultRestDuration] = useState(() => {
+    try {
+      const s = JSON.parse(localStorage.getItem('wf-default-rest-duration'));
+      if (Number.isInteger(s) && s >= 15 && s <= 180 && s % 15 === 0) return s;
+    } catch {}
+    return 90;
+  });
   const [defaultShowGoalWeight, setDefaultShowGoalWeight] = useState(() => {
     try { return JSON.parse(localStorage.getItem('wf-default-show-goal-weight')) ?? false; } catch { return false; }
   });
@@ -330,6 +340,9 @@ export default function Profile() {
   useEffect(() => {
     localStorage.setItem('wf-default-pin-rest-timer', JSON.stringify(defaultPinRestTimer));
   }, [defaultPinRestTimer]);
+  useEffect(() => {
+    localStorage.setItem('wf-default-rest-duration', JSON.stringify(defaultRestDuration));
+  }, [defaultRestDuration]);
   useEffect(() => {
     localStorage.setItem('wf-default-float-rest-timer', JSON.stringify(defaultFloatRestTimer));
   }, [defaultFloatRestTimer]);
@@ -622,8 +635,8 @@ export default function Profile() {
           <div className="h-[3px]" style={{ background: 'linear-gradient(90deg, #9ca3af, rgba(156,163,175,0.25), transparent)' }} />
           <div className="absolute -top-10 -right-10 w-[250px] h-[250px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(156,163,175,0.08) 0%, transparent 60%)', filter: 'blur(40px)' }} />
           <div className="relative p-6">
-            <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(156,163,175,0.85)', letterSpacing: '0.3em' }}>Preferences</p>
-            <h3 className="text-[22px] font-black text-white tracking-tight mb-4" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>APP SETTINGS</h3>
+            <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(156,163,175,0.85)', letterSpacing: '0.3em' }}>App Settings</p>
+            <h3 className="text-[22px] font-black text-white tracking-tight mb-4" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>PREFERENCES</h3>
             <div className="space-y-4">
               {/* Workout-session defaults — set the initial state of timers
                   and goal columns when a session opens. The user can still
@@ -671,6 +684,46 @@ export default function Profile() {
                   >
                     <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${defaultPinWorkoutTimer ? 'translate-x-5' : 'translate-x-0.5'}`} />
                   </button>
+                </div>
+
+                <div className="flex items-center justify-between gap-px">
+                  <div className="flex items-center gap-px flex-1 min-w-0">
+                    <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="text-white/70 text-sm font-medium">Default Rest Time</span>
+                  </div>
+                  {/* Same look as the rest-duration dropdown in the workout
+                      session's rest timer — 15s to 3:00 in 15s steps. */}
+                  <select
+                    value={defaultRestDuration}
+                    onChange={(e) => setDefaultRestDuration(Number(e.target.value))}
+                    aria-label="Default rest time"
+                    className="active:scale-[0.95] transition-all shrink-0"
+                    style={{
+                      padding: '4px 22px 4px 10px', borderRadius: '2px',
+                      fontSize: '10px', fontWeight: 700, letterSpacing: '0.15em',
+                      textTransform: 'uppercase',
+                      border: '1px solid rgba(239,68,68,0.4)',
+                      background: 'rgba(239,68,68,0.12)',
+                      color: 'rgba(239,68,68,0.9)',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      appearance: 'none',
+                      WebkitAppearance: 'none',
+                      MozAppearance: 'none',
+                      backgroundImage: 'linear-gradient(45deg, transparent 50%, rgba(239,68,68,0.9) 50%), linear-gradient(135deg, rgba(239,68,68,0.9) 50%, transparent 50%)',
+                      backgroundPosition: 'calc(100% - 10px) 50%, calc(100% - 6px) 50%',
+                      backgroundSize: '4px 4px, 4px 4px',
+                      backgroundRepeat: 'no-repeat',
+                    }}
+                  >
+                    {[15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180].map((s) => (
+                      <option key={s} value={s} className="bg-wf-gray-900">
+                        {s >= 60 ? `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}` : `${s}s`}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="flex items-center justify-between gap-px">

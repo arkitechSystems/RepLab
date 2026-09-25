@@ -205,7 +205,17 @@ export default function WorkoutSession() {
   const startTimeRef = useRef(null);
   const timerRef = useRef(null);
   // Rest timer
-  const [restDuration, setRestDuration] = useState(90); // seconds
+  // Seconds. Starts at the Profile → Default Rest Time setting (shared key
+  // `wf-default-rest-duration`, 15–180 on the 15s grid), else 1:30. A
+  // restored session backup overrides this below, so an in-progress
+  // workout keeps its own rest time if the default changes mid-workout.
+  const [restDuration, setRestDuration] = useState(() => {
+    try {
+      const s = JSON.parse(localStorage.getItem('wf-default-rest-duration'));
+      if (Number.isInteger(s) && s >= 15 && s <= 180 && s % 15 === 0) return s;
+    } catch {}
+    return 90;
+  });
   const restDurationRef = useRef(restDuration); // ref so interval always reads current value
   const [restRemaining, setRestRemaining] = useState(null); // null = not running
   const restTimerRef = useRef(null);
@@ -583,9 +593,13 @@ export default function WorkoutSession() {
   // wall-clock offset ref (so the next tick reflects the change) AND the
   // displayed value (so the UI updates immediately without waiting for the
   // next interval fire). Clamped at 0 — user can't subtract past the end.
+  // Also carries the change into the rest *duration*, so the next rest in
+  // this workout starts at the adjusted length (1:30 → tap −15 → next rest
+  // starts at 1:15). Every tap counts; the duration stays within [15,180].
   function adjustRest(delta) {
     restAdjustRef.current += delta;
     setRestRemaining((r) => Math.max(0, (r ?? 0) + delta));
+    adjustRestDuration(delta);
   }
 
   // Bump the chosen rest *duration* (not an in-flight countdown) by ±15s.
