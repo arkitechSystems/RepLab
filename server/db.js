@@ -1720,7 +1720,13 @@ const db = {
   },
 
   async getMuscleGroups() {
-    const { rows } = await pool.query('SELECT DISTINCT muscle_group FROM exercises ORDER BY muscle_group');
+    // Library-only (created_by IS NULL) — a user's custom exercise's
+    // muscle_group must never leak into the shared filter list every
+    // user sees (e.g. a custom exercise tagged "Other" would otherwise
+    // put an "Other" pill in front of everyone).
+    const { rows } = await pool.query(
+      "SELECT DISTINCT muscle_group FROM exercises WHERE created_by IS NULL ORDER BY muscle_group"
+    );
     return rows.map(r => r.muscle_group);
   },
 

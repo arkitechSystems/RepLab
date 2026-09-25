@@ -9,6 +9,10 @@ import TrainerProfile from '../components/TrainerProfile';
 import { getTrainers, getTrainerById } from '../data/trainers';
 import { useAuth } from '../context/AuthContext';
 import { useFeatureFlag, FF_FEATURED, FF_CHALLENGES, FF_TRAINERS } from '../utils/featureFlags';
+
+// Featured Workouts card on the Workouts home. Off = hidden for everyone,
+// even when the `featured` flag is unlocked (dev builds unlock all flags).
+const SHOW_FEATURED_CARD = false;
 import { sharePR } from '../utils/prShare';
 import { useTutorial } from '../context/TutorialContext';
 import { useToast } from '../context/ToastContext';
@@ -6253,7 +6257,10 @@ export default function Workouts() {
                 pre-launch set. The unlock path (featuredUnlocked === true)
                 is preserved; when launched, the autoplay video can come
                 back behind this gradient if desired. */}
-            {featuredUnlocked && (
+            {/* Hidden everywhere for now (2026-09-24), including dev builds
+                where feature flags auto-unlock. Flip SHOW_FEATURED_CARD to
+                restore the flag-gated behavior. */}
+            {SHOW_FEATURED_CARD && featuredUnlocked && (
             <div
               ref={featuredCardRef}
               onClick={() => {

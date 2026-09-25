@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useExercises } from '../hooks/useExercises';
-import { useToast } from '../context/ToastContext';
 import LoadingSpinnerOverlay from '../components/LoadingSpinnerOverlay';
 import { getDetailSlugs, slugify } from '../data/exercises/index.js';
 
@@ -32,14 +31,9 @@ function getEquipment(tags) {
 
 export default function ExerciseLibrary() {
   const navigate = useNavigate();
-  const showToast = useToast();
-  const { exercises, muscleGroups, loading, createCustom } = useExercises();
+  const { exercises, muscleGroups, loading } = useExercises();
   const [search, setSearch] = useState('');
   const [selectedMuscle, setSelectedMuscle] = useState('');
-  const [showCustomForm, setShowCustomForm] = useState(false);
-  const [customName, setCustomName] = useState('');
-  const [customMuscle, setCustomMuscle] = useState('');
-  const [customSaving, setCustomSaving] = useState(false);
   // Hide the stat strip while the search field is in focus OR carries text,
   // freeing vertical space for results. Restored when blurred AND empty.
   const [searchFocused, setSearchFocused] = useState(false);
@@ -52,8 +46,8 @@ export default function ExerciseLibrary() {
 
   const filtered = useMemo(() => {
     // Default: master library only — exclude user-created custom exercises.
-    // The "Custom" pill / stat card inverts this to show ONLY the user's
-    // own custom exercises. Per-muscle pills also stay master-only since
+    // The "Custom" stat card inverts this to show ONLY the user's own
+    // custom exercises. Per-muscle pills also stay master-only since
     // customs don't belong to a single global muscle group in the same
     // canonical sense.
     const showOnlyCustom = selectedMuscle === CUSTOM_FILTER;
@@ -84,21 +78,6 @@ export default function ExerciseLibrary() {
     }
     return groups;
   }, [filtered, search]);
-
-  async function handleCreateCustom() {
-    if (!customName.trim() || !customMuscle) return;
-    setCustomSaving(true);
-    try {
-      await createCustom(customName.trim(), customMuscle);
-      setCustomName('');
-      setCustomMuscle('');
-      setShowCustomForm(false);
-    } catch (err) {
-      showToast('Failed to create exercise: ' + err.message, 'error');
-    } finally {
-      setCustomSaving(false);
-    }
-  }
 
   // ── Tactile theme tokens ──
   const LB_CARD = 'linear-gradient(180deg, #1a1816 0%, #100f0d 100%)';
@@ -174,22 +153,11 @@ export default function ExerciseLibrary() {
           Utilities
         </button>
 
-        {/* Title block + Add Custom button. "Exercise Library" sits on a
-            single line with whiteSpace: 'nowrap'; the red + button anchors
-            top-right and opens the inline Add Custom Exercise form. */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.32em', color: RED, textTransform: 'uppercase' }}>Library</div>
-            <h1 style={{ fontSize: 32, fontWeight: 800, color: '#fff', margin: '8px 0 0', letterSpacing: '-0.028em', lineHeight: 0.98, whiteSpace: 'nowrap' }}>Exercise Library</h1>
-          </div>
-          <button
-            onClick={() => setShowCustomForm(!showCustomForm)}
-            aria-label="Add custom exercise"
-            style={{ width: 44, height: 44, borderRadius: 14, flexShrink: 0, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 16px rgba(239,68,68,0.18)' }}
-            className="active:scale-90 transition-transform"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={RED} strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-          </button>
+        {/* Title block. Read-only browse/filter surface — exercise
+            creation happens in the workout-building flow, not here. */}
+        <div>
+          <div style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.32em', color: RED, textTransform: 'uppercase' }}>Library</div>
+          <h1 style={{ fontSize: 32, fontWeight: 800, color: '#fff', margin: '8px 0 0', letterSpacing: '-0.028em', lineHeight: 0.98, whiteSpace: 'nowrap' }}>Exercise Library</h1>
         </div>
       </div>
 
@@ -233,47 +201,6 @@ export default function ExerciseLibrary() {
         </div>
       )}
 
-      {/* ── Custom Exercise Form ── */}
-      {showCustomForm && (
-        <div style={{ margin: '18px 16px 0' }} className="fade-slide-up">
-          <div style={{ borderRadius: 18, padding: '18px 18px 20px', position: 'relative', overflow: 'hidden', background: LB_CARD, border: '1px solid rgba(239,68,68,0.25)', boxShadow: '0 0 0 4px rgba(239,68,68,0.05), 0 14px 30px rgba(0,0,0,0.5)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <span style={{ fontFamily: MONO, fontSize: 9.5, letterSpacing: '0.28em', color: RED, textTransform: 'uppercase' }}>New Custom Exercise</span>
-              <button onClick={() => setShowCustomForm(false)} aria-label="Close" style={{ width: 28, height: 28, borderRadius: 9, background: 'rgba(255,255,255,0.04)', border: LB_INPUT, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2.2" strokeLinecap="round"><path d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-
-            <label style={{ fontFamily: MONO, fontSize: 8.5, letterSpacing: '0.24em', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', display: 'block', marginBottom: 7 }}>Exercise Name</label>
-            <input
-              type="text" value={customName} onChange={(e) => setCustomName(e.target.value)} placeholder="e.g. Landmine Press"
-              style={{ width: '100%', boxSizing: 'border-box', borderRadius: 12, padding: '12px 14px', marginBottom: 14, background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.18)', fontSize: 14, color: '#fff', outline: 'none' }}
-            />
-
-            <label style={{ fontFamily: MONO, fontSize: 8.5, letterSpacing: '0.24em', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', display: 'block', marginBottom: 7 }}>Muscle Group</label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, marginBottom: 18 }}>
-              {(muscleGroups || []).map((m) => {
-                const sel = customMuscle === m;
-                return (
-                  <button key={m} onClick={() => setCustomMuscle(m)} style={{ padding: '7px 13px', borderRadius: 100, fontSize: 11.5, fontWeight: 600, background: sel ? '#fff' : 'rgba(255,255,255,0.05)', color: sel ? '#000' : 'rgba(255,255,255,0.7)', border: sel ? '1px solid #fff' : LB_INPUT }}>{m}</button>
-                );
-              })}
-            </div>
-
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setShowCustomForm(false)} style={{ flexShrink: 0, padding: '13px 18px', borderRadius: 12, background: 'rgba(255,255,255,0.05)', border: LB_INPUT, color: 'rgba(255,255,255,0.75)', fontWeight: 600, fontSize: 12.5 }}>Cancel</button>
-              <button
-                onClick={handleCreateCustom}
-                disabled={!customName.trim() || !customMuscle || customSaving}
-                style={{ flex: 1, padding: '13px 0', borderRadius: 12, background: RED, color: '#fff', border: 'none', fontWeight: 700, fontSize: 12.5, letterSpacing: '0.04em', opacity: (!customName.trim() || !customMuscle || customSaving) ? 0.5 : 1, boxShadow: '0 6px 18px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)' }}
-              >
-                {customSaving ? 'Saving…' : 'Add Exercise'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* ── Search ── */}
       <div style={{ margin: '16px 16px 0', position: 'relative' }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2" strokeLinecap="round" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }}><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
@@ -289,24 +216,23 @@ export default function ExerciseLibrary() {
         )}
       </div>
 
-      {/* ── Muscle pills ── All, every muscle group, plus a final "Custom"
-          pill that flips the list to the user's custom exercises only. The
-          Custom pill mirrors the Custom stat-card tap target (both call
-          setSelectedMuscle(CUSTOM_FILTER)); selecting one syncs the other. */}
+      {/* ── Muscle pills ── "All" + every muscle group. Styled red (fill
+          when selected, red-tinted border/text when not) so this filter
+          row reads as distinct from the white/gray stat strip and search
+          bar above it. The Custom filter lives on the stat-strip card
+          only now — no separate "Custom" chip in this row. */}
       <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '16px 16px 4px' }} className="scrollbar-none">
-        {[...['All', ...(muscleGroups || [])], '__custom__'].map((g) => {
-          const isCustomPill = g === '__custom__';
-          const label = isCustomPill ? 'Custom' : g;
-          const val = isCustomPill ? CUSTOM_FILTER : (g === 'All' ? '' : g);
+        {['All', ...(muscleGroups || [])].map((g) => {
+          const val = g === 'All' ? '' : g;
           const sel = selectedMuscle === val;
           return (
             <button
               key={g}
               onClick={() => setSelectedMuscle(sel ? '' : val)}
-              style={{ flexShrink: 0, padding: '8px 15px', borderRadius: 100, fontSize: 11.5, fontWeight: 600, letterSpacing: '0.02em', background: sel ? '#fff' : 'rgba(255,255,255,0.05)', color: sel ? '#000' : 'rgba(255,255,255,0.7)', border: sel ? '1px solid #fff' : LB_INPUT, boxShadow: sel ? '0 4px 14px rgba(255,255,255,0.12)' : 'none' }}
+              style={{ flexShrink: 0, padding: '8px 15px', borderRadius: 100, fontSize: 11.5, fontWeight: 600, letterSpacing: '0.02em', background: sel ? RED : 'rgba(239,68,68,0.06)', color: sel ? '#fff' : 'rgba(239,68,68,0.85)', border: sel ? `1px solid ${RED}` : '1px solid rgba(239,68,68,0.22)', boxShadow: sel ? '0 4px 14px rgba(239,68,68,0.35)' : 'none' }}
               className="active:scale-[0.97] transition-all"
             >
-              {label}
+              {g}
             </button>
           );
         })}
