@@ -372,3 +372,55 @@ CREATE TABLE IF NOT EXISTS app_installs (
 );
 CREATE INDEX IF NOT EXISTS idx_app_installs_created ON app_installs(created_at);
 CREATE INDEX IF NOT EXISTS idx_app_installs_user ON app_installs(user_id);
+
+-- Community feed "started a program" events. schedule_days has no timestamp
+-- and is rewritten by ordinary calendar edits, so program starts are recorded
+-- explicitly when the client schedules a whole program (PUT /schedule with
+-- programStartId). program_name is snapshotted so the event survives the
+-- program being renamed or deleted.
+CREATE TABLE IF NOT EXISTS program_starts (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  program_id INT REFERENCES programs(id) ON DELETE SET NULL,
+  program_name TEXT NOT NULL,
+  started_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_program_starts_started ON program_starts(started_at);
+CREATE INDEX IF NOT EXISTS idx_program_starts_user_program ON program_starts(user_id, program_id);
+
+-- Community feed "created a custom workout" events. Recorded when a user
+-- builds and saves a workout (CreateWorkout / AI generator, flagged by the
+-- client) or starts an empty session. The feed joins templates live, so a
+-- rename shows the current name and deleting the template drops the event.
+CREATE TABLE IF NOT EXISTS custom_workout_events (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  template_id INT NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_custom_workout_events_created ON custom_workout_events(created_at);
+
+-- REPLAB Community sharing settings. category is 'all' (master toggle) or
+-- one of 'pr' | 'program' | 'workout' | 'custom'. Each row is a period during
+-- which that category was switched off; on_at IS NULL means it's off right
+-- now. No rows = everything shared (the default). Activity whose timestamp
+-- falls inside any off period is never shown, even after re-enabling.
+CREATE TABLE IF NOT EXISTS community_sharing_periods (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  category TEXT NOT NULL,
+  off_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  on_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_community_sharing_periods_user ON community_sharing_periods(user_id, category);
+CREATE UNIQUE INDEX IF NOT EXISTS community_sharing_periods_one_open
+  ON community_sharing_periods(user_id, category) WHERE on_at IS NULL;
+
+-- "Remove from community" choice when switching a category off: activity in
+-- that category older than hidden_before is permanently hidden from the feed.
+CREATE TABLE IF NOT EXISTS community_hidden_before (
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  category TEXT NOT NULL,
+  hidden_before TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (user_id, category)
+);

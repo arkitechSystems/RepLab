@@ -129,6 +129,10 @@ router.post('/start-empty', authMiddleware, async (req, res) => {
       [req.userId, date, tmpl.id]
     );
 
+    // Community feed "created a custom workout" event. The feed shows the
+    // template's current name, so a later rename carries through.
+    await db.recordCustomWorkoutCreated(req.userId, tmpl.id, client);
+
     await client.query('COMMIT');
     res.status(201).json({ templateId: tmpl.id, finalName });
   } catch (err) {

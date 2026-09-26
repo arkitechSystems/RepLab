@@ -9,6 +9,14 @@ import useFocusTrap from '../hooks/useFocusTrap';
 import { APP_VERSION } from '../version';
 import { getWorkoutColor } from '../utils/workoutColors';
 
+// REPLAB Community sharing categories (keys match /community/settings).
+const COMMUNITY_SHARE_CATEGORIES = [
+  { key: 'pr', label: 'PRs', helper: 'New personal records you hit during workouts.' },
+  { key: 'program', label: 'Workout programs started', helper: 'Featured or library programs, when you tap Begin Program and pick a start date.' },
+  { key: 'workout', label: 'Completed workouts', helper: 'Workout name, total volume, and number of lifts.' },
+  { key: 'custom', label: 'Custom workouts created', helper: 'Workouts you build and save, and empty workouts you start.' },
+];
+
 // Touch-reactive ticker for the Personal Records strip. Scrolls left at a
 // steady speed; while a finger is down it freezes and the user can drag the
 // strip left/right to read it. On release we pause for 1s, then ramp the
@@ -253,7 +261,15 @@ export default function Profile() {
   // Visual placeholder until i18n is wired. Persists across reloads so the
   // pill on the landing page and this dropdown stay aligned once they're real.
   const [languagePref, setLanguagePref] = useState(() => localStorage.getItem('replab_locale') || 'en');
-  const [shareActivityOn, setShareActivityOn] = useState(() => localStorage.getItem('wf-share-activity-to-community') !== 'off');
+  // REPLAB Community sharing — stored server-side (GET/PUT /community/settings)
+  // because the feed is built on the server; defaults to everything on.
+  // `all` is the master toggle; the rest are per-category.
+  const [communitySharing, setCommunitySharing] = useState({ all: true, pr: true, program: true, workout: true, custom: true });
+  const [communitySharingSaving, setCommunitySharingSaving] = useState(false);
+  const [communitySharingError, setCommunitySharingError] = useState('');
+  // Category key being switched off, while the Remove/Keep prompt is open.
+  const [sharingOffPrompt, setSharingOffPrompt] = useState(null);
+  const sharingOffTrapRef = useFocusTrap(!!sharingOffPrompt);
   // Workout-session defaults — keys shared with WorkoutSession.jsx so the
   // toggle here is the same value the session reads on mount. Any in-session
   // override (lock buttons, gear menu) writes back to the same key.
@@ -326,8 +342,48 @@ export default function Profile() {
   }, [bibleVersesOn]);
 
   useEffect(() => {
-    localStorage.setItem('wf-share-activity-to-community', shareActivityOn ? 'on' : 'off');
-  }, [shareActivityOn]);
+    const controller = new AbortController();
+    api('/community/settings', { signal: controller.signal })
+      .then((s) => { if (s && typeof s === 'object') setCommunitySharing(s); })
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
+
+  async function saveCommunitySharing(category, enabled, removePast = false) {
+    const previous = communitySharing;
+    setCommunitySharing((s) => ({ ...s, [category]: enabled }));
+    setCommunitySharingSaving(true);
+    setCommunitySharingError('');
+    try {
+      const updated = await api('/community/settings', {
+        method: 'PUT',
+        body: JSON.stringify({ category, enabled, removePast }),
+      });
+      if (updated && typeof updated === 'object') setCommunitySharing(updated);
+    } catch {
+      setCommunitySharing(previous);
+      setCommunitySharingError("Couldn't save your sharing setting. Please try again.");
+    } finally {
+      setCommunitySharingSaving(false);
+    }
+  }
+
+  // Turning on saves immediately; turning off first asks whether to remove
+  // or keep what's already been shared (cancel leaves the toggle on).
+  function handleCommunityToggle(category) {
+    if (communitySharingSaving) return;
+    if (communitySharing[category]) {
+      setSharingOffPrompt(category);
+    } else {
+      saveCommunitySharing(category, true);
+    }
+  }
+
+  function confirmSharingOff(removePast) {
+    const category = sharingOffPrompt;
+    setSharingOffPrompt(null);
+    if (category) saveCommunitySharing(category, false, removePast);
+  }
 
   // Persist workout-session defaults. WorkoutSession.jsx reads these same
   // keys at mount so each new session inherits the latest preference.
@@ -807,12 +863,12 @@ export default function Profile() {
                 </div>
               </div>
 
-              {/* Other settings — non-session preferences (Bible verses,
-                  future misc toggles). Same wrapper pattern as Workout
-                  Session Defaults so the divider extends to the card edges. */}
+              {/* REPLAB Community — what this user shares to the Community
+                  feed. Saved server-side so it applies on every device.
+                  Master off grays out and disables the categories. */}
               <div className="pt-3 border-t border-white/10 -mx-6 px-6 space-y-4">
                 <p className="text-[10px] uppercase font-bold" style={{ color: 'rgba(255,255,255,0.4)', letterSpacing: '0.2em' }}>
-                  Other Settings
+                  REPLAB Community
                 </p>
 
                 <div className="flex items-center justify-between gap-px">
@@ -820,16 +876,55 @@ export default function Profile() {
                     <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
                     </svg>
-                    <span className="text-white/70 text-sm font-medium">Share activity to community</span>
+                    <span className="text-white/70 text-sm font-medium">Share to REPLAB Community</span>
                   </div>
                   <button
-                    onClick={() => setShareActivityOn(!shareActivityOn)}
-                    aria-label={shareActivityOn ? 'Stop sharing activity to community' : 'Share activity to community'}
-                    className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${shareActivityOn ? 'bg-wf-red' : 'bg-white/15'}`}
+                    onClick={() => handleCommunityToggle('all')}
+                    disabled={communitySharingSaving}
+                    aria-label={communitySharing.all ? 'Stop sharing to REPLAB Community' : 'Share to REPLAB Community'}
+                    className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${communitySharing.all ? 'bg-wf-red' : 'bg-white/15'}`}
                   >
-                    <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${shareActivityOn ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${communitySharing.all ? 'translate-x-5' : 'translate-x-0.5'}`} />
                   </button>
                 </div>
+
+                <div className={`pl-6 space-y-4 transition-opacity ${communitySharing.all ? '' : 'opacity-40'}`}>
+                  {COMMUNITY_SHARE_CATEGORIES.map(({ key, label, helper }) => {
+                    const on = communitySharing[key];
+                    const disabled = !communitySharing.all || communitySharingSaving;
+                    return (
+                      <div key={key} className="flex flex-col gap-1">
+                        <div className="flex items-center justify-between gap-px">
+                          <span className="text-white/70 text-sm font-medium flex-1 min-w-0">{label}</span>
+                          <button
+                            onClick={() => handleCommunityToggle(key)}
+                            disabled={disabled}
+                            aria-label={on ? `Stop sharing ${label.toLowerCase()}` : `Share ${label.toLowerCase()}`}
+                            className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${on ? 'bg-wf-red' : 'bg-white/15'} ${!communitySharing.all ? 'cursor-not-allowed' : ''}`}
+                          >
+                            <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${on ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                          </button>
+                        </div>
+                        {helper && (
+                          <p className="text-[11px] text-white/40 leading-snug pl-[1px]">{helper}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {communitySharingError && (
+                  <p className="text-[11px] text-red-400 leading-snug">{communitySharingError}</p>
+                )}
+              </div>
+
+              {/* Other settings — non-session preferences (Bible verses,
+                  future misc toggles). Same wrapper pattern as Workout
+                  Session Defaults so the divider extends to the card edges. */}
+              <div className="pt-3 border-t border-white/10 -mx-6 px-6 space-y-4">
+                <p className="text-[10px] uppercase font-bold" style={{ color: 'rgba(255,255,255,0.4)', letterSpacing: '0.2em' }}>
+                  Other Settings
+                </p>
 
                 <div className="flex items-center justify-between gap-px">
                   <div className="flex items-center gap-px flex-1 min-w-0">
@@ -1305,6 +1400,65 @@ export default function Profile() {
           </div>
         </div>
       )}
+
+      {/* REPLAB Community — turn-off prompt: remove or keep past activity */}
+      {sharingOffPrompt && (() => {
+        const isMaster = sharingOffPrompt === 'all';
+        const label = isMaster ? null : COMMUNITY_SHARE_CATEGORIES.find((c) => c.key === sharingOffPrompt)?.label;
+        return (
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center px-4"
+            onClick={() => setSharingOffPrompt(null)}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="profile-sharing-off-title"
+            aria-describedby="profile-sharing-off-desc"
+          >
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+            <div
+              ref={sharingOffTrapRef}
+              className="relative w-full max-w-sm bg-wf-gray-900 border border-white/10 rounded-2xl shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-5 pt-5 pb-4">
+                <h3 id="profile-sharing-off-title" className="text-lg font-bold text-white text-center">
+                  {isMaster ? 'Stop sharing to REPLAB Community?' : `Stop sharing ${label}?`}
+                </h3>
+                <p id="profile-sharing-off-desc" className="text-sm text-wf-gray-400 text-center mt-2">
+                  {isMaster
+                    ? "Nothing new will be shared while this is off. Do you want to remove everything you've already shared from the community, or keep it there?"
+                    : `New ${label.toLowerCase()} won't be shared while this is off. Do you want to remove the ${label.toLowerCase()} you've already shared from the community, or keep them there?`}
+                </p>
+                <p className="text-[11px] text-wf-gray-500 text-center mt-2">
+                  Removed activity stays hidden even if you turn sharing back on.
+                </p>
+              </div>
+              <div className="px-5 pb-3 flex gap-3">
+                <button
+                  onClick={() => confirmSharingOff(false)}
+                  className="flex-1 py-3 rounded-xl bg-white/10 text-sm font-semibold text-white active:scale-[0.98] transition-all"
+                >
+                  Keep It
+                </button>
+                <button
+                  onClick={() => confirmSharingOff(true)}
+                  className="flex-1 py-3 rounded-xl bg-red-500 text-sm font-semibold text-white active:scale-[0.98] transition-all"
+                >
+                  Remove
+                </button>
+              </div>
+              <div className="px-5 pb-5">
+                <button
+                  onClick={() => setSharingOffPrompt(null)}
+                  className="w-full py-2 text-center text-sm font-medium text-wf-gray-400 active:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Delete Account Confirmation Modal */}
       {showDeleteAccount && (

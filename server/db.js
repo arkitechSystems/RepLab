@@ -206,6 +206,44 @@ async function rebuildPBsForTemplateOnClient(client, userId, templateId) {
   );
 }
 
+// REPLAB Community feed categories. 'all' is the master sharing toggle.
+const COMMUNITY_CATEGORIES = ['pr', 'program', 'workout', 'custom'];
+const COMMUNITY_SETTING_KEYS = ['all', ...COMMUNITY_CATEGORIES];
+
+// SQL predicate: true when an item in `category` by the user in `userCol` may
+// appear in the community feed. Hidden when:
+//   - the master toggle is off right now (nothing from the user shows; the
+//     Keep/Remove choice only decides what returns once it's back on),
+//   - ANY of the item's `timeExprs` falls inside an off period for the
+//     category or the master, or
+//   - it predates that category's "hidden before" cutoff (Remove).
+// A category that's off with Keep still shows items from before it went off.
+// All arguments are code constants, never user input.
+function communityVisibleSql(userCol, category, timeExprs) {
+  const inOffPeriod = timeExprs
+    .map((t) => `(csp.off_at <= ${t} AND (csp.on_at IS NULL OR ${t} < csp.on_at))`)
+    .join(' OR ');
+  const beforeCutoff = timeExprs.map((t) => `${t} < chb.hidden_before`).join(' OR ');
+  return `NOT EXISTS (
+            SELECT 1 FROM community_sharing_periods csm
+             WHERE csm.user_id = ${userCol}
+               AND csm.category = 'all'
+               AND csm.on_at IS NULL
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM community_sharing_periods csp
+             WHERE csp.user_id = ${userCol}
+               AND csp.category IN ('all', '${category}')
+               AND (${inOffPeriod})
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM community_hidden_before chb
+             WHERE chb.user_id = ${userCol}
+               AND chb.category = '${category}'
+               AND (${beforeCutoff})
+          )`;
+}
+
 const db = {
   // Admin settings
   async getAdminSetting(key) {
@@ -2068,6 +2106,261 @@ const db = {
       [userId, itemId, reaction]
     );
     return reaction;
+  },
+
+  // ---------------- Community feed ----------------
+
+  // Record a "started a program" event for the community feed. Only
+  // featured/library programs (user_id IS NULL) count — custom program names
+  // are never broadcast here. Returns false (without inserting) for anything
+  // else, or when this user already started the same program in the last 12
+  // hours (the Begin modal can be re-run for conflicts or restarts).
+  async recordProgramStart(userId, programId) {
+    const { rows } = await pool.query(
+      'SELECT id, name FROM programs WHERE id = $1 AND user_id IS NULL',
+      [programId]
+    );
+    const program = rows[0];
+    if (!program) return false;
+    const { rowCount } = await pool.query(
+      `INSERT INTO program_starts (user_id, program_id, program_name)
+       SELECT $1, $2, $3
+        WHERE NOT EXISTS (
+          SELECT 1 FROM program_starts
+           WHERE user_id = $1 AND program_id = $2
+             AND started_at > NOW() - INTERVAL '12 hours'
+        )`,
+      [userId, program.id, program.name]
+    );
+    return rowCount > 0;
+  },
+
+  // Record a "created a custom workout" event. `client` lets start-empty
+  // record inside its own transaction. Only the user's own templates count.
+  async recordCustomWorkoutCreated(userId, templateId, client = pool) {
+    const { rowCount } = await client.query(
+      `INSERT INTO custom_workout_events (user_id, template_id)
+       SELECT $1, t.id FROM templates t WHERE t.id = $2 AND t.user_id = $1`,
+      [userId, templateId]
+    );
+    return rowCount > 0;
+  },
+
+  // REPLAB Community sharing settings, derived from open off-periods.
+  // Everything defaults to on (no rows).
+  async getCommunitySettings(userId) {
+    const { rows } = await pool.query(
+      'SELECT category FROM community_sharing_periods WHERE user_id = $1 AND on_at IS NULL',
+      [userId]
+    );
+    const off = new Set(rows.map((r) => r.category));
+    const settings = {};
+    for (const c of COMMUNITY_SETTING_KEYS) settings[c] = !off.has(c);
+    return settings;
+  },
+
+  // Switch one category ('all' = master) on or off. Turning off opens an off
+  // period; with removePast, activity already posted in that category (every
+  // category for 'all') is hidden permanently. Turning on closes the open
+  // period, so only activity from then on is shared.
+  async setCommunitySharing(userId, category, enabled, removePast = false) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      if (enabled) {
+        await client.query(
+          `UPDATE community_sharing_periods SET on_at = NOW()
+            WHERE user_id = $1 AND category = $2 AND on_at IS NULL`,
+          [userId, category]
+        );
+      } else {
+        await client.query(
+          `INSERT INTO community_sharing_periods (user_id, category)
+           VALUES ($1, $2)
+           ON CONFLICT (user_id, category) WHERE on_at IS NULL DO NOTHING`,
+          [userId, category]
+        );
+        if (removePast) {
+          const categories = category === 'all' ? COMMUNITY_CATEGORIES : [category];
+          await client.query(
+            `INSERT INTO community_hidden_before (user_id, category, hidden_before)
+             SELECT $1, c, NOW() FROM UNNEST($2::text[]) AS c
+             ON CONFLICT (user_id, category)
+             DO UPDATE SET hidden_before = GREATEST(community_hidden_before.hidden_before, EXCLUDED.hidden_before)`,
+            [userId, categories]
+          );
+        }
+      }
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+    return this.getCommunitySettings(userId);
+  },
+
+  // Cross-user community feed: PRs, featured/library program starts,
+  // completed workouts, and custom workouts created, from every user within
+  // the last `sinceDays`, newest first, capped at `limit`. Each author's
+  // sharing settings are enforced here (communityVisibleSql). Profile photos
+  // are base64 data URIs (up to ~500KB each), so they are returned once per
+  // author in `authors` rather than repeated per item. Emails are never
+  // selected.
+  async getCommunityFeed({ limit = 50, sinceDays = 30 } = {}) {
+    const params = [sinceDays, limit];
+
+    // Latest PR per (user, exercise) in the window, with delta vs that
+    // user's prior best on the same exercise (mirrors the old client logic).
+    // Filtering to the window before ranking is safe: any row newer than an
+    // in-window row is itself in the window.
+    const prQuery = pool.query(
+      `WITH recent AS (
+         SELECT pb.*,
+                ROW_NUMBER() OVER (
+                  PARTITION BY pb.user_id, LOWER(pb.exercise_name)
+                  ORDER BY pb.achieved_at DESC, pb.id DESC
+                ) AS rn
+           FROM personal_bests pb
+          WHERE pb.achieved_at >= NOW() - ($1::int * INTERVAL '1 day')
+       )
+       SELECT r.id, r.user_id, r.exercise_name, r.best_weight, r.best_reps, r.achieved_at,
+              (SELECT MAX(p2.best_weight) FROM personal_bests p2
+                WHERE p2.user_id = r.user_id
+                  AND LOWER(p2.exercise_name) = LOWER(r.exercise_name)
+                  AND p2.id <> r.id
+                  AND p2.best_weight > 0
+                  AND p2.best_weight < r.best_weight) AS previous_best
+         FROM recent r
+        WHERE r.rn = 1
+          AND ${communityVisibleSql('r.user_id', 'pr', ['r.achieved_at'])}
+        ORDER BY r.achieved_at DESC
+        LIMIT $2`,
+      params
+    );
+
+    const programQuery = pool.query(
+      `SELECT ps.id, ps.user_id, ps.started_at,
+              COALESCE(pna.short_name, ps.program_name) AS program_name
+         FROM program_starts ps
+         LEFT JOIN program_name_abbreviations pna ON pna.full_name = ps.program_name
+        WHERE ps.started_at >= NOW() - ($1::int * INTERVAL '1 day')
+          AND ${communityVisibleSql('ps.user_id', 'program', ['ps.started_at'])}
+        ORDER BY ps.started_at DESC
+        LIMIT $2`,
+      params
+    );
+
+    // Completed workouts. Volume/exercise count use the same completed-set
+    // rules as getSessions. sessions.date is a user-local YYYY-MM-DD string,
+    // so last_activity_at (when it falls on that day) orders same-day rows.
+    // Sharing is checked against both when the session was created and its
+    // last activity, so a workout touched during an off period stays hidden.
+    const workoutQuery = pool.query(
+      `WITH done AS (
+         SELECT s.id, s.user_id, s.date, s.template_id, s.created_at, s.last_activity_at,
+                CASE WHEN s.date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' THEN s.date::date END AS day
+           FROM sessions s
+          WHERE s.completed = TRUE
+       )
+       SELECT d.id, d.user_id, d.date,
+              CASE WHEN d.last_activity_at IS NOT NULL
+                        AND ABS(d.last_activity_at::date - d.day) <= 1
+                   THEN d.last_activity_at
+                   ELSE (d.day + TIME '12:00') AT TIME ZONE 'UTC'
+              END AS occurred_at,
+              COALESCE(t.name, 'Workout') AS template_name,
+              COALESCE(SUM(se.weight * se.reps) FILTER (WHERE se.is_completed = TRUE AND se.weight > 0), 0)::NUMERIC AS total_volume,
+              COUNT(DISTINCT se.exercise_name) FILTER (WHERE se.is_completed = TRUE) AS exercise_count
+         FROM done d
+         LEFT JOIN templates t ON t.id = d.template_id
+         LEFT JOIN session_entries se ON se.session_id = d.id
+        WHERE d.day >= CURRENT_DATE - $1::int
+          AND d.day <= CURRENT_DATE + 1
+          AND ${communityVisibleSql('d.user_id', 'workout', ['d.created_at', 'COALESCE(d.last_activity_at, d.created_at)'])}
+        GROUP BY d.id, d.user_id, d.date, d.day, d.last_activity_at, t.name
+        ORDER BY occurred_at DESC
+        LIMIT $2`,
+      params
+    );
+
+    // Custom workouts created. Inner join on templates: the current name is
+    // shown (renames carry through) and deleted templates drop out.
+    const customQuery = pool.query(
+      `SELECT cwe.id, cwe.user_id, cwe.created_at, t.name AS template_name
+         FROM custom_workout_events cwe
+         JOIN templates t ON t.id = cwe.template_id
+        WHERE cwe.created_at >= NOW() - ($1::int * INTERVAL '1 day')
+          AND ${communityVisibleSql('cwe.user_id', 'custom', ['cwe.created_at'])}
+        ORDER BY cwe.created_at DESC
+        LIMIT $2`,
+      params
+    );
+
+    const [{ rows: prRows }, { rows: programRows }, { rows: workoutRows }, { rows: customRows }] =
+      await Promise.all([prQuery, programQuery, workoutQuery, customQuery]);
+
+    const items = [
+      ...prRows.map((r) => {
+        const bestWeight = Number(r.best_weight);
+        const previousBest = r.previous_best == null ? null : Number(r.previous_best);
+        return {
+          id: `pr-${r.id}`,
+          kind: 'pr',
+          userId: r.user_id,
+          occurredAt: r.achieved_at,
+          exercise: r.exercise_name,
+          weight: bestWeight,
+          reps: r.best_reps,
+          delta: previousBest != null ? bestWeight - previousBest : null,
+        };
+      }),
+      ...programRows.map((r) => ({
+        id: `prog-${r.id}`,
+        kind: 'program',
+        userId: r.user_id,
+        occurredAt: r.started_at,
+        programName: r.program_name,
+      })),
+      ...workoutRows.map((r) => ({
+        id: `wk-${r.id}`,
+        kind: 'workout',
+        userId: r.user_id,
+        occurredAt: r.occurred_at,
+        date: r.date,
+        workoutName: r.template_name,
+        totalVolume: Number(r.total_volume) || 0,
+        exerciseCount: Number(r.exercise_count) || 0,
+      })),
+      ...customRows.map((r) => ({
+        id: `cw-${r.id}`,
+        kind: 'custom',
+        userId: r.user_id,
+        occurredAt: r.created_at,
+        workoutName: r.template_name,
+      })),
+    ]
+      .sort((a, b) => new Date(b.occurredAt) - new Date(a.occurredAt))
+      .slice(0, limit);
+
+    const userIds = [...new Set(items.map((i) => i.userId))];
+    const authors = {};
+    if (userIds.length > 0) {
+      const { rows: userRows } = await pool.query(
+        `SELECT id, username, account_id, profile_photo
+           FROM users WHERE id = ANY($1::int[])`,
+        [userIds]
+      );
+      for (const u of userRows) {
+        authors[u.id] = {
+          name: u.username || (u.account_id ? `Lifter #${u.account_id}` : 'Lifter'),
+          photoUrl: u.profile_photo || null,
+        };
+      }
+    }
+
+    return { items, authors };
   },
 };
 

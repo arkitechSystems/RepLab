@@ -630,6 +630,44 @@ export default async function initDb() {
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_app_installs_created ON app_installs(created_at)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_app_installs_user ON app_installs(user_id)`);
 
+  // Community feed program-start events. Also defined in schema.sql; repeated
+  // here so existing DBs pick it up via the migration path.
+  await pool.query(`CREATE TABLE IF NOT EXISTS program_starts (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    program_id INT REFERENCES programs(id) ON DELETE SET NULL,
+    program_name TEXT NOT NULL,
+    started_at TIMESTAMPTZ DEFAULT NOW()
+  )`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_program_starts_started ON program_starts(started_at)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_program_starts_user_program ON program_starts(user_id, program_id)`);
+
+  // Community custom-workout events + sharing settings. Also defined in
+  // schema.sql; repeated here so existing DBs pick them up.
+  await pool.query(`CREATE TABLE IF NOT EXISTS custom_workout_events (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    template_id INT NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  )`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_custom_workout_events_created ON custom_workout_events(created_at)`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS community_sharing_periods (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    category TEXT NOT NULL,
+    off_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    on_at TIMESTAMPTZ
+  )`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_community_sharing_periods_user ON community_sharing_periods(user_id, category)`);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS community_sharing_periods_one_open
+    ON community_sharing_periods(user_id, category) WHERE on_at IS NULL`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS community_hidden_before (
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    category TEXT NOT NULL,
+    hidden_before TIMESTAMPTZ NOT NULL,
+    PRIMARY KEY (user_id, category)
+  )`);
+
   // PPL expansion migration removed — Will's PPL is no longer in the public
   // library (see comment above near the seed block). The user_id IS NULL
   // lookup wouldn't match the migrated program anyway.

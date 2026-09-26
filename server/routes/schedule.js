@@ -63,6 +63,19 @@ router.put('/', authMiddleware, async (req, res) => {
     }
 
     await db.updateSchedule(req.userId, schedule);
+
+    // Optional: the client sets programStartId when this write is the Begin
+    // Program flow (scheduling a whole program), which becomes a community
+    // feed event. Best-effort — a feed failure must not fail the schedule save.
+    const { programStartId } = req.body;
+    if (Number.isInteger(programStartId) && programStartId > 0) {
+      try {
+        await db.recordProgramStart(req.userId, programStartId);
+      } catch (err) {
+        console.error('recordProgramStart failed:', err);
+      }
+    }
+
     res.json({ success: true });
   } catch (err) {
     console.error(err);

@@ -66,6 +66,10 @@ const DEPENDENT_TABLES = [
   ['challenge_entries', 'user_id'],
   ['cardio_entries', 'user_id'],
   ['account_deletion_tokens', 'user_id'],
+  ['program_starts', 'user_id'],
+  ['custom_workout_events', 'user_id'],
+  ['community_sharing_periods', 'user_id'],
+  ['community_hidden_before', 'user_id'],
 ];
 
 // Tables whose rows are NOT deleted but where the FK column is set to NULL
@@ -347,6 +351,27 @@ describeIfDb('db.deleteUser cascade (integration)', () => {
     await pool.query(
       `INSERT INTO account_deletion_tokens (user_id, token_hash, expires_at, request_ip)
        VALUES ($1, 'placeholder-hash-for-cascade-test', NOW() + INTERVAL '1 hour', '127.0.0.1')`,
+      [testUserId]
+    );
+
+    // program_starts — community feed events, CASCADEd via user_id FK.
+    await pool.query(
+      `INSERT INTO program_starts (user_id, program_id, program_name) VALUES ($1, $2, 'Cascade Program')`,
+      [testUserId, programId]
+    );
+
+    // Community custom-workout events + sharing settings — CASCADEd via
+    // user_id FK.
+    await pool.query(
+      `INSERT INTO custom_workout_events (user_id, template_id) VALUES ($1, $2)`,
+      [testUserId, templateId]
+    );
+    await pool.query(
+      `INSERT INTO community_sharing_periods (user_id, category) VALUES ($1, 'all')`,
+      [testUserId]
+    );
+    await pool.query(
+      `INSERT INTO community_hidden_before (user_id, category, hidden_before) VALUES ($1, 'pr', NOW())`,
       [testUserId]
     );
 

@@ -43,6 +43,16 @@ router.post('/', authMiddleware, async (req, res) => {
     const validationError = validateTemplatePayload({ name, description, exercises });
     if (validationError) return res.status(400).json({ error: validationError });
     const result = await db.createTemplate(req.userId, name, description || '', exercises, programId, isRest);
+    // The client sets communityShare when a user builds and saves their own
+    // workout (not for copies/save-as), which posts a community feed event.
+    // Best-effort — a feed failure must not fail the save.
+    if (req.body.communityShare === true && !isRest) {
+      try {
+        await db.recordCustomWorkoutCreated(req.userId, result.id);
+      } catch (err) {
+        console.error('recordCustomWorkoutCreated failed:', err);
+      }
+    }
     res.status(201).json(result);
   } catch (err) {
     console.error(err);

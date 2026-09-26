@@ -197,6 +197,8 @@ export default function AIWorkoutGenerator() {
           description: workout.description || '',
           exercises: workout.exercises,
           programId: program.id,
+          // Posts "created a custom workout" to the REPLAB Community feed.
+          communityShare: true,
         }),
       });
       navigate('/app');

@@ -1616,7 +1616,11 @@ export default function Workouts() {
       if (!tutorial.active) {
         await api('/schedule', {
           method: 'PUT',
-          body: JSON.stringify({ schedule: entries.map(({ date, templateId, isRest }) => ({ date, templateId, isRest: isRest || false })) }),
+          body: JSON.stringify({
+            schedule: entries.map(({ date, templateId, isRest }) => ({ date, templateId, isRest: isRest || false })),
+            // Posts a "started a program" event to the community feed.
+            programStartId: beginModal?.id,
+          }),
         });
       }
       completeTutorialAction('begin-confirmed');

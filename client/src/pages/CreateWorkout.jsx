@@ -253,6 +253,8 @@ export default function CreateWorkout() {
           description: description.trim(),
           exercises: validExercises,
           programId: Number(selectedProgramId),
+          // Posts "created a custom workout" to the REPLAB Community feed.
+          communityShare: true,
         }),
       });
       // Auto-save any custom exercises not in the library

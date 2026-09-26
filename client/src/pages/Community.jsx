@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StickyHeader from '../components/StickyHeader';
-import { useAuth } from '../context/AuthContext';
 import { api } from '../api';
 
 function formatTimeAgo(daysAgo) {
@@ -20,8 +19,8 @@ function daysBetween(dateStr, now = new Date()) {
   return Math.max(0, Math.floor(ms / (1000 * 60 * 60 * 24)));
 }
 
-function initialsFrom(username, email) {
-  const src = (username || email || '?').toString();
+function initialsFrom(name) {
+  const src = (name || '?').toString();
   return src.slice(0, 2).toUpperCase();
 }
 
@@ -98,7 +97,7 @@ function CommunityTimeline({ items }) {
         <p className="text-[10px] uppercase font-bold mb-4" style={{ letterSpacing: '0.25em', color: 'rgba(239,68,68,0.7)' }}>
           REPLAB Feed
         </p>
-        <p className="text-[12px] text-white/40 font-light py-8 text-center">No activity yet — log a workout or hit a PR to see it here.</p>
+        <p className="text-[12px] text-white/40 font-light py-8 text-center">No activity yet — complete a workout, start a program, or hit a PR to kick off the REPLAB feed.</p>
       </div>
     );
   }
@@ -113,7 +112,9 @@ function CommunityTimeline({ items }) {
         <div className="space-y-5">
           {items.map((item) => {
             const isPR = item.kind === 'pr';
-            const dotColor = isPR ? '#ef4444' : '#22c55e';
+            const isProgram = item.kind === 'program';
+            const isCustom = item.kind === 'custom';
+            const dotColor = isPR ? '#ef4444' : isProgram ? '#3b82f6' : isCustom ? '#a855f7' : '#22c55e';
             return (
               <div key={item.id} className="relative">
                 <div
@@ -135,11 +136,25 @@ function CommunityTimeline({ items }) {
                   <>
                     <p className="text-[14px] font-bold text-white mt-1">{item.exercise} PR</p>
                     <p className="text-[12px] mt-1" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                      <span className="text-white font-semibold">{item.weight}</span> lb × {item.reps}
+                      {item.weight > 0 ? (
+                        <><span className="text-white font-semibold">{item.weight}</span> lb</>
+                      ) : (
+                        <span className="text-white font-semibold">BW</span>
+                      )} × {item.reps}
                       {item.delta > 0 && (
                         <span style={{ color: '#22c55e', marginLeft: 8, fontWeight: 700 }}>+{item.delta} lb</span>
                       )}
                     </p>
+                  </>
+                ) : isProgram ? (
+                  <>
+                    <p className="text-[14px] font-bold text-white mt-1">Started {item.programName}</p>
+                    <p className="text-[12px] mt-1" style={{ color: 'rgba(255,255,255,0.55)' }}>New program</p>
+                  </>
+                ) : isCustom ? (
+                  <>
+                    <p className="text-[14px] font-bold text-white mt-1">Created {item.workoutName}</p>
+                    <p className="text-[12px] mt-1" style={{ color: 'rgba(255,255,255,0.55)' }}>Custom workout</p>
                   </>
                 ) : (
                   <>
@@ -174,88 +189,55 @@ function CommunityTimeline({ items }) {
 
 export default function Community() {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const [sessions, setSessions] = useState([]);
-  const [pbs, setPbs] = useState([]);
+  const [feed, setFeed] = useState({ items: [], authors: {} });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
   useEffect(() => {
     const controller = new AbortController();
-    Promise.all([
-      api('/sessions', { signal: controller.signal }).catch(() => []),
-      api('/pbs',      { signal: controller.signal }).catch(() => []),
-    ]).then(([s, p]) => {
-      setSessions(Array.isArray(s) ? s : []);
-      setPbs(Array.isArray(p) ? p : []);
-      setLoading(false);
-    });
+    api('/community/feed', { signal: controller.signal })
+      .catch(() => null)
+      .then((res) => {
+        if (controller.signal.aborted) return;
+        setFeed({
+          items: Array.isArray(res?.items) ? res.items : [],
+          authors: res?.authors && typeof res.authors === 'object' ? res.authors : {},
+        });
+        setLoading(false);
+      });
     return () => controller.abort();
   }, []);
 
   const items = useMemo(() => {
     const now = new Date();
-    const author = user?.username || user?.email || 'You';
-    const initials = initialsFrom(user?.username, user?.email);
-    const photoUrl = user?.photoUrl || null;
-
-    // Dedupe PRs to one row per exercise (latest), with delta vs prior best.
-    const byExercise = new Map();
-    for (const pb of pbs) {
-      const key = pb.exerciseName;
-      const list = byExercise.get(key) || [];
-      list.push(pb);
-      byExercise.set(key, list);
-    }
-
-    const prItems = [...byExercise.entries()]
-      .map(([, rows]) => {
-        const sorted = rows.slice().sort((a, b) => new Date(b.achievedAt) - new Date(a.achievedAt));
-        const latest = sorted[0];
-        const previousBest = rows
-          .filter((r) => r.id !== latest.id && r.bestWeight < latest.bestWeight)
-          .reduce((max, r) => (!max || r.bestWeight > max.bestWeight ? r : max), null);
-        const delta = previousBest ? latest.bestWeight - previousBest.bestWeight : null;
-        return { latest, delta };
-      })
-      .map(({ latest, delta }) => ({
-        id: `pr-${latest.id}`,
-        kind: 'pr',
-        sortDate: new Date(latest.achievedAt),
-        author,
-        initials,
-        photoUrl,
-        timeAgo: formatTimeAgo(daysBetween(latest.achievedAt, now)),
-        exercise: latest.exerciseName,
-        weight: latest.bestWeight,
-        reps: latest.bestReps,
-        delta,
-      }));
-
-    const workoutItems = sessions
-      .filter((s) => s.completed)
-      .map((s) => ({
-        id: `wk-${s.id}`,
-        kind: 'workout',
-        sortDate: new Date(s.date),
-        author,
-        initials,
-        photoUrl,
-        timeAgo: formatTimeAgo(daysBetween(s.date, now)),
-        workoutName: s.templateName || 'Workout',
-        totalVolume: s.totalVolume || 0,
-        exerciseCount: s.exerciseCount || 0,
-      }));
-
-    return [...prItems, ...workoutItems].sort((a, b) => b.sortDate - a.sortDate);
-  }, [sessions, pbs, user]);
+    return feed.items.map((item) => {
+      const author = feed.authors[item.userId] || {};
+      const name = author.name || 'Lifter';
+      // Workouts carry the user-local session day; PRs/program starts a timestamp.
+      const when = item.kind === 'workout' && item.date ? item.date : item.occurredAt;
+      return {
+        ...item,
+        author: name,
+        initials: initialsFrom(name),
+        photoUrl: author.photoUrl || null,
+        timeAgo: formatTimeAgo(daysBetween(when, now)),
+      };
+    });
+  }, [feed]);
 
   const tickerMessages = useMemo(() => {
     return items.slice(0, 15).map((item) => {
       if (item.kind === 'pr') {
         const delta = item.delta > 0 ? ` (+${item.delta} lb)` : '';
-        return `${item.author} hit a PR on ${item.exercise} — ${item.weight} lbs × ${item.reps}${delta}`;
+        const load = item.weight > 0 ? `${item.weight} lbs` : 'BW';
+        return `${item.author} hit a PR on ${item.exercise} — ${load} × ${item.reps}${delta}`;
+      }
+      if (item.kind === 'program') {
+        return `${item.author} started ${item.programName}`;
+      }
+      if (item.kind === 'custom') {
+        return `${item.author} created ${item.workoutName}`;
       }
       if (item.totalVolume > 0) {
         return `${item.author} completed ${item.workoutName} · ${Math.round(item.totalVolume).toLocaleString()} lbs total volume`;
