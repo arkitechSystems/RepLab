@@ -1177,7 +1177,8 @@ router.get('/history', clientAuth, async (req, res) => {
 // GET /workouts/api/exercises
 router.get('/api/exercises', clientAuth, async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT name, muscle_group FROM exercises ORDER BY name');
+    // Master library only — never expose other users' custom exercise names.
+    const { rows } = await pool.query('SELECT name, muscle_group FROM exercises WHERE created_by IS NULL ORDER BY name');
     res.json(rows);
   } catch (err) {
     console.error('Exercises API error:', err);
