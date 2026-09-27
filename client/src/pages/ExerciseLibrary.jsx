@@ -61,11 +61,19 @@ export default function ExerciseLibrary() {
     }
     // Deduplicate by name
     const seen = new Set();
-    return result.filter(e => {
+    const deduped = result.filter(e => {
       if (seen.has(e.name)) return false;
       seen.add(e.name);
       return true;
     });
+    // Alphabetical, case-insensitive, with names starting with a digit
+    // ("1-Arm Lat Pull-In") after all lettered names instead of first.
+    // Muscle groups below preserve this order.
+    const startsWithDigit = (n) => /^\d/.test(n.trim());
+    return deduped.sort((a, b) =>
+      (startsWithDigit(a.name) - startsWithDigit(b.name))
+      || a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true })
+    );
   }, [exercises, search, selectedMuscle]);
 
   // Group by muscle for display when not searching
