@@ -75,21 +75,35 @@ function seedStack(targetNum, bar, mode) {
   return expandPlatesPerSide(perSide).stack;
 }
 
-export default function PlateCalculatorModal({ open, initialWeight = 0, restoreState = null, onUse, onApplyToFirstUncompleted, onPersist, onClose }) {
-  const [bar, setBar] = useState(restoreState?.bar ?? 45);
+// Fresh-open state for an exercise's default calculator type (see
+// utils/plateCalcType.js): Both Sides keeps a bar; Machine and Free Load
+// open with no bar.
+function freshState(defaults) {
+  const type = defaults?.type ?? 'both';
+  const barbell = type === 'both' ? (defaults?.bar ?? 45) : 0;
+  return {
+    bar: barbell,
+    mode: type === 'one' ? 'one' : 'both',
+    lastBar: barbell > 0 ? barbell : 45,
+  };
+}
+
+export default function PlateCalculatorModal({ open, initialWeight = 0, restoreState = null, defaults = null, onUse, onApplyToFirstUncompleted, onPersist, onClose }) {
+  const fresh = freshState(defaults);
+  const [bar, setBar] = useState(restoreState?.bar ?? fresh.bar);
   // Remembers the user's last barbell weight while in Machine mode, so
   // toggling back to Both/One Side restores their chosen bar (not a fixed 45).
-  const lastBarRef = useRef(restoreState?.bar > 0 ? restoreState.bar : 45);
+  const lastBarRef = useRef(restoreState?.bar > 0 ? restoreState.bar : fresh.lastBar);
   // Per-exercise-card memory: when the parent passes restoreState (the plate
   // setup the user last left on THIS card), seed from it so the weight +
   // plates + bar + mode come back exactly as they left them — they can
   // add/strip plates from their real-world load without rebuilding it. With
   // NO restoreState (first open on a card, or a freshly-switched card), fall
-  // back to the bar-only zero-plates state: total = bar weight (45 default),
-  // empty plate stack. initialWeight is intentionally NOT consulted in either
-  // case — the per-card memory is the only source of a non-default open.
-  const [target, setTarget] = useState(restoreState ? restoreState.target : '45');
-  const [mode, setMode] = useState(restoreState?.mode ?? 'both');
+  // back to the exercise's default type (`defaults`) with zero plates: total =
+  // bar weight, empty plate stack. initialWeight is intentionally NOT
+  // consulted in either case.
+  const [target, setTarget] = useState(restoreState ? restoreState.target : String(fresh.bar));
+  const [mode, setMode] = useState(restoreState?.mode ?? fresh.mode);
   const [selectedPlate, setSelectedPlate] = useState(45);
   // Stack-based plate model: flat per-side array (e.g. [45, 25, 10]).
   // The +/- chip pushes/pops entries here directly so a user-added 35 lb
@@ -111,12 +125,13 @@ export default function PlateCalculatorModal({ open, initialWeight = 0, restoreS
       setTarget(restoreState.target ?? String(restoreState.bar ?? 45));
       if ((restoreState.bar ?? 0) > 0) lastBarRef.current = restoreState.bar;
     } else {
-      setBar(45);
-      setMode('both');
+      const f = freshState(defaults);
+      setBar(f.bar);
+      setMode(f.mode);
       setSelectedPlate(45);
       setManualPlates([]);
-      setTarget('45');
-      lastBarRef.current = 45;
+      setTarget(String(f.bar));
+      lastBarRef.current = f.lastBar;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);

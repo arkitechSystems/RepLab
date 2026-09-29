@@ -18,6 +18,7 @@ import { getExerciseVideoId, getExerciseSearchUrl } from '../utils/exerciseVideo
 import { useExercises, getSubstitutesFromList } from '../hooks/useExercises.js';
 import VideoPlayerModal from './VideoPlayerModal.jsx';
 import PlateCalculatorModal from './PlateCalculatorModal.jsx';
+import { plateCalcDefaults } from '../utils/plateCalcType';
 import CardioAccelerationCard from './CardioAccelerationCard.jsx';
 import { iosFocusRef } from '../utils/iosFocus.js';
 import useFocusTrap from '../hooks/useFocusTrap.js';
@@ -1178,6 +1179,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
               setPlateCalcSetIdx(null);
             } : undefined}
             restoreState={plateCalcMemoryRef.current[keyName] || null}
+            defaults={plateCalcDefaults(exercise.name)}
             onPersist={(s) => { plateCalcMemoryRef.current[keyName] = s; }}
             onClose={() => setPlateCalcSetIdx(null)}
           />
@@ -1221,6 +1223,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
               setPlateCalcFromHeader(false);
             } : undefined}
             restoreState={plateCalcMemoryRef.current[keyName] || null}
+            defaults={plateCalcDefaults(exercise.name)}
             onPersist={(s) => { plateCalcMemoryRef.current[keyName] = s; }}
             onClose={() => setPlateCalcFromHeader(false)}
           />
