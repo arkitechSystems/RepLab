@@ -882,6 +882,10 @@ function RestTimer({ duration, isActive }) {
   );
 }
 
+// How long the "Start Guided Workout" quote intro stays up before the first
+// exercise. Drives both the fade keyframes and the timeout that advances.
+const INTRO_MS = 3600;
+
 // Minimal, known-working VideoLoop. Keep this simple — prior iterations with
 // proactive play() + source-type-hint + onError overlays fought Chrome's async
 // loading and latched "Video unavailable" before autoplay ever got a chance.
@@ -1542,14 +1546,14 @@ export default function FeaturedWorkoutSession() {
               className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
               style={{
                 background: 'linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 35%, #111 70%, #0a0a0a 100%)',
-                animation: 'lockInFade 1.8s ease forwards',
+                animation: `lockInFade ${INTRO_MS}ms ease forwards`,
               }}
             >
               <h1
-                className="text-[72px] font-black text-white leading-[0.85] tracking-tight text-center"
+                className="px-8 max-w-[420px] text-[34px] font-black text-white leading-[1.05] tracking-tight text-center uppercase"
                 style={{ fontFamily: 'system-ui', textShadow: '0 4px 30px rgba(0,0,0,0.5)' }}
               >
-                LET'S<br/>LOCK IN.
+                To get what others don't,<br/>you must do what others won't.
               </h1>
             </div>
           </>
@@ -1611,7 +1615,7 @@ export default function FeaturedWorkoutSession() {
                     setShowIntro(false);
                     setCurrentIdx(0);
                     startTimer();
-                  }, 1800);
+                  }, INTRO_MS);
                 }}
                 className="active:scale-[0.97] transition-all w-full mt-5"
                 style={{
