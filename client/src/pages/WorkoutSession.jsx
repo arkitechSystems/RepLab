@@ -25,6 +25,7 @@ import useFocusTrap from '../hooks/useFocusTrap';
 import { BibleVerseOverlay } from './BibleVerses';
 import { pickNextVerse } from '../utils/versePicker';
 import { friendlyError } from '../utils/errors';
+import RenameWorkoutDayModal, { RenamePencilButton } from '../components/RenameWorkoutDayModal';
 
 // Parse a 'YYYY-MM-DD' string as a LOCAL date (not UTC). parseISO('2026-04-24')
 // returns midnight UTC, which is the wrong calendar day for any user with a
@@ -73,6 +74,17 @@ export default function WorkoutSession() {
   const tutorialTemplate = location.state?.tutorialTemplate || null;
   const { exercises: allExercisesFromDB, muscleGroups: allMuscleGroups, createCustom } = useExercises();
   const [template, setTemplate] = useState(null);
+  // Per-day workout name (session pencil → sessions.custom_name). Display rule:
+  // this day's name if set, else the template's CURRENT name, else the
+  // session snapshot's copied name. template.name itself is left alone so
+  // auto-save keeps writing the snapshot's name, not the day's override.
+  const [dayName, setDayName] = useState(null);
+  const [currentTemplateName, setCurrentTemplateName] = useState(null);
+  // Pencil only on workouts the user created (their own template) — never
+  // REPLAB/global programs, the tutorial, or rest days. Server enforces too.
+  const [canRenameDay, setCanRenameDay] = useState(false);
+  const [renameDayOpen, setRenameDayOpen] = useState(false);
+  const displayName = dayName || currentTemplateName || template?.name || 'Workout';
   const [programName, setProgramName] = useState('');
   // Cardio-acceleration programs (Stoppani) render a dropdown + 60s timer
   // between each pair of sets. Off unless the program opts in.
@@ -190,6 +202,26 @@ export default function WorkoutSession() {
     setCompleteError(message);
     if (completeErrorTimerRef.current) clearTimeout(completeErrorTimerRef.current);
     completeErrorTimerRef.current = setTimeout(() => setCompleteError(''), ms);
+  }
+
+  // Save a per-day name. Optimistic with rollback on failure (same pattern as
+  // the Workouts-page handleRenameTemplate); rethrows so the modal can show
+  // the error and stay open.
+  async function handleRenameDay(newName) {
+    const prev = dayName;
+    setDayName(newName);
+    try {
+      const res = await api(`/sessions/by-template/${templateId}/${date}/name`, {
+        method: 'PUT',
+        body: JSON.stringify({ name: newName }),
+      });
+      setDayName(res?.customName || newName);
+      track('workout_day_renamed', { templateId: Number(templateId) });
+    } catch (err) {
+      // Rollback; the modal shows the error inline and stays open to retry.
+      setDayName(prev);
+      throw err;
+    }
   }
   const [pendingVerse, setPendingVerse] = useState(null); // set when this completion hits a 7-workout milestone
   const [showDateConfirm, setShowDateConfirm] = useState(false);
@@ -814,6 +846,10 @@ export default function WorkoutSession() {
   }
 
   useEffect(() => {
+    // Per-day name + pencil are re-derived for each (template, date) load.
+    setDayName(null);
+    setCurrentTemplateName(null);
+    setCanRenameDay(false);
     // Tutorial mode: load from hardcoded template, no API calls
     if (tutorialMode) {
       if (!tutorialTemplate) {
@@ -921,6 +957,8 @@ export default function WorkoutSession() {
           if (cancelled) return;
         }
 
+        setDayName(session?.customName || null);
+
         // Capture the session id so cardio entries can link to it. Also fetch
         // any cardio already logged against this session (e.g. user navigated
         // away mid-workout and came back).
@@ -940,6 +978,8 @@ export default function WorkoutSession() {
           if (tmpl) {
             const enrichedTmpl = { ...tmpl, exercises: applyOneRMSuggestions(tmpl.exercises) };
             setTemplate(enrichedTmpl);
+            setCurrentTemplateName(tmpl.name || null);
+            setCanRenameDay(tmpl.userId != null && !tmpl.isRest);
             if (enrichedTmpl.isRest) return;
             const initial = {};
             for (let exIdx = 0; exIdx < enrichedTmpl.exercises.length; exIdx++) {
@@ -971,6 +1011,10 @@ export default function WorkoutSession() {
         const tmplList = await api('/templates').catch(() => []);
         if (cancelled) return;
         const tmplInfo = tmplList.find(t => t.id === Number(templateId));
+        // /templates only returns the user's own templates (userId = them)
+        // plus global ones (userId null), so non-null = user-created.
+        setCurrentTemplateName(tmplInfo?.name || null);
+        setCanRenameDay(!!tmplInfo && tmplInfo.userId != null && !tmplInfo.isRest);
         if (tmplInfo?.programId && programs.length > 0) {
           const prog = programs.find(p => p.id === tmplInfo.programId);
           if (prog) {
@@ -2239,7 +2283,7 @@ export default function WorkoutSession() {
   async function handleShare() {
     if (!template) return;
 
-    const lines = [`${template.name} — ${format(parseDateLocal(date), 'EEEE, MMM d')}\n`];
+    const lines = [`${displayName} — ${format(parseDateLocal(date), 'EEEE, MMM d')}\n`];
 
     for (let exIdx = 0; exIdx < template.exercises.length; exIdx++) {
       const ex = template.exercises[exIdx];
@@ -2269,7 +2313,7 @@ export default function WorkoutSession() {
 
     if (navigator.share) {
       try {
-        await navigator.share({ title: `${template.name} Workout`, text });
+        await navigator.share({ title: `${displayName} Workout`, text });
       } catch (err) {
         if (err.name !== 'AbortError' && import.meta.env.DEV) console.error(err);
       }
@@ -2548,7 +2592,7 @@ export default function WorkoutSession() {
             Back
           </button>
         </div>
-        <StickyHeader title={template.name.toUpperCase()} titleStyle={{ fontSize: '26.4px' }} subtitle={displayDate} />
+        <StickyHeader title={displayName.toUpperCase()} titleStyle={{ fontSize: '26.4px' }} subtitle={displayDate} />
         <RestDayCard />
       </div>
     );
@@ -2951,7 +2995,14 @@ export default function WorkoutSession() {
 
       {/* Sticky Header with Progress Bar */}
       <StickyHeader
-        title={template.name.toUpperCase()}
+        title={canRenameDay ? (
+          <>
+            {displayName.toUpperCase()}
+            {/* Per-day rename: this date only (sessions.custom_name). The
+                one title element serves both the full and collapsed header. */}
+            <RenamePencilButton onClick={() => setRenameDayOpen(true)} className="ml-2 -mt-1" />
+          </>
+        ) : displayName.toUpperCase()}
         titleStyle={{ fontSize: '26.4px' }}
         titleCentered
         subtitle={`${displayDate}${template.description ? ` · ${template.description}` : ''}`}
@@ -4051,7 +4102,7 @@ export default function WorkoutSession() {
                 className="text-[22px] font-black text-white tracking-tight mt-1 uppercase"
                 style={{ fontFamily: 'system-ui', lineHeight: '1' }}
               >
-                {template.name || 'Today’s Workout'}
+                {displayName || 'Today’s Workout'}
               </h2>
             </div>
 
@@ -4577,10 +4628,20 @@ export default function WorkoutSession() {
         </div>
       )}
 
+      {/* Per-day rename (header pencil or summary pencil) */}
+      {renameDayOpen && (
+        <RenameWorkoutDayModal
+          initialName={displayName}
+          onSave={handleRenameDay}
+          onClose={() => setRenameDayOpen(false)}
+        />
+      )}
+
       {/* Workout Summary */}
       {showSummary && (
         <WorkoutSummary
-          template={template}
+          template={{ ...template, name: displayName }}
+          onRename={canRenameDay ? () => setRenameDayOpen(true) : undefined}
           programName={programName}
           entries={entries}
           completedSets={completedSets}
@@ -5035,7 +5096,10 @@ export default function WorkoutSession() {
   );
 }
 
-export function WorkoutSummary({ template, programName, entries, completedSets, elapsed, formatTime, onClose, sessionDate, onViewWorkout }) {
+// `template.name` arrives as the day's display name. `onRename` (optional)
+// shows a pencil beside the title for a per-day rename; omitted for workouts
+// the user didn't create and for the tutorial.
+export function WorkoutSummary({ template, programName, entries, completedSets, elapsed, formatTime, onClose, sessionDate, onViewWorkout, onRename }) {
   const navigate = useNavigate();
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [shareImage, setShareImage] = useState(null);
@@ -5573,6 +5637,9 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
               }}
             >
               {template.name.toUpperCase()}
+              {onRename && (
+                <RenamePencilButton onClick={onRename} className="ml-3 align-middle" style={{ verticalAlign: 'middle' }} />
+              )}
             </h2>
             {programLabel && (
               <p className="text-[10px] uppercase font-bold text-white/40 mt-3" style={{ letterSpacing: '0.3em' }}>

@@ -69,6 +69,10 @@ export default async function initDb() {
 
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_photo TEXT`);
   await pool.query(`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS workout_data JSONB`);
+  // Per-day workout name (session pencil). Its own column rather than a key in
+  // workout_data so auto-save, which rewrites workout_data wholesale, can't
+  // clobber it. NULL = show the template's current name.
+  await pool.query(`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS custom_name TEXT`);
   await pool.query(`ALTER TABLE session_entries ADD COLUMN IF NOT EXISTS is_completed BOOLEAN DEFAULT FALSE`);
   await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS is_section_header BOOLEAN DEFAULT FALSE`);
   await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS section_notes TEXT DEFAULT ''`);
@@ -285,6 +289,9 @@ export default async function initDb() {
 
   // Migration: add is_rest column to schedule_days for standalone rest days
   await pool.query(`ALTER TABLE schedule_days ADD COLUMN IF NOT EXISTS is_rest BOOLEAN DEFAULT FALSE`);
+  // Set when the user taps Skip on the missed-workouts prompt, so that day is
+  // never offered again (the Calendar still shows it as Missed).
+  await pool.query(`ALTER TABLE schedule_days ADD COLUMN IF NOT EXISTS missed_skipped_at TIMESTAMPTZ`);
 
   // Migration: add group_id to templates for linking repeated workouts across weeks
   await pool.query(`ALTER TABLE templates ADD COLUMN IF NOT EXISTS group_id TEXT`);

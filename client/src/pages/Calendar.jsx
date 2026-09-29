@@ -6,6 +6,8 @@ import { getWorkoutColor } from '../utils/workoutColors';
 import StickyHeader from '../components/StickyHeader';
 import LoadingSpinnerOverlay from '../components/LoadingSpinnerOverlay';
 import ConfirmOverwriteModal from '../components/ConfirmOverwriteModal';
+import MissedWorkoutsModal from '../components/MissedWorkoutsModal';
+import useMissedWorkoutsPrompt from '../hooks/useMissedWorkoutsPrompt';
 import useFocusTrap from '../hooks/useFocusTrap';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -20,6 +22,12 @@ const WEEK_ACCENT_COLORS = ['#ef4444', '#3b82f6', '#22c55e', '#a855f7', '#f97316
 const MONTHLY_ALL_RED = true;
 
 export default function Calendar() {
+  // Missed-workouts prompt before starting a workout from here. Unlike the
+  // Workouts page it doesn't pop up on page open — only on a start.
+  const missedPromptCtl = useMissedWorkoutsPrompt({
+    trigger: 'calendar',
+    onProceed: (templateId, date, opts) => navigateToWorkout(templateId, date, { ...opts, skipMissedCheck: true }),
+  });
   const [schedule, setSchedule] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [programs, setPrograms] = useState([]);
@@ -170,8 +178,11 @@ export default function Calendar() {
     return completedSessions.some((c) => c.templateId === workout.templateId && c.date === dateStr);
   }
 
-  // Route to Featured Workout Flow or Normal Workout Session
-  function navigateToWorkout(templateId, date) {
+  // Route to Featured Workout Flow or Normal Workout Session. Unresolved
+  // missed workouts ask Resume / Skip first (same rules as the Workouts page);
+  // Skip or closing the prompt continues into this workout.
+  function navigateToWorkout(templateId, date, opts = {}) {
+    if (!opts.skipMissedCheck && missedPromptCtl.guardStart(templateId, date, opts)) return;
     const tmpl = templates.find(t => t.id === templateId);
     if (tmpl && tmpl.programId) {
       const prog = programs.find(p => p.id === tmpl.programId);
@@ -602,6 +613,17 @@ export default function Calendar() {
           return;
         }
         throw postErr;
+      }
+
+      // The copy duplicates the source day's own version of the workout, so
+      // carry over its per-day name too (if it has one). From here the two
+      // days are separate — renaming either leaves the other alone. Best
+      // effort: a failure just leaves the copy on the template's name.
+      if (sourceSession?.customName) {
+        await api(`/sessions/by-template/${copySource.templateId}/${targetDateStr}/name`, {
+          method: 'PUT',
+          body: JSON.stringify({ name: sourceSession.customName }),
+        }).catch(() => {});
       }
 
       // Refresh schedule and completed sessions
@@ -1965,6 +1987,9 @@ export default function Calendar() {
         onConfirm={handleOverwriteConfirm}
         onCancel={handleOverwriteCancel}
       />
+
+      {/* Missed-workouts prompt — raised by navigateToWorkout */}
+      <MissedWorkoutsModal {...missedPromptCtl.modalProps} />
 
       {/* Start Empty — Overwrite Options Modal */}
       {startEmptyStep === 'overwrite-options' && editingDay && (

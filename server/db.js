@@ -1,5 +1,6 @@
 import pool from './dbPool.js';
 import crypto from 'crypto';
+import { DAY_SESSION_NAME_JOIN, sessionDisplayNameSql } from './workoutDayName.js';
 
 // Password reset tokens are high-entropy random strings. We hash them with
 // SHA-256 before storing so a DB leak can't be used to reset any account.
@@ -847,9 +848,14 @@ const db = {
   // Schedule (date-based)
   async getSchedule(userId, fromDate, toDate) {
     const { rows } = await pool.query(
-      `SELECT sd.schedule_date, sd.template_id, sd.is_rest AS day_is_rest, t.name AS template_name, t.is_rest AS template_is_rest
+      // templateName is the day's display name: that date's per-day rename
+      // (sessions.custom_name) if set, else the template's current name.
+      `SELECT sd.schedule_date, sd.template_id, sd.is_rest AS day_is_rest,
+              COALESCE(ds.custom_name, t.name) AS template_name, t.is_rest AS template_is_rest,
+              ds.custom_name
        FROM schedule_days sd
        LEFT JOIN templates t ON t.id = sd.template_id
+       ${DAY_SESSION_NAME_JOIN('sd.user_id', 'sd.template_id', 'sd.schedule_date')}
        WHERE sd.user_id = $1 AND sd.schedule_date IS NOT NULL
          AND sd.schedule_date >= $2 AND sd.schedule_date <= $3
        ORDER BY sd.schedule_date`,
@@ -865,6 +871,7 @@ const db = {
         date: dateStr,
         templateId: r.template_id,
         templateName: r.template_name || null,
+        customName: r.custom_name || null,
         isRest: r.day_is_rest || r.template_is_rest || false,
       };
     });
@@ -1156,7 +1163,7 @@ const db = {
     // negative contribution to volume.
     const { rows } = await pool.query(
       `SELECT s.id, s.date, s.template_id, s.created_at, s.completed,
-              COALESCE(t.name, 'Unknown') AS template_name,
+              ${sessionDisplayNameSql('s', 't.name', 'Unknown')} AS template_name,
               COALESCE(SUM(se.weight * se.reps) FILTER (WHERE se.is_completed = TRUE AND se.weight > 0), 0)::NUMERIC AS total_volume,
               COUNT(DISTINCT se.exercise_name) FILTER (WHERE se.is_completed = TRUE) AS exercise_count
        FROM sessions s
@@ -1182,8 +1189,9 @@ const db = {
   async getSession(userId, sessionId) {
     const { rows: sessionRows } = await pool.query(
       `SELECT s.id, s.date, s.template_id, s.created_at, s.last_activity_at, s.workout_data,
-              s.completed,
-              COALESCE(t.name, 'Unknown') AS template_name,
+              s.completed, s.custom_name,
+              t.name AS template_name, t.user_id AS template_user_id,
+              COALESCE(t.is_rest, FALSE) AS template_is_rest,
               p.name AS program_name,
               EXTRACT(EPOCH FROM (s.last_activity_at - s.created_at))::INT AS elapsed_secs
        FROM sessions s
@@ -1216,7 +1224,12 @@ const db = {
       // localStorage and isn't persisted).
       elapsedSecs: Math.max(0, session.elapsed_secs || 0),
       completed: !!session.completed,
-      templateName: workoutData?.name || session.template_name,
+      // Day's own name, else the template's current name; the snapshot's
+      // copied name only when the template has since been deleted.
+      templateName: session.custom_name?.trim() || session.template_name || workoutData?.name || 'Unknown',
+      customName: session.custom_name?.trim() || null,
+      // Per-day rename pencil: only on workouts this user created, never rest.
+      canRename: session.template_user_id === userId && !session.template_is_rest,
       programName: session.program_name || null,
       workoutData,
       entries: entries.map((e) => ({
@@ -1233,7 +1246,7 @@ const db = {
 
   async getSessionByTemplateAndDate(userId, templateId, date) {
     const { rows: sessionRows } = await pool.query(
-      'SELECT id, notes, completed, workout_data FROM sessions WHERE user_id = $1 AND template_id = $2 AND date = $3',
+      'SELECT id, notes, completed, workout_data, custom_name FROM sessions WHERE user_id = $1 AND template_id = $2 AND date = $3',
       [userId, templateId, date]
     );
     if (!sessionRows[0]) return null;
@@ -1255,6 +1268,8 @@ const db = {
       completed: session.completed || false,
       notes,
       workoutData,
+      // Per-day name from the session pencil (null = use the template's name).
+      customName: session.custom_name?.trim() || null,
       entries: entries.map((e) => ({
         exerciseName: e.exercise_name,
         setNumber: e.set_number,
@@ -1263,6 +1278,19 @@ const db = {
         isCompleted: e.is_completed || false,
       })),
     };
+  },
+
+  // Per-day rename: set this date's session custom_name. Touches only the one
+  // (user, template, date) row — never the template or other dates. The route
+  // checks template ownership and creates the session copy first.
+  async setSessionCustomName(userId, templateId, date, name) {
+    const { rows } = await pool.query(
+      `UPDATE sessions SET custom_name = $4
+        WHERE user_id = $1 AND template_id = $2 AND date = $3
+        RETURNING id, custom_name`,
+      [userId, templateId, date, name]
+    );
+    return rows[0] ? { id: rows[0].id, customName: rows[0].custom_name } : null;
   },
 
   // Get the best weight/reps per exercise+set from completed sessions for a template.
@@ -2320,7 +2348,7 @@ const db = {
     // last activity, so a workout touched during an off period stays hidden.
     const workoutQuery = pool.query(
       `WITH done AS (
-         SELECT s.id, s.user_id, s.date, s.template_id, s.created_at, s.last_activity_at,
+         SELECT s.id, s.user_id, s.date, s.template_id, s.created_at, s.last_activity_at, s.custom_name,
                 CASE WHEN s.date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' THEN s.date::date END AS day
            FROM sessions s
           WHERE s.completed = TRUE
@@ -2331,7 +2359,7 @@ const db = {
                    THEN d.last_activity_at
                    ELSE (d.day + TIME '12:00') AT TIME ZONE 'UTC'
               END AS occurred_at,
-              COALESCE(t.name, 'Workout') AS template_name,
+              ${sessionDisplayNameSql('d', 't.name')} AS template_name,
               COALESCE(SUM(se.weight * se.reps) FILTER (WHERE se.is_completed = TRUE AND se.weight > 0), 0)::NUMERIC AS total_volume,
               COUNT(DISTINCT se.exercise_name) FILTER (WHERE se.is_completed = TRUE) AS exercise_count
          FROM done d
@@ -2340,7 +2368,7 @@ const db = {
         WHERE d.day >= CURRENT_DATE - $1::int
           AND d.day <= CURRENT_DATE + 1
           AND ${communityVisibleSql('d.user_id', 'workout', ['d.created_at', 'COALESCE(d.last_activity_at, d.created_at)'])}
-        GROUP BY d.id, d.user_id, d.date, d.day, d.last_activity_at, t.name
+        GROUP BY d.id, d.user_id, d.date, d.day, d.last_activity_at, d.custom_name, t.name
         ORDER BY occurred_at DESC
         LIMIT $2`,
       params
@@ -2464,7 +2492,7 @@ const db = {
               WHERE ps.id = $1 AND ps.started_at >= ${since}
                 AND ${communityVisibleSql('ps.user_id', 'program', ['ps.started_at'])}`;
     } else if (type === 'workout') {
-      sql = `SELECT s.user_id, COALESCE(t.name, 'Workout') AS workout_name
+      sql = `SELECT s.user_id, ${sessionDisplayNameSql('s', 't.name')} AS workout_name
                FROM sessions s
                LEFT JOIN templates t ON t.id = s.template_id
               WHERE s.id = $1 AND s.completed = TRUE

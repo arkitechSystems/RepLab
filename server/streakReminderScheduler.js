@@ -19,6 +19,7 @@
 import pool from './dbPool.js';
 import { sendPushToUser } from './routes/push.js';
 import { isFcmConfigured } from './pushProvider.js';
+import { DAY_SESSION_NAME_JOIN } from './workoutDayName.js';
 
 const TICK_MS = 15 * 60 * 1000;       // 15 min
 const COOLDOWN_HOURS = 18;             // one ping per user per day at most
@@ -180,9 +181,10 @@ export async function evaluateAndMaybeNotify(userId, opts = {}) {
   if (doneRows.length > 0) return { sent: false, reason: 'already-completed-today', today };
 
   const { rows: schedRows } = await pool.query(`
-    SELECT t.id AS template_id, t.name, COALESCE(t.is_rest, FALSE) AS is_rest
+    SELECT t.id AS template_id, COALESCE(ds.custom_name, t.name) AS name, COALESCE(t.is_rest, FALSE) AS is_rest
     FROM schedule_days sd
     JOIN templates t ON t.id = sd.template_id
+    ${DAY_SESSION_NAME_JOIN('sd.user_id', 'sd.template_id', 'sd.schedule_date')}
     WHERE sd.user_id = $1 AND sd.schedule_date = $2
     LIMIT 1
   `, [userId, today]);

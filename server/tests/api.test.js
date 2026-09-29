@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
 import jwt from 'jsonwebtoken';
 
 // --- Environment ---
@@ -96,12 +96,15 @@ vi.mock('../db.js', () => {
     updateTemplate: vi.fn(),
     deleteTemplate: vi.fn(),
     reorderTemplates: vi.fn(),
+    renameTemplate: vi.fn(),
 
     // Sessions
     createSession: vi.fn(),
     getSessions: vi.fn(),
     getSessionById: vi.fn(),
     getSessionByTemplateAndDate: vi.fn(),
+    setSessionCustomName: vi.fn(),
+    getVolumeGoalsByExerciseName: vi.fn().mockResolvedValue({}),
     getBestPerformanceByTemplate: vi.fn(),
 
     // Schedule
@@ -707,6 +710,109 @@ describe('Session Routes', () => {
       expect(res.body).toHaveLength(2);
     });
   });
+
+  // Per-day rename from the session pencil. Only the one date's session row
+  // changes; the template and other dates are never touched.
+  describe('PUT /sessions/by-template/:templateId/:date/name', () => {
+    const DATE = '2026-09-28';
+    // Auth middleware + the route's template lookup both go through
+    // pool.query; answer the template SELECT with `tmplRow`.
+    function mockTemplateRow(tmplRow) {
+      pool.query.mockImplementation(async (sql) => {
+        if (String(sql).includes('FROM templates')) return { rows: tmplRow ? [tmplRow] : [] };
+        return { rows: [{ id: 1 }] };
+      });
+    }
+    function rename(templateId, date, name) {
+      return request(app)
+        .put(`/sessions/by-template/${templateId}/${date}/name`)
+        .set('Authorization', authHeader(1))
+        .send({ name });
+    }
+
+    beforeEach(() => {
+      db.setSessionCustomName.mockReset();
+      db.getSessionByTemplateAndDate.mockReset();
+      db.createSession.mockReset();
+      db.renameTemplate.mockReset();
+      db.getTemplates.mockReset();
+    });
+    // Don't leak the SQL-routing pool mock into later suites.
+    afterEach(() => { pool.query.mockResolvedValue({ rows: [] }); });
+
+    it('renames just that date, trimmed, without touching the template', async () => {
+      mockTemplateRow({ user_id: 1, is_rest: false });
+      db.getSessionByTemplateAndDate.mockResolvedValue({ id: 50, workoutData: { name: 'Leg Day', exercises: [] } });
+      db.setSessionCustomName.mockResolvedValue({ id: 50, customName: 'Heavy Legs' });
+
+      const res = await rename(7, DATE, '  Heavy Legs  ');
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ templateId: 7, date: DATE, customName: 'Heavy Legs' });
+      expect(db.setSessionCustomName).toHaveBeenCalledTimes(1);
+      expect(db.setSessionCustomName).toHaveBeenCalledWith(1, 7, DATE, 'Heavy Legs');
+      expect(db.renameTemplate).not.toHaveBeenCalled();
+      expect(db.createSession).not.toHaveBeenCalled();
+    });
+
+    it("creates the day's session copy first when it hasn't been opened", async () => {
+      mockTemplateRow({ user_id: 1, is_rest: false });
+      db.getSessionByTemplateAndDate
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: 51, workoutData: { name: 'Leg Day', exercises: [] } });
+      db.getTemplates.mockResolvedValue([{
+        id: 7, userId: 1, isRest: false, name: 'Leg Day',
+        exercises: [{ name: 'Squat', sets: [{ setNumber: 1, plannedReps: 5, suggestedWeight: 225 }] }],
+      }]);
+      db.createSession.mockResolvedValue({ id: 51 });
+      db.setSessionCustomName.mockResolvedValue({ id: 51, customName: 'Squat Focus' });
+
+      const res = await rename(7, DATE, 'Squat Focus');
+
+      expect(res.status).toBe(200);
+      expect(db.createSession).toHaveBeenCalledTimes(1);
+      expect(db.createSession.mock.calls[0].slice(0, 3)).toEqual([1, 7, DATE]);
+      expect(db.setSessionCustomName).toHaveBeenCalledWith(1, 7, DATE, 'Squat Focus');
+      expect(db.renameTemplate).not.toHaveBeenCalled();
+    });
+
+    it('rejects REPLAB (global) workouts with 403', async () => {
+      mockTemplateRow({ user_id: null, is_rest: false });
+      const res = await rename(7, DATE, 'Mine Now');
+      expect(res.status).toBe(403);
+      expect(db.setSessionCustomName).not.toHaveBeenCalled();
+    });
+
+    it("rejects another user's workout with 403", async () => {
+      mockTemplateRow({ user_id: 2, is_rest: false });
+      const res = await rename(7, DATE, 'Mine Now');
+      expect(res.status).toBe(403);
+      expect(db.setSessionCustomName).not.toHaveBeenCalled();
+    });
+
+    it('returns 404 for a missing template', async () => {
+      mockTemplateRow(null);
+      const res = await rename(999, DATE, 'Anything');
+      expect(res.status).toBe(404);
+      expect(db.setSessionCustomName).not.toHaveBeenCalled();
+    });
+
+    it('rejects rest days', async () => {
+      mockTemplateRow({ user_id: 1, is_rest: true });
+      const res = await rename(7, DATE, 'Recovery');
+      expect(res.status).toBe(400);
+      expect(db.setSessionCustomName).not.toHaveBeenCalled();
+    });
+
+    it('rejects empty, too-long, and badly-dated requests', async () => {
+      mockTemplateRow({ user_id: 1, is_rest: false });
+      expect((await rename(7, DATE, '   ')).status).toBe(400);
+      expect((await rename(7, DATE, 'x'.repeat(201))).status).toBe(400);
+      expect((await rename(7, '09-28-2026', 'Legs')).status).toBe(400);
+      expect((await rename('abc', DATE, 'Legs')).status).toBe(400);
+      expect(db.setSessionCustomName).not.toHaveBeenCalled();
+    });
+  });
 });
 
 describe('Community Likes', () => {
@@ -977,5 +1083,51 @@ describe('Security regressions', () => {
       // No 403 from CSRF — whatever the login handler does (redirect), it's not 403
       expect(res.status).not.toBe(403);
     });
+  });
+});
+
+describe('Missed workouts routes', () => {
+  // Server UTC date is always a plausible client "today".
+  const TODAY = new Date().toISOString().slice(0, 10);
+
+  beforeEach(() => mockAuthPoolQuery(1));
+
+  it('GET /schedule/missed requires a valid local today', async () => {
+    const res = await request(app).get('/schedule/missed?today=nope').set('Authorization', authHeader(1));
+    expect(res.status).toBe(400);
+    const far = await request(app).get('/schedule/missed?today=2020-01-01').set('Authorization', authHeader(1));
+    expect(far.status).toBe(400);
+  });
+
+  it('GET /schedule/missed returns an empty list when nothing was missed', async () => {
+    const res = await request(app).get(`/schedule/missed?today=${TODAY}`).set('Authorization', authHeader(1));
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ missed: [], resume: null });
+  });
+
+  it('POST /schedule/missed/resume validates input', async () => {
+    const noFrom = await request(app).post('/schedule/missed/resume').set('Authorization', authHeader(1)).send({ today: TODAY });
+    expect(noFrom.status).toBe(400);
+    const noToday = await request(app).post('/schedule/missed/resume').set('Authorization', authHeader(1)).send({ fromDate: TODAY });
+    expect(noToday.status).toBe(400);
+  });
+
+  it('POST /schedule/missed/resume returns 409 when fromDate is not an unresolved miss', async () => {
+    const res = await request(app)
+      .post('/schedule/missed/resume')
+      .set('Authorization', authHeader(1))
+      .send({ today: TODAY, fromDate: '2026-01-01' });
+    expect(res.status).toBe(409);
+  });
+
+  it('POST /schedule/missed/skip is a no-op when nothing is missed', async () => {
+    const res = await request(app).post('/schedule/missed/skip').set('Authorization', authHeader(1)).send({ today: TODAY });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ skipped: 0 });
+  });
+
+  it('rejects unauthenticated requests', async () => {
+    const res = await request(app).get(`/schedule/missed?today=${TODAY}`);
+    expect(res.status).toBe(401);
   });
 });

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { exKey, WorkoutSummary } from './WorkoutSession';
+import RenameWorkoutDayModal from '../components/RenameWorkoutDayModal';
 
 // Re-creates the post-workout WorkoutSummary modal for a previously-completed
 // session, given its id. Loads /sessions/:id, reshapes the flat entry array
@@ -22,6 +23,24 @@ export default function SessionSummary() {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
+  const [renameOpen, setRenameOpen] = useState(false);
+
+  // Per-day rename of this finished workout (this date only). Optimistic,
+  // rolled back on failure; the modal shows the error.
+  async function handleRename(newName) {
+    const prev = data.templateName;
+    setData((d) => ({ ...d, templateName: newName, customName: newName }));
+    try {
+      const res = await api(`/sessions/by-template/${data.templateId}/${String(data.date).slice(0, 10)}/name`, {
+        method: 'PUT',
+        body: JSON.stringify({ name: newName }),
+      });
+      setData((d) => ({ ...d, templateName: res?.customName || newName, customName: res?.customName || newName }));
+    } catch (err) {
+      setData((d) => ({ ...d, templateName: prev }));
+      throw err;
+    }
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -112,7 +131,9 @@ export default function SessionSummary() {
   // exKey() which appends ::1, ::2 to repeats in the same workout.
   const template = {
     id: data.templateId ?? Number(id),
-    name: wd.name || data.templateName || 'Workout',
+    // Server's display name: the day's rename, else the template's current
+    // name. The snapshot's copied name is only a fallback.
+    name: data.templateName || wd.name || 'Workout',
     exercises: wd.exercises || [],
   };
 
@@ -154,15 +175,25 @@ export default function SessionSummary() {
   }
 
   return (
-    <WorkoutSummary
-      template={template}
-      programName={data.programName || ''}
-      entries={entries}
-      completedSets={completedSets}
-      elapsed={data.elapsedSecs || 0}
-      formatTime={formatTimeFromSeconds}
-      sessionDate={typeof data.date === 'string' ? data.date.slice(0, 10) : null}
-      onClose={() => navigate(-1)}
-    />
+    <>
+      <WorkoutSummary
+        template={template}
+        programName={data.programName || ''}
+        entries={entries}
+        completedSets={completedSets}
+        elapsed={data.elapsedSecs || 0}
+        formatTime={formatTimeFromSeconds}
+        sessionDate={typeof data.date === 'string' ? data.date.slice(0, 10) : null}
+        onClose={() => navigate(-1)}
+        onRename={data.canRename && data.templateId ? () => setRenameOpen(true) : undefined}
+      />
+      {renameOpen && (
+        <RenameWorkoutDayModal
+          initialName={template.name}
+          onSave={handleRename}
+          onClose={() => setRenameOpen(false)}
+        />
+      )}
+    </>
   );
 }

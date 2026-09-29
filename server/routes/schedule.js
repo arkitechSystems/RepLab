@@ -2,6 +2,10 @@ import { Router } from 'express';
 import db from '../db.js';
 import pool from '../dbPool.js';
 import { authMiddleware } from '../middleware/auth.js';
+import {
+  isValidDate, isPlausibleToday, daysBetween,
+  getMissedWorkouts, shiftScheduleFrom, markMissedSkipped,
+} from '../missedWorkouts.js';
 
 const router = Router();
 
@@ -131,6 +135,94 @@ router.post('/shift', authMiddleware, async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   } finally {
     client.release();
+  }
+});
+
+// ── Missed workouts prompt (see missedWorkouts.js for the "missed" rule) ──
+
+// GET /schedule/missed?today=YYYY-MM-DD → { missed: [{date, templateId,
+// templateName}], resume: <earliest missed> | null }. `today` is the client's
+// local date.
+router.get('/missed', authMiddleware, async (req, res) => {
+  try {
+    const { today } = req.query;
+    if (!isPlausibleToday(today)) {
+      return res.status(400).json({ error: 'today (local YYYY-MM-DD) is required' });
+    }
+    const missed = await getMissedWorkouts(pool, req.userId, today);
+    res.json({ missed, resume: missed[0] || null });
+  } catch (err) {
+    console.error('schedule/missed error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Runs `fn(client, missed)` in a transaction holding a per-user advisory lock,
+// with the missed list recomputed inside the lock — so a double-tap (or two
+// devices) can't resume/skip twice.
+async function withMissedLock(userId, today, fn) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query("SELECT pg_advisory_xact_lock(hashtext('missed-workouts'), $1)", [userId]);
+    const missed = await getMissedWorkouts(client, userId, today);
+    const result = await fn(client, missed);
+    await client.query(result.error ? 'ROLLBACK' : 'COMMIT');
+    return result;
+  } catch (err) {
+    try { await client.query('ROLLBACK'); } catch (_) {}
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+// POST /schedule/missed/resume { today, fromDate } — brings the earliest
+// missed workout (fromDate) to today and pushes everything after it back by
+// the same number of days. fromDate must still be the earliest unresolved
+// miss; a repeat request after a successful resume gets 409.
+router.post('/missed/resume', authMiddleware, async (req, res) => {
+  const { today, fromDate } = req.body || {};
+  if (!isPlausibleToday(today)) {
+    return res.status(400).json({ error: 'today (local YYYY-MM-DD) is required' });
+  }
+  if (!isValidDate(fromDate)) {
+    return res.status(400).json({ error: 'fromDate in YYYY-MM-DD format is required' });
+  }
+  try {
+    const result = await withMissedLock(req.userId, today, async (client, missed) => {
+      if (!missed.length || missed[0].date !== fromDate) {
+        return { error: 409, message: 'That workout is no longer waiting to be resumed' };
+      }
+      const days = daysBetween(fromDate, today);
+      const shifted = await shiftScheduleFrom(client, req.userId, fromDate, days);
+      return { shifted, days, date: today, templateId: missed[0].templateId };
+    });
+    if (result.error) return res.status(result.error).json({ error: result.message });
+    res.json(result);
+  } catch (err) {
+    console.error('schedule/missed/resume error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /schedule/missed/skip { today } — marks every currently-unresolved
+// missed workout as skipped. Future days are untouched. Idempotent (a repeat
+// finds nothing left to skip).
+router.post('/missed/skip', authMiddleware, async (req, res) => {
+  const { today } = req.body || {};
+  if (!isPlausibleToday(today)) {
+    return res.status(400).json({ error: 'today (local YYYY-MM-DD) is required' });
+  }
+  try {
+    const result = await withMissedLock(req.userId, today, async (client, missed) => {
+      const skipped = await markMissedSkipped(client, req.userId, missed.map((m) => m.date));
+      return { skipped };
+    });
+    res.json(result);
+  } catch (err) {
+    console.error('schedule/missed/skip error:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

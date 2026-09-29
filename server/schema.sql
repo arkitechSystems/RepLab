@@ -73,7 +73,9 @@ CREATE TABLE IF NOT EXISTS schedule_days (
   user_id INT NOT NULL REFERENCES users(id),
   day_of_week INT,
   template_id INT REFERENCES templates(id) ON DELETE CASCADE,
-  schedule_date DATE
+  schedule_date DATE,
+  -- Missed-workouts prompt: set on Skip so the day is never offered again.
+  missed_skipped_at TIMESTAMPTZ
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
@@ -84,6 +86,9 @@ CREATE TABLE IF NOT EXISTS sessions (
   notes JSONB DEFAULT '{}',
   completed BOOLEAN DEFAULT FALSE,
   workout_data JSONB,
+  -- Per-day name set from the session pencil. Overrides the template's name
+  -- for this date only; NULL = show the template's current name.
+  custom_name TEXT,
   last_activity_at TIMESTAMPTZ,
   reminder_sent_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW()

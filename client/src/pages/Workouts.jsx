@@ -21,6 +21,8 @@ import UndoToast from '../components/UndoToast';
 import LoadingSpinnerOverlay from '../components/LoadingSpinnerOverlay';
 import { track } from '../utils/analytics';
 import useFocusTrap from '../hooks/useFocusTrap';
+import MissedWorkoutsModal from '../components/MissedWorkoutsModal';
+import useMissedWorkoutsPrompt from '../hooks/useMissedWorkoutsPrompt';
 
 const DAY_NAMES_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -1145,6 +1147,15 @@ export default function Workouts() {
   // want to run the program's prehab template before the actual workout.
   // Shape: { templateId, date, prehabTemplateId }.
   const [prehabPrompt, setPrehabPrompt] = useState(null);
+  // Missed-workouts prompt (see hooks/useMissedWorkoutsPrompt): shows on page
+  // open and again on any Start tap until Resume or Skip. From a Start tap,
+  // Skip or closing it carries on into the workout they tapped.
+  const missedPromptCtl = useMissedWorkoutsPrompt({
+    trigger: 'start',
+    promptOnLoad: true,
+    onProceed: (templateId, date, opts) => navigateToWorkout(templateId, date, { ...opts, skipMissedCheck: true }),
+    onResolved: () => { fetchData().catch(() => {}); },
+  });
   // Add Workout modal state
   const [addWorkoutModal, setAddWorkoutModal] = useState(null); // template object
   const [addDateInput, setAddDateInput] = useState('');
@@ -1297,9 +1308,12 @@ export default function Workouts() {
       const sorted = [...nonRestCompleted].sort((a, b) => b.date.localeCompare(a.date));
       const last = sorted[0];
       const tmpl = tmpls.find(t => t.id === last.templateId);
+      // Prefer the session's server-side display name (the day's own rename,
+      // else the template's current name).
+      const lastSession = sessions.find(s => s.templateId === last.templateId && s.date === last.date);
       const daysAgo = Math.floor((today - new Date(last.date + 'T00:00:00')) / 86400000);
       const ago = daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : `${daysAgo} days ago`;
-      setLastWorkout({ name: tmpl?.name || 'Workout', ago });
+      setLastWorkout({ name: lastSession?.templateName || tmpl?.name || 'Workout', ago });
     }
 
     setPrograms(progs);
@@ -1336,9 +1350,11 @@ export default function Workouts() {
       ? {
           templateId: completedTemplateId,
           // Shown as the card title ("<name> Completed") once today is done.
+          // Schedule + session names are server display names (the day's own
+          // rename, else the template's current name).
           templateName: todaySchedule?.templateName
+            || sessions.find(s => s.templateId === completedTemplateId && s.date === todayStr)?.templateName
             || tmpls.find(t => t.id === completedTemplateId)?.name
-            || todayInProgressSession?.templateName
             || 'Workout',
           date: todayStr,
         }
@@ -1361,7 +1377,7 @@ export default function Workouts() {
       const tmpl = tmpls.find(t => t.id === todayInProgressSession.templateId);
       setNextWorkoutInfo({
         status: 'resume',
-        templateName: tmpl?.name || todayInProgressSession.templateName || 'Workout',
+        templateName: todayInProgressSession.templateName || tmpl?.name || 'Workout',
         templateId: todayInProgressSession.templateId,
         date: todayStr,
         dayLabel: 'Today',
@@ -1955,7 +1971,11 @@ export default function Workouts() {
 
   // Navigate to the right workout flow based on whether the template belongs to a featured program
   function navigateToWorkout(templateId, date, opts = {}) {
-    const { skipPrehab = false } = opts;
+    const { skipPrehab = false, skipMissedCheck = false } = opts;
+
+    // Unresolved missed workouts → ask Resume / Skip before starting anything.
+    if (!skipMissedCheck && missedPromptCtl.guardStart(templateId, date, opts)) return;
+
     const tmpl = templates.find(t => t.id === templateId);
 
     // Optional warm-up gate: if the workout's program has a prehab template
@@ -3104,6 +3124,7 @@ export default function Workouts() {
             whose program has a prehab template attached (Robin Gallant).
             Yes routes to the prehab session; No skips straight to the
             real workout via skipPrehab=true. */}
+        <MissedWorkoutsModal {...missedPromptCtl.modalProps} />
         {prehabPrompt && (
           <div
             className="fixed inset-0 z-[110] flex items-center justify-center px-5"
