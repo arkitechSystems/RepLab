@@ -49,6 +49,7 @@ import { userGuidePage } from './userGuide.js';
 import { startIdleReminderScheduler } from './pushScheduler.js';
 import { startStreakReminderScheduler } from './streakReminderScheduler.js';
 import { startWeeklySummaryScheduler } from './weeklySummaryScheduler.js';
+import { startCommunityLikeScheduler } from './communityLikeNotifier.js';
 
 // In-memory error log for admin dashboard
 export const errorLog = [];
@@ -151,6 +152,7 @@ const aiLimiter = rateLimit({
 // Apply strict limiter to auth endpoints (login, signup, reset)
 app.use('/auth/login', authLimiter);
 app.use('/auth/signup', authLimiter);
+app.use('/auth/social', authLimiter);
 app.use('/auth/request-reset', authLimiter);
 app.use('/admin/login', authLimiter);
 // Refresh limiter is keyed on the refresh token (hashed) rather than IP.
@@ -406,6 +408,8 @@ if (process.env.NODE_ENV !== 'test') {
         startStreakReminderScheduler();
         // Weekly summary digest (Sunday 6–8 PM local). Same dormancy rule.
         startWeeklySummaryScheduler();
+        // Batched follow-up pushes for Community likes (1-minute flush).
+        startCommunityLikeScheduler();
       });
     })
     .catch((err) => {

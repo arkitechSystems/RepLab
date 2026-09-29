@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import StickyHeader from '../components/StickyHeader';
 import { api } from '../api';
+import { track } from '../utils/analytics';
 
 function formatTimeAgo(daysAgo) {
   if (daysAgo === 0) return 'today';
@@ -48,6 +49,58 @@ function Avatar({ initials, photoUrl, size = 18 }) {
   );
 }
 
+// Heroicons "fire" — outline when not liked, filled red when liked.
+const FLAME_PATHS = [
+  'M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z',
+  'M12 18a3.75 3.75 0 00.495-7.467 5.99 5.99 0 00-1.925 3.546 5.974 5.974 0 01-2.133-1A3.75 3.75 0 0012 18z',
+];
+
+function FlameIcon({ filled }) {
+  return (
+    <svg
+      className="w-4 h-4 shrink-0"
+      viewBox="0 0 24 24"
+      fill={filled ? 'currentColor' : 'none'}
+      stroke="currentColor"
+      strokeWidth={1.5}
+      aria-hidden="true"
+    >
+      {FLAME_PATHS.map((d) => (
+        <path key={d} strokeLinecap="round" strokeLinejoin="round" d={d} />
+      ))}
+    </svg>
+  );
+}
+
+// Like control for one feed item. Your own activity shows the count only
+// (no button), and nothing at all until someone has liked it.
+function LikeButton({ item, onToggle }) {
+  const count = item.likeCount || 0;
+  if (item.isMine) {
+    if (count === 0) return null;
+    return (
+      <div className="flex items-center gap-1 text-[11px] font-semibold" style={{ color: 'rgba(239,68,68,0.8)' }}>
+        <FlameIcon filled />
+        <span>{count}</span>
+      </div>
+    );
+  }
+  const liked = !!item.likedByMe;
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle(item)}
+      aria-pressed={liked}
+      aria-label={liked ? 'Unlike' : 'Like'}
+      className="flex items-center gap-1 text-[11px] font-semibold -my-1 py-1 pr-1 active:scale-95 transition-transform"
+      style={{ color: liked ? '#ef4444' : 'rgba(255,255,255,0.4)' }}
+    >
+      <FlameIcon filled={liked} />
+      {count > 0 && <span>{count}</span>}
+    </button>
+  );
+}
+
 function ActivityTicker({ messages }) {
   if (!messages || messages.length === 0) return null;
   return (
@@ -90,7 +143,7 @@ function ActivityTicker({ messages }) {
   );
 }
 
-function CommunityTimeline({ items }) {
+function CommunityTimeline({ items, onToggleLike, highlightId }) {
   if (!items || items.length === 0) {
     return (
       <div>
@@ -116,7 +169,12 @@ function CommunityTimeline({ items }) {
             const isCustom = item.kind === 'custom';
             const dotColor = isPR ? '#ef4444' : isProgram ? '#3b82f6' : isCustom ? '#a855f7' : '#22c55e';
             return (
-              <div key={item.id} className="relative">
+              <div
+                key={item.id}
+                id={`community-item-${item.id}`}
+                className="relative transition-colors duration-700 rounded-sm"
+                style={highlightId === item.id ? { background: 'rgba(239,68,68,0.10)', boxShadow: '0 0 0 6px rgba(239,68,68,0.10)' } : undefined}
+              >
                 <div
                   className="absolute -left-[22px] top-1.5 w-3 h-3 rounded-full"
                   style={{ background: dotColor, boxShadow: `0 0 10px ${dotColor}88` }}
@@ -178,6 +236,9 @@ function CommunityTimeline({ items }) {
                     )}
                   </>
                 )}
+                <div className="mt-2">
+                  <LikeButton item={item} onToggle={onToggleLike} />
+                </div>
               </div>
             );
           })}
@@ -189,8 +250,13 @@ function CommunityTimeline({ items }) {
 
 export default function Community() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [feed, setFeed] = useState({ items: [], authors: {} });
   const [loading, setLoading] = useState(true);
+  // Item a like push deep-linked to (/community?item=pr-42), highlighted briefly.
+  const [highlightId, setHighlightId] = useState(null);
+  // Items with a like/unlike request in flight — ignore taps until it settles.
+  const pendingLikes = useRef(new Set());
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
@@ -208,6 +274,41 @@ export default function Community() {
       });
     return () => controller.abort();
   }, []);
+
+  // Scroll to and flash the item a like notification pointed at.
+  const targetItem = searchParams.get('item');
+  useEffect(() => {
+    if (loading || !targetItem) return;
+    const el = document.getElementById(`community-item-${targetItem}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setHighlightId(targetItem);
+    const t = setTimeout(() => setHighlightId(null), 2500);
+    return () => clearTimeout(t);
+  }, [loading, targetItem]);
+
+  const updateItem = (id, patch) => {
+    setFeed((f) => ({ ...f, items: f.items.map((i) => (i.id === id ? { ...i, ...patch } : i)) }));
+  };
+
+  // Optimistic like/unlike; rolls back if the request fails. The server's
+  // count wins once it answers.
+  async function toggleLike(item) {
+    if (item.isMine || pendingLikes.current.has(item.id)) return;
+    pendingLikes.current.add(item.id);
+    const wasLiked = !!item.likedByMe;
+    const prevCount = item.likeCount || 0;
+    updateItem(item.id, { likedByMe: !wasLiked, likeCount: Math.max(0, prevCount + (wasLiked ? -1 : 1)) });
+    try {
+      const res = await api(`/community/likes/${encodeURIComponent(item.id)}`, { method: wasLiked ? 'DELETE' : 'PUT' });
+      if (typeof res?.likeCount === 'number') updateItem(item.id, { likeCount: res.likeCount });
+      track(wasLiked ? 'community_unlike' : 'community_like', { kind: item.kind });
+    } catch {
+      updateItem(item.id, { likedByMe: wasLiked, likeCount: prevCount });
+    } finally {
+      pendingLikes.current.delete(item.id);
+    }
+  }
 
   const items = useMemo(() => {
     const now = new Date();
@@ -287,7 +388,7 @@ export default function Community() {
         {loading ? (
           <p className="text-[12px] text-white/40 font-light py-8 text-center">Loading activity…</p>
         ) : (
-          <CommunityTimeline items={items} />
+          <CommunityTimeline items={items} onToggleLike={toggleLike} highlightId={highlightId} />
         )}
       </div>
     </div>

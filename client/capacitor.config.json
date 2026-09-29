@@ -12,6 +12,19 @@
     },
     "StatusBar": {
       "style": "DARK"
+    },
+    "FirebaseAuthentication": {
+      "skipNativeAuth": false,
+      "providers": ["apple.com", "google.com"]
+    }
+  },
+  "experimental": {
+    "ios": {
+      "spm": {
+        "packageTraits": {
+          "@capacitor-firebase/authentication": ["Google"]
+        }
+      }
     }
   }
 }

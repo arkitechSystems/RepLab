@@ -8,6 +8,7 @@ import SplashScreen from '../components/SplashScreen';
 import useFocusTrap from '../hooks/useFocusTrap';
 import { APP_VERSION } from '../version';
 import { getWorkoutColor } from '../utils/workoutColors';
+import { signInWithProvider, finishSocialAccountDeletion, signOutSocial, isSocialCancel } from '../utils/socialAuth';
 
 // REPLAB Community sharing categories (keys match /community/settings).
 const COMMUNITY_SHARE_CATEGORIES = [
@@ -267,6 +268,10 @@ export default function Profile() {
   const [communitySharing, setCommunitySharing] = useState({ all: true, pr: true, program: true, workout: true, custom: true });
   const [communitySharingSaving, setCommunitySharingSaving] = useState(false);
   const [communitySharingError, setCommunitySharingError] = useState('');
+  // "Likes on my activity" push toggle — server-side (GET/PUT
+  // /community/notifications) since the server decides whether to send.
+  const [likePushesOn, setLikePushesOn] = useState(true);
+  const [likePushesSaving, setLikePushesSaving] = useState(false);
   // Category key being switched off, while the Remove/Keep prompt is open.
   const [sharingOffPrompt, setSharingOffPrompt] = useState(null);
   const sharingOffTrapRef = useFocusTrap(!!sharingOffPrompt);
@@ -346,8 +351,31 @@ export default function Profile() {
     api('/community/settings', { signal: controller.signal })
       .then((s) => { if (s && typeof s === 'object') setCommunitySharing(s); })
       .catch(() => {});
+    api('/community/notifications', { signal: controller.signal })
+      .then((s) => { if (typeof s?.likes === 'boolean') setLikePushesOn(s.likes); })
+      .catch(() => {});
     return () => controller.abort();
   }, []);
+
+  async function toggleLikePushes() {
+    if (likePushesSaving) return;
+    const next = !likePushesOn;
+    setLikePushesOn(next);
+    setLikePushesSaving(true);
+    setCommunitySharingError('');
+    try {
+      const updated = await api('/community/notifications', {
+        method: 'PUT',
+        body: JSON.stringify({ likes: next }),
+      });
+      if (typeof updated?.likes === 'boolean') setLikePushesOn(updated.likes);
+    } catch {
+      setLikePushesOn(!next);
+      setCommunitySharingError("Couldn't save your notification setting. Please try again.");
+    } finally {
+      setLikePushesSaving(false);
+    }
+  }
 
   async function saveCommunitySharing(category, enabled, removePast = false) {
     const previous = communitySharing;
@@ -461,16 +489,50 @@ export default function Profile() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleteError, setDeleteError] = useState('');
   const [deleting, setDeleting] = useState(false);
+  // Google/Apple-only accounts have no password, so deletion is confirmed by
+  // a fresh provider sign-in instead (server checks it's linked to this
+  // account). Holds the signInWithProvider result until the delete runs.
+  const socialOnly = user?.hasPassword === false;
+  const [deleteSocial, setDeleteSocial] = useState(null);
+  const [confirmingSocial, setConfirmingSocial] = useState(null); // 'apple' | 'google' | null
+
+  function closeDeleteAccount() {
+    setShowDeleteAccount(false);
+    if (deleteSocial) {
+      signOutSocial();
+      setDeleteSocial(null);
+    }
+  }
+
+  async function confirmDeleteWith(provider) {
+    setDeleteError('');
+    setConfirmingSocial(provider);
+    try {
+      // keepSession: Firebase must stay signed in until the Apple token is
+      // revoked in finishSocialAccountDeletion.
+      const social = await signInWithProvider(provider, { keepSession: true });
+      if (social) setDeleteSocial(social);
+    } catch (err) {
+      if (!isSocialCancel(err)) setDeleteError(`Couldn't confirm with ${provider === 'apple' ? 'Apple' : 'Google'}. Please try again.`);
+    } finally {
+      setConfirmingSocial(null);
+    }
+  }
 
   async function handleDeleteAccount() {
     if (deleteConfirmText !== 'DELETE') return;
+    if (socialOnly && !deleteSocial) return;
     setDeleting(true);
     setDeleteError('');
     try {
       await api('/auth/delete-account', {
         method: 'DELETE',
-        body: JSON.stringify({ password: deletePassword }),
+        body: JSON.stringify(socialOnly ? { idToken: deleteSocial.idToken } : { password: deletePassword }),
       });
+      // Apple requires revoking Sign in with Apple tokens on account
+      // deletion; this also clears the Firebase Auth record. Best-effort —
+      // the REPLAB account is already gone.
+      if (deleteSocial) await finishSocialAccountDeletion(deleteSocial.appleRevokeToken);
       logout();
       navigate('/login');
     } catch (err) {
@@ -913,6 +975,29 @@ export default function Profile() {
                   })}
                 </div>
 
+                {/* Push when someone likes your activity. Independent of the
+                    sharing toggles above (it only matters while something
+                    of yours is shared). */}
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between gap-px">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+                      </svg>
+                      <span className="text-white/70 text-sm font-medium">Likes on my activity</span>
+                    </div>
+                    <button
+                      onClick={toggleLikePushes}
+                      disabled={likePushesSaving}
+                      aria-label={likePushesOn ? 'Turn off like notifications' : 'Turn on like notifications'}
+                      className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${likePushesOn ? 'bg-wf-red' : 'bg-white/15'}`}
+                    >
+                      <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${likePushesOn ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-white/40 leading-snug pl-[1px]">Push notification when someone likes your activity</p>
+                </div>
+
                 {communitySharingError && (
                   <p className="text-[11px] text-red-400 leading-snug">{communitySharingError}</p>
                 )}
@@ -1318,7 +1403,7 @@ export default function Profile() {
           </button>
           <span className="text-wf-gray-700">|</span>
           <button
-            onClick={() => { setShowDeleteAccount(true); setDeletePassword(''); setDeleteConfirmText(''); setDeleteError(''); }}
+            onClick={() => { setShowDeleteAccount(true); setDeletePassword(''); setDeleteConfirmText(''); setDeleteError(''); setDeleteSocial(null); }}
             className="text-sm text-wf-gray-500 hover:text-red-400 transition-colors"
           >
             Delete Account
@@ -1464,7 +1549,7 @@ export default function Profile() {
       {showDeleteAccount && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center px-4"
-          onClick={() => setShowDeleteAccount(false)}
+          onClick={closeDeleteAccount}
           role="dialog"
           aria-modal="true"
           aria-labelledby="profile-delete-title"
@@ -1488,18 +1573,43 @@ export default function Profile() {
               </p>
 
               <div className="mt-4 space-y-3">
-                <div>
-                  <label htmlFor="profile-delete-password" className="text-xs text-wf-gray-500 mb-1 block">Enter your password</label>
-                  <input
-                    id="profile-delete-password"
-                    type="password"
-                    value={deletePassword}
-                    onChange={(e) => setDeletePassword(e.target.value)}
-                    placeholder="Password"
-                    autoComplete="current-password"
-                    className="w-full glass-input rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-wf-gray-600 focus:outline-none"
-                  />
-                </div>
+                {socialOnly ? (
+                  <div>
+                    <p className="text-xs text-wf-gray-500 mb-1">Confirm it's you with the account you signed up with</p>
+                    {deleteSocial ? (
+                      <p className="text-sm text-green-400 py-2.5">
+                        &#10003; Confirmed with {deleteSocial.provider === 'apple' ? 'Apple' : 'Google'}
+                      </p>
+                    ) : (
+                      <div className="flex gap-2">
+                        {['apple', 'google'].map((provider) => (
+                          <button
+                            key={provider}
+                            type="button"
+                            onClick={() => confirmDeleteWith(provider)}
+                            disabled={!!confirmingSocial}
+                            className={`flex-1 py-2.5 rounded-lg glass-input text-sm font-semibold text-white active:scale-[0.98] transition-all ${confirmingSocial ? 'opacity-50' : ''}`}
+                          >
+                            {confirmingSocial === provider ? 'Confirming...' : provider === 'apple' ? 'Apple' : 'Google'}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    <label htmlFor="profile-delete-password" className="text-xs text-wf-gray-500 mb-1 block">Enter your password</label>
+                    <input
+                      id="profile-delete-password"
+                      type="password"
+                      value={deletePassword}
+                      onChange={(e) => setDeletePassword(e.target.value)}
+                      placeholder="Password"
+                      autoComplete="current-password"
+                      className="w-full glass-input rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-wf-gray-600 focus:outline-none"
+                    />
+                  </div>
+                )}
                 <div>
                   <label htmlFor="profile-delete-confirm" className="text-xs text-wf-gray-500 mb-1 block">Type <span className="text-red-400 font-semibold">DELETE</span> to confirm</label>
                   <input
@@ -1520,15 +1630,15 @@ export default function Profile() {
 
             <div className="px-5 pb-5 flex gap-3">
               <button
-                onClick={() => setShowDeleteAccount(false)}
+                onClick={closeDeleteAccount}
                 className="flex-1 py-3 rounded-xl bg-white/10 text-sm font-semibold text-white active:scale-[0.98] transition-all"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDeleteAccount}
-                disabled={deleteConfirmText !== 'DELETE' || deleting}
-                className={`flex-1 py-3 rounded-xl bg-red-500 text-sm font-semibold text-white active:scale-[0.98] transition-all ${deleteConfirmText !== 'DELETE' || deleting ? 'opacity-40 pointer-events-none' : ''}`}
+                disabled={deleteConfirmText !== 'DELETE' || deleting || (socialOnly && !deleteSocial)}
+                className={`flex-1 py-3 rounded-xl bg-red-500 text-sm font-semibold text-white active:scale-[0.98] transition-all ${deleteConfirmText !== 'DELETE' || deleting || (socialOnly && !deleteSocial) ? 'opacity-40 pointer-events-none' : ''}`}
               >
                 {deleting ? 'Deleting...' : 'Delete Account'}
               </button>

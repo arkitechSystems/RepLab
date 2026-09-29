@@ -39,6 +39,8 @@ export default async function initDb() {
   await pool.query(`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS completed BOOLEAN DEFAULT FALSE`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT UNIQUE`);
   await pool.query(`ALTER TABLE users ALTER COLUMN email DROP NOT NULL`);
+  // Google/Apple-only accounts have no password (see user_identities).
+  await pool.query(`ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name TEXT`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name TEXT`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS gender TEXT`);
@@ -537,6 +539,10 @@ export default async function initDb() {
   // admin can recategorize after reviewing — e.g. flip 'claude_code' to
   // 'admin' once verified.
   await pool.query(`ALTER TABLE exercises ADD COLUMN IF NOT EXISTS video_linked_by TEXT`);
+  // Program-specific variants (tempo/pause/drop-set versions etc.) stay in the
+  // DB so the programs that use them keep working, but are left out of the
+  // Exercise Library page. Exercise search/pickers still include them.
+  await pool.query(`ALTER TABLE exercises ADD COLUMN IF NOT EXISTS hidden_from_library BOOLEAN NOT NULL DEFAULT FALSE`);
 
   // Streak-reminder push de-dupe: track when we last pinged a given user so
   // the scheduler doesn't double-send across overlapping ticks. 18h cooldown
@@ -667,6 +673,32 @@ export default async function initDb() {
     hidden_before TIMESTAMPTZ NOT NULL,
     PRIMARY KEY (user_id, category)
   )`);
+
+  // Community likes + their push bookkeeping. Also defined in schema.sql.
+  // notify_community_likes is the Profile "Likes on my activity" toggle.
+  await pool.query(`CREATE TABLE IF NOT EXISTS community_likes (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    item_type TEXT NOT NULL,
+    item_id INT NOT NULL,
+    owner_user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (user_id, item_type, item_id)
+  )`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_community_likes_item ON community_likes(item_type, item_id)`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS community_like_notices (
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    item_type TEXT NOT NULL,
+    item_id INT NOT NULL,
+    owner_user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    notified_at TIMESTAMPTZ,
+    pushed BOOLEAN NOT NULL DEFAULT FALSE,
+    PRIMARY KEY (user_id, item_type, item_id)
+  )`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_community_like_notices_item ON community_like_notices(item_type, item_id, notified_at)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_community_like_notices_pending ON community_like_notices(created_at) WHERE notified_at IS NULL`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_community_likes BOOLEAN NOT NULL DEFAULT TRUE`);
 
   // PPL expansion migration removed — Will's PPL is no longer in the public
   // library (see comment above near the seed block). The user_id IS NULL

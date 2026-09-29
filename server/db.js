@@ -210,6 +210,9 @@ async function rebuildPBsForTemplateOnClient(client, userId, templateId) {
 const COMMUNITY_CATEGORIES = ['pr', 'program', 'workout', 'custom'];
 const COMMUNITY_SETTING_KEYS = ['all', ...COMMUNITY_CATEGORIES];
 
+// How far back an item can still be liked — matches the feed's max window.
+const COMMUNITY_LIKE_MAX_DAYS = 90;
+
 // SQL predicate: true when an item in `category` by the user in `userCol` may
 // appear in the community feed. Hidden when:
 //   - the master toggle is off right now (nothing from the user shows; the
@@ -523,6 +526,63 @@ const db = {
     );
     const u = rows[0];
     return { id: u.id, email: u.email, phone: u.phone, passwordHash: u.password_hash, firstName: u.first_name, lastName: u.last_name, gender: u.gender, username: u.username, role: u.role || 'client', referralSource: u.referral_source, referralCode: u.referral_code, zipCode: u.zip_code, timezone: u.timezone || 'UTC', signupCity: u.signup_city, signupState: u.signup_state, signupDevice: u.signup_device, utmSource: u.utm_source, utmMedium: u.utm_medium, utmCampaign: u.utm_campaign, utmContent: u.utm_content, utmTerm: u.utm_term, createdAt: u.created_at, tokenVersion: u.token_version ?? 0 };
+  },
+
+  // Google/Apple sign-in identities (user_identities table)
+  async findUserIdByIdentity(provider, providerUid) {
+    const { rows } = await pool.query(
+      'SELECT user_id FROM user_identities WHERE provider = $1 AND provider_uid = $2',
+      [provider, providerUid]
+    );
+    return rows[0]?.user_id ?? null;
+  },
+
+  async findUserIdByEmail(email) {
+    const { rows } = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+    return rows[0]?.id ?? null;
+  },
+
+  async linkIdentity(userId, provider, providerUid, email) {
+    await pool.query(
+      `INSERT INTO user_identities (user_id, provider, provider_uid, email)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (provider, provider_uid) DO NOTHING`,
+      [userId, provider, providerUid, email || null]
+    );
+  },
+
+  async getIdentities(userId) {
+    const { rows } = await pool.query(
+      'SELECT provider, provider_uid, email FROM user_identities WHERE user_id = $1 ORDER BY id',
+      [userId]
+    );
+    return rows.map((r) => ({ provider: r.provider, providerUid: r.provider_uid, email: r.email }));
+  },
+
+  // Optional "finish your profile" step after a Google/Apple sign-up. Only
+  // fields that were actually sent are written, so Skip-then-edit-later and
+  // partial saves never blank out existing values.
+  async updateSignupProfile(userId, fields) {
+    const columns = {
+      firstName: 'first_name',
+      lastName: 'last_name',
+      phone: 'phone',
+      zipCode: 'zip_code',
+      gender: 'gender',
+      referralSource: 'referral_source',
+      referralCode: 'referral_code',
+    };
+    const sets = [];
+    const params = [];
+    for (const [key, col] of Object.entries(columns)) {
+      if (fields[key] === undefined) continue;
+      params.push(fields[key]);
+      sets.push(`${col} = $${params.length}`);
+    }
+    if (sets.length === 0) return this.findUserById(userId);
+    params.push(userId);
+    await pool.query(`UPDATE users SET ${sets.join(', ')} WHERE id = $${params.length}`, params);
+    return this.findUserById(userId);
   },
 
   // Programs
@@ -1730,6 +1790,7 @@ const db = {
       isCustom: e.is_custom,
       createdBy: e.created_by,
       videoId: e.video_id || null,
+      hiddenFromLibrary: !!e.hidden_from_library,
     }));
   },
 
@@ -2208,7 +2269,7 @@ const db = {
   // are base64 data URIs (up to ~500KB each), so they are returned once per
   // author in `authors` rather than repeated per item. Emails are never
   // selected.
-  async getCommunityFeed({ limit = 50, sinceDays = 30 } = {}) {
+  async getCommunityFeed({ limit = 50, sinceDays = 30, viewerId = null } = {}) {
     const params = [sinceDays, limit];
 
     // Latest PR per (user, exercise) in the window, with delta vs that
@@ -2344,6 +2405,27 @@ const db = {
       .sort((a, b) => new Date(b.occurredAt) - new Date(a.occurredAt))
       .slice(0, limit);
 
+    // Like counts for the returned items in one query.
+    const likes = new Map();
+    if (items.length > 0) {
+      const { rows: likeRows } = await pool.query(
+        `SELECT cl.item_type, cl.item_id, COUNT(*)::int AS n,
+                BOOL_OR(cl.user_id = $3) AS mine
+           FROM community_likes cl
+           JOIN UNNEST($1::text[], $2::int[]) AS k(item_type, item_id)
+             ON k.item_type = cl.item_type AND k.item_id = cl.item_id
+          GROUP BY cl.item_type, cl.item_id`,
+        [items.map((i) => i.kind), items.map((i) => Number(i.id.split('-')[1])), viewerId]
+      );
+      for (const r of likeRows) likes.set(`${r.item_type}:${r.item_id}`, r);
+    }
+    for (const item of items) {
+      const like = likes.get(`${item.kind}:${item.id.split('-')[1]}`);
+      item.likeCount = like ? like.n : 0;
+      item.likedByMe = !!like?.mine;
+      item.isMine = viewerId != null && item.userId === viewerId;
+    }
+
     const userIds = [...new Set(items.map((i) => i.userId))];
     const authors = {};
     if (userIds.length > 0) {
@@ -2361,6 +2443,116 @@ const db = {
     }
 
     return { items, authors };
+  },
+
+  // One community item, only if it's currently shown to others in the feed:
+  // within the like window and allowed by the owner's sharing settings (same
+  // communityVisibleSql rules as getCommunityFeed). Returns the owner plus
+  // the fields the feed displays (used for like push text), or null.
+  async getCommunityItem(type, id) {
+    const since = `NOW() - (${COMMUNITY_LIKE_MAX_DAYS} * INTERVAL '1 day')`;
+    let sql;
+    if (type === 'pr') {
+      sql = `SELECT pb.user_id, pb.exercise_name, pb.best_weight, pb.best_reps
+               FROM personal_bests pb
+              WHERE pb.id = $1 AND pb.achieved_at >= ${since}
+                AND ${communityVisibleSql('pb.user_id', 'pr', ['pb.achieved_at'])}`;
+    } else if (type === 'program') {
+      sql = `SELECT ps.user_id, COALESCE(pna.short_name, ps.program_name) AS program_name
+               FROM program_starts ps
+               LEFT JOIN program_name_abbreviations pna ON pna.full_name = ps.program_name
+              WHERE ps.id = $1 AND ps.started_at >= ${since}
+                AND ${communityVisibleSql('ps.user_id', 'program', ['ps.started_at'])}`;
+    } else if (type === 'workout') {
+      sql = `SELECT s.user_id, COALESCE(t.name, 'Workout') AS workout_name
+               FROM sessions s
+               LEFT JOIN templates t ON t.id = s.template_id
+              WHERE s.id = $1 AND s.completed = TRUE
+                AND COALESCE(s.last_activity_at, s.created_at) >= ${since}
+                AND ${communityVisibleSql('s.user_id', 'workout', ['s.created_at', 'COALESCE(s.last_activity_at, s.created_at)'])}`;
+    } else if (type === 'custom') {
+      sql = `SELECT cwe.user_id, t.name AS workout_name
+               FROM custom_workout_events cwe
+               JOIN templates t ON t.id = cwe.template_id
+              WHERE cwe.id = $1 AND cwe.created_at >= ${since}
+                AND ${communityVisibleSql('cwe.user_id', 'custom', ['cwe.created_at'])}`;
+    } else {
+      return null;
+    }
+    const { rows } = await pool.query(sql, [id]);
+    const r = rows[0];
+    if (!r) return null;
+    return {
+      type,
+      id,
+      ownerId: r.user_id,
+      exercise: r.exercise_name,
+      weight: r.best_weight == null ? undefined : Number(r.best_weight),
+      reps: r.best_reps,
+      programName: r.program_name,
+      workoutName: r.workout_name,
+    };
+  },
+
+  // Like an item (idempotent). firstTime is true only the first time this
+  // user has ever liked it — the notice row outlives unlike, so a re-like
+  // never counts as new for notifications.
+  async likeCommunityItem(userId, type, id, ownerId) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        `INSERT INTO community_likes (user_id, item_type, item_id, owner_user_id)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (user_id, item_type, item_id) DO NOTHING`,
+        [userId, type, id, ownerId]
+      );
+      const { rowCount } = await client.query(
+        `INSERT INTO community_like_notices (user_id, item_type, item_id, owner_user_id)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (user_id, item_type, item_id) DO NOTHING`,
+        [userId, type, id, ownerId]
+      );
+      await client.query('COMMIT');
+      return { firstTime: rowCount > 0 };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  },
+
+  async unlikeCommunityItem(userId, type, id) {
+    await pool.query(
+      'DELETE FROM community_likes WHERE user_id = $1 AND item_type = $2 AND item_id = $3',
+      [userId, type, id]
+    );
+  },
+
+  async countCommunityLikes(type, id) {
+    const { rows } = await pool.query(
+      'SELECT COUNT(*)::int AS n FROM community_likes WHERE item_type = $1 AND item_id = $2',
+      [type, id]
+    );
+    return rows[0]?.n ?? 0;
+  },
+
+  // Profile "Likes on my activity" push toggle (default on).
+  async getCommunityNotificationSettings(userId) {
+    const { rows } = await pool.query(
+      'SELECT notify_community_likes FROM users WHERE id = $1',
+      [userId]
+    );
+    return { likes: rows[0]?.notify_community_likes !== false };
+  },
+
+  async setCommunityLikeNotifications(userId, enabled) {
+    await pool.query(
+      'UPDATE users SET notify_community_likes = $2 WHERE id = $1',
+      [userId, enabled]
+    );
+    return this.getCommunityNotificationSettings(userId);
   },
 };
 

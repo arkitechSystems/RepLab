@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   email TEXT UNIQUE,
   phone TEXT UNIQUE,
-  password_hash TEXT NOT NULL,
+  password_hash TEXT, -- NULL for accounts that only use Google/Apple sign-in
   first_name TEXT,
   last_name TEXT,
   gender TEXT,
@@ -424,3 +424,52 @@ CREATE TABLE IF NOT EXISTS community_hidden_before (
   hidden_before TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (user_id, category)
 );
+
+-- Community feed likes. There's no posts table: a like points at the
+-- underlying activity row by (item_type, item_id), where item_type is the
+-- feed kind ('pr' → personal_bests, 'program' → program_starts, 'workout' →
+-- sessions, 'custom' → custom_workout_events). owner_user_id is resolved
+-- server-side when the like is made. Likes on activity that's hidden by the
+-- owner's sharing settings are kept, just not shown.
+CREATE TABLE IF NOT EXISTS community_likes (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  item_type TEXT NOT NULL,
+  item_id INT NOT NULL,
+  owner_user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (user_id, item_type, item_id)
+);
+CREATE INDEX IF NOT EXISTS idx_community_likes_item ON community_likes(item_type, item_id);
+
+-- One row per (liker, item) the first time it's liked — survives unlike, so
+-- re-liking never re-notifies. notified_at NULL = waiting for the batched
+-- follow-up push (see communityLikeNotifier.js); set once the owner has been
+-- told, or when the like is skipped (owner opted out, item hidden, unliked).
+CREATE TABLE IF NOT EXISTS community_like_notices (
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  item_type TEXT NOT NULL,
+  item_id INT NOT NULL,
+  owner_user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  notified_at TIMESTAMPTZ,
+  pushed BOOLEAN NOT NULL DEFAULT FALSE,
+  PRIMARY KEY (user_id, item_type, item_id)
+);
+CREATE INDEX IF NOT EXISTS idx_community_like_notices_item ON community_like_notices(item_type, item_id, notified_at);
+CREATE INDEX IF NOT EXISTS idx_community_like_notices_pending ON community_like_notices(created_at) WHERE notified_at IS NULL;
+
+-- "Continue with Google / Apple" links. One row per provider account; a user
+-- can have several (e.g. email+password account that later taps Google with
+-- the same verified email gets auto-linked). provider_uid is the provider's
+-- own stable id (Google/Apple `sub`), not the Firebase uid.
+CREATE TABLE IF NOT EXISTS user_identities (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  provider TEXT NOT NULL,          -- 'google' | 'apple'
+  provider_uid TEXT NOT NULL,
+  email TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (provider, provider_uid)
+);
+CREATE INDEX IF NOT EXISTS idx_user_identities_user ON user_identities(user_id);

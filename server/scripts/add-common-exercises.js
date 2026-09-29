@@ -15,11 +15,11 @@ const NEW_EXERCISES = [
   { name: 'High Pull',                  muscle: 'Back',       tags: ['olympic', 'compound', 'barbell', 'pull', 'explosive'] },
 
   // === CARDIO ===
-  { name: 'Stationary Bike',            muscle: 'Cardio',     tags: ['cardio', 'low-impact', 'machine', 'bike'] },
-  { name: 'Elliptical',                 muscle: 'Cardio',     tags: ['cardio', 'low-impact', 'machine'] },
-  { name: 'Jump Rope',                  muscle: 'Cardio',     tags: ['cardio', 'plyometric', 'bodyweight'] },
-  { name: 'Sled Push',                  muscle: 'Cardio',     tags: ['cardio', 'conditioning', 'sled', 'compound', 'quads'] },
-  { name: 'Sled Drag',                  muscle: 'Cardio',     tags: ['cardio', 'conditioning', 'sled', 'compound'] },
+  { name: 'Stationary Bike',            muscle: 'Conditioning',     tags: ['cardio', 'low-impact', 'machine', 'bike'] },
+  { name: 'Elliptical',                 muscle: 'Conditioning',     tags: ['cardio', 'low-impact', 'machine'] },
+  { name: 'Jump Rope',                  muscle: 'Conditioning',     tags: ['cardio', 'plyometric', 'bodyweight'] },
+  { name: 'Sled Push',                  muscle: 'Conditioning',     tags: ['cardio', 'conditioning', 'sled', 'compound', 'quads'] },
+  { name: 'Sled Drag',                  muscle: 'Conditioning',     tags: ['cardio', 'conditioning', 'sled', 'compound'] },
 
   // === KETTLEBELL ===
   { name: 'Kettlebell Swing',           muscle: 'Glutes',     tags: ['kettlebell', 'compound', 'hinge', 'explosive', 'hamstrings'] },
@@ -28,7 +28,7 @@ const NEW_EXERCISES = [
   { name: 'Kettlebell Clean',           muscle: 'Back',       tags: ['kettlebell', 'compound', 'pull', 'explosive'] },
 
   // === FUNCTIONAL / CONDITIONING ===
-  { name: 'Burpees',                    muscle: 'Cardio',     tags: ['cardio', 'bodyweight', 'compound', 'conditioning', 'full-body'] },
+  { name: 'Burpees',                    muscle: 'Conditioning',     tags: ['cardio', 'bodyweight', 'compound', 'conditioning', 'full-body'] },
   { name: 'Wall Balls',                 muscle: 'Quads',      tags: ['compound', 'medball', 'squat', 'conditioning', 'shoulders'] },
   { name: "Farmer's Carry",             muscle: 'Traps',      tags: ['compound', 'carry', 'grip', 'dumbbell', 'kettlebell'] },
   { name: 'Suitcase Carry',             muscle: 'Core',       tags: ['compound', 'carry', 'unilateral', 'anti-lateral', 'dumbbell', 'kettlebell'] },

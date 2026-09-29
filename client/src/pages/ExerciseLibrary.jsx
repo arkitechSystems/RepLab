@@ -51,7 +51,9 @@ export default function ExerciseLibrary() {
     // customs don't belong to a single global muscle group in the same
     // canonical sense.
     const showOnlyCustom = selectedMuscle === CUSTOM_FILTER;
-    let result = (exercises || []).filter((e) => (showOnlyCustom ? e.isCustom : !e.isCustom));
+    // hiddenFromLibrary: program-only variants kept in the DB for their
+    // programs but not listed here.
+    let result = (exercises || []).filter((e) => !e.hiddenFromLibrary && (showOnlyCustom ? e.isCustom : !e.isCustom));
     if (selectedMuscle && !showOnlyCustom) {
       result = result.filter(e => e.muscle === selectedMuscle);
     }

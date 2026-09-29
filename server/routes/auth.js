@@ -6,6 +6,7 @@ import crypto from 'crypto';
 import { generateToken, generateAccessToken, generateRefreshToken, verifyRefreshToken, authMiddleware } from '../middleware/auth.js';
 import { sendWelcomeEmail, sendPasswordResetEmail, sendNewSignupNotification, sendDeletionConfirmationEmail } from '../email.js';
 import config from '../config.js';
+import { verifyFirebaseIdToken } from '../firebaseAuth.js';
 
 const router = Router();
 
@@ -46,7 +47,7 @@ function normalizePhone(value) {
 }
 
 function userResponse(user) {
-  return { id: user.id, accountId: user.accountId ?? null, email: user.email, phone: user.phone, firstName: user.firstName, lastName: user.lastName, username: user.username, role: user.role || 'client', plan: user.plan || 'Free', trialEnd: user.trialEnd || null, photoUrl: user.profilePhoto || null };
+  return { id: user.id, accountId: user.accountId ?? null, email: user.email, phone: user.phone, firstName: user.firstName, lastName: user.lastName, username: user.username, role: user.role || 'client', plan: user.plan || 'Free', trialEnd: user.trialEnd || null, photoUrl: user.profilePhoto || null, hasPassword: !!user.passwordHash };
 }
 
 // Build the standard auth response body. `token` remains for backwards
@@ -62,6 +63,54 @@ function authPayload(user) {
     user: userResponse(user),
   };
 }
+
+// Username: first initial + last name, with number suffix if taken. Apple
+// sign-in can arrive with no name at all, so fall back to replab####.
+async function generateUsername(firstName, lastName) {
+  let base = ((firstName?.trim()?.[0] || '') + (lastName?.trim() || '')).toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (!base) {
+    for (let i = 0; i < 20; i++) {
+      const candidate = 'replab' + crypto.randomInt(1000, 10000);
+      if (!(await db.findUserByUsername(candidate))) return candidate;
+    }
+    base = 'replab' + crypto.randomInt(10000, 100000);
+  }
+  let finalUsername = base;
+  let suffix = 1;
+  while (await db.findUserByUsername(finalUsername)) {
+    finalUsername = base + suffix;
+    suffix++;
+  }
+  return finalUsername;
+}
+
+// Look up city/state from IP (best-effort — failures return nulls)
+async function lookupCityState(req) {
+  try {
+    const ip = req.ip === '::1' || req.ip === '127.0.0.1' ? '' : req.ip;
+    if (ip) {
+      const geoRes = await fetch(`https://ip-api.com/json/${ip}?fields=city,regionName,status`);
+      const geo = await geoRes.json();
+      if (geo.status === 'success') return { city: geo.city || null, state: geo.regionName || null };
+    }
+  } catch {
+    // Geo lookup failed — continue without it
+  }
+  return { city: null, state: null };
+}
+
+async function recordLoginHistory(req, user) {
+  try {
+    const loginIp = req.ip === '::1' || req.ip === '127.0.0.1' ? '' : req.ip;
+    const { city, state } = loginIp ? await lookupCityState(req) : { city: null, state: null };
+    await pool.query(
+      'INSERT INTO user_login_history (user_id, email, ip, user_agent, city, state) VALUES ($1, $2, $3, $4, $5, $6)',
+      [user.id, user.email || user.phone, loginIp, req.headers['user-agent']?.substring(0, 200), city, state]
+    );
+  } catch (err) { console.error('Login history error:', err); }
+}
+
+const SOCIAL_ONLY_MESSAGE = 'This account uses Google or Apple sign-in. Use the Continue with Google or Continue with Apple button.';
 
 router.post('/signup', async (req, res) => {
   try {
@@ -97,16 +146,9 @@ router.post('/signup', async (req, res) => {
       return res.status(409).json({ error: phone ? 'Phone number already registered' : 'Email already registered' });
     }
 
-    // Generate username: first initial + last name, with number suffix if taken
     let finalUsername = username?.trim();
     if (!finalUsername) {
-      const base = (firstName.trim()[0] + lastName.trim()).toLowerCase().replace(/[^a-z0-9]/g, '');
-      finalUsername = base;
-      let suffix = 1;
-      while (await db.findUserByUsername(finalUsername)) {
-        finalUsername = base + suffix;
-        suffix++;
-      }
+      finalUsername = await generateUsername(firstName, lastName);
     } else {
       const existingUsername = await db.findUserByUsername(finalUsername);
       if (existingUsername) {
@@ -114,22 +156,7 @@ router.post('/signup', async (req, res) => {
       }
     }
 
-    // Look up city/state from IP (non-blocking, best-effort)
-    let signupCity = null;
-    let signupState = null;
-    try {
-      const ip = req.ip === '::1' || req.ip === '127.0.0.1' ? '' : req.ip;
-      if (ip) {
-        const geoRes = await fetch(`https://ip-api.com/json/${ip}?fields=city,regionName,status`);
-        const geo = await geoRes.json();
-        if (geo.status === 'success') {
-          signupCity = geo.city || null;
-          signupState = geo.regionName || null;
-        }
-      }
-    } catch {
-      // Geo lookup failed — continue without it
-    }
+    const { city: signupCity, state: signupState } = await lookupCityState(req);
 
     const passwordHash = bcrypt.hashSync(password, 10);
     const user = await db.createUser({
@@ -191,6 +218,11 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    // Google/Apple-only accounts have no password to compare against.
+    if (!user.passwordHash) {
+      return res.status(401).json({ error: SOCIAL_ONLY_MESSAGE });
+    }
+
     const valid = bcrypt.compareSync(password, user.passwordHash);
     if (!valid) {
       return res.status(401).json({ error: 'Invalid credentials' });
@@ -199,23 +231,151 @@ router.post('/login', async (req, res) => {
     res.json(authPayload(user));
 
     // Log login history (fire-and-forget)
-    try {
-      const loginIp = req.ip === '::1' || req.ip === '127.0.0.1' ? '' : req.ip;
-      let city = null, state = null;
-      if (loginIp) {
-        try {
-          const geoRes = await fetch(`https://ip-api.com/json/${loginIp}?fields=city,regionName,status`);
-          const geo = await geoRes.json();
-          if (geo.status === 'success') { city = geo.city || null; state = geo.regionName || null; }
-        } catch (geoErr) { console.error('Login history geo error:', geoErr); }
-      }
-      await pool.query(
-        'INSERT INTO user_login_history (user_id, email, ip, user_agent, city, state) VALUES ($1, $2, $3, $4, $5, $6)',
-        [user.id, user.email || user.phone, loginIp, req.headers['user-agent']?.substring(0, 200), city, state]
-      );
-    } catch (err) { console.error('Login history error:', err); }
+    await recordLoginHistory(req, user);
   } catch (err) {
     console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /auth/social — "Continue with Google / Apple" (sign up AND sign in).
+// The client signs in with the provider through Firebase Auth and sends the
+// Firebase ID token. Lookup order:
+//   1. existing linked identity (provider + provider uid)
+//   2. existing user with the same email — only when the provider says the
+//      email is verified, so nobody can claim an account with an unverified
+//      address — and link the identity to it
+//   3. otherwise create a new, password-less user
+// Responds with the same auth payload as /login + /signup, plus isNewUser so
+// the client knows to show the optional "finish your profile" step.
+router.post('/social', async (req, res) => {
+  try {
+    const { idToken, firstName, lastName, referralCode, timezone, utmSource, utmMedium, utmCampaign, utmContent, utmTerm, deviceInfo } = req.body || {};
+    if (!idToken || typeof idToken !== 'string') {
+      return res.status(400).json({ error: 'Missing sign-in token' });
+    }
+
+    let identity;
+    try {
+      identity = await verifyFirebaseIdToken(idToken);
+    } catch (err) {
+      console.error('Social sign-in token rejected:', err.message);
+      return res.status(401).json({ error: "We couldn't verify that sign-in. Please try again." });
+    }
+    const { provider, providerUid, email, emailVerified, name } = identity;
+
+    let userId = await db.findUserIdByIdentity(provider, providerUid);
+    if (!userId && email && emailVerified) {
+      userId = await db.findUserIdByEmail(email);
+      if (userId) {
+        await db.linkIdentity(userId, provider, providerUid, email);
+        // Email signups aren't email-verified, so whoever set this account's
+        // password may not own the address (pre-registered takeover). The
+        // provider just proved ownership: drop the password, any pending reset
+        // link, and every existing session. The owner can set a new password
+        // later via "Forgot password".
+        const existing = await db.findUserById(userId);
+        if (existing?.passwordHash) await db.updatePassword(userId, null);
+      }
+    }
+
+    if (userId) {
+      const user = await db.findUserById(userId);
+      if (!user) return res.status(401).json({ error: "We couldn't verify that sign-in. Please try again." });
+      res.json({ ...authPayload(user), isNewUser: false, provider });
+      await recordLoginHistory(req, user);
+      return;
+    }
+
+    // New account. users requires an email or phone; both providers normally
+    // return an email (Apple may return a private relay address).
+    if (!email) {
+      return res.status(400).json({ error: `Your ${provider === 'apple' ? 'Apple' : 'Google'} account didn't share an email address, so we can't create an account. Please sign up with email instead.` });
+    }
+    if (await db.findUserIdByEmail(email)) {
+      // Same email as an existing account but the provider didn't verify it.
+      return res.status(409).json({ error: 'An account with this email already exists. Sign in with your email and password.' });
+    }
+
+    // Name: prefer what the client passed (Apple only shares it on the very
+    // first authorization, via the native credential), else the token's name.
+    let first = typeof firstName === 'string' ? firstName.trim() : '';
+    let last = typeof lastName === 'string' ? lastName.trim() : '';
+    if (!first && !last && name) {
+      const parts = name.trim().split(/\s+/);
+      first = parts.shift() || '';
+      last = parts.join(' ');
+    }
+
+    const finalUsername = await generateUsername(first, last);
+    const { city: signupCity, state: signupState } = await lookupCityState(req);
+
+    const user = await db.createUser({
+      email,
+      phone: null,
+      passwordHash: null,
+      firstName: first || null,
+      lastName: last || null,
+      username: finalUsername,
+      referralCode: typeof referralCode === 'string' && referralCode.trim() ? referralCode.trim() : null,
+      timezone: timezone || null,
+      utmSource: utmSource || null,
+      utmMedium: utmMedium || null,
+      utmCampaign: utmCampaign || null,
+      utmContent: utmContent || null,
+      utmTerm: utmTerm || null,
+      signupDevice: deviceInfo || parseDevice(req.headers['user-agent']),
+      signupCity,
+      signupState,
+    });
+    await db.linkIdentity(user.id, provider, providerUid, email);
+
+    await db.setDefaultSchedule(user.id);
+    sendWelcomeEmail(user.email);
+
+    const allUsers = await db.getAllUsers();
+    sendNewSignupNotification(user, allUsers.length);
+
+    res.status(201).json({ ...authPayload(user), isNewUser: true, provider });
+  } catch (err) {
+    console.error(err);
+    if (err.code === '23505') {
+      // Concurrent first sign-in (double tap) — the other request created the
+      // account. Ask the client to retry; the retry resolves via step 1.
+      return res.status(409).json({ error: 'Account already exists. Please try again.' });
+    }
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// PUT /auth/signup-profile — optional "finish your profile" step shown after
+// a first-time Google/Apple sign-up (the providers don't share zip, phone,
+// gender, or referral info). Every field is optional; blanks are ignored.
+router.put('/signup-profile', authMiddleware, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const clean = (v) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, 200) : undefined);
+    const fields = {
+      firstName: clean(body.firstName),
+      lastName: clean(body.lastName),
+      zipCode: clean(body.zipCode),
+      gender: clean(body.gender),
+      referralSource: clean(body.referralSource),
+      referralCode: clean(body.referralCode),
+    };
+    const phone = clean(body.phone);
+    if (phone) {
+      if (!isPhone(phone)) return res.status(400).json({ error: 'Please enter a valid phone number' });
+      fields.phone = normalizePhone(phone);
+    }
+    const user = await db.updateSignupProfile(req.userId, fields);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({ user: userResponse(user) });
+  } catch (err) {
+    console.error(err);
+    if (err.code === '23505' && err.constraint?.includes('phone')) {
+      return res.status(409).json({ error: 'Phone number already registered' });
+    }
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -503,6 +663,9 @@ router.post('/change-password', authMiddleware, async (req, res) => {
 
     const user = await db.findUserById(req.userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
+    if (!user.passwordHash) {
+      return res.status(400).json({ error: 'Your account uses Google or Apple sign-in and has no password yet. Use "Forgot password" to set one.' });
+    }
 
     const valid = bcrypt.compareSync(currentPassword, user.passwordHash);
     if (!valid) return res.status(401).json({ error: 'Current password is incorrect' });
@@ -765,7 +928,7 @@ router.get('/export-data', authMiddleware, async (req, res) => {
 
 router.delete('/delete-account', authMiddleware, async (req, res) => {
   try {
-    const { password } = req.body;
+    const { password, idToken } = req.body;
     const user = await db.findUserById(req.userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
@@ -778,6 +941,21 @@ router.delete('/delete-account', authMiddleware, async (req, res) => {
       if (!password) return res.status(400).json({ error: 'Password is required to delete your account.' });
       const valid = await bcrypt.compare(password, user.passwordHash);
       if (!valid) return res.status(401).json({ error: 'Incorrect password' });
+    } else {
+      // Google/Apple-only account: the equivalent credential is a fresh
+      // provider sign-in whose identity is linked to THIS user.
+      const identities = await db.getIdentities(user.id);
+      if (identities.length > 0) {
+        if (!idToken) return res.status(400).json({ error: 'Please confirm with Google or Apple to delete your account.' });
+        let identity;
+        try {
+          identity = await verifyFirebaseIdToken(idToken);
+        } catch {
+          return res.status(401).json({ error: "We couldn't verify that sign-in. Please try again." });
+        }
+        const matches = identities.some((i) => i.provider === identity.provider && i.providerUid === identity.providerUid);
+        if (!matches) return res.status(401).json({ error: 'That sign-in belongs to a different account.' });
+      }
     }
 
     await db.deleteUser(req.userId);

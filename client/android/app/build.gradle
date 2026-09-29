@@ -70,5 +70,9 @@ try {
         apply plugin: 'com.google.gms.google-services'
     }
 } catch(Exception e) {
-    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+    // @capacitor-firebase/authentication calls FirebaseAuth.getInstance() in its
+    // load(), so an APK/AAB without google-services.json crashes on launch.
+    // Fail the build instead of shipping that. Download the file from Firebase
+    // console → Project settings → Android app com.replab.fitness.
+    throw new GradleException("google-services.json not found in android/app/. It's required (Firebase Auth crashes the app at launch without it).")
 }

@@ -119,11 +119,14 @@ export async function initPushNotifications() {
     // Foreground receipt — no-op for now; we can wire an in-app toast later.
     FirebaseMessaging.addListener('notificationReceived', () => {});
 
-    // User tapped the notification. Navigate to the session if the payload
-    // carries templateId/date (see server/pushScheduler.js data fields).
+    // User tapped the notification. Community likes open the feed at the
+    // liked item (server/communityLikeNotifier.js); otherwise navigate to the
+    // session if the payload carries templateId/date (server/pushScheduler.js).
     FirebaseMessaging.addListener('notificationActionPerformed', (action) => {
       const data = action?.notification?.data || {};
-      if (data.templateId && data.date) {
+      if (data.kind === 'community_like' && /^[a-z]+-\d+$/.test(data.itemKey || '')) {
+        if (typeof window !== 'undefined') window.location.assign(`/community?item=${data.itemKey}`);
+      } else if (data.templateId && data.date) {
         const target = `/session/${data.templateId}/${data.date}`;
         if (typeof window !== 'undefined') window.location.assign(target);
       }

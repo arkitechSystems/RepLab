@@ -4,6 +4,7 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { friendlyError } from '../utils/errors';
 import { API_BASE } from '../api';
+import SocialAuthButtons from '../components/SocialAuthButtons';
 
 // TEMPORARY — remove once the native login/network issue is confirmed fixed.
 // Runs a raw, unwrapped fetch (bypasses api.js's friendly-error translation)
@@ -112,7 +113,13 @@ export default function Login() {
       if (Capacitor.isNativePlatform()) {
         window.alert(`Login failed\nname: ${err.name}\nmessage: ${err.message}\nstatus: ${err.status ?? 'n/a'}`);
       }
-      setError(friendlyError(err, "Email or password didn't match. Try again or reset your password."));
+      // Password login on a Google/Apple-only account — the server's message
+      // points them at the right button, so show it verbatim.
+      if (/google or apple sign-in/i.test(err?.message || '')) {
+        setError(err.message);
+      } else {
+        setError(friendlyError(err, "Email or password didn't match. Try again or reset your password."));
+      }
     } finally {
       setLoading(false);
     }
@@ -189,6 +196,22 @@ export default function Login() {
               {error}
             </div>
           )}
+
+          {/* Continue with Apple / Google. Someone without an account who
+              taps these gets one created, then the optional profile step. */}
+          <div style={{ marginBottom: 16 }}>
+            <SocialAuthButtons
+              radius={12}
+              onError={setError}
+              onSignedIn={(data) => {
+                if (data?.isNewUser) {
+                  window.location.replace('/complete-profile');
+                  return;
+                }
+                navigate(REDIRECTS[searchParams.get('redirect')] || '/');
+              }}
+            />
+          </div>
 
           <form onSubmit={handleSubmit} noValidate>
             <div style={{ marginBottom: 16 }}>

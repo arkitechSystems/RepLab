@@ -3,6 +3,7 @@ import { api, setApiToken, getApiToken, setOnUnauthorized, setAuthTokens, clearA
 import { identify as analyticsIdentify, reset as analyticsReset, track } from '../utils/analytics';
 import { initPushNotifications, teardownPushNotifications } from '../utils/push';
 import { linkInstallToUser } from '../utils/installTracking';
+import { getDeviceInfo } from '../utils/deviceInfo';
 
 const AuthContext = createContext(null);
 
@@ -173,7 +174,7 @@ export function AuthProvider({ children }) {
         username: data.user.username,
       });
     }
-    track('login_completed', { userId: data?.user?.id });
+    track('login_completed', { userId: data?.user?.id, method: 'email' });
     return data;
   }, []);
 
@@ -189,7 +190,48 @@ export function AuthProvider({ children }) {
         username: data.user.username,
       });
     }
-    track('signup_completed', { userId: data?.user?.id });
+    track('signup_completed', { userId: data?.user?.id, method: 'email' });
+    return data;
+  }, []);
+
+  // "Continue with Google / Apple". `social` is the result of
+  // signInWithProvider() (utils/socialAuth). The server signs in an existing
+  // user or creates one; data.isNewUser tells the caller which it was.
+  const socialSignIn = useCallback(async (social) => {
+    let utm = {};
+    try { utm = JSON.parse(localStorage.getItem('replab_utm') || '{}'); } catch {}
+    let timezone;
+    try { timezone = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { timezone = undefined; }
+    const deviceInfo = await getDeviceInfo();
+
+    const data = await api('/auth/social', {
+      method: 'POST',
+      body: JSON.stringify({
+        idToken: social.idToken,
+        firstName: social.firstName || undefined,
+        lastName: social.lastName || undefined,
+        timezone: timezone || undefined,
+        utmSource: utm.utm_source || undefined,
+        utmMedium: utm.utm_medium || undefined,
+        utmCampaign: utm.utm_campaign || undefined,
+        utmContent: utm.utm_content || undefined,
+        utmTerm: utm.utm_term || undefined,
+        deviceInfo: deviceInfo || undefined,
+      }),
+    });
+    applyAuth(data);
+    if (data?.user?.id != null) {
+      analyticsIdentify(data.user.id, {
+        email: data.user.email,
+        username: data.user.username,
+      });
+    }
+    if (data?.isNewUser) {
+      try { localStorage.removeItem('replab_utm'); } catch {}
+      track('signup_completed', { userId: data?.user?.id, method: social.provider });
+    } else {
+      track('login_completed', { userId: data?.user?.id, method: social.provider });
+    }
     return data;
   }, []);
 
@@ -207,7 +249,7 @@ export function AuthProvider({ children }) {
   const isAuthenticated = !!token;
 
   return (
-    <AuthContext.Provider value={{ user, token, login, signup, demo, logout, updateUser, isAuthenticated }}>
+    <AuthContext.Provider value={{ user, token, login, signup, socialSignIn, demo, logout, updateUser, isAuthenticated }}>
       {children}
     </AuthContext.Provider>
   );

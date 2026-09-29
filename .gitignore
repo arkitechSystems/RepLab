@@ -25,3 +25,6 @@ server/replab.json
 # files that don't diff well; live source in a shared drive instead)
 _marketing/*.xlsx
 _marketing/*.docx
+
+# Local DB backups (contain user data)
+_backups/

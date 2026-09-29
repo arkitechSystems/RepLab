@@ -70,6 +70,11 @@ const DEPENDENT_TABLES = [
   ['custom_workout_events', 'user_id'],
   ['community_sharing_periods', 'user_id'],
   ['community_hidden_before', 'user_id'],
+  ['community_likes', 'user_id'],
+  ['community_likes', 'owner_user_id'],
+  ['community_like_notices', 'user_id'],
+  ['community_like_notices', 'owner_user_id'],
+  ['user_identities', 'user_id'],
 ];
 
 // Tables whose rows are NOT deleted but where the FK column is set to NULL
@@ -372,6 +377,18 @@ describeIfDb('db.deleteUser cascade (integration)', () => {
     );
     await pool.query(
       `INSERT INTO community_hidden_before (user_id, category, hidden_before) VALUES ($1, 'pr', NOW())`,
+      [testUserId]
+    );
+
+    // Community likes + notice bookkeeping — CASCADEd via both user_id and
+    // owner_user_id. One row with the test user in both columns covers both
+    // directions (the no-self-like rule lives in the route, not the schema).
+    await pool.query(
+      `INSERT INTO community_likes (user_id, item_type, item_id, owner_user_id) VALUES ($1, 'custom', 1, $1)`,
+      [testUserId]
+    );
+    await pool.query(
+      `INSERT INTO community_like_notices (user_id, item_type, item_id, owner_user_id) VALUES ($1, 'custom', 1, $1)`,
       [testUserId]
     );
 

@@ -3,22 +3,12 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getDeviceInfo } from '../utils/deviceInfo';
 import { friendlyError } from '../utils/errors';
+import SocialAuthButtons from '../components/SocialAuthButtons';
+import { REFERRAL_OPTIONS, GENDER_OPTIONS, buildReferralSource } from '../utils/signupOptions';
 
 function isPhone(value) {
   return /^\+?\d[\d\s\-().]{6,}$/.test(value.trim());
 }
-
-const REFERRAL_OPTIONS = [
-  { value: '', label: 'Select one...' },
-  { value: 'facebook', label: 'Facebook' },
-  { value: 'instagram', label: 'Instagram' },
-  { value: 'youtube', label: 'YouTube Ad' },
-  { value: 'tiktok', label: 'TikTok' },
-  { value: 'google', label: 'Google Search' },
-  { value: 'info_card', label: 'Info card' },
-  { value: 'friend', label: 'Friend / Word of Mouth' },
-  { value: 'other', label: 'Other' },
-];
 
 export default function Signup() {
   const [identifier, setIdentifier] = useState('');
@@ -90,9 +80,7 @@ export default function Signup() {
 
     setLoading(true);
     try {
-      const finalReferral = referralSource === 'other' ? `Other: ${referralOther}`
-        : referralSource === 'friend' && referralOther.trim() ? `Friend: ${referralOther.trim()}`
-        : referralSource;
+      const finalReferral = buildReferralSource(referralSource, referralOther);
       // Read stored UTM params
       let utm = {};
       try { utm = JSON.parse(localStorage.getItem('replab_utm') || '{}'); } catch {}
@@ -182,6 +170,18 @@ export default function Signup() {
               <h2 className="text-[28px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95', letterSpacing: '-0.02em' }}>
                 CREATE ACCOUNT
               </h2>
+            </div>
+
+            {/* Continue with Apple / Google. New accounts go to the optional
+                finish-your-profile step (providers don't share zip, phone,
+                gender, or referral info); an existing account that tapped
+                here is simply signed in. Full reloads for the same
+                PublicRoute reason as the email signup below. */}
+            <div className="mb-4">
+              <SocialAuthButtons
+                onError={setError}
+                onSignedIn={(data) => window.location.replace(data?.isNewUser ? '/complete-profile' : '/')}
+              />
             </div>
 
             <form onSubmit={handleSubmit} noValidate className="space-y-4">
@@ -313,7 +313,7 @@ export default function Signup() {
               <div>
                 <label className={labelClass} style={labelStyle}>Gender <span className="text-wf-gray-600 normal-case font-normal" style={{ letterSpacing: '0' }}>(optional)</span></label>
                 <div className="flex gap-2">
-                  {['Male', 'Female', 'Other'].map((g) => (
+                  {GENDER_OPTIONS.map((g) => (
                     <button
                       key={g}
                       type="button"

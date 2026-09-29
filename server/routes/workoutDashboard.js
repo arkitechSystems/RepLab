@@ -180,7 +180,8 @@ router.post('/login', express.urlencoded({ extended: false }), async (req, res) 
     }
 
     const user = rows[0];
-    const valid = bcrypt.compareSync(password, user.password_hash);
+    // Google/Apple-only accounts (no password) can't use this form.
+    const valid = !!user.password_hash && bcrypt.compareSync(password, user.password_hash);
     if (!valid) {
       return res.redirect('/workouts/login?error=Invalid+credentials');
     }

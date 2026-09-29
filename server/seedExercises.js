@@ -162,11 +162,11 @@ const SEED_EXERCISES = [
   { name: 'Dead Bug', muscle: 'Core', tags: ['stability', 'bodyweight'] },
 
   // === CARDIO / CONDITIONING ===
-  { name: 'Cardio', muscle: 'Cardio', tags: ['cardio', 'conditioning'] },
-  { name: 'Incline Walk or Stair Climber', muscle: 'Cardio', tags: ['cardio', 'conditioning', 'lower body'] },
-  { name: 'Treadmill', muscle: 'Cardio', tags: ['cardio', 'conditioning'] },
-  { name: 'Rowing Machine', muscle: 'Cardio', tags: ['cardio', 'conditioning', 'full body'] },
-  { name: 'Battle Ropes', muscle: 'Cardio', tags: ['cardio', 'conditioning', 'upper body'] },
+  { name: 'Cardio', muscle: 'Conditioning', tags: ['cardio', 'conditioning'] },
+  { name: 'Incline Walk or Stair Climber', muscle: 'Conditioning', tags: ['cardio', 'conditioning', 'lower body'] },
+  { name: 'Treadmill', muscle: 'Conditioning', tags: ['cardio', 'conditioning'] },
+  { name: 'Rowing Machine', muscle: 'Conditioning', tags: ['cardio', 'conditioning', 'full body'] },
+  { name: 'Battle Ropes', muscle: 'Conditioning', tags: ['cardio', 'conditioning', 'upper body'] },
 
   // === ADDITIONAL from seed workouts ===
   // 'Incline Bench Press' and 'Dumbbell Shoulder Press' were originally
@@ -192,11 +192,11 @@ const SEED_EXERCISES = [
   { name: 'High Pull', muscle: 'Back', tags: ['olympic', 'compound', 'barbell', 'pull', 'explosive'] },
 
   // === CARDIO additions ===
-  { name: 'Stationary Bike', muscle: 'Cardio', tags: ['cardio', 'low-impact', 'machine', 'bike'] },
-  { name: 'Elliptical', muscle: 'Cardio', tags: ['cardio', 'low-impact', 'machine'] },
-  { name: 'Jump Rope', muscle: 'Cardio', tags: ['cardio', 'plyometric', 'bodyweight'] },
-  { name: 'Sled Push', muscle: 'Cardio', tags: ['cardio', 'conditioning', 'sled', 'compound', 'quads'] },
-  { name: 'Sled Drag', muscle: 'Cardio', tags: ['cardio', 'conditioning', 'sled', 'compound'] },
+  { name: 'Stationary Bike', muscle: 'Conditioning', tags: ['cardio', 'low-impact', 'machine', 'bike'] },
+  { name: 'Elliptical', muscle: 'Conditioning', tags: ['cardio', 'low-impact', 'machine'] },
+  { name: 'Jump Rope', muscle: 'Conditioning', tags: ['cardio', 'plyometric', 'bodyweight'] },
+  { name: 'Sled Push', muscle: 'Conditioning', tags: ['cardio', 'conditioning', 'sled', 'compound', 'quads'] },
+  { name: 'Sled Drag', muscle: 'Conditioning', tags: ['cardio', 'conditioning', 'sled', 'compound'] },
 
   // === KETTLEBELL ===
   { name: 'Kettlebell Swing', muscle: 'Glutes', tags: ['kettlebell', 'compound', 'hinge', 'explosive', 'hamstrings'] },
@@ -205,7 +205,7 @@ const SEED_EXERCISES = [
   { name: 'Kettlebell Clean', muscle: 'Back', tags: ['kettlebell', 'compound', 'pull', 'explosive'] },
 
   // === FUNCTIONAL / CONDITIONING ===
-  { name: 'Burpees', muscle: 'Cardio', tags: ['cardio', 'bodyweight', 'compound', 'conditioning', 'full-body'] },
+  { name: 'Burpees', muscle: 'Conditioning', tags: ['cardio', 'bodyweight', 'compound', 'conditioning', 'full-body'] },
   { name: 'Wall Balls', muscle: 'Quads', tags: ['compound', 'medball', 'squat', 'conditioning', 'shoulders'] },
   { name: "Farmer's Carry", muscle: 'Traps', tags: ['compound', 'carry', 'grip', 'dumbbell', 'kettlebell'] },
   { name: 'Suitcase Carry', muscle: 'Core', tags: ['compound', 'carry', 'unilateral', 'anti-lateral', 'dumbbell', 'kettlebell'] },

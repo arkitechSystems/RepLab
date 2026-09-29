@@ -171,11 +171,11 @@ const EXERCISES = [
   { name: 'Dead Bug', muscle: 'Core', tags: ['stability', 'bodyweight'] },
 
   // === CARDIO / CONDITIONING ===
-  { name: 'Cardio', muscle: 'Cardio', tags: ['cardio', 'conditioning'] },
-  { name: 'Incline Walk or Stair Climber', muscle: 'Cardio', tags: ['cardio', 'conditioning', 'lower body'] },
-  { name: 'Treadmill', muscle: 'Cardio', tags: ['cardio', 'conditioning'] },
-  { name: 'Rowing Machine', muscle: 'Cardio', tags: ['cardio', 'conditioning', 'full body'] },
-  { name: 'Battle Ropes', muscle: 'Cardio', tags: ['cardio', 'conditioning', 'upper body'] },
+  { name: 'Cardio', muscle: 'Conditioning', tags: ['cardio', 'conditioning'] },
+  { name: 'Incline Walk or Stair Climber', muscle: 'Conditioning', tags: ['cardio', 'conditioning', 'lower body'] },
+  { name: 'Treadmill', muscle: 'Conditioning', tags: ['cardio', 'conditioning'] },
+  { name: 'Rowing Machine', muscle: 'Conditioning', tags: ['cardio', 'conditioning', 'full body'] },
+  { name: 'Battle Ropes', muscle: 'Conditioning', tags: ['cardio', 'conditioning', 'upper body'] },
 ];
 
 // Build a lookup map for O(1) access

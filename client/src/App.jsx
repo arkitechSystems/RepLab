@@ -61,6 +61,7 @@ const Profile = lazyWithRetry(() => import('./pages/Profile'));
 const Utilities = lazyWithRetry(() => import('./pages/Utilities'));
 const PreGymProgram = lazyWithRetry(() => import('./pages/PreGymProgram'));
 const Welcome = lazyWithRetry(() => import('./pages/Welcome'));
+const CompleteProfile = lazyWithRetry(() => import('./pages/CompleteProfile'));
 const ForgotPassword = lazyWithRetry(() => import('./pages/ForgotPassword'));
 const Upgrade = lazyWithRetry(() => import('./pages/Upgrade'));
 const ResetPassword = lazyWithRetry(() => import('./pages/ResetPassword'));
@@ -270,6 +271,7 @@ export default function App() {
       <Route path="/account-deleted" element={<AccountDeleted />} />
       <Route path="/account-deletion-failed" element={<AccountDeletionFailed />} />
       <Route path="/welcome" element={<ProtectedRoute><Welcome /></ProtectedRoute>} />
+      <Route path="/complete-profile" element={<ProtectedRoute><CompleteProfile /></ProtectedRoute>} />
       {/* No paid plans exist right now — /free-trial (once a Pro/Elite
           trial signup page) is retired; redirect any stale link/bookmark
           straight into the app instead of 404ing. */}

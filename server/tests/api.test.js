@@ -51,6 +51,18 @@ vi.mock('../stripe.js', () => ({
   }),
 }));
 
+// Mock Firebase ID-token verification for /auth/social
+vi.mock('../firebaseAuth.js', () => ({
+  verifyFirebaseIdToken: vi.fn(),
+}));
+
+// Mock the Community like push notifier — route tests only check when it's
+// called; its batching logic is covered in communityLikes.test.js.
+vi.mock('../communityLikeNotifier.js', () => ({
+  notifyCommunityLike: vi.fn().mockResolvedValue(undefined),
+  startCommunityLikeScheduler: vi.fn(),
+}));
+
 // Mock db module with fake implementations for all methods used by routes
 vi.mock('../db.js', () => {
   const mockDb = {
@@ -66,6 +78,11 @@ vi.mock('../db.js', () => {
     findUserByUsernameOrEmail: vi.fn(),
     updatePassword: vi.fn(),
     setResetToken: vi.fn(),
+    getIdentities: vi.fn().mockResolvedValue([]),
+    findUserIdByIdentity: vi.fn().mockResolvedValue(null),
+    findUserIdByEmail: vi.fn().mockResolvedValue(null),
+    linkIdentity: vi.fn().mockResolvedValue(undefined),
+    updateSignupProfile: vi.fn(),
 
     // Programs
     getPrograms: vi.fn(),
@@ -103,6 +120,15 @@ vi.mock('../db.js', () => {
     setAdminSetting: vi.fn(),
     getDailyStats: vi.fn(),
 
+    // Community
+    getCommunityFeed: vi.fn(),
+    getCommunityItem: vi.fn(),
+    likeCommunityItem: vi.fn(),
+    unlikeCommunityItem: vi.fn().mockResolvedValue(undefined),
+    countCommunityLikes: vi.fn().mockResolvedValue(0),
+    getCommunityNotificationSettings: vi.fn(),
+    setCommunityLikeNotifications: vi.fn(),
+
     // Misc
     getTrainersWithStatus: vi.fn().mockResolvedValue([]),
   };
@@ -113,7 +139,9 @@ vi.mock('../db.js', () => {
 const { app } = await import('../index.js');
 const { default: request } = await import('supertest');
 const { default: db } = await import('../db.js');
+const { verifyFirebaseIdToken } = await import('../firebaseAuth.js');
 const { default: pool } = await import('../dbPool.js');
+const { notifyCommunityLike } = await import('../communityLikeNotifier.js');
 
 // --- Helpers ---
 
@@ -365,6 +393,75 @@ describe('Auth Routes', () => {
     });
   });
 
+  describe('POST /auth/social', () => {
+    const GOOGLE_IDENTITY = { provider: 'google', providerUid: 'g-123', email: 'new@example.com', emailVerified: true, name: 'Jane Doe' };
+
+    it('returns 400 when idToken is missing', async () => {
+      const res = await request(app).post('/auth/social').send({});
+      expect(res.status).toBe(400);
+    });
+
+    it('returns 401 when the token fails verification', async () => {
+      verifyFirebaseIdToken.mockRejectedValueOnce(new Error('bad signature'));
+      const res = await request(app).post('/auth/social').send({ idToken: 'x' });
+      expect(res.status).toBe(401);
+    });
+
+    it('creates a password-less user on first sign-in', async () => {
+      verifyFirebaseIdToken.mockResolvedValueOnce(GOOGLE_IDENTITY);
+      db.findUserIdByIdentity.mockResolvedValueOnce(null);
+      db.findUserIdByEmail.mockResolvedValue(null);
+      db.findUserByUsername.mockResolvedValue(null);
+      db.createUser.mockResolvedValueOnce({ ...TEST_USER, id: 43, email: 'new@example.com', passwordHash: null });
+
+      const res = await request(app).post('/auth/social').send({ idToken: 'x' });
+
+      expect(res.status).toBe(201);
+      expect(res.body.isNewUser).toBe(true);
+      expect(res.body).toHaveProperty('accessToken');
+      expect(db.createUser).toHaveBeenLastCalledWith(expect.objectContaining({ passwordHash: null, firstName: 'Jane', lastName: 'Doe', username: 'jdoe' }));
+      expect(db.linkIdentity).toHaveBeenLastCalledWith(43, 'google', 'g-123', 'new@example.com');
+    });
+
+    it('links to an existing account with the same verified email and clears its password', async () => {
+      verifyFirebaseIdToken.mockResolvedValueOnce(GOOGLE_IDENTITY);
+      db.findUserIdByIdentity.mockResolvedValueOnce(null);
+      db.findUserIdByEmail.mockResolvedValueOnce(1);
+      db.findUserById.mockResolvedValueOnce(TEST_USER).mockResolvedValueOnce({ ...TEST_USER, passwordHash: null });
+      db.updatePassword.mockClear();
+
+      const res = await request(app).post('/auth/social').send({ idToken: 'x' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.isNewUser).toBe(false);
+      expect(db.linkIdentity).toHaveBeenLastCalledWith(1, 'google', 'g-123', 'new@example.com');
+      // Pre-registered-account takeover guard: password + sessions dropped.
+      expect(db.updatePassword).toHaveBeenCalledWith(1, null);
+    });
+
+    it('leaves the password alone for a returning linked identity', async () => {
+      verifyFirebaseIdToken.mockResolvedValueOnce(GOOGLE_IDENTITY);
+      db.findUserIdByIdentity.mockResolvedValueOnce(1);
+      db.findUserById.mockResolvedValueOnce(TEST_USER);
+      db.updatePassword.mockClear();
+
+      const res = await request(app).post('/auth/social').send({ idToken: 'x' });
+
+      expect(res.status).toBe(200);
+      expect(db.updatePassword).not.toHaveBeenCalled();
+    });
+
+    it('does not link when the provider email is unverified', async () => {
+      verifyFirebaseIdToken.mockResolvedValueOnce({ ...GOOGLE_IDENTITY, emailVerified: false });
+      db.findUserIdByIdentity.mockResolvedValueOnce(null);
+      db.findUserIdByEmail.mockResolvedValueOnce(1); // email already taken
+
+      const res = await request(app).post('/auth/social').send({ idToken: 'x' });
+
+      expect(res.status).toBe(409);
+    });
+  });
+
   describe('DELETE /auth/delete-account', () => {
     it('deletes account for authenticated user', async () => {
       mockAuthPoolQuery(1);
@@ -609,6 +706,119 @@ describe('Session Routes', () => {
       expect(Array.isArray(res.body)).toBe(true);
       expect(res.body).toHaveLength(2);
     });
+  });
+});
+
+describe('Community Likes', () => {
+  const PR_ITEM = { type: 'pr', id: 42, ownerId: 2, exercise: 'Bench Press', weight: 225, reps: 3 };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockAuthPoolQuery(1);
+  });
+
+  it('passes the viewer to the feed so it can mark likedByMe / isMine', async () => {
+    db.getCommunityFeed.mockResolvedValue({ items: [], authors: {} });
+
+    const res = await request(app)
+      .get('/community/feed')
+      .set('Authorization', authHeader(1));
+
+    expect(res.status).toBe(200);
+    expect(db.getCommunityFeed).toHaveBeenCalledWith(expect.objectContaining({ viewerId: 1 }));
+  });
+
+  it('likes an item, notifies the owner the first time, and returns the count', async () => {
+    db.getCommunityItem.mockResolvedValue(PR_ITEM);
+    db.likeCommunityItem.mockResolvedValue({ firstTime: true });
+    db.countCommunityLikes.mockResolvedValue(3);
+
+    const res = await request(app)
+      .put('/community/likes/pr-42')
+      .set('Authorization', authHeader(1));
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ liked: true, likeCount: 3 });
+    expect(db.getCommunityItem).toHaveBeenCalledWith('pr', 42);
+    expect(db.likeCommunityItem).toHaveBeenCalledWith(1, 'pr', 42, 2);
+    expect(notifyCommunityLike).toHaveBeenCalledWith(1, PR_ITEM);
+  });
+
+  it('is idempotent and never re-notifies on a repeat or re-like', async () => {
+    db.getCommunityItem.mockResolvedValue(PR_ITEM);
+    db.likeCommunityItem.mockResolvedValue({ firstTime: false });
+    db.countCommunityLikes.mockResolvedValue(1);
+
+    const res = await request(app)
+      .put('/community/likes/pr-42')
+      .set('Authorization', authHeader(1));
+
+    expect(res.status).toBe(200);
+    expect(res.body.liked).toBe(true);
+    expect(notifyCommunityLike).not.toHaveBeenCalled();
+  });
+
+  it('rejects liking your own activity', async () => {
+    db.getCommunityItem.mockResolvedValue({ ...PR_ITEM, ownerId: 1 });
+
+    const res = await request(app)
+      .put('/community/likes/pr-42')
+      .set('Authorization', authHeader(1));
+
+    expect(res.status).toBe(403);
+    expect(db.likeCommunityItem).not.toHaveBeenCalled();
+    expect(notifyCommunityLike).not.toHaveBeenCalled();
+  });
+
+  it('404s for activity that is missing or not shared', async () => {
+    db.getCommunityItem.mockResolvedValue(null);
+
+    const res = await request(app)
+      .put('/community/likes/wk-9')
+      .set('Authorization', authHeader(1));
+
+    expect(res.status).toBe(404);
+    expect(db.likeCommunityItem).not.toHaveBeenCalled();
+  });
+
+  it('400s for malformed item keys', async () => {
+    for (const key of ['bogus-1', 'pr-abc', 'pr-0', 'pr-99999999999']) {
+      const res = await request(app)
+        .put(`/community/likes/${key}`)
+        .set('Authorization', authHeader(1));
+      expect(res.status).toBe(400);
+    }
+    expect(db.getCommunityItem).not.toHaveBeenCalled();
+  });
+
+  it('unlikes an item', async () => {
+    db.countCommunityLikes.mockResolvedValue(0);
+
+    const res = await request(app)
+      .delete('/community/likes/cw-7')
+      .set('Authorization', authHeader(1));
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ liked: false, likeCount: 0 });
+    expect(db.unlikeCommunityItem).toHaveBeenCalledWith(1, 'custom', 7);
+  });
+
+  it('saves the "Likes on my activity" setting and validates it', async () => {
+    db.setCommunityLikeNotifications.mockResolvedValue({ likes: false });
+
+    const ok = await request(app)
+      .put('/community/notifications')
+      .set('Authorization', authHeader(1))
+      .send({ likes: false });
+    expect(ok.status).toBe(200);
+    expect(ok.body).toEqual({ likes: false });
+    expect(db.setCommunityLikeNotifications).toHaveBeenCalledWith(1, false);
+
+    const bad = await request(app)
+      .put('/community/notifications')
+      .set('Authorization', authHeader(1))
+      .send({ likes: 'no' });
+    expect(bad.status).toBe(400);
   });
 });
 

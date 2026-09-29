@@ -9,7 +9,7 @@ const CATEGORY_MAP = {
   12: 'Back',      // Back
   13: 'Shoulders', // Shoulders
   14: 'Calves',    // Calves
-  15: 'Cardio',    // Cardio
+  15: 'Conditioning', // Cardio
 };
 
 // wger muscle ID → our muscle group (for more specific mapping)
