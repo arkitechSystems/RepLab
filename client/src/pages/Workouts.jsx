@@ -5853,6 +5853,22 @@ export default function Workouts() {
                           }} />
                           {eyebrow}
                         </span>
+                        {/* Once today's workout is done, a small "COMPLETED"
+                            pill (border + text carry the red sweep via
+                            .replab-badge-shimmer) sits top-right, opposite the
+                            eyebrow, so the title below gets the full width. */}
+                        {isCompleted && (
+                          <span className="replab-badge-shimmer shrink-0 -my-[5px]">
+                            <span>
+                              <span className="replab-title-shimmer uppercase" style={{
+                                fontFamily: 'JetBrains Mono, ui-monospace, monospace',
+                                fontSize: 10, fontWeight: 600, letterSpacing: '0.24em', lineHeight: 1.2,
+                              }}>
+                                Completed
+                              </span>
+                            </span>
+                          </span>
+                        )}
                         {info?.dayLabel && !isCompleted && (
                           <span className="uppercase" style={{
                             fontFamily: 'JetBrains Mono, ui-monospace, monospace',
@@ -5873,24 +5889,10 @@ export default function Workouts() {
                         }}>
                           {/* Once today's workout is done, the title shows it
                               instead of whatever comes next (tomorrow's
-                              workout / rest / nothing): the name, then a small
-                              "COMPLETED" pill whose border and text carry the
-                              red sweep (.replab-badge-shimmer). Wraps below
-                              the name when the name is long. */}
+                              workout / rest / nothing). The "COMPLETED" pill
+                              lives in the eyebrow row above. */}
                           {isCompleted ? (
-                            <>
-                              {info.completedToday.templateName}{' '}
-                              <span className="replab-badge-shimmer align-middle relative -top-[3px] ml-1">
-                                <span>
-                                  <span className="replab-title-shimmer uppercase" style={{
-                                    fontFamily: 'JetBrains Mono, ui-monospace, monospace',
-                                    fontSize: 10, fontWeight: 600, letterSpacing: '0.24em', lineHeight: 1.2,
-                                  }}>
-                                    Completed
-                                  </span>
-                                </span>
-                              </span>
-                            </>
+                            info.completedToday.templateName
                           ) : (
                             info?.templateName || (isRest ? 'Rest Day' : info?.status === 'none' ? 'Nothing scheduled' : 'Loading...')
                           )}
