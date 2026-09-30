@@ -7,7 +7,7 @@
 // keyword pulls it into Back.
 
 export const MUSCLE_GROUPS = [
-  'Chest', 'Shoulders', 'Traps', 'Biceps', 'Back', 'Triceps', 'Quads', 'Glutes', 'Hamstrings', 'Hips',
+  'Chest', 'Shoulders', 'Traps', 'Biceps', 'Back', 'Triceps', 'Quads', 'Glutes', 'Hamstrings', 'Adductors',
 ];
 
 export const MUSCLE_KEYWORDS = {
@@ -17,16 +17,17 @@ export const MUSCLE_KEYWORDS = {
   Biceps: ['curl', 'bicep', 'hammer curl', 'preacher'],
   Back: ['row', 'pulldown', 'pull-up', 'pull up', 'pullup', 'lat', 'deadlift', 'back'],
   Triceps: ['tricep', 'pushdown', 'skull crusher', 'close grip', 'extension', 'kickback'],
-  Quads: ['squat', 'leg press', 'leg extension', 'lunge', 'split squat', 'front squat', 'quad'],
-  Glutes: ['hip thrust', 'glute', 'bridge', 'kickback'],
+  // Hip flexor work lives in Quads and abduction in Glutes, matching the
+  // exercise library (the old "Hips" group was retired 2026-09-28).
+  Quads: ['squat', 'leg press', 'leg extension', 'lunge', 'split squat', 'front squat', 'quad', 'hip flexor'],
+  Glutes: ['hip thrust', 'glute', 'bridge', 'kickback', 'abduction', 'hip extension', 'hip raise'],
   Hamstrings: ['hamstring', 'leg curl', 'romanian deadlift', 'rdl', 'stiff leg', 'nordic'],
-  // Hips covers explicit hip-flexor / abduction / adduction work. Order
-  // matters in MUSCLE_PRIORITY: Hips ahead of Glutes so "hip flexor" isn't
-  // accidentally swept into Glutes by the generic "hip" inside "hip thrust".
-  Hips: ['hip flexor', 'hip abduction', 'hip adduction', 'hip extension', 'hip raise'],
+  Adductors: ['adduction', 'adductor'],
 };
 
-export const MUSCLE_PRIORITY = ['Hamstrings', 'Hips', 'Glutes', 'Quads', 'Traps', 'Biceps', 'Triceps', 'Shoulders', 'Chest', 'Back'];
+// Adductors ahead of Glutes/Quads so "Cable Hip Adduction" isn't pulled into
+// another group by a broader keyword.
+export const MUSCLE_PRIORITY = ['Hamstrings', 'Adductors', 'Quads', 'Glutes', 'Traps', 'Biceps', 'Triceps', 'Shoulders', 'Chest', 'Back'];
 
 export function classifyExercise(name) {
   if (!name) return null;

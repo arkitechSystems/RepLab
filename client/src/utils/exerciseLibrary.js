@@ -153,10 +153,10 @@ const EXERCISES = [
   { name: 'Smith Machine Calf Raise', muscle: 'Calves', tags: ['raise', 'machine', 'isolation', 'standing'] },
 
   // === HIPS ===
-  { name: 'Hip Abduction', muscle: 'Hips', tags: ['abduction', 'machine', 'isolation'] },
-  { name: 'Hip Adduction', muscle: 'Hips', tags: ['adduction', 'machine', 'isolation'] },
-  { name: 'Cable Hip Abduction', muscle: 'Hips', tags: ['abduction', 'cable', 'isolation'] },
-  { name: 'Cable Hip Adduction', muscle: 'Hips', tags: ['adduction', 'cable', 'isolation'] },
+  { name: 'Hip Abduction', muscle: 'Glutes', tags: ['abduction', 'machine', 'isolation'] },
+  { name: 'Hip Adduction', muscle: 'Adductors', tags: ['adduction', 'machine', 'isolation'] },
+  { name: 'Cable Hip Abduction', muscle: 'Glutes', tags: ['abduction', 'cable', 'isolation'] },
+  { name: 'Cable Hip Adduction', muscle: 'Adductors', tags: ['adduction', 'cable', 'isolation'] },
 
   // === CORE ===
   { name: 'Planks', muscle: 'Core', tags: ['isometric', 'bodyweight'] },
