@@ -75,6 +75,7 @@ const DEPENDENT_TABLES = [
   ['community_like_notices', 'user_id'],
   ['community_like_notices', 'owner_user_id'],
   ['user_identities', 'user_id'],
+  ['exercise_favorites', 'user_id'],
 ];
 
 // Tables whose rows are NOT deleted but where the FK column is set to NULL

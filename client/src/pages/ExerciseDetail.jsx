@@ -1,7 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 import { getExerciseBySlug, findMasterExerciseBySlug, buildMinimalExercise } from '../data/exercises/index.js';
-import { useExercises } from '../hooks/useExercises';
+import { compareExerciseNames, exerciseDetailUrl } from '../utils/exerciseOrder';
+import { useExercises, setExerciseFavorite } from '../hooks/useExercises';
+import { useToast } from '../context/ToastContext';
 import ExerciseDetailCard from '../components/ExerciseDetailCard.jsx';
 
 const RED = '#ef4444';
@@ -24,6 +27,8 @@ export default function ExerciseDetail() {
   // matching master library row so every library entry still renders a
   // working detail page (sections collapse cleanly when data is missing).
   const { exercises: masterExercises } = useExercises();
+  const showToast = useToast();
+  const [favBusy, setFavBusy] = useState(false);
 
   // Reset scroll to the top whenever the user lands on a new exercise.
   // Tapping a library row navigates here via react-router which doesn't
@@ -32,10 +37,14 @@ export default function ExerciseDetail() {
   // new detail. The effect also fires when the user navigates between
   // exercises directly (e.g. from a future "related exercise" link) so
   // each detail view starts from the hero. Also dismiss any in-place
-  // playing video so the new exercise's thumbnail shows on arrival.
+  // playing video so the new exercise's thumbnail shows on arrival —
+  // unless the ‹ › arrows were tapped mid-video (state.autoplay), in which
+  // case the new exercise's video starts right away.
+  const location = useLocation();
   useEffect(() => {
     window.scrollTo(0, 0);
-    setVideoPlaying(false);
+    setVideoPlaying(!!location.state?.autoplay);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
 
   // Resolve the exercise from static first, then master library fallback.
@@ -57,6 +66,66 @@ export default function ExerciseDetail() {
     return null;
   }, [slug, masterExercises]);
 
+  // The library row (id + isFavorite) behind this page, for the bookmark.
+  // Static-only exercises with no DB row get no bookmark.
+  const libRow = useMemo(
+    () => (masterExercises ? findMasterExerciseBySlug(slug, masterExercises) : null),
+    [slug, masterExercises]
+  );
+  const isFavorite = !!libRow?.isFavorite;
+
+  // ‹ › arrows: step through the list the user came from (the Library passes
+  // its current filtered, alphabetical list in location.state.navList). A
+  // direct link falls back to the whole visible library in the same order.
+  const navList = useMemo(() => {
+    if (Array.isArray(location.state?.navList)) return location.state.navList;
+    return (masterExercises || [])
+      .filter((e) => !e.isCustom && !e.hiddenFromLibrary)
+      .map((e) => e.name)
+      .sort(compareExerciseNames)
+      .map(exerciseDetailUrl);
+  }, [location.state, masterExercises]);
+  const navIdx = navList.indexOf(decodeURIComponent(location.pathname));
+  const prevUrl = navIdx > 0 ? navList[navIdx - 1] : null;
+  const nextUrl = navIdx >= 0 && navIdx < navList.length - 1 ? navList[navIdx + 1] : null;
+  // replace: paging through 30 exercises shouldn't stack 30 history
+  // entries — Back still returns straight to the Library. If a video is
+  // playing, the next exercise opens with its video playing too, so an
+  // audit can go video → video.
+  const goTo = (url) => navigate(url, { replace: true, state: { navList, autoplay: videoPlaying } });
+
+  // ‹ › previous / next exercise — vertically centered on the hero edges.
+  // No ‹ on the first exercise, no › on the last.
+  const arrowStyle = { ...iconCircle, position: 'absolute', top: '50%', transform: 'translateY(-50%)', zIndex: 10 };
+  const navArrows = (
+    <>
+      {prevUrl && (
+        <button onClick={() => goTo(prevUrl)} aria-label="Previous exercise" style={{ ...arrowStyle, left: 12 }} className="active:scale-90 transition-transform">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 19l-7-7 7-7" /></svg>
+        </button>
+      )}
+      {nextUrl && (
+        <button onClick={() => goTo(nextUrl)} aria-label="Next exercise" style={{ ...arrowStyle, right: 12 }} className="active:scale-90 transition-transform">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5l7 7-7 7" /></svg>
+        </button>
+      )}
+    </>
+  );
+
+  // Optimistic save/unsave — setExerciseFavorite flips the shared cache
+  // (Library Saved filter, picker Saved section) and rolls back on failure.
+  async function toggleFavorite() {
+    if (!libRow || favBusy) return;
+    setFavBusy(true);
+    try {
+      await setExerciseFavorite(libRow.id, !isFavorite);
+    } catch (err) {
+      showToast(err?.message || 'Could not update saved exercises. Please try again.', 'error');
+    } finally {
+      setFavBusy(false);
+    }
+  }
+
   if (!exercise) {
     return (
       <div style={{ background: '#0c0c0b', minHeight: '100vh', color: '#fff' }} className="px-4 pt-6">
@@ -74,18 +143,23 @@ export default function ExerciseDetail() {
   const heroImg = exercise.videoId && !isCdnVideo
     ? `https://img.youtube.com/vi/${exercise.videoId}/maxresdefault.jpg`
     : null;
+  const isYouTube = !!exercise.videoId && !isCdnVideo;
+  const youTubeWatchUrl = isYouTube ? `https://www.youtube.com/watch?v=${exercise.videoId}` : null;
+  // In the native app YouTube goes through our /yt-embed shim on the real
+  // domain (the WebView's capacitor://localhost origin gets YouTube error
+  // 153 when embedding directly — see server/index.js). The web app already
+  // has a real origin, so it embeds YouTube directly.
+  const youTubeEmbedUrl = isYouTube
+    ? (Capacitor.isNativePlatform()
+        ? `https://replab-fitness.com/yt-embed/${exercise.videoId}`
+        : `https://www.youtube-nocookie.com/embed/${exercise.videoId}?playsinline=1&autoplay=1&rel=0&modestbranding=1`)
+    : null;
   const openVideo = () => {
-    // CDN-hosted videos play inline by toggling videoPlaying — the hero
-    // background swaps from the thumbnail to a <video> embed in the same
-    // 300px slot. YouTube videos open externally instead (the native
-    // app's WebView doesn't run on a real http(s) origin, which YouTube's
-    // embedded player requires) — this is a placeholder until each
-    // exercise has its own CDN-hosted video. No videoId at all falls back
-    // to a YouTube search for the exercise name.
-    if (isCdnVideo) {
+    // CDN-hosted and YouTube videos both play inline by toggling
+    // videoPlaying — the hero swaps from the thumbnail to the player in the
+    // same 300px slot. No videoId at all falls back to a YouTube search.
+    if (exercise.videoId) {
       setVideoPlaying(true);
-    } else if (exercise.videoId) {
-      window.open(`https://www.youtube.com/watch?v=${exercise.videoId}`, '_blank');
     } else {
       const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(exercise.name + ' form')}`;
       window.open(url, '_blank');
@@ -102,11 +176,40 @@ export default function ExerciseDetail() {
             ? `#15130f center/cover no-repeat url(${heroImg})`
             : 'linear-gradient(160deg, #2a2724 0%, #15130f 100%)',
         }}>
-          {videoPlaying && isCdnVideo ? (
+          {videoPlaying && isYouTube ? (
+            /* YouTube form video, inline in the hero slot. Close (×)
+               returns to the thumbnail; "Open in YouTube" is the escape
+               hatch if a video still refuses to embed. */
+            <>
+              <iframe
+                src={youTubeEmbedUrl}
+                title={`${exercise.name} form video`}
+                style={{ width: '100%', height: '100%', border: 0, display: 'block', background: '#000' }}
+                allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                allowFullScreen
+                referrerPolicy="strict-origin-when-cross-origin"
+              />
+              <div style={{ position: 'absolute', top: 16, left: 16, right: 16, display: 'flex', justifyContent: 'space-between', zIndex: 10, pointerEvents: 'none' }}>
+                <button onClick={() => navigate(-1)} aria-label="Back" style={{ ...iconCircle, pointerEvents: 'auto' }} className="active:scale-90 transition-transform">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <button onClick={() => setVideoPlaying(false)} aria-label="Close video" style={{ ...iconCircle, pointerEvents: 'auto' }} className="active:scale-90 transition-transform">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+              <button
+                onClick={() => window.open(youTubeWatchUrl, '_blank')}
+                style={{ position: 'absolute', right: 12, bottom: 12, zIndex: 10, padding: '6px 12px', borderRadius: 100, background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.18)', color: 'rgba(255,255,255,0.85)', fontSize: 11, fontWeight: 600, letterSpacing: '0.02em' }}
+                className="active:scale-95 transition-transform"
+              >
+                Open in YouTube
+              </button>
+              {navArrows}
+            </>
+          ) : videoPlaying && isCdnVideo ? (
             /* CDN-hosted form video — fills the same 300px hero slot.
                Close button (×) returns to the thumbnail view; back
-               button still navigates out. (YouTube videos never reach
-               this branch — openVideo() opens those externally instead.) */
+               button still navigates out. */
             <>
               <video
                 src={exercise.videoId}
@@ -143,11 +246,21 @@ export default function ExerciseDetail() {
                   <button onClick={openVideo} aria-label="Watch form video" style={iconCircle} className="active:scale-90 transition-transform">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff" stroke="none"><polygon points="6 4 20 12 6 20 6 4" /></svg>
                   </button>
-                  <button aria-label="Save" style={iconCircle} className="active:scale-90 transition-transform">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" /></svg>
-                  </button>
+                  {libRow && (
+                    <button
+                      onClick={toggleFavorite}
+                      aria-label={isFavorite ? 'Remove from saved' : 'Save exercise'}
+                      aria-pressed={isFavorite}
+                      style={iconCircle}
+                      className="active:scale-90 transition-transform"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill={isFavorite ? '#fff' : 'none'} stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" /></svg>
+                    </button>
+                  )}
                 </div>
               </div>
+
+              {navArrows}
 
           {/* title block */}
           <div style={{ position: 'absolute', left: 18, right: 18, bottom: 18, zIndex: 10 }}>

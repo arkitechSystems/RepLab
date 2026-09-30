@@ -132,6 +132,10 @@ vi.mock('../db.js', () => {
     getCommunityNotificationSettings: vi.fn(),
     setCommunityLikeNotifications: vi.fn(),
 
+    // Exercises
+    getExercises: vi.fn().mockResolvedValue([]),
+    setExerciseFavorite: vi.fn().mockResolvedValue(true),
+
     // Misc
     getTrainersWithStatus: vi.fn().mockResolvedValue([]),
   };
@@ -925,6 +929,51 @@ describe('Community Likes', () => {
       .set('Authorization', authHeader(1))
       .send({ likes: 'no' });
     expect(bad.status).toBe(400);
+  });
+});
+
+describe('Exercise favorites', () => {
+  beforeEach(() => {
+    mockAuthPoolQuery(1);
+    db.setExerciseFavorite.mockReset().mockResolvedValue(true);
+  });
+
+  it('PUT saves the exercise for the caller', async () => {
+    const res = await request(app).put('/exercises/42/favorite').set('Authorization', authHeader(1));
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ exerciseId: 42, isFavorite: true });
+    expect(db.setExerciseFavorite).toHaveBeenCalledWith(1, 42, true);
+  });
+
+  it('PUT is idempotent (saving twice still succeeds)', async () => {
+    await request(app).put('/exercises/42/favorite').set('Authorization', authHeader(1));
+    const res = await request(app).put('/exercises/42/favorite').set('Authorization', authHeader(1));
+    expect(res.status).toBe(200);
+    expect(res.body.isFavorite).toBe(true);
+  });
+
+  it('DELETE unsaves the exercise', async () => {
+    const res = await request(app).delete('/exercises/42/favorite').set('Authorization', authHeader(1));
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ exerciseId: 42, isFavorite: false });
+    expect(db.setExerciseFavorite).toHaveBeenCalledWith(1, 42, false);
+  });
+
+  it("404s for an exercise the caller can't see (missing, or another user's custom)", async () => {
+    db.setExerciseFavorite.mockResolvedValueOnce(false);
+    const res = await request(app).put('/exercises/999/favorite').set('Authorization', authHeader(1));
+    expect(res.status).toBe(404);
+  });
+
+  it('400s on a bad id', async () => {
+    const res = await request(app).put('/exercises/abc/favorite').set('Authorization', authHeader(1));
+    expect(res.status).toBe(400);
+    expect(db.setExerciseFavorite).not.toHaveBeenCalled();
+  });
+
+  it('requires auth', async () => {
+    const res = await request(app).put('/exercises/42/favorite');
+    expect(res.status).toBe(401);
   });
 });
 

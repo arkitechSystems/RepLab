@@ -1786,23 +1786,28 @@ const db = {
 
   // Exercise library
   async getExercises(userId, { search, muscle, limit } = {}) {
-    let query = 'SELECT * FROM exercises WHERE (created_by IS NULL OR created_by = $1)';
+    // is_favorite rides along in the same query (bookmark on ExerciseDetail,
+    // Saved filter / picker section) so the client never needs a 2nd fetch.
+    let query = `SELECT e.*, (f.exercise_id IS NOT NULL) AS is_favorite
+      FROM exercises e
+      LEFT JOIN exercise_favorites f ON f.exercise_id = e.id AND f.user_id = $1
+      WHERE (e.created_by IS NULL OR e.created_by = $1)`;
     const params = [userId];
     let paramIdx = 2;
 
     if (muscle) {
-      query += ` AND muscle_group = $${paramIdx}`;
+      query += ` AND e.muscle_group = $${paramIdx}`;
       params.push(muscle);
       paramIdx++;
     }
 
     if (search) {
-      query += ` AND name ILIKE $${paramIdx}`;
+      query += ` AND e.name ILIKE $${paramIdx}`;
       params.push(`%${search}%`);
       paramIdx++;
     }
 
-    query += ' ORDER BY is_custom ASC, name ASC';
+    query += ' ORDER BY e.is_custom ASC, e.name ASC';
 
     if (limit) {
       query += ` LIMIT $${paramIdx}`;
@@ -1819,7 +1824,29 @@ const db = {
       createdBy: e.created_by,
       videoId: e.video_id || null,
       hiddenFromLibrary: !!e.hidden_from_library,
+      isFavorite: !!e.is_favorite,
     }));
+  },
+
+  // Save / unsave an exercise for a user. Only exercises the user can see
+  // (master library or their own custom) — returns false otherwise so the
+  // route can 404. Both are idempotent.
+  async setExerciseFavorite(userId, exerciseId, favorite) {
+    const { rows } = await pool.query(
+      'SELECT id FROM exercises WHERE id = $1 AND (created_by IS NULL OR created_by = $2)',
+      [exerciseId, userId]
+    );
+    if (rows.length === 0) return false;
+    if (favorite) {
+      await pool.query(
+        `INSERT INTO exercise_favorites (user_id, exercise_id) VALUES ($1, $2)
+         ON CONFLICT (user_id, exercise_id) DO NOTHING`,
+        [userId, exerciseId]
+      );
+    } else {
+      await pool.query('DELETE FROM exercise_favorites WHERE user_id = $1 AND exercise_id = $2', [userId, exerciseId]);
+    }
+    return true;
   },
 
   async createExercise(userId, name, muscleGroup, tags = []) {
@@ -1853,6 +1880,22 @@ const db = {
     // put an "Other" pill in front of everyone).
     const { rows } = await pool.query(
       "SELECT DISTINCT muscle_group FROM exercises WHERE created_by IS NULL ORDER BY muscle_group"
+    );
+    return rows.map(r => r.muscle_group);
+  },
+
+  // Same library-only groups, most popular first: ranked by sets logged
+  // against each group's exercises across all users, ties alphabetical.
+  // Drives the app's body-part filter pills; admin/trainer views keep the
+  // alphabetical getMuscleGroups.
+  async getMuscleGroupsByPopularity() {
+    const { rows } = await pool.query(
+      `SELECT e.muscle_group, COUNT(se.id) AS sets
+         FROM exercises e
+         LEFT JOIN session_entries se ON se.exercise_id = e.id
+        WHERE e.created_by IS NULL
+        GROUP BY e.muscle_group
+        ORDER BY sets DESC, e.muscle_group`
     );
     return rows.map(r => r.muscle_group);
   },

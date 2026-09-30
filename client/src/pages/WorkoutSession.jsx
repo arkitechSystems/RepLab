@@ -5,6 +5,7 @@ import { format, isToday, addDays, subDays } from 'date-fns';
 import { api } from '../api';
 import ExerciseCard from '../components/ExerciseCard';
 import { useExercises } from '../hooks/useExercises';
+import { savedExercises, savedFirst } from '../utils/savedExercises';
 import RestDayCard from '../components/RestDayCard';
 import StickyHeader from '../components/StickyHeader';
 import { useUnsavedGuard } from '../components/UnsavedGuard';
@@ -4436,13 +4437,17 @@ export default function WorkoutSession() {
         const matchesMuscleFilter = (ex) => muscleFilter === 'all' || ex.muscle === muscleFilter;
         const seen = new Set();
         const muscleScoped = allExercises.filter(matchesMuscleFilter);
+        // Saved (bookmarked) exercises float to the top of search results.
         const filtered = q
-          ? muscleScoped.filter((ex) => {
+          ? savedFirst(muscleScoped.filter((ex) => {
               if (seen.has(ex.name)) return false;
               seen.add(ex.name);
               return ex.name.toLowerCase().includes(q);
-            })
+            }))
           : [];
+        // With no search, a "Saved" shelf sits above the muscle groups. Saved
+        // exercises also stay in their own muscle group below it.
+        const savedShelf = q ? [] : savedExercises(muscleScoped);
         // Group by muscle for browsing when no search
         const muscleGroups = {};
         if (!q) {
@@ -4545,6 +4550,23 @@ export default function WorkoutSession() {
                     <span className="text-[10px] text-wf-gray-500 uppercase tracking-wider ml-2 shrink-0">{ex.muscle}</span>
                   </button>
                 ))}
+                {!q && savedShelf.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-[10px] uppercase tracking-widest text-wf-red font-semibold mb-2 px-1">Saved</p>
+                    <div className="space-y-0.5">
+                      {savedShelf.map((ex) => (
+                        <button
+                          key={ex.name}
+                          onClick={() => handleAddExercise(ex.name)}
+                          className="w-full text-left rounded-lg px-4 py-2.5 text-sm text-white active:bg-white/10 transition-colors flex items-center justify-between"
+                        >
+                          <span>{ex.name}</span>
+                          <span className="text-[10px] text-wf-gray-500 uppercase tracking-wider ml-2 shrink-0">{ex.muscle}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {/* Browse by muscle when no search. No per-muscle cap —
                     the modal body scrolls so the user can see every
                     exercise grouped under each muscle. */}

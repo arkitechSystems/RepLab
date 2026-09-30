@@ -2,13 +2,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useExercises } from '../hooks/useExercises';
 import LoadingSpinnerOverlay from '../components/LoadingSpinnerOverlay';
-import { getDetailSlugs, slugify } from '../data/exercises/index.js';
-
-// Map of exercise.name → /exercises/<slug> for hand-authored detail pages.
-// Library rows whose name is in this map route to their canonical slug; rows
-// outside this map route to /exercises/<slugified name> and the detail page
-// builds a minimal exercise from the master library row at render time.
-const DETAIL_PAGES = getDetailSlugs();
+import { compareExerciseNames, exerciseDetailUrl } from '../utils/exerciseOrder';
 
 // Equipment derivation from the tags array. The master library doesn't have
 // a dedicated equipment column — instead each exercise carries a tags array
@@ -43,6 +37,9 @@ export default function ExerciseLibrary() {
   // browse view clean). Driven by the "Custom" pill in the filter row and
   // by tapping the Custom stat-strip card.
   const CUSTOM_FILTER = 'custom';
+  // Pseudo-muscle for the "Saved" pill: the user's bookmarked exercises,
+  // master and custom alike.
+  const SAVED_FILTER = 'saved';
 
   const filtered = useMemo(() => {
     // Default: master library only — exclude user-created custom exercises.
@@ -51,10 +48,13 @@ export default function ExerciseLibrary() {
     // customs don't belong to a single global muscle group in the same
     // canonical sense.
     const showOnlyCustom = selectedMuscle === CUSTOM_FILTER;
+    const showOnlySaved = selectedMuscle === SAVED_FILTER;
     // hiddenFromLibrary: program-only variants kept in the DB for their
     // programs but not listed here.
-    let result = (exercises || []).filter((e) => !e.hiddenFromLibrary && (showOnlyCustom ? e.isCustom : !e.isCustom));
-    if (selectedMuscle && !showOnlyCustom) {
+    let result = (exercises || []).filter((e) => !e.hiddenFromLibrary && (
+      showOnlySaved ? e.isFavorite : (showOnlyCustom ? e.isCustom : !e.isCustom)
+    ));
+    if (selectedMuscle && !showOnlyCustom && !showOnlySaved) {
       result = result.filter(e => e.muscle === selectedMuscle);
     }
     if (search.trim()) {
@@ -68,17 +68,18 @@ export default function ExerciseLibrary() {
       seen.add(e.name);
       return true;
     });
-    // Alphabetical, case-insensitive, with names starting with a digit
-    // ("1-Arm Lat Pull-In") after all lettered names instead of first.
-    // Muscle groups below preserve this order.
-    const startsWithDigit = (n) => /^\d/.test(n.trim());
-    return deduped.sort((a, b) =>
-      (startsWithDigit(a.name) - startsWithDigit(b.name))
-      || a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true })
-    );
+    // Alphabetical, numbered names last (see utils/exerciseOrder). Muscle
+    // groups below preserve this order.
+    return deduped.sort((a, b) => compareExerciseNames(a.name, b.name));
   }, [exercises, search, selectedMuscle]);
 
-  // Group by muscle for display when not searching
+  // Detail URLs of the current list, in alphabetical order, handed to the
+  // detail page so its ‹ › arrows step through exactly what's listed here
+  // (current filter/search included).
+  const navList = useMemo(() => filtered.map((e) => exerciseDetailUrl(e.name)), [filtered]);
+
+  // Group by muscle for display when not searching. Sections follow the
+  // pill order (most popular first); groups only customs use go last.
   const grouped = useMemo(() => {
     if (search.trim()) return null;
     const groups = {};
@@ -86,8 +87,14 @@ export default function ExerciseLibrary() {
       if (!groups[ex.muscle]) groups[ex.muscle] = [];
       groups[ex.muscle].push(ex);
     }
-    return groups;
-  }, [filtered, search]);
+    const rank = (m) => {
+      const i = (muscleGroups || []).indexOf(m);
+      return i === -1 ? Infinity : i;
+    };
+    return Object.fromEntries(
+      Object.entries(groups).sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b))
+    );
+  }, [filtered, search, muscleGroups]);
 
   // ── Tactile theme tokens ──
   const LB_CARD = 'linear-gradient(180deg, #1a1816 0%, #100f0d 100%)';
@@ -104,21 +111,21 @@ export default function ExerciseLibrary() {
 
   // shared row renderer so search + grouped views stay identical. Every row
   // is tappable now: static (hand-authored) exercises route to their canonical
-  // slug from DETAIL_PAGES; everything else falls back to slugify(name) and
-  // ExerciseDetail's master-library fallback path builds the page from there.
+  // slug; everything else falls back to slugify(name) and ExerciseDetail's
+  // master-library fallback path builds the page from there.
   // Card layout is exercise name on top, "muscle · equipment" meta line on
   // bottom — the old tag-chip row is gone per design feedback. The showMuscle
   // arg is kept for backward call-site compat but is no longer consulted;
   // muscle group renders on every card unconditionally because the bottom
   // meta line is a single line of text per the spec.
   const renderRow = (ex, _showMuscle) => {
-    const detailUrl = DETAIL_PAGES[ex.name] || `/exercises/${slugify(ex.name)}`;
+    const detailUrl = exerciseDetailUrl(ex.name);
     const equipment = getEquipment(ex.tags);
     const metaStyle = { fontFamily: MONO, fontSize: 9, letterSpacing: '0.2em', color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase' };
     return (
       <button
         key={ex.id}
-        onClick={() => navigate(detailUrl)}
+        onClick={() => navigate(detailUrl, { state: { navList } })}
         className="active:scale-[0.98] transition-transform"
         style={{
           width: '100%', textAlign: 'left', position: 'relative', overflow: 'hidden',
@@ -226,14 +233,14 @@ export default function ExerciseLibrary() {
         )}
       </div>
 
-      {/* ── Muscle pills ── "All" + every muscle group. Styled red (fill
-          when selected, red-tinted border/text when not) so this filter
+      {/* ── Muscle pills ── "Saved" + "All" + every muscle group. Styled red
+          (fill when selected, red-tinted border/text when not) so this filter
           row reads as distinct from the white/gray stat strip and search
           bar above it. The Custom filter lives on the stat-strip card
           only now — no separate "Custom" chip in this row. */}
       <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '16px 16px 4px' }} className="scrollbar-none">
-        {['All', ...(muscleGroups || [])].map((g) => {
-          const val = g === 'All' ? '' : g;
+        {['Saved', 'All', ...(muscleGroups || [])].map((g) => {
+          const val = g === 'All' ? '' : g === 'Saved' ? SAVED_FILTER : g;
           const sel = selectedMuscle === val;
           return (
             <button
@@ -268,6 +275,13 @@ export default function ExerciseLibrary() {
             These are exercises that you have created that aren't in the RepLab exercise library.
           </p>
         </div>
+      )}
+
+      {/* ── Saved empty state ── */}
+      {!loading && selectedMuscle === SAVED_FILTER && !search.trim() && filtered.length === 0 && (
+        <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.45)', fontSize: 13.5, lineHeight: 1.5, padding: '36px 32px 0', margin: 0 }}>
+          Tap the bookmark on any exercise to save it here.
+        </p>
       )}
 
       {/* ── Search results (flat) ── */}

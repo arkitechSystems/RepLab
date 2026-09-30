@@ -200,6 +200,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS exercises_master_name_unique
   ON exercises (LOWER(name))
   WHERE created_by IS NULL;
 
+-- Per-user saved ("bookmarked") exercises — the Saved filter in the Exercise
+-- Library and the Saved section at the top of the exercise pickers.
+CREATE TABLE IF NOT EXISTS exercise_favorites (
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  exercise_id INT NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (user_id, exercise_id)
+);
+
 CREATE TABLE IF NOT EXISTS subscriptions (
   id SERIAL PRIMARY KEY,
   user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

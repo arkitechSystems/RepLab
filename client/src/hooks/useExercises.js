@@ -4,6 +4,27 @@ import { api } from '../api';
 // In-memory cache — survives re-renders, cleared on page reload
 let exerciseCache = null;
 let muscleGroupCache = null;
+// Every mounted useExercises() instance, so a favorite toggle on one screen
+// (ExerciseDetail) shows up on the others (Library, pickers) without a refetch.
+const listeners = new Set();
+
+function publish(next) {
+  exerciseCache = next;
+  for (const fn of listeners) fn(next);
+}
+
+// Save / unsave an exercise. Optimistic: the cache flips immediately and
+// rolls back (then rethrows) if the request fails.
+export async function setExerciseFavorite(exerciseId, favorite) {
+  const flip = (list, value) => (list || []).map((e) => (e.id === exerciseId ? { ...e, isFavorite: value } : e));
+  if (exerciseCache) publish(flip(exerciseCache, favorite));
+  try {
+    await api(`/exercises/${exerciseId}/favorite`, { method: favorite ? 'PUT' : 'DELETE' });
+  } catch (err) {
+    if (exerciseCache) publish(flip(exerciseCache, !favorite));
+    throw err;
+  }
+}
 
 export function useExercises() {
   const [exercises, setExercises] = useState(exerciseCache || []);
@@ -12,15 +33,19 @@ export function useExercises() {
   const [loading, setLoading] = useState(!exerciseCache);
 
   useEffect(() => {
+    listeners.add(setExercises);
+    return () => { listeners.delete(setExercises); };
+  }, []);
+
+  useEffect(() => {
     if (exerciseCache) return;
     setLoading(true);
     Promise.all([
       api('/exercises'),
       api('/exercises/muscles'),
     ]).then(([exs, muscles]) => {
-      exerciseCache = exs;
       muscleGroupCache = muscles;
-      setExercises(exs);
+      publish(exs);
       setMuscleGroups(muscles);
     }).catch((err) => { if (import.meta.env.DEV) console.error(err); })
     .finally(() => setLoading(false));
@@ -42,7 +67,7 @@ export function useExercises() {
     muscleGroupCache = null;
   }, []);
 
-  return { exercises, muscleGroups, loading, createCustom, invalidateCache };
+  return { exercises, muscleGroups, loading, createCustom, invalidateCache, setFavorite: setExerciseFavorite };
 }
 
 /**

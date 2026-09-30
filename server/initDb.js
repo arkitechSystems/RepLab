@@ -550,6 +550,14 @@ export default async function initDb() {
   // DB so the programs that use them keep working, but are left out of the
   // Exercise Library page. Exercise search/pickers still include them.
   await pool.query(`ALTER TABLE exercises ADD COLUMN IF NOT EXISTS hidden_from_library BOOLEAN NOT NULL DEFAULT FALSE`);
+  // Per-user saved exercises (bookmark on ExerciseDetail). Cascades with both
+  // the user and the exercise.
+  await pool.query(`CREATE TABLE IF NOT EXISTS exercise_favorites (
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    exercise_id INT NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (user_id, exercise_id)
+  )`);
 
   // Streak-reminder push de-dupe: track when we last pinged a given user so
   // the scheduler doesn't double-send across overlapping ticks. 18h cooldown

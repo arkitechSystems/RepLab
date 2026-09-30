@@ -77,6 +77,30 @@ app.use((req, res, next) => {
 app.use(cookieParser());
 app.use(sanitize); // Strip XSS from all request inputs
 
+// YouTube embed shim for the native app. The app's WebView runs on
+// capacitor://localhost (iOS) / https://localhost (Android), not a real
+// website, so YouTube's embedded player refuses to play there (error 153:
+// no valid referrer/origin). The app instead frames this tiny page from
+// our real domain, which in turn embeds YouTube — so YouTube sees
+// replab-fitness.com. Registered before the security-header middleware:
+// it's the one page allowed to be framed, and only by the app's origins.
+const YT_ID = /^[\w-]{11}$/;
+app.get('/yt-embed/:id', (req, res) => {
+  const id = req.params.id;
+  if (!YT_ID.test(id)) return res.status(400).send('Invalid video id');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Content-Security-Policy', [
+    "default-src 'none'",
+    "style-src 'unsafe-inline'",
+    'frame-src https://www.youtube-nocookie.com https://www.youtube.com',
+    "frame-ancestors 'self' capacitor://localhost ionic://localhost https://localhost http://localhost",
+  ].join('; '));
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  const src = `https://www.youtube-nocookie.com/embed/${id}?playsinline=1&autoplay=1&rel=0&modestbranding=1`;
+  res.type('html').send(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Video</title><style>html,body{margin:0;height:100%;background:#000}iframe{border:0;width:100%;height:100%;display:block}</style></head><body><iframe src="${src}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></body></html>`);
+});
+
 // Security headers
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');

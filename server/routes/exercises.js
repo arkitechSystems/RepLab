@@ -20,10 +20,10 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 
-// GET /exercises/muscles — list distinct muscle groups
+// GET /exercises/muscles — list distinct muscle groups, most popular first
 router.get('/muscles', authMiddleware, async (req, res) => {
   try {
-    const muscles = await db.getMuscleGroups();
+    const muscles = await db.getMuscleGroupsByPopularity();
     res.json(muscles);
   } catch (err) {
     console.error(err);
@@ -45,5 +45,25 @@ router.post('/', authMiddleware, async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+// PUT /exercises/:id/favorite — save an exercise (idempotent)
+// DELETE /exercises/:id/favorite — unsave it (idempotent)
+// 404 when the exercise doesn't exist or is another user's custom.
+async function setFavorite(req, res, favorite) {
+  try {
+    const exerciseId = Number(req.params.id);
+    if (!Number.isInteger(exerciseId) || exerciseId <= 0) {
+      return res.status(400).json({ error: 'Invalid exercise id' });
+    }
+    const ok = await db.setExerciseFavorite(req.userId, exerciseId, favorite);
+    if (!ok) return res.status(404).json({ error: 'Exercise not found' });
+    res.json({ exerciseId, isFavorite: favorite });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+router.put('/:id/favorite', authMiddleware, (req, res) => setFavorite(req, res, true));
+router.delete('/:id/favorite', authMiddleware, (req, res) => setFavorite(req, res, false));
 
 export default router;

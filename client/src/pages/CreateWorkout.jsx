@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { api } from '../api';
 import { useExercises } from '../hooks/useExercises';
+import { savedExercises, savedFirst } from '../utils/savedExercises';
 import { useUnsavedGuard } from '../components/UnsavedGuard';
 import ExerciseCard from '../components/ExerciseCard';
 import { friendlyError } from '../utils/errors';
@@ -477,11 +478,13 @@ function TemplateExerciseWrapper({
   const [activeAutocomplete, setActiveAutocomplete] = useState(false);
   const autocompleteRef = useRef(null);
 
+  // Empty box → the user's saved exercises (the "Saved" list). Typing →
+  // matches, with saved ones floated to the top before the 8-row cap.
   function getSuggestions(query) {
-    if (!query || query.length < 1) return [];
+    if (!query || query.length < 1) return savedExercises(allExercises);
     const q = query.toLowerCase();
     const seen = new Set();
-    return allExercises
+    return savedFirst(allExercises
       .filter((ex) => {
         if (seen.has(ex.name)) return false;
         seen.add(ex.name);
@@ -491,7 +494,7 @@ function TemplateExerciseWrapper({
         const aStarts = a.name.toLowerCase().startsWith(q) ? 0 : 1;
         const bStarts = b.name.toLowerCase().startsWith(q) ? 0 : 1;
         return aStarts - bStarts || a.name.localeCompare(b.name);
-      })
+      }))
       .slice(0, 8);
   }
 
@@ -560,9 +563,9 @@ function TemplateExerciseWrapper({
               value={ex.name}
               onChange={(e) => {
                 updateExercise(exIdx, 'name', e.target.value);
-                setActiveAutocomplete(e.target.value.length >= 1);
+                setActiveAutocomplete(true);
               }}
-              onFocus={() => { if (ex.name.length >= 1) setActiveAutocomplete(true); }}
+              onFocus={() => setActiveAutocomplete(true)}
               onBlur={() => { setTimeout(() => setActiveAutocomplete(false), 150); }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && ex.name.trim()) {
@@ -577,6 +580,9 @@ function TemplateExerciseWrapper({
             />
             {activeAutocomplete && (suggestions.length > 0 || ex.name.trim().length > 0) && (
               <div className="absolute z-50 bottom-full left-0 right-0 mb-1 bg-wf-gray-900 border border-white/10 rounded-xl shadow-2xl shadow-black/60 overflow-hidden max-h-64 overflow-y-auto">
+                {!ex.name.trim() && suggestions.length > 0 && (
+                  <p className="px-3 pt-2.5 pb-1 text-[10px] uppercase tracking-widest text-wf-red font-semibold">Saved</p>
+                )}
                 {suggestions.map((suggestion) => (
                   <button
                     key={suggestion.name}
