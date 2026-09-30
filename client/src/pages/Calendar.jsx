@@ -9,6 +9,7 @@ import ConfirmOverwriteModal from '../components/ConfirmOverwriteModal';
 import MissedWorkoutsModal from '../components/MissedWorkoutsModal';
 import useMissedWorkoutsPrompt from '../hooks/useMissedWorkoutsPrompt';
 import useFocusTrap from '../hooks/useFocusTrap';
+import StartEmptyWorkoutModal from '../components/StartEmptyWorkoutModal';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const FULL_DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -2069,73 +2070,14 @@ export default function Calendar() {
 
       {/* Start Empty — Name Prompt Modal */}
       {startEmptyStep === 'name-prompt' && editingDay && (
-        <div
-          className="fixed inset-0 z-[120] flex items-center justify-center px-4"
-          onClick={cancelStartEmpty}
-        >
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
-          <div
-            className="relative w-full max-w-sm shadow-2xl"
-            style={{
-              background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: '2px',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-5 pt-5 pb-4">
-              <p
-                className="text-[10px] uppercase font-bold mb-1"
-                style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.2em' }}
-              >
-                Name Your Workout
-              </p>
-              <h3
-                className="text-xl font-black text-white leading-tight"
-                style={{ letterSpacing: '-0.01em' }}
-              >
-                Start Empty Workout
-              </h3>
-              <p className="text-sm text-wf-gray-400 mt-2">
-                Saved to your <span className="text-white font-medium">My Workouts</span> program.
-              </p>
-              <input
-                type="text"
-                value={startEmptyName}
-                onChange={(e) => setStartEmptyName(e.target.value)}
-                autoFocus
-                className="w-full mt-4 glass-input rounded-md px-3 py-2.5 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none transition-all"
-                placeholder="Workout name"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !startEmptySaving) handleConfirmStartEmpty();
-                }}
-              />
-            </div>
-            <div className="px-5 pb-5 flex gap-3">
-              <button
-                onClick={cancelStartEmpty}
-                disabled={startEmptySaving}
-                className={`flex-1 py-3 bg-white/10 text-sm font-semibold text-white active:scale-[0.98] transition-all ${startEmptySaving ? 'opacity-50 pointer-events-none' : ''}`}
-                style={{ borderRadius: '2px' }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmStartEmpty}
-                disabled={startEmptySaving || !startEmptyName.trim()}
-                className={`flex-1 py-3 btn-gradient text-sm font-semibold text-white active:scale-[0.98] transition-all ${(startEmptySaving || !startEmptyName.trim()) ? 'opacity-50 pointer-events-none' : ''}`}
-                style={{ borderRadius: '2px' }}
-              >
-                {startEmptySaving ? 'Creating...' : 'Confirm'}
-              </button>
-            </div>
-            {editError && (
-              <div className="px-5 pb-4">
-                <p className="text-sm text-red-400 text-center">{editError}</p>
-              </div>
-            )}
-          </div>
-        </div>
+        <StartEmptyWorkoutModal
+          name={startEmptyName}
+          onNameChange={setStartEmptyName}
+          saving={startEmptySaving}
+          error={editError}
+          onCancel={cancelStartEmpty}
+          onConfirm={handleConfirmStartEmpty}
+        />
       )}
 
     </div>

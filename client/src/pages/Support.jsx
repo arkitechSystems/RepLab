@@ -143,7 +143,7 @@ export default function Support() {
                     How do I log a workout?
                   </h3>
                   <p className="text-[13px] text-white/55 leading-relaxed">
-                    Open the Workouts tab, pick a program or tap "Add a Workout" to browse the library, then tap any day on your calendar to schedule it. Tap into the day to start logging sets.
+                    Open the Workouts tab, pick a program or tap "Browse Library" on the top card, then tap any day on your calendar to schedule it. Tap into the day to start logging sets.
                   </p>
                 </div>
 

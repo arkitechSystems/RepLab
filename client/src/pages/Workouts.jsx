@@ -22,7 +22,8 @@ import LoadingSpinnerOverlay from '../components/LoadingSpinnerOverlay';
 import { track } from '../utils/analytics';
 import useFocusTrap from '../hooks/useFocusTrap';
 import MissedWorkoutsModal from '../components/MissedWorkoutsModal';
-import useMissedWorkoutsPrompt from '../hooks/useMissedWorkoutsPrompt';
+import useMissedWorkoutsPrompt, { localDateStr } from '../hooks/useMissedWorkoutsPrompt';
+import StartEmptyWorkoutModal from '../components/StartEmptyWorkoutModal';
 
 const DAY_NAMES_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -1169,6 +1170,11 @@ export default function Workouts() {
   const [renameModal, setRenameModal] = useState(null); // template object
   const [renameValue, setRenameValue] = useState('');
   const [renameBusy, setRenameBusy] = useState(false);
+  // "Log as you go" (main card, nothing scheduled): same Start Empty
+  // Workout name prompt as the Calendar, for today's date.
+  const [logAsYouGoName, setLogAsYouGoName] = useState(null); // null = closed
+  const [logAsYouGoSaving, setLogAsYouGoSaving] = useState(false);
+  const [logAsYouGoError, setLogAsYouGoError] = useState('');
   // Share program state
   const [shareModal, setShareModal] = useState(null); // program object
   const [shareInput, setShareInput] = useState('');
@@ -2098,6 +2104,39 @@ export default function Workouts() {
       showToast(err.message || 'Failed to move workout. Please try again.', 'error');
     } finally {
       setMoveTemplateBusy(false);
+    }
+  }
+
+  // "Log as you go": open the Start Empty Workout name prompt for today,
+  // pre-filled like the Calendar's ("9/30/26 custom workout").
+  function openLogAsYouGo() {
+    const d = new Date();
+    setLogAsYouGoError('');
+    setLogAsYouGoName(`${d.getMonth() + 1}/${d.getDate()}/${String(d.getFullYear()).slice(-2)} custom workout`);
+  }
+
+  async function handleConfirmLogAsYouGo() {
+    // Entry guard against double-tap / Enter-held, same as the Calendar flow.
+    if (logAsYouGoSaving) return;
+    const trimmed = (logAsYouGoName || '').trim();
+    if (!trimmed) {
+      setLogAsYouGoError('Please enter a workout name.');
+      return;
+    }
+    setLogAsYouGoSaving(true);
+    try {
+      const date = localDateStr();
+      const result = await api('/sessions/start-empty', {
+        method: 'POST',
+        body: JSON.stringify({ name: trimmed, date }),
+      });
+      setLogAsYouGoName(null);
+      navigate(`/session/${result.templateId}/${date}`);
+    } catch (err) {
+      if (import.meta.env.DEV) console.error(err);
+      setLogAsYouGoError('Failed to create workout. Please try again.');
+    } finally {
+      setLogAsYouGoSaving(false);
     }
   }
 
@@ -3125,6 +3164,16 @@ export default function Workouts() {
             Yes routes to the prehab session; No skips straight to the
             real workout via skipPrehab=true. */}
         <MissedWorkoutsModal {...missedPromptCtl.modalProps} />
+        {logAsYouGoName !== null && (
+          <StartEmptyWorkoutModal
+            name={logAsYouGoName}
+            onNameChange={setLogAsYouGoName}
+            saving={logAsYouGoSaving}
+            error={logAsYouGoError}
+            onCancel={() => setLogAsYouGoName(null)}
+            onConfirm={handleConfirmLogAsYouGo}
+          />
+        )}
         {prehabPrompt && (
           <div
             className="fixed inset-0 z-[110] flex items-center justify-center px-5"
@@ -5966,7 +6015,7 @@ export default function Workouts() {
                           promise. Order of precedence:
                             completedToday → Workout Completed (deeplink to summary)
                             status start/resume/upcoming → Start/Resume/Preview that workout
-                            status rest/none → fall back to Add a Workout
+                            status rest/none → Log as You Go (Start Empty Workout)
                           Disabled while `nextWorkoutInfo` is still loading so a
                           mid-revalidation tap can't fire against stale state. */}
                       {(() => {
@@ -6001,13 +6050,13 @@ export default function Workouts() {
                             onClick: () => navigateToWorkout(info.templateId, info.date),
                           };
                         } else {
-                          // No workout scheduled / no completion today: primary CTA
-                          // routes users into the Browse Programs library (same
-                          // target as the right-side Browse button) so they can
-                          // pick a workout instead of building one from scratch.
+                          // Nothing scheduled (or a rest day) and nothing done
+                          // today: primary CTA starts an empty workout they log
+                          // as they go (Start Empty Workout name prompt). The
+                          // right-side Browse button covers picking a program.
                           primary = {
-                            label: 'Add a Workout',
-                            onClick: () => { setSelectedGroup('browse'); completeTutorialAction?.('browse-library-tap'); },
+                            label: 'Log as You Go',
+                            onClick: openLogAsYouGo,
                           };
                         }
                         // Defaults match the pre-redesign primary CTA: white
@@ -6029,8 +6078,10 @@ export default function Workouts() {
                               onClick: () => navigateToWorkout(info.templateId, info.date),
                             }
                           : {
-                              label: 'Browse',
-                              onClick: () => { setSelectedGroup('browse'); completeTutorialAction?.('browse-library-tap'); },
+                              // Opens the Featured Workouts library once that
+                              // flag is unlocked; the Browse library until then.
+                              label: 'Browse Library',
+                              onClick: () => { setSelectedGroup(featuredUnlocked ? 'featured' : 'browse'); completeTutorialAction?.('browse-library-tap'); },
                             };
                         // Buttons match the pre-redesign Your Next Workout CTA
                         // pair: full-rounded pills, 11px uppercase, 0.15em
