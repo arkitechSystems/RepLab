@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import StickyHeader from '../components/StickyHeader';
 import { api } from '../api';
 import { track } from '../utils/analytics';
+import { lightTap } from '../utils/haptics';
 
 function formatTimeAgo(daysAgo) {
   if (daysAgo === 0) return 'today';
@@ -49,53 +50,92 @@ function Avatar({ initials, photoUrl, size = 18 }) {
   );
 }
 
-// Heroicons "fire" — outline when not liked, filled red when liked.
-const FLAME_PATHS = [
-  'M15.362 5.214A8.252 8.252 0 0112 21 8.25 8.25 0 016.038 7.048 8.287 8.287 0 009 9.6a8.983 8.983 0 013.361-6.867 8.21 8.21 0 003 2.48z',
-  'M12 18a3.75 3.75 0 00.495-7.467 5.99 5.99 0 00-1.925 3.546 5.974 5.974 0 01-2.133-1A3.75 3.75 0 0012 18z',
-];
-
-function FlameIcon({ filled }) {
+// Clapping hands in the app's line-icon style: two palms leaning into each
+// other plus three motion ticks. Tinted with currentColor (red when
+// applauded). The inner <g>s carry the clap animation; the outer ones hold
+// each palm's resting tilt so the CSS transform doesn't override it.
+function ApplauseIcon({ applauded }) {
   return (
     <svg
-      className="w-4 h-4 shrink-0"
+      className="w-4 h-4 shrink-0 overflow-visible"
       viewBox="0 0 24 24"
-      fill={filled ? 'currentColor' : 'none'}
+      fill="none"
       stroke="currentColor"
-      strokeWidth={1.5}
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
       aria-hidden="true"
     >
-      {FLAME_PATHS.map((d) => (
-        <path key={d} strokeLinecap="round" strokeLinejoin="round" d={d} />
-      ))}
+      <g transform="rotate(-16 10 14)">
+        <g className="replab-clap-l">
+          <rect x="5.5" y="7" width="7" height="13.5" rx="3.5" fill={applauded ? 'currentColor' : 'none'} fillOpacity={0.22} />
+        </g>
+      </g>
+      <g transform="rotate(16 14 14)">
+        <g className="replab-clap-r">
+          <rect x="11.5" y="7" width="7" height="13.5" rx="3.5" fill={applauded ? 'currentColor' : 'none'} fillOpacity={0.22} />
+        </g>
+      </g>
+      <path d="M12 1.8v2M7.9 2.9l1 1.6M16.1 2.9l-1 1.6" />
     </svg>
   );
 }
 
-// Like control for one feed item. Your own activity shows the count only
-// (no button), and nothing at all until someone has liked it.
-function LikeButton({ item, onToggle }) {
+// Clap (palms squeeze in and pop back) + a small spark burst, ~500ms, played
+// only when applauding — un-applauding just un-highlights. Skipped entirely
+// under prefers-reduced-motion.
+const APPLAUSE_CSS = `
+  .replab-clap-l, .replab-clap-r { transform-box: fill-box; transform-origin: 50% 100%; }
+  .replab-clapping .replab-clap-l { animation: replab-clap-l 500ms ease-out; }
+  .replab-clapping .replab-clap-r { animation: replab-clap-r 500ms ease-out; }
+  @keyframes replab-clap-l { 0% { transform: rotate(0); } 30% { transform: rotate(12deg) scale(0.92); } 60% { transform: rotate(-3deg) scale(1.08); } 100% { transform: rotate(0) scale(1); } }
+  @keyframes replab-clap-r { 0% { transform: rotate(0); } 30% { transform: rotate(-12deg) scale(0.92); } 60% { transform: rotate(3deg) scale(1.08); } 100% { transform: rotate(0) scale(1); } }
+  .replab-spark { position: absolute; left: 50%; top: 50%; width: 3px; height: 3px; margin: -1.5px 0 0 -1.5px; border-radius: 50%; background: #ef4444; opacity: 0; pointer-events: none; animation: replab-spark 500ms ease-out 120ms forwards; }
+  @keyframes replab-spark { 0% { opacity: 1; transform: translate(0, 0) scale(1); } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.4); } }
+  @media (prefers-reduced-motion: reduce) {
+    .replab-clapping .replab-clap-l, .replab-clapping .replab-clap-r { animation: none; }
+    .replab-spark { display: none; }
+  }
+`;
+
+// Six sparks around the icon, as (dx, dy) offsets in px.
+const SPARKS = [[0, -13], [11, -7], [11, 7], [0, 13], [-11, 7], [-11, -7]];
+
+// Applause control for one feed item. Your own activity shows the count only
+// (no button), and nothing at all until someone has applauded it.
+function ApplauseButton({ item, onToggle }) {
+  // Bumped on each applaud so the clap/spark elements remount and replay.
+  const [burst, setBurst] = useState(0);
   const count = item.likeCount || 0;
   if (item.isMine) {
     if (count === 0) return null;
     return (
       <div className="flex items-center gap-1 text-[11px] font-semibold" style={{ color: 'rgba(239,68,68,0.8)' }}>
-        <FlameIcon filled />
+        <ApplauseIcon applauded />
         <span>{count}</span>
       </div>
     );
   }
-  const liked = !!item.likedByMe;
+  const applauded = !!item.likedByMe;
   return (
     <button
       type="button"
-      onClick={() => onToggle(item)}
-      aria-pressed={liked}
-      aria-label={liked ? 'Unlike' : 'Like'}
+      onClick={() => {
+        lightTap();
+        if (!applauded) setBurst((b) => b + 1);
+        onToggle(item);
+      }}
+      aria-pressed={applauded}
+      aria-label={applauded ? 'Remove applause' : 'Applaud'}
       className="flex items-center gap-1 text-[11px] font-semibold -my-1 py-1 pr-1 active:scale-95 transition-transform"
-      style={{ color: liked ? '#ef4444' : 'rgba(255,255,255,0.4)' }}
+      style={{ color: applauded ? '#ef4444' : 'rgba(255,255,255,0.4)' }}
     >
-      <FlameIcon filled={liked} />
+      <span key={burst} className={`relative inline-flex ${burst > 0 && applauded ? 'replab-clapping' : ''}`}>
+        <ApplauseIcon applauded={applauded} />
+        {burst > 0 && applauded && SPARKS.map(([dx, dy]) => (
+          <span key={`${dx},${dy}`} className="replab-spark" style={{ '--dx': `${dx}px`, '--dy': `${dy}px` }} />
+        ))}
+      </span>
       {count > 0 && <span>{count}</span>}
     </button>
   );
@@ -237,7 +277,7 @@ function CommunityTimeline({ items, onToggleLike, highlightId }) {
                   </>
                 )}
                 <div className="mt-2">
-                  <LikeButton item={item} onToggle={onToggleLike} />
+                  <ApplauseButton item={item} onToggle={onToggleLike} />
                 </div>
               </div>
             );
@@ -349,6 +389,7 @@ export default function Community() {
 
   return (
     <div className="pb-24">
+      <style>{APPLAUSE_CSS}</style>
       <StickyHeader title="COMMUNITY" titleStyle={{ fontSize: '26.4px' }}>
         <button
           onClick={() => navigate(-1)}

@@ -88,11 +88,11 @@ describe('like push text', () => {
 
   it('groups later likers into "and N others" and deep-links to the item', () => {
     const single = buildLikePush('sam', 0, PR_ITEM);
-    expect(single.body).toBe('sam liked your Bench Press PR (225 lbs)');
+    expect(single.body).toBe('sam applauded your Bench Press PR (225 lbs)');
     expect(single.data).toEqual({ kind: 'community_like', itemKey: 'pr-42' });
 
-    expect(buildLikePush('sam', 1, PR_ITEM).body).toBe('sam and 1 other liked your Bench Press PR (225 lbs)');
-    expect(buildLikePush('sam', 3, PR_ITEM).body).toBe('sam and 3 others liked your Bench Press PR (225 lbs)');
+    expect(buildLikePush('sam', 1, PR_ITEM).body).toBe('sam and 1 other applauded your Bench Press PR (225 lbs)');
+    expect(buildLikePush('sam', 3, PR_ITEM).body).toBe('sam and 3 others applauded your Bench Press PR (225 lbs)');
   });
 });
 
@@ -103,8 +103,8 @@ describe('notifyCommunityLike', () => {
     expect(sendPushToUser).toHaveBeenCalledTimes(1);
     expect(sendPushToUser).toHaveBeenCalledWith(
       2,
-      '🔥 New like',
-      'sam liked your Bench Press PR (225 lbs)',
+      '👏 New applause',
+      'sam applauded your Bench Press PR (225 lbs)',
       { kind: 'community_like', itemKey: 'pr-42' }
     );
     // Marked handled, and as an actual push (starts the grouping window).
@@ -152,8 +152,8 @@ describe('flushPendingLikePushes', () => {
     expect(sendPushToUser).toHaveBeenCalledTimes(1);
     expect(sendPushToUser).toHaveBeenCalledWith(
       2,
-      '🔥 3 new likes',
-      'sam and 2 others liked your Bench Press PR (225 lbs)',
+      '👏 3 new applause',
+      'sam and 2 others applauded your Bench Press PR (225 lbs)',
       { kind: 'community_like', itemKey: 'pr-42' }
     );
     // Every pending row is closed out; only still-liked ones count as pushed.

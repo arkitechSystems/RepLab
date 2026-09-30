@@ -984,18 +984,18 @@ export default function Profile() {
                       <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
                       </svg>
-                      <span className="text-white/70 text-sm font-medium">Likes on my activity</span>
+                      <span className="text-white/70 text-sm font-medium">Applause on my activity</span>
                     </div>
                     <button
                       onClick={toggleLikePushes}
                       disabled={likePushesSaving}
-                      aria-label={likePushesOn ? 'Turn off like notifications' : 'Turn on like notifications'}
+                      aria-label={likePushesOn ? 'Turn off applause notifications' : 'Turn on applause notifications'}
                       className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${likePushesOn ? 'bg-wf-red' : 'bg-white/15'}`}
                     >
                       <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${likePushesOn ? 'translate-x-5' : 'translate-x-0.5'}`} />
                     </button>
                   </div>
-                  <p className="text-[11px] text-white/40 leading-snug pl-[1px]">Push notification when someone likes your activity</p>
+                  <p className="text-[11px] text-white/40 leading-snug pl-[1px]">Push notification when someone applauds your activity</p>
                 </div>
 
                 {communitySharingError && (

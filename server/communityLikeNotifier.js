@@ -1,16 +1,18 @@
-// Push notifications for likes on Community feed activity.
+// Push notifications for likes on Community feed activity. User-facing copy
+// calls a like "applause" (the button is a clapping-hands icon); internal
+// names — tables, routes, analytics events — still say "like".
 //
 // Grouping: the first like on an item pushes to its owner right away. Any
 // more likes on that item within WINDOW_MIN of the last push wait in
 // community_like_notices (notified_at IS NULL) and go out together as one
-// follow-up push ("Sam and 3 others liked your Bench Press PR") once the
+// follow-up push ("Sam and 3 others applauded your Bench Press PR") once the
 // window has passed. The flush runs on a 1-minute tick, and pending rows
 // live in the DB, so a restart delays the follow-up rather than losing it.
 //
 // A notice row is written only the first time a user likes an item
 // (db.likeCommunityItem), and it survives unlike, so re-liking never
 // notifies twice. Likes are silently marked handled when the owner has
-// "Likes on my activity" off, the item is no longer shared, or the liker
+// "Applause on my activity" off, the item is no longer shared, or the liker
 // unliked before the batch went out.
 //
 // Per-item work runs under a transaction-scoped advisory lock so a like
@@ -26,7 +28,7 @@ import { communityItemKey } from './communityItems.js';
 const WINDOW_MIN = 15;
 const TICK_MS = 60 * 1000;
 // Pending likes older than this are dropped instead of sent (e.g. after a
-// long outage) — a days-late "liked your PR" push is just noise.
+// long outage) — a days-late "applauded your PR" push is just noise.
 const STALE_DAYS = 3;
 
 function formatWeight(w) {
@@ -35,7 +37,7 @@ function formatWeight(w) {
   return n % 1 === 0 ? n.toFixed(0) : n.toFixed(1);
 }
 
-// What was liked, phrased to follow "<name> liked ". Mirrors the feed's
+// What was applauded, phrased to follow "<name> applauded ". Mirrors the feed's
 // wording for each item type.
 export function describeLikedItem(item) {
   if (item.type === 'pr') {
@@ -53,8 +55,8 @@ export function buildLikePush(likerName, othersCount, item) {
     : likerName;
   const total = othersCount + 1;
   return {
-    title: total > 1 ? `🔥 ${total} new likes` : '🔥 New like',
-    body: `${who} liked ${describeLikedItem(item)}`,
+    title: total > 1 ? `👏 ${total} new applause` : '👏 New applause',
+    body: `${who} applauded ${describeLikedItem(item)}`,
     data: { kind: 'community_like', itemKey: communityItemKey(item.type, item.id) },
   };
 }
