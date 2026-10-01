@@ -136,7 +136,7 @@ export default function InstallPrompt() {
                 className="text-[10px] uppercase font-light mb-1"
                 style={{ color: 'rgba(239,68,68,0.8)', letterSpacing: '0.3em' }}
               >
-                Install REPLAB
+                Install RepLab
               </p>
               <h3 className="text-[16px] font-black text-white tracking-tight mb-2">
                 Add to your home screen

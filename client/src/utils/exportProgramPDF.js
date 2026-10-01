@@ -100,7 +100,7 @@ function renderCoverPage(program, dateStr) {
       <div class="cover-warm-glow"></div>
       <div class="page-inner cover-inner">
         <div class="cover-top">
-          <div class="brand">REPLAB</div>
+          <div class="brand">RepLab</div>
           <img class="cover-logo" src="${WATERMARK_SRC}" alt="RepLab" />
         </div>
 

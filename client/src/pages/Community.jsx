@@ -159,7 +159,7 @@ function ActivityTicker({ messages }) {
           className="text-[10px] uppercase font-light mb-2"
           style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.25em' }}
         >
-          REPLAB Community
+          RepLab Community
         </p>
         <div style={{ borderBottom: '1px dotted rgba(255,255,255,0.15)', marginBottom: '12px' }} />
         <div style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
@@ -188,9 +188,9 @@ function CommunityTimeline({ items, onToggleLike, highlightId }) {
     return (
       <div>
         <p className="text-[10px] uppercase font-bold mb-4" style={{ letterSpacing: '0.25em', color: 'rgba(239,68,68,0.7)' }}>
-          REPLAB Feed
+          RepLab Feed
         </p>
-        <p className="text-[12px] text-white/40 font-light py-8 text-center">No activity yet — complete a workout, start a program, or hit a PR to kick off the REPLAB feed.</p>
+        <p className="text-[12px] text-white/40 font-light py-8 text-center">No activity yet — complete a workout, start a program, or hit a PR to kick off the RepLab feed.</p>
       </div>
     );
   }
@@ -198,7 +198,7 @@ function CommunityTimeline({ items, onToggleLike, highlightId }) {
   return (
     <div>
       <p className="text-[10px] uppercase font-bold mb-4" style={{ letterSpacing: '0.25em', color: 'rgba(239,68,68,0.7)' }}>
-        REPLAB Feed
+        RepLab Feed
       </p>
       <div className="relative pl-6">
         <div className="absolute left-2 top-2 bottom-2 w-px" style={{ background: 'rgba(255,255,255,0.10)' }} />

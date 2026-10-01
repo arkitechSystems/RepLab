@@ -130,7 +130,7 @@ export default function LandingPageAuroraTest() {
                 <span className="text-wf-red">Logged.</span> Forever.
               </h1>
               <p className="text-base text-white/60 max-w-xl mx-auto mt-5 mb-8 leading-relaxed">
-                REPLAB is the lifter's logbook. Track every set, every rep, every PR — across iOS, Android, and the web.
+                RepLab is the lifter's logbook. Track every set, every rep, every PR — across iOS, Android, and the web.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
@@ -178,7 +178,7 @@ export default function LandingPageAuroraTest() {
         <Orb phase={phase} top={20} right={10} size={320} color="rgba(239,68,68,0.35)" blur={70} freqA={0.7} freqB={0.5} />
 
         <div className="relative max-w-6xl mx-auto">
-          <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-wf-red text-center mb-3">Why REPLAB</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-wf-red text-center mb-3">Why RepLab</p>
           <h2 className="text-3xl md:text-4xl font-black tracking-tight text-center mb-12">Built by lifters, for lifters.</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {[
@@ -195,14 +195,14 @@ export default function LandingPageAuroraTest() {
         </div>
       </section>
 
-      {/* REPLAB PRO — full-width aurora card with breathing CTA */}
+      {/* RepLab PRO — full-width aurora card with breathing CTA */}
       <section className="relative px-5 py-20 overflow-hidden border-t border-white/5">
         <Orb phase={phase} top={10}    left={5}  size={300} color="rgba(220,38,38,0.45)" blur={55} freqA={1.2} freqB={0.9} />
         <Orb phase={phase} bottom={10} right={8} size={260} color="rgba(127,29,29,0.6)"  blur={50} freqA={0.9} freqB={1.3} />
 
         <div className="relative max-w-2xl mx-auto">
             <div className="px-6 sm:px-10 py-12 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-wf-red mb-3">REPLAB Pro</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-wf-red mb-3">RepLab Pro</p>
               <h2 className="text-3xl md:text-4xl font-black tracking-tight mb-4">AI-generated workouts for smarter training.</h2>
               <p className="text-white/55 mb-8 max-w-xl mx-auto leading-relaxed">
                 Unlock AI workout generation, advanced progress charts, and trainer features.

@@ -238,7 +238,7 @@ router.put('/by-template/:templateId/:date/name', authMiddleware, async (req, re
       [templateId]
     );
     if (!tmpl) return res.status(404).json({ error: 'Template not found' });
-    // Global (REPLAB) programs and anyone else's workouts can't be renamed.
+    // Global (RepLab) programs and anyone else's workouts can't be renamed.
     if (tmpl.user_id !== req.userId) return res.status(403).json({ error: 'Only workouts you created can be renamed' });
     if (tmpl.is_rest) return res.status(400).json({ error: 'Rest days can’t be renamed' });
 

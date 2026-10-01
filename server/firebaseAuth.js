@@ -4,7 +4,7 @@
 // (native plugin on iOS/Android, Firebase JS SDK popup on web) and sends us
 // the resulting Firebase ID token. We verify it here in pure JS — signature
 // against Google's securetoken JWKS, issuer/audience against our Firebase
-// project — then map it to a REPLAB user and issue our own JWT pair. Firebase
+// project — then map it to a RepLab user and issue our own JWT pair. Firebase
 // is only the identity broker; it never becomes our session system.
 //
 // Reference: https://firebase.google.com/docs/auth/admin/verify-id-tokens#verify_id_tokens_using_a_third-party_jwt_library

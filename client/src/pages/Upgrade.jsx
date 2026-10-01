@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import StickyHeader from '../components/StickyHeader';
 
-// REPLAB currently has no paid plans — every feature is free for every user,
+// RepLab currently has no paid plans — every feature is free for every user,
 // on every platform. Paid tiers (and the Stripe checkout/portal flow this
 // page used to expose) may return in a future release, built properly with
 // StoreKit/Play Billing on native platforms at that point. Until then this
@@ -43,10 +43,10 @@ export default function Upgrade() {
               Membership
             </p>
             <h1 className="text-[28px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95', letterSpacing: '-0.02em' }}>
-              REPLAB IS FREE
+              RepLab IS FREE
             </h1>
             <p className="text-sm text-white/55 mt-3 leading-relaxed">
-              Every feature in REPLAB is included at no cost right now — no plans, no paywalls. Enjoy the full app.
+              Every feature in RepLab is included at no cost right now — no plans, no paywalls. Enjoy the full app.
             </p>
           </div>
         </div>

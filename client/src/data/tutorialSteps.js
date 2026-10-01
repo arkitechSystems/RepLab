@@ -77,7 +77,7 @@ export const PHASE_1B = [
     type: 'spotlight',
     target: '[data-tutorial="add-exercise-search"]',
     title: 'Add Exercises',
-    description: 'Search the REPLAB library or type a custom name. You can drag-reorder, set the rest interval, and pick a set type (straight, drop, pyramid).',
+    description: 'Search the RepLab library or type a custom name. You can drag-reorder, set the rest interval, and pick a set type (straight, drop, pyramid).',
     position: 'bottom',
   },
   {

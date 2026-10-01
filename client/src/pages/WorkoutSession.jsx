@@ -82,7 +82,7 @@ export default function WorkoutSession() {
   const [dayName, setDayName] = useState(null);
   const [currentTemplateName, setCurrentTemplateName] = useState(null);
   // Pencil only on workouts the user created (their own template) — never
-  // REPLAB/global programs, the tutorial, or rest days. Server enforces too.
+  // RepLab/global programs, the tutorial, or rest days. Server enforces too.
   const [canRenameDay, setCanRenameDay] = useState(false);
   const [renameDayOpen, setRenameDayOpen] = useState(false);
   const displayName = dayName || currentTemplateName || template?.name || 'Workout';
@@ -2670,7 +2670,7 @@ export default function WorkoutSession() {
 
   return (
     <div className={`pb-24${cardTheme === 'dark' ? ' wf-dark-cards' : ''}`}>
-      <h1 className="sr-only">REPLAB Workout Session</h1>
+      <h1 className="sr-only">RepLab Workout Session</h1>
       {/* In-app toast (replaces window.alert calls for save/update failures
           and clipboard/share confirmations). Portaled so it sits above any
           card or sticky header without forcing layout shifts in the page. */}
@@ -5310,7 +5310,7 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
   // Generate shareable workout summary image. Modeled after the PR share
   // card (client/src/utils/prShare.js): deep gradient base, red glow blob
   // top-right + orange glow bottom-left, subtle diagonal hatch, big red
-  // eyebrow, REPLAB logo image top-right, oversized display numerics for
+  // eyebrow, RepLab logo image top-right, oversized display numerics for
   // the 2-tile stats, thin red underline + date footer. Workout-specific
   // additions: program label + exercise breakdown with PR badges.
   async function generateSummaryImage() {
@@ -5367,7 +5367,7 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
 
     let curY = padding;
 
-    // --- Eyebrow "WORKOUT COMPLETE" (red, big) + REPLAB logo image
+    // --- Eyebrow "WORKOUT COMPLETE" (red, big) + RepLab logo image
     //     top-right. Mirrors the PR card's "PERSONAL RECORD" eyebrow
     //     treatment so the two share images feel like siblings. ---
     ctx.fillStyle = 'rgba(239, 68, 68, 0.9)';
@@ -5385,7 +5385,7 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
       ctx.fillStyle = 'rgba(255,255,255,0.5)';
       ctx.font = `900 28px ${font}`;
       ctx.textAlign = 'right';
-      ctx.fillText('REPLAB', W - padding, curY + 16);
+      ctx.fillText('RepLab', W - padding, curY + 16);
       ctx.textAlign = 'left';
     }
     curY += 120;
@@ -5590,7 +5590,7 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
       });
       lines.push('');
     });
-    lines.push('Logged with REPLAB');
+    lines.push('Logged with RepLab');
     const text = lines.join('\n');
     if (navigator.share) {
       try { await navigator.share({ text }); } catch {}

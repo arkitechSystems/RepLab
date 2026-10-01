@@ -38,7 +38,7 @@ export default function Privacy() {
           <div className="relative p-6">
             <h2 className="text-[11px] uppercase font-semibold text-white mb-3" style={{ letterSpacing: '0.25em' }}>1. Information We Collect</h2>
             <div className="border-t border-white/5 pt-3">
-              <p>REPLAB is operated by <strong className="text-white">ArkiTech Systems, LLC</strong>. We collect the following types of information:</p>
+              <p>RepLab is operated by <strong className="text-white">ArkiTech Systems, LLC</strong>. We collect the following types of information:</p>
               <ul className="list-disc pl-5 mt-2 space-y-1">
                 <li><strong className="text-white">Account Information:</strong> Email address, phone number (optional), username, first and last name, password (hashed, never stored in plaintext), and gender (optional) when you create an account.</li>
                 <li><strong className="text-white">Fitness Data:</strong> Workout programs, exercise logs, weights, reps, sets, set types, cardio sessions, personal records, scheduled workouts, and notes that you enter into the App.</li>
@@ -91,7 +91,7 @@ export default function Privacy() {
                 <li><strong className="text-white">AI workout generation:</strong> Anthropic Claude API (US) processes your training goals and equipment list to generate workout suggestions. We send the prompt you provide; Anthropic does not retain it for training per their commercial terms.</li>
                 <li><strong className="text-white">IP-to-location lookup:</strong> ip-api.com is queried at signup and login to derive an approximate city/state from your IP address.</li>
                 <li><strong className="text-white">Legal Requirements:</strong> We may disclose data when required by law or to protect our rights and safety.</li>
-                <li><strong className="text-white">With Your Consent:</strong> Workout programs you explicitly choose to share with other REPLAB users are visible to those users.</li>
+                <li><strong className="text-white">With Your Consent:</strong> Workout programs you explicitly choose to share with other RepLab users are visible to those users.</li>
               </ul>
             </div>
           </div>

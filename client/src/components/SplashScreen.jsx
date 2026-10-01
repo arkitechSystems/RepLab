@@ -101,7 +101,7 @@ export default function SplashScreen({ onDone, persistent }) {
         pointerEvents: fading ? 'none' : 'auto',
       }}
       role="status"
-      aria-label="Loading REPLAB"
+      aria-label="Loading RepLab"
     >
       {/* Ambient red glow centered behind the wordmark */}
       <div

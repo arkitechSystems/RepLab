@@ -13,7 +13,7 @@ import { useAuth } from '../context/AuthContext';
 // or seeing an error.
 //
 // Visual treatment mirrors the marketing landing (LandingPageTest.jsx):
-// black bg with subtle red glow, REPLAB wordmark + back arrow nav, Anton
+// black bg with subtle red glow, RepLab wordmark + back arrow nav, Anton
 // uppercase headline, 160deg-gradient Nike panels with 2px corners + red
 // top accent stripe, .btn-liquid primary CTA matching the landing's
 // upcoming-features section button.
@@ -145,7 +145,7 @@ export default function WaitingList() {
   return (
     <div className="min-h-screen bg-black text-white">
       {/* Nav — mirrors the landing page's lp-nav (fixed, backdrop blur,
-          REPLAB wordmark center, back arrow left). Safe-area padding so
+          RepLab wordmark center, back arrow left). Safe-area padding so
           it sits below the iPhone status bar. */}
       <nav
         className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b border-white/10"

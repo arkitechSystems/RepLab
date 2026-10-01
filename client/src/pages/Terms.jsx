@@ -38,7 +38,7 @@ export default function Terms() {
           <div className="relative p-6">
             <h2 className="text-[11px] uppercase font-semibold text-white mb-3" style={{ letterSpacing: '0.25em' }}>1. Acceptance of Terms</h2>
             <div className="border-t border-white/5 pt-3">
-              <p>REPLAB ("the App") is operated by <strong className="text-white">ArkiTech Systems, LLC</strong> ("we", "us", "our"). By accessing or using the App, you agree to be bound by these Terms of Service. If you do not agree to these terms, do not use the App.</p>
+              <p>RepLab ("the App") is operated by <strong className="text-white">ArkiTech Systems, LLC</strong> ("we", "us", "our"). By accessing or using the App, you agree to be bound by these Terms of Service. If you do not agree to these terms, do not use the App.</p>
             </div>
           </div>
         </section>
@@ -47,7 +47,7 @@ export default function Terms() {
           <div className="relative p-6">
             <h2 className="text-[11px] uppercase font-semibold text-white mb-3" style={{ letterSpacing: '0.25em' }}>2. Description of Service</h2>
             <div className="border-t border-white/5 pt-3">
-              <p>REPLAB is a fitness tracking application that allows users to create workout programs, log exercises, track progress, and manage their fitness routine. The App is provided on an "as is" and "as available" basis.</p>
+              <p>RepLab is a fitness tracking application that allows users to create workout programs, log exercises, track progress, and manage their fitness routine. The App is provided on an "as is" and "as available" basis.</p>
             </div>
           </div>
         </section>

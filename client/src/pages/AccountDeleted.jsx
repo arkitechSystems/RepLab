@@ -30,10 +30,10 @@ export default function AccountDeleted() {
           </h1>
 
           <p className="text-wf-gray-300 text-sm leading-relaxed mt-5">
-            Your REPLAB account and all associated data have been permanently deleted from our systems.
+            Your RepLab account and all associated data have been permanently deleted from our systems.
           </p>
           <p className="text-wf-gray-400 text-sm leading-relaxed mt-3">
-            Thank you for trying REPLAB. If you'd ever like to come back, you're welcome to create a new account anytime.
+            Thank you for trying RepLab. If you'd ever like to come back, you're welcome to create a new account anytime.
           </p>
 
           <div className="mt-8">
@@ -47,7 +47,7 @@ export default function AccountDeleted() {
                 boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
               }}
             >
-              Back to REPLAB
+              Back to RepLab
             </Link>
           </div>
         </div>

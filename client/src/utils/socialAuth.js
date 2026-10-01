@@ -147,7 +147,7 @@ export async function completeSocialRedirect() {
 // confirms deletion, using the result of signInWithProvider('apple',
 // { keepSession: true }) from the delete confirmation — Firebase's revoke
 // call needs that Firebase session. Also removes the Firebase Auth user
-// record and signs out. Every step is best-effort: the REPLAB account is
+// record and signs out. Every step is best-effort: the RepLab account is
 // already deleted by the time this runs.
 export async function finishSocialAccountDeletion(appleRevokeToken) {
   const FirebaseAuthentication = await preloadSocialAuth().catch(() => null);

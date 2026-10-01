@@ -81,7 +81,7 @@ export default function Layout({ children }) {
           Always renders on a solid black surface, even on routes that change
           the surrounding page bg (e.g. the workout session's light-cards
           mode swaps the page to #e8e8e8). The explicit background here keeps
-          the REPLAB logo + avatar pinned to the brand black regardless of
+          the RepLab logo + avatar pinned to the brand black regardless of
           theme. */}
       {!isDashboardEmbed && (
         <div
@@ -92,12 +92,12 @@ export default function Layout({ children }) {
             background: '#000',
           }}
         >
-          {/* REPLAB wordmark — matches the landing page nav exactly. Uses
+          {/* RepLab wordmark — matches the landing page nav exactly. Uses
               the landing-logo-mark.png (no rounded corners), w-7 h-7, and
               text-[18px] font-black tracking-widest so the in-app header
               and the marketing surfaces read as one continuous brand. */}
           <div className="flex items-center gap-2.5">
-            <img src="/landing-logo-mark.png" alt="REPLAB" className="w-7 h-7" />
+            <img src="/landing-logo-mark.png" alt="RepLab" className="w-7 h-7" />
             <span className="text-[18px] font-black tracking-widest">
               REP<span style={{ color: '#e10600' }}>LAB</span>
             </span>

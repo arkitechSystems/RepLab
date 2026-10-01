@@ -74,7 +74,7 @@ export default function PBCelebration({ prs, onDismiss }) {
         ))}
       </div>
 
-      {/* Anchor the toast BELOW the global Layout header (REPLAB wordmark
+      {/* Anchor the toast BELOW the global Layout header (RepLab wordmark
           + avatar bar at the top of every authed page), not at viewport
           top-0. Layout's header is safe-area-inset-top + ~44px tall on
           devices with a notch, so we add ~56px of clearance plus the
@@ -147,7 +147,7 @@ export default function PBCelebration({ prs, onDismiss }) {
             {/* One-shot helper caption */}
             {showCaption && (
               <p className="relative mt-2.5 text-[11px] text-white/75 leading-snug">
-                REPLAB just tracked this as a personal record.
+                RepLab just tracked this as a personal record.
               </p>
             )}
           </div>

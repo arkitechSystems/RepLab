@@ -118,7 +118,7 @@ async function runTick() {
       if (stats.total_volume > 0) parts.push(`${formatVolume(stats.total_volume)} lb volume`);
       if (stats.new_prs > 0) parts.push(`${stats.new_prs} new PR${stats.new_prs === 1 ? '' : 's'}`);
 
-      const title = '✨ Your week in REPLAB';
+      const title = '✨ Your week in RepLab';
       const body = parts.join(' · ');
 
       const result = await sendPushToUser(u.id, title, body, {

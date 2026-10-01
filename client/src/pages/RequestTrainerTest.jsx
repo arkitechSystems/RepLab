@@ -14,8 +14,8 @@ import StickyHeader from '../components/StickyHeader';
 // Test-only. When this gets promoted into the real app, the submit handler
 // POSTs the payload server-side and a coach-side dashboard surfaces new
 // requests for triage. The business model implied here: clients fill intake
-// free; matched coach subscribes monthly to the REPLAB Coach Suite; coach
-// bills the client through the platform (Stripe via REPLAB Coach Pay).
+// free; matched coach subscribes monthly to the RepLab Coach Suite; coach
+// bills the client through the platform (Stripe via RepLab Coach Pay).
 
 const ROLE = {
   trainer: { key: 'trainer', label: 'Personal Trainer', subtitle: 'Programming, form, accountability' },
@@ -272,7 +272,7 @@ export default function RequestTrainerTest() {
               <li><span className="text-white font-bold mr-2">01</span>Coach review — we match your answers against our coach roster and propose 1–2 candidates.</li>
               <li><span className="text-white font-bold mr-2">02</span>Intro call (15 min) — meet your matched coach. No charge.</li>
               <li><span className="text-white font-bold mr-2">03</span>Onboarding — assessment, baseline numbers, program build.</li>
-              <li><span className="text-white font-bold mr-2">04</span>Train — programs delivered through REPLAB, messaging in-app, weekly check-ins.</li>
+              <li><span className="text-white font-bold mr-2">04</span>Train — programs delivered through RepLab, messaging in-app, weekly check-ins.</li>
             </ol>
           </Panel>
           <button
@@ -308,7 +308,7 @@ export default function RequestTrainerTest() {
         {/* Marketing hero — what the user gets out of the coaching tier. */}
         <Panel delay={0}>
           <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.3em' }}>
-            REPLAB Coaching
+            RepLab Coaching
           </p>
           <h2 className="text-[24px] font-black text-white tracking-tight mb-3" style={{ fontFamily: 'system-ui', lineHeight: '0.95', letterSpacing: '-0.02em' }}>
             GET MATCHED.<br />TRAIN SMARTER.
@@ -893,13 +893,13 @@ export default function RequestTrainerTest() {
         {role && (
           <Panel delay={600} accent="#9ca3af">
             <p className="text-[10px] uppercase font-bold mb-3" style={{ color: 'rgba(255,255,255,0.55)', letterSpacing: '0.22em' }}>
-              How REPLAB Coaching Works
+              How RepLab Coaching Works
             </p>
             <ol className="space-y-2.5 text-[12px] text-white/55 leading-relaxed list-none">
               <li><span className="text-white font-bold mr-2">01</span>You submit this request — free, no commitment.</li>
               <li><span className="text-white font-bold mr-2">02</span>We propose a matched coach within 48 hours.</li>
               <li><span className="text-white font-bold mr-2">03</span>15-minute intro call with your coach — also free.</li>
-              <li><span className="text-white font-bold mr-2">04</span>If it's a fit: coach builds your program. Monthly billing through REPLAB.</li>
+              <li><span className="text-white font-bold mr-2">04</span>If it's a fit: coach builds your program. Monthly billing through RepLab.</li>
               <li><span className="text-white font-bold mr-2">05</span>Cancel anytime. No long-term contracts.</li>
             </ol>
           </Panel>

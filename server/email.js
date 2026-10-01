@@ -91,7 +91,7 @@ export async function sendWelcomeEmail(email) {
               <div style="text-align: center; margin-bottom: 24px;">
                 <img
                   src="${config.APP_URL}/email-img/workout-session.png"
-                  alt="REPLAB workout session — set logging with timers and PR highlights"
+                  alt="RepLab workout session — set logging with timers and PR highlights"
                   style="max-width: 280px; width: 100%; height: auto; border-radius: 2px; border: 1px solid rgba(255,255,255,0.10); box-shadow: 0 12px 40px rgba(0,0,0,0.5);"
                 />
               </div>
@@ -113,7 +113,7 @@ export async function sendWelcomeEmail(email) {
               <div style="text-align: center; margin-bottom: 24px;">
                 <img
                   src="${config.APP_URL}/email-img/plate-calc.png"
-                  alt="REPLAB plate calculator open during a workout session, showing plates loaded on each side of the bar"
+                  alt="RepLab plate calculator open during a workout session, showing plates loaded on each side of the bar"
                   style="max-width: 280px; width: 100%; height: auto; border-radius: 2px; border: 1px solid rgba(239,68,68,0.20); box-shadow: 0 12px 40px rgba(0,0,0,0.5);"
                 />
               </div>
@@ -137,7 +137,7 @@ export async function sendWelcomeEmail(email) {
                   <p style="color: rgba(239,68,68,0.85); text-transform: uppercase; letter-spacing: 0.3em; font-size: 9px; font-weight: 700; margin: 0 0 8px 0;">Reminders</p>
                   <h3 style="color: #fff; font-size: 22px; font-weight: 900; line-height: 1.1; margin: 0 0 14px 0; letter-spacing: -0.01em; text-transform: uppercase;">Workout Reminders</h3>
                   <p style="color: rgba(255,255,255,0.6); font-size: 14px; line-height: 1.7; margin: 0;">
-                    REPLAB learns when you usually train and pings you around that time on days you have a workout scheduled. You'll also get a celebration push when you hit a new PR and a weekly summary on Sunday evenings. Adjust notifications in <strong style="color: #fff;">Profile &gt; Preferences</strong> whenever you want.
+                    RepLab learns when you usually train and pings you around that time on days you have a workout scheduled. You'll also get a celebration push when you hit a new PR and a weekly summary on Sunday evenings. Adjust notifications in <strong style="color: #fff;">Profile &gt; Preferences</strong> whenever you want.
                   </p>
                 </div>
               </div>
@@ -147,7 +147,7 @@ export async function sendWelcomeEmail(email) {
                 <div style="height: 3px; background: linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent);"></div>
                 <div style="padding: 24px 28px;">
                   <p style="color: rgba(239,68,68,0.85); text-transform: uppercase; letter-spacing: 0.3em; font-size: 9px; font-weight: 700; margin: 0 0 8px 0;">Desktop</p>
-                  <h3 style="color: #fff; font-size: 22px; font-weight: 900; line-height: 1.1; margin: 0 0 14px 0; letter-spacing: -0.01em; text-transform: uppercase;">Use REPLAB on a Computer</h3>
+                  <h3 style="color: #fff; font-size: 22px; font-weight: 900; line-height: 1.1; margin: 0 0 14px 0; letter-spacing: -0.01em; text-transform: uppercase;">Use RepLab on a Computer</h3>
                   <p style="color: rgba(255,255,255,0.6); font-size: 14px; line-height: 1.7; margin: 0;">
                     Prefer a bigger screen? Open <a href="${config.APP_URL}" style="color: #ef4444; text-decoration: none; font-weight: 700;">${config.APP_URL.replace(/^https?:\/\//, '')}</a> in any browser and sign in with the same credentials. Everything stays in sync.
                   </p>
@@ -161,7 +161,7 @@ export async function sendWelcomeEmail(email) {
                   <p style="color: rgba(239,68,68,0.85); text-transform: uppercase; letter-spacing: 0.3em; font-size: 9px; font-weight: 700; margin: 0 0 8px 0;">Reference</p>
                   <h3 style="color: #fff; font-size: 22px; font-weight: 900; line-height: 1.1; margin: 0 0 14px 0; letter-spacing: -0.01em; text-transform: uppercase;">User Guide</h3>
                   <p style="color: rgba(255,255,255,0.6); font-size: 14px; line-height: 1.7; margin: 0;">
-                    For a deeper look at every feature, check out the <a href="${config.APP_URL}/userguide" style="color: #ef4444; text-decoration: none; font-weight: 700;">REPLAB User Guide</a>. It covers the workout library, calendar, logging sessions, personal records, creating custom workouts, and more.
+                    For a deeper look at every feature, check out the <a href="${config.APP_URL}/userguide" style="color: #ef4444; text-decoration: none; font-weight: 700;">RepLab User Guide</a>. It covers the workout library, calendar, logging sessions, personal records, creating custom workouts, and more.
                   </p>
                 </div>
               </div>
@@ -177,7 +177,7 @@ export async function sendWelcomeEmail(email) {
               <div style="text-align: center; margin-bottom: 32px;">
                 <a href="${config.APP_URL}"
                    style="display: inline-block; padding: 16px 48px; background: linear-gradient(135deg, rgba(239,68,68,0.95) 0%, rgba(220,38,38,0.95) 100%); color: #fff; text-decoration: none; border-radius: 2px; font-size: 12px; font-weight: 700; letter-spacing: 0.25em; text-transform: uppercase; box-shadow: 0 4px 18px rgba(239,68,68,0.4), inset 0 1px 0 rgba(255,255,255,0.15);">
-                  Open REPLAB
+                  Open RepLab
                 </a>
               </div>
 
@@ -185,7 +185,7 @@ export async function sendWelcomeEmail(email) {
                 Thanks for being here. Glad to have you.
               </p>
               <p style="color: rgba(255,255,255,0.25); font-size: 11px; line-height: 1.6; text-align: center; margin: 0;">
-                If you didn't create a REPLAB account, you can safely ignore this email.
+                If you didn't create a RepLab account, you can safely ignore this email.
               </p>
             </div>
           </div>
@@ -207,7 +207,7 @@ export async function sendWelcomeEmail(email) {
 
 // Short thank-you sent when a user joins the waiting list for upcoming
 // features. Style mirrors the marketing landing: black bg with subtle red
-// glow, big REPLAB wordmark, eyebrow + heading + lede, ArkiTech footer.
+// glow, big RepLab wordmark, eyebrow + heading + lede, ArkiTech footer.
 // Kept short on purpose -- the email exists to confirm signup, nothing more.
 export async function sendWaitlistThankYouEmail(email) {
   if (!process.env.RESEND_API_KEY) {
@@ -216,13 +216,13 @@ export async function sendWaitlistThankYouEmail(email) {
   }
 
   const resend = new Resend(process.env.RESEND_API_KEY);
-  const subject = "You're on the REPLAB waiting list";
+  const subject = "You're on the RepLab waiting list";
   const html = `
     <div style="background: #000; margin: 0; padding: 0;">
       <div style="background-color: #0a0a0a; background-image: radial-gradient(ellipse at 50% 0%, rgba(239,68,68,0.22) 0%, transparent 55%), linear-gradient(180deg, #0a0a0a 0%, #050505 50%, #000 100%); padding: 48px 16px;">
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; color: #fff;">
 
-          <!-- Header: REPLAB wordmark + red rule -->
+          <!-- Header: RepLab wordmark + red rule -->
           <div style="text-align: center; margin-bottom: 48px;">
             <h1 style="font-size: 40px; font-weight: 900; letter-spacing: 4px; margin: 0; color: #fff; text-shadow: 0 2px 24px rgba(239,68,68,0.35);">REP<span style="color: #ef4444;">LAB</span></h1>
             <div style="height: 3px; width: 72px; margin: 16px auto 0; background: linear-gradient(90deg, #ef4444, rgba(239,68,68,0.25), transparent);"></div>
@@ -271,7 +271,7 @@ export async function sendPasswordResetEmail(email, token) {
     await resend.emails.send({
       from: config.EMAIL_FROM_TRANSACTIONAL,
       to: email,
-      subject: 'Reset your REPLAB password',
+      subject: 'Reset your RepLab password',
       html: `
         <div style="background: #000; margin: 0; padding: 0;">
           <div style="background-color: #0a0a0a; background-image: radial-gradient(ellipse at 50% 0%, rgba(239,68,68,0.22) 0%, transparent 55%), linear-gradient(180deg, #0a0a0a 0%, #050505 50%, #000 100%); padding: 48px 16px;">
@@ -290,7 +290,7 @@ export async function sendPasswordResetEmail(email, token) {
                   <p style="color: rgba(239,68,68,0.85); text-transform: uppercase; letter-spacing: 0.3em; font-size: 9px; font-weight: 700; margin: 0 0 8px 0;">Account</p>
                   <h2 style="color: #fff; font-size: 32px; font-weight: 900; line-height: 1; margin: 0 0 18px 0; letter-spacing: -0.01em; text-transform: uppercase;">Reset Your Password</h2>
                   <p style="color: rgba(255,255,255,0.6); font-size: 14px; line-height: 1.7; margin: 0 0 28px 0;">
-                    We received a request to reset your REPLAB password. Click the button below to set a new one. This link expires in <strong style="color: #fff;">1 hour</strong>.
+                    We received a request to reset your RepLab password. Click the button below to set a new one. This link expires in <strong style="color: #fff;">1 hour</strong>.
                   </p>
                   <div style="text-align: center; margin-bottom: 8px;">
                     <a href="${resetUrl}"
@@ -327,7 +327,7 @@ export async function sendDeletionConfirmationEmail(email, token) {
     await resend.emails.send({
       from: config.EMAIL_FROM_TRANSACTIONAL,
       to: email,
-      subject: 'Confirm your REPLAB account deletion',
+      subject: 'Confirm your RepLab account deletion',
       html: `
         <div style="background: #000; margin: 0; padding: 0;">
           <div style="background-color: #0a0a0a; background-image: radial-gradient(ellipse at 50% 0%, rgba(239,68,68,0.22) 0%, transparent 55%), linear-gradient(180deg, #0a0a0a 0%, #050505 50%, #000 100%); padding: 48px 16px;">
@@ -346,7 +346,7 @@ export async function sendDeletionConfirmationEmail(email, token) {
                   <p style="color: rgba(239,68,68,0.85); text-transform: uppercase; letter-spacing: 0.3em; font-size: 9px; font-weight: 700; margin: 0 0 8px 0;">Account Deletion</p>
                   <h2 style="color: #fff; font-size: 30px; font-weight: 900; line-height: 1; margin: 0 0 18px 0; letter-spacing: -0.01em; text-transform: uppercase;">Confirm Account Deletion</h2>
                   <p style="color: rgba(255,255,255,0.6); font-size: 14px; line-height: 1.7; margin: 0 0 16px 0;">
-                    We received a request to delete your REPLAB account. Clicking the button below will <strong style="color: #fff;">permanently delete</strong> your account and all associated data — workouts, programs, personal records, body metrics, schedule, and subscription history.
+                    We received a request to delete your RepLab account. Clicking the button below will <strong style="color: #fff;">permanently delete</strong> your account and all associated data — workouts, programs, personal records, body metrics, schedule, and subscription history.
                   </p>
                   <p style="color: rgba(255,255,255,0.6); font-size: 14px; line-height: 1.7; margin: 0 0 28px 0;">
                     This action <strong style="color: #fff;">cannot be undone</strong>. The link expires in <strong style="color: #fff;">24 hours</strong>.
@@ -385,7 +385,7 @@ export async function sendNewSignupNotification(user, totalUsers) {
     await resend.emails.send({
       from: config.EMAIL_FROM_TRANSACTIONAL,
       to: process.env.ADMIN_EMAIL,
-      subject: `New REPLAB Signup — ${name} (#${totalUsers})`,
+      subject: `New RepLab Signup — ${name} (#${totalUsers})`,
       html: `
         <div style="background: #000; margin: 0; padding: 0;">
           <div style="background-color: #0a0a0a; background-image: radial-gradient(ellipse at 50% 0%, rgba(239,68,68,0.22) 0%, transparent 55%), linear-gradient(180deg, #0a0a0a 0%, #050505 50%, #000 100%); padding: 48px 16px;">
@@ -468,7 +468,7 @@ export async function sendDailySummaryEmail(stats) {
     await resend.emails.send({
       from: config.EMAIL_FROM_TRANSACTIONAL,
       to: process.env.ADMIN_EMAIL,
-      subject: `REPLAB Daily Summary — ${stats.totalUsers} users`,
+      subject: `RepLab Daily Summary — ${stats.totalUsers} users`,
       html: `
         <div style="background: #000; margin: 0; padding: 0;">
           <div style="background-color: #0a0a0a; background-image: radial-gradient(ellipse at 50% 0%, rgba(239,68,68,0.22) 0%, transparent 55%), linear-gradient(180deg, #0a0a0a 0%, #050505 50%, #000 100%); padding: 48px 16px;">

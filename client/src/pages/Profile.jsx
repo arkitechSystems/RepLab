@@ -10,7 +10,7 @@ import { APP_VERSION } from '../version';
 import { getWorkoutColor } from '../utils/workoutColors';
 import { signInWithProvider, finishSocialAccountDeletion, signOutSocial, isSocialCancel } from '../utils/socialAuth';
 
-// REPLAB Community sharing categories (keys match /community/settings).
+// RepLab Community sharing categories (keys match /community/settings).
 const COMMUNITY_SHARE_CATEGORIES = [
   { key: 'pr', label: 'PRs', helper: 'New personal records you hit during workouts.' },
   { key: 'program', label: 'Workout programs started', helper: 'Featured or library programs, when you tap Begin Program and pick a start date.' },
@@ -262,7 +262,7 @@ export default function Profile() {
   // Visual placeholder until i18n is wired. Persists across reloads so the
   // pill on the landing page and this dropdown stay aligned once they're real.
   const [languagePref, setLanguagePref] = useState(() => localStorage.getItem('replab_locale') || 'en');
-  // REPLAB Community sharing — stored server-side (GET/PUT /community/settings)
+  // RepLab Community sharing — stored server-side (GET/PUT /community/settings)
   // because the feed is built on the server; defaults to everything on.
   // `all` is the master toggle; the rest are per-category.
   const [communitySharing, setCommunitySharing] = useState({ all: true, pr: true, program: true, workout: true, custom: true });
@@ -531,7 +531,7 @@ export default function Profile() {
       });
       // Apple requires revoking Sign in with Apple tokens on account
       // deletion; this also clears the Firebase Auth record. Best-effort —
-      // the REPLAB account is already gone.
+      // the RepLab account is already gone.
       if (deleteSocial) await finishSocialAccountDeletion(deleteSocial.appleRevokeToken);
       logout();
       navigate('/login');
@@ -599,7 +599,7 @@ export default function Profile() {
 
   return (
     <div className="profile-transparent">
-      <h1 className="sr-only">REPLAB Profile</h1>
+      <h1 className="sr-only">RepLab Profile</h1>
       <StickyHeader title="PROFILE" titleStyle={{ fontSize: '26.4px' }} />
 
       <div className="px-4 pb-24">
@@ -658,7 +658,7 @@ export default function Profile() {
               </button>
               <div className="min-w-0">
                 <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(239,68,68,0.8)', letterSpacing: '0.3em' }}>
-                  REPLAB MEMBER
+                  RepLab MEMBER
                 </p>
                 <h2 className="text-[22px] font-black text-white tracking-tight leading-[0.95] truncate">
                   {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : (user?.email || user?.phone || 'User')}
@@ -925,12 +925,12 @@ export default function Profile() {
                 </div>
               </div>
 
-              {/* REPLAB Community — what this user shares to the Community
+              {/* RepLab Community — what this user shares to the Community
                   feed. Saved server-side so it applies on every device.
                   Master off grays out and disables the categories. */}
               <div className="pt-3 border-t border-white/10 -mx-6 px-6 space-y-4">
                 <p className="text-[10px] uppercase font-bold" style={{ color: 'rgba(255,255,255,0.4)', letterSpacing: '0.2em' }}>
-                  REPLAB Community
+                  RepLab Community
                 </p>
 
                 <div className="flex items-center justify-between gap-px">
@@ -938,12 +938,12 @@ export default function Profile() {
                     <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
                     </svg>
-                    <span className="text-white/70 text-sm font-medium">Share to REPLAB Community</span>
+                    <span className="text-white/70 text-sm font-medium">Share to RepLab Community</span>
                   </div>
                   <button
                     onClick={() => handleCommunityToggle('all')}
                     disabled={communitySharingSaving}
-                    aria-label={communitySharing.all ? 'Stop sharing to REPLAB Community' : 'Share to REPLAB Community'}
+                    aria-label={communitySharing.all ? 'Stop sharing to RepLab Community' : 'Share to RepLab Community'}
                     className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${communitySharing.all ? 'bg-wf-red' : 'bg-white/15'}`}
                   >
                     <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${communitySharing.all ? 'translate-x-5' : 'translate-x-0.5'}`} />
@@ -1197,7 +1197,7 @@ export default function Profile() {
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-wf-gray-400 text-sm">App</span>
-              <span className="text-white text-sm">REPLAB</span>
+              <span className="text-white text-sm">RepLab</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-wf-gray-400 text-sm">Version</span>
@@ -1486,7 +1486,7 @@ export default function Profile() {
         </div>
       )}
 
-      {/* REPLAB Community — turn-off prompt: remove or keep past activity */}
+      {/* RepLab Community — turn-off prompt: remove or keep past activity */}
       {sharingOffPrompt && (() => {
         const isMaster = sharingOffPrompt === 'all';
         const label = isMaster ? null : COMMUNITY_SHARE_CATEGORIES.find((c) => c.key === sharingOffPrompt)?.label;
@@ -1507,7 +1507,7 @@ export default function Profile() {
             >
               <div className="px-5 pt-5 pb-4">
                 <h3 id="profile-sharing-off-title" className="text-lg font-bold text-white text-center">
-                  {isMaster ? 'Stop sharing to REPLAB Community?' : `Stop sharing ${label}?`}
+                  {isMaster ? 'Stop sharing to RepLab Community?' : `Stop sharing ${label}?`}
                 </h3>
                 <p id="profile-sharing-off-desc" className="text-sm text-wf-gray-400 text-center mt-2">
                   {isMaster

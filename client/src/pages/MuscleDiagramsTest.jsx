@@ -1,5 +1,5 @@
 // Test page: visualize the "muscle group highlight diagrams" concept for
-// REPLAB. Front + back stylized silhouettes with major muscle groups
+// RepLab. Front + back stylized silhouettes with major muscle groups
 // rendered as colorable SVG shapes. Used as a low-cost alternative to
 // per-exercise video/photo content — only ~15 reusable muscle group shapes
 // are needed to cover every exercise via a primary/secondary tag mapping.

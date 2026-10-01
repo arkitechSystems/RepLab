@@ -36,7 +36,7 @@ function NikeKnockout() {
   const [pw, setPw] = useState('');
   return (
     <div className="relative px-6 py-10" style={{ background: '#0a0a0a', minHeight: 640 }}>
-      <div className="absolute top-6 right-6 text-[10px] tracking-[0.3em] text-wf-red font-black uppercase">REPLAB</div>
+      <div className="absolute top-6 right-6 text-[10px] tracking-[0.3em] text-wf-red font-black uppercase">RepLab</div>
       <div className="absolute -top-8 -left-6 w-[260px] h-[260px] pointer-events-none"
         style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.18) 0%, transparent 65%)', filter: 'blur(40px)' }} />
 
@@ -196,7 +196,7 @@ function BrutalistSlash() {
       }} />
 
       <div className="relative px-6 pt-12 pb-10">
-        <div className="font-mono text-[10px] text-black/80 tracking-[0.3em]">// REPLAB.SYS</div>
+        <div className="font-mono text-[10px] text-black/80 tracking-[0.3em]">// RepLab.SYS</div>
         <h1 className="text-white font-black leading-[0.9] tracking-tight mt-6"
           style={{ fontSize: 56, fontFamily: 'ui-monospace, "SF Mono", monospace' }}>
           ACCESS<br/>POINT_
@@ -272,7 +272,7 @@ function CinematicLightLeaks() {
 
       {/* Hero copy */}
       <div className="relative px-6 pt-16 pb-4">
-        <p className="text-[10px] text-wf-red uppercase tracking-[0.4em] font-bold mb-3">REPLAB</p>
+        <p className="text-[10px] text-wf-red uppercase tracking-[0.4em] font-bold mb-3">RepLab</p>
         <h1 className="text-white font-black leading-[0.95] tracking-tight"
           style={{ fontSize: 44, textShadow: '0 4px 30px rgba(0,0,0,0.7)' }}>
           The work is<br/>the reward.
@@ -517,7 +517,7 @@ function NikeStripeBanner() {
         }} />
 
         <div className="relative px-6 pt-12">
-          <p className="text-black/70 text-[11px] uppercase tracking-[0.35em] font-black mb-2">REPLAB Fitness</p>
+          <p className="text-black/70 text-[11px] uppercase tracking-[0.35em] font-black mb-2">RepLab Fitness</p>
           <h1 className="text-white font-black leading-[0.85] tracking-tighter"
             style={{ fontSize: 64, fontFamily: 'system-ui', textShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
             LET'S<br/>LOCK IN<span className="text-black">.</span>

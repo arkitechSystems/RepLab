@@ -159,7 +159,7 @@ export default function Signup() {
           <div className="absolute -top-10 -right-10 w-[280px] h-[280px] pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(239,68,68,0.10) 0%, transparent 60%)', filter: 'blur(40px)' }} />
 
           <div className="relative p-6">
-            {/* Header — REPLAB wordmark + heavy display title */}
+            {/* Header — RepLab wordmark + heavy display title */}
             <div className="mb-6">
               <h1 className="text-[20px] font-black tracking-wide text-white logo-glow mb-3">
                 REP<span className="text-wf-red">LAB</span>

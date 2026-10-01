@@ -90,7 +90,7 @@ async function drawPRCard({ muscle, exercise, weight, reps, achievedAt }) {
   ctx.textBaseline = 'top';
   ctx.fillText('PERSONAL RECORD', 80, 88);
 
-  // RepLab logo top-right (replaces the old REPLAB wordmark). Falls back to
+  // RepLab logo top-right (replaces the old RepLab wordmark). Falls back to
   // text if the logo failed to load — keeps the corner from looking empty.
   const logo = await loadLogo();
   const logoSize = 140;
@@ -100,7 +100,7 @@ async function drawPRCard({ muscle, exercise, weight, reps, achievedAt }) {
     ctx.fillStyle = 'rgba(255,255,255,0.45)';
     ctx.font = `900 24px ${font}`;
     ctx.textAlign = 'right';
-    ctx.fillText('REPLAB', W - 80, 88);
+    ctx.fillText('RepLab', W - 80, 88);
     ctx.textAlign = 'left';
   }
 
@@ -193,7 +193,7 @@ export async function sharePR(pr) {
     .replace(/[^a-zA-Z0-9.\-]/g, '_');
   const file = new File([blob], filename, { type: 'image/png' });
 
-  const text = `${pr.exercise} — ${pr.weight} lbs × ${pr.reps} reps. New PR. 💪 #REPLAB`;
+  const text = `${pr.exercise} — ${pr.weight} lbs × ${pr.reps} reps. New PR. 💪 #RepLab`;
 
   // Best path: share file via Web Share API
   if (navigator.canShare && navigator.canShare({ files: [file] })) {

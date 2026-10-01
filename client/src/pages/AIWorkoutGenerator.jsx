@@ -197,7 +197,7 @@ export default function AIWorkoutGenerator() {
           description: workout.description || '',
           exercises: workout.exercises,
           programId: program.id,
-          // Posts "created a custom workout" to the REPLAB Community feed.
+          // Posts "created a custom workout" to the RepLab Community feed.
           communityShare: true,
         }),
       });

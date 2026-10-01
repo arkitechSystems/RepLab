@@ -75,7 +75,7 @@ export default function AccountDeletionFailed() {
                 borderRadius: '2px',
               }}
             >
-              Back to REPLAB
+              Back to RepLab
             </Link>
           </div>
 

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 const SUPPORT_EMAIL = 'support@replab-fitness.com';
 
 // Visual treatment mirrors the marketing landing (LandingPageTest.jsx) and
-// the restyled WaitingList: black bg with subtle red glow, REPLAB wordmark
+// the restyled WaitingList: black bg with subtle red glow, RepLab wordmark
 // + logo mark nav, Anton uppercase headline, 160deg-gradient Nike panels
 // with 2px corners + red top accent stripe.
 export default function Support() {
@@ -37,7 +37,7 @@ export default function Support() {
   return (
     <div className="min-h-screen bg-black text-white">
       {/* Nav — mirrors the landing page's lp-nav (fixed, backdrop blur,
-          REPLAB wordmark center, back arrow left). Safe-area padding so
+          RepLab wordmark center, back arrow left). Safe-area padding so
           it sits below the iPhone status bar. */}
       <nav
         className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b border-white/10"
@@ -110,7 +110,7 @@ export default function Support() {
                 Email Us
               </h2>
               <p className="text-[14px] text-white/60 leading-relaxed mb-4">
-                The fastest way to get a response is email. Reach the REPLAB team at:
+                The fastest way to get a response is email. Reach the RepLab team at:
               </p>
               <a
                 href={`mailto:${SUPPORT_EMAIL}`}
@@ -161,7 +161,7 @@ export default function Support() {
                     How do I cancel my account?
                   </h3>
                   <p className="text-[13px] text-white/55 leading-relaxed">
-                    REPLAB is free to use — there's no subscription to cancel. To delete your account and all associated data, go to Profile → Settings → Delete Account, or email us at the address above.
+                    RepLab is free to use — there's no subscription to cancel. To delete your account and all associated data, go to Profile → Settings → Delete Account, or email us at the address above.
                   </p>
                 </div>
 
@@ -170,7 +170,7 @@ export default function Support() {
                     Where is my data stored?
                   </h3>
                   <p className="text-[13px] text-white/55 leading-relaxed">
-                    Your workout history, programs, and personal records are stored on REPLAB's servers and sync across your devices. See our{' '}
+                    Your workout history, programs, and personal records are stored on RepLab's servers and sync across your devices. See our{' '}
                     <Link to="/privacy" className="transition-colors" style={{ color: '#e10600' }}>
                       Privacy Policy
                     </Link>{' '}
@@ -219,7 +219,7 @@ export default function Support() {
             fontFamily: "'JetBrains Mono', monospace",
           }}
         >
-          REPLAB &middot; Developed by ArkiTech Systems, LLC
+          RepLab &middot; Developed by ArkiTech Systems, LLC
         </p>
       </section>
     </div>

@@ -267,7 +267,7 @@ export default function ExerciseLibrary() {
 
       {/* ── Custom filter explainer ── Shown only when the Custom pill /
           stat card is active, so the user knows they're looking at THEIR
-          exercises (not in the global REPLAB library) and that the list
+          exercises (not in the global RepLab library) and that the list
           comes from rows they authored themselves. */}
       {!loading && selectedMuscle === CUSTOM_FILTER && (
         <div style={{ padding: '16px 16px 0' }}>

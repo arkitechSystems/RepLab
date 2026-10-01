@@ -254,7 +254,7 @@ export default function CreateWorkout() {
           description: description.trim(),
           exercises: validExercises,
           programId: Number(selectedProgramId),
-          // Posts "created a custom workout" to the REPLAB Community feed.
+          // Posts "created a custom workout" to the RepLab Community feed.
           communityShare: true,
         }),
       });

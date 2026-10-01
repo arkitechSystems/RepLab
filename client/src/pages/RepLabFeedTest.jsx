@@ -385,7 +385,7 @@ export default function RepLabFeedTest() {
             narrow content column and the blur covers content behind it. */}
         <div className="sticky top-0 z-20 -mx-4 px-4 pt-1 pb-3 bg-black/85 backdrop-blur-md border-b border-white/5">
           <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(239,68,68,0.85)', letterSpacing: '0.3em' }}>The Feed</p>
-          <h1 className="text-3xl font-black text-white tracking-tight mb-3" style={{ fontFamily: 'system-ui' }}>REPLAB</h1>
+          <h1 className="text-3xl font-black text-white tracking-tight mb-3" style={{ fontFamily: 'system-ui' }}>RepLab</h1>
 
           {/* Source filter chips */}
           <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-4 px-4">

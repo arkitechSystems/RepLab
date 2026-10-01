@@ -130,7 +130,7 @@ export async function generateSummaryImage(opts) {
   ctx.font = `900 46px ${font}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  // Brand split: "REP" white, "LAB" red — mirrors the in-app REPLAB wordmark.
+  // Brand split: "REP" white, "LAB" red — mirrors the in-app RepLab wordmark.
   const repW = ctx.measureText('REP').width;
   const labW = ctx.measureText('LAB').width;
   const totalLogoW = repW + labW + 4;
@@ -253,7 +253,7 @@ export async function generateSummaryImage(opts) {
 
   ctx.font = `600 20px ${font}`;
   ctx.fillStyle = 'rgba(255,255,255,0.25)';
-  ctx.fillText('Logged with REPLAB', W / 2, curY + 14);
+  ctx.fillText('Logged with RepLab', W / 2, curY + 14);
 
   return canvas.toDataURL('image/png');
 }
@@ -295,6 +295,6 @@ export function composeShareText(opts) {
     });
     lines.push('');
   });
-  lines.push('Logged with REPLAB');
+  lines.push('Logged with RepLab');
   return lines.join('\n');
 }

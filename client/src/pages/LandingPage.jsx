@@ -16,7 +16,7 @@ export default function LandingPage() {
       <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-black/70 border-b border-white/5">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/replab-logo.png" alt="REPLAB" className="h-9 w-9 rounded" />
+            <img src="/replab-logo.png" alt="RepLab" className="h-9 w-9 rounded" />
             <span className="text-xl font-black tracking-widest">
               REP<span className="text-wf-red">LAB</span>
             </span>
@@ -56,11 +56,11 @@ export default function LandingPage() {
             Share.
           </h1>
           <p className="text-base md:text-lg text-white/60 max-w-xl mx-auto mb-8 leading-relaxed">
-            Get 1% better everyday. REPLAB is the lifter's logbook. Built to help you track for progressive overloading and break plateaus — across iOS, Android, and the web.
+            Get 1% better everyday. RepLab is the lifter's logbook. Built to help you track for progressive overloading and break plateaus — across iOS, Android, and the web.
           </p>
 
           {/* Hero feature bullets — concise pitch above the CTAs. Mirrors
-              the more detailed "Why REPLAB" grid further down the page. */}
+              the more detailed "Why RepLab" grid further down the page. */}
           <ul className="text-left max-w-md mx-auto mb-10 space-y-2">
             {[
               'Log every workout',
@@ -103,13 +103,13 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Features grid — "Why REPLAB" replacement with a curated 9-card
+      {/* Features grid — "Why RepLab" replacement with a curated 9-card
           set covering the core differentiators. Card #9 is a coming-soon
           teaser with a slightly different visual treatment so it reads as
           roadmap rather than shipped. */}
       <section className="px-6 py-20 border-t border-white/5">
         <div className="max-w-6xl mx-auto">
-          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-wf-red mb-3 text-center">Why REPLAB</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-wf-red mb-3 text-center">Why RepLab</p>
           <h2 className="text-3xl md:text-4xl font-black tracking-tight text-center mb-12">Built for serious lifters.</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
@@ -139,10 +139,10 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* REPLAB Pro CTA */}
+      {/* RepLab Pro CTA */}
       <section className="px-6 py-20 border-t border-white/5">
         <div className="max-w-3xl mx-auto text-center">
-          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-wf-red mb-3">REPLAB Pro</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-wf-red mb-3">RepLab Pro</p>
           <h2 className="text-3xl md:text-4xl font-black tracking-tight mb-4">AI-generated workouts for smarter training.</h2>
           <p className="text-white/50 mb-8 max-w-xl mx-auto">
             Unlock AI workout generation, advanced progress charts, and trainer features.

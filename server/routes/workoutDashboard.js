@@ -57,7 +57,7 @@ function clientLoginPage(error) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/jpeg" href="/RepLabLogo4.jpg">
   <link rel="apple-touch-icon" href="/RepLabLogo4.jpg">
-  <title>REPLAB — Workout Dashboard Login</title>
+  <title>RepLab — Workout Dashboard Login</title>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     ${DASHBOARD_CSS}
@@ -107,7 +107,7 @@ function clientPage(title, body, user) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/jpeg" href="/RepLabLogo4.jpg">
   <link rel="apple-touch-icon" href="/RepLabLogo4.jpg">
-  <title>REPLAB — ${title}</title>
+  <title>RepLab — ${title}</title>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>${DASHBOARD_CSS}</style>
 </head>
@@ -226,7 +226,7 @@ router.get('/', clientAuth, (req, res) => {
   const displayName = req.client.firstName || req.client.email;
   res.send(clientPage('Dashboard', `
     <div class="header" style="margin-bottom:36px;">
-      <span class="eyebrow">REPLAB / CLIENT DASHBOARD</span>
+      <span class="eyebrow">RepLab / CLIENT DASHBOARD</span>
       <h1 class="display-sm">Welcome back, ${esc(displayName)}.</h1>
       <p style="margin-top:12px;font-size:14px;color:rgba(255,255,255,0.45);max-width:560px;line-height:1.6;">Build, manage, and track your training. Every rep counts.</p>
     </div>

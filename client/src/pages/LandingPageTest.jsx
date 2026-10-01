@@ -4,7 +4,7 @@ import AppStoreBadges from '../components/AppStoreBadges';
 import { useAuth } from '../context/AuthContext';
 
 // ───────────────────────────────────────────────────────────────────────
-// REPLAB marketing landing — handoff from Claude Design 2026-05-24.
+// RepLab marketing landing — handoff from Claude Design 2026-05-24.
 // Auth-aware: signed-in visitors see "Go to Web App" CTAs that route to
 // /app; signed-out visitors see "Log In" CTAs that route to /login. The
 // "Join the Waiting List" CTA always navigates to /waiting-list.
@@ -496,7 +496,7 @@ export default function LandingPageTest() {
             onClick={() => navigate('/')}
             className="lp-brand"
             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-            aria-label="REPLAB home"
+            aria-label="RepLab home"
           >
             <span className="lp-brand-mark">
               <img src="/landing-logo-mark.png" alt="" />
@@ -552,7 +552,7 @@ export default function LandingPageTest() {
                 <span className="lp-word lp-d4"><i>Day.</i></span>
               </h1>
               <p className="lp-hero-lede lp-fade lp-fade-2">
-                REPLAB is the lifter's logbook. Plan your splits, log every set, and chase progressive overload. No matter where you start, progress is built one workout at a time.
+                RepLab is the lifter's logbook. Plan your splits, log every set, and chase progressive overload. No matter where you start, progress is built one workout at a time.
               </p>
               <div className="lp-hero-cta lp-fade lp-fade-3">
                 {/* Hero CTA — uses .btn-liquid (animated red <-> white gradient)
@@ -908,7 +908,7 @@ export default function LandingPageTest() {
               </div>
               <h2>Smarter Programming.<br /><span className="lp-red">On Demand.</span></h2>
               <p className="lp-pro-lede">
-                We're building AI workout generation that adapts to your equipment and recovery, advanced overload analytics, and trainer hand-off — all coming to REPLAB, all free.
+                We're building AI workout generation that adapts to your equipment and recovery, advanced overload analytics, and trainer hand-off — all coming to RepLab, all free.
               </p>
               <div style={{ marginTop: 32, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
                 {/* Waiting-list CTA — routes to /waiting-list regardless of
@@ -947,7 +947,7 @@ export default function LandingPageTest() {
             Available Now
           </div>
           <h2>Stop<br />Tracking.<br /><span className="lp-red">Start</span> <span className="lp-stroke">Lifting.</span></h2>
-          <p>REPLAB is free on iOS, Android, and the web. Your data syncs across every device. One logbook. Everywhere you train.</p>
+          <p>RepLab is free on iOS, Android, and the web. Your data syncs across every device. One logbook. Everywhere you train.</p>
           {/* Bottom store badges — SAME shared component as the hero so
               the visual treatment cannot drift. App Store live, Google
               Play non-clickable/hover-preserved until Android ships. */}

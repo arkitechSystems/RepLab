@@ -60,11 +60,11 @@ export default function DeleteAccountWeb() {
             Account
           </p>
           <h1 className="text-[28px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95', letterSpacing: '-0.02em' }}>
-            DELETE YOUR REPLAB ACCOUNT
+            DELETE YOUR RepLab ACCOUNT
           </h1>
           <p className="text-[13px] text-wf-gray-300 mt-4 leading-relaxed">
-            Use this page to request deletion of your REPLAB account from the web.
-            This is intended for users who no longer have the REPLAB app installed.
+            Use this page to request deletion of your RepLab account from the web.
+            This is intended for users who no longer have the RepLab app installed.
           </p>
         </div>
       </div>
@@ -74,7 +74,7 @@ export default function DeleteAccountWeb() {
         <div className="relative p-6">
           <h2 className="text-[11px] uppercase font-semibold text-white mb-3" style={{ letterSpacing: '0.25em' }}>What Gets Deleted</h2>
           <div className="border-t border-white/5 pt-3 text-sm text-wf-gray-300 leading-relaxed">
-            <p>Confirming deletion will <strong className="text-white">permanently remove</strong> your REPLAB account and all of the following data from our systems:</p>
+            <p>Confirming deletion will <strong className="text-white">permanently remove</strong> your RepLab account and all of the following data from our systems:</p>
             <ul className="list-disc pl-5 mt-2 space-y-1">
               <li>Your account profile (email, phone, username, name, profile photo, body metrics)</li>
               <li>Every workout you have logged, including sets, reps, weights, cardio, and notes</li>
@@ -93,7 +93,7 @@ export default function DeleteAccountWeb() {
         <div className="relative p-6">
           <h2 className="text-[11px] uppercase font-semibold text-white mb-3" style={{ letterSpacing: '0.25em' }}>Already Have the App?</h2>
           <div className="border-t border-white/5 pt-3 text-sm text-wf-gray-300 leading-relaxed">
-            <p>You can also delete your account from inside the REPLAB app: <strong className="text-white">Profile &gt; Delete Account</strong>. That flow confirms your password and takes effect immediately — no email round-trip required.</p>
+            <p>You can also delete your account from inside the RepLab app: <strong className="text-white">Profile &gt; Delete Account</strong>. That flow confirms your password and takes effect immediately — no email round-trip required.</p>
           </div>
         </div>
       </section>
@@ -114,10 +114,10 @@ export default function DeleteAccountWeb() {
                   </svg>
                 </div>
                 <p className="text-wf-gray-300 text-sm leading-relaxed">
-                  If <strong className="text-white">{email}</strong> matches a REPLAB account, we've sent a confirmation link to that inbox. Click the link to permanently delete your account. The link expires in <strong className="text-white">24 hours</strong>.
+                  If <strong className="text-white">{email}</strong> matches a RepLab account, we've sent a confirmation link to that inbox. Click the link to permanently delete your account. The link expires in <strong className="text-white">24 hours</strong>.
                 </p>
                 <p className="text-wf-gray-400 text-xs leading-relaxed mt-3">
-                  Didn't receive an email? Check your spam folder. If the email address you entered isn't registered with REPLAB, no email will arrive — try a different address.
+                  Didn't receive an email? Check your spam folder. If the email address you entered isn't registered with RepLab, no email will arrive — try a different address.
                 </p>
               </div>
             ) : (

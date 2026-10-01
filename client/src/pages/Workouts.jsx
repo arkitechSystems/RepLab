@@ -1664,7 +1664,7 @@ export default function Workouts() {
   }
 
   function renderExternalShareButtons(workoutName) {
-    const text = `I'm doing ${workoutName || 'a workout'} today on REPLAB and want you to join! 💪 Check it out at https://replab-fitness.com`;
+    const text = `I'm doing ${workoutName || 'a workout'} today on RepLab and want you to join! 💪 Check it out at https://replab-fitness.com`;
     return (
       <>
         <div className="flex items-center gap-3 mt-4 mb-3">
@@ -5581,7 +5581,7 @@ export default function Workouts() {
       onTouchMove={handlePullMove}
       onTouchEnd={handlePullEnd}
     >
-      <h1 className="sr-only">REPLAB Workouts</h1>
+      <h1 className="sr-only">RepLab Workouts</h1>
       {/* Featured Workouts zoom-in transition */}
       {featuredTransition && featuredCardRect && (() => {
         const r = featuredCardRect;
@@ -6423,7 +6423,7 @@ export default function Workouts() {
                   FEATURED WORKOUTS
                 </h3>
                 <p className="text-[11px] text-white/40 font-light mt-3 max-w-[280px] leading-relaxed">
-                  REPLAB signature programs &mdash; guided sessions with video demos.
+                  RepLab signature programs &mdash; guided sessions with video demos.
                 </p>
                 {featuredUnlocked && (
                   <div className="flex items-center gap-1.5 mt-4">

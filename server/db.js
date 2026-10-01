@@ -207,7 +207,7 @@ async function rebuildPBsForTemplateOnClient(client, userId, templateId) {
   );
 }
 
-// REPLAB Community feed categories. 'all' is the master sharing toggle.
+// RepLab Community feed categories. 'all' is the master sharing toggle.
 const COMMUNITY_CATEGORIES = ['pr', 'program', 'workout', 'custom'];
 const COMMUNITY_SETTING_KEYS = ['all', ...COMMUNITY_CATEGORIES];
 
@@ -2278,7 +2278,7 @@ const db = {
     return rowCount > 0;
   },
 
-  // REPLAB Community sharing settings, derived from open off-periods.
+  // RepLab Community sharing settings, derived from open off-periods.
   // Everything defaults to on (no rows).
   async getCommunitySettings(userId) {
     const { rows } = await pool.query(
