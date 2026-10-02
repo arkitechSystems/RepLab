@@ -28,3 +28,6 @@ _marketing/*.docx
 
 # Local DB backups (contain user data)
 _backups/
+
+# Apple / signing private keys — never commit
+*.p8
