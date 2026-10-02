@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { startOfWeek, startOfMonth, endOfMonth, addDays, format, isToday, isSameWeek, isSameMonth, isSameDay, isBefore, parseISO } from 'date-fns';
+import { startOfWeek, startOfMonth, endOfMonth, addDays, format, isToday, isSameWeek, isSameMonth, isSameDay, isBefore, parseISO, differenceInCalendarWeeks, differenceInCalendarMonths, isValid } from 'date-fns';
 import { api } from '../api';
 import { getWorkoutColor } from '../utils/workoutColors';
 import StickyHeader from '../components/StickyHeader';
@@ -10,6 +10,7 @@ import MissedWorkoutsModal from '../components/MissedWorkoutsModal';
 import useMissedWorkoutsPrompt from '../hooks/useMissedWorkoutsPrompt';
 import useFocusTrap from '../hooks/useFocusTrap';
 import StartEmptyWorkoutModal from '../components/StartEmptyWorkoutModal';
+import { buildCopiedWorkoutData } from '../utils/copyWorkout';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const FULL_DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -21,6 +22,28 @@ const WEEK_ACCENT_COLORS = ['#ef4444', '#3b82f6', '#22c55e', '#a855f7', '#f97316
 // When true, monthly calendar workouts render in red instead of per-workout palette colors.
 // Flip to false to revert to the original per-workout colors.
 const MONTHLY_ALL_RED = true;
+
+// Restores the Calendar's view + visible week/month from the URL (written by
+// the sync effect in Calendar), as offsets from today. Missing or malformed
+// params fall back to the current week / month.
+function readCalendarPosition() {
+  const params = new URLSearchParams(window.location.search);
+  const now = new Date();
+  const viewMode = params.get('view') === 'month' ? 'month' : 'week';
+  let weekOffset = 0;
+  const week = params.get('week');
+  if (week && /^\d{4}-\d{2}-\d{2}$/.test(week)) {
+    const d = parseISO(week);
+    if (isValid(d)) weekOffset = differenceInCalendarWeeks(d, now, { weekStartsOn: 0 });
+  }
+  let monthOffset = 0;
+  const month = params.get('month');
+  if (month && /^\d{4}-\d{2}$/.test(month)) {
+    const d = parseISO(`${month}-01`);
+    if (isValid(d)) monthOffset = differenceInCalendarMonths(d, now);
+  }
+  return { viewMode, weekOffset, monthOffset };
+}
 
 export default function Calendar() {
   // Missed-workouts prompt before starting a workout from here. Unlike the
@@ -35,15 +58,18 @@ export default function Calendar() {
   const [completedSessions, setCompletedSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
-  const [viewMode, setViewMode] = useState('week'); // 'week' | 'month'
-  const [weekOffset, setWeekOffset] = useState(0);
+  // View + visible week/month are mirrored into the URL
+  // (?view=week&week=2026-08-30 / ?view=month&month=2026-08) so Back from a
+  // workout opened here returns to the same week or month instead of today.
+  const [viewMode, setViewMode] = useState(() => readCalendarPosition().viewMode); // 'week' | 'month'
+  const [weekOffset, setWeekOffset] = useState(() => readCalendarPosition().weekOffset);
   // Captures the today card on the weekly view so we can auto-scroll it to
   // viewport center after the cards finish their entry fade. Native
   // scrollIntoView with block:'center' clamps automatically when the target
   // is near the bottom of the document (Fri/Sat), so the card lands as
   // close to center as the scroll bounds allow.
   const weeklyTodayCardRef = useRef(null);
-  const [monthOffset, setMonthOffset] = useState(0);
+  const [monthOffset, setMonthOffset] = useState(() => readCalendarPosition().monthOffset);
   const [editingDay, setEditingDay] = useState(null); // date object of day being edited
   const [expandedProgram, setExpandedProgram] = useState(null);
   const [pickerSearch, setPickerSearch] = useState('');
@@ -99,6 +125,25 @@ export default function Calendar() {
     }, msUntilMidnight + 100);
     return () => clearTimeout(timeout);
   }, [today]);
+  // Keep the URL in sync with the visible week/month (replace, so paging
+  // weeks doesn't stack history entries). Other params (tutorialDone) kept.
+  useEffect(() => {
+    const next = new URLSearchParams(window.location.search);
+    next.set('view', viewMode);
+    if (viewMode === 'week') {
+      next.set('week', format(addDays(startOfWeek(new Date(), { weekStartsOn: 0 }), weekOffset * 7), 'yyyy-MM-dd'));
+      next.delete('month');
+    } else {
+      const m = new Date();
+      next.set('month', format(new Date(m.getFullYear(), m.getMonth() + monthOffset, 1), 'yyyy-MM'));
+      next.delete('week');
+    }
+    if (next.toString() !== new URLSearchParams(window.location.search).toString()) {
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode, weekOffset, monthOffset]);
+
   const weekStart = addDays(startOfWeek(today, { weekStartsOn: 0 }), weekOffset * 7);
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const isCurrentWeek = isSameWeek(weekStart, today, { weekStartsOn: 0 });
@@ -529,24 +574,9 @@ export default function Calendar() {
       let workoutDataForCopy = null;
 
       if (sourceSession && sourceSession.workoutData) {
-        workoutDataForCopy = { ...sourceSession.workoutData };
-        if (workoutDataForCopy.exercises && sourceSession.entries) {
-          workoutDataForCopy.exercises = workoutDataForCopy.exercises.map((ex) => {
-            if (ex.isSectionHeader) return ex;
-            const exEntries = sourceSession.entries.filter((e) => e.exerciseName === ex.name);
-            return {
-              ...ex,
-              sets: ex.sets.map((s) => {
-                const matchingEntry = exEntries.find((e) => e.setNumber === s.setNumber);
-                return {
-                  ...s,
-                  plannedReps: useReps && matchingEntry && matchingEntry.reps > 0 ? matchingEntry.reps : s.plannedReps,
-                  suggestedWeight: matchingEntry && matchingEntry.weight > 0 ? matchingEntry.weight : s.suggestedWeight,
-                };
-              }),
-            };
-          });
-        }
+        // Carries logged weights forward; with "Use Reps" also sets each
+        // set's Goal Wt / Goal Reps to what was logged (utils/copyWorkout).
+        workoutDataForCopy = buildCopiedWorkoutData(sourceSession.workoutData, sourceSession.entries, useReps);
       } else {
         // No session exists — fetch the template directly to get suggestedWeight values
         const templates = await api('/templates');

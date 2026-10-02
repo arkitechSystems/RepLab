@@ -16,6 +16,7 @@ import UndoToast from '../components/UndoToast';
 import LoadingSpinnerOverlay from '../components/LoadingSpinnerOverlay';
 import { iosFocusRef } from '../utils/iosFocus';
 import { getWeightSuggestion } from '../utils/weightSuggestion';
+import { goalsFromWorkoutData } from '../utils/copyWorkout';
 import { calculateOneRMSuggestion } from '../utils/oneRepMaxSuggestion';
 import { beepCountdown, beepRestEnd, initAudio } from '../utils/sounds';
 import { track } from '../utils/analytics';
@@ -1071,6 +1072,12 @@ export default function WorkoutSession() {
         }
 
         setEntries(saved);
+
+        // Saved per-set goals (sets[].goalWeight / goalReps) — written by the
+        // Calendar's copy-with-"Use Reps" and by auto-save of long-press goal
+        // edits. They become this day's goalOverrides, which ExerciseCard's
+        // Goal Wt / Goal Reps cells prefer over the last-session fallback.
+        setGoalOverrides(goalsFromWorkoutData(wd.exercises, exKey));
         setCompletedSets(restoredCompleted);
         if (session.notes) setNotes(session.notes);
         if (session.completed) {
@@ -2381,11 +2388,18 @@ export default function WorkoutSession() {
             ...(ex.supersetLabel ? { supersetLabel: ex.supersetLabel } : {}),
             sets: ex.sets.map((s, i) => {
               const entry = entries[eKey]?.[i];
+              // Persist this day's goals (copied via "Use Reps" or edited by
+              // long-press) so they survive reloads; '' or unset = no goal.
+              const goal = goalOverrides[eKey]?.[i];
+              const goalWeight = goal?.weight !== undefined && goal.weight !== '' ? Number(goal.weight) : null;
+              const goalReps = goal?.reps !== undefined && goal.reps !== '' ? Number(goal.reps) : null;
               return {
                 setNumber: s.setNumber,
                 plannedReps: s.plannedReps ?? 10,
                 suggestedWeight: (entry?.weight !== '' && entry?.weight != null) ? entry.weight : (s.suggestedWeight || 0),
                 setType: entry?.setType || s.setType || ex.setType || 'straight',
+                ...(Number.isFinite(goalWeight) ? { goalWeight } : {}),
+                ...(Number.isFinite(goalReps) ? { goalReps } : {}),
               };
             }),
           };
