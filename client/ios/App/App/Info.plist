@@ -63,5 +63,18 @@
 	     encryption question on every future build upload. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<!-- Google Sign-In returns to the app through this URL scheme. Must match
+	     REVERSED_CLIENT_ID in GoogleService-Info.plist. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>google-sign-in</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.691787433234-9k62alg0t8oa8pvkgg5j3de25669umsp</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
