@@ -2,6 +2,16 @@ import { Resend } from 'resend';
 import pool from './dbPool.js';
 import config from './config.js';
 
+// The Resend SDK (v4) doesn't throw when the API rejects an email (bad key,
+// unverified domain, bad recipient) — it resolves { data, error }. Every
+// send goes through here so a rejection throws into the caller's catch and
+// gets logged instead of failing silently.
+async function deliver(resend, payload) {
+  const { data, error } = await resend.emails.send(payload);
+  if (error) throw new Error(`Resend rejected email "${payload.subject}": ${error.name || 'error'} — ${error.message}`);
+  return data;
+}
+
 async function getTemplate(name) {
   try {
     const { rows } = await pool.query('SELECT subject, html FROM email_templates WHERE name = $1', [name]);
@@ -193,7 +203,7 @@ export async function sendWelcomeEmail(email) {
       `;
 
   try {
-    await resend.emails.send({
+    await deliver(resend, {
       from: config.EMAIL_FROM_TRANSACTIONAL,
       to: email,
       subject: custom?.subject || defaultSubject,
@@ -246,7 +256,7 @@ export async function sendWaitlistThankYouEmail(email) {
   `;
 
   try {
-    await resend.emails.send({
+    await deliver(resend, {
       from: config.EMAIL_FROM_TRANSACTIONAL,
       to: email,
       subject,
@@ -268,7 +278,7 @@ export async function sendPasswordResetEmail(email, token) {
   const resetUrl = `${config.APP_URL}/reset-password/${token}`;
 
   try {
-    await resend.emails.send({
+    await deliver(resend, {
       from: config.EMAIL_FROM_TRANSACTIONAL,
       to: email,
       subject: 'Reset your RepLab password',
@@ -324,7 +334,7 @@ export async function sendDeletionConfirmationEmail(email, token) {
   const confirmUrl = `${config.APP_URL}/auth/confirm-deletion?token=${token}`;
 
   try {
-    await resend.emails.send({
+    await deliver(resend, {
       from: config.EMAIL_FROM_TRANSACTIONAL,
       to: email,
       subject: 'Confirm your RepLab account deletion',
@@ -375,6 +385,7 @@ export async function sendDeletionConfirmationEmail(email, token) {
 
 export async function sendNewSignupNotification(user, totalUsers) {
   if (!process.env.RESEND_API_KEY || !process.env.ADMIN_EMAIL) {
+    console.log(`Skipping signup notification: ${!process.env.RESEND_API_KEY ? 'RESEND_API_KEY' : 'ADMIN_EMAIL'} not set`);
     return;
   }
 
@@ -382,7 +393,7 @@ export async function sendNewSignupNotification(user, totalUsers) {
   const name = [user.firstName, user.lastName].filter(Boolean).join(' ') || 'No name provided';
 
   try {
-    await resend.emails.send({
+    await deliver(resend, {
       from: config.EMAIL_FROM_TRANSACTIONAL,
       to: process.env.ADMIN_EMAIL,
       subject: `New RepLab Signup — ${name} (#${totalUsers})`,
@@ -441,6 +452,7 @@ export async function sendNewSignupNotification(user, totalUsers) {
 
 export async function sendDailySummaryEmail(stats) {
   if (!process.env.RESEND_API_KEY || !process.env.ADMIN_EMAIL) {
+    console.log(`Skipping daily summary email: ${!process.env.RESEND_API_KEY ? 'RESEND_API_KEY' : 'ADMIN_EMAIL'} not set`);
     return;
   }
 
@@ -465,7 +477,7 @@ export async function sendDailySummaryEmail(stats) {
   }).join('');
 
   try {
-    await resend.emails.send({
+    await deliver(resend, {
       from: config.EMAIL_FROM_TRANSACTIONAL,
       to: process.env.ADMIN_EMAIL,
       subject: `RepLab Daily Summary — ${stats.totalUsers} users`,
