@@ -144,6 +144,24 @@ export default function Calendar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMode, weekOffset, monthOffset]);
 
+  // Weekly ↔ Monthly toggle keeps the user's place. Week → Month opens the
+  // current month from this week, otherwise the month holding most of the
+  // visible week (its Wednesday), so Aug 30 – Sep 5 opens September. Month →
+  // Week opens today's week for the current month, otherwise the week
+  // containing the 1st.
+  function switchView(next) {
+    if (next === viewMode) return;
+    const thisWeek = startOfWeek(today, { weekStartsOn: 0 });
+    if (next === 'month') {
+      const midWeek = addDays(thisWeek, weekOffset * 7 + 3);
+      setMonthOffset(weekOffset === 0 ? 0 : differenceInCalendarMonths(midWeek, today));
+    } else {
+      const firstOfMonth = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
+      setWeekOffset(monthOffset === 0 ? 0 : differenceInCalendarWeeks(firstOfMonth, today, { weekStartsOn: 0 }));
+    }
+    setViewMode(next);
+  }
+
   const weekStart = addDays(startOfWeek(today, { weekStartsOn: 0 }), weekOffset * 7);
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const isCurrentWeek = isSameWeek(weekStart, today, { weekStartsOn: 0 });
@@ -742,7 +760,7 @@ export default function Calendar() {
             return (
               <button
                 key={id}
-                onClick={() => setViewMode(id)}
+                onClick={() => switchView(id)}
                 className="flex-1 text-[11px] font-bold uppercase py-2.5 active:scale-[0.97] transition-all"
                 style={{
                   borderRadius: '2px',
