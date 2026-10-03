@@ -31,3 +31,6 @@ _backups/
 
 # Apple / signing private keys — never commit
 *.p8
+
+# Local caches for one-off scripts (video audit etc.)
+server/scripts/.cache/
