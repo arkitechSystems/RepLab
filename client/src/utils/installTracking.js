@@ -24,14 +24,16 @@ let prefsPromise = null;
 function getPrefs() {
   if (!prefsPromise) {
     prefsPromise = import('@capacitor/preferences')
-      .then((m) => m.Preferences)
+      // Wrapped in { prefs }: resolving a promise with a Capacitor plugin
+      // proxy treats it as a thenable (it answers `then`) and hangs forever.
+      .then((m) => ({ prefs: m.Preferences }))
       .catch(() => null);
   }
   return prefsPromise;
 }
 
 async function getItem(key) {
-  const prefs = await getPrefs();
+  const prefs = (await getPrefs())?.prefs;
   if (prefs) {
     try {
       const { value } = await prefs.get({ key });
@@ -42,7 +44,7 @@ async function getItem(key) {
 }
 
 async function setItem(key, value) {
-  const prefs = await getPrefs();
+  const prefs = (await getPrefs())?.prefs;
   if (prefs) {
     try {
       await prefs.set({ key, value });

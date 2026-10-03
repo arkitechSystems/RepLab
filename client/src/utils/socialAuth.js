@@ -37,6 +37,13 @@ let pluginPromise = null;
 // Loads (and on web, initializes Firebase for) the plugin. Call it on page
 // mount so the click handler doesn't wait on a network import — Safari only
 // allows the popup while the tap's user activation is still fresh.
+//
+// Resolves to { plugin } — NEVER to the plugin itself. A Capacitor plugin is
+// a Proxy that answers every property, including `then`, so resolving a
+// promise (or returning from an async function) with it makes JS treat it as
+// a thenable and call plugin.then(), which never settles: the await hangs
+// forever and no native call is made. That was the "stuck Google / Apple
+// button" bug. Always unwrap with `(await preloadSocialAuth())?.plugin`.
 export function preloadSocialAuth() {
   if (!isSocialAuthAvailable()) return Promise.resolve(null);
   if (!pluginPromise) {
@@ -46,7 +53,7 @@ export function preloadSocialAuth() {
         if (getApps().length === 0) initializeApp(WEB_CONFIG);
       }
       const { FirebaseAuthentication } = await import('@capacitor-firebase/authentication');
-      return FirebaseAuthentication;
+      return { plugin: FirebaseAuthentication };
     })().catch((err) => {
       pluginPromise = null;
       throw err;
@@ -105,7 +112,7 @@ function runProviderSignIn(FirebaseAuthentication, provider, mode) {
 // away; completeSocialRedirect() picks it up on return). Pass
 // { keepSession: true } only for the delete-account confirmation.
 export async function signInWithProvider(provider, { keepSession = false } = {}) {
-  const FirebaseAuthentication = await preloadSocialAuth();
+  const FirebaseAuthentication = (await preloadSocialAuth())?.plugin;
   if (!FirebaseAuthentication) throw new Error('Google and Apple sign-in are not available yet.');
 
   if (Capacitor.isNativePlatform()) {
@@ -135,7 +142,7 @@ export async function completeSocialRedirect() {
   if (!provider) return null;
   try { sessionStorage.removeItem(REDIRECT_FLAG); } catch {}
 
-  const FirebaseAuthentication = await preloadSocialAuth();
+  const FirebaseAuthentication = (await preloadSocialAuth())?.plugin;
   if (!FirebaseAuthentication) return null;
   const result = await FirebaseAuthentication.getRedirectResult();
   if (!result?.user) return null;
@@ -150,7 +157,7 @@ export async function completeSocialRedirect() {
 // record and signs out. Every step is best-effort: the RepLab account is
 // already deleted by the time this runs.
 export async function finishSocialAccountDeletion(appleRevokeToken) {
-  const FirebaseAuthentication = await preloadSocialAuth().catch(() => null);
+  const FirebaseAuthentication = (await preloadSocialAuth().catch(() => null))?.plugin;
   if (!FirebaseAuthentication) return;
   if (appleRevokeToken) {
     await FirebaseAuthentication.revokeAccessToken({ token: appleRevokeToken }).catch((err) => {
@@ -164,6 +171,6 @@ export async function finishSocialAccountDeletion(appleRevokeToken) {
 // Drops a Firebase session kept by { keepSession: true } when the deletion
 // didn't go through (server error, user backed out).
 export async function signOutSocial() {
-  const FirebaseAuthentication = await preloadSocialAuth().catch(() => null);
+  const FirebaseAuthentication = (await preloadSocialAuth().catch(() => null))?.plugin;
   if (FirebaseAuthentication) await FirebaseAuthentication.signOut().catch(() => {});
 }
