@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { getDeviceInfo } from '../utils/deviceInfo';
 import { friendlyError } from '../utils/errors';
 import SocialAuthButtons from '../components/SocialAuthButtons';
+import SignInHelpRow from '../components/SignInHelpRow';
 import { REFERRAL_OPTIONS, GENDER_OPTIONS, buildReferralSource } from '../utils/signupOptions';
 
 function isPhone(value) {
@@ -227,6 +228,7 @@ export default function Signup() {
                 <p id="signup-password-help" className="text-xs text-white/50 mt-1.5">
                   8+ characters, including one uppercase letter and one number.
                 </p>
+                <SignInHelpRow />
               </div>
 
               {/* Confirm Password */}

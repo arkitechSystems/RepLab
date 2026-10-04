@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { friendlyError } from '../utils/errors';
 import { API_BASE } from '../api';
 import SocialAuthButtons from '../components/SocialAuthButtons';
+import SignInHelpRow from '../components/SignInHelpRow';
 
 // TEMPORARY — remove once the native login/network issue is confirmed fixed.
 // Runs a raw, unwrapped fetch (bypasses api.js's friendly-error translation)
@@ -244,6 +245,7 @@ export default function Login() {
                 onBlur={blurInput}
                 style={inputStyle}
               />
+              <SignInHelpRow />
             </div>
 
             {/* Liquid-pill sign-in button — keeps the prior loading
@@ -281,15 +283,6 @@ export default function Login() {
               )}
             </button>
           </form>
-
-          <div style={{ textAlign: 'center', marginTop: 16 }}>
-            <Link
-              to="/forgot-password"
-              style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, textDecoration: 'none' }}
-            >
-              Forgot password?
-            </Link>
-          </div>
         </div>
 
         {/* Sign up link sits below the card so it doesn't compete with
