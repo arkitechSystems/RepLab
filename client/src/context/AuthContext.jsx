@@ -219,6 +219,13 @@ export function AuthProvider({ children }) {
         deviceInfo: deviceInfo || undefined,
       }),
     });
+    // A 409 LINK_REQUIRES_PASSWORD (verified email matches an account that
+    // has a password) throws out of api() with err.data.linkToken; the caller
+    // asks for the password and finishes via socialLink / socialLinkWithoutPassword.
+    return finishSocialAuth(data, social.provider);
+  }, []);
+
+  function finishSocialAuth(data, provider) {
     applyAuth(data);
     if (data?.user?.id != null) {
       analyticsIdentify(data.user.id, {
@@ -228,10 +235,43 @@ export function AuthProvider({ children }) {
     }
     if (data?.isNewUser) {
       try { localStorage.removeItem('replab_utm'); } catch {}
-      track('signup_completed', { userId: data?.user?.id, method: social.provider });
+      track('signup_completed', { userId: data?.user?.id, method: provider });
     } else {
-      track('login_completed', { userId: data?.user?.id, method: social.provider });
+      track('login_completed', { userId: data?.user?.id, method: provider });
     }
+    return data;
+  }
+
+  // Connect Google/Apple to an existing password account by confirming its
+  // password once — both sign-in methods keep working afterwards.
+  const socialLink = useCallback(async (linkToken, password, provider) => {
+    const data = await api('/auth/social/link', {
+      method: 'POST',
+      body: JSON.stringify({ linkToken, password }),
+    });
+    track('social_account_linked', { method: provider, keptPassword: true });
+    return finishSocialAuth(data, provider);
+  }, []);
+
+  // "Forgot it": connect without the password, which turns the password off
+  // and signs out other devices. A new one can be set in Profile.
+  const socialLinkWithoutPassword = useCallback(async (linkToken, provider) => {
+    const data = await api('/auth/social/link-without-password', {
+      method: 'POST',
+      body: JSON.stringify({ linkToken }),
+    });
+    track('social_account_linked', { method: provider, keptPassword: false });
+    return finishSocialAuth(data, provider);
+  }, []);
+
+  // Add a password to a Google/Apple-only account. The server signs out other
+  // devices and returns fresh tokens so this one stays signed in.
+  const setPassword = useCallback(async (password) => {
+    const data = await api('/auth/set-password', {
+      method: 'PUT',
+      body: JSON.stringify({ password }),
+    });
+    applyAuth(data);
     return data;
   }, []);
 
@@ -249,7 +289,7 @@ export function AuthProvider({ children }) {
   const isAuthenticated = !!token;
 
   return (
-    <AuthContext.Provider value={{ user, token, login, signup, socialSignIn, demo, logout, updateUser, isAuthenticated }}>
+    <AuthContext.Provider value={{ user, token, login, signup, socialSignIn, socialLink, socialLinkWithoutPassword, setPassword, demo, logout, updateUser, isAuthenticated }}>
       {children}
     </AuthContext.Provider>
   );

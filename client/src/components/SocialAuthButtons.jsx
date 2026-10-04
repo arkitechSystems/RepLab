@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { friendlyError } from '../utils/errors';
+import ConnectAccountModal from './ConnectAccountModal';
 import {
   isSocialAuthAvailable,
   preloadSocialAuth,
@@ -29,12 +30,24 @@ function socialErrorMessage(err, fallback) {
 export default function SocialAuthButtons({ onSignedIn, onError, radius = 2 }) {
   const { socialSignIn } = useAuth();
   const [busy, setBusy] = useState(null); // 'apple' | 'google' | null
+  // Set when the provider's email matches an account that has a password:
+  // { linkToken, provider, email } → ConnectAccountModal asks for it once.
+  const [linkPrompt, setLinkPrompt] = useState(null);
   const handlersRef = useRef({ onSignedIn, onError });
   handlersRef.current = { onSignedIn, onError };
   const available = isSocialAuthAvailable();
 
   async function finish(social) {
-    const data = await socialSignIn(social);
+    let data;
+    try {
+      data = await socialSignIn(social);
+    } catch (err) {
+      if (err?.status === 409 && err?.data?.code === 'LINK_REQUIRES_PASSWORD' && err.data.linkToken) {
+        setLinkPrompt({ linkToken: err.data.linkToken, provider: err.data.provider || social.provider, email: err.data.email });
+        return;
+      }
+      throw err;
+    }
     handlersRef.current.onSignedIn?.(data);
   }
 
@@ -142,6 +155,17 @@ export default function SocialAuthButtons({ onSignedIn, onError, radius = 2 }) {
         <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.3em', color: 'rgba(255,255,255,0.35)' }}>or</span>
         <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.1)' }} />
       </div>
+
+      {linkPrompt && (
+        <ConnectAccountModal
+          {...linkPrompt}
+          onCancel={() => setLinkPrompt(null)}
+          onSignedIn={(data) => {
+            setLinkPrompt(null);
+            handlersRef.current.onSignedIn?.(data);
+          }}
+        />
+      )}
     </div>
   );
 }

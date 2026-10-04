@@ -72,15 +72,15 @@ function SignInHelpModal({ onClose }) {
             in to that same account. Your workouts, history and PRs are all still there.
           </p>
 
-          <p style={h}>Your password after using Google or Apple</p>
+          <p style={h}>Using a password and Google or Apple together</p>
           <p style={p}>
-            For your security, the first time you use Google or Apple with an existing account, your
-            RepLab password is turned off and any other devices are signed out.
+            If your account has a password, you'll be asked for it once the first time you use Google
+            or Apple. After that you can sign in either way, on any device.
           </p>
           <p style={p}>
-            From then on, use Continue with Google or Apple to sign in. If you'd also like to sign in
-            with your email and password, tap <strong style={{ color: '#fff' }}>Forgot password?</strong> to
-            set a new one.
+            Forgot your password? You can still continue with Google or Apple. For your security, your
+            password is turned off and any other devices are signed out. You can set a new one anytime
+            in <strong style={{ color: '#fff' }}>Profile → Set a Password</strong>.
           </p>
 
           <p style={h}>Apple's "Hide My Email"</p>

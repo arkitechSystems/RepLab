@@ -57,6 +57,29 @@ export function generateToken(user) {
   return generateAccessToken(user);
 }
 
+// Short-lived "connect Google/Apple to this account" token. Issued by
+// /auth/social when a verified provider email matches an existing account that
+// has a password; redeemed by /auth/social/link (with that password) or
+// /auth/social/link-without-password. Its `type` is neither 'access' nor
+// 'refresh', so authMiddleware and /auth/refresh both reject it.
+export const LINK_TOKEN_TTL = '10m';
+
+export function generateLinkToken({ userId, provider, providerUid, email }) {
+  return jwt.sign(
+    { userId, provider, providerUid, email: email || null, type: 'social_link' },
+    JWT_SECRET,
+    { expiresIn: LINK_TOKEN_TTL }
+  );
+}
+
+export function verifyLinkToken(token) {
+  const decoded = jwt.verify(token, JWT_SECRET);
+  if (decoded.type !== 'social_link' || !decoded.userId || !decoded.provider || !decoded.providerUid) {
+    throw new Error('Not a link token');
+  }
+  return decoded;
+}
+
 export function verifyRefreshToken(token) {
   const decoded = jwt.verify(token, JWT_SECRET);
   // A refresh token must never be usable as an access token and vice versa.

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 
 // --- Environment ---
 // JWT_SECRET must be set before any app code loads (auth middleware throws without it).
@@ -436,11 +437,35 @@ describe('Auth Routes', () => {
       expect(db.linkIdentity).toHaveBeenLastCalledWith(43, 'google', 'g-123', 'new@example.com');
     });
 
-    it('links to an existing account with the same verified email and clears its password', async () => {
+    it('asks for the password when the verified email matches an account that has one', async () => {
       verifyFirebaseIdToken.mockResolvedValueOnce(GOOGLE_IDENTITY);
       db.findUserIdByIdentity.mockResolvedValueOnce(null);
       db.findUserIdByEmail.mockResolvedValueOnce(1);
-      db.findUserById.mockResolvedValueOnce(TEST_USER).mockResolvedValueOnce({ ...TEST_USER, passwordHash: null });
+      db.findUserById.mockResolvedValueOnce(TEST_USER);
+      db.linkIdentity.mockClear();
+      db.updatePassword.mockClear();
+
+      const res = await request(app).post('/auth/social').send({ idToken: 'x' });
+
+      expect(res.status).toBe(409);
+      expect(res.body.code).toBe('LINK_REQUIRES_PASSWORD');
+      expect(res.body.provider).toBe('google');
+      expect(res.body.email).toBe('new@example.com');
+      expect(res.body).not.toHaveProperty('accessToken');
+      // Nothing linked or cleared until the password is confirmed.
+      expect(db.linkIdentity).not.toHaveBeenCalled();
+      expect(db.updatePassword).not.toHaveBeenCalled();
+      const decoded = jwt.verify(res.body.linkToken, process.env.JWT_SECRET);
+      expect(decoded).toMatchObject({ type: 'social_link', userId: 1, provider: 'google', providerUid: 'g-123' });
+    });
+
+    it('links straight away when the matching account has no password', async () => {
+      verifyFirebaseIdToken.mockResolvedValueOnce(GOOGLE_IDENTITY);
+      db.findUserIdByIdentity.mockResolvedValueOnce(null);
+      db.findUserIdByEmail.mockResolvedValueOnce(1);
+      db.findUserById
+        .mockResolvedValueOnce({ ...TEST_USER, passwordHash: null })
+        .mockResolvedValueOnce({ ...TEST_USER, passwordHash: null });
       db.updatePassword.mockClear();
 
       const res = await request(app).post('/auth/social').send({ idToken: 'x' });
@@ -448,8 +473,7 @@ describe('Auth Routes', () => {
       expect(res.status).toBe(200);
       expect(res.body.isNewUser).toBe(false);
       expect(db.linkIdentity).toHaveBeenLastCalledWith(1, 'google', 'g-123', 'new@example.com');
-      // Pre-registered-account takeover guard: password + sessions dropped.
-      expect(db.updatePassword).toHaveBeenCalledWith(1, null);
+      expect(db.updatePassword).not.toHaveBeenCalled();
     });
 
     it('leaves the password alone for a returning linked identity', async () => {
@@ -472,6 +496,144 @@ describe('Auth Routes', () => {
       const res = await request(app).post('/auth/social').send({ idToken: 'x' });
 
       expect(res.status).toBe(409);
+      expect(res.body.code).toBeUndefined();
+    });
+  });
+
+  describe('Connecting Google/Apple to a password account', () => {
+    const PASSWORD = 'Secret123';
+    const PASSWORD_USER = { ...TEST_USER, passwordHash: bcrypt.hashSync(PASSWORD, 4) };
+    const linkToken = (overrides = {}, opts = { expiresIn: '10m' }) => jwt.sign(
+      { userId: 1, provider: 'apple', providerUid: 'a-9', email: 'test@example.com', type: 'social_link', ...overrides },
+      process.env.JWT_SECRET,
+      opts
+    );
+
+    beforeEach(() => {
+      db.findUserById.mockReset();
+      db.linkIdentity.mockClear();
+      db.updatePassword.mockClear();
+    });
+
+    it('links with the right password and keeps the password', async () => {
+      db.findUserById.mockResolvedValue(PASSWORD_USER);
+      const res = await request(app).post('/auth/social/link').send({ linkToken: linkToken(), password: PASSWORD });
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('accessToken');
+      expect(res.body.isNewUser).toBe(false);
+      expect(res.body.provider).toBe('apple');
+      expect(db.linkIdentity).toHaveBeenCalledWith(1, 'apple', 'a-9', 'test@example.com');
+      expect(db.updatePassword).not.toHaveBeenCalled();
+    });
+
+    it('rejects a wrong password without linking', async () => {
+      db.findUserById.mockResolvedValue(PASSWORD_USER);
+      const res = await request(app).post('/auth/social/link').send({ linkToken: linkToken(), password: 'Wrong999' });
+
+      expect(res.status).toBe(401);
+      expect(res.body.error).toBe('Incorrect password');
+      expect(db.linkIdentity).not.toHaveBeenCalled();
+    });
+
+    it('rejects an expired link token', async () => {
+      db.findUserById.mockResolvedValue(PASSWORD_USER);
+      const expired = linkToken({ exp: Math.floor(Date.now() / 1000) - 60 }, {});
+      const res = await request(app).post('/auth/social/link').send({ linkToken: expired, password: PASSWORD });
+
+      expect(res.status).toBe(401);
+      expect(db.linkIdentity).not.toHaveBeenCalled();
+    });
+
+    it('rejects a forged link token', async () => {
+      db.findUserById.mockResolvedValue(PASSWORD_USER);
+      const forged = jwt.sign({ userId: 1, provider: 'apple', providerUid: 'a-9', type: 'social_link' }, 'not-the-real-secret-but-long-enough-123', { expiresIn: '10m' });
+      const res = await request(app).post('/auth/social/link').send({ linkToken: forged, password: PASSWORD });
+
+      expect(res.status).toBe(401);
+      expect(db.linkIdentity).not.toHaveBeenCalled();
+    });
+
+    it('refuses an access token in place of a link token', async () => {
+      db.findUserById.mockResolvedValue(PASSWORD_USER);
+      const res = await request(app).post('/auth/social/link').send({ linkToken: makeToken(1), password: PASSWORD });
+
+      expect(res.status).toBe(401);
+      expect(db.linkIdentity).not.toHaveBeenCalled();
+    });
+
+    it('refuses a link token as a Bearer access token', async () => {
+      mockAuthPoolQuery(1);
+      const res = await request(app).get('/schedule').set('Authorization', `Bearer ${linkToken()}`);
+
+      expect(res.status).toBe(401);
+    });
+
+    it('link-without-password links and turns the password off', async () => {
+      db.findUserById
+        .mockResolvedValueOnce(PASSWORD_USER)
+        .mockResolvedValueOnce({ ...PASSWORD_USER, passwordHash: null });
+      const res = await request(app).post('/auth/social/link-without-password').send({ linkToken: linkToken() });
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('accessToken');
+      expect(res.body.user.hasPassword).toBe(false);
+      expect(db.linkIdentity).toHaveBeenCalledWith(1, 'apple', 'a-9', 'test@example.com');
+      expect(db.updatePassword).toHaveBeenCalledWith(1, null);
+    });
+
+    it('link-without-password rejects a bad token', async () => {
+      const res = await request(app).post('/auth/social/link-without-password').send({ linkToken: 'nope' });
+
+      expect(res.status).toBe(401);
+      expect(db.updatePassword).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('PUT /auth/set-password', () => {
+    beforeEach(() => {
+      db.findUserById.mockReset();
+      db.updatePassword.mockClear();
+      mockAuthPoolQuery(1);
+    });
+
+    it('sets a password on an account that has none and returns fresh tokens', async () => {
+      db.findUserById
+        .mockResolvedValueOnce({ ...TEST_USER, passwordHash: null })
+        .mockResolvedValueOnce({ ...TEST_USER, passwordHash: 'hashed' });
+      const res = await request(app).put('/auth/set-password').set('Authorization', authHeader()).send({ password: 'NewPass123' });
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('accessToken');
+      expect(res.body).toHaveProperty('refreshToken');
+      expect(res.body.user.hasPassword).toBe(true);
+      expect(db.updatePassword).toHaveBeenCalledTimes(1);
+      const [uid, hash] = db.updatePassword.mock.calls[0];
+      expect(uid).toBe(1);
+      expect(bcrypt.compareSync('NewPass123', hash)).toBe(true);
+    });
+
+    it('refuses when the account already has a password', async () => {
+      db.findUserById.mockResolvedValueOnce(TEST_USER);
+      const res = await request(app).put('/auth/set-password').set('Authorization', authHeader()).send({ password: 'NewPass123' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/Change Password/);
+      expect(db.updatePassword).not.toHaveBeenCalled();
+    });
+
+    it('enforces the signup password rules', async () => {
+      db.findUserById.mockResolvedValueOnce({ ...TEST_USER, passwordHash: null });
+      const res = await request(app).put('/auth/set-password').set('Authorization', authHeader()).send({ password: 'short' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/Password must have/);
+      expect(db.updatePassword).not.toHaveBeenCalled();
+    });
+
+    it('requires sign-in', async () => {
+      const res = await request(app).put('/auth/set-password').send({ password: 'NewPass123' });
+      expect(res.status).toBe(401);
     });
   });
 

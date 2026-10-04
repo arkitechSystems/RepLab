@@ -242,7 +242,7 @@ function HeightInput({ label, value, onChange }) {
 }
 
 export default function Profile() {
-  const { user, logout, updateUser } = useAuth();
+  const { user, logout, updateUser, setPassword: setAccountPassword } = useAuth();
   const navigate = useNavigate();
   const [metrics, setMetrics] = useState({
     height: null,
@@ -1240,7 +1240,7 @@ export default function Profile() {
             >
               <div>
                 <h3 className="text-[22px] font-black tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95', color: '#e5e7eb' }}>SECURITY</h3>
-                <p className="text-[10px] uppercase font-light mt-1" style={{ letterSpacing: '0.3em', color: 'rgba(239,68,68,0.9)' }}>Change Password</p>
+                <p className="text-[10px] uppercase font-light mt-1" style={{ letterSpacing: '0.3em', color: 'rgba(239,68,68,0.9)' }}>{socialOnly ? 'Set a Password' : 'Change Password'}</p>
               </div>
               <svg className={`w-5 h-5 text-white/40 transition-transform shrink-0 ml-3 ${showChangePassword ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
@@ -1256,10 +1256,20 @@ export default function Profile() {
                 )}
                 {passwordChanged && (
                   <div className="px-4 py-3 text-green-300 text-sm" style={{ background: 'rgba(20,83,45,0.3)', border: '1px solid rgba(22,101,52,0.6)', borderRadius: '2px' }}>
-                    Password changed successfully!
+                    {passwordChanged === 'set'
+                      ? 'Password set! You can now sign in with your email and password or with Google/Apple.'
+                      : 'Password changed successfully!'}
                   </div>
                 )}
-                <div>
+                {/* Google/Apple-only accounts have no password yet: they set
+                    one here without a current password (they're signed in). */}
+                {socialOnly && (
+                  <p className="text-sm text-white/50" style={{ lineHeight: 1.5 }}>
+                    You sign in with Google or Apple. Add a password to also sign in with your email.
+                    8+ characters, including one uppercase letter and one number.
+                  </p>
+                )}
+                {!socialOnly && <div>
                   <label htmlFor="profile-current-password" className="text-[10px] text-white/40 uppercase mb-1.5 block font-semibold" style={{ letterSpacing: '0.25em' }}>Current Password</label>
                   <input
                     id="profile-current-password"
@@ -1275,7 +1285,7 @@ export default function Profile() {
                       borderRadius: '2px',
                     }}
                   />
-                </div>
+                </div>}
                 <div>
                   <label htmlFor="profile-new-password" className="text-[10px] text-white/40 uppercase mb-1.5 block font-semibold" style={{ letterSpacing: '0.25em' }}>New Password</label>
                   <input
@@ -1329,6 +1339,16 @@ export default function Profile() {
                     }
                     setPasswordSaving(true);
                     try {
+                      if (socialOnly) {
+                        // Applies the fresh token pair and the updated user
+                        // (hasPassword: true), so this card flips to Change
+                        // Password.
+                        await setAccountPassword(newPassword);
+                        setPasswordChanged('set');
+                        setNewPassword('');
+                        setConfirmNewPassword('');
+                        return;
+                      }
                       const resp = await api('/auth/change-password', {
                         method: 'POST',
                         body: JSON.stringify({ currentPassword, newPassword }),
@@ -1348,7 +1368,7 @@ export default function Profile() {
                       setPasswordSaving(false);
                     }
                   }}
-                  disabled={passwordSaving || !currentPassword || !newPassword || !confirmNewPassword}
+                  disabled={passwordSaving || (!socialOnly && !currentPassword) || !newPassword || !confirmNewPassword}
                   className="w-full active:scale-[0.97] transition-all text-white text-[11px] font-bold uppercase py-3.5 disabled:opacity-50 whitespace-nowrap"
                   style={{
                     letterSpacing: '0.15em',
@@ -1357,7 +1377,7 @@ export default function Profile() {
                     boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
                   }}
                 >
-                  {passwordSaving ? 'Changing...' : 'Change Password'}
+                  {passwordSaving ? 'Saving...' : (socialOnly ? 'Set Password' : 'Change Password')}
                 </button>
               </div>
             )}

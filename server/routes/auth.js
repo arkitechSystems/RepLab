@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import db from '../db.js';
 import pool from '../dbPool.js';
 import crypto from 'crypto';
-import { generateToken, generateAccessToken, generateRefreshToken, verifyRefreshToken, authMiddleware } from '../middleware/auth.js';
+import { generateToken, generateAccessToken, generateRefreshToken, verifyRefreshToken, generateLinkToken, verifyLinkToken, authMiddleware } from '../middleware/auth.js';
 import { sendWelcomeEmail, sendPasswordResetEmail, sendNewSignupNotification, sendDeletionConfirmationEmail } from '../email.js';
 import config from '../config.js';
 import { verifyFirebaseIdToken } from '../firebaseAuth.js';
@@ -110,7 +110,19 @@ async function recordLoginHistory(req, user) {
   } catch (err) { console.error('Login history error:', err); }
 }
 
-const SOCIAL_ONLY_MESSAGE = 'This account uses Google or Apple sign-in. Use the Continue with Google or Continue with Apple button.';
+const SOCIAL_ONLY_MESSAGE = 'This account uses Google or Apple sign-in. Continue with Google or Apple, or tap Forgot password? to add a password.';
+
+// Signup password rules, shared by every route that sets a password.
+// Returns an error message, or null when the password is acceptable.
+function passwordRuleError(password) {
+  if (typeof password !== 'string') return 'Password is required';
+  const errors = [];
+  if (password.length < 8) errors.push('at least 8 characters');
+  if (!/[A-Z]/.test(password)) errors.push('at least 1 uppercase letter');
+  if (!/[0-9]/.test(password)) errors.push('at least 1 number');
+  if (/\s/.test(password)) errors.push('no spaces');
+  return errors.length > 0 ? 'Password must have: ' + errors.join(', ') : null;
+}
 
 router.post('/signup', async (req, res) => {
   try {
@@ -266,16 +278,27 @@ router.post('/social', async (req, res) => {
 
     let userId = await db.findUserIdByIdentity(provider, providerUid);
     if (!userId && email && emailVerified) {
-      userId = await db.findUserIdByEmail(email);
-      if (userId) {
-        await db.linkIdentity(userId, provider, providerUid, email);
-        // Email signups aren't email-verified, so whoever set this account's
-        // password may not own the address (pre-registered takeover). The
-        // provider just proved ownership: drop the password, any pending reset
-        // link, and every existing session. The owner can set a new password
-        // later via "Forgot password".
-        const existing = await db.findUserById(userId);
-        if (existing?.passwordHash) await db.updatePassword(userId, null);
+      const matchId = await db.findUserIdByEmail(email);
+      if (matchId) {
+        const existing = await db.findUserById(matchId);
+        if (existing?.passwordHash) {
+          // Email signups aren't email-verified, so whoever set this
+          // account's password may not own the address (pre-registered
+          // takeover). Don't link yet: the client asks for the account's
+          // password once (/auth/social/link) so the password and Google/
+          // Apple both keep working, or the user can continue without it
+          // (/auth/social/link-without-password), which turns it off.
+          return res.status(409).json({
+            code: 'LINK_REQUIRES_PASSWORD',
+            error: 'An account with this email already exists. Enter its password to connect.',
+            linkToken: generateLinkToken({ userId: matchId, provider, providerUid, email }),
+            provider,
+            email,
+          });
+        }
+        // No password to protect — link straight away.
+        await db.linkIdentity(matchId, provider, providerUid, email);
+        userId = matchId;
       }
     }
 
@@ -344,6 +367,72 @@ router.post('/social', async (req, res) => {
       // account. Ask the client to retry; the retry resolves via step 1.
       return res.status(409).json({ error: 'Account already exists. Please try again.' });
     }
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Resolves a /auth/social linkToken to its user, or sends the error response
+// and returns null.
+async function resolveLinkToken(linkToken, res) {
+  if (!linkToken || typeof linkToken !== 'string') {
+    res.status(400).json({ error: 'Missing link token' });
+    return null;
+  }
+  let link;
+  try {
+    link = verifyLinkToken(linkToken);
+  } catch {
+    res.status(401).json({ error: 'That sign-in expired. Please tap Continue with Google or Apple again.' });
+    return null;
+  }
+  const user = await db.findUserById(link.userId);
+  if (!user) {
+    res.status(401).json({ error: 'That sign-in expired. Please tap Continue with Google or Apple again.' });
+    return null;
+  }
+  return { link, user };
+}
+
+// POST /auth/social/link — connect Google/Apple to an existing account by
+// confirming its password once. The password keeps working afterwards, so
+// the user can sign in either way on any device.
+router.post('/social/link', async (req, res) => {
+  try {
+    const { linkToken, password } = req.body || {};
+    const resolved = await resolveLinkToken(linkToken, res);
+    if (!resolved) return;
+    const { link, user } = resolved;
+    if (!user.passwordHash || typeof password !== 'string' || !bcrypt.compareSync(password, user.passwordHash)) {
+      return res.status(401).json({ error: 'Incorrect password' });
+    }
+    await db.linkIdentity(user.id, link.provider, link.providerUid, link.email);
+    res.json({ ...authPayload(user), isNewUser: false, provider: link.provider });
+    await recordLoginHistory(req, user);
+  } catch (err) {
+    console.error(err);
+    if (err.code === '23505') return res.status(409).json({ error: 'That account is already connected. Please try again.' });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /auth/social/link-without-password — "forgot it, continue with
+// Google/Apple": the provider proved the email, so link the account but turn
+// its password off (and sign out other devices), since we can't confirm who
+// set it. A new password can be set later in Profile → Set a password.
+router.post('/social/link-without-password', async (req, res) => {
+  try {
+    const { linkToken } = req.body || {};
+    const resolved = await resolveLinkToken(linkToken, res);
+    if (!resolved) return;
+    const { link, user } = resolved;
+    await db.linkIdentity(user.id, link.provider, link.providerUid, link.email);
+    if (user.passwordHash) await db.updatePassword(user.id, null);
+    const refreshed = await db.findUserById(user.id);
+    res.json({ ...authPayload(refreshed), isNewUser: false, provider: link.provider });
+    await recordLoginHistory(req, refreshed);
+  } catch (err) {
+    console.error(err);
+    if (err.code === '23505') return res.status(409).json({ error: 'That account is already connected. Please try again.' });
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -664,7 +753,7 @@ router.post('/change-password', authMiddleware, async (req, res) => {
     const user = await db.findUserById(req.userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
     if (!user.passwordHash) {
-      return res.status(400).json({ error: 'Your account uses Google or Apple sign-in and has no password yet. Use "Forgot password" to set one.' });
+      return res.status(400).json({ error: 'Your account has no password yet. Use Set a password instead.' });
     }
 
     const valid = bcrypt.compareSync(currentPassword, user.passwordHash);
@@ -686,6 +775,32 @@ router.post('/change-password', authMiddleware, async (req, res) => {
       accessToken: newAccessToken,
       refreshToken: newRefreshToken,
     });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// PUT /auth/set-password — add a password to an account that has none
+// (Google/Apple sign-up, or one whose password was turned off when
+// connecting). The user is already signed in, so no current password or
+// email is needed. updatePassword bumps token_version, so a fresh token pair
+// is returned to keep this device signed in.
+router.put('/set-password', authMiddleware, async (req, res) => {
+  try {
+    const { password } = req.body || {};
+    const ruleError = passwordRuleError(password);
+    if (ruleError) return res.status(400).json({ error: ruleError });
+
+    const user = await db.findUserById(req.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (user.passwordHash) {
+      return res.status(400).json({ error: 'Your account already has a password. Use Change Password.' });
+    }
+
+    await db.updatePassword(user.id, bcrypt.hashSync(password, 10));
+    const refreshed = await db.findUserById(user.id);
+    res.json({ message: 'Password set', ...authPayload(refreshed) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
