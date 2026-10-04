@@ -43,6 +43,30 @@ async function resolveExerciseIdsForNames(client, names, userId) {
   return out;
 }
 
+// Deletes "empty" sessions — not completed, no set with a weight/reps/check
+// mark, no cardio logged — for one (date, template) or for every date from
+// `fromDate` on. Opening a workout creates its session shell right away
+// (/sessions/initialize), so when the Calendar removes that workout the shell
+// would otherwise linger and the Workouts card's in-progress fallback keeps
+// showing "Resume". Sessions with any logged data are never touched.
+async function deleteEmptySessions(client, userId, { date, templateId, fromDate }) {
+  const where = fromDate
+    ? 's.date >= $2'
+    : 's.date = $2 AND s.template_id = $3';
+  const params = fromDate ? [userId, fromDate] : [userId, date, templateId];
+  await client.query(
+    `DELETE FROM sessions s
+      WHERE s.user_id = $1 AND ${where}
+        AND COALESCE(s.completed, FALSE) = FALSE
+        AND NOT EXISTS (
+          SELECT 1 FROM session_entries se
+           WHERE se.session_id = s.id
+             AND (se.weight <> 0 OR se.reps > 0 OR se.is_completed = TRUE))
+        AND NOT EXISTS (SELECT 1 FROM cardio_entries ce WHERE ce.session_id = s.id)`,
+    params
+  );
+}
+
 async function batchInsertTemplateExercises(client, templateId, exercises, userId) {
   // Resolve every distinct name once up front so the batch INSERT can
   // dual-write exercise_id. Names that don't resolve (a custom the user
@@ -886,6 +910,17 @@ const db = {
     try {
       await client.query('BEGIN');
       for (const day of schedule) {
+        // If this changes or clears the day's workout, drop the old workout's
+        // empty session for that date (see deleteEmptySessions) so the
+        // Workouts card doesn't keep offering "Resume" for a removed workout.
+        const { rows: [prev] } = await client.query(
+          'SELECT template_id FROM schedule_days WHERE user_id = $1 AND schedule_date = $2',
+          [userId, day.date]
+        );
+        const nextTemplateId = day.isRest ? null : (day.templateId ?? null);
+        if (prev?.template_id != null && prev.template_id !== nextTemplateId) {
+          await deleteEmptySessions(client, userId, { date: day.date, templateId: prev.template_id });
+        }
         if (day.templateId == null && !day.isRest) {
           // Delete the row if clearing a date
           await client.query(
@@ -912,10 +947,21 @@ const db = {
   },
 
   async clearScheduleFrom(userId, fromDate) {
-    await pool.query(
-      `DELETE FROM schedule_days WHERE user_id = $1 AND schedule_date >= $2`,
-      [userId, fromDate]
-    );
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        `DELETE FROM schedule_days WHERE user_id = $1 AND schedule_date >= $2`,
+        [userId, fromDate]
+      );
+      await deleteEmptySessions(client, userId, { fromDate });
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   },
 
   // Sessions
@@ -1165,7 +1211,8 @@ const db = {
       `SELECT s.id, s.date, s.template_id, s.created_at, s.completed,
               ${sessionDisplayNameSql('s', 't.name', 'Unknown')} AS template_name,
               COALESCE(SUM(se.weight * se.reps) FILTER (WHERE se.is_completed = TRUE AND se.weight > 0), 0)::NUMERIC AS total_volume,
-              COUNT(DISTINCT se.exercise_name) FILTER (WHERE se.is_completed = TRUE) AS exercise_count
+              COUNT(DISTINCT se.exercise_name) FILTER (WHERE se.is_completed = TRUE) AS exercise_count,
+              COALESCE(BOOL_OR(se.weight <> 0 OR se.reps > 0 OR se.is_completed = TRUE), FALSE) AS has_logged_data
        FROM sessions s
        LEFT JOIN templates t ON t.id = s.template_id
        LEFT JOIN session_entries se ON se.session_id = s.id
@@ -1183,6 +1230,9 @@ const db = {
       templateName: r.template_name,
       totalVolume: Number(r.total_volume) || 0,
       exerciseCount: Number(r.exercise_count) || 0,
+      // Any set with a weight, reps, or check mark — false for the empty
+      // shell /sessions/initialize creates when a workout is merely opened.
+      hasLoggedData: r.has_logged_data === true,
     }));
   },
 

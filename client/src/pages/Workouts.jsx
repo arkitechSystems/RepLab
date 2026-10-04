@@ -1336,8 +1336,11 @@ export default function Workouts() {
     // weren't written (e.g. /sessions/start-empty path), date-format edge
     // cases between schedule_days.schedule_date (DATE) and the client's local
     // todayStr, and workouts started from a non-schedule entry point.
+    // Only sessions with something actually logged count: opening a workout
+    // creates an empty session shell, and if that workout is then removed
+    // from the Calendar the shell must not keep the card on "Resume".
     const todayInProgressSession = sessions.find(s =>
-      s.date === todayStr && s.templateId != null && !s.completed
+      s.date === todayStr && s.templateId != null && !s.completed && s.hasLoggedData
     );
     const todayCompleted = todaySchedule && todaySchedule.templateId
       ? completedData.some(c => c.templateId === todaySchedule.templateId && c.date === todayStr)
