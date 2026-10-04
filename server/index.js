@@ -118,6 +118,9 @@ app.get('/get', (req, res) => {
   res.redirect(302, target);
 });
 
+// Firebase Auth's web sign-in frames https://<authDomain>/__/auth/iframe.
+const FIREBASE_AUTH_FRAME = `https://${(process.env.VITE_FIREBASE_AUTH_DOMAIN || 'replabapp-c3a0d.firebaseapp.com').replace(/^https?:\/\//, '').replace(/\/.*$/, '')}`;
+
 // Security headers
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -142,16 +145,22 @@ app.use((req, res, next) => {
     //   - https://i.ytimg.com (specifically) for thumbnails
     //   - 'unsafe-inline' on style — required by Tailwind's runtime-injected styles
     //     and inline style attributes; can be tightened with nonces later.
+    //   - Google / Apple web sign-in (Firebase Auth JS SDK, popup + redirect):
+    //     apis.google.com (gapi loader) + gstatic + Apple's JS in script-src;
+    //     identitytoolkit / securetoken / googleapis / installations in
+    //     connect-src; the Firebase auth domain (/__/auth/iframe), Google and
+    //     Apple sign-in pages in frame-src. FIREBASE_AUTH_FRAME follows
+    //     VITE_FIREBASE_AUTH_DOMAIN if it's ever moved to a custom domain.
     if (!req.path.startsWith('/admin') && !req.path.startsWith('/trainer')) {
       res.setHeader('Content-Security-Policy', [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' https://*.stripe.com https://js.stripe.com https://*.youtube.com https://*.posthog.com",
+        "script-src 'self' 'unsafe-inline' https://*.stripe.com https://js.stripe.com https://*.youtube.com https://*.posthog.com https://apis.google.com https://www.gstatic.com https://appleid.cdn-apple.com",
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         "font-src 'self' https://fonts.gstatic.com data:",
         "img-src 'self' data: blob: https: ",
         "media-src 'self' blob: https:",
-        "connect-src 'self' https://*.stripe.com https://*.posthog.com https://*.ingest.sentry.io https://*.sentry.io https://ip-api.com https://api.resend.com https://api.anthropic.com",
-        "frame-src https://*.stripe.com https://js.stripe.com https://*.youtube.com https://www.youtube-nocookie.com",
+        "connect-src 'self' https://*.stripe.com https://*.posthog.com https://*.ingest.sentry.io https://*.sentry.io https://ip-api.com https://api.resend.com https://api.anthropic.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com https://firebaseinstallations.googleapis.com",
+        `frame-src https://*.stripe.com https://js.stripe.com https://*.youtube.com https://www.youtube-nocookie.com ${FIREBASE_AUTH_FRAME} https://accounts.google.com https://appleid.apple.com`,
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'self' https://*.stripe.com",
