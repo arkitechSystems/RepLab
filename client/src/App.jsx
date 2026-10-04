@@ -11,6 +11,7 @@ import { ToastProvider } from './context/ToastContext';
 import { ConfirmProvider } from './context/ConfirmContext';
 import Layout from './components/Layout';
 import ErrorBoundary from './components/ErrorBoundary';
+import ConnectionRetryPrompt from './components/ConnectionRetryPrompt';
 import { useFeatureFlag, FF_FEATURED } from './utils/featureFlags';
 import { initDeepLinks } from './utils/deepLink';
 
@@ -253,6 +254,7 @@ export default function App() {
     <TutorialProvider>
     <VideoPlayerProvider>
       <PageTracker />
+      <ConnectionRetryPrompt />
       {isAppContext && !splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
     <Suspense fallback={<div className="min-h-screen bg-black" />}>
     <Routes>

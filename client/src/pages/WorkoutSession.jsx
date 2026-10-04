@@ -17,6 +17,7 @@ import LoadingSpinnerOverlay from '../components/LoadingSpinnerOverlay';
 import { iosFocusRef } from '../utils/iosFocus';
 import { getWeightSuggestion } from '../utils/weightSuggestion';
 import { goalsFromWorkoutData } from '../utils/copyWorkout';
+import { APP_SHARE_FOOTER, workoutLabel } from '../utils/shareText';
 import { calculateOneRMSuggestion } from '../utils/oneRepMaxSuggestion';
 import { beepCountdown, beepRestEnd, initAudio } from '../utils/sounds';
 import { track } from '../utils/analytics';
@@ -2291,7 +2292,7 @@ export default function WorkoutSession() {
   async function handleShare() {
     if (!template) return;
 
-    const lines = [`${displayName} — ${format(parseDateLocal(date), 'EEEE, MMM d')}\n`];
+    const lines = [`${workoutLabel(displayName)} — ${format(parseDateLocal(date), 'EEEE, MMM d')}\n`];
 
     for (let exIdx = 0; exIdx < template.exercises.length; exIdx++) {
       const ex = template.exercises[exIdx];
@@ -2316,6 +2317,8 @@ export default function WorkoutSession() {
 
     const totalSets = template.exercises.filter(e => !e.isSectionHeader).reduce((s, e) => s + e.sets.length, 0);
     lines.push(totalSets > 0 ? `${completedSets.size}/${totalSets} sets completed` : 'Workout in progress');
+    lines.push('');
+    lines.push(APP_SHARE_FOOTER);
 
     const text = lines.join('\n');
 
@@ -5581,7 +5584,7 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
   async function handleShareText() {
     const lines = [];
     if (programLabel) lines.push(programLabel);
-    lines.push(`${template.name} \u2014 Workout Complete!`);
+    lines.push(`${workoutLabel(displayName)} \u2014 Workout Complete!`);
     lines.push(`Time: ${formatTime(elapsed)} | Sets: ${completedSets.size}/${totalSets} | Volume: ${totalVolume.toLocaleString()} lbs`);
     lines.push('');
     template.exercises.forEach((ex, exIdx) => {
@@ -5605,6 +5608,8 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
       lines.push('');
     });
     lines.push('Logged with RepLab');
+    lines.push('');
+    lines.push(APP_SHARE_FOOTER);
     const text = lines.join('\n');
     if (navigator.share) {
       try { await navigator.share({ text }); } catch {}

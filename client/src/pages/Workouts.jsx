@@ -24,6 +24,7 @@ import useFocusTrap from '../hooks/useFocusTrap';
 import MissedWorkoutsModal from '../components/MissedWorkoutsModal';
 import useMissedWorkoutsPrompt, { localDateStr } from '../hooks/useMissedWorkoutsPrompt';
 import StartEmptyWorkoutModal from '../components/StartEmptyWorkoutModal';
+import { APP_LINK, APP_SHARE_FOOTER, workoutLabel } from '../utils/shareText';
 
 const DAY_NAMES_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -1667,7 +1668,8 @@ export default function Workouts() {
   }
 
   function renderExternalShareButtons(workoutName) {
-    const text = `I'm doing ${workoutName || 'a workout'} today on RepLab and want you to join! 💪 Check it out at https://replab-fitness.com`;
+    const workoutPart = workoutName ? `this workout ${workoutLabel(workoutName)}` : 'this workout';
+    const text = `Try ${workoutPart} on the RepLab app! 💪\n\n${APP_SHARE_FOOTER}`;
     return (
       <>
         <div className="flex items-center gap-3 mt-4 mb-3">
@@ -1694,7 +1696,7 @@ export default function Workouts() {
           <button
             onClick={() => {
               const encoded = encodeURIComponent(text);
-              window.open(`fb-messenger://share?link=${encodeURIComponent('https://replab-fitness.com')}`, '_blank');
+              window.open(`fb-messenger://share?link=${encodeURIComponent(APP_LINK)}`, '_blank');
               setTimeout(() => window.open(`sms:?&body=${encoded}`, '_blank'), 300);
             }}
             className="flex-1 flex items-center justify-center gap-2 px-3 py-3 rounded-xl bg-purple-500/10 border border-purple-500/20 active:bg-purple-500/20 transition-colors"
@@ -1778,6 +1780,14 @@ export default function Workouts() {
       setInviteResult({ success: true, message: `Invited ${data.recipientName}!` });
       setInviteInput('');
     } catch (err) {
+      // After a timeout + Retry, the first attempt may already have reached
+      // the server — its duplicate guard then answers "already invited",
+      // which means the invite did go through.
+      if (err?.status === 400 && /already invited/i.test(err.message || '')) {
+        setInviteResult({ success: true, message: 'Invite sent!' });
+        setInviteInput('');
+        return;
+      }
       setInviteResult({ success: false, message: err.message || 'Failed to invite' });
     } finally {
       setInviteLoading(false);

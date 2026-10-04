@@ -101,6 +101,23 @@ app.get('/yt-embed/:id', (req, res) => {
   res.type('html').send(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Video</title><style>html,body{margin:0;height:100%;background:#000}iframe{border:0;width:100%;height:100%;display:block}</style></head><body><iframe src="${src}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></body></html>`);
 });
 
+// Smart app link used in shared workout messages (client/src/utils/shareText.js):
+// sends whoever taps it to the right store for *their* phone — App Store on
+// iPhone/iPad, Google Play on Android, the website everywhere else.
+// PLAY_STORE_URL is unset until the Play listing is public (it 404'd on
+// 2026-10-04); until then Android goes to the website too. Set it on Render
+// to https://play.google.com/store/apps/details?id=com.replab.fitness.
+const APP_STORE_URL = process.env.APP_STORE_URL || 'https://apps.apple.com/app/replab-fitness/id6772774807';
+const PLAY_STORE_URL = process.env.PLAY_STORE_URL || '';
+app.get('/get', (req, res) => {
+  const ua = req.get('user-agent') || '';
+  let target = '/';
+  if (/iPhone|iPad|iPod/i.test(ua)) target = APP_STORE_URL;
+  else if (/Android/i.test(ua) && PLAY_STORE_URL) target = PLAY_STORE_URL;
+  res.setHeader('Cache-Control', 'no-store');
+  res.redirect(302, target);
+});
+
 // Security headers
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');

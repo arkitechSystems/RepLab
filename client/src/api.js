@@ -93,11 +93,12 @@ async function performRefresh() {
     throw new Error('No refresh token');
   }
 
-  const res = await fetch(`${API_BASE}/auth/refresh`, {
+  // Same time limit + Retry prompt as api(). A connection failure here throws
+  // an isConnectionError error, which api() surfaces instead of logging out.
+  const res = await fetchWithRetry('/auth/refresh', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ refreshToken }),
-  });
+  }, null);
 
   if (!res.ok) {
     throw new Error(`Refresh failed (${res.status})`);
@@ -127,6 +128,40 @@ function getOrStartRefresh() {
   return refreshPromise;
 }
 
+// ── Request time limit + Retry prompt ──
+// Every request gives up after DEFAULT_TIMEOUT_MS (longer for AI features,
+// which take 5-20s to generate) instead of hanging forever — a lost response
+// used to leave buttons stuck on "Sending..." indefinitely. On a timeout or
+// network failure, api() asks the registered retry handler (the
+// <ConnectionRetryPrompt/> mounted in App) whether to try again; concurrent
+// failures share one prompt, and Retry re-sends all of them. Pass
+// { timeoutMs } to override per call, or { noRetryPrompt: true } to fail fast.
+const DEFAULT_TIMEOUT_MS = 5000;
+const AI_TIMEOUT_MS = 60000;
+export const CONNECTION_ERROR_MESSAGE = "Couldn't reach RepLab. Check your connection and try again.";
+
+function timeoutFor(path, options) {
+  if (options.timeoutMs) return options.timeoutMs;
+  if (path.startsWith('/ai/')) return AI_TIMEOUT_MS;
+  return DEFAULT_TIMEOUT_MS;
+}
+
+let retryHandler = null;
+let pendingRetryDecision = null;
+// Registered by ConnectionRetryPrompt: (message) => Promise<boolean>.
+export function setRetryHandler(fn) {
+  retryHandler = fn;
+}
+function askToRetry() {
+  if (!retryHandler) return Promise.resolve(false);
+  if (!pendingRetryDecision) {
+    pendingRetryDecision = Promise.resolve(retryHandler(CONNECTION_ERROR_MESSAGE))
+      .catch(() => false)
+      .finally(() => { pendingRetryDecision = null; });
+  }
+  return pendingRetryDecision;
+}
+
 async function doFetch(path, options, token) {
   const headers = {
     'Content-Type': 'application/json',
@@ -135,24 +170,55 @@ async function doFetch(path, options, token) {
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
-  return fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers,
-    signal: options.signal,
-  });
+  // Abort on our own time limit, or when the caller's signal aborts.
+  const controller = new AbortController();
+  let timedOut = false;
+  const timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutFor(path, options));
+  const onCallerAbort = () => controller.abort();
+  if (options.signal) {
+    if (options.signal.aborted) controller.abort();
+    else options.signal.addEventListener('abort', onCallerAbort, { once: true });
+  }
+  try {
+    return await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (timedOut) {
+      const timeoutErr = new Error(CONNECTION_ERROR_MESSAGE);
+      timeoutErr.name = 'TimeoutError';
+      throw timeoutErr;
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+    options.signal?.removeEventListener('abort', onCallerAbort);
+  }
+}
+
+// doFetch with the Retry prompt: on a timeout or network failure, ask the
+// user; Retry loops, Cancel throws. A caller-initiated abort is rethrown as-is.
+async function fetchWithRetry(path, options, token) {
+  for (;;) {
+    try {
+      return await doFetch(path, options, token);
+    } catch (err) {
+      if (err.name === 'AbortError') throw err;
+      if (options.noRetryPrompt || !(await askToRetry())) {
+        const connErr = new Error(CONNECTION_ERROR_MESSAGE);
+        connErr.isConnectionError = true;
+        throw connErr;
+      }
+    }
+  }
 }
 
 export async function api(path, options = {}) {
   const token = getApiToken();
 
-  let res;
-  try {
-    res = await doFetch(path, options, token);
-  } catch (err) {
-    if (err.name === 'AbortError') throw err;
-    // Network error (offline, timeout, connection refused)
-    throw new Error('Network error — check your connection and try again');
-  }
+  let res = await fetchWithRetry(path, options, token);
 
   // 401 handling: try to refresh once, then retry the original request.
   // Auth endpoints themselves (login/signup/demo/refresh/request-reset)
@@ -162,18 +228,16 @@ export async function api(path, options = {}) {
     let newAccessToken = null;
     try {
       newAccessToken = await getOrStartRefresh();
-    } catch {
+    } catch (err) {
+      // Couldn't reach the server: not a credential problem, so keep the
+      // user signed in and surface the connection error instead.
+      if (err?.isConnectionError) throw err;
       // Refresh failed (no refresh token, expired, password-changed, etc).
       // Fall through to full logout.
     }
 
     if (newAccessToken) {
-      try {
-        res = await doFetch(path, options, newAccessToken);
-      } catch (err) {
-        if (err.name === 'AbortError') throw err;
-        throw new Error('Network error — check your connection and try again');
-      }
+      res = await fetchWithRetry(path, options, newAccessToken);
       // If it's STILL a 401 after a successful refresh, the access token is
       // being rejected for a non-expiry reason (tokenVersion bump between
       // the refresh and the retry, user deleted, etc). Treat as logout.

@@ -2,6 +2,8 @@
 // a 1080px canvas image and a plain-text summary. Used by both the
 // regular WorkoutSession summary and the featured program summary.
 
+import { APP_SHARE_FOOTER, workoutLabel } from './shareText';
+
 function drawRoundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -273,7 +275,7 @@ export function composeShareText(opts) {
 
   const lines = [];
   if (programName) lines.push(programName);
-  lines.push(`${workout.name} \u2014 Workout Complete!`);
+  lines.push(`${workoutLabel(workout.name)} \u2014 Workout Complete!`);
   lines.push(`Time: ${formatTime(elapsed)} | Sets: ${completedSets.size}/${totalSets} | Volume: ${totalVolume.toLocaleString()} lbs`);
   lines.push('');
   workout.exercises.forEach((ex, exIdx) => {
@@ -296,5 +298,7 @@ export function composeShareText(opts) {
     lines.push('');
   });
   lines.push('Logged with RepLab');
+  lines.push('');
+  lines.push(APP_SHARE_FOOTER);
   return lines.join('\n');
 }

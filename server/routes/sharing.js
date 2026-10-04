@@ -190,7 +190,7 @@ router.post('/invite', authMiddleware, async (req, res) => {
       ? `${sender.firstName} ${sender.lastName}`
       : sender.firstName || sender.username || 'Someone';
 
-    const message = `${senderName} is doing ${templateName} today and wants you to join. Check it out!`;
+    const message = `${senderName} shared a workout with you: (${templateName}). Give it a try!`;
 
     // Check for existing pending invite of same template to same user
     const { rows: existing } = await pool.query(
