@@ -1,9 +1,10 @@
 import { Router } from 'express';
-import db from '../db.js';
+import db, { findOrCreateMyWorkoutsProgram, uniqueTemplateName } from '../db.js';
 import pool from '../dbPool.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { notifyPRCelebration, notifyFirstWorkout } from '../postSessionPushes.js';
-import { MAX_DAY_NAME_LEN } from '../workoutDayName.js';
+
+const MAX_WORKOUT_NAME_LEN = 200; // same cap as template names
 
 const router = Router();
 
@@ -78,35 +79,8 @@ router.post('/start-empty', authMiddleware, async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    // Race-safe find-or-create of the user's "My Workouts" program.
-    // DO UPDATE is a no-op forcing RETURNING to fire on conflict so we always
-    // get the row id back. The ON CONFLICT WHERE clause must match the partial
-    // unique index in initDb.js exactly.
-    const programName = 'My Workouts';
-    const { rows: [programRow] } = await client.query(
-      `INSERT INTO programs (user_id, name, description)
-       VALUES ($1, $2, $3)
-       ON CONFLICT (user_id, lower(name)) WHERE user_id IS NOT NULL
-       DO UPDATE SET name = EXCLUDED.name
-       RETURNING id`,
-      [req.userId, programName, '']
-    );
-    const programId = programRow.id;
-
-    // De-duplicate the name within the program (case-insensitive)
-    const baseName = name.trim();
-    let finalName = baseName;
-    let suffix = 2;
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const { rows: dupe } = await client.query(
-        'SELECT id FROM templates WHERE program_id = $1 AND LOWER(name) = LOWER($2) LIMIT 1',
-        [programId, finalName]
-      );
-      if (dupe.length === 0) break;
-      finalName = `${baseName} (${suffix})`;
-      suffix += 1;
-    }
+    const programId = await findOrCreateMyWorkoutsProgram(client, req.userId);
+    const finalName = await uniqueTemplateName(client, programId, name);
 
     // Next sort_order for the program
     const { rows: sortRows } = await client.query(
@@ -147,8 +121,8 @@ router.post('/start-empty', authMiddleware, async (req, res) => {
 
 // Create the date's independent session copy from the template if it doesn't
 // exist yet. Returns { status, session } — 200 existing, 201 created, 404/403
-// with session null when the template can't be copied for this user. Shared
-// by /initialize and the per-day rename (which may run before first open).
+// with session null when the template can't be copied for this user. Used
+// by /initialize.
 async function ensureSessionCopy(userId, templateId, date) {
   const existing = await db.getSessionByTemplateAndDate(userId, templateId, date);
   if (existing) return { status: 200, session: existing };
@@ -215,13 +189,12 @@ router.post('/initialize', authMiddleware, async (req, res) => {
   }
 });
 
-// PUT /sessions/by-template/:templateId/:date/name  body: { name }
-// Per-day rename from the session pencil. Sets sessions.custom_name on THIS
-// date's session only — the template (and every other date that uses it)
-// keeps its name. Only workouts the user created (templates.user_id = them),
-// never rest days. Creates the date's session copy first if it hasn't been
-// opened yet. Returns { templateId, date, customName }.
-router.put('/by-template/:templateId/:date/name', authMiddleware, async (req, res) => {
+// POST /sessions/by-template/:templateId/:date/save-as-workout  body: { name }
+// "Save to My Workouts?" after completing a changed library/shared workout:
+// copies this date's session (structure + logged sets) into a new workout in
+// the user's "My Workouts" program. The session must be the caller's own.
+// Returns 201 { templateId, name } (name de-duplicated within My Workouts).
+router.post('/by-template/:templateId/:date/save-as-workout', authMiddleware, async (req, res) => {
   try {
     const templateId = Number(req.params.templateId);
     const { date } = req.params;
@@ -229,25 +202,12 @@ router.put('/by-template/:templateId/:date/name', authMiddleware, async (req, re
     if (!Number.isInteger(templateId) || templateId <= 0) return res.status(400).json({ error: 'Invalid template id' });
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'date in YYYY-MM-DD format is required' });
     if (!name) return res.status(400).json({ error: 'Workout name is required' });
-    if (name.length > MAX_DAY_NAME_LEN) {
-      return res.status(400).json({ error: `Workout name must be ${MAX_DAY_NAME_LEN} characters or fewer` });
+    if (name.length > MAX_WORKOUT_NAME_LEN) {
+      return res.status(400).json({ error: `Workout name must be ${MAX_WORKOUT_NAME_LEN} characters or fewer` });
     }
-
-    const { rows: [tmpl] } = await pool.query(
-      'SELECT user_id, COALESCE(is_rest, FALSE) AS is_rest FROM templates WHERE id = $1',
-      [templateId]
-    );
-    if (!tmpl) return res.status(404).json({ error: 'Template not found' });
-    // Global (RepLab) programs and anyone else's workouts can't be renamed.
-    if (tmpl.user_id !== req.userId) return res.status(403).json({ error: 'Only workouts you created can be renamed' });
-    if (tmpl.is_rest) return res.status(400).json({ error: 'Rest days can’t be renamed' });
-
-    const ensured = await ensureSessionCopy(req.userId, templateId, date);
-    if (!ensured.session) return res.status(ensured.status).json({ error: ensured.error });
-
-    const saved = await db.setSessionCustomName(req.userId, templateId, date, name);
-    if (!saved) return res.status(404).json({ error: 'Session not found' });
-    res.json({ templateId, date, customName: saved.customName });
+    const saved = await db.saveSessionAsWorkout(req.userId, templateId, date, name);
+    if (!saved) return res.status(404).json({ error: 'Workout session not found' });
+    res.status(201).json({ templateId: saved.id, name: saved.name });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });

@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import useFocusTrap from '../hooks/useFocusTrap';
 
-// Pencil + "EDIT NAME" modal for renaming ONE dated workout from inside a
-// session (and its summary screen). Visual twin of the Workouts-page rename
-// button/modal (Workouts.jsx "Rename workout"), but it saves a per-day name
-// via PUT /sessions/by-template/:templateId/:date/name — the original workout
-// and every other day that uses it keep their names.
+// Pencil + "EDIT NAME" modal for renaming a workout from inside a session (and
+// its summary screens). Visual twin of the Workouts-page rename button/modal
+// (Workouts.jsx "Rename workout"). Renames are linked: the caller saves via
+// PUT /templates/:id/name, so the new name shows in My Workouts, the
+// Calendar and on every day that uses this workout.
 
 export function RenamePencilButton({ onClick, label = 'Rename this workout', className = '', style }) {
   return (
@@ -26,7 +26,7 @@ export function RenamePencilButton({ onClick, label = 'Rename this workout', cla
 
 // `initialName` seeds the input; `onSave(name)` resolves on success and throws
 // on failure (the caller handles optimistic update + rollback + toast).
-export default function RenameWorkoutDayModal({ initialName, onSave, onClose }) {
+export default function RenameWorkoutModal({ initialName, onSave, onClose }) {
   const [value, setValue] = useState(initialName || '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -75,7 +75,7 @@ export default function RenameWorkoutDayModal({ initialName, onSave, onClose }) 
             <div>
               <p className="text-[11px] uppercase font-light mb-2" style={{ letterSpacing: '0.3em', color: 'rgba(239,68,68,0.8)' }}>Rename</p>
               <h3 id="session-rename-title" className="text-[22px] font-black text-white tracking-tight" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>EDIT NAME</h3>
-              <p className="text-[12px] text-white/40 mt-2">Only changes this day's workout.</p>
+              <p className="text-[12px] text-white/40 mt-2">Changes the name everywhere this workout appears.</p>
             </div>
             <button
               type="button"

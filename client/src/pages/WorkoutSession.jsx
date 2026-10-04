@@ -28,7 +28,9 @@ import useFocusTrap from '../hooks/useFocusTrap';
 import { BibleVerseOverlay } from './BibleVerses';
 import { pickNextVerse } from '../utils/versePicker';
 import { friendlyError } from '../utils/errors';
-import RenameWorkoutDayModal, { RenamePencilButton } from '../components/RenameWorkoutDayModal';
+import RenameWorkoutModal, { RenamePencilButton } from '../components/RenameWorkoutModal';
+import SaveCustomWorkoutModal from '../components/SaveCustomWorkoutModal';
+import { workoutStructureChanged, customWorkoutDefaultName } from '../utils/workoutStructure';
 
 // Parse a 'YYYY-MM-DD' string as a LOCAL date (not UTC). parseISO('2026-04-24')
 // returns midnight UTC, which is the wrong calendar day for any user with a
@@ -77,16 +79,22 @@ export default function WorkoutSession() {
   const tutorialTemplate = location.state?.tutorialTemplate || null;
   const { exercises: allExercisesFromDB, muscleGroups: allMuscleGroups, createCustom } = useExercises();
   const [template, setTemplate] = useState(null);
-  // Per-day workout name (session pencil → sessions.custom_name). Display rule:
-  // this day's name if set, else the template's CURRENT name, else the
-  // session snapshot's copied name. template.name itself is left alone so
-  // auto-save keeps writing the snapshot's name, not the day's override.
+  // Workout name. Renames are linked (the session pencil renames the workout
+  // everywhere), so dayName only holds a legacy per-day name
+  // (sessions.custom_name, from before 2026-10-04) until the next rename
+  // clears it. Display rule: legacy day name, else the template's CURRENT
+  // name, else the session snapshot's copied name.
   const [dayName, setDayName] = useState(null);
   const [currentTemplateName, setCurrentTemplateName] = useState(null);
   // Pencil only on workouts the user created (their own template) — never
   // RepLab/global programs, the tutorial, or rest days. Server enforces too.
   const [canRenameDay, setCanRenameDay] = useState(false);
   const [renameDayOpen, setRenameDayOpen] = useState(false);
+  // The workout as it is in the library (from /templates), kept to detect
+  // whether this session changed its structure — drives the post-completion
+  // "Save to My Workouts?" prompt for library/shared workouts.
+  const [originalTemplate, setOriginalTemplate] = useState(null);
+  const [saveCustomOpen, setSaveCustomOpen] = useState(false);
   const displayName = dayName || currentTemplateName || template?.name || 'Workout';
   const [programName, setProgramName] = useState('');
   // Cardio-acceleration programs (Stoppani) render a dropdown + 60s timer
@@ -207,22 +215,42 @@ export default function WorkoutSession() {
     completeErrorTimerRef.current = setTimeout(() => setCompleteError(''), ms);
   }
 
-  // Save a per-day name. Optimistic with rollback on failure (same pattern as
-  // the Workouts-page handleRenameTemplate); rethrows so the modal can show
-  // the error and stay open.
-  async function handleRenameDay(newName) {
-    const prev = dayName;
-    setDayName(newName);
+  // "Save to My Workouts?" → Yes → name. The server copies this date's saved
+  // session (structure + logged sets) into a new My Workouts workout. Throws
+  // so the prompt shows the error and stays open.
+  async function handleSaveCustomWorkout(name) {
+    const res = await api(`/sessions/by-template/${templateId}/${date}/save-as-workout`, {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    });
+    setSaveCustomOpen(false);
+    showToast(`Saved "${res?.name || name}" to My Workouts.`, 'success');
+    track('custom_workout_saved_from_session', { templateId: Number(templateId) });
+  }
+
+  // Rename the workout itself (linked everywhere: My Workouts, Calendar, every
+  // day that uses it — the server also clears legacy per-day names). Optimistic
+  // with rollback on failure, same pattern as the Workouts-page
+  // handleRenameTemplate; rethrows so the modal can show the error and stay open.
+  async function handleRenameWorkout(newName) {
+    const prevDay = dayName;
+    const prevTemplateName = currentTemplateName;
+    setDayName(null);
+    setCurrentTemplateName(newName);
     try {
-      const res = await api(`/sessions/by-template/${templateId}/${date}/name`, {
+      const res = await api(`/templates/${templateId}/name`, {
         method: 'PUT',
         body: JSON.stringify({ name: newName }),
       });
-      setDayName(res?.customName || newName);
-      track('workout_day_renamed', { templateId: Number(templateId) });
+      const saved = res?.name || newName;
+      setCurrentTemplateName(saved);
+      // Keep the session snapshot in step so auto-save writes the new name.
+      setTemplate((prev) => (prev ? { ...prev, name: saved } : prev));
+      track('workout_renamed', { templateId: Number(templateId), source: 'session' });
     } catch (err) {
       // Rollback; the modal shows the error inline and stays open to retry.
-      setDayName(prev);
+      setDayName(prevDay);
+      setCurrentTemplateName(prevTemplateName);
       throw err;
     }
   }
@@ -1018,6 +1046,7 @@ export default function WorkoutSession() {
         // plus global ones (userId null), so non-null = user-created.
         setCurrentTemplateName(tmplInfo?.name || null);
         setCanRenameDay(!!tmplInfo && tmplInfo.userId != null && !tmplInfo.isRest);
+        setOriginalTemplate(tmplInfo || null);
         if (tmplInfo?.programId && programs.length > 0) {
           const prog = programs.find(p => p.id === tmplInfo.programId);
           if (prog) {
@@ -2129,6 +2158,15 @@ export default function WorkoutSession() {
         clearSessionBackup();
         if (navigator.vibrate) navigator.vibrate([50, 30, 50, 30, 100]);
         setShowSummary(true);
+        // Offer to save a changed library/shared workout (one the user doesn't
+        // own) to My Workouts. Workouts they own already live there, and an
+        // unchanged library workout is still in the library.
+        if (
+          originalTemplate && originalTemplate.userId == null && !originalTemplate.isRest
+          && workoutStructureChanged(originalTemplate.exercises, template?.exercises)
+        ) {
+          setSaveCustomOpen(true);
+        }
         track('workout_session_completed', {
           templateId: Number(templateId) || undefined,
           date,
@@ -2463,10 +2501,22 @@ export default function WorkoutSession() {
         const improved = [];
         for (const [exerciseName, newWeights] of Object.entries(pbMap)) {
           const oldWeights = oldPbs[exerciseName] || {};
+          // Heaviest previous best for this exercise — feeds the PR card's
+          // "Prev vs new" bar and +X LB delta, shown only for a true weight
+          // PR (heavier than anything before; a rep PR would read "+0 LB").
+          const prevWeight = Object.keys(oldWeights).reduce((max, w) => Math.max(max, Number(w)), -Infinity);
           for (const [weight, newReps] of Object.entries(newWeights)) {
             const oldReps = oldWeights[weight] || 0;
             if (newReps > oldReps) {
-              improved.push({ name: exerciseName, weight: Number(weight), reps: newReps });
+              const w = Number(weight);
+              improved.push({
+                name: exerciseName,
+                weight: w,
+                reps: newReps,
+                ...(Number.isFinite(prevWeight) && prevWeight > 0 && w > prevWeight
+                  ? { prevWeight, prevReps: oldWeights[prevWeight] ?? oldWeights[String(prevWeight)] }
+                  : {}),
+              });
             }
           }
         }
@@ -4667,11 +4717,20 @@ export default function WorkoutSession() {
         </div>
       )}
 
-      {/* Per-day rename (header pencil or summary pencil) */}
+      {/* Post-completion "Save to My Workouts?" for changed library workouts */}
+      {saveCustomOpen && (
+        <SaveCustomWorkoutModal
+          defaultName={customWorkoutDefaultName(date)}
+          onSave={handleSaveCustomWorkout}
+          onClose={() => setSaveCustomOpen(false)}
+        />
+      )}
+
+      {/* Workout rename, linked everywhere (header pencil or summary pencil) */}
       {renameDayOpen && (
-        <RenameWorkoutDayModal
+        <RenameWorkoutModal
           initialName={displayName}
-          onSave={handleRenameDay}
+          onSave={handleRenameWorkout}
           onClose={() => setRenameDayOpen(false)}
         />
       )}
@@ -5143,8 +5202,6 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [shareImage, setShareImage] = useState(null);
   const [generatingImage, setGeneratingImage] = useState(false);
-  const [savedAsTemplate, setSavedAsTemplate] = useState(false);
-  const [savingTemplate, setSavingTemplate] = useState(false);
   // Local toast for share/copy confirmation — keeps the summary screen flow
   // intact (window.alert pauses the whole page and reads like a debug build).
   const [summaryToast, setSummaryToast] = useState('');
@@ -5161,38 +5218,6 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
   const programLabel = programName
     ? (/\bprogram\s*$/i.test(programName) ? programName : `${programName} program`)
     : '';
-
-  async function saveAsTemplate() {
-    if (savingTemplate || savedAsTemplate) return;
-    setSavingTemplate(true);
-    try {
-      const today = new Date();
-      const dateLabel = today.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      const name = `${template.name} - ${dateLabel}`;
-      const exercises = template.exercises.filter(ex => !ex.isSectionHeader).map((ex, exIdx) => {
-        const eKey = exKey(template.exercises, ex, exIdx);
-        const exEntries = entries[eKey] || [];
-        return {
-          name: ex.name,
-          setType: ex.setType || 'straight',
-          sets: ex.sets.map((set, idx) => ({
-            reps: Number(exEntries[idx]?.reps) || set.plannedReps || 10,
-            weight: Number(exEntries[idx]?.weight) || Number(set.suggestedWeight) || 0,
-          })),
-        };
-      });
-      await api('/templates', {
-        method: 'POST',
-        body: JSON.stringify({ name, description: '', exercises }),
-      });
-      setSavedAsTemplate(true);
-    } catch (err) {
-      if (import.meta.env.DEV) console.error('Failed to save template:', err);
-    } finally {
-      setSavingTemplate(false);
-    }
-  }
-
 
   // Stats
   const realExercises = template.exercises.filter(ex => !ex.isSectionHeader);
@@ -5875,26 +5900,9 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
 
           {/* Action buttons — placed at the bottom of the scrollable summary
               so they don't block the per-exercise breakdown. Quick-exit lives
-              in the X at the top-left of the modal. Save as Template mirrors
-              the "+ Create Workout" button on the My Workouts card. */}
+              in the X at the top-left of the modal. (Saving a changed workout
+              to My Workouts is offered by the post-completion prompt.) */}
           <div className="pt-6 space-y-3">
-            <button
-              onClick={saveAsTemplate}
-              disabled={savingTemplate || savedAsTemplate}
-              className="w-full active:scale-[0.97] transition-all text-white text-[11px] font-bold uppercase whitespace-nowrap py-3 disabled:opacity-70"
-              style={{
-                letterSpacing: '0.15em',
-                borderRadius: '2px',
-                background: savedAsTemplate
-                  ? 'linear-gradient(135deg, rgba(34,197,94,0.85) 0%, rgba(22,163,74,0.85) 100%)'
-                  : 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
-                boxShadow: savedAsTemplate
-                  ? '0 4px 14px rgba(34,197,94,0.35), inset 0 1px 0 rgba(255,255,255,0.15)'
-                  : '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
-              }}
-            >
-              {savedAsTemplate ? '✓ Saved to My Workouts' : savingTemplate ? 'Saving…' : '+ Save as Template'}
-            </button>
             {template.id && sessionDate && (
               <button
                 onClick={() => {

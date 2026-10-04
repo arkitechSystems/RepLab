@@ -103,7 +103,7 @@ vi.mock('../db.js', () => {
     getSessions: vi.fn(),
     getSessionById: vi.fn(),
     getSessionByTemplateAndDate: vi.fn(),
-    setSessionCustomName: vi.fn(),
+    saveSessionAsWorkout: vi.fn(),
     getVolumeGoalsByExerciseName: vi.fn().mockResolvedValue({}),
     getBestPerformanceByTemplate: vi.fn(),
 
@@ -139,7 +139,13 @@ vi.mock('../db.js', () => {
     // Misc
     getTrainersWithStatus: vi.fn().mockResolvedValue([]),
   };
-  return { default: mockDb };
+  return {
+    default: mockDb,
+    // Named helpers used directly by routes (start-empty, workout editors).
+    findOrCreateMyWorkoutsProgram: vi.fn(),
+    uniqueTemplateName: vi.fn(),
+    clearDayNamesForTemplate: vi.fn(),
+  };
 });
 
 // Now import the app and mocked modules
@@ -649,6 +655,36 @@ describe('Template Routes', () => {
   });
 });
 
+describe('Workout rename (linked everywhere)', () => {
+  function rename(id, name) {
+    return request(app)
+      .put(`/templates/${id}/name`)
+      .set('Authorization', authHeader(1))
+      .send({ name });
+  }
+  beforeEach(() => { db.renameTemplate.mockReset(); });
+
+  it('renames the workout itself for its owner', async () => {
+    db.renameTemplate.mockResolvedValue({ id: 7, name: 'Heavy Legs' });
+    const res = await rename(7, '  Heavy Legs  ');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ id: 7, name: 'Heavy Legs' });
+    expect(db.renameTemplate).toHaveBeenCalledWith(1, 7, 'Heavy Legs');
+  });
+
+  it("returns 404 when it isn't the caller's workout (global or someone else's)", async () => {
+    db.renameTemplate.mockResolvedValue(null);
+    const res = await rename(7, 'Mine Now');
+    expect(res.status).toBe(404);
+  });
+
+  it('rejects an empty name', async () => {
+    const res = await rename(7, '   ');
+    expect(res.status).toBe(400);
+    expect(db.renameTemplate).not.toHaveBeenCalled();
+  });
+});
+
 describe('Session Routes', () => {
   describe('POST /sessions', () => {
     it('saves a session and returns 201', async () => {
@@ -715,107 +751,54 @@ describe('Session Routes', () => {
     });
   });
 
-  // Per-day rename from the session pencil. Only the one date's session row
-  // changes; the template and other dates are never touched.
-  describe('PUT /sessions/by-template/:templateId/:date/name', () => {
-    const DATE = '2026-09-28';
-    // Auth middleware + the route's template lookup both go through
-    // pool.query; answer the template SELECT with `tmplRow`.
-    function mockTemplateRow(tmplRow) {
-      pool.query.mockImplementation(async (sql) => {
-        if (String(sql).includes('FROM templates')) return { rows: tmplRow ? [tmplRow] : [] };
-        return { rows: [{ id: 1 }] };
-      });
-    }
-    function rename(templateId, date, name) {
+  // "Save to My Workouts?" after completing a changed library workout: copies
+  // the date's session into a new My Workouts workout via db.saveSessionAsWorkout.
+  describe('POST /sessions/by-template/:templateId/:date/save-as-workout', () => {
+    const DATE = '2026-10-04';
+    function save(templateId, date, name) {
       return request(app)
-        .put(`/sessions/by-template/${templateId}/${date}/name`)
+        .post(`/sessions/by-template/${templateId}/${date}/save-as-workout`)
         .set('Authorization', authHeader(1))
         .send({ name });
     }
+    beforeEach(() => { db.saveSessionAsWorkout.mockReset(); });
 
-    beforeEach(() => {
-      db.setSessionCustomName.mockReset();
-      db.getSessionByTemplateAndDate.mockReset();
-      db.createSession.mockReset();
-      db.renameTemplate.mockReset();
-      db.getTemplates.mockReset();
-    });
-    // Don't leak the SQL-routing pool mock into later suites.
-    afterEach(() => { pool.query.mockResolvedValue({ rows: [] }); });
-
-    it('renames just that date, trimmed, without touching the template', async () => {
-      mockTemplateRow({ user_id: 1, is_rest: false });
-      db.getSessionByTemplateAndDate.mockResolvedValue({ id: 50, workoutData: { name: 'Leg Day', exercises: [] } });
-      db.setSessionCustomName.mockResolvedValue({ id: 50, customName: 'Heavy Legs' });
-
-      const res = await rename(7, DATE, '  Heavy Legs  ');
-
-      expect(res.status).toBe(200);
-      expect(res.body).toEqual({ templateId: 7, date: DATE, customName: 'Heavy Legs' });
-      expect(db.setSessionCustomName).toHaveBeenCalledTimes(1);
-      expect(db.setSessionCustomName).toHaveBeenCalledWith(1, 7, DATE, 'Heavy Legs');
-      expect(db.renameTemplate).not.toHaveBeenCalled();
-      expect(db.createSession).not.toHaveBeenCalled();
+    it('saves the trimmed name for the caller and returns the de-duplicated name', async () => {
+      db.saveSessionAsWorkout.mockResolvedValue({ id: 900, name: '10/4/26 custom workout (2)' });
+      const res = await save(7, DATE, '  10/4/26 custom workout  ');
+      expect(res.status).toBe(201);
+      expect(res.body).toEqual({ templateId: 900, name: '10/4/26 custom workout (2)' });
+      expect(db.saveSessionAsWorkout).toHaveBeenCalledWith(1, 7, DATE, '10/4/26 custom workout');
     });
 
-    it("creates the day's session copy first when it hasn't been opened", async () => {
-      mockTemplateRow({ user_id: 1, is_rest: false });
-      db.getSessionByTemplateAndDate
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({ id: 51, workoutData: { name: 'Leg Day', exercises: [] } });
-      db.getTemplates.mockResolvedValue([{
-        id: 7, userId: 1, isRest: false, name: 'Leg Day',
-        exercises: [{ name: 'Squat', sets: [{ setNumber: 1, plannedReps: 5, suggestedWeight: 225 }] }],
-      }]);
-      db.createSession.mockResolvedValue({ id: 51 });
-      db.setSessionCustomName.mockResolvedValue({ id: 51, customName: 'Squat Focus' });
-
-      const res = await rename(7, DATE, 'Squat Focus');
-
-      expect(res.status).toBe(200);
-      expect(db.createSession).toHaveBeenCalledTimes(1);
-      expect(db.createSession.mock.calls[0].slice(0, 3)).toEqual([1, 7, DATE]);
-      expect(db.setSessionCustomName).toHaveBeenCalledWith(1, 7, DATE, 'Squat Focus');
-      expect(db.renameTemplate).not.toHaveBeenCalled();
-    });
-
-    it('rejects REPLAB (global) workouts with 403', async () => {
-      mockTemplateRow({ user_id: null, is_rest: false });
-      const res = await rename(7, DATE, 'Mine Now');
-      expect(res.status).toBe(403);
-      expect(db.setSessionCustomName).not.toHaveBeenCalled();
-    });
-
-    it("rejects another user's workout with 403", async () => {
-      mockTemplateRow({ user_id: 2, is_rest: false });
-      const res = await rename(7, DATE, 'Mine Now');
-      expect(res.status).toBe(403);
-      expect(db.setSessionCustomName).not.toHaveBeenCalled();
-    });
-
-    it('returns 404 for a missing template', async () => {
-      mockTemplateRow(null);
-      const res = await rename(999, DATE, 'Anything');
+    it('returns 404 when the caller has no session for that workout and date', async () => {
+      db.saveSessionAsWorkout.mockResolvedValue(null);
+      const res = await save(7, DATE, 'Mine');
       expect(res.status).toBe(404);
-      expect(db.setSessionCustomName).not.toHaveBeenCalled();
     });
 
-    it('rejects rest days', async () => {
-      mockTemplateRow({ user_id: 1, is_rest: true });
-      const res = await rename(7, DATE, 'Recovery');
-      expect(res.status).toBe(400);
-      expect(db.setSessionCustomName).not.toHaveBeenCalled();
+    it('rejects empty, too-long, and badly-formed requests', async () => {
+      expect((await save(7, DATE, '   ')).status).toBe(400);
+      expect((await save(7, DATE, 'x'.repeat(201))).status).toBe(400);
+      expect((await save(7, '10-04-2026', 'Legs')).status).toBe(400);
+      expect((await save('abc', DATE, 'Legs')).status).toBe(400);
+      expect(db.saveSessionAsWorkout).not.toHaveBeenCalled();
     });
 
-    it('rejects empty, too-long, and badly-dated requests', async () => {
-      mockTemplateRow({ user_id: 1, is_rest: false });
-      expect((await rename(7, DATE, '   ')).status).toBe(400);
-      expect((await rename(7, DATE, 'x'.repeat(201))).status).toBe(400);
-      expect((await rename(7, '09-28-2026', 'Legs')).status).toBe(400);
-      expect((await rename('abc', DATE, 'Legs')).status).toBe(400);
-      expect(db.setSessionCustomName).not.toHaveBeenCalled();
+    it('requires auth', async () => {
+      const res = await request(app).post(`/sessions/by-template/7/${DATE}/save-as-workout`).send({ name: 'X' });
+      expect(res.status).toBe(401);
+      expect(db.saveSessionAsWorkout).not.toHaveBeenCalled();
     });
+  });
+
+  // The per-day rename endpoint was removed: renames are linked everywhere.
+  it('no longer exposes the per-day rename endpoint', async () => {
+    const res = await request(app)
+      .put('/sessions/by-template/7/2026-10-04/name')
+      .set('Authorization', authHeader(1))
+      .send({ name: 'Heavy Legs' });
+    expect(res.status).not.toBe(200);
   });
 });
 

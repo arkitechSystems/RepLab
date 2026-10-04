@@ -1,10 +1,9 @@
-// Per-day workout names. A user can rename one dated workout from the session
-// pencil; that name lives on the date's session row (sessions.custom_name) and
-// overrides the template's name for that date only. Display rule everywhere a
-// dated workout appears: the day's custom_name if set, else the template's
-// CURRENT name (so renaming the original still reaches every other day).
-
-export const MAX_DAY_NAME_LEN = 200; // same cap as template names
+// Dated workout names. Since 2026-10-04 renames are linked: every rename
+// (session pencil, Workouts page, editors) renames the template and clears
+// sessions.custom_name for that workout. custom_name is legacy — left from the
+// 2026-09-29 per-day rename — and is no longer written. Display rule kept for
+// any remaining legacy rows: the day's custom_name if set, else the template's
+// CURRENT name.
 
 // LEFT JOIN LATERAL exposing `ds.custom_name` for a schedule-style row keyed by
 // (user, template, DATE). sessions.date is TEXT 'YYYY-MM-DD', hence to_char.

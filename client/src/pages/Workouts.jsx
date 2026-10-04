@@ -2175,6 +2175,9 @@ export default function Workouts() {
         body: JSON.stringify({ name: newName }),
       });
       setRenameModal(null);
+      // Renames are linked everywhere: refresh so the top card, last-workout
+      // line and other derived names pick up the new name right away.
+      fetchData().catch(() => {});
     } catch (err) {
       setTemplates((cur) => cur.map((t) => (t.id === id ? { ...t, name: prevName } : t)));
       showToast(err.message || 'Could not rename workout. Please try again.', 'error');

@@ -67,6 +67,99 @@ async function deleteEmptySessions(client, userId, { date, templateId, fromDate 
   );
 }
 
+// Linked workout names: a workout's name lives on the template. Legacy
+// per-day names (sessions.custom_name, from the 2026-09-29 session pencil)
+// would keep overriding it, so every rename clears them for that user's
+// sessions of the template.
+export async function clearDayNames(client, userId, templateId) {
+  await client.query(
+    `UPDATE sessions SET custom_name = NULL
+      WHERE user_id = $1 AND template_id = $2 AND custom_name IS NOT NULL`,
+    [userId, templateId]
+  );
+}
+
+// Same, for edit paths that don't have the owner's id at hand (admin /
+// trainer / client-dashboard workout editors): clears the template owner's
+// legacy per-day names. Global templates (no owner) match nothing.
+export async function clearDayNamesForTemplate(client, templateId) {
+  await client.query(
+    `UPDATE sessions SET custom_name = NULL
+      WHERE template_id = $1 AND custom_name IS NOT NULL
+        AND user_id = (SELECT user_id FROM templates WHERE id = $1)`,
+    [templateId]
+  );
+}
+
+// Race-safe find-or-create of the user's "My Workouts" program. DO UPDATE is a
+// no-op forcing RETURNING to fire on conflict so we always get the row id
+// back; the ON CONFLICT WHERE clause must match the partial unique index in
+// initDb.js exactly.
+export async function findOrCreateMyWorkoutsProgram(client, userId) {
+  const { rows: [programRow] } = await client.query(
+    `INSERT INTO programs (user_id, name, description)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (user_id, lower(name)) WHERE user_id IS NOT NULL
+     DO UPDATE SET name = EXCLUDED.name
+     RETURNING id`,
+    [userId, 'My Workouts', '']
+  );
+  return programRow.id;
+}
+
+// De-duplicate a workout name within a program (case-insensitive):
+// "Leg Day", "Leg Day (2)", "Leg Day (3)"...
+export async function uniqueTemplateName(client, programId, name) {
+  const baseName = name.trim();
+  let finalName = baseName;
+  let suffix = 2;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const { rows: dupe } = await client.query(
+      'SELECT id FROM templates WHERE program_id = $1 AND LOWER(name) = LOWER($2) LIMIT 1',
+      [programId, finalName]
+    );
+    if (dupe.length === 0) return finalName;
+    finalName = `${baseName} (${suffix})`;
+    suffix += 1;
+  }
+}
+
+// Session workout_data exercises + logged entries → batchInsertTemplateExercises
+// payload. Logged sets are matched per exercise name in set order and
+// consumed in sequence (same as WorkoutSession's loader), so an exercise that
+// appears twice maps each occurrence to its own sets. A logged weight/reps
+// becomes the planned value; unlogged sets keep the session's planned values.
+export function sessionExercisesForTemplate(wdExercises, entries) {
+  const byName = new Map();
+  for (const e of entries || []) {
+    if (!byName.has(e.exercise_name)) byName.set(e.exercise_name, []);
+    byName.get(e.exercise_name).push(e);
+  }
+  for (const list of byName.values()) list.sort((a, b) => a.set_number - b.set_number);
+  const consumed = {};
+  return (wdExercises || []).map((ex) => {
+    if (ex.isSectionHeader) return { name: ex.name, isSectionHeader: true, sectionNotes: ex.sectionNotes || '' };
+    const sets = ex.sets || [];
+    const start = consumed[ex.name] || 0;
+    consumed[ex.name] = start + sets.length;
+    const mine = (byName.get(ex.name) || []).slice(start, start + sets.length);
+    return {
+      name: ex.name,
+      setType: ex.setType || sets[0]?.setType || 'straight',
+      sets: sets.map((s, i) => {
+        const logged = mine[i];
+        const loggedWeight = logged ? Number(logged.weight) : 0;
+        const loggedReps = logged ? Number(logged.reps) : 0;
+        return {
+          reps: loggedReps > 0 ? loggedReps : (Number(s.plannedReps) || 10),
+          weight: loggedWeight > 0 ? loggedWeight : Math.max(0, Number(s.suggestedWeight) || 0),
+        };
+      }),
+    };
+  });
+}
+
 async function batchInsertTemplateExercises(client, templateId, exercises, userId) {
   // Resolve every distinct name once up front so the batch INSERT can
   // dual-write exercise_id. Names that don't resolve (a custom the user
@@ -701,12 +794,27 @@ const db = {
   // Rename a template (name only). Owner-only via user_id, so admin/seed
   // library templates (user_id IS NULL) are never matched. Leaves exercises,
   // program, and ordering untouched.
+  //
+  // Renames are linked everywhere: the same transaction clears any legacy
+  // per-day names (sessions.custom_name) on this user's sessions of the
+  // template, so every dated day shows the new name too.
   async renameTemplate(userId, templateId, name) {
-    const { rows } = await pool.query(
-      'UPDATE templates SET name = $1 WHERE id = $2 AND user_id = $3 RETURNING id, name',
-      [name, templateId, userId]
-    );
-    return rows[0] || null;
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const { rows } = await client.query(
+        'UPDATE templates SET name = $1 WHERE id = $2 AND user_id = $3 RETURNING id, name',
+        [name, templateId, userId]
+      );
+      if (rows[0]) await clearDayNames(client, userId, templateId);
+      await client.query('COMMIT');
+      return rows[0] || null;
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   },
 
   async reorderTemplates(userId, programId, orderedIds) {
@@ -820,6 +928,8 @@ const db = {
         await client.query('ROLLBACK');
         return null;
       }
+      // Linked naming: the (possibly new) name shows on every dated day.
+      await clearDayNames(client, userId, templateId);
 
       // Remove old exercises and batch insert new ones
       await client.query('DELETE FROM template_exercises WHERE template_id = $1', [templateId]);
@@ -1330,17 +1440,52 @@ const db = {
     };
   },
 
-  // Per-day rename: set this date's session custom_name. Touches only the one
-  // (user, template, date) row — never the template or other dates. The route
-  // checks template ownership and creates the session copy first.
-  async setSessionCustomName(userId, templateId, date, name) {
-    const { rows } = await pool.query(
-      `UPDATE sessions SET custom_name = $4
-        WHERE user_id = $1 AND template_id = $2 AND date = $3
-        RETURNING id, custom_name`,
-      [userId, templateId, date, name]
-    );
-    return rows[0] ? { id: rows[0].id, customName: rows[0].custom_name } : null;
+  // "Save to My Workouts?" after completing a changed library/shared workout:
+  // turn this date's session (its workout_data structure + logged sets) into
+  // a new template in the user's "My Workouts" program. Exercises keep their
+  // order, set counts and set types; each set's logged weight/reps become the
+  // planned values (falling back to the session's planned values for sets
+  // that weren't logged). Name is de-duplicated within My Workouts the same
+  // way Start Empty does. Returns { id, name } or null if there's no session.
+  async saveSessionAsWorkout(userId, templateId, date, name) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const { rows: [session] } = await client.query(
+        'SELECT id, workout_data FROM sessions WHERE user_id = $1 AND template_id = $2 AND date = $3 ORDER BY id DESC LIMIT 1',
+        [userId, templateId, date]
+      );
+      if (!session) {
+        await client.query('ROLLBACK');
+        return null;
+      }
+      const wd = typeof session.workout_data === 'string' ? JSON.parse(session.workout_data) : (session.workout_data || {});
+      const { rows: entries } = await client.query(
+        'SELECT exercise_name, set_number, weight, reps FROM session_entries WHERE session_id = $1 ORDER BY set_number, id',
+        [session.id]
+      );
+      const exercises = sessionExercisesForTemplate(wd.exercises || [], entries);
+
+      const programId = await findOrCreateMyWorkoutsProgram(client, userId);
+      const finalName = await uniqueTemplateName(client, programId, name);
+      const { rows: [sortRow] } = await client.query(
+        'SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_sort FROM templates WHERE program_id = $1',
+        [programId]
+      );
+      const { rows: [tmpl] } = await client.query(
+        'INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES ($1, $2, $3, $4, FALSE, $5) RETURNING id',
+        [userId, programId, finalName, '', sortRow.next_sort]
+      );
+      await batchInsertTemplateExercises(client, tmpl.id, exercises, userId);
+      await this.recordCustomWorkoutCreated(userId, tmpl.id, client);
+      await client.query('COMMIT');
+      return { id: tmpl.id, name: finalName };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   },
 
   // Get the best weight/reps per exercise+set from completed sessions for a template.

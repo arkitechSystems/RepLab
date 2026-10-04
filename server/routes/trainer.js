@@ -2,7 +2,7 @@ import express, { Router } from 'express';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import pool from '../dbPool.js';
-import db from '../db.js';
+import db, { clearDayNamesForTemplate } from '../db.js';
 import config from '../config.js';
 import { DASHBOARD_CSS, SIDEBAR_JS, ICONS } from '../dashboardCSS.js';
 import { exerciseCardScript } from '../exerciseCardBuilder.js';
@@ -1223,6 +1223,8 @@ router.post('/edit-workout/:id', trainerAuth, express.urlencoded({ extended: tru
       'UPDATE templates SET name = $1, description = $2, program_id = $3 WHERE id = $4',
       [workoutName.trim(), description?.trim() || '', newProgramId, templateId]
     );
+    // Linked naming: the new name shows on every dated day of this workout.
+    await clearDayNamesForTemplate(client, templateId);
 
     // Delete old exercises and insert new ones (including section headers)
     await client.query('DELETE FROM template_exercises WHERE template_id = $1', [templateId]);

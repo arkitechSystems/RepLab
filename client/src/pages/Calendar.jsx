@@ -664,16 +664,8 @@ export default function Calendar() {
         throw postErr;
       }
 
-      // The copy duplicates the source day's own version of the workout, so
-      // carry over its per-day name too (if it has one). From here the two
-      // days are separate — renaming either leaves the other alone. Best
-      // effort: a failure just leaves the copy on the template's name.
-      if (sourceSession?.customName) {
-        await api(`/sessions/by-template/${copySource.templateId}/${targetDateStr}/name`, {
-          method: 'PUT',
-          body: JSON.stringify({ name: sourceSession.customName }),
-        }).catch(() => {});
-      }
+      // Names are linked to the workout, so the copy simply shows the
+      // workout's current name — no per-day name to carry over.
 
       // Refresh schedule and completed sessions
       await refreshSchedule();

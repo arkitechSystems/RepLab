@@ -1,7 +1,7 @@
 import express, { Router } from 'express';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
-import db from '../db.js';
+import db, { clearDayNamesForTemplate } from '../db.js';
 import { Resend } from 'resend';
 import { sendDailySummaryEmail } from '../email.js';
 import pool from '../dbPool.js';
@@ -3522,6 +3522,8 @@ router.post('/workout-manager/edit/:id', adminAuth, express.urlencoded({ extende
   try {
     await client.query('BEGIN');
     await client.query('UPDATE templates SET name = $1, description = $2, program_id = $3 WHERE id = $4', [workoutName.trim(), description?.trim() || '', programId ? Number(programId) : null, templateId]);
+    // Linked naming: the new name shows on every dated day of this workout.
+    await clearDayNamesForTemplate(client, templateId);
     await client.query('DELETE FROM template_exercises WHERE template_id = $1', [templateId]);
     if (exercises && typeof exercises === 'object') {
       const exArray = Array.isArray(exercises) ? exercises : Object.values(exercises);

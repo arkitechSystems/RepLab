@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { exKey, WorkoutSummary } from './WorkoutSession';
-import RenameWorkoutDayModal from '../components/RenameWorkoutDayModal';
+import RenameWorkoutModal from '../components/RenameWorkoutModal';
 
 // Re-creates the post-workout WorkoutSummary modal for a previously-completed
 // session, given its id. Loads /sessions/:id, reshapes the flat entry array
@@ -25,19 +25,20 @@ export default function SessionSummary() {
   const [error, setError] = useState(null);
   const [renameOpen, setRenameOpen] = useState(false);
 
-  // Per-day rename of this finished workout (this date only). Optimistic,
-  // rolled back on failure; the modal shows the error.
+  // Rename the workout itself — linked everywhere (My Workouts, Calendar,
+  // every day that uses it). Optimistic, rolled back on failure; the modal
+  // shows the error.
   async function handleRename(newName) {
-    const prev = data.templateName;
-    setData((d) => ({ ...d, templateName: newName, customName: newName }));
+    const prev = { templateName: data.templateName, customName: data.customName };
+    setData((d) => ({ ...d, templateName: newName, customName: null }));
     try {
-      const res = await api(`/sessions/by-template/${data.templateId}/${String(data.date).slice(0, 10)}/name`, {
+      const res = await api(`/templates/${data.templateId}/name`, {
         method: 'PUT',
         body: JSON.stringify({ name: newName }),
       });
-      setData((d) => ({ ...d, templateName: res?.customName || newName, customName: res?.customName || newName }));
+      setData((d) => ({ ...d, templateName: res?.name || newName }));
     } catch (err) {
-      setData((d) => ({ ...d, templateName: prev }));
+      setData((d) => ({ ...d, ...prev }));
       throw err;
     }
   }
@@ -188,7 +189,7 @@ export default function SessionSummary() {
         onRename={data.canRename && data.templateId ? () => setRenameOpen(true) : undefined}
       />
       {renameOpen && (
-        <RenameWorkoutDayModal
+        <RenameWorkoutModal
           initialName={template.name}
           onSave={handleRename}
           onClose={() => setRenameOpen(false)}

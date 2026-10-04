@@ -1,8 +1,9 @@
-// Per-day workout names (session pencil → sessions.custom_name). Exercises
-// the real db.js read/write paths against a fake pool that answers by SQL
-// fragment, so these never touch a real database. They pin the display rule
-// (day's name → template's CURRENT name → snapshot name) and that a rename
-// only ever writes the one (user, template, date) session row.
+// Workout names. Exercises the real db.js read/write paths against a fake
+// pool that answers by SQL fragment, so these never touch a real database.
+// They pin the display rule (legacy day name → template's CURRENT name →
+// snapshot name), that renames are linked everywhere (renaming clears legacy
+// day names for that user + template only), and saving a session as a new
+// My Workouts workout.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -24,7 +25,7 @@ vi.mock('../dbPool.js', () => ({
   },
 }));
 
-const { default: db } = await import('../db.js');
+const { default: db, sessionExercisesForTemplate } = await import('../db.js');
 
 beforeEach(() => {
   state.handlers = [];
@@ -71,21 +72,104 @@ describe('getSession display name', () => {
   });
 });
 
-describe('setSessionCustomName', () => {
-  it('writes only the one (user, template, date) session row', async () => {
-    state.handlers = [['UPDATE sessions', [{ id: 50, custom_name: 'Heavy Legs' }]]];
-    const out = await db.setSessionCustomName(1, 7, '2026-09-28', 'Heavy Legs');
-    expect(out).toEqual({ id: 50, customName: 'Heavy Legs' });
-    expect(state.calls).toHaveLength(1);
-    const [sql, params] = state.calls[0];
-    expect(sql).toMatch(/UPDATE sessions SET custom_name = \$4/);
-    expect(sql).toMatch(/WHERE user_id = \$1 AND template_id = \$2 AND date = \$3/);
-    expect(sql).not.toMatch(/templates/);
-    expect(params).toEqual([1, 7, '2026-09-28', 'Heavy Legs']);
+describe('renameTemplate (linked everywhere)', () => {
+  const sql = () => state.calls.map(([s]) => s);
+
+  it("renames the owner's template and clears legacy day names for that user + template only", async () => {
+    state.handlers = [['UPDATE templates SET name', [{ id: 7, name: 'Heavy Legs' }]]];
+    const out = await db.renameTemplate(1, 7, 'Heavy Legs');
+    expect(out).toEqual({ id: 7, name: 'Heavy Legs' });
+    const rename = state.calls.find(([s]) => s.includes('UPDATE templates SET name'));
+    expect(rename[0]).toMatch(/WHERE id = \$2 AND user_id = \$3/);
+    expect(rename[1]).toEqual(['Heavy Legs', 7, 1]);
+    const clear = state.calls.find(([s]) => s.includes('UPDATE sessions SET custom_name = NULL'));
+    expect(clear[0]).toMatch(/WHERE user_id = \$1 AND template_id = \$2/);
+    expect(clear[1]).toEqual([1, 7]);
+    // One transaction: BEGIN … COMMIT around both writes.
+    expect(sql()[0]).toBe('BEGIN');
+    expect(sql()[sql().length - 1]).toBe('COMMIT');
   });
 
-  it('returns null when that date has no session', async () => {
-    expect(await db.setSessionCustomName(1, 7, '2026-09-28', 'X')).toBeNull();
+  it("touches no sessions when it isn't the caller's template", async () => {
+    const out = await db.renameTemplate(1, 7, 'Mine Now');
+    expect(out).toBeNull();
+    expect(sql().some((s) => s.includes('UPDATE sessions'))).toBe(false);
+  });
+
+  it('updateTemplate (full edit) also clears legacy day names for that user + template', async () => {
+    state.handlers = [['UPDATE templates SET name', [{ id: 7, name: 'Leg Day' }]]];
+    await db.updateTemplate(1, 7, 'Leg Day', '', []);
+    const clear = state.calls.find(([s]) => s.includes('UPDATE sessions SET custom_name = NULL'));
+    expect(clear[1]).toEqual([1, 7]);
+  });
+});
+
+describe('saveSessionAsWorkout', () => {
+  const wd = {
+    name: 'Push A',
+    exercises: [
+      { name: 'Bench Press', setType: 'straight', sets: [
+        { setNumber: 1, plannedReps: 8, suggestedWeight: 185 },
+        { setNumber: 2, plannedReps: 8, suggestedWeight: 185 },
+      ] },
+      { name: 'Warm-up', isSectionHeader: true, sectionNotes: 'easy', sets: [] },
+      { name: 'Dips', setType: 'straight', sets: [{ setNumber: 1, plannedReps: 10, suggestedWeight: 0 }] },
+    ],
+  };
+
+  it('creates a My Workouts template from the session with logged values and a de-duplicated name', async () => {
+    state.handlers = [
+      ['SELECT id, workout_data FROM sessions', [{ id: 50, workout_data: wd }]],
+      ['FROM session_entries', [
+        { exercise_name: 'Bench Press', set_number: 1, weight: '205', reps: 6 },
+        { exercise_name: 'Dips', set_number: 1, weight: '0', reps: 12 },
+      ]],
+      ['INSERT INTO programs', [{ id: 3 }]],
+      // First name taken, "(2)" free.
+      ['LOWER(name) = LOWER($2)', (params) => (params[1] === '10/4/26 custom workout' ? [{ id: 99 }] : [])],
+      ['next_sort', [{ next_sort: 4 }]],
+      ['INSERT INTO templates', [{ id: 900 }]],
+    ];
+    const out = await db.saveSessionAsWorkout(1, 7, '2026-10-04', '10/4/26 custom workout');
+    expect(out).toEqual({ id: 900, name: '10/4/26 custom workout (2)' });
+
+    const insertTmpl = state.calls.find(([s]) => s.includes('INSERT INTO templates'));
+    expect(insertTmpl[1]).toEqual([1, 3, '10/4/26 custom workout (2)', '', 4]);
+
+    const insertEx = state.calls.find(([s]) => s.includes('INSERT INTO template_exercises'));
+    // (template_id, exercise_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes)
+    const p = insertEx[1];
+    const rows = [];
+    for (let i = 0; i < p.length; i += 10) rows.push(p.slice(i, i + 10));
+    expect(rows.map((r) => [r[2], r[4], r[5], r[6], r[7], r[8]])).toEqual([
+      ['Bench Press', 1, 6, 205, 0, false], // logged set → logged values
+      ['Bench Press', 2, 8, 185, 0, false], // unlogged set → planned values
+      ['Warm-up', 1, 0, 0, 1, true],        // section header kept
+      ['Dips', 1, 12, 0, 2, false],
+    ]);
+    expect(state.calls.some(([s]) => s.includes('INSERT INTO custom_workout_events'))).toBe(true);
+  });
+
+  it('returns null (and creates nothing) when the caller has no such session', async () => {
+    const out = await db.saveSessionAsWorkout(1, 7, '2026-10-04', 'X');
+    expect(out).toBeNull();
+    expect(state.calls.some(([s]) => s.includes('INSERT INTO templates'))).toBe(false);
+  });
+});
+
+describe('sessionExercisesForTemplate', () => {
+  it('maps a repeated exercise to its own logged sets in order', () => {
+    const out = sessionExercisesForTemplate(
+      [
+        { name: 'Curl', sets: [{ plannedReps: 10, suggestedWeight: 30 }] },
+        { name: 'Curl', sets: [{ plannedReps: 12, suggestedWeight: 25 }] },
+      ],
+      [
+        { exercise_name: 'Curl', set_number: 2, weight: '20', reps: 15 },
+        { exercise_name: 'Curl', set_number: 1, weight: '35', reps: 8 },
+      ]
+    );
+    expect(out.map((e) => e.sets[0])).toEqual([{ reps: 8, weight: 35 }, { reps: 15, weight: 20 }]);
   });
 });
 
