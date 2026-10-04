@@ -226,11 +226,18 @@ html, body {
   font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior: none;
-  overflow-x: hidden;
-  /* Leaving overflow-y unset here is inconsistent across browsers once
-     overflow-x is set — some desktop browsers stop vertical scroll
-     entirely instead of just clipping the x-axis. Spell it out. */
-  overflow-y: auto;
+  /* Stops sideways scrolling (the iOS "screen pans left/right" bug) without
+     breaking vertical scroll. `overflow-x: hidden` on BOTH html and body
+     made each a scroll container and froze wheel/trackpad scrolling in
+     every desktop browser (verified in Chrome: 0px moved per wheel tick).
+     `clip` clips the x-axis without creating a scroll container. */
+  overflow-x: clip;
+}
+
+/* Browsers without `clip` (Safari < 16): clip on html only, so body never
+   becomes its own scroll container. */
+@supports not (overflow-x: clip) {
+  html { overflow-x: hidden; }
 }
 
 /* html/body's overflow-x:hidden only clips the outer document — it has no

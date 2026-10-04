@@ -140,10 +140,32 @@ export default function CreateWorkout() {
     updated[exIdx] = {
       ...updated[exIdx],
       sets: updated[exIdx].sets.map((s, i) =>
-        i === setIdx ? { ...s, [field]: Number(value) || 0 } : s
+        // `edited` marks fields the user typed themselves, so autofill from
+        // an earlier set never overwrites them (stripped before saving).
+        i === setIdx ? { ...s, [field]: Number(value) || 0, edited: { ...(s.edited || {}), [field]: true } } : s
       ),
     };
     setExercises(updated);
+  }
+
+  // Same autofill as a workout session: when the user finishes typing a
+  // weight or reps value, copy it forward to every later set of that
+  // exercise, skipping sets whose field they typed themselves.
+  function autofillLaterSets(exIdx, setIdx, field) {
+    if (field !== 'weight' && field !== 'reps') return;
+    setExercises((prev) => {
+      const ex = prev[exIdx];
+      const value = ex?.sets?.[setIdx]?.[field];
+      if (!value) return prev;
+      const updated = [...prev];
+      updated[exIdx] = {
+        ...ex,
+        sets: ex.sets.map((s, i) =>
+          i > setIdx && !s.edited?.[field] ? { ...s, [field]: value } : s
+        ),
+      };
+      return updated;
+    });
   }
 
   function removeSet(exIdx, setIdx) {
@@ -252,7 +274,11 @@ export default function CreateWorkout() {
         body: JSON.stringify({
           name: name.trim(),
           description: description.trim(),
-          exercises: validExercises,
+          // Drop the autofill-only `edited` markers before saving.
+          exercises: validExercises.map((e) => ({
+            ...e,
+            sets: (e.sets || []).map(({ edited: _edited, ...s }) => s),
+          })),
           programId: Number(selectedProgramId),
           // Posts "created a custom workout" to the RepLab Community feed.
           communityShare: true,
@@ -642,6 +668,7 @@ function TemplateExerciseWrapper({
       exercise={cardExercise}
       entries={cardEntries}
       onChange={handleCardChange(exIdx)}
+      onBlur={(_name, setIdx, field) => autofillLaterSets(exIdx, setIdx, field)}
       onAddSet={() => addSet(exIdx)}
       onDeleteSet={(_name, setIdx) => removeSet(exIdx, setIdx)}
       onSwapExercise={handleSwapExercise(exIdx)}
