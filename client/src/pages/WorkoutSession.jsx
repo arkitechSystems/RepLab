@@ -2557,13 +2557,10 @@ export default function WorkoutSession() {
           if (!pbMap[pb.exerciseName]) pbMap[pb.exerciseName] = {};
           pbMap[pb.exerciseName][pb.bestWeight] = pb.bestReps;
         }
-        // Capture scroll position right before setPbs (user may have scrolled during API call)
-        const pbsScrollY = window.scrollY;
+        // No scroll restore after a save: on a slow connection the save can
+        // land seconds later, and snapping back to a captured position
+        // yanked the page away from wherever the user had moved on to.
         setPbs(pbMap);
-        requestAnimationFrame(() => {
-          window.scrollTo(0, pbsScrollY);
-          requestAnimationFrame(() => window.scrollTo(0, pbsScrollY));
-        });
 
         // Compare old vs new PBs to detect improvements
         const improved = [];
@@ -2606,16 +2603,10 @@ export default function WorkoutSession() {
         }
       }
 
-      // Capture scroll position right before final state updates
-      const finalScrollY = window.scrollY;
       setPersisted(true);
       setSaved(true);
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
       savedTimerRef.current = setTimeout(() => setSaved(false), 2000);
-      requestAnimationFrame(() => {
-        window.scrollTo(0, finalScrollY);
-        requestAnimationFrame(() => window.scrollTo(0, finalScrollY));
-      });
      } catch (err) {
       showToast(friendlyError(err, "Couldn't save your workout. Your progress is still here — try again in a moment."), 'error', 5000);
      } finally {
