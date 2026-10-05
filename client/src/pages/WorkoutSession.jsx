@@ -22,6 +22,14 @@ import { calculateOneRMSuggestion } from '../utils/oneRepMaxSuggestion';
 import { beepCountdown, beepRestEnd, initAudio } from '../utils/sounds';
 import { track } from '../utils/analytics';
 import AddCardioModal from '../components/AddCardioModal';
+import { formatCardioSet, hasCardioValue, DEFAULT_CARDIO_METRIC } from '../utils/cardio';
+
+// Legacy blue cardio cards ("Add Cardio" button + CardioCard list +
+// AddCardioModal). Replaced by smart cardio inside the exercise cards
+// (Conditioning exercises log time / distance / reps — see utils/cardio.js).
+// The code, API and handlers are kept for reference while the new cardio
+// flow settles; flip to true to bring the old cards back.
+const SHOW_LEGACY_CARDIO_CARDS = false;
 import CardioCard from '../components/CardioCard';
 import SupersetPickerModal from '../components/SupersetPickerModal';
 import useFocusTrap from '../hooks/useFocusTrap';
@@ -1139,7 +1147,10 @@ export default function WorkoutSession() {
               if (s.isCompleted) restoredCompleted.add(`${key}-${i}`);
               const wdSet = ex.sets?.[i];
               const setType = wdSet?.setType || ex.setType || 'straight';
-              return { weight: s.weight ?? '', reps: s.reps || '', setType };
+              return {
+                weight: s.weight ?? '', reps: s.reps || '', setType,
+                ...(s.cardioMetric ? { cardioMetric: s.cardioMetric, cardioValue: s.cardioValue ?? '' } : {}),
+              };
             });
           } else {
             saved[key] = ex.sets.map((s) => ({
@@ -1184,7 +1195,7 @@ export default function WorkoutSession() {
             setElapsed(secsSinceStart);
             runTimerInterval(origin);
           }
-        } else if (session.entries?.some(e => e.weight > 0 || e.reps > 0)) {
+        } else if (session.entries?.some(e => e.weight > 0 || e.reps > 0 || Number(e.cardioValue) > 0)) {
           setPersisted(true);
           setTimerStarted(true);
           // No stored timer — session has data but timer origin is unknown.
@@ -1308,7 +1319,7 @@ export default function WorkoutSession() {
       updated[exerciseName] = [...(updated[exerciseName] || [])];
       updated[exerciseName][setIdx] = {
         ...updated[exerciseName][setIdx],
-        [field]: field === 'setType' ? value : (value === -1 ? -1 : value === '' ? '' : Math.max(0, Number(value))),
+        [field]: (field === 'setType' || field === 'cardioMetric') ? value : (value === -1 ? -1 : value === '' ? '' : Math.max(0, Number(value))),
       };
       return updated;
     });
@@ -1321,7 +1332,7 @@ export default function WorkoutSession() {
     // And mark the specific field as user-edited so future autofill from
     // earlier sets won't clobber it. Only weight/reps are autofill targets;
     // setType doesn't propagate so we don't need to track it.
-    if (field === 'weight' || field === 'reps') {
+    if (field === 'weight' || field === 'reps' || field === 'cardioValue' || field === 'cardioMetric') {
       setUserEdited((prev) => {
         const next = new Set(prev);
         next.add(`${exerciseName}-${setIdx}:${field}`);
@@ -1330,9 +1341,9 @@ export default function WorkoutSession() {
     }
   }
 
-  function handleBlur(exerciseName, setIdx, field) {
+  function handleBlur(exerciseName, setIdx, field, valueOverride) {
     const exEntries = entries[exerciseName] || [];
-    const value = exEntries[setIdx]?.[field];
+    const value = valueOverride !== undefined ? valueOverride : exEntries[setIdx]?.[field];
     // Only auto-fill if the user actually entered a value
     if (value === '' || value === undefined || value === null) return;
 
@@ -1373,6 +1384,10 @@ export default function WorkoutSession() {
       return updated;
     });
 
+    // A cascaded cardio metric is just the unit choice, not a predicted
+    // value — don't flag those sets as autofilled (the save drops values on
+    // autofilled-only sets).
+    if (field === 'cardioMetric') return;
     setAutoFilled((prev) => {
       const next = new Set(prev);
       for (let i = setIdx + 1; i < exercise.sets.length; i++) {
@@ -2136,7 +2151,7 @@ export default function WorkoutSession() {
     // Check if old exercise has any data worth preserving
     const oldEntries = entries[oldKey] || [];
     const hasEntryData = oldEntries.some(
-      (e) => (e.weight && Number(e.weight) > 0) || (e.reps && Number(e.reps) > 0)
+      (e) => (e.weight && Number(e.weight) > 0) || (e.reps && Number(e.reps) > 0) || hasCardioValue(e)
     );
     const hasCompletedSets = [...completedSets].some((key) => key.startsWith(oldKey + '-'));
 
@@ -2199,7 +2214,7 @@ export default function WorkoutSession() {
       // Require at least one set with data (weight > 0, weight = -1 for BW, or reps > 0)
       if (newCompleted) {
         const hasData = Object.values(entries).some((sets) =>
-          sets.some((s) => Number(s.weight) > 0 || Number(s.weight) === -1 || Number(s.reps) > 0)
+          sets.some((s) => Number(s.weight) > 0 || Number(s.weight) === -1 || Number(s.reps) > 0 || hasCardioValue(s))
         );
         if (!hasData) {
           showCompleteError('Log at least one set before completing your workout.');
@@ -2338,7 +2353,9 @@ export default function WorkoutSession() {
       const thisEntry = exEntries[setIdx];
       const w = thisEntry?.weight;
       const r = thisEntry?.reps;
-      if ((w !== '' && w !== undefined) || (r !== '' && r !== undefined)) {
+      const cv = thisEntry?.cardioValue;
+      const cm = thisEntry?.cardioMetric;
+      if ((w !== '' && w !== undefined) || (r !== '' && r !== undefined) || (cv !== '' && cv !== undefined)) {
         let exercise = null;
         for (let i = 0; i < template.exercises.length; i++) {
           if (!template.exercises[i].isSectionHeader && exKey(template.exercises, template.exercises[i], i) === exerciseKey) { exercise = template.exercises[i]; break; }
@@ -2377,13 +2394,25 @@ export default function WorkoutSession() {
                     (repsEmpty || isCurrentAutoFilled) &&
                     r !== '' && r !== undefined;
 
-                  if (overwriteWeight || overwriteReps) {
+                  // Smart cardio: metric + value follow the same rules.
+                  const cvEmpty = current.cardioValue === '' || current.cardioValue === undefined;
+                  const overwriteCv =
+                    !userEditedNow.has(`${laterKey}:cardioValue`) &&
+                    (cvEmpty || isCurrentAutoFilled) &&
+                    cv !== '' && cv !== undefined;
+                  const overwriteCm =
+                    !userEditedNow.has(`${laterKey}:cardioMetric`) &&
+                    !!cm && current.cardioMetric !== cm;
+
+                  if (overwriteWeight || overwriteReps || overwriteCv || overwriteCm) {
                     updated[exerciseKey][i] = {
                       ...current,
                       weight: overwriteWeight ? w : current.weight,
                       reps: overwriteReps ? r : current.reps,
+                      ...(overwriteCv ? { cardioValue: cv } : {}),
+                      ...(overwriteCm ? { cardioMetric: cm } : {}),
                     };
-                    newAutoFilled.add(laterKey);
+                    if (overwriteWeight || overwriteReps || overwriteCv) newAutoFilled.add(laterKey);
                   }
                 }
               }
@@ -2410,7 +2439,9 @@ export default function WorkoutSession() {
         const e = exEntries[idx];
         const w = e?.weight || 0;
         const r = e?.reps || 0;
-        if (w > 0 || w === -1 || r > 0) {
+        if (e?.cardioMetric && hasCardioValue(e)) {
+          setLines.push(`  Set ${set.setNumber}: ${formatCardioSet(ex.name, w, e.cardioMetric, e.cardioValue)}`);
+        } else if (w > 0 || w === -1 || r > 0) {
           setLines.push(`  Set ${set.setNumber}: ${w === -1 ? 'BW' : w + ' lbs'} x ${r}`);
         }
       });
@@ -2469,6 +2500,12 @@ export default function WorkoutSession() {
             setNumber: set.setNumber,
             weight: isAutoOnly ? 0 : (exEntries[idx]?.weight || 0),
             reps: isAutoOnly ? 0 : (exEntries[idx]?.reps || 0),
+            // Smart cardio (Conditioning exercises): metric + value. A value
+            // with no metric picked yet is the default, Time.
+            ...((exEntries[idx]?.cardioMetric || hasCardioValue(exEntries[idx])) ? {
+              cardioMetric: exEntries[idx]?.cardioMetric || DEFAULT_CARDIO_METRIC,
+              cardioValue: isAutoOnly ? null : (Number(exEntries[idx]?.cardioValue) || null),
+            } : {}),
             isCompleted: completedSets.has(k),
             setType: exEntries[idx]?.setType || set.setType || ex.setType || 'straight',
           });
@@ -2621,7 +2658,7 @@ export default function WorkoutSession() {
 
   // Dirty if any entry has user-typed weight or reps
   const hasEntryData = Object.values(entries).some((exEntries) =>
-    exEntries.some((e) => (e.weight !== '' && e.weight !== undefined) || (e.reps !== '' && e.reps !== undefined))
+    exEntries.some((e) => (e.weight !== '' && e.weight !== undefined) || (e.reps !== '' && e.reps !== undefined) || (e.cardioValue !== '' && e.cardioValue !== undefined))
   );
   const sessionDirty = hasEntryData && !persisted;
   // inputsLocked: weight/reps/notes are NOT editable. Only blocks once the
@@ -4387,10 +4424,9 @@ export default function WorkoutSession() {
           </button>
         )}
 
-        {/* Cardio section — saved entries render here, Add Cardio button at
-            the bottom. Hidden during read-only mode (e.g., reviewing a
-            completed session) since the user shouldn't be modifying it. */}
-        {!structureLocked && (
+        {/* Legacy cardio section (blue cards + Add Cardio) — off; see
+            SHOW_LEGACY_CARDIO_CARDS. Hidden during read-only mode too. */}
+        {SHOW_LEGACY_CARDIO_CARDS && !structureLocked && (
           <>
             {cardioEntries.length > 0 && (
               <div className="mt-1">
@@ -4428,7 +4464,7 @@ export default function WorkoutSession() {
       </div>
 
       <AddCardioModal
-        open={showAddCardio}
+        open={SHOW_LEGACY_CARDIO_CARDS && showAddCardio}
         onClose={() => setShowAddCardio(false)}
         onSave={handleSaveCardio}
       />
@@ -5347,7 +5383,10 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
       const actualVolume = actualWeight > 0 ? actualWeight * actualReps : 0;
       const setType = exEntries[idx]?.setType || set.setType || ex.setType || 'straight';
       const hitGoal = goalReps > 0 ? actualReps >= goalReps : true;
-      return { setNumber: set.setNumber, goalVolume, actualVolume, goalReps, actualReps, goalWeight, actualWeight, setType, hitGoal, completed: isSetCompleted };
+      const cardioText = isSetCompleted && exEntries[idx]?.cardioMetric && hasCardioValue(exEntries[idx])
+        ? formatCardioSet(ex.name, exEntries[idx].weight, exEntries[idx].cardioMetric, exEntries[idx].cardioValue)
+        : null;
+      return { setNumber: set.setNumber, goalVolume, actualVolume, goalReps, actualReps, goalWeight, actualWeight, setType, hitGoal, completed: isSetCompleted, cardioText };
     });
     const totalGoalVol = setStats.reduce((s, ss) => s + ss.goalVolume, 0);
     const totalActualVol = setStats.reduce((s, ss) => s + ss.actualVolume, 0);
@@ -5688,6 +5727,10 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
       if (ex.exerciseDescription) lines.push(`  Note: ${ex.exerciseDescription}`);
       ex.sets.forEach((set, idx) => {
         const e = exEntries[idx];
+        if (e?.cardioMetric && hasCardioValue(e)) {
+          lines.push(`  Set ${idx + 1}: ${formatCardioSet(ex.name, e.weight, e.cardioMetric, e.cardioValue)}`);
+          return;
+        }
         const w = Number(e?.weight) === -1 ? 'BW' : `${Number(e?.weight) || 0} lbs`;
         const goalReps = set.plannedReps || 0;
         const actualReps = Number(e?.reps) || 0;
@@ -5937,9 +5980,11 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
                       const isWarmup = ss.setType === 'warm_up' || ss.setType === 'touch_up';
                       const weightStr = ss.actualWeight === -1 ? 'BW' : ss.actualWeight > 0 ? `${ss.actualWeight} lbs` : null;
                       const repsStr = ss.actualReps > 0 ? `${ss.actualReps} ${ss.actualReps === 1 ? 'rep' : 'reps'}` : null;
-                      const lifted = ss.completed && repsStr
-                        ? (weightStr ? `${weightStr} × ${repsStr}` : repsStr)
-                        : '—';
+                      const lifted = ss.cardioText
+                        ? ss.cardioText
+                        : ss.completed && repsStr
+                          ? (weightStr ? `${weightStr} × ${repsStr}` : repsStr)
+                          : '—';
                       // PR detection: set's weight/reps match a row in the
                       // template's personal_bests fetched on mount. Yellow
                       // beats red on PR rows; otherwise the lifted text is

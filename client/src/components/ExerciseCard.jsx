@@ -24,6 +24,7 @@ import CardioAccelerationCard from './CardioAccelerationCard.jsx';
 import { iosFocusRef } from '../utils/iosFocus.js';
 import useFocusTrap from '../hooks/useFocusTrap.js';
 import YouTubeSearchPrompt from './YouTubeSearchPrompt.jsx';
+import { CARDIO_MUSCLE, machineFor, metricUnit, METRIC_LABEL, nextMetric, DEFAULT_CARDIO_METRIC, formatCardioSet } from '../utils/cardio.js';
 
 function addToRecent(name) {
   try {
@@ -488,7 +489,17 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
   const isFocusedCard = firstIncompleteIdx !== -1;
   const muscleLabel = exercise.muscle || exercise.muscleGroup || dbExercise?.muscle || '';
   const lastFirst = lastEntries?.[0];
-  const showLast = !isTemplate && !!lastFirst && (Number(lastFirst.weight) > 0 || lastFirst.weight === -1 || Number(lastFirst.reps) > 0);
+  const showLast = !isTemplate && !!lastFirst && (Number(lastFirst.weight) > 0 || lastFirst.weight === -1 || Number(lastFirst.reps) > 0 || Number(lastFirst.cardioValue) > 0);
+  // Smart cardio: Conditioning exercises log the machine setting in the
+  // first column and Time / Distance / Reps (chosen per set) in the second.
+  // Template mode (Create / Edit Workout) keeps the normal layout.
+  const cardioMode = !isTemplate && dbExercise?.muscle === CARDIO_MUSCLE;
+  const cardioMachine = machineFor(exercise.name);
+  const showFirstCol = !cardioMode || !cardioMachine.none;
+  const lastText = !showLast ? ''
+    : (lastFirst.cardioMetric
+      ? formatCardioSet(exercise.name, lastFirst.weight, lastFirst.cardioMetric, lastFirst.cardioValue)
+      : `${lastFirst.weight === -1 ? 'BW' : (lastFirst.weight ?? 0)}×${lastFirst.reps ?? 0}`);
   const menuLayout = CARD_CONTROLS_LAYOUT === 'menu' && !dataTutorial;
   const [menuOpen, setMenuOpen] = useState(false);
   const menuBtnRef = useRef(null);
@@ -564,7 +575,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
             <div className="xc-mono" style={{ fontSize: 8.5, letterSpacing: '0.2em', color: 'rgba(var(--ink),0.42)', textTransform: 'uppercase', marginTop: 4 }}>
               {muscleLabel ? `${muscleLabel} · ` : ''}{isTemplate ? `${exercise.sets.length} set${exercise.sets.length !== 1 ? 's' : ''}` : `${doneCount}/${exercise.sets.length} sets`}
               {showLast && (
-                <span> · Last <span style={{ color: 'rgba(var(--ink),0.6)' }}>{lastFirst.weight === -1 ? 'BW' : (lastFirst.weight ?? 0)}×{lastFirst.reps ?? 0}</span></span>
+                <span> · Last <span style={{ color: 'rgba(var(--ink),0.6)' }}>{lastText}</span></span>
               )}
             </div>
           </div>
@@ -794,10 +805,21 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
       <div className="xc-mono" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '12px 12px 6px', fontSize: 7.5, letterSpacing: '0.12em', color: 'rgba(var(--ink),0.35)', textTransform: 'uppercase', lineHeight: 1.25 }}>
         {showCheckCol && <span style={{ flex: '0 0 30px', textAlign: 'center' }}>✓</span>}
         <span style={{ flex: '0 0 34px', textAlign: 'center' }}>Set</span>
-        {!isTemplate && showGoalWeight && <span style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>Goal Wt</span>}
-        <span style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>{!isTemplate && showGoalWeight ? 'Actual Wt' : 'Weight · lb'}</span>
-        {!isTemplate && showGoalReps && <span style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>Goal Reps</span>}
-        <span style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>{!isTemplate && showGoalReps ? 'Actual Reps' : 'Reps'}</span>
+        {cardioMode ? (
+          <>
+            {showFirstCol && showGoalWeight && <span style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>Goal</span>}
+            {showFirstCol && <span style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>{cardioMachine.label}</span>}
+            {showGoalReps && <span style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>Goal</span>}
+            <span style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>Amount</span>
+          </>
+        ) : (
+          <>
+            {!isTemplate && showGoalWeight && <span style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>Goal Wt</span>}
+            <span style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>{!isTemplate && showGoalWeight ? 'Actual Wt' : 'Weight · lb'}</span>
+            {!isTemplate && showGoalReps && <span style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>Goal Reps</span>}
+            <span style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>{!isTemplate && showGoalReps ? 'Actual Reps' : 'Reps'}</span>
+          </>
+        )}
       </div>
 
       {/* Set Rows — wrapped in dnd-kit so long-press initiates a drag-to-
@@ -936,7 +958,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                   the plate calculator pre-filled with this set's weight;
                   movement during the press cancels so scrolling doesn't
                   trigger it. */}
-              {!isTemplate && showGoalWeight && (
+              {!isTemplate && showGoalWeight && showFirstCol && (
               <div className="xc-cell" style={goalCellStyle}>
                 {(() => {
                   const overrideWeight = goalOverrides?.[idx]?.weight;
@@ -984,13 +1006,14 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                 })()}
               </div>
               )}
+              {showFirstCol && (
               <div className="xc-cell" style={cellStyle}>
                 <input
                   type="number"
                   inputMode="decimal"
                   min="0"
                   max="9999"
-                  aria-label={`Set ${idx + 1} weight`}
+                  aria-label={cardioMode ? `Set ${idx + 1} ${cardioMachine.label}` : `Set ${idx + 1} weight`}
                   value={entry.weight ?? (isTemplate ? '' : set.suggestedWeight ?? '')}
                   placeholder="—"
                   onChange={(e) => onChange?.(exercise.name, idx, 'weight', e.target.value)}
@@ -1001,7 +1024,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                     e.target.select();
                   }}
                   onBlur={() => onBlur?.(exercise.name, idx, 'weight')}
-                  onPointerDown={(readOnly || inputsLocked || setLocked) ? undefined : () => {
+                  onPointerDown={(readOnly || inputsLocked || setLocked || cardioMode) ? undefined : () => {
                     plateCalcLongPressRef.current = setTimeout(() => {
                       setPlateCalcSetIdx(idx);
                     }, 600);
@@ -1017,9 +1040,24 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                   disabled={readOnly}
                 />
               </div>
+              )}
 
-              {/* Goal reps cell (long-press to edit) */}
-              {!isTemplate && showGoalReps && (
+              {/* Goal reps cell (long-press to edit). Cardio cards show last
+                  session's value with its unit, read-only. */}
+              {cardioMode && showGoalReps && (
+                <div className="xc-cell" style={goalCellStyle}>
+                  {(() => {
+                    const last = lastEntries?.[idx] || (idx >= (lastEntries?.length || 0) ? lastEntries?.[0] : null);
+                    const v = Number(last?.cardioValue);
+                    return (
+                      <div className="xc-mono select-none" style={{ ...goalLineStyle, fontSize: 12 }}>
+                        {Number.isFinite(v) && v > 0 ? `${Math.round(v * 100) / 100} ${metricUnit(last.cardioMetric, exercise.name)}` : '—'}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+              {!isTemplate && !cardioMode && showGoalReps && (
               <div className="xc-cell" style={goalCellStyle}>
                 {(() => {
                   const overrideReps = goalOverrides?.[idx]?.reps;
@@ -1087,6 +1125,55 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                     className="xc-input"
                     style={inputStyle}
                   />
+                ) : cardioMode ? (
+                  (() => {
+                    // Per-set metric: tap the label to cycle Time → Dist →
+                    // Reps. Later sets the user hasn't changed follow along.
+                    const metric = entry.cardioMetric || DEFAULT_CARDIO_METRIC;
+                    const unit = metricUnit(metric, exercise.name);
+                    return (
+                      <>
+                        <button
+                          type="button"
+                          aria-label={`Set ${idx + 1}: logging ${METRIC_LABEL[metric]} — tap to change`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (inputsLocked && onLockedTap) { onLockedTap(); return; }
+                            if (setLocked) { onCompletedSetTap?.(); return; }
+                            if (readOnly) return;
+                            const next = nextMetric(metric);
+                            onChange?.(exercise.name, idx, 'cardioMetric', next);
+                            onBlur?.(exercise.name, idx, 'cardioMetric', next);
+                          }}
+                          className="xc-mono"
+                          style={{ background: 'none', border: 'none', padding: '0 4px', fontSize: 7.5, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: XC_RED, lineHeight: 1, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        >
+                          {metric === 'reps' ? 'Reps' : unit} ▾
+                        </button>
+                        <input
+                          type="number"
+                          inputMode={metric === 'reps' ? 'numeric' : 'decimal'}
+                          min="0"
+                          max="99999"
+                          step={metric === 'reps' ? '1' : '0.01'}
+                          aria-label={`Set ${idx + 1} ${METRIC_LABEL[metric]} in ${unit}`}
+                          value={entry.cardioValue ?? ''}
+                          onChange={(e) => onChange?.(exercise.name, idx, 'cardioValue', e.target.value)}
+                          onFocus={(e) => {
+                            if (inputsLocked && onLockedTap) { e.target.blur(); onLockedTap(); return; }
+                            if (setLocked) { e.target.blur(); onCompletedSetTap?.(); return; }
+                            e.target.select();
+                          }}
+                          onBlur={() => onBlur?.(exercise.name, idx, 'cardioValue')}
+                          readOnly={readOnly || inputsLocked || setLocked}
+                          placeholder="—"
+                          className="xc-input disabled:opacity-50"
+                          style={{ ...inputStyle, fontSize: 16 }}
+                          disabled={readOnly}
+                        />
+                      </>
+                    );
+                  })()
                 ) : (
                   <>
                     <input
@@ -1145,7 +1232,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                 <div className="relative overflow-hidden">
                   {/* Green Complete — revealed when row is swiped right */}
                   <div
-                    className="absolute inset-y-0 left-0 flex items-center justify-start pl-5"
+                    className="absolute top-[2px] bottom-[2px] left-0 flex items-center justify-start pl-5"
                     style={{ width: 100, background: '#22c55e', pointerEvents: 'none' }}
                     aria-hidden="true"
                   >
@@ -1158,7 +1245,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                   </div>
                   {/* Red Delete — revealed when row is swiped left */}
                   <div
-                    className="absolute inset-y-0 right-0 flex items-center justify-end pr-5"
+                    className="absolute top-[2px] bottom-[2px] right-0 flex items-center justify-end pr-5"
                     style={{ width: 100, background: '#ef4444', pointerEvents: 'none' }}
                     aria-hidden="true"
                   >

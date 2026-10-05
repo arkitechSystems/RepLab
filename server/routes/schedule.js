@@ -39,7 +39,7 @@ router.get('/today', authMiddleware, async (req, res) => {
         `SELECT s.template_id, COALESCE(s.completed, FALSE) AS completed,
                 EXISTS (SELECT 1 FROM session_entries se
                          WHERE se.session_id = s.id
-                           AND (se.weight <> 0 OR se.reps > 0 OR se.is_completed = TRUE)) AS has_logged_data
+                           AND (se.weight <> 0 OR se.reps > 0 OR se.cardio_value > 0 OR se.is_completed = TRUE)) AS has_logged_data
            FROM sessions s
           WHERE s.user_id = $1 AND s.date = $2 AND s.template_id IS NOT NULL`,
         [req.userId, date]

@@ -61,7 +61,7 @@ async function deleteEmptySessions(client, userId, { date, templateId, fromDate 
         AND NOT EXISTS (
           SELECT 1 FROM session_entries se
            WHERE se.session_id = s.id
-             AND (se.weight <> 0 OR se.reps > 0 OR se.is_completed = TRUE))
+             AND (se.weight <> 0 OR se.reps > 0 OR se.cardio_value > 0 OR se.is_completed = TRUE))
         AND NOT EXISTS (SELECT 1 FROM cardio_entries ce WHERE ce.session_id = s.id)`,
     params
   );
@@ -1144,7 +1144,7 @@ const db = {
           `SELECT COUNT(*)::INT AS n
              FROM session_entries
             WHERE session_id = $1
-              AND (weight > 0 OR reps > 0 OR is_completed = TRUE)`,
+              AND (weight > 0 OR reps > 0 OR cardio_value > 0 OR is_completed = TRUE)`,
           [sessionId]
         );
         const existingEntryCount = countRows[0]?.n || 0;
@@ -1177,7 +1177,7 @@ const db = {
             `SELECT DISTINCT exercise_name
                FROM session_entries
               WHERE session_id = $1
-                AND (weight > 0 OR reps > 0 OR is_completed = TRUE)
+                AND (weight > 0 OR reps > 0 OR cardio_value > 0 OR is_completed = TRUE)
               ORDER BY exercise_name`,
             [sessionId]
           );
@@ -1224,13 +1224,16 @@ const db = {
         const params = [];
         for (let i = 0; i < entries.length; i++) {
           const entry = entries[i];
-          const off = i * 7;
+          const off = i * 9;
           const exId = idByName.get(String(entry.exerciseName).trim().toLowerCase()) ?? null;
-          values.push(`($${off + 1}, $${off + 2}, $${off + 3}, $${off + 4}, $${off + 5}, $${off + 6}, $${off + 7})`);
-          params.push(sessionId, exId, entry.exerciseName, entry.setNumber, entry.weight || 0, entry.reps || 0, entry.isCompleted || false);
+          // Smart cardio: metric + value (null for strength sets).
+          const cardioMetric = ['time', 'distance', 'reps'].includes(entry.cardioMetric) ? entry.cardioMetric : null;
+          const cardioValue = cardioMetric && Number(entry.cardioValue) > 0 ? Number(entry.cardioValue) : null;
+          values.push(`(${off + 1}, ${off + 2}, ${off + 3}, ${off + 4}, ${off + 5}, ${off + 6}, ${off + 7}, ${off + 8}, ${off + 9})`);
+          params.push(sessionId, exId, entry.exerciseName, entry.setNumber, entry.weight || 0, entry.reps || 0, entry.isCompleted || false, cardioMetric, cardioValue);
         }
         await client.query(
-          `INSERT INTO session_entries (session_id, exercise_id, exercise_name, set_number, weight, reps, is_completed) VALUES ${values.join(', ')}`,
+          `INSERT INTO session_entries (session_id, exercise_id, exercise_name, set_number, weight, reps, is_completed, cardio_metric, cardio_value) VALUES ${values.join(', ')}`,
           params
         );
       }
@@ -1351,7 +1354,7 @@ const db = {
               ${sessionDisplayNameSql('s', 't.name', 'Unknown')} AS template_name,
               COALESCE(SUM(se.weight * se.reps) FILTER (WHERE se.is_completed = TRUE AND se.weight > 0), 0)::NUMERIC AS total_volume,
               COUNT(DISTINCT se.exercise_name) FILTER (WHERE se.is_completed = TRUE) AS exercise_count,
-              COALESCE(BOOL_OR(se.weight <> 0 OR se.reps > 0 OR se.is_completed = TRUE), FALSE) AS has_logged_data
+              COALESCE(BOOL_OR(se.weight <> 0 OR se.reps > 0 OR se.cardio_value > 0 OR se.is_completed = TRUE), FALSE) AS has_logged_data
        FROM sessions s
        LEFT JOIN templates t ON t.id = s.template_id
        LEFT JOIN session_entries se ON se.session_id = s.id
@@ -1429,6 +1432,8 @@ const db = {
         weight: Number(e.weight),
         reps: e.reps,
         isCompleted: e.is_completed || false,
+        cardioMetric: e.cardio_metric || null,
+        cardioValue: e.cardio_value != null ? Number(e.cardio_value) : null,
       })),
     };
   },
@@ -1465,6 +1470,8 @@ const db = {
         weight: Number(e.weight),
         reps: e.reps,
         isCompleted: e.is_completed || false,
+        cardioMetric: e.cardio_metric || null,
+        cardioValue: e.cardio_value != null ? Number(e.cardio_value) : null,
       })),
     };
   },
@@ -1662,13 +1669,16 @@ const db = {
     // completed sets only — drives weight suggestions, so planned/pre-filled
     // sets must not be treated as "what they did last time".
     const { rows: entries } = await pool.query(
-      `SELECT exercise_name, set_number, weight, reps FROM session_entries WHERE session_id = $1 AND is_completed = TRUE ORDER BY exercise_name, set_number`,
+      `SELECT exercise_name, set_number, weight, reps, cardio_metric, cardio_value FROM session_entries WHERE session_id = $1 AND is_completed = TRUE ORDER BY exercise_name, set_number`,
       [sessionId]
     );
     const result = {};
     for (const e of entries) {
       if (!result[e.exercise_name]) result[e.exercise_name] = [];
-      result[e.exercise_name].push({ setNumber: e.set_number, weight: Number(e.weight), reps: Number(e.reps) });
+      result[e.exercise_name].push({
+        setNumber: e.set_number, weight: Number(e.weight), reps: Number(e.reps),
+        ...(e.cardio_metric ? { cardioMetric: e.cardio_metric, cardioValue: e.cardio_value != null ? Number(e.cardio_value) : null } : {}),
+      });
     }
     return result;
   },
@@ -1703,7 +1713,7 @@ const db = {
             SELECT 1 FROM session_entries se
              WHERE se.session_id = s.id
                AND se.is_completed = TRUE
-               AND (se.weight > 0 OR se.reps > 0)
+               AND (se.weight > 0 OR se.reps > 0 OR se.cardio_value > 0)
           )
         RETURNING s.id, s.user_id`,
       [String(idleHours)]

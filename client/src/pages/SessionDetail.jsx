@@ -4,6 +4,7 @@ import { format, parseISO } from 'date-fns';
 import { api } from '../api';
 import StickyHeader from '../components/StickyHeader';
 import LoadingSpinnerOverlay from '../components/LoadingSpinnerOverlay';
+import { formatCardioSet } from '../utils/cardio';
 
 export default function SessionDetail() {
   const { id } = useParams();
@@ -93,6 +94,11 @@ export default function SessionDetail() {
                   <span className="text-wf-gray-400 text-sm font-medium w-10">
                     Set {set.setNumber}
                   </span>
+                  {set.cardioMetric && Number(set.cardioValue) > 0 ? (
+                    <div className="flex-1 text-white font-medium">
+                      {formatCardioSet(exercise.name, set.weight, set.cardioMetric, set.cardioValue)}
+                    </div>
+                  ) : (
                   <div className="flex-1 flex items-center gap-4">
                     <div className="text-center">
                       <div className="text-[10px] text-wf-gray-400 uppercase">Weight</div>
@@ -104,6 +110,7 @@ export default function SessionDetail() {
                       <div className="text-white font-medium">{set.reps}</div>
                     </div>
                   </div>
+                  )}
                 </div>
               ))}
             </div>

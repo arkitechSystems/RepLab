@@ -103,7 +103,12 @@ CREATE TABLE IF NOT EXISTS session_entries (
   exercise_name TEXT NOT NULL,
   set_number INT NOT NULL,
   weight NUMERIC DEFAULT 0,
-  reps INT DEFAULT 0
+  reps INT DEFAULT 0,
+  -- Smart cardio (Conditioning exercises): per-set metric 'time' | 'distance'
+  -- | 'reps' and its value. weight = machine setting, reps = 0. Added to
+  -- existing DBs by initDb.js.
+  cardio_metric TEXT,
+  cardio_value NUMERIC
 );
 CREATE INDEX IF NOT EXISTS idx_session_entries_exercise_id ON session_entries(exercise_id);
 

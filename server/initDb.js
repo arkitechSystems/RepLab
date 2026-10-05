@@ -74,6 +74,11 @@ export default async function initDb() {
   // clobber it. NULL = show the template's current name.
   await pool.query(`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS custom_name TEXT`);
   await pool.query(`ALTER TABLE session_entries ADD COLUMN IF NOT EXISTS is_completed BOOLEAN DEFAULT FALSE`);
+  // Smart cardio: Conditioning exercises log a per-set metric ('time' |
+  // 'distance' | 'reps') and its value; weight holds the machine setting
+  // (resistance / level / speed / damper) and reps stays 0.
+  await pool.query(`ALTER TABLE session_entries ADD COLUMN IF NOT EXISTS cardio_metric TEXT`);
+  await pool.query(`ALTER TABLE session_entries ADD COLUMN IF NOT EXISTS cardio_value NUMERIC`);
   await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS is_section_header BOOLEAN DEFAULT FALSE`);
   await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS section_notes TEXT DEFAULT ''`);
 
