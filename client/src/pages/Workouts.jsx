@@ -12,7 +12,7 @@ import { useFeatureFlag, FF_FEATURED, FF_CHALLENGES, FF_TRAINERS } from '../util
 
 // Featured Workouts card on the Workouts home. Off = hidden for everyone,
 // even when the `featured` flag is unlocked (dev builds unlock all flags).
-const SHOW_FEATURED_CARD = false;
+const SHOW_FEATURED_CARD = true;
 import { sharePR } from '../utils/prShare';
 import { useTutorial } from '../context/TutorialContext';
 import { useToast } from '../context/ToastContext';
@@ -6353,12 +6353,8 @@ export default function Workouts() {
             </div>
 
             {/* Featured Workouts card — gated as "Coming Soon" pre-launch.
-                Clickable only when the localStorage feature flag is set
-                (`rl_ff_featured === '1'`). Set the flag two ways:
-                  • Dev console:  localStorage.setItem('rl_ff_featured', '1')
-                  • URL one-shot: ?ff=featured (the effect below also persists
-                    the flag so subsequent visits stay unlocked).
-                Apple's App Review demo account does NOT have the flag, so
+                Shown only to preview accounts (see utils/featureFlags.js).
+                Apple's App Review demo account isn't one, so
                 the reviewer sees a clean "COMING SOON"-tagged card with no
                 interaction — keeps the review story consistent. */}
             {/* Pre-launch this card is locked, so the autoplaying CDN
@@ -7008,8 +7004,8 @@ export default function Workouts() {
 
             {/* Challenges card — only rendered when FF_CHALLENGES is unlocked.
                 Hidden from the homepage entirely for v1 launch (no Coming Soon
-                placeholder — the card simply doesn't appear). Unlock with
-                ?ff=challenges or localStorage.setItem('rl_ff_challenges', '1'). */}
+                placeholder — the card simply doesn't appear). Preview accounts
+                only — see utils/featureFlags.js. */}
             {challengesUnlocked && (
             <div
               onClick={() => setSelectedGroup('challenges')}
@@ -7064,9 +7060,8 @@ export default function Workouts() {
 
             {/* Trainers card — only rendered when FF_TRAINERS is unlocked.
                 Hidden from the homepage entirely for v1 launch (no Coming
-                Soon placeholder — the card simply doesn't appear). When the
-                flag is set post-launch (?ff=trainers or
-                localStorage.setItem('rl_ff_trainers', '1')) the full
+                Soon placeholder — the card simply doesn't appear). For preview
+                accounts (utils/featureFlags.js) the full
                 Nike-style card returns and becomes clickable into the
                 Featured Trainers list. */}
             {trainersUnlocked && (

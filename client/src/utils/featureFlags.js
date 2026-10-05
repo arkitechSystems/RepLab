@@ -1,44 +1,38 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 
-// Client-only feature flags persisted in localStorage. Used pre-launch to
-// keep "coming soon" features off for Apple App Review while leaving an
-// escape hatch for dev/QA.
+// Pre-launch feature gates for Featured Workouts, Challenges and Trainers.
+// They're account-based: only the owner's account sees these sections, on
+// any device. Everyone else — including the Apple App Review demo account —
+// sees them locked/hidden.
 //
-// To unlock a flag from any device, visit any URL with ?ff=<key>; the
-// effect below persists the flag to localStorage. To re-lock, remove the
-// `rl_ff_<key>` key in localStorage.
+// To open a section to someone else, add their username to PREVIEW_USERNAMES
+// (lowercase). To launch a section for everyone, remove its gate at the call
+// site.
 //
-// The Apple App Review demo account has a fresh keychain/localStorage and
-// no way to inject a URL param, so reviewers always see the locked state.
+// Replaced the old per-device `?ff=<key>` URL unlock (2026-10-04), which
+// worked for whoever opened the link regardless of account.
 
 export const FF_FEATURED = 'featured';
 export const FF_CHALLENGES = 'challenges';
 export const FF_TRAINERS = 'trainers';
 
-const STORAGE_PREFIX = 'rl_ff_';
+const PREVIEW_USERNAMES = new Set(['wmartin']);
 
-function readFlag(key) {
-  // Always unlocked under `vite dev` (npm run dev) — no reason to fight
-  // localStorage while actively building a gated feature. import.meta.env.DEV
-  // is baked in at build time, so `npm run build` (web prod, and what ships
-  // in the native app) is completely unaffected — reviewers/real users still
-  // see the locked "Coming Soon" state exactly as before.
-  if (import.meta.env.DEV) return true;
-  try { return localStorage.getItem(STORAGE_PREFIX + key) === '1'; } catch { return false; }
-}
+// Leftover localStorage keys from the retired ?ff= unlock.
+const LEGACY_STORAGE_PREFIX = 'rl_ff_';
 
-// Reads the flag for a given key and reacts to the ?ff=<key> URL param,
-// persisting it to localStorage when present.
 export function useFeatureFlag(key) {
-  const [enabled, setEnabled] = useState(() => readFlag(key));
+  const { user } = useAuth();
+
   useEffect(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('ff') === key) {
-        localStorage.setItem(STORAGE_PREFIX + key, '1');
-        setEnabled(true);
-      }
-    } catch {}
+    try { localStorage.removeItem(LEGACY_STORAGE_PREFIX + key); } catch {}
   }, [key]);
-  return enabled;
+
+  // Always unlocked under `vite dev` (npm run dev) so gated features can be
+  // built locally. import.meta.env.DEV is baked in at build time, so
+  // production web and the native apps are unaffected.
+  if (import.meta.env.DEV) return true;
+  const username = String(user?.username || '').trim().toLowerCase();
+  return PREVIEW_USERNAMES.has(username);
 }
