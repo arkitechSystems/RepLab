@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useLayoutEffect, useMemo, memo } from 'react';
 import { createPortal } from 'react-dom';
+import { Capacitor } from '@capacitor/core';
 import {
   DndContext,
   PointerSensor,
@@ -669,17 +670,35 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
           {isCdnVideo ? (
             <video src={videoId} className="w-full h-full object-contain" controls playsInline preload="metadata" controlsList="nodownload" />
           ) : (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); window.open(`https://www.youtube.com/watch?v=${videoId}`, '_blank'); }}
-              className="w-full h-full flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform"
-            >
-              <svg className="w-10 h-10" style={{ color: '#fff' }} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M21.582 7.203a2.51 2.51 0 00-1.768-1.774C18.254 5 12 5 12 5s-6.254 0-7.814.429A2.51 2.51 0 002.418 7.203 26.14 26.14 0 002 12a26.14 26.14 0 00.418 4.797 2.51 2.51 0 001.768 1.774C5.746 19 12 19 12 19s6.254 0 7.814-.429a2.51 2.51 0 001.768-1.774A26.14 26.14 0 0022 12a26.14 26.14 0 00-.418-4.797zM9.75 15.02V8.98L15.5 12l-5.75 3.02z" />
-              </svg>
-              <span className="text-[11px] font-semibold" style={{ color: 'rgba(255,255,255,0.8)' }}>Watch on YouTube</span>
-            </button>
+            // YouTube plays inline. In the native app it goes through the
+            // /yt-embed shim on the real domain (the WebView's
+            // capacitor://localhost origin gets YouTube error 153 when it
+            // embeds directly — see server/index.js); the web app has a real
+            // origin and embeds YouTube directly. Same as ExerciseDetail.jsx.
+            <iframe
+              src={Capacitor.isNativePlatform()
+                ? `https://replab-fitness.com/yt-embed/${videoId}`
+                : `https://www.youtube-nocookie.com/embed/${videoId}?playsinline=1&autoplay=1&rel=0&modestbranding=1`}
+              title={`${exercise.name} form video`}
+              style={{ width: '100%', height: '100%', border: 0, display: 'block', background: '#000' }}
+              allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+              allowFullScreen
+              referrerPolicy="strict-origin-when-cross-origin"
+            />
           )}
+        </div>
+      )}
+      {/* Fallback if a YouTube video won't play inline */}
+      {showDemo && videoId && !isCdnVideo && (
+        <div style={{ margin: '-6px 12px 12px', textAlign: 'right' }}>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); window.open(`https://www.youtube.com/watch?v=${videoId}`, '_blank'); }}
+            className="xc-mono active:opacity-70"
+            style={{ background: 'none', border: 'none', padding: '4px 0', fontSize: 8.5, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(var(--ink),0.45)' }}
+          >
+            Open in YouTube ↗
+          </button>
         </div>
       )}
 
