@@ -192,7 +192,7 @@ CREATE TABLE IF NOT EXISTS exercises (
   muscle_group TEXT NOT NULL,
   tags TEXT[] DEFAULT '{}',
   is_custom BOOLEAN DEFAULT FALSE,
-  -- video_review ('checked' | 'needs_ai' | 'needs_video' | 'remove_video') is
+  -- video_review ('checked' | 'good_enough' | 'needs_ai' | 'needs_video' | 'remove_video') is
   -- added in initDb.js alongside video_id / video_linked_by.
   created_by INT REFERENCES users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()

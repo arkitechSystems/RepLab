@@ -556,7 +556,7 @@ export default async function initDb() {
   // Exercise Library page. Exercise search/pickers still include them.
   await pool.query(`ALTER TABLE exercises ADD COLUMN IF NOT EXISTS hidden_from_library BOOLEAN NOT NULL DEFAULT FALSE`);
   // Demo-video review status, set from the admin Exercise Library page:
-  // 'checked' | 'needs_ai' | 'needs_video' | 'remove_video', NULL = not
+  // 'checked' | 'good_enough' | 'needs_ai' | 'needs_video' | 'remove_video', NULL = not
   // reviewed. When the column is first created, videos an admin linked by
   // hand start out as 'checked' (one time only, so later edits stick).
   const { rowCount: hasVideoReview } = await pool.query(

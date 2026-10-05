@@ -4895,11 +4895,12 @@ router.post('/users/:id/revoke-trainer', adminAuth, async (req, res) => {
 const REVIEW_OPTIONS = [
   ['', '—'],
   ['checked', 'Checked'],
+  ['good_enough', 'Good enough'],
   ['needs_ai', 'Needs AI check'],
   ['needs_video', 'Needs new video'],
   ['remove_video', 'Remove video'],
 ];
-const REVIEW_COLORS = { checked: '#22c55e', needs_ai: '#60a5fa', needs_video: '#f59e0b', remove_video: '#ef4444' };
+const REVIEW_COLORS = { checked: '#22c55e', good_enough: '#a3e635', needs_ai: '#60a5fa', needs_video: '#f59e0b', remove_video: '#ef4444' };
 
 // GET /admin/exercise-library — View all exercises and video mappings.
 // Query string:
@@ -5105,10 +5106,13 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
         <span style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);font-weight:600;margin:0 4px 0 16px;">Review:</span>
         <select id="ex-review-filter" aria-label="Filter by review status" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:#111;color:#fff;font-size:12px;font-family:inherit;outline:none;">
           <option value="all" style="background:#111;">All</option>
+          <option value="none" style="background:#111;">— No status yet</option>
           <option value="not_checked" style="background:#111;">Not checked (has video)</option>
-          ${REVIEW_OPTIONS.map(([val, label]) => `<option value="${val || 'none'}" style="background:#111;">${val ? label : 'Not reviewed'}</option>`).join('')}
+          ${REVIEW_OPTIONS.filter(([val]) => val).map(([val, label]) => `<option value="${val}" style="background:#111;">${label}</option>`).join('')}
         </select>
         <button type="button" class="review-quick-btn" data-review-quick="checked" onclick="setReviewFilter('checked')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.7);font-size:12px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:0.5px;">&#10003; Checked</button>
+        <button type="button" class="review-quick-btn" data-review-quick="good_enough" onclick="setReviewFilter('good_enough')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.7);font-size:12px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:0.5px;">Good enough</button>
+        <button type="button" class="review-quick-btn" data-review-quick="none" onclick="setReviewFilter('none')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.7);font-size:12px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:0.5px;">No status</button>
         <button type="button" class="review-quick-btn" data-review-quick="not_checked" onclick="setReviewFilter('not_checked')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.7);font-size:12px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:0.5px;">Not checked</button>
         <span id="review-counts" style="font-size:11px;color:rgba(255,255,255,0.35);margin-left:8px;"></span>
       </div>
@@ -5526,7 +5530,7 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
               const review = r.dataset.review || '';
               const rf = reviewFilter.value;
               const matchReview = rf === 'all'
-                || (rf === 'not_checked' ? (r.dataset.hasVideo === 'yes' && review !== 'checked')
+                || (rf === 'not_checked' ? (r.dataset.hasVideo === 'yes' && review !== 'checked' && review !== 'good_enough')
                   : rf === 'none' ? !review : review === rf);
               const visible = matchName && matchMuscle && matchVideo && matchReview;
               r.classList.toggle('hidden', !visible);
@@ -5534,9 +5538,14 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
             });
             countEl.textContent = 'Showing ' + shown + ' of ' + rows.length + ' exercises';
             // Review progress across exercises that have a video
-            let withVideo = 0, checked = 0;
-            rows.forEach(r => { if (r.dataset.hasVideo === 'yes') { withVideo++; if (r.dataset.review === 'checked') checked++; } });
-            reviewCountsEl.textContent = checked + ' of ' + withVideo + ' videos checked';
+            let withVideo = 0, checked = 0, goodEnough = 0;
+            rows.forEach(r => {
+              if (r.dataset.hasVideo !== 'yes') return;
+              withVideo++;
+              if (r.dataset.review === 'checked') checked++;
+              else if (r.dataset.review === 'good_enough') goodEnough++;
+            });
+            reviewCountsEl.textContent = checked + ' checked · ' + goodEnough + ' good enough · ' + (withVideo - checked - goodEnough) + ' to go';
           }
           // Expose so setVideoFilter (defined above this IIFE) can call back in.
           window.applyExerciseFilter = applyFilter;
