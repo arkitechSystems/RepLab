@@ -61,16 +61,21 @@ export default function ExerciseLibrary() {
       const q = search.toLowerCase();
       result = result.filter(e => e.name.toLowerCase().includes(q));
     }
-    // Deduplicate by name
+    // The user's saved (bookmarked) exercises are pinned first, then the
+    // rest; each part alphabetical, numbered names last (see
+    // utils/exerciseOrder). Muscle groups below preserve this order, so a
+    // muscle filter shows its pinned exercises first too. Pins are per user
+    // (isFavorite) and never change the master library order.
+    const sorted = result.sort((a, b) =>
+      (b.isFavorite ? 1 : 0) - (a.isFavorite ? 1 : 0) || compareExerciseNames(a.name, b.name)
+    );
+    // Deduplicate by name (after sorting, so a saved copy wins)
     const seen = new Set();
-    const deduped = result.filter(e => {
+    return sorted.filter(e => {
       if (seen.has(e.name)) return false;
       seen.add(e.name);
       return true;
     });
-    // Alphabetical, numbered names last (see utils/exerciseOrder). Muscle
-    // groups below preserve this order.
-    return deduped.sort((a, b) => compareExerciseNames(a.name, b.name));
   }, [exercises, search, selectedMuscle]);
 
   // Detail URLs of the current list, in alphabetical order, handed to the
