@@ -1448,3 +1448,30 @@ select:focus-visible {
   transition: transform .32s cubic-bezier(.5,0,.75,0), opacity .26s ease .06s; }
 .nv-gap { transition: flex-basis .38s cubic-bezier(.2,.8,.2,1); }
 @media (prefers-reduced-motion: reduce) { .nv-seal, .nv-seal-hidden, .nv-gap { transition: none; } }
+
+/* "Active card" exercise cards (components/ExerciseCard.jsx). One set of
+   markup serves both themes through these tokens: .xc-dark when
+   cardTheme === 'dark', .xc-light otherwise. --row is an opaque base for
+   set rows so the swipe Complete/Delete actions stay hidden underneath. */
+.xc-dark {
+  --ink: 255,255,255; --fg: #fff; --card: linear-gradient(180deg,#1a1816 0%,#100f0d 100%);
+  --well: rgba(0,0,0,0.38); --strip: rgba(0,0,0,0.28); --row: #151311;
+  --sh-focus: 0 0 0 4px rgba(239,68,68,0.07), 0 14px 30px rgba(0,0,0,0.5);
+  --sh: 0 8px 20px rgba(0,0,0,0.35);
+}
+.xc-light {
+  --ink: 20,18,16; --fg: #141210; --card: linear-gradient(180deg,#ffffff 0%,#fbfaf8 100%);
+  --well: rgba(20,18,16,0.035); --strip: rgba(20,18,16,0.03); --row: #fdfcfb;
+  --sh-focus: 0 0 0 4px rgba(239,68,68,0.07), 0 10px 24px rgba(20,18,16,0.10);
+  --sh: 0 4px 14px rgba(20,18,16,0.07);
+}
+.xc-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+@keyframes xcShine { 0% { transform: translateX(-120%) skewX(-20deg); } 55%, 100% { transform: translateX(320%) skewX(-20deg); } }
+.xc-shine { position: absolute; top: 0; bottom: 0; left: 0; width: 35%; z-index: 1; pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.07), transparent);
+  animation: xcShine 4.2s ease-in-out infinite; opacity: .6; }
+@media (prefers-reduced-motion: reduce) { .xc-shine { animation: none; } }
+/* Weight / reps inputs sit borderless inside their cell; the cell shows focus. */
+.xc-input::placeholder { color: rgba(var(--ink),0.25); }
+.xc-input:focus-visible { box-shadow: none !important; outline: none !important; }
+.xc-cell:focus-within { border-color: rgba(239,68,68,0.55) !important; }

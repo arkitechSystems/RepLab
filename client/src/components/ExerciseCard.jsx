@@ -23,10 +23,6 @@ import CardioAccelerationCard from './CardioAccelerationCard.jsx';
 import { iosFocusRef } from '../utils/iosFocus.js';
 import useFocusTrap from '../hooks/useFocusTrap.js';
 
-// When true, exercise cards in workout sessions get a red->white->red gradient
-// border matching the Swap Exercise modal. Flip to false to revert.
-const EXERCISE_CARD_GRADIENT_BORDER = true;
-
 function addToRecent(name) {
   try {
     const recent = JSON.parse(localStorage.getItem('replab_recent_exercises') || '[]');
@@ -82,48 +78,169 @@ function SortableSetRow({ id, disabled, children }) {
   );
 }
 
-// One button in the card-controls row: icon in a circle with a text label
-// underneath, so each control explains itself without the tutorial.
-// variant: 'red' (move/swap/remove) or 'green' (add).
-const CARD_CONTROL_VARIANTS = {
-  red: { circle: 'bg-wf-red/15 border-wf-red/40 text-wf-red', label: 'text-wf-red/80' },
-  green: { circle: 'bg-green-500/15 border-green-500/40 text-green-400', label: 'text-green-400/80' },
-};
-function CardControlButton({ label, ariaLabel, variant = 'red', onClick, dataTutorial, children }) {
-  const v = CARD_CONTROL_VARIANTS[variant];
+// "Active card" design tokens. Accent red matches the app's wf-red.
+const XC_RED = '#ef4444';
+const XC_GREEN = '#3ea868';
+const XC_LINE = '1px solid rgba(var(--ink),0.06)';
+const XC_IN = '1px solid rgba(var(--ink),0.08)';
+
+// Card controls layout:
+//   'menu' — PC / PRs / Demo plus a "⋯" menu holding the structure edits
+//            (move, swap, superset, add / remove exercise); − Remove set and
+//            + Add set sit under the last set.
+//   'rows' — the previous layout: Add / Remove exercise in the tool rail and
+//            a strip with Up / Down / Swap / SS | Remove Set / Add Set.
+// The tutorial always uses 'rows' because its steps point at those buttons.
+const CARD_CONTROLS_LAYOUT = 'menu';
+
+// − Remove set / + Add set pills under the sets ('menu' layout).
+function SetPill({ icon, label, tone, onClick, ariaLabel }) {
+  const add = tone === 'add';
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={ariaLabel}
-      data-tutorial={dataTutorial}
-      className="w-11 flex flex-col items-center gap-1 active:scale-90 transition-transform"
-    >
-      <span className={`w-9 h-9 rounded-full border flex items-center justify-center ${v.circle}`}>
+    <button type="button" onClick={onClick} aria-label={ariaLabel} className="active:scale-95 transition-transform"
+      style={{ height: 34, padding: '0 12px', borderRadius: 100, display: 'flex', alignItems: 'center', gap: 6,
+        color: add ? XC_GREEN : XC_RED,
+        background: add ? 'rgba(62,168,104,0.10)' : 'rgba(239,68,68,0.08)',
+        border: '1px solid ' + (add ? 'rgba(62,168,104,0.4)' : 'rgba(239,68,68,0.35)') }}>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{icon}</svg>
+      <span className="xc-mono" style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.16em', textTransform: 'uppercase' }}>{label}</span>
+    </button>
+  );
+}
+
+// "⋯" card menu. Portalled to <body> so the card's overflow-hidden can't clip
+// it; opens below the button, or above it when there isn't room. Closes on an
+// outside tap, Escape, scroll or resize. themeClass carries the card's
+// --ink / --fg variables out of the card.
+function CardMenu({ anchorRef, themeClass, items, onClose }) {
+  const menuRef = useRef(null);
+  const [pos, setPos] = useState(null);
+
+  useLayoutEffect(() => {
+    const btn = anchorRef.current;
+    if (!btn) return;
+    const r = btn.getBoundingClientRect();
+    const h = menuRef.current?.offsetHeight || 0;
+    const below = r.bottom + 6;
+    const top = below + h > window.innerHeight - 8 && r.top - 6 - h > 8 ? r.top - 6 - h : below;
+    setPos({ top, right: Math.max(8, window.innerWidth - r.right) });
+  }, [anchorRef]);
+
+  useEffect(() => {
+    const onDown = (e) => {
+      if (menuRef.current?.contains(e.target) || anchorRef.current?.contains(e.target)) return;
+      onClose();
+    };
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('pointerdown', onDown, true);
+    document.addEventListener('keydown', onKey);
+    window.addEventListener('scroll', onClose, true);
+    window.addEventListener('resize', onClose);
+    return () => {
+      document.removeEventListener('pointerdown', onDown, true);
+      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('scroll', onClose, true);
+      window.removeEventListener('resize', onClose);
+    };
+  }, [anchorRef, onClose]);
+
+  return createPortal(
+    <div className={themeClass}>
+      <div
+        ref={menuRef}
+        role="menu"
+        style={{
+          position: 'fixed', zIndex: 130, top: pos?.top ?? -9999, right: pos?.right ?? 0, minWidth: 210,
+          padding: 6, borderRadius: 14, background: 'var(--card)', color: 'var(--fg)',
+          border: '1px solid rgba(var(--ink),0.12)', boxShadow: '0 16px 40px rgba(0,0,0,0.45)',
+          visibility: pos ? 'visible' : 'hidden',
+        }}
+      >
+        {items.map((it, i) => (it.divider ? (
+          <div key={`d${i}`} style={{ height: 1, margin: '5px 4px', background: 'rgba(var(--ink),0.08)' }} />
+        ) : (
+          <button
+            key={it.label}
+            type="button"
+            role="menuitem"
+            onClick={(e) => { e.stopPropagation(); onClose(); it.onClick(); }}
+            className="active:scale-[0.98] transition-transform"
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 10px', borderRadius: 9,
+              background: 'none', border: 'none', textAlign: 'left', fontSize: 14, fontWeight: 600,
+              color: it.tone === 'del' ? XC_RED : 'var(--fg)',
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0, opacity: it.tone === 'del' ? 1 : 0.7 }}>{it.icon}</svg>
+            {it.label}
+          </button>
+        )))}
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+// One button in the card-controls strip: icon tile with a tiny label
+// underneath. Up / Down / Swap / SS are neutral; only Add is green
+// (variant="green") and only Remove is red.
+function CardControlButton({ label, ariaLabel, onClick, variant, dataTutorial, children }) {
+  const tone = variant === 'green' ? 'add' : (variant === 'red' || label === 'Remove') ? 'del' : 'neutral';
+  const c = tone === 'add' ? XC_GREEN : tone === 'del' ? XC_RED : 'rgba(var(--ink),0.75)';
+  return (
+    <button type="button" aria-label={ariaLabel} data-tutorial={dataTutorial} onClick={(e) => { e.stopPropagation(); onClick?.(e); }}
+      className="active:scale-95 transition-transform"
+      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, background: 'none', border: 'none', padding: 0, minWidth: 40 }}>
+      <span style={{ width: 34, height: 30, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', color: c,
+        background: tone === 'neutral' ? 'rgba(var(--ink),0.04)' : tone === 'add' ? 'rgba(62,168,104,0.10)' : 'rgba(239,68,68,0.10)',
+        border: '1px solid ' + (tone === 'neutral' ? 'rgba(var(--ink),0.09)' : tone === 'add' ? 'rgba(62,168,104,0.35)' : 'rgba(239,68,68,0.35)') }}>
         {children}
       </span>
-      <span className={`text-[9px] font-semibold uppercase tracking-wide leading-none ${v.label}`}>{label}</span>
+      <span className="xc-mono" style={{ fontSize: 7.5, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(var(--ink),0.45)' }}>{label}</span>
+    </button>
+  );
+}
+
+// Header tool-rail button (PC / PRs / Demo). onClick, aria-label,
+// data-tutorial and title pass through ...rest.
+// tone 'add' / 'del' colours the Add / Remove exercise buttons.
+function ToolBtn({ icon, label, on = false, tone, ...rest }) {
+  const toned = tone === 'add' || tone === 'del';
+  const tc = tone === 'add' ? XC_GREEN : XC_RED;
+  return (
+    <button type="button" {...rest} className="active:scale-95 transition-transform" style={{
+      height: 32, padding: '0 7px', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0,
+      background: on ? 'rgba(239,68,68,0.14)' : toned ? (tone === 'add' ? 'rgba(62,168,104,0.10)' : 'rgba(239,68,68,0.10)') : 'rgba(var(--ink),0.04)',
+      border: '1px solid ' + (on ? 'rgba(239,68,68,0.55)' : toned ? (tone === 'add' ? 'rgba(62,168,104,0.35)' : 'rgba(239,68,68,0.35)') : 'rgba(var(--ink),0.09)'),
+      boxShadow: on ? '0 0 12px rgba(239,68,68,0.25)' : 'inset 0 1px 0 rgba(var(--ink),0.05)',
+      color: on ? 'var(--fg)' : toned ? tc : 'rgba(var(--ink),0.8)',
+    }}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{icon}</svg>
+      <span className="xc-mono" style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.14em', textTransform: 'uppercase' }}>{label}</span>
     </button>
   );
 }
 
 // Card shape inside a superset group: cards stack flush with no gap, with
-// rounded corners only on the group's outer edges and a divider between.
+// rounded corners only on the group's outer edges. The previous card's
+// bottom border is the divider (middle/end cards drop their top border).
 const SUPERSET_CARD_SHAPE = {
-  only: 'rounded-xl',
-  start: 'rounded-t-xl',
-  middle: 'border-t border-white/10',
-  end: 'rounded-b-xl border-t border-white/10',
+  only: 'rounded-[18px]',
+  start: 'rounded-t-[18px]',
+  middle: '',
+  end: 'rounded-b-[18px]',
 };
 
 function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, onCompletedSetTap, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onReorderSets, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, onShowPRs, note, onNoteChange, weightSuggestion, onApplySuggestion, onApplyCalculatedWeight, goalOverrides, onGoalChange, allWorkoutExercises, lastEntries, forceShowDemo, mode = 'session', dataTutorial, showGoalWeight = true, showGoalReps = true, showSetType = true, exerciseNumber, cardioEnabled = false, cardioSelections, onCardioChange, cardTheme = 'light', onEnterFullScreen, fullScreen = false, onOpenSupersetPicker, supersetPosition = null }) {
   // 'light' = #e8e8e8 card with dark text (default)
   // 'dark'  = transparent card, white text — page bg shows through
-  const isDarkTheme = cardTheme === 'dark';
+  // Card colour follows the page: the session's default black page gets
+  // black cards; cardTheme 'dark' (historical name) puts the session on the
+  // light #e8e8e8 page, so its cards are white.
+  const blackCards = cardTheme !== 'dark';
   const isTemplate = mode === 'template';
   // Use exerciseKey (unique per card) for set-level keys; fall back to exercise.name
   const keyName = exerciseKey || exercise.name;
-  const exercisePbs = pbs?.[exercise.name] || {};
   const { exercises: allExercises } = useExercises();
   const dbExercise = allExercises.find(e => e.name.toLowerCase() === exercise.name.toLowerCase());
   // Per-template video override (template_exercises.video_url). YouTube URLs
@@ -358,102 +475,189 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
     }
   };
 
+  // Card-level state for the "Active card" look. Sets checked off on this
+  // card, the first unchecked set (the "active" row), and whether the card
+  // still has work left (focused: red outline + shine).
+  const doneCount = isTemplate ? 0 : exercise.sets.filter((_, i) => completedSets?.has(`${keyName}-${i}`)).length;
+  const firstIncompleteIdx = isTemplate ? -1 : exercise.sets.findIndex((_, i) => !completedSets?.has(`${keyName}-${i}`));
+  const isFocusedCard = firstIncompleteIdx !== -1;
+  const muscleLabel = exercise.muscle || exercise.muscleGroup || dbExercise?.muscle || '';
+  const lastFirst = lastEntries?.[0];
+  const showLast = !isTemplate && !!lastFirst && (Number(lastFirst.weight) > 0 || lastFirst.weight === -1 || Number(lastFirst.reps) > 0);
+  const menuLayout = CARD_CONTROLS_LAYOUT === 'menu' && !dataTutorial;
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuBtnRef = useRef(null);
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
+  // Remove the last set — confirm first if it's already checked.
+  const removeLastSet = () => {
+    const lastIdx = exercise.sets.length - 1;
+    const lastKey = `${keyName}-${lastIdx}`;
+    if (completedSets?.has(lastKey)) {
+      setConfirmDeleteLast(true);
+    } else {
+      onDeleteSet(exercise.name, lastIdx);
+    }
+  };
+  const menuItems = [
+    onMoveUp && { label: 'Move up', onClick: () => { wasJustClickedRef.current = true; onMoveUp(); }, icon: <path d="M4.5 15.75l7.5-7.5 7.5 7.5" /> },
+    onMoveDown && { label: 'Move down', onClick: () => { wasJustClickedRef.current = true; onMoveDown(); }, icon: <path d="M19.5 8.25l-7.5 7.5-7.5-7.5" /> },
+    onSwapExercise && { label: 'Swap exercise', onClick: () => { setShowSwap(true); setSwapSearch(''); }, icon: <path d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" /> },
+    onOpenSupersetPicker && !isTemplate && { label: exercise.supersetLabel ? `Superset ${exercise.supersetLabel}` : 'Add to superset', onClick: () => onOpenSupersetPicker(exerciseKey || exercise.name), icon: <path d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /> },
+    onAddExercise && { label: 'Add exercise below', onClick: () => { setShowAddBelow(true); setAddBelowSearch(''); }, icon: <path d="M12 4.5v15m7.5-7.5h-15" /> },
+    onDeleteExercise && { divider: true },
+    onDeleteExercise && { label: 'Remove exercise', tone: 'del', onClick: () => onDeleteExercise(), icon: <path d="M6 18L18 6M6 6l12 12" /> },
+  ].filter(Boolean);
+  const showMenuBtn = menuLayout && !readOnly && menuItems.some((it) => !it.divider);
+  const showCheckCol = !isTemplate && !readOnly && !!onToggleComplete;
+  const flushTop = supersetPosition === 'middle' || supersetPosition === 'end';
+
   return (
     <>
-    <div ref={cardRef} data-tutorial={dataTutorial ? 'exercise-card' : undefined} className={`${isDarkTheme ? 'exercise-card-transparent-test' : 'exercise-card-light-test'} glass-card${fullScreen ? ' min-h-full' : ` overflow-hidden ${SUPERSET_CARD_SHAPE[supersetPosition] || 'rounded-xl mb-3'}`}${EXERCISE_CARD_GRADIENT_BORDER && !isDarkTheme && !fullScreen ? ' exercise-card-gradient-border' : ''}`} style={{ position: 'relative' }}>
-      {/* Exercise Header — name + plate-calc + PRs + demo + full-screen. Sticky so it
-          stays pinned at the top of the scroll viewport while the user
-          scrolls long set lists, especially valuable in full-screen mode
-          where every set might require referring back to the name + PRs. */}
-      <div data-tutorial={dataTutorial} className="px-4 py-3 flex items-center justify-between sticky top-0 z-20 backdrop-blur-md" style={{ background: isDarkTheme ? 'rgba(20,20,20,0.9)' : 'rgba(242,242,242,0.9)', borderBottom: '3px double rgba(255,255,255,0.15)' }}>
-        <div className="min-w-0">
-          {onOpenSupersetPicker && !readOnly && !isTemplate ? (
+    <div ref={cardRef} data-tutorial={dataTutorial ? 'exercise-card' : undefined}
+      className={`${blackCards ? 'xc-dark' : 'xc-light'}${fullScreen ? ' min-h-full' : ` overflow-hidden ${supersetPosition ? SUPERSET_CARD_SHAPE[supersetPosition] : 'mb-3'}`}`}
+      style={{
+        position: 'relative', borderRadius: supersetPosition ? undefined : 18,
+        background: 'var(--card)', color: 'var(--fg)',
+        border: isFocusedCard ? '1px solid rgba(239,68,68,0.45)' : '1px solid rgba(var(--ink),0.07)',
+        ...(flushTop ? { borderTop: 'none' } : {}),
+        boxShadow: isFocusedCard ? 'var(--sh-focus)' : 'var(--sh)',
+      }}>
+      {isFocusedCard && <div className="xc-shine" aria-hidden="true" />}
+      <div style={{ position: 'relative', zIndex: 2 }}>
+      {/* Exercise Header — index tile, name, full-screen, then the tool
+          rail (PC / PRs / Demo / Last). Sticky so it stays pinned while
+          scrolling long set lists, especially in full-screen mode. */}
+      <div data-tutorial={dataTutorial} className="sticky top-0 z-20" style={{ background: 'var(--card)' }}>
+        <div style={{ padding: '13px 12px 11px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+          {/* Index tile: the superset label (e.g. "A1") when set, otherwise the exercise number */}
+          {(exercise.supersetLabel || exerciseNumber != null) && (
+            <div className="xc-mono" style={{
+              flex: '0 0 auto', width: 30, height: 30, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 11, fontWeight: 600,
+              color: exercise.supersetLabel ? 'var(--fg)' : 'rgba(var(--ink),0.6)',
+              background: exercise.supersetLabel ? 'rgba(239,68,68,0.18)' : 'rgba(var(--ink),0.04)',
+              border: '1px solid ' + (exercise.supersetLabel ? 'rgba(239,68,68,0.5)' : 'rgba(var(--ink),0.09)'),
+            }}>{exercise.supersetLabel || String(exerciseNumber ?? '').padStart(2, '0')}</div>
+          )}
+
+          {/* Name block — tapping the name opens the superset picker */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {onOpenSupersetPicker && !readOnly && !isTemplate ? (
+              <button
+                type="button"
+                data-tutorial={dataTutorial ? 'exercise-name' : undefined}
+                onClick={(e) => { e.stopPropagation(); onOpenSupersetPicker(exerciseKey || exercise.name); }}
+                aria-label={`Set superset group for ${exercise.name}`}
+                className="superset-press-target active:opacity-70 transition-opacity"
+                style={{ display: 'block', textAlign: 'left', background: 'none', border: 'none', padding: 0, fontSize: 16, fontWeight: 700, color: 'var(--fg)', letterSpacing: '-0.012em', lineHeight: 1.2 }}
+              >
+                {exercise.name}
+              </button>
+            ) : (
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--fg)', letterSpacing: '-0.012em', lineHeight: 1.2 }}>{exercise.name}</div>
+            )}
+            <div className="xc-mono" style={{ fontSize: 8.5, letterSpacing: '0.2em', color: 'rgba(var(--ink),0.42)', textTransform: 'uppercase', marginTop: 4 }}>
+              {muscleLabel ? `${muscleLabel} · ` : ''}{isTemplate ? `${exercise.sets.length} set${exercise.sets.length !== 1 ? 's' : ''}` : `${doneCount}/${exercise.sets.length} sets`}
+              {showLast && (
+                <span> · Last <span style={{ color: 'rgba(var(--ink),0.6)' }}>{lastFirst.weight === -1 ? 'BW' : (lastFirst.weight ?? 0)}×{lastFirst.reps ?? 0}</span></span>
+              )}
+            </div>
+          </div>
+
+          {/* Full-screen — hidden when the parent doesn't supply onEnterFullScreen */}
+          {!isTemplate && onEnterFullScreen && (
             <button
               type="button"
-              data-tutorial={dataTutorial ? 'exercise-name' : undefined}
-              onClick={(e) => { e.stopPropagation(); onOpenSupersetPicker(exerciseKey || exercise.name); }}
-              aria-label={`Set superset group for ${exercise.name}`}
-              className="superset-press-target text-[17px] font-bold text-white text-left active:opacity-70 transition-opacity"
+              data-tutorial={dataTutorial ? 'full-screen' : undefined}
+              onClick={(e) => { e.stopPropagation(); onEnterFullScreen(exerciseKey); }}
+              aria-label={`Enter full-screen mode for ${exercise.name}`}
+              title="Full-screen"
+              className="active:scale-90 transition-transform"
+              style={{ flex: '0 0 auto', width: 30, height: 30, borderRadius: 9, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(var(--ink),0.04)', border: '1px solid rgba(var(--ink),0.09)', color: 'rgba(var(--ink),0.75)' }}
             >
-              {exercise.supersetLabel ? (
-                <span className="text-wf-gray-500 mr-1">{exercise.supersetLabel} ·</span>
-              ) : null}
-              {exercise.name}
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>
             </button>
-          ) : (
-            <span className="text-[17px] font-bold text-white">
-              {exercise.supersetLabel ? (
-                <span className="text-wf-gray-500 mr-1">{exercise.supersetLabel} ·</span>
-              ) : null}
-              {exercise.name}
-            </span>
           )}
-          <div className="text-[10px] text-wf-gray-500 mt-0.5">
-            {exercise.sets?.length || 0} sets{exercise.setType && exercise.setType !== 'straight' ? ` · ${exercise.setType.replace('_', ' ')}` : ''}
-          </div>
         </div>
-        {!isTemplate && (
-          <div className="shrink-0 flex items-center gap-1.5">
-            {!readOnly && (
-              <button
-                type="button"
+
+        {/* Tool rail — PC / PRs / Demo, then Add / Remove exercise on the
+            right. Template mode (Create / Edit Workout) shows only Add / Remove. */}
+        {(!isTemplate || showMenuBtn || (!menuLayout && !readOnly && (onAddExercise || onDeleteExercise))) && (
+          <div style={{ padding: '0 12px 12px', display: 'flex', gap: 5 }}>
+            {!isTemplate && !readOnly && (
+              <ToolBtn
+                label="PC"
                 data-tutorial={dataTutorial ? 'plate-calc' : undefined}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setPlateCalcFromHeader(true);
-                }}
+                onClick={(e) => { e.stopPropagation(); setPlateCalcFromHeader(true); }}
                 aria-label={`Open plate calculator for ${exercise.name}`}
                 title="Plate calculator"
-                className="relative h-7 w-[38px] rounded-lg flex items-center justify-center active:scale-95 transition-all bg-wf-red/10 border border-wf-red/20 before:absolute before:content-[''] before:left-1/2 before:top-1/2 before:-translate-x-1/2 before:-translate-y-1/2 before:w-[44px] before:h-[44px]"
-              >
-                <span className="text-[10px] font-semibold text-wf-red">PC</span>
-              </button>
+                icon={<><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="2.5" /><path d="M12 3.5v3M12 17.5v3" /></>}
+              />
             )}
-            {onShowPRs && (
-              <button
-                type="button"
+            {!isTemplate && onShowPRs && (
+              <ToolBtn
+                label="PRs"
                 data-tutorial={dataTutorial ? 'prs-button' : undefined}
                 onClick={(e) => { e.stopPropagation(); onShowPRs(exercise.name); }}
                 aria-label={`View personal records for ${exercise.name}`}
-                className="relative h-7 px-2.5 rounded-lg flex items-center gap-1.5 active:scale-95 transition-all bg-wf-red/10 border border-wf-red/20 before:absolute before:content-[''] before:left-0 before:right-0 before:top-1/2 before:-translate-y-1/2 before:min-h-[44px]"
-              >
-                <svg className="w-3.5 h-3.5 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0" />
-                </svg>
-                <span className="text-[10px] font-semibold text-wf-red">PRs</span>
-              </button>
+                icon={<><path d="M7 4h10v3a5 5 0 01-10 0V4z" /><path d="M7 5H4.5v1A3 3 0 007 9M17 5h2.5v1A3 3 0 0117 9M12 12v3.5M9 20h6M10 20c0-1.3.7-2 2-2s2 .7 2 2" /></>}
+              />
             )}
-            <button
-              type="button"
-              data-tutorial={dataTutorial ? 'demo-button' : undefined}
-              onClick={(e) => { e.stopPropagation(); videoId ? setShowDemoLocal(!showDemoLocal) : handleVideoClick(); }}
-              className={`relative h-7 px-[5px] rounded-lg flex items-center gap-1.5 active:scale-95 transition-all before:absolute before:content-[''] before:left-0 before:right-0 before:top-1/2 before:-translate-y-1/2 before:min-h-[44px] ${showDemo ? 'bg-wf-red/20 border border-wf-red/40' : 'bg-wf-red/10 border border-wf-red/20'}`}
-            >
-              <svg className="w-3.5 h-3.5 text-wf-red" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
-              </svg>
-              <span className="text-[10px] font-semibold text-wf-red">Demo</span>
-            </button>
-            {/* Viewfinder ⛶ — enter full-screen mode for this exercise.
-                Hidden when the parent doesn't supply onEnterFullScreen
-                (e.g. read-only views). */}
-            {onEnterFullScreen && (
-              <button
-                type="button"
-                data-tutorial={dataTutorial ? 'full-screen' : undefined}
-                onClick={(e) => { e.stopPropagation(); onEnterFullScreen(exerciseKey); }}
-                aria-label={`Enter full-screen mode for ${exercise.name}`}
-                title="Full-screen"
-                className="relative h-6 w-6 rounded-md flex items-center justify-center text-wf-gray-400 hover:text-white active:scale-90 active:bg-white/10 transition-all before:absolute before:content-[''] before:left-1/2 before:top-1/2 before:-translate-x-1/2 before:-translate-y-1/2 before:w-[44px] before:h-[44px]"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  {/* Four L-shaped corner brackets of a square */}
-                  <path d="M4 9V5a1 1 0 011-1h4" />
-                  <path d="M20 9V5a1 1 0 00-1-1h-4" />
-                  <path d="M4 15v4a1 1 0 001 1h4" />
-                  <path d="M20 15v4a1 1 0 01-1 1h-4" />
-                </svg>
-              </button>
+            {!isTemplate && (
+              <ToolBtn
+                label="Demo"
+                on={showDemo}
+                data-tutorial={dataTutorial ? 'demo-button' : undefined}
+                onClick={(e) => { e.stopPropagation(); videoId ? setShowDemoLocal(!showDemoLocal) : handleVideoClick(); }}
+                icon={<path d="M7 4.5v15l12.5-7.5z" fill="currentColor" stroke="none" />}
+              />
+            )}
+            {showMenuBtn && (
+              <>
+                <button
+                  ref={menuBtnRef}
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setMenuOpen((o) => !o); }}
+                  aria-label={`More actions for ${exercise.name}`}
+                  aria-haspopup="menu"
+                  aria-expanded={menuOpen}
+                  className="active:scale-95 transition-transform"
+                  style={{
+                    marginLeft: 'auto', flexShrink: 0, width: 38, height: 32, borderRadius: 10, padding: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: menuOpen ? 'rgba(var(--ink),0.10)' : 'rgba(var(--ink),0.04)',
+                    border: '1px solid rgba(var(--ink),' + (menuOpen ? '0.18' : '0.09') + ')',
+                    color: 'rgba(var(--ink),0.8)',
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" /></svg>
+                </button>
+                {menuOpen && (
+                  <CardMenu anchorRef={menuBtnRef} themeClass={blackCards ? 'xc-dark' : 'xc-light'} items={menuItems} onClose={closeMenu} />
+                )}
+              </>
+            )}
+            {!menuLayout && !readOnly && (onAddExercise || onDeleteExercise) && (
+              <span data-tutorial={dataTutorial ? 'add-delete-buttons' : undefined} style={{ marginLeft: 'auto', display: 'flex', gap: 5 }}>
+                {onAddExercise && (
+                  <ToolBtn
+                    label="Add"
+                    tone="add"
+                    aria-label="Add exercise below"
+                    onClick={(e) => { e.stopPropagation(); setShowAddBelow(true); setAddBelowSearch(''); }}
+                    icon={<path d="M12 4.5v15m7.5-7.5h-15" />}
+                  />
+                )}
+                {onDeleteExercise && (
+                  <ToolBtn
+                    label="Remove"
+                    tone="del"
+                    aria-label="Delete exercise"
+                    onClick={(e) => { e.stopPropagation(); onDeleteExercise(); }}
+                    icon={<path d="M6 18L18 6M6 6l12 12" />}
+                  />
+                )}
+              </span>
             )}
           </div>
         )}
@@ -461,171 +665,109 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
 
       {/* Inline Demo Section */}
       {showDemo && videoId && (
-        <div className="border-t border-white/5 bg-black/20">
-          <div className="p-3">
-            <div className="rounded-xl overflow-hidden bg-black aspect-video">
-              {isCdnVideo ? (
-                <video src={videoId} className="w-full h-full object-contain" controls playsInline preload="metadata" controlsList="nodownload" />
-              ) : (
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); window.open(`https://www.youtube.com/watch?v=${videoId}`, '_blank'); }}
-                  className="w-full h-full flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform"
-                >
-                  <svg className="w-10 h-10 text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                    <path d="M21.582 7.203a2.51 2.51 0 00-1.768-1.774C18.254 5 12 5 12 5s-6.254 0-7.814.429A2.51 2.51 0 002.418 7.203 26.14 26.14 0 002 12a26.14 26.14 0 00.418 4.797 2.51 2.51 0 001.768 1.774C5.746 19 12 19 12 19s6.254 0 7.814-.429a2.51 2.51 0 001.768-1.774A26.14 26.14 0 0022 12a26.14 26.14 0 00-.418-4.797zM9.75 15.02V8.98L15.5 12l-5.75 3.02z" />
-                  </svg>
-                  <span className="text-[11px] font-semibold text-white/80">Watch on YouTube</span>
-                </button>
-              )}
-            </div>
-          </div>
+        <div style={{ margin: '0 12px 12px', borderRadius: 14, overflow: 'hidden', aspectRatio: '16 / 9', background: 'radial-gradient(120% 100% at 30% 0%, #26262a, #050506)', border: '1px solid rgba(255,255,255,0.10)' }}>
+          {isCdnVideo ? (
+            <video src={videoId} className="w-full h-full object-contain" controls playsInline preload="metadata" controlsList="nodownload" />
+          ) : (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); window.open(`https://www.youtube.com/watch?v=${videoId}`, '_blank'); }}
+              className="w-full h-full flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform"
+            >
+              <svg className="w-10 h-10" style={{ color: '#fff' }} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M21.582 7.203a2.51 2.51 0 00-1.768-1.774C18.254 5 12 5 12 5s-6.254 0-7.814.429A2.51 2.51 0 002.418 7.203 26.14 26.14 0 002 12a26.14 26.14 0 00.418 4.797 2.51 2.51 0 001.768 1.774C5.746 19 12 19 12 19s6.254 0 7.814-.429a2.51 2.51 0 001.768-1.774A26.14 26.14 0 0022 12a26.14 26.14 0 00-.418-4.797zM9.75 15.02V8.98L15.5 12l-5.75 3.02z" />
+              </svg>
+              <span className="text-[11px] font-semibold" style={{ color: 'rgba(255,255,255,0.8)' }}>Watch on YouTube</span>
+            </button>
+          )}
         </div>
       )}
 
       {/* Exercise Description (from template) */}
       {exercise.exerciseDescription && (
-        <div className="px-4 py-2 border-b border-white/5 bg-white/[0.02]">
-          <p className="text-xs text-wf-gray-400 leading-relaxed">{exercise.exerciseDescription}</p>
+        <div style={{ padding: '0 12px 12px' }}>
+          <p style={{ fontSize: 12, lineHeight: 1.5, color: 'rgba(var(--ink),0.6)', margin: 0 }}>{exercise.exerciseDescription}</p>
         </div>
       )}
 
-      {/* Controls subheader — move, swap, add exercise, delete exercise */}
-      {!readOnly && (
-        // Red left accent bar (same accent as section headers)
-        // mark this as its own control strip. Buttons carry text labels so
-        // the row is self-explanatory. Fixed-width buttons + justify-between
-        // keep it inside a 375px screen (overflow here re-triggers the
-        // sideways-scroll bug).
-        <div className="pl-3 pr-4 py-2 border-b border-white/5 border-l-[3px] border-l-wf-red flex items-start justify-between bg-white/[0.015]">
-            {/* Left group: Up / Down / Swap. Swap sits outside the
-                move-buttons span so the tutorial's move highlight still
-                covers only the arrows. */}
-            <span className="flex items-start gap-1.5">
-            <span data-tutorial={dataTutorial ? 'move-buttons' : undefined} className="flex items-start gap-1.5">
-            {onMoveUp && (
-              <CardControlButton label="Up" ariaLabel="Move exercise up" onClick={() => { wasJustClickedRef.current = true; onMoveUp(); }}>
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>
-              </CardControlButton>
-            )}
-            {onMoveDown && (
-              <CardControlButton label="Down" ariaLabel="Move exercise down" onClick={() => { wasJustClickedRef.current = true; onMoveDown(); }}>
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
-              </CardControlButton>
-            )}
+      {/* Controls strip — Up / Down / Swap / SS | Remove Set / Add Set ('rows' layout) */}
+      {!readOnly && !menuLayout && (
+        <div style={{ margin: '0 12px', padding: '9px 6px 8px', borderRadius: 13, background: 'var(--strip)', border: XC_LINE, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          {/* Swap sits outside the move-buttons span so the tutorial's move
+              highlight still covers only the arrows. */}
+          <span style={{ display: 'flex', gap: 4 }}>
+            <span data-tutorial={dataTutorial ? 'move-buttons' : undefined} style={{ display: 'flex', gap: 4 }}>
+              {onMoveUp && (
+                <CardControlButton label="Up" ariaLabel="Move exercise up" onClick={() => { wasJustClickedRef.current = true; onMoveUp(); }}>
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>
+                </CardControlButton>
+              )}
+              {onMoveDown && (
+                <CardControlButton label="Down" ariaLabel="Move exercise down" onClick={() => { wasJustClickedRef.current = true; onMoveDown(); }}>
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+                </CardControlButton>
+              )}
             </span>
             {onSwapExercise && (
               <CardControlButton label="Swap" ariaLabel="Swap exercise" dataTutorial={dataTutorial ? 'swap-button' : undefined} onClick={() => { setShowSwap(true); setSwapSearch(''); }}>
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" /></svg>
               </CardControlButton>
             )}
-            </span>
-            <span data-tutorial={dataTutorial ? 'add-delete-buttons' : undefined} className="flex items-start gap-1.5">
-            {onAddExercise && (
-              <CardControlButton label="Add" ariaLabel="Add exercise below" variant="green" onClick={() => { setShowAddBelow(true); setAddBelowSearch(''); }}>
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-              </CardControlButton>
-            )}
-            {onDeleteExercise && (
-              <CardControlButton label="Remove" ariaLabel="Delete exercise" onClick={onDeleteExercise}>
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-              </CardControlButton>
-            )}
-            </span>
-        </div>
-      )}
-
-
-      {/* Set Controls Subheader */}
-      {!readOnly && onAddSet && (
-        <div data-tutorial={dataTutorial ? 'set-controls' : undefined} className="px-4 py-2 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
-          {/* Superset — same picker as tapping the exercise name. Cards that
-              share a superset letter are grouped together in the session. */}
-          {onOpenSupersetPicker ? (
-            <button
-              type="button"
-              data-tutorial={dataTutorial ? 'superset-button' : undefined}
-              onClick={(e) => { e.stopPropagation(); onOpenSupersetPicker(exerciseKey || exercise.name); }}
-              aria-label={exercise.supersetLabel ? `Superset ${exercise.supersetLabel} — change` : `Add ${exercise.name} to a superset`}
-              className={`h-12 px-3 rounded-full border flex items-center justify-center gap-1 active:scale-90 transition-all ${CARD_CONTROL_VARIANTS.red.circle}`}
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
-              </svg>
-              <span className="text-[10px] font-semibold uppercase tracking-wider">
-                {exercise.supersetLabel ? `Superset ${exercise.supersetLabel}` : 'Superset'}
-              </span>
-            </button>
-          ) : (
-            <span className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-medium">
-              {exercise.sets.length} set{exercise.sets.length !== 1 ? 's' : ''}
-            </span>
-          )}
-          {/* Remove sits left of Add Set so Add Set stays anchored at the
-              right edge — Remove appearing after the 2nd set doesn't shift
-              it, so repeated taps land in the same spot. Colors match the
-              card-controls Add (green) / Remove (red) buttons. */}
-          <div className="flex items-center gap-1.5">
-            {onDeleteSet && exercise.sets.length > 1 && (
-              <button
-                type="button"
-                onClick={() => {
-                  const lastIdx = exercise.sets.length - 1;
-                  const lastKey = `${keyName}-${lastIdx}`;
-                  if (completedSets?.has(lastKey)) {
-                    setConfirmDeleteLast(true);
-                  } else {
-                    onDeleteSet(exercise.name, lastIdx);
-                  }
-                }}
-                className={`h-12 px-3 rounded-full border flex items-center justify-center gap-1 active:scale-90 transition-all ${CARD_CONTROL_VARIANTS.red.circle}`}
+            {/* SS — same picker as tapping the exercise name. Cards that share
+                a superset letter are grouped together in the session. */}
+            {onOpenSupersetPicker && !isTemplate && (
+              <CardControlButton
+                label="SS"
+                ariaLabel={exercise.supersetLabel ? `Superset ${exercise.supersetLabel} — change` : `Add ${exercise.name} to a superset`}
+                dataTutorial={dataTutorial ? 'superset-button' : undefined}
+                onClick={() => onOpenSupersetPicker(exerciseKey || exercise.name)}
               >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12h-15" />
-                </svg>
-                <span className="text-[10px] font-semibold uppercase tracking-wider">Remove</span>
-              </button>
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></svg>
+              </CardControlButton>
             )}
-            <button
-              type="button"
-              onClick={() => onAddSet(exercise.name)}
-              className={`h-12 px-3 rounded-full border flex items-center justify-center gap-1 active:scale-90 transition-all ${CARD_CONTROL_VARIANTS.green.circle}`}
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
-              <span className="text-[10px] font-semibold uppercase tracking-wider">Add Set</span>
-            </button>
-          </div>
+          </span>
+          {onAddSet && (
+            <>
+              <span style={{ width: 1, alignSelf: 'stretch', background: 'rgba(var(--ink),0.07)' }} />
+              {/* Remove Set sits left of Add Set so Add Set stays anchored at
+                  the right edge and repeated taps land in the same spot. */}
+              <span data-tutorial={dataTutorial ? 'set-controls' : undefined} style={{ display: 'flex', gap: 10 }}>
+                {onDeleteSet && exercise.sets.length > 1 && (
+                  <CardControlButton
+                    label="Remove Set"
+                    ariaLabel="Remove last set"
+                    variant="red"
+                    onClick={() => {
+                      const lastIdx = exercise.sets.length - 1;
+                      const lastKey = `${keyName}-${lastIdx}`;
+                      if (completedSets?.has(lastKey)) {
+                        setConfirmDeleteLast(true);
+                      } else {
+                        onDeleteSet(exercise.name, lastIdx);
+                      }
+                    }}
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12h-15" /></svg>
+                  </CardControlButton>
+                )}
+                <CardControlButton label="Add Set" ariaLabel="Add set" variant="green" onClick={() => onAddSet(exercise.name)}>
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                </CardControlButton>
+              </span>
+            </>
+          )}
         </div>
       )}
 
-      {/* Column Headers. Completed / Set / Type stay fixed-width; the four
-          data columns (Goal Wt, Actual Wt, Goal Reps, Actual Reps) ALL use
-          flex-1 so they share the remaining row width equally. Previously
-          the Wt columns were a fixed 3.15rem while the Reps columns were
-          flex-1 — on a narrow phone that read fine because the row was
-          tight, but on wide web/tablet viewports the reps columns ballooned
-          to ~70% of the available space and the weight columns looked
-          comically small. flex-1 across all four restores even visual
-          weight at any viewport width. */}
-      <div className="px-3 pt-2 pb-1 flex items-center gap-1.5 text-[9px] text-wf-gray-500 uppercase tracking-wider">
-        {!isTemplate && !readOnly && onToggleComplete && <div className={showSetType ? 'w-5 shrink-0' : 'w-[1.8rem] shrink-0'} />}
-        <div className={showSetType ? 'w-[1.43rem] shrink-0 text-center' : 'w-[2.8rem] shrink-0 text-center'}>Set</div>
-        {showSetType && <div className="w-[2.8rem] shrink-0 text-center">Type</div>}
-        {!isTemplate && showGoalWeight && <div className="flex-1 text-center">Goal Wt</div>}
-        {/* When the Goal column is hidden there's only one weight column,
-            so the simpler "Weight" label reads cleaner than "Actual Wt"
-            (which only makes sense as a contrast to "Goal Wt"). */}
-        <div className="flex-1 text-center">{showGoalWeight ? 'Actual Wt' : 'Weight'}</div>
-        {isTemplate ? (
-          <div className="flex-1 text-center">Reps</div>
-        ) : (
-          <>
-            {showGoalReps && <div className="flex-1 text-center">Goal Reps</div>}
-            <div className="flex-1 text-center">{showGoalReps ? 'Actual Reps' : 'Reps'}</div>
-          </>
-        )}
+      {/* Column headers — Goal Wt / Goal Reps get their own columns when
+          those settings are on (session mode only). */}
+      <div className="xc-mono" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '12px 12px 6px', fontSize: 7.5, letterSpacing: '0.12em', color: 'rgba(var(--ink),0.35)', textTransform: 'uppercase', lineHeight: 1.25 }}>
+        {showCheckCol && <span style={{ flex: '0 0 30px', textAlign: 'center' }}>✓</span>}
+        <span style={{ flex: '0 0 34px', textAlign: 'center' }}>Set</span>
+        {!isTemplate && showGoalWeight && <span style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>Goal Wt</span>}
+        <span style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>{!isTemplate && showGoalWeight ? 'Actual Wt' : 'Weight · lb'}</span>
+        {!isTemplate && showGoalReps && <span style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>Goal Reps</span>}
+        <span style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>{!isTemplate && showGoalReps ? 'Actual Reps' : 'Reps'}</span>
       </div>
 
       {/* Set Rows — wrapped in dnd-kit so long-press initiates a drag-to-
@@ -633,165 +775,186 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
           `disabled` so they're not draggable but still render in place. */}
       <DndContext sensors={sortableSensors} collisionDetection={closestCenter} onDragEnd={handleSetDragEnd}>
         <SortableContext items={exercise.sets.map((_, i) => i)} strategy={verticalListSortingStrategy}>
-      <div className="divide-y divide-white/5">
+      <div>
         {exercise.sets.map((set, idx) => {
           const entry = entries?.[idx] || {};
           const setKey = `${keyName}-${idx}`;
           const isCompleted = !isTemplate && completedSets?.has(setKey);
           const isAutoFill = !isTemplate && autoFilled?.has(setKey) && !isCompleted;
-          const rowWeight = entry.weight ?? set.suggestedWeight;
-          const pbReps = (rowWeight !== undefined && rowWeight !== '' && rowWeight !== null) ? exercisePbs[rowWeight] : undefined;
+          const isActive = !isTemplate && idx === firstIncompleteIdx;
           const isSwipeable = !isTemplate && !readOnly;
           // A checked set's weight, reps and set type are frozen so a PR can't
           // be changed by accident — uncheck the set to edit it.
           const setLocked = isCompleted && !!onToggleComplete;
+          const setType = entry.setType || exercise.setType || 'straight';
+          const typeChip = setType === 'straight'
+            ? { text: 'STD', color: 'rgba(var(--ink),0.3)', bg: 'transparent', border: 'rgba(var(--ink),0.08)' }
+            : setType === 'warm_up'
+              ? { text: 'W', color: 'rgba(var(--ink),0.65)', bg: 'rgba(var(--ink),0.06)', border: 'rgba(var(--ink),0.14)' }
+              : { text: getSetTypeShort(setType), color: XC_RED, bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.35)' };
+          // Row tint over an opaque base so the swipe actions stay hidden.
+          const rowTint = isCompleted ? 'rgba(62,168,104,0.05)' : isActive ? 'rgba(239,68,68,0.045)' : 'transparent';
+          const cellStyle = {
+            flex: 1, minWidth: 0, height: 46, borderRadius: 11, position: 'relative',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
+            background: isCompleted ? 'rgba(var(--ink),0.02)' : 'var(--well)',
+            border: isActive ? '1px solid rgba(var(--ink),0.22)' : XC_IN,
+          };
+          const inputStyle = {
+            width: '100%', background: 'transparent', border: 'none', outline: 'none', padding: 0, textAlign: 'center',
+            fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 17, fontWeight: 600, fontVariantNumeric: 'tabular-nums', lineHeight: 1.2,
+            color: isCompleted ? 'rgba(var(--ink),0.55)' : isAutoFill ? 'rgba(var(--ink),0.4)' : 'var(--fg)',
+            fontStyle: isAutoFill ? 'italic' : 'normal',
+          };
+          // Goal cells: a quieter well than the actual-value cells, with the
+          // goal number in muted red (long-press to edit).
+          const goalCellStyle = {
+            ...cellStyle,
+            background: 'rgba(var(--ink),0.025)',
+            border: XC_LINE,
+          };
+          const goalLineStyle = {
+            width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 15, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: 'rgba(239,68,68,0.65)',
+            whiteSpace: 'nowrap',
+          };
+          const goalInputStyle = { ...inputStyle, fontSize: 15, color: 'rgba(239,68,68,0.85)', fontStyle: 'normal' };
+          const fmtGoal = (v) => (v === '' || v === undefined || v === null ? '—' : (Number(v) === -1 ? 'BW' : v));
           const rowContent = (
             <div
               ref={!isTemplate ? (el) => { swipeRowRefs.current[idx] = el; } : undefined}
               data-tutorial={dataTutorial && idx === 0 ? 'set-row' : undefined}
-              className={`relative px-3 py-2.5 flex items-center gap-1.5 transition-colors duration-200 ${
-                !isSwipeable && isCompleted ? 'bg-green-500/10' : ''
-              }`}
-              style={
-                // In session mode the row sits over swipe-action buttons —
-                // give it an opaque background so the buttons stay hidden
-                // until the row is dragged. Color matches the parent card:
-                //   • dark theme:  solid black (page bg)
-                //   • light theme: #e8e8e8 (light card)
-                // Completed rows get a precomputed alpha-blend of green/10
-                // over the base so we keep the same visual cue.
-                isSwipeable
-                  ? {
-                      background: isDarkTheme
-                        ? (isCompleted ? 'rgb(11, 32, 18)' : '#0a0a0a')
-                        : (isCompleted ? 'rgb(213, 228, 218)' : '#e8e8e8'),
-                    }
-                  : undefined
-              }
+              className="transition-colors duration-200"
+              style={{
+                position: 'relative', display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px',
+                // Divider drawn as an inset shadow over the opaque row background
+                // (a translucent border would let the swipe panels show through).
+                boxShadow: idx === 0 ? 'none' : 'inset 0 1px 0 rgba(var(--ink),0.06)',
+                background: `linear-gradient(${rowTint}, ${rowTint}), var(--row)`,
+              }}
               onTouchStart={isSwipeable ? (e) => handleTouchStart(idx, e) : undefined}
               onTouchEnd={isSwipeable ? handleTouchEnd : undefined}
               onTouchMove={isSwipeable ? handleTouchMove : undefined}
               onContextMenu={!readOnly && onDeleteSet ? (e) => { e.preventDefault(); setDeleteIdx(idx); } : undefined}
             >
-              {/* Checkmark circle — session mode only */}
-              {!isTemplate && !readOnly && onToggleComplete && (
+              {isActive && (
+                <span aria-hidden="true" style={{ position: 'absolute', left: 0, top: 6, bottom: 6, width: 2, background: XC_RED, boxShadow: '0 0 8px rgba(239,68,68,.8)' }} />
+              )}
+              {/* Lock on checked sets — uncheck to edit */}
+              {isCompleted && setLocked && (
+                <svg aria-hidden="true" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', top: 4, right: 5, color: 'rgba(var(--ink),0.3)' }}>
+                  <rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 018 0v4" />
+                </svg>
+              )}
+
+              {/* Checkmark — session mode only */}
+              {showCheckCol && (
                 <button
                   type="button"
                   onClick={() => onToggleComplete(exercise.name, idx)}
                   aria-label={isCompleted ? 'Mark set incomplete' : 'Mark set complete'}
-                  className={`${showSetType ? 'w-5 h-5' : 'w-6 h-6'} rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-200 ${
-                    isCompleted
-                      ? 'bg-green-500 border-green-500'
-                      : 'border-wf-gray-500 bg-transparent'
-                  }`}
+                  className="transition-all duration-200"
+                  style={{
+                    flex: '0 0 30px', width: 30, height: 30, borderRadius: 9, padding: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: isCompleted ? XC_GREEN : 'rgba(var(--ink),0.04)',
+                    border: '1px solid ' + (isCompleted ? XC_GREEN : isActive ? 'rgba(239,68,68,0.5)' : 'rgba(var(--ink),0.10)'),
+                    boxShadow: isCompleted ? '0 0 0 3px rgba(62,168,104,0.15)' : 'none',
+                  }}
                 >
                   {isCompleted && (
-                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3} aria-hidden="true">
+                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth={3} aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                     </svg>
                   )}
                 </button>
               )}
 
-              {/* Set label */}
-              <span className={`text-wf-gray-400 text-xs font-medium shrink-0 text-center ${showSetType ? 'w-[1.43rem]' : 'w-[2.8rem]'}`}>
-                {isTemplate ? idx + 1 : set.setNumber}
-              </span>
-
-              {/* Set type dropdown — shows shorthand, dropdown lists full names */}
-              {showSetType && (
-                <div className="w-[2.8rem] shrink-0 relative">
-                  <span className="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-wf-gray-400 uppercase pointer-events-none">
-                    {getSetTypeShort(entry.setType || exercise.setType || 'straight')}
-                  </span>
-                  {!readOnly ? (
-                    <select
-                      disabled={setLocked}
-                      onPointerDown={setLocked && onCompletedSetTap ? (e) => { e.preventDefault(); onCompletedSetTap(); } : undefined}
-                      value={entry.setType || exercise.setType || 'straight'}
-                      onChange={(e) => onChange?.(exercise.name, idx, 'setType', e.target.value)}
-                      className="w-full h-10 bg-transparent text-transparent rounded-lg border border-white/5 focus:outline-none appearance-none cursor-pointer"
-                    >
-                      {SET_TYPES.map(t => (
-                        <option key={t.value} value={t.value} className="bg-wf-gray-900 text-white text-sm">
-                          {t.label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="h-10" />
-                  )}
-                </div>
-              )}
-
-              {/* Goal Weight — long-press to edit. Renders as a read-only
-                  <div> by default (looks like the original immutable goal
-                  cell — dash shown as content for empty, distinct visual
-                  from the actual-weight <input> beside it). Long-press
-                  (600ms) flips this single cell into a focused <input>;
-                  blur returns to display. Value priority: goalOverrides
-                  (per-session edit) → lastEntries[idx].weight (last
-                  session, same set position) → lastEntries[0].weight
-                  (first-set fallback for sets beyond previous count) →
-                  blank dash. */}
-              {!isTemplate && showGoalWeight && (() => {
-                const overrideWeight = goalOverrides?.[idx]?.weight;
-                const lastAt = lastEntries?.[idx]?.weight;
-                const lastFirst = lastEntries?.[0]?.weight;
-                const displayValue = overrideWeight !== undefined
-                  ? overrideWeight
-                  : (lastAt !== undefined && lastAt !== null && lastAt !== ''
-                    ? lastAt
-                    : (idx >= (lastEntries?.length || 0) && lastFirst !== undefined && lastFirst !== null && lastFirst !== '' ? lastFirst : ''));
-                const editingThis = editingGoalKey === `${idx}-weight`;
-                const editable = !!onGoalChange && !readOnly && !inputsLocked;
-                return (
-                  <div className="flex-1">
-                    {editingThis ? (
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        min="0"
-                        max="9999"
-                        aria-label={`Set ${idx + 1} goal weight`}
-                        value={displayValue}
-                        autoFocus
-                        onChange={(e) => onGoalChange?.(exercise.name, idx, 'weight', e.target.value)}
-                        onFocus={(e) => e.target.select()}
-                        onBlur={() => setEditingGoalKey(null)}
-                        className="w-full rounded-lg px-1 py-2.5 text-center text-sm font-mono-stat bg-black/40 border border-white/5 focus:outline-none"
-                        style={{ color: 'rgba(239,68,68,0.6)' }}
-                      />
-                    ) : (
-                      <div
-                        role={editable ? 'button' : undefined}
-                        tabIndex={editable ? 0 : undefined}
-                        aria-label={editable ? `Set ${idx + 1} goal weight (long-press to edit)` : undefined}
-                        onPointerDown={editable ? () => startGoalLongPress(idx, 'weight') : undefined}
-                        onPointerUp={editable ? cancelGoalLongPress : undefined}
-                        onPointerLeave={editable ? cancelGoalLongPress : undefined}
-                        onPointerMove={editable ? cancelGoalLongPress : undefined}
-                        onPointerCancel={editable ? cancelGoalLongPress : undefined}
-                        onContextMenu={editable ? (e) => e.preventDefault() : undefined}
-                        className="w-full rounded-lg px-1 py-2.5 text-center text-sm font-mono-stat bg-black/40 border border-white/5 select-none"
-                        style={{ color: 'rgba(239,68,68,0.6)', cursor: editable ? 'pointer' : 'default' }}
+              {/* Set number + set-type chip. The type picker is an invisible
+                  <select> over the column; the chip shows the shorthand. */}
+              <div style={{ flex: '0 0 34px', width: 34, position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                <span className="xc-mono" style={{ fontSize: 13, fontWeight: 600, color: 'rgba(var(--ink),0.75)', lineHeight: 1 }}>
+                  {isTemplate ? idx + 1 : set.setNumber}
+                </span>
+                {showSetType && (
+                  <>
+                    <span className="xc-mono" style={{ fontSize: 7, fontWeight: 600, letterSpacing: '0.08em', lineHeight: 1, padding: '2px 4px', borderRadius: 5, color: typeChip.color, background: typeChip.bg, border: '1px solid ' + typeChip.border, pointerEvents: 'none' }}>
+                      {typeChip.text}
+                    </span>
+                    {!readOnly && (
+                      <select
+                        aria-label={`Set ${idx + 1} type`}
+                        disabled={setLocked}
+                        onPointerDown={setLocked && onCompletedSetTap ? (e) => { e.preventDefault(); onCompletedSetTap(); } : undefined}
+                        value={setType}
+                        onChange={(e) => onChange?.(exercise.name, idx, 'setType', e.target.value)}
+                        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, appearance: 'none', cursor: 'pointer' }}
                       >
-                        {displayValue === '' || displayValue === undefined || displayValue === null ? '—' : displayValue}
-                      </div>
+                        {SET_TYPES.map(t => (
+                          <option key={t.value} value={t.value} className="bg-wf-gray-900 text-white text-sm">
+                            {t.label}
+                          </option>
+                        ))}
+                      </select>
                     )}
-                  </div>
-                );
-              })()}
+                  </>
+                )}
+              </div>
 
-              {/* Weight input — long-press (600ms) on the input opens the
-                  in-session plate calculator pre-filled with this set's
-                  current weight. The discoverable affordance lives in the
-                  card header (⚖ icon next to PRs); long-press is the
-                  power-user shortcut. Movement during press cancels so
-                  scrolling doesn't trigger it. flex-1 so the column shares
-                  the remaining row width equally with the other three data
-                  columns. */}
-              <div className="flex-1 relative">
+              {/* Goal weight cell (long-press to edit), then the weight cell.
+                  Long-press (600ms) on the weight input opens
+                  the plate calculator pre-filled with this set's weight;
+                  movement during the press cancels so scrolling doesn't
+                  trigger it. */}
+              {!isTemplate && showGoalWeight && (
+              <div className="xc-cell" style={goalCellStyle}>
+                {(() => {
+                  const overrideWeight = goalOverrides?.[idx]?.weight;
+                  const lastAt = lastEntries?.[idx]?.weight;
+                  const lastFirstW = lastEntries?.[0]?.weight;
+                  const displayValue = overrideWeight !== undefined
+                    ? overrideWeight
+                    : (lastAt !== undefined && lastAt !== null && lastAt !== ''
+                      ? lastAt
+                      : (idx >= (lastEntries?.length || 0) && lastFirstW !== undefined && lastFirstW !== null && lastFirstW !== '' ? lastFirstW : ''));
+                  const editingThis = editingGoalKey === `${idx}-weight`;
+                  const editable = !!onGoalChange && !readOnly && !inputsLocked;
+                  return editingThis ? (
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      max="9999"
+                      aria-label={`Set ${idx + 1} goal weight`}
+                      value={displayValue}
+                      autoFocus
+                      onChange={(e) => onGoalChange?.(exercise.name, idx, 'weight', e.target.value)}
+                      onFocus={(e) => e.target.select()}
+                      onBlur={() => setEditingGoalKey(null)}
+                      className="xc-input"
+                      style={goalInputStyle}
+                    />
+                  ) : (
+                    <div
+                      role={editable ? 'button' : undefined}
+                      tabIndex={editable ? 0 : undefined}
+                      aria-label={editable ? `Set ${idx + 1} goal weight (long-press to edit)` : undefined}
+                      onPointerDown={editable ? () => startGoalLongPress(idx, 'weight') : undefined}
+                      onPointerUp={editable ? cancelGoalLongPress : undefined}
+                      onPointerLeave={editable ? cancelGoalLongPress : undefined}
+                      onPointerMove={editable ? cancelGoalLongPress : undefined}
+                      onPointerCancel={editable ? cancelGoalLongPress : undefined}
+                      onContextMenu={editable ? (e) => e.preventDefault() : undefined}
+                      className="xc-mono select-none"
+                      style={{ ...goalLineStyle, cursor: editable ? 'pointer' : 'default' }}
+                    >
+                      {fmtGoal(displayValue)}
+                    </div>
+                  );
+                })()}
+              </div>
+              )}
+              <div className="xc-cell" style={cellStyle}>
                 <input
                   type="number"
                   inputMode="decimal"
@@ -799,7 +962,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                   max="9999"
                   aria-label={`Set ${idx + 1} weight`}
                   value={entry.weight ?? (isTemplate ? '' : set.suggestedWeight ?? '')}
-                  placeholder={readOnly || inputsLocked ? '—' : '0'}
+                  placeholder="—"
                   onChange={(e) => onChange?.(exercise.name, idx, 'weight', e.target.value)}
                   onFocus={(e) => {
                     if (inputsLocked && onLockedTap) { e.target.blur(); onLockedTap(); return; }
@@ -819,14 +982,67 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                   onPointerLeave={() => { if (plateCalcLongPressRef.current) { clearTimeout(plateCalcLongPressRef.current); plateCalcLongPressRef.current = null; } }}
                   onContextMenu={(e) => e.preventDefault()}
                   readOnly={readOnly || inputsLocked || setLocked}
-                  className={`w-full lcd-input rounded-lg px-2 py-2.5 text-center text-base focus:outline-none disabled:opacity-50 ${isCompleted ? 'completed text-white' : isAutoFill ? 'text-wf-gray-500 italic' : 'text-white'}`}
+                  className="xc-input disabled:opacity-50"
+                  style={inputStyle}
                   disabled={readOnly}
                 />
               </div>
 
-              {isTemplate ? (
-                /* Template mode: editable Reps input */
-                <div className="flex-1">
+              {/* Goal reps cell (long-press to edit) */}
+              {!isTemplate && showGoalReps && (
+              <div className="xc-cell" style={goalCellStyle}>
+                {(() => {
+                  const overrideReps = goalOverrides?.[idx]?.reps;
+                  const lastAt = lastEntries?.[idx]?.reps;
+                  const lastFirstR = lastEntries?.[0]?.reps;
+                  const displayValue = overrideReps !== undefined
+                    ? overrideReps
+                    : (lastAt !== undefined && lastAt !== null && lastAt !== ''
+                      ? lastAt
+                      : (idx >= (lastEntries?.length || 0) && lastFirstR !== undefined && lastFirstR !== null && lastFirstR !== '' ? lastFirstR : ''));
+                  const editingThis = editingGoalKey === `${idx}-reps`;
+                  const editable = !!onGoalChange && !readOnly && !inputsLocked;
+                  return editingThis ? (
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      min="0"
+                      max="9999"
+                      aria-label={`Set ${idx + 1} goal reps`}
+                      value={displayValue}
+                      autoFocus
+                      onChange={(e) => onGoalChange?.(exercise.name, idx, 'reps', e.target.value)}
+                      onFocus={(e) => e.target.select()}
+                      onBlur={() => setEditingGoalKey(null)}
+                      className="xc-input"
+                      style={goalInputStyle}
+                    />
+                  ) : (
+                    <div
+                      role={editable ? 'button' : undefined}
+                      tabIndex={editable ? 0 : undefined}
+                      aria-label={editable ? `Set ${idx + 1} goal reps (long-press to edit)` : undefined}
+                      onPointerDown={editable ? () => startGoalLongPress(idx, 'reps') : undefined}
+                      onPointerUp={editable ? cancelGoalLongPress : undefined}
+                      onPointerLeave={editable ? cancelGoalLongPress : undefined}
+                      onPointerMove={editable ? cancelGoalLongPress : undefined}
+                      onPointerCancel={editable ? cancelGoalLongPress : undefined}
+                      onContextMenu={editable ? (e) => e.preventDefault() : undefined}
+                      className="xc-mono select-none"
+                      style={{ ...goalLineStyle, cursor: editable ? 'pointer' : 'default' }}
+                    >
+                      {fmtGoal(displayValue)}
+                    </div>
+                  );
+                })()}
+              </div>
+              )}
+
+              {/* Reps cell */}
+              <div className="xc-cell" style={cellStyle}>
+                {isTemplate ? (
+                  /* Template mode: editable Reps input */
                   <input
                     type="number"
                     inputMode="numeric"
@@ -837,69 +1053,12 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                     value={entry.reps ?? ''}
                     onChange={(e) => { const v = e.target.value; onChange?.(exercise.name, idx, 'reps', v === '' ? '' : Math.max(0, Number(v))); }}
                     onFocus={(e) => e.target.select()}
-                    placeholder="0"
-                    className="w-full lcd-input rounded-lg px-2 py-2.5 text-center text-base text-white focus:outline-none"
+                    placeholder="—"
+                    className="xc-input"
+                    style={inputStyle}
                   />
-                </div>
-              ) : (
-                <>
-                  {/* Goal Reps — same long-press-to-edit pattern as Goal
-                      Weight above. Read-only <div> by default, becomes a
-                      focused <input> on 600ms long-press; blurs back on
-                      focus loss. Same priority chain (override → lastEntries
-                      [idx] → lastEntries[0] for extra sets → blank dash). */}
-                  {showGoalReps && (() => {
-                    const overrideReps = goalOverrides?.[idx]?.reps;
-                    const lastAt = lastEntries?.[idx]?.reps;
-                    const lastFirst = lastEntries?.[0]?.reps;
-                    const displayValue = overrideReps !== undefined
-                      ? overrideReps
-                      : (lastAt !== undefined && lastAt !== null && lastAt !== ''
-                        ? lastAt
-                        : (idx >= (lastEntries?.length || 0) && lastFirst !== undefined && lastFirst !== null && lastFirst !== '' ? lastFirst : ''));
-                    const editingThis = editingGoalKey === `${idx}-reps`;
-                    const editable = !!onGoalChange && !readOnly && !inputsLocked;
-                    return (
-                      <div className="flex-1">
-                        {editingThis ? (
-                          <input
-                            type="number"
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            min="0"
-                            max="9999"
-                            aria-label={`Set ${idx + 1} goal reps`}
-                            value={displayValue}
-                            autoFocus
-                            onChange={(e) => onGoalChange?.(exercise.name, idx, 'reps', e.target.value)}
-                            onFocus={(e) => e.target.select()}
-                            onBlur={() => setEditingGoalKey(null)}
-                            className="w-full rounded-lg px-2 py-2.5 text-center text-base font-mono-stat bg-black/40 border border-white/5 focus:outline-none"
-                            style={{ color: 'rgba(239,68,68,0.6)' }}
-                          />
-                        ) : (
-                          <div
-                            role={editable ? 'button' : undefined}
-                            tabIndex={editable ? 0 : undefined}
-                            aria-label={editable ? `Set ${idx + 1} goal reps (long-press to edit)` : undefined}
-                            onPointerDown={editable ? () => startGoalLongPress(idx, 'reps') : undefined}
-                            onPointerUp={editable ? cancelGoalLongPress : undefined}
-                            onPointerLeave={editable ? cancelGoalLongPress : undefined}
-                            onPointerMove={editable ? cancelGoalLongPress : undefined}
-                            onPointerCancel={editable ? cancelGoalLongPress : undefined}
-                            onContextMenu={editable ? (e) => e.preventDefault() : undefined}
-                            className="w-full rounded-lg px-2 py-2.5 text-center text-base font-mono-stat bg-black/40 border border-white/5 select-none"
-                            style={{ color: 'rgba(239,68,68,0.6)', cursor: editable ? 'pointer' : 'default' }}
-                          >
-                            {displayValue === '' || displayValue === undefined || displayValue === null ? '—' : displayValue}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-
-                  {/* Actual reps (editable) */}
-                  <div style={{ flex: '1' }}>
+                ) : (
+                  <>
                     <input
                       type="number"
                       inputMode="numeric"
@@ -916,52 +1075,16 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                       }}
                       onBlur={() => onBlur?.(exercise.name, idx, 'reps')}
                       readOnly={readOnly || inputsLocked || setLocked}
-                      placeholder={readOnly || inputsLocked ? '—' : '0'}
-                      className={`w-full lcd-input rounded-lg px-2 py-2.5 text-center text-base focus:outline-none disabled:opacity-50 placeholder:text-wf-gray-700 ${isCompleted ? 'completed text-white' : isAutoFill ? 'text-wf-gray-500 italic' : 'text-white'}`}
+                      placeholder="—"
+                      className="xc-input disabled:opacity-50"
+                      style={inputStyle}
                       disabled={readOnly}
                     />
-                  </div>
-                </>
-              )}
-
-              {/* Row set controls - hidden, use subheader buttons instead */}
-              {false && onAddSet && (
-                <div className="flex items-center gap-0.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => onAddSet(exercise.name, idx)}
-                    aria-label="Add set"
-                    className="w-6 h-6 rounded-full flex items-center justify-center text-wf-gray-600 hover:text-green-400 hover:bg-green-500/20 active:scale-90 transition-all"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                    </svg>
-                  </button>
-                  {onDeleteSet && exercise.sets.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => setDeleteIdx(idx)}
-                      aria-label="Delete set"
-                      className="w-6 h-6 rounded-full flex items-center justify-center text-wf-gray-600 hover:text-red-400 hover:bg-red-500/20 active:scale-90 transition-all"
-                    >
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12h-15" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
-              )}
+                  </>
+                )}
+              </div>
             </div>
           );
-
-          const lastEntry = lastEntries?.[idx];
-          const lastHint = !isTemplate && lastEntry && (lastEntry.weight > 0 || lastEntry.weight === -1 || lastEntry.reps > 0) ? (
-            <div className="px-3 pb-1 -mt-0.5">
-              <p className="text-[9px] text-wf-gray-600 text-right">
-                Last: {lastEntry.weight === -1 ? 'BW' : lastEntry.weight + ' lbs'} &times; {lastEntry.reps}
-              </p>
-            </div>
-          ) : null;
 
           // Between-set cardio card — only for cardio-acceleration programs,
           // session mode, and slots with a following set inside this exercise.
@@ -996,7 +1119,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                     style={{ width: 100, background: '#22c55e', pointerEvents: 'none' }}
                     aria-hidden="true"
                   >
-                    <div className="flex flex-col items-center gap-0.5 text-white">
+                    <div className="flex flex-col items-center gap-0.5" style={{ color: '#fff' }}>
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3} aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                       </svg>
@@ -1009,7 +1132,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                     style={{ width: 100, background: '#ef4444', pointerEvents: 'none' }}
                     aria-hidden="true"
                   >
-                    <div className="flex flex-col items-center gap-0.5 text-white">
+                    <div className="flex flex-col items-center gap-0.5" style={{ color: '#fff' }}>
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                       </svg>
@@ -1018,7 +1141,6 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                   </div>
                   {rowContent}
                 </div>
-                {lastHint}
                 {cardioCard}
               </SortableSetRow>
             );
@@ -1026,7 +1148,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
 
           return (
             <SortableSetRow key={idx} id={idx} disabled={dragDisabled}>
-              {rowContent}{lastHint}{cardioCard}
+              {rowContent}{cardioCard}
             </SortableSetRow>
           );
         })}
@@ -1034,45 +1156,62 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
         </SortableContext>
       </DndContext>
 
+      {/* − Remove set / + Add set under the last set ('menu' layout). Add
+          set stays on the right so repeated taps land in the same spot. */}
+      {menuLayout && !readOnly && onAddSet && (
+        <div data-tutorial={dataTutorial ? 'set-controls' : undefined} style={{ padding: '10px 12px', borderTop: XC_LINE, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          {onDeleteSet && exercise.sets.length > 1 ? (
+            <SetPill tone="del" label="Remove set" ariaLabel="Remove last set" onClick={removeLastSet} icon={<path d="M19.5 12h-15" />} />
+          ) : <span />}
+          <SetPill tone="add" label="Add set" ariaLabel="Add set" onClick={() => onAddSet(exercise.name)} icon={<path d="M12 4.5v15m7.5-7.5h-15" />} />
+        </div>
+      )}
+
+      <div style={{ height: 10, borderTop: XC_LINE }} />
+
       {/* Program-provided note (xlsx column Q — "Failure / Workout Note").
-          Renders as a static italic block above the user-editable notes
-          area so users see it but can't edit it. Distinct from the
-          per-set exerciseDescription which lives in the header row. */}
+          Static block above the user-editable notes so users see it but
+          can't edit it. */}
       {exercise.programNotes && (
-        <div className="px-3 py-2 border-t border-white/5">
-          <p className="text-[10px] uppercase tracking-wider font-bold mb-1" style={{ color: 'rgba(239,68,68,0.7)', letterSpacing: '0.2em' }}>
+        <div style={{ margin: '0 12px 10px', padding: '9px 11px', borderRadius: 11, background: 'rgba(var(--ink),0.03)', border: XC_LINE }}>
+          <p className="xc-mono" style={{ fontSize: 7.5, letterSpacing: '0.2em', textTransform: 'uppercase', color: XC_RED, margin: '0 0 4px' }}>
             Program Note
           </p>
-          <p className="text-xs italic text-wf-gray-300 leading-relaxed">{exercise.programNotes}</p>
+          <p style={{ fontSize: 11.5, fontStyle: 'italic', lineHeight: 1.5, color: 'rgba(var(--ink),0.7)', margin: 0 }}>{exercise.programNotes}</p>
         </div>
       )}
 
       {/* Notes */}
       {!readOnly && onNoteChange && (
-        <div data-tutorial={dataTutorial ? 'exercise-notes' : undefined} className="px-3 py-2 border-t border-white/5">
+        <div data-tutorial={dataTutorial ? 'exercise-notes' : undefined} style={{ padding: '0 12px 12px' }}>
           {note ? (
             <textarea
               value={note}
               onChange={(e) => onNoteChange(exercise.name, e.target.value)}
               placeholder="Add a note..."
               rows={2}
-              className="w-full bg-transparent text-wf-gray-300 text-xs resize-none focus:outline-none placeholder:text-wf-gray-600"
+              className="xc-input"
+              style={{ width: '100%', resize: 'none', fontSize: 13, lineHeight: 1.4, padding: '8px 10px', borderRadius: 10, background: 'var(--well)', border: XC_IN, color: 'rgba(var(--ink),0.8)', outline: 'none' }}
             />
           ) : (
             <button
+              type="button"
               onClick={() => onNoteChange(exercise.name, ' ')}
-              className="text-xs text-wf-gray-500 hover:text-wf-gray-300 transition-colors"
+              className="xc-mono active:scale-[0.99] transition-transform"
+              style={{ width: '100%', height: 34, borderRadius: 10, border: '1px dashed rgba(var(--ink),0.14)', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 9, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(var(--ink),0.55)' }}
             >
-              + Add Notes
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h9" /></svg>
+              Add notes
             </button>
           )}
         </div>
       )}
       {readOnly && note && (
-        <div className="px-3 py-2 border-t border-white/5">
-          <p className="text-xs text-wf-gray-400 whitespace-pre-wrap">{note}</p>
+        <div style={{ padding: '0 12px 12px' }}>
+          <p style={{ fontSize: 12, whiteSpace: 'pre-wrap', color: 'rgba(var(--ink),0.6)', margin: 0 }}>{note}</p>
         </div>
       )}
+      </div>
 
       {/* Delete Set Confirmation */}
       {deleteIdx !== null && (

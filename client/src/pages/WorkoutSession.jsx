@@ -374,11 +374,14 @@ export default function WorkoutSession() {
   const [showSetType, setShowSetType] = useState(() => {
     try { return JSON.parse(localStorage.getItem('replab_show_set_type')) ?? false; } catch { return false; }
   });
-  // 'light' (default, #e8e8e8 card) or 'dark' (transparent — page bg shows through).
+  // Session theme. Values are historical and read backwards:
+  //   'light' (default) = Dark Theme  — black page, black cards
+  //   'dark'            = Light Theme — light #e8e8e8 page, white cards
   // Persisted so the next session inherits the user's choice.
   const [cardTheme, setCardTheme] = useState(() => {
     try { return localStorage.getItem('wf-default-card-theme') || 'light'; } catch { return 'light'; }
   });
+  const darkTheme = cardTheme !== 'dark';
   const [showSessionMenu, setShowSessionMenu] = useState(false);
   const [sessionMenuPos, setSessionMenuPos] = useState({ top: 64, right: 16 });
   // Long-press-to-edit on section headers. `sectionEditing` is null when the
@@ -3482,9 +3485,8 @@ export default function WorkoutSession() {
                     <div className={`w-[19px] h-[19px] rounded-full bg-white mt-0.5 transition-transform ${showSetType ? 'translate-x-4' : 'translate-x-0.5'}`} />
                   </div>
                 </button>
-                {/* Light/Dark card-theme toggle — switches the exercise-card
-                    background between the light (#e8e8e8) and dark (transparent
-                    over page bg) treatments. Off = light, on = dark. */}
+                {/* Dark Theme toggle — on = black page + black cards (default),
+                    off = light page + white cards. */}
                 <button
                   onClick={() => {
                     const v = cardTheme === 'dark' ? 'light' : 'dark';
@@ -3493,9 +3495,9 @@ export default function WorkoutSession() {
                   }}
                   className="w-full px-3 py-2.5 flex items-center justify-between text-sm text-white active:bg-white/5 transition-colors border-t border-white/5"
                 >
-                  <span>{cardTheme === 'dark' ? 'Light Cards' : 'Dark Cards'}</span>
-                  <div className={`w-[37px] h-[23px] rounded-full transition-colors ${cardTheme === 'dark' ? 'bg-wf-red' : 'bg-wf-gray-600'}`}>
-                    <div className={`w-[19px] h-[19px] rounded-full bg-white mt-0.5 transition-transform ${cardTheme === 'dark' ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                  <span>Dark Theme</span>
+                  <div className={`w-[37px] h-[23px] rounded-full transition-colors ${darkTheme ? 'bg-wf-red' : 'bg-wf-gray-600'}`}>
+                    <div className={`w-[19px] h-[19px] rounded-full bg-white mt-0.5 transition-transform ${darkTheme ? 'translate-x-4' : 'translate-x-0.5'}`} />
                   </div>
                 </button>
               </div>
