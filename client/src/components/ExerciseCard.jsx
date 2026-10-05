@@ -107,7 +107,16 @@ function CardControlButton({ label, ariaLabel, variant = 'red', onClick, dataTut
   );
 }
 
-function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, onCompletedSetTap, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onReorderSets, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, onShowPRs, note, onNoteChange, weightSuggestion, onApplySuggestion, onApplyCalculatedWeight, goalOverrides, onGoalChange, allWorkoutExercises, lastEntries, forceShowDemo, mode = 'session', dataTutorial, showGoalWeight = true, showGoalReps = true, showSetType = true, exerciseNumber, cardioEnabled = false, cardioSelections, onCardioChange, cardTheme = 'light', onEnterFullScreen, fullScreen = false, onOpenSupersetPicker }) {
+// Card shape inside a superset group: cards stack flush with no gap, with
+// rounded corners only on the group's outer edges and a divider between.
+const SUPERSET_CARD_SHAPE = {
+  only: 'rounded-xl',
+  start: 'rounded-t-xl',
+  middle: 'border-t border-white/10',
+  end: 'rounded-b-xl border-t border-white/10',
+};
+
+function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, onCompletedSetTap, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onReorderSets, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, onShowPRs, note, onNoteChange, weightSuggestion, onApplySuggestion, onApplyCalculatedWeight, goalOverrides, onGoalChange, allWorkoutExercises, lastEntries, forceShowDemo, mode = 'session', dataTutorial, showGoalWeight = true, showGoalReps = true, showSetType = true, exerciseNumber, cardioEnabled = false, cardioSelections, onCardioChange, cardTheme = 'light', onEnterFullScreen, fullScreen = false, onOpenSupersetPicker, supersetPosition = null }) {
   // 'light' = #e8e8e8 card with dark text (default)
   // 'dark'  = transparent card, white text — page bg shows through
   const isDarkTheme = cardTheme === 'dark';
@@ -351,32 +360,8 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
 
   return (
     <>
-    <div ref={cardRef} data-tutorial={dataTutorial ? 'exercise-card' : undefined} className={`${isDarkTheme ? 'exercise-card-transparent-test' : 'exercise-card-light-test'} glass-card${fullScreen ? ' min-h-full' : ' overflow-hidden rounded-xl mb-3'}${EXERCISE_CARD_GRADIENT_BORDER && !isDarkTheme && !fullScreen ? ' exercise-card-gradient-border' : ''}`} style={{ position: 'relative' }}>
-      {/* Viewfinder ⛶ row — sits slightly above the icon cluster
-          (PRs / ⚖ / Demo) in the card header. Tap to enter full-screen
-          mode for this exercise. Hidden in template mode and when the
-          parent doesn't supply onEnterFullScreen (e.g. read-only views). */}
-      {!isTemplate && onEnterFullScreen && (
-        <div className="px-3 pt-2 flex items-center justify-end" style={{ background: 'rgba(255,255,255,0.02)' }}>
-          <button
-            type="button"
-            data-tutorial={dataTutorial ? 'full-screen' : undefined}
-            onClick={(e) => { e.stopPropagation(); onEnterFullScreen(exerciseKey); }}
-            aria-label={`Enter full-screen mode for ${exercise.name}`}
-            title="Full-screen"
-            className="relative h-6 w-6 rounded-md flex items-center justify-center text-wf-gray-400 hover:text-white active:scale-90 active:bg-white/10 transition-all before:absolute before:content-[''] before:left-1/2 before:top-1/2 before:-translate-x-1/2 before:-translate-y-1/2 before:w-[44px] before:h-[44px]"
-          >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              {/* Four L-shaped corner brackets of a square */}
-              <path d="M4 9V5a1 1 0 011-1h4" />
-              <path d="M20 9V5a1 1 0 00-1-1h-4" />
-              <path d="M4 15v4a1 1 0 001 1h4" />
-              <path d="M20 15v4a1 1 0 01-1 1h-4" />
-            </svg>
-          </button>
-        </div>
-      )}
-      {/* Exercise Header — name + plate-calc + PRs + demo. Sticky so it
+    <div ref={cardRef} data-tutorial={dataTutorial ? 'exercise-card' : undefined} className={`${isDarkTheme ? 'exercise-card-transparent-test' : 'exercise-card-light-test'} glass-card${fullScreen ? ' min-h-full' : ` overflow-hidden ${SUPERSET_CARD_SHAPE[supersetPosition] || 'rounded-xl mb-3'}`}${EXERCISE_CARD_GRADIENT_BORDER && !isDarkTheme && !fullScreen ? ' exercise-card-gradient-border' : ''}`} style={{ position: 'relative' }}>
+      {/* Exercise Header — name + plate-calc + PRs + demo + full-screen. Sticky so it
           stays pinned at the top of the scroll viewport while the user
           scrolls long set lists, especially valuable in full-screen mode
           where every set might require referring back to the name + PRs. */}
@@ -449,6 +434,27 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
               </svg>
               <span className="text-[10px] font-semibold text-wf-red">Demo</span>
             </button>
+            {/* Viewfinder ⛶ — enter full-screen mode for this exercise.
+                Hidden when the parent doesn't supply onEnterFullScreen
+                (e.g. read-only views). */}
+            {onEnterFullScreen && (
+              <button
+                type="button"
+                data-tutorial={dataTutorial ? 'full-screen' : undefined}
+                onClick={(e) => { e.stopPropagation(); onEnterFullScreen(exerciseKey); }}
+                aria-label={`Enter full-screen mode for ${exercise.name}`}
+                title="Full-screen"
+                className="relative h-6 w-6 rounded-md flex items-center justify-center text-wf-gray-400 hover:text-white active:scale-90 active:bg-white/10 transition-all before:absolute before:content-[''] before:left-1/2 before:top-1/2 before:-translate-x-1/2 before:-translate-y-1/2 before:w-[44px] before:h-[44px]"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  {/* Four L-shaped corner brackets of a square */}
+                  <path d="M4 9V5a1 1 0 011-1h4" />
+                  <path d="M20 9V5a1 1 0 00-1-1h-4" />
+                  <path d="M4 15v4a1 1 0 001 1h4" />
+                  <path d="M20 15v4a1 1 0 01-1 1h-4" />
+                </svg>
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -533,9 +539,28 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
       {/* Set Controls Subheader */}
       {!readOnly && onAddSet && (
         <div data-tutorial={dataTutorial ? 'set-controls' : undefined} className="px-4 py-2 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
-          <span className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-medium">
-            {exercise.sets.length} set{exercise.sets.length !== 1 ? 's' : ''}
-          </span>
+          {/* Superset — same picker as tapping the exercise name. Cards that
+              share a superset letter are grouped together in the session. */}
+          {onOpenSupersetPicker ? (
+            <button
+              type="button"
+              data-tutorial={dataTutorial ? 'superset-button' : undefined}
+              onClick={(e) => { e.stopPropagation(); onOpenSupersetPicker(exerciseKey || exercise.name); }}
+              aria-label={exercise.supersetLabel ? `Superset ${exercise.supersetLabel} — change` : `Add ${exercise.name} to a superset`}
+              className={`h-12 px-3 rounded-full border flex items-center justify-center gap-1 active:scale-90 transition-all ${CARD_CONTROL_VARIANTS.red.circle}`}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+              </svg>
+              <span className="text-[10px] font-semibold uppercase tracking-wider">
+                {exercise.supersetLabel ? `Superset ${exercise.supersetLabel}` : 'Superset'}
+              </span>
+            </button>
+          ) : (
+            <span className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-medium">
+              {exercise.sets.length} set{exercise.sets.length !== 1 ? 's' : ''}
+            </span>
+          )}
           {/* Remove sits left of Add Set so Add Set stays anchored at the
               right edge — Remove appearing after the 2nd set doesn't shift
               it, so repeated taps land in the same spot. Colors match the

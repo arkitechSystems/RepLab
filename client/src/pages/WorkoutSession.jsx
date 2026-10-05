@@ -57,6 +57,41 @@ export function exKey(exercises, exerciseOrName, idx) {
   return occurrence > 0 ? `${name}::${occurrence}` : name;
 }
 
+// Superset letter of a card ("A" for "A2"), or null for unlabeled cards and
+// section headers.
+function supersetLetter(ex) {
+  return ex && !ex.isSectionHeader && ex.supersetLabel ? ex.supersetLabel[0] : null;
+}
+
+// Where a card sits in its superset run of adjacent same-letter cards:
+// 'only' | 'start' | 'middle' | 'end', or null when it isn't in a superset.
+function supersetPositionAt(exercises, idx) {
+  const letter = supersetLetter(exercises[idx]);
+  if (!letter) return null;
+  const joinsPrev = idx > 0 && supersetLetter(exercises[idx - 1]) === letter;
+  const joinsNext = idx < exercises.length - 1 && supersetLetter(exercises[idx + 1]) === letter;
+  if (joinsPrev && joinsNext) return 'middle';
+  if (joinsPrev) return 'end';
+  if (joinsNext) return 'start';
+  return 'only';
+}
+
+// Small divider above / below a superset group.
+function SupersetDivider({ end = false }) {
+  return (
+    <div className={`flex items-center gap-2 px-1 ${end ? 'mt-1.5 mb-3' : 'mt-1 mb-1.5'}`} aria-hidden="true">
+      <span style={{ width: 14, height: 3, background: end ? 'rgba(239,68,68,0.45)' : '#ef4444' }} />
+      <span
+        className="text-[10px] uppercase font-bold"
+        style={{ color: end ? 'rgba(239,68,68,0.6)' : '#ef4444', letterSpacing: '0.3em' }}
+      >
+        {end ? 'End Superset' : 'Superset'}
+      </span>
+      <span className="flex-1 h-px" style={{ background: 'rgba(239,68,68,0.25)' }} />
+    </div>
+  );
+}
+
 // Extract the original exercise name from a key (strips "::N" suffix)
 function exNameFromKey(key) {
   const sep = key.lastIndexOf('::');
@@ -1660,10 +1695,29 @@ export default function WorkoutSession() {
       if (!prev) return prev;
       const tIdx = findExIdx(prev.exercises, targetKey);
       if (tIdx < 0) return prev;
-      return {
-        ...prev,
-        exercises: prev.exercises.map((ex, i) => i === tIdx ? { ...ex, supersetLabel: label } : ex),
-      };
+      const labeled = prev.exercises.map((ex, i) => i === tIdx ? { ...ex, supersetLabel: label } : ex);
+      // Group the card with the other cards that share its superset letter:
+      // it moves in among them, ordered by number (A1, A2, A3...). If it's
+      // the first card with that letter it stays where it is.
+      const letter = label[0];
+      const num = Number(label.slice(1)) || 0;
+      const moving = labeled[tIdx];
+      const rest = labeled.filter((_, i) => i !== tIdx);
+      const partnerIdxs = rest
+        .map((ex, i) => (supersetLetter(ex) === letter ? i : -1))
+        .filter((i) => i >= 0);
+      if (partnerIdxs.length === 0) return { ...prev, exercises: labeled };
+      const after = partnerIdxs.find((i) => (Number(rest[i].supersetLabel.slice(1)) || 0) > num);
+      const insertAt = after !== undefined ? after : partnerIdxs[partnerIdxs.length - 1] + 1;
+      rest.splice(insertAt, 0, moving);
+      if (insertAt !== tIdx) {
+        // Bring the card into view at its new spot once React re-renders.
+        setTimeout(() => {
+          const el = exerciseRefs.current[targetKey];
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 50);
+      }
+      return { ...prev, exercises: rest };
     });
     setEntries((prev) => {
       const cur = prev[targetKey];
@@ -3534,6 +3588,7 @@ export default function WorkoutSession() {
           const eKey = exercise.isSectionHeader ? null : exKey(template.exercises, exercise, idx);
           // Wrapper: ExerciseCard passes exercise.name as first arg; replace with the unique key
           const wrapCb = (fn) => fn ? (_name, ...args) => fn(eKey, ...args) : undefined;
+          const supersetPos = supersetPositionAt(template.exercises, idx);
           return (
           <div key={exercise.isSectionHeader ? `section-${idx}` : eKey}>
             {/* Inline undo toast for deleted exercise — show at this position */}
@@ -3592,6 +3647,8 @@ export default function WorkoutSession() {
               </div>
             </div>
           ) : (
+          <>
+          {(supersetPos === 'start' || supersetPos === 'only') && <SupersetDivider />}
           <div ref={(el) => { exerciseRefs.current[eKey] = el; if (el && scrollToExercise.current === idx) { scrollToExercise.current = null; setTimeout(() => { const target = Math.max(0, el.getBoundingClientRect().top + window.scrollY - window.innerHeight / 2); const start = window.scrollY; const dist = target - start; const duration = 600; let t0 = null; function step(ts) { if (!t0) t0 = ts; const p = Math.min((ts - t0) / duration, 1); const ease = p < 0.5 ? 2 * p * p : -1 + (4 - 2 * p) * p; window.scrollTo(0, start + dist * ease); if (p < 1) requestAnimationFrame(step); } requestAnimationFrame(step); }, 50); } }} className="fade-slide-up" style={{ animationDelay: `${idx * 60}ms` }}>
             <ExerciseCard
               exercise={exercise}
@@ -3649,6 +3706,7 @@ export default function WorkoutSession() {
               cardTheme={cardTheme}
               onEnterFullScreen={() => setFullScreenIdx(idx)}
               onOpenSupersetPicker={structureLocked ? undefined : (key) => setSupersetPicker({ exerciseKey: key })}
+              supersetPosition={supersetPos}
             />
             {/* Inline undo toast for deleted set — show below this exercise */}
             {undoToast && undoToast.type === 'set' && undoToast.exerciseName === eKey && (
@@ -3659,6 +3717,8 @@ export default function WorkoutSession() {
               />
             )}
           </div>
+          {(supersetPos === 'end' || supersetPos === 'only') && <SupersetDivider end />}
+          </>
           )}
           {/* Undo toast after last exercise for exercise deletion at end */}
           {/* Begin Workout prompt popup — Nike style: eyebrow + display title,
