@@ -107,7 +107,7 @@ function CardControlButton({ label, ariaLabel, variant = 'red', onClick, dataTut
   );
 }
 
-function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onReorderSets, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, onShowPRs, note, onNoteChange, weightSuggestion, onApplySuggestion, onApplyCalculatedWeight, goalOverrides, onGoalChange, allWorkoutExercises, lastEntries, forceShowDemo, mode = 'session', dataTutorial, showGoalWeight = true, showGoalReps = true, showSetType = true, exerciseNumber, cardioEnabled = false, cardioSelections, onCardioChange, cardTheme = 'light', onEnterFullScreen, fullScreen = false, onOpenSupersetPicker }) {
+function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, onCompletedSetTap, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onReorderSets, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, onShowPRs, note, onNoteChange, weightSuggestion, onApplySuggestion, onApplyCalculatedWeight, goalOverrides, onGoalChange, allWorkoutExercises, lastEntries, forceShowDemo, mode = 'session', dataTutorial, showGoalWeight = true, showGoalReps = true, showSetType = true, exerciseNumber, cardioEnabled = false, cardioSelections, onCardioChange, cardTheme = 'light', onEnterFullScreen, fullScreen = false, onOpenSupersetPicker }) {
   // 'light' = #e8e8e8 card with dark text (default)
   // 'dark'  = transparent card, white text — page bg shows through
   const isDarkTheme = cardTheme === 'dark';
@@ -617,6 +617,9 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
           const rowWeight = entry.weight ?? set.suggestedWeight;
           const pbReps = (rowWeight !== undefined && rowWeight !== '' && rowWeight !== null) ? exercisePbs[rowWeight] : undefined;
           const isSwipeable = !isTemplate && !readOnly;
+          // A checked set's weight, reps and set type are frozen so a PR can't
+          // be changed by accident — uncheck the set to edit it.
+          const setLocked = isCompleted && !!onToggleComplete;
           const rowContent = (
             <div
               ref={!isTemplate ? (el) => { swipeRowRefs.current[idx] = el; } : undefined}
@@ -678,6 +681,8 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                   </span>
                   {!readOnly ? (
                     <select
+                      disabled={setLocked}
+                      onPointerDown={setLocked && onCompletedSetTap ? (e) => { e.preventDefault(); onCompletedSetTap(); } : undefined}
                       value={entry.setType || exercise.setType || 'straight'}
                       onChange={(e) => onChange?.(exercise.name, idx, 'setType', e.target.value)}
                       className="w-full h-10 bg-transparent text-transparent rounded-lg border border-white/5 focus:outline-none appearance-none cursor-pointer"
@@ -773,11 +778,12 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                   onChange={(e) => onChange?.(exercise.name, idx, 'weight', e.target.value)}
                   onFocus={(e) => {
                     if (inputsLocked && onLockedTap) { e.target.blur(); onLockedTap(); return; }
+                    if (setLocked) { e.target.blur(); onCompletedSetTap?.(); return; }
                     lastFocusedSetIdxRef.current = idx;
                     e.target.select();
                   }}
                   onBlur={() => onBlur?.(exercise.name, idx, 'weight')}
-                  onPointerDown={(readOnly || inputsLocked) ? undefined : () => {
+                  onPointerDown={(readOnly || inputsLocked || setLocked) ? undefined : () => {
                     plateCalcLongPressRef.current = setTimeout(() => {
                       setPlateCalcSetIdx(idx);
                     }, 600);
@@ -787,7 +793,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                   onPointerCancel={() => { if (plateCalcLongPressRef.current) { clearTimeout(plateCalcLongPressRef.current); plateCalcLongPressRef.current = null; } }}
                   onPointerLeave={() => { if (plateCalcLongPressRef.current) { clearTimeout(plateCalcLongPressRef.current); plateCalcLongPressRef.current = null; } }}
                   onContextMenu={(e) => e.preventDefault()}
-                  readOnly={readOnly || inputsLocked}
+                  readOnly={readOnly || inputsLocked || setLocked}
                   className={`w-full lcd-input rounded-lg px-2 py-2.5 text-center text-base focus:outline-none disabled:opacity-50 ${isCompleted ? 'completed text-white' : isAutoFill ? 'text-wf-gray-500 italic' : 'text-white'}`}
                   disabled={readOnly}
                 />
@@ -878,9 +884,13 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                       aria-label={`Set ${idx + 1} reps`}
                       value={entry.reps ?? ''}
                       onChange={(e) => { const v = e.target.value; onChange?.(exercise.name, idx, 'reps', v === '' ? '' : Math.max(0, Number(v))); }}
-                      onFocus={(e) => { if (inputsLocked && onLockedTap) { e.target.blur(); onLockedTap(); return; } e.target.select(); }}
+                      onFocus={(e) => {
+                        if (inputsLocked && onLockedTap) { e.target.blur(); onLockedTap(); return; }
+                        if (setLocked) { e.target.blur(); onCompletedSetTap?.(); return; }
+                        e.target.select();
+                      }}
                       onBlur={() => onBlur?.(exercise.name, idx, 'reps')}
-                      readOnly={readOnly || inputsLocked}
+                      readOnly={readOnly || inputsLocked || setLocked}
                       placeholder={readOnly || inputsLocked ? '—' : '0'}
                       className={`w-full lcd-input rounded-lg px-2 py-2.5 text-center text-base focus:outline-none disabled:opacity-50 placeholder:text-wf-gray-700 ${isCompleted ? 'completed text-white' : isAutoFill ? 'text-wf-gray-500 italic' : 'text-white'}`}
                       disabled={readOnly}

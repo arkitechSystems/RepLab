@@ -277,48 +277,77 @@ export async function syncEmptyTemplateFromWorkoutData(client, userId, templateI
 // entries; here we use whatever survives in DB. In practice the only
 // callers writing non-straight sets are inside the same session that gets
 // overwritten, so the loss is negligible.
-async function rebuildPBsForTemplateOnClient(client, userId, templateId) {
+async function rebuildPBsForTemplateOnClient(client, userId, templateId, currentSessionId = null) {
+  // Snapshot the existing rows first so an unchanged PR keeps its original
+  // achieved_at. Rewriting every row with NOW() made months-old PRs look
+  // brand new (community feed, "PRs this month", post-workout PR push).
+  const { rows: oldRows } = await client.query(
+    'SELECT exercise_name, best_weight, best_reps, achieved_at FROM personal_bests WHERE user_id = $1 AND template_id = $2',
+    [userId, templateId]
+  );
+  const oldDate = new Map(
+    oldRows.map((r) => [`${r.exercise_name}::${Number(r.best_weight)}::${r.best_reps}`, r.achieved_at])
+  );
+
   await client.query(
     'DELETE FROM personal_bests WHERE user_id = $1 AND template_id = $2',
     [userId, templateId]
   );
 
-  // For each (exercise_name, weight) tuple across surviving sessions for
-  // this user+template, find the max reps. That tuple becomes the PB row.
+  // For each (exercise_name, weight) across surviving sessions for this
+  // user+template: the max reps, and the earliest session that lifted it.
   // Only completed sets count as PRs — planned/pre-filled sets are
   // explicitly excluded (is_completed=FALSE) so a user writing down their
   // plan ahead of time can't accidentally set a PR they didn't actually lift.
-  // MAX(se.exercise_id) FILTER (WHERE not null) picks any non-null id for
-  // each (name, weight) group — they should all be the same id post-Path-A,
-  // but MAX is defensive against any rows that have NULL.
+  // MAX(exercise_id) picks any non-null id for each (name, weight) group —
+  // they should all be the same id post-Path-A, but MAX is defensive
+  // against any rows that have NULL.
   const { rows } = await client.query(
-    `SELECT se.exercise_name AS exercise_name,
-            MAX(se.exercise_id) AS exercise_id,
-            se.weight AS best_weight,
-            MAX(se.reps) AS best_reps
-       FROM session_entries se
-       JOIN sessions s ON s.id = se.session_id
-      WHERE s.user_id = $1
-        AND s.template_id = $2
-        AND se.weight > 0
-        AND se.reps > 0
-        AND se.is_completed = TRUE
-      GROUP BY se.exercise_name, se.weight`,
+    `WITH done AS (
+       SELECT se.exercise_name, se.exercise_id, se.weight, se.reps, s.id AS session_id, s.date
+         FROM session_entries se
+         JOIN sessions s ON s.id = se.session_id
+        WHERE s.user_id = $1
+          AND s.template_id = $2
+          AND se.weight > 0
+          AND se.reps > 0
+          AND se.is_completed = TRUE
+     ),
+     first_hit AS (
+       SELECT DISTINCT ON (exercise_name, weight)
+              exercise_name, weight AS best_weight, reps AS best_reps, session_id, date
+         FROM done
+        ORDER BY exercise_name, weight, reps DESC, date ASC, session_id ASC
+     ),
+     ids AS (
+       SELECT exercise_name, weight, MAX(exercise_id) AS exercise_id
+         FROM done GROUP BY exercise_name, weight
+     )
+     SELECT f.*, i.exercise_id
+       FROM first_hit f
+       JOIN ids i ON i.exercise_name = f.exercise_name AND i.weight = f.best_weight`,
     [userId, templateId]
   );
 
   if (rows.length === 0) return;
 
+  // achieved_at: unchanged PR → its original date. New/changed PR lifted in
+  // the session being saved → NOW() (keeps the post-workout PR push window
+  // working). Otherwise → midday UTC of the session's date, so the UTC date
+  // matches sessions.date for the PR ↔ session joins.
   const values = [];
   const params = [];
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
-    const off = i * 6;
-    values.push(`($${off + 1}, $${off + 2}, $${off + 3}, $${off + 4}, $${off + 5}, $${off + 6})`);
-    params.push(userId, templateId, r.exercise_id ?? null, r.exercise_name, r.best_weight, r.best_reps);
+    const kept = oldDate.get(`${r.exercise_name}::${Number(r.best_weight)}::${r.best_reps}`);
+    const achievedAt = kept
+      || (currentSessionId != null && r.session_id === currentSessionId ? new Date() : new Date(`${r.date}T12:00:00Z`));
+    const off = i * 7;
+    values.push(`($${off + 1}, $${off + 2}, $${off + 3}, $${off + 4}, $${off + 5}, $${off + 6}, $${off + 7})`);
+    params.push(userId, templateId, r.exercise_id ?? null, r.exercise_name, r.best_weight, r.best_reps, achievedAt);
   }
   await client.query(
-    `INSERT INTO personal_bests (user_id, template_id, exercise_id, exercise_name, best_weight, best_reps)
+    `INSERT INTO personal_bests (user_id, template_id, exercise_id, exercise_name, best_weight, best_reps, achieved_at)
      VALUES ${values.join(', ')}`,
     params
   );
@@ -1232,7 +1261,7 @@ const db = {
       //     unsafe here because deleted entries may have been the source of
       //     PB rows that no longer correspond to any logged set.
       if (didDestructiveOverwrite) {
-        await rebuildPBsForTemplateOnClient(client, userId, templateId);
+        await rebuildPBsForTemplateOnClient(client, userId, templateId, sessionId);
       } else {
         // Resolve exercise_ids in one batch so the per-PB upsert doesn't
         // round-trip a SELECT for each. ON CONFLICT key stays on

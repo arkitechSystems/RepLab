@@ -354,7 +354,6 @@ export default function WorkoutSession() {
   const [sectionEditing, setSectionEditing] = useState(null);
   const [sectionDeleteConfirming, setSectionDeleteConfirming] = useState(false);
   const sectionLongPressTimerRef = useRef(null);
-  const autoSaveRef = useRef(null);
   const autoSaveNeeded = useRef(false);
   const structureSaveRef = useRef(null);
   const structureSaveNeeded = useRef(false);
@@ -511,18 +510,34 @@ export default function WorkoutSession() {
     setSessionMenuPos({ top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) });
   }, [showSessionMenu]);
 
-  // Auto-save after checkmark toggle (debounced 1.5s) — skip in tutorial mode
+  // Autosave entry point. If a save is already in flight, queue exactly one
+  // follow-up save for when it finishes (it reads the latest state via
+  // handleSaveRef) — previously a check landing mid-save was skipped until
+  // the next trigger.
+  const autoSaveQueuedRef = useRef(false);
+  function runAutoSave() {
+    if (!template || template.isRest) return;
+    if (savingRef.current && inFlightSaveRef.current) {
+      if (autoSaveQueuedRef.current) return;
+      autoSaveQueuedRef.current = true;
+      inFlightSaveRef.current.finally(() => {
+        autoSaveQueuedRef.current = false;
+        runAutoSave();
+      });
+      return;
+    }
+    handleSaveRef.current?.().catch((err) => { if (import.meta.env.DEV) console.error(err); });
+  }
+
+  // Auto-save as soon as a set is checked or unchecked — skip in tutorial
+  // mode. Runs after the render that committed the toggle, so the save
+  // includes it.
   useEffect(() => {
     if (tutorialMode) return;
     if (!autoSaveNeeded.current) return;
     autoSaveNeeded.current = false;
-    if (autoSaveRef.current) clearTimeout(autoSaveRef.current);
-    autoSaveRef.current = setTimeout(() => {
-      if (!savingRef.current && template && !template.isRest) {
-        handleSaveRef.current?.().catch((err) => { if (import.meta.env.DEV) console.error(err); });
-      }
-    }, 500);
-    return () => { if (autoSaveRef.current) clearTimeout(autoSaveRef.current); };
+    runAutoSave();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [completedSets]);
 
   // Auto-save after structural changes (exercise/set add/delete/swap/move) — debounced 1.5s
@@ -531,11 +546,7 @@ export default function WorkoutSession() {
     if (!structureSaveNeeded.current) return;
     structureSaveNeeded.current = false;
     if (structureSaveRef.current) clearTimeout(structureSaveRef.current);
-    structureSaveRef.current = setTimeout(() => {
-      if (!savingRef.current && template && !template.isRest) {
-        handleSaveRef.current?.().catch((err) => { if (import.meta.env.DEV) console.error(err); });
-      }
-    }, 1500);
+    structureSaveRef.current = setTimeout(runAutoSave, 1500);
     return () => { if (structureSaveRef.current) clearTimeout(structureSaveRef.current); };
   }, [template]);
 
@@ -2879,6 +2890,7 @@ export default function WorkoutSession() {
               inputsLocked={inputsLocked}
               onShowPRs={(name) => { setPrModalSort('weight'); setPrModalExercise(name); }}
               onLockedTap={inputsLocked ? () => setShowBeginPrompt(true) : undefined}
+              onCompletedSetTap={() => showToast('Uncheck this set to edit it')}
               onChange={inputsLocked ? undefined : ((_n, ...args) => handleChange(fsKey, ...args))}
               onBlur={inputsLocked ? undefined : ((_n, ...args) => handleBlur(fsKey, ...args))}
               completedSets={completedSets}
@@ -3064,12 +3076,14 @@ export default function WorkoutSession() {
       {/* Sticky Header with Progress Bar */}
       <StickyHeader
         title={canRenameDay ? (
-          <>
-            {displayName.toUpperCase()}
-            {/* Per-day rename: this date only (sessions.custom_name). The
-                one title element serves both the full and collapsed header. */}
-            <RenamePencilButton onClick={() => setRenameDayOpen(true)} className="ml-2 -mt-1" />
-          </>
+          // Flex row so the pencil always sits to the right of the name —
+          // a long name wraps inside its own span instead of pushing the
+          // pencil onto a line underneath. The one title element serves
+          // both the full and collapsed header.
+          <span className="flex items-center justify-center gap-2">
+            <span className="min-w-0" style={{ overflowWrap: 'break-word' }}>{displayName.toUpperCase()}</span>
+            <RenamePencilButton onClick={() => setRenameDayOpen(true)} />
+          </span>
         ) : displayName.toUpperCase()}
         titleStyle={{ fontSize: '26.4px' }}
         titleCentered
@@ -3588,6 +3602,7 @@ export default function WorkoutSession() {
               inputsLocked={inputsLocked}
               onShowPRs={(name) => { setPrModalSort('weight'); setPrModalExercise(name); }}
               onLockedTap={inputsLocked ? () => setShowBeginPrompt(true) : undefined}
+              onCompletedSetTap={() => showToast('Uncheck this set to edit it')}
               onChange={inputsLocked ? undefined : wrapCb(handleChange)}
               onBlur={inputsLocked ? undefined : wrapCb(handleBlur)}
               completedSets={completedSets}
@@ -5702,10 +5717,13 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
                 letterSpacing: '-0.03em',
               }}
             >
-              {template.name.toUpperCase()}
-              {onRename && (
-                <RenamePencilButton onClick={onRename} className="ml-3 align-middle" style={{ verticalAlign: 'middle' }} />
-              )}
+              {onRename ? (
+                // Pencil stays to the right of the name, even when it wraps.
+                <span className="flex items-center gap-3">
+                  <span className="min-w-0" style={{ overflowWrap: 'break-word' }}>{template.name.toUpperCase()}</span>
+                  <RenamePencilButton onClick={onRename} />
+                </span>
+              ) : template.name.toUpperCase()}
             </h2>
             {programLabel && (
               <p className="text-[10px] uppercase font-bold text-white/40 mt-3" style={{ letterSpacing: '0.3em' }}>
