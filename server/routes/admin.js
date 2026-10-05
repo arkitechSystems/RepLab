@@ -4891,6 +4891,16 @@ router.post('/users/:id/revoke-trainer', adminAuth, async (req, res) => {
   }
 });
 
+// Demo-video review statuses for the Exercise Library "Review" dropdown.
+const REVIEW_OPTIONS = [
+  ['', '—'],
+  ['checked', 'Checked'],
+  ['needs_ai', 'Needs AI check'],
+  ['needs_video', 'Needs new video'],
+  ['remove_video', 'Remove video'],
+];
+const REVIEW_COLORS = { checked: '#22c55e', needs_ai: '#60a5fa', needs_video: '#f59e0b', remove_video: '#ef4444' };
+
 // GET /admin/exercise-library — View all exercises and video mappings.
 // Query string:
 //   ?filter=master  -> only created_by IS NULL
@@ -4907,7 +4917,7 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
     // treats as no-owner.
     const { rows } = await pool.query(
       `SELECT e.id, e.name, e.muscle_group, e.is_custom, e.tags, e.video_id,
-              e.video_linked_by,
+              e.video_linked_by, e.video_review,
               e.created_by, u.email AS owner_email, u.first_name AS owner_first
        FROM exercises e
        LEFT JOIN users u ON u.id = e.created_by
@@ -4924,6 +4934,7 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
       tags: e.tags || [],
       video_id: e.video_id || '',
       videoLinkedBy: e.video_linked_by || '',
+      videoReview: e.video_review || '',
       ownerEmail: e.owner_email || '',
       ownerFirst: e.owner_first || '',
       createdBy: e.created_by,
@@ -4940,7 +4951,7 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
         : '';
       const kindFilter = e.isCustom ? 'custom' : 'master';
       return `
-        <div class="ex-row" data-exercise-row data-id="${e.id}" data-name="${e.name.toLowerCase()}" data-muscle="${(e.muscle || '').toLowerCase()}" data-has-video="${videoId ? 'yes' : 'no'}" data-video-id="${(videoId || '').toLowerCase()}" data-kind="${kindFilter}" data-is-custom="${e.isCustom ? '1' : '0'}">
+        <div class="ex-row" data-exercise-row data-id="${e.id}" data-name="${e.name.toLowerCase()}" data-muscle="${(e.muscle || '').toLowerCase()}" data-has-video="${videoId ? 'yes' : 'no'}" data-video-id="${(videoId || '').toLowerCase()}" data-kind="${kindFilter}" data-is-custom="${e.isCustom ? '1' : '0'}" data-review="${e.videoReview}">
           <input
             type="checkbox"
             class="ex-merge-check"
@@ -4983,6 +4994,17 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
               <option value="" style="background:#111;" ${!e.videoLinkedBy ? 'selected' : ''}>&mdash;</option>
               <option value="admin" style="background:#111;" ${e.videoLinkedBy === 'admin' ? 'selected' : ''}>Admin</option>
               <option value="claude_code" style="background:#111;" ${e.videoLinkedBy === 'claude_code' ? 'selected' : ''}>Claude Code</option>
+            </select>
+          </div>
+          <div class="review-cell" style="flex-shrink:0;margin-right:12px;min-width:150px;">
+            <div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.35);font-weight:600;margin-bottom:2px;">Review</div>
+            <select
+              id="review-${e.id}"
+              onchange="updateReview(${e.id}, this.value)"
+              aria-label="Video review status"
+              style="width:100%;padding:5px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:#111;color:${REVIEW_COLORS[e.videoReview] || '#fff'};font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;outline:none;"
+            >
+              ${REVIEW_OPTIONS.map(([val, label]) => `<option value="${val}" style="background:#111;color:#fff;" ${e.videoReview === val ? 'selected' : ''}>${label}</option>`).join('')}
             </select>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
@@ -5062,7 +5084,11 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
         </div>
       </div>
 
-      <div style="display:flex;gap:12px;margin-top:24px;align-items:center;flex-wrap:wrap;">
+      <!-- Muscle group pills — same filter as the "All Muscles" dropdown below;
+           the two stay in sync. Built from the groups on this page. -->
+      <div id="ex-muscle-pills" role="group" aria-label="Filter by muscle group" style="display:flex;gap:6px;margin-top:24px;flex-wrap:wrap;"></div>
+
+      <div style="display:flex;gap:12px;margin-top:12px;align-items:center;flex-wrap:wrap;">
         <input type="text" id="ex-search" placeholder="Search by exercise name or YouTube ID..." aria-label="Search exercises by name or YouTube ID" style="flex:1;min-width:200px;padding:10px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;font-family:inherit;outline:none;" />
         <select id="ex-muscle-filter" aria-label="Filter by muscle group" style="padding:10px 16px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:#111;color:#fff;font-size:14px;font-family:inherit;outline:none;">
           <option value="" style="background:#111;color:#fff;">All Muscles</option>
@@ -5076,6 +5102,12 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
         <button type="button" class="video-filter-btn" data-video-filter="all" aria-pressed="true" onclick="setVideoFilter('all')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(168,85,247,0.5);background:rgba(168,85,247,0.18);color:#c084fc;font-size:12px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:0.5px;">All</button>
         <button type="button" class="video-filter-btn" data-video-filter="mapped" aria-pressed="false" onclick="setVideoFilter('mapped')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.7);font-size:12px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:0.5px;">&#10003; Has Video</button>
         <button type="button" class="video-filter-btn" data-video-filter="unmapped" aria-pressed="false" onclick="setVideoFilter('unmapped')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.7);font-size:12px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:0.5px;">&#10007; No Video</button>
+        <span style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);font-weight:600;margin:0 4px 0 16px;">Review:</span>
+        <select id="ex-review-filter" aria-label="Filter by review status" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:#111;color:#fff;font-size:12px;font-family:inherit;outline:none;">
+          <option value="all" style="background:#111;">All</option>
+          ${REVIEW_OPTIONS.map(([val, label]) => `<option value="${val || 'none'}" style="background:#111;">${val ? label : 'Not reviewed'}</option>`).join('')}
+        </select>
+        <span id="review-counts" style="font-size:11px;color:rgba(255,255,255,0.35);margin-left:8px;"></span>
       </div>
 
       <div style="margin-top:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
@@ -5173,6 +5205,14 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
               // value or cleared to NULL when the video was removed.
               var linkedBySelect = document.getElementById('linked-by-' + exerciseId);
               if (linkedBySelect) linkedBySelect.value = videoId ? 'admin' : '';
+              // A video an admin pastes in counts as checked; clearing it
+              // clears the review too (the server does the same).
+              var reviewSelect = document.getElementById('review-' + exerciseId);
+              if (reviewSelect) {
+                reviewSelect.value = videoId ? 'checked' : '';
+                reviewSelect.style.color = REVIEW_COLORS[reviewSelect.value] || '#fff';
+                if (row) row.dataset.review = reviewSelect.value;
+              }
               // Re-run filter so the row hides/shows based on the new state
               // (e.g. when "No Video" filter is active and the user just saved).
               if (typeof window.applyExerciseFilter === 'function') window.applyExerciseFilter();
@@ -5182,6 +5222,34 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
             }
           } catch (err) {
             alert('Failed to save: ' + err.message);
+          }
+        }
+
+        var REVIEW_COLORS = ${JSON.stringify(REVIEW_COLORS)};
+        async function updateReview(exerciseId, value) {
+          var select = document.getElementById('review-' + exerciseId);
+          var row = select ? select.closest('[data-exercise-row]') : null;
+          var prev = row ? row.dataset.review || '' : '';
+          try {
+            var resp = await fetch('/admin/exercise-library/review/' + exerciseId, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ review: value || '' })
+            });
+            if (!resp.ok) {
+              var data = await resp.json().catch(function() { return {}; });
+              throw new Error(data.error || 'Failed to update review');
+            }
+            if (row) row.dataset.review = value || '';
+            if (select) {
+              select.style.color = REVIEW_COLORS[value] || '#fff';
+              select.style.borderColor = '#22c55e';
+              setTimeout(function() { select.style.borderColor = 'rgba(255,255,255,0.1)'; }, 1200);
+            }
+            if (typeof window.applyExerciseFilter === 'function') window.applyExerciseFilter();
+          } catch (err) {
+            alert(err.message);
+            if (select) select.value = prev;
           }
         }
 
@@ -5405,6 +5473,8 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
           const rows = document.querySelectorAll('.ex-row');
           const searchInput = document.getElementById('ex-search');
           const muscleFilter = document.getElementById('ex-muscle-filter');
+          const reviewFilter = document.getElementById('ex-review-filter');
+          const reviewCountsEl = document.getElementById('review-counts');
           const countEl = document.getElementById('ex-count');
 
           // Populate muscle filter
@@ -5416,6 +5486,25 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
             opt.textContent = m.charAt(0).toUpperCase() + m.slice(1);
             muscleFilter.appendChild(opt);
           });
+
+          const pillsEl = document.getElementById('ex-muscle-pills');
+          const pillStyle = (active) => 'padding:7px 12px;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:0.5px;border:1px solid '
+            + (active ? 'rgba(168,85,247,0.5);background:rgba(168,85,247,0.18);color:#c084fc;' : 'rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.7);');
+          function renderPills() {
+            const current = muscleFilter.value;
+            pillsEl.innerHTML = '';
+            [''].concat([...muscles].sort()).forEach(m => {
+              const b = document.createElement('button');
+              b.type = 'button';
+              b.textContent = m ? m.charAt(0).toUpperCase() + m.slice(1) : 'All muscles';
+              b.setAttribute('aria-pressed', current === m ? 'true' : 'false');
+              b.style.cssText = pillStyle(current === m);
+              b.onclick = () => { muscleFilter.value = m; renderPills(); applyFilter(); };
+              pillsEl.appendChild(b);
+            });
+          }
+          renderPills();
+          muscleFilter.addEventListener('change', renderPills);
 
           function applyFilter() {
             const q = searchInput.value.toLowerCase().trim();
@@ -5431,17 +5520,25 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
               let matchVideo = true;
               if (videoFilter === 'mapped') matchVideo = r.dataset.hasVideo === 'yes';
               else if (videoFilter === 'unmapped') matchVideo = r.dataset.hasVideo === 'no';
-              const visible = matchName && matchMuscle && matchVideo;
+              const review = r.dataset.review || '';
+              const rf = reviewFilter.value;
+              const matchReview = rf === 'all' || (rf === 'none' ? !review : review === rf);
+              const visible = matchName && matchMuscle && matchVideo && matchReview;
               r.classList.toggle('hidden', !visible);
               if (visible) shown++;
             });
             countEl.textContent = 'Showing ' + shown + ' of ' + rows.length + ' exercises';
+            // Review progress across exercises that have a video
+            let withVideo = 0, checked = 0;
+            rows.forEach(r => { if (r.dataset.hasVideo === 'yes') { withVideo++; if (r.dataset.review === 'checked') checked++; } });
+            reviewCountsEl.textContent = checked + ' of ' + withVideo + ' videos checked';
           }
           // Expose so setVideoFilter (defined above this IIFE) can call back in.
           window.applyExerciseFilter = applyFilter;
 
           searchInput.addEventListener('input', applyFilter);
           muscleFilter.addEventListener('change', applyFilter);
+          reviewFilter.addEventListener('change', applyFilter);
           applyFilter();
 
           // Video modal
@@ -5846,12 +5943,12 @@ router.put('/exercise-library/video/:id', adminAuth, express.json(), async (req,
     const trimmed = (videoId || '').trim();
     if (trimmed) {
       await pool.query(
-        `UPDATE exercises SET video_id = $1, video_linked_by = 'admin' WHERE id = $2`,
+        `UPDATE exercises SET video_id = $1, video_linked_by = 'admin', video_review = 'checked' WHERE id = $2`,
         [trimmed, Number(req.params.id)]
       );
     } else {
       await pool.query(
-        `UPDATE exercises SET video_id = NULL, video_linked_by = NULL WHERE id = $1`,
+        `UPDATE exercises SET video_id = NULL, video_linked_by = NULL, video_review = NULL WHERE id = $1`,
         [Number(req.params.id)]
       );
     }
@@ -5859,6 +5956,26 @@ router.put('/exercise-library/video/:id', adminAuth, express.json(), async (req,
   } catch (err) {
     console.error('Update video_id error:', err);
     res.status(500).json({ error: 'Failed to update video ID' });
+  }
+});
+
+// PUT /admin/exercise-library/review/:id — Set the demo-video review status
+// from the Review dropdown. '' clears it (not reviewed).
+router.put('/exercise-library/review/:id', adminAuth, express.json(), async (req, res) => {
+  try {
+    const { review } = req.body;
+    const allowed = ['', ...REVIEW_OPTIONS.map(([v]) => v).filter(Boolean)];
+    if (!allowed.includes(review ?? '')) {
+      return res.status(400).json({ error: 'Unknown review status' });
+    }
+    await pool.query(
+      'UPDATE exercises SET video_review = $1 WHERE id = $2',
+      [review ? review : null, Number(req.params.id)]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Update video_review error:', err);
+    res.status(500).json({ error: 'Failed to update review' });
   }
 });
 

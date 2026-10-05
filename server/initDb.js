@@ -550,6 +550,17 @@ export default async function initDb() {
   // DB so the programs that use them keep working, but are left out of the
   // Exercise Library page. Exercise search/pickers still include them.
   await pool.query(`ALTER TABLE exercises ADD COLUMN IF NOT EXISTS hidden_from_library BOOLEAN NOT NULL DEFAULT FALSE`);
+  // Demo-video review status, set from the admin Exercise Library page:
+  // 'checked' | 'needs_ai' | 'needs_video' | 'remove_video', NULL = not
+  // reviewed. When the column is first created, videos an admin linked by
+  // hand start out as 'checked' (one time only, so later edits stick).
+  const { rowCount: hasVideoReview } = await pool.query(
+    `SELECT 1 FROM information_schema.columns WHERE table_name = 'exercises' AND column_name = 'video_review'`
+  );
+  if (!hasVideoReview) {
+    await pool.query(`ALTER TABLE exercises ADD COLUMN IF NOT EXISTS video_review TEXT`);
+    await pool.query(`UPDATE exercises SET video_review = 'checked' WHERE video_linked_by = 'admin' AND video_id IS NOT NULL`);
+  }
   // Per-user saved exercises (bookmark on ExerciseDetail). Cascades with both
   // the user and the exercise.
   await pool.query(`CREATE TABLE IF NOT EXISTS exercise_favorites (
