@@ -5105,8 +5105,11 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
         <span style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,0.4);font-weight:600;margin:0 4px 0 16px;">Review:</span>
         <select id="ex-review-filter" aria-label="Filter by review status" style="padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:#111;color:#fff;font-size:12px;font-family:inherit;outline:none;">
           <option value="all" style="background:#111;">All</option>
+          <option value="not_checked" style="background:#111;">Not checked (has video)</option>
           ${REVIEW_OPTIONS.map(([val, label]) => `<option value="${val || 'none'}" style="background:#111;">${val ? label : 'Not reviewed'}</option>`).join('')}
         </select>
+        <button type="button" class="review-quick-btn" data-review-quick="checked" onclick="setReviewFilter('checked')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.7);font-size:12px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:0.5px;">&#10003; Checked</button>
+        <button type="button" class="review-quick-btn" data-review-quick="not_checked" onclick="setReviewFilter('not_checked')" style="padding:8px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.7);font-size:12px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:0.5px;">Not checked</button>
         <span id="review-counts" style="font-size:11px;color:rgba(255,255,255,0.35);margin-left:8px;"></span>
       </div>
 
@@ -5522,7 +5525,9 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
               else if (videoFilter === 'unmapped') matchVideo = r.dataset.hasVideo === 'no';
               const review = r.dataset.review || '';
               const rf = reviewFilter.value;
-              const matchReview = rf === 'all' || (rf === 'none' ? !review : review === rf);
+              const matchReview = rf === 'all'
+                || (rf === 'not_checked' ? (r.dataset.hasVideo === 'yes' && review !== 'checked')
+                  : rf === 'none' ? !review : review === rf);
               const visible = matchName && matchMuscle && matchVideo && matchReview;
               r.classList.toggle('hidden', !visible);
               if (visible) shown++;
@@ -5538,7 +5543,23 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
 
           searchInput.addEventListener('input', applyFilter);
           muscleFilter.addEventListener('change', applyFilter);
-          reviewFilter.addEventListener('change', applyFilter);
+          function syncReviewButtons() {
+            document.querySelectorAll('.review-quick-btn').forEach(b => {
+              const active = b.dataset.reviewQuick === reviewFilter.value;
+              b.setAttribute('aria-pressed', active ? 'true' : 'false');
+              b.style.background = active ? 'rgba(168,85,247,0.18)' : 'rgba(255,255,255,0.03)';
+              b.style.borderColor = active ? 'rgba(168,85,247,0.5)' : 'rgba(255,255,255,0.1)';
+              b.style.color = active ? '#c084fc' : 'rgba(255,255,255,0.7)';
+            });
+          }
+          // Tapping the active quick button again clears the review filter.
+          window.setReviewFilter = function(val) {
+            reviewFilter.value = reviewFilter.value === val ? 'all' : val;
+            syncReviewButtons();
+            applyFilter();
+          };
+          reviewFilter.addEventListener('change', () => { syncReviewButtons(); applyFilter(); });
+          syncReviewButtons();
           applyFilter();
 
           // Video modal
