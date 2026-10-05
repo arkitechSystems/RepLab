@@ -3541,33 +3541,28 @@ export default function WorkoutSession() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
             </svg>
           </button>
-          <div
-            className="px-4 py-3"
+          {/* Undo Completion sits up top so a finished workout can be edited
+              without scrolling to the bottom. */}
+          <button
+            onClick={handleMarkComplete}
+            className="active:scale-[0.98] transition-all w-full"
             style={{
-              background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
-              borderRadius: '2px',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
-              borderLeft: '3px solid #22c55e',
+              padding: '14px', borderRadius: '2px',
+              border: cardTheme === 'dark' ? '1px solid rgba(0,0,0,0.30)' : '1px solid rgba(255,255,255,0.30)',
+              background: cardTheme === 'dark' ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.10)',
+              color: cardTheme === 'dark' ? 'rgba(0,0,0,0.65)' : 'rgba(255,255,255,0.85)',
+              fontSize: '13px', fontWeight: 700, cursor: 'pointer',
+              letterSpacing: '0.25em', textTransform: 'uppercase',
             }}
           >
-            <div className="flex items-center gap-3 mb-1">
-              <div className="w-9 h-9 flex items-center justify-center shrink-0" style={{
-                background: 'linear-gradient(135deg, rgba(34,197,94,0.25) 0%, rgba(34,197,94,0.10) 100%)',
-                borderRadius: '2px',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), 0 4px 12px rgba(34,197,94,0.20)',
-              }}>
-                <svg className="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <span className="text-[13px] font-bold uppercase text-white tracking-wider" style={{ letterSpacing: '0.1em' }}>
-                Workout Complete
-              </span>
-            </div>
-            <p className="text-[11px] text-white/40 font-light mt-0.5 ml-12 leading-relaxed">
-              Scroll down and tap Undo Completion to edit.
-            </p>
-          </div>
+            Undo Completion
+          </button>
+          <p
+            className="text-[11px] font-light leading-relaxed text-center"
+            style={{ color: cardTheme === 'dark' ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.4)' }}
+          >
+            Tap Undo Completion to edit the sets and reps in this workout.
+          </p>
         </div>
       )}
 
@@ -3766,7 +3761,7 @@ export default function WorkoutSession() {
             <div className="relative px-6 pb-5 pt-3">
               <p className="text-[13px] text-white/55 leading-relaxed">
                 {isCompleted
-                  ? 'Scroll down and tap Undo Completion to edit this session.'
+                  ? 'Tap Undo Completion at the top to edit this session.'
                   : (
                     <>
                       Tap <span className="text-white font-semibold">Begin Workout</span> to start your session timer and unlock set completion.
@@ -4756,8 +4751,9 @@ export default function WorkoutSession() {
         </div>
       )}
 
-      {/* Mark Complete — Nike style */}
-      {timerStarted && (
+      {/* Mark Complete — Nike style. Once complete, Undo Completion lives at
+          the top of the page instead. */}
+      {timerStarted && !isCompleted && (
         <div className="px-4 mb-24" data-tutorial="mark-complete">
           <button
             onClick={handleMarkComplete}
