@@ -13,7 +13,7 @@ const TOUR_STEPS = [
       </svg>
     ),
     title: 'Browse Workouts',
-    description: "Explore pre-built programs like Jeff Nippard's Push Pull Legs, the Muscle & Fitness 5000 Rep workout, Jim Stoppani's Shortcut to Shred, and more from the workout library.",
+    description: "Explore pre-built programs like Jeff Nippard's Push Pull Legs, Katie Sonier's 6-Week Glute Building Program, Jim Stoppani's Shortcut to Shred, and more from the workout library.",
   },
   {
     icon: (
@@ -22,7 +22,7 @@ const TOUR_STEPS = [
       </svg>
     ),
     title: 'Create Your Own',
-    description: 'Build custom workouts from scratch in My Workouts, or start a blank session right from the Workouts tab to log sets on the fly — perfect for unplanned gym days.',
+    description: 'Build custom workouts from scratch, or use Log as You Go to jump straight into your workout and start tracking.',
   },
   {
     icon: (
