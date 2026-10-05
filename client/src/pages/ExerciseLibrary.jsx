@@ -78,17 +78,19 @@ export default function ExerciseLibrary() {
     });
   }, [exercises, search, selectedMuscle]);
 
-  // Detail URLs of the current list, in alphabetical order, handed to the
-  // detail page so its ‹ › arrows step through exactly what's listed here
-  // (current filter/search included).
-  const navList = useMemo(() => filtered.map((e) => exerciseDetailUrl(e.name)), [filtered]);
-
-  // Group by muscle for display when not searching. Sections follow the
-  // pill order (most popular first); groups only customs use go last.
+  // Group by muscle for display when not searching: [[title, exercises], ...].
+  // Sections follow the pill order (most popular first); groups only customs
+  // use go last. In the All view the user's saved exercises get their own
+  // "Saved" section at the very top (A–Z) and are left out of the muscle
+  // sections below. With a muscle filter there's one section, and `filtered`
+  // already puts its saved exercises first.
   const grouped = useMemo(() => {
     if (search.trim()) return null;
+    const pinSaved = !selectedMuscle;
+    const saved = pinSaved ? filtered.filter((e) => e.isFavorite) : [];
     const groups = {};
     for (const ex of filtered) {
+      if (pinSaved && ex.isFavorite) continue;
       if (!groups[ex.muscle]) groups[ex.muscle] = [];
       groups[ex.muscle].push(ex);
     }
@@ -96,10 +98,17 @@ export default function ExerciseLibrary() {
       const i = (muscleGroups || []).indexOf(m);
       return i === -1 ? Infinity : i;
     };
-    return Object.fromEntries(
-      Object.entries(groups).sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b))
-    );
-  }, [filtered, search, muscleGroups]);
+    const sections = Object.entries(groups).sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b));
+    return saved.length ? [['Saved', saved], ...sections] : sections;
+  }, [filtered, search, selectedMuscle, muscleGroups]);
+
+  // Detail URLs of the current list, in the order it's shown, handed to the
+  // detail page so its ‹ › arrows step through exactly what's listed here
+  // (current filter/search included).
+  const navList = useMemo(
+    () => (grouped ? grouped.flatMap(([, exs]) => exs) : filtered).map((e) => exerciseDetailUrl(e.name)),
+    [grouped, filtered]
+  );
 
   // ── Tactile theme tokens ──
   const LB_CARD = 'linear-gradient(180deg, #1a1816 0%, #100f0d 100%)';
@@ -229,7 +238,7 @@ export default function ExerciseLibrary() {
         <input
           type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search exercises…"
           onFocus={() => setSearchFocused(true)} onBlur={() => setSearchFocused(false)}
-          style={{ width: '100%', boxSizing: 'border-box', borderRadius: 13, padding: '13px 14px 13px 40px', background: 'rgba(0,0,0,0.35)', border: LB_INPUT, color: '#fff', fontSize: 14, outline: 'none' }}
+          style={{ width: '100%', boxSizing: 'border-box', borderRadius: 13, padding: '13px 14px 13px 40px', background: 'rgba(0,0,0,0.35)', border: LB_INPUT, color: '#fff', fontSize: 16, outline: 'none' }} // 16px: iOS Safari zooms into inputs under 16px
         />
         {search && (
           <button onClick={() => setSearch('')} aria-label="Clear" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', width: 26, height: 26, borderRadius: '50%', background: 'rgba(255,255,255,0.06)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -306,7 +315,7 @@ export default function ExerciseLibrary() {
       {/* ── Grouped by muscle ── */}
       {!loading && !search.trim() && grouped && (
         <div style={{ padding: '0 16px' }}>
-          {Object.entries(grouped).map(([muscle, exs]) => (
+          {grouped.map(([muscle, exs]) => (
             <div key={muscle}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '20px 4px 10px' }}>
                 <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.3em', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase' }}>{muscle}</span>
