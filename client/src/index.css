@@ -388,13 +388,15 @@ body::before {
 }
 
 /* Bottom nav clearance.
-   h-16 (64px) + safe-area-inset-bottom (≤34px on iPhones) = actual nav height.
-   Everywhere we need to keep content above the nav (page padding, popups,
-   toasts), use var(--rl-nav-clearance) — NEVER a hardcoded pixel value,
-   or devices with a home indicator will crop the last row of content. */
+   The Center Seal bar is 70px + safe-area-inset-bottom (≤34px on iPhones),
+   and its round play button rises 26px above that. Everywhere we need to
+   keep content above the nav (page padding, popups, toasts), use these
+   vars — NEVER a hardcoded pixel value, or devices with a home indicator
+   will crop the last row of content. Clearance = bar + seal + 16px, which
+   is at least pb-28 (112px). */
 :root {
-  --rl-nav-h: calc(4rem + env(safe-area-inset-bottom, 0px));
-  --rl-nav-clearance: calc(4rem + env(safe-area-inset-bottom, 0px) + 1rem);
+  --rl-nav-h: calc(70px + env(safe-area-inset-bottom, 0px));
+  --rl-nav-clearance: calc(70px + 26px + 16px + env(safe-area-inset-bottom, 0px));
 }
 .pb-nav { padding-bottom: var(--rl-nav-clearance); }
 .bottom-nav-offset { bottom: var(--rl-nav-h); }
@@ -553,35 +555,6 @@ input[type="number"] {
 @keyframes fsXPulse {
   0%, 100% { transform: scale(1); }
   50%      { transform: scale(1.07); }
-}
-
-/* One-shot left-to-right white flash across the active bottom-nav cell.
-   Mounted only when a tab becomes active, so the animation fires once per
-   selection. The sweep is an inset child of an overflow-hidden wrapper so
-   it's masked to the cell's bounding box. Sits over the icon + label as
-   an opaque pass — not blended through them — so it reads as a sheen
-   sweeping past, not a brightness boost. */
-.nav-icon-flash {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  background: linear-gradient(90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0) 30%,
-    rgba(255, 255, 255, 0.95) 50%,
-    rgba(255, 255, 255, 0) 70%,
-    transparent 100%
-  );
-  transform: translateX(-95%);
-  animation: navIconFlash 0.6825s cubic-bezier(0.4, 0, 0.2, 1) 1 forwards;
-  z-index: 5;
-}
-@keyframes navIconFlash {
-  0%   { transform: translateX(-95%); }
-  100% { transform: translateX(95%); }
 }
 
 /* Active nav glow */
@@ -1452,3 +1425,17 @@ select:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .pb-mono-enter, .pb-mono-shine, .pb-mono-grow, .pb-seal-spin { animation: none; }
 }
+
+/* Center Seal bottom nav (components/BottomNav.jsx) */
+@keyframes nvShine { 0% { transform: translateX(-120%) skewX(-20deg); } 55%, 100% { transform: translateX(320%) skewX(-20deg); } }
+.nv-shine { position: absolute; top: 0; bottom: 0; left: 0; width: 35%; z-index: 1; pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.10), transparent);
+  animation: nvShine 3.6s ease-in-out infinite; }
+
+@keyframes nvSpin { to { transform: rotate(360deg); } }
+.nv-spin { animation: nvSpin 24s linear infinite; transform-origin: 50% 50%; }
+
+@keyframes nvPulse { 0% { transform: scale(.92); opacity: .9; } 100% { transform: scale(1.25); opacity: 0; } }
+.nv-pulse { animation: nvPulse 2.4s ease-out infinite; }
+
+@media (prefers-reduced-motion: reduce) { .nv-shine, .nv-spin, .nv-pulse { animation: none; } }

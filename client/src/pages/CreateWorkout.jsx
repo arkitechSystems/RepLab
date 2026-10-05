@@ -460,7 +460,7 @@ export default function CreateWorkout() {
 
       {/* Save Button — red gradient default, flips to btn-liquid + spinner
           while saving. Matches the Sign In / Sign Up CTA. */}
-      <div className="fixed bottom-20 left-0 right-0 p-4 bg-gradient-to-t from-black via-black/95 to-transparent safe-bottom z-40">
+      <div className="fixed left-0 right-0 p-4 bg-gradient-to-t from-black via-black/95 to-transparent z-40" style={{ bottom: 'calc(var(--rl-nav-h) + 20px)' }}>
         <div className="max-w-lg mx-auto">
           <button
             data-tutorial="save-workout-btn"

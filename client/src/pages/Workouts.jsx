@@ -1988,6 +1988,25 @@ export default function Workouts() {
     }
   }, [browseFilter, browseAvailableTypes]);
 
+  // Bottom-nav play button: BottomNav sends { startToday } in location state.
+  // Once the next-workout card has loaded, run the same flow as its
+  // "Start Now" / "Resume" button. Rest days, finished days and empty days
+  // just land on this page, where the card explains what's next.
+  const startTodayRequest = location.state?.startToday;
+  useEffect(() => {
+    if (!startTodayRequest || !nextWorkoutInfo) return;
+    navigate(location.pathname + location.search, { replace: true, state: {} });
+    const info = nextWorkoutInfo;
+    if (info.templateId && (info.status === 'start' || info.status === 'resume')) {
+      navigateToWorkout(info.templateId, info.date);
+    } else if (info.completedToday) {
+      showToast("Today's workout is done");
+    } else {
+      showToast('No workout scheduled for today');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startTodayRequest, nextWorkoutInfo]);
+
   // Navigate to the right workout flow based on whether the template belongs to a featured program
   function navigateToWorkout(templateId, date, opts = {}) {
     const { skipPrehab = false, skipMissedCheck = false } = opts;

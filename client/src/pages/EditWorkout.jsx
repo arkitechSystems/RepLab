@@ -338,7 +338,7 @@ export default function EditWorkout() {
       </div>
 
       {/* Save Button */}
-      <div className="fixed bottom-20 left-0 right-0 p-4 bg-gradient-to-t from-black via-black/95 to-transparent safe-bottom z-40">
+      <div className="fixed left-0 right-0 p-4 bg-gradient-to-t from-black via-black/95 to-transparent z-40" style={{ bottom: 'calc(var(--rl-nav-h) + 20px)' }}>
         <button
           onClick={handleSave}
           disabled={saving}
