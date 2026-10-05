@@ -1,4 +1,6 @@
-import { NavLink, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { api } from '../api';
 
 // "Center Seal" nav: solid black grain bar, two tabs either side of a raised
 // engraved play button. Icons are clean line-art (1.8 stroke, round
@@ -57,10 +59,10 @@ const NV_RED = '#e23a3a';
 const NV_MONO = "'JetBrains Mono', ui-monospace, monospace";
 const NV_GRAIN = "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.09 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>\")";
 
-function NavSealButton({ onClick }) {
+function NavSealButton({ onClick, hidden = false }) {
   const s = 66;
   return (
-    <button onClick={onClick} aria-label="Start workout" className="active:scale-95 transition-transform" style={{ position: 'relative', width: s, height: s, padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}>
+    <button onClick={onClick} tabIndex={hidden ? -1 : undefined} aria-label="Start workout" className="active:scale-95 transition-transform" style={{ position: 'relative', width: s, height: s, padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}>
       <span className="nv-pulse" style={{ position: 'absolute', inset: -6, borderRadius: '50%', border: '1.5px solid rgba(226,58,58,0.7)' }} />
       <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'radial-gradient(circle at 50% 30%, #222226 0%, #0b0b0d 60%, #000 100%)', border: `1.5px solid ${NV_RED}`, boxShadow: '0 0 0 4px rgba(226,58,58,0.12), 0 0 26px rgba(226,58,58,0.45), 0 14px 30px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.2)' }} />
       <svg width={s} height={s} viewBox="0 0 100 100" className="nv-spin" style={{ position: 'absolute', inset: 0 }} aria-hidden="true">
@@ -116,8 +118,47 @@ function NavTab({ tab }) {
   );
 }
 
+// Routes where the user is inside a workout — the play button tucks away.
+const IN_SESSION = /^\/(session|featured-session|tutorial\/workout)(\/|$)/;
+
+function localToday() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Whether today has a workout that isn't marked complete (scheduled, or
+// started and unfinished). Re-checked on every route change and when the
+// app comes back to the foreground, so Mark Complete, Calendar edits and a
+// new day are picked up. Keeps the last answer while a check is in flight
+// (no flicker) and stays hidden if a check fails.
+function useTodayWorkoutPending() {
+  const { pathname } = useLocation();
+  const [pending, setPending] = useState(false);
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') setTick((t) => t + 1); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
+
+  useEffect(() => {
+    if (IN_SESSION.test(pathname)) return; // hidden in a session anyway
+    let cancelled = false;
+    api(`/schedule/today?date=${localToday()}`, { noRetryPrompt: true })
+      .then((r) => { if (!cancelled) setPending(!!r?.show); })
+      .catch(() => { if (!cancelled) setPending(false); });
+    return () => { cancelled = true; };
+  }, [pathname, tick]);
+
+  return pending;
+}
+
 export default function BottomNav() {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const todayPending = useTodayWorkoutPending();
+  const showSeal = todayPending && !IN_SESSION.test(pathname);
   // Hands off to the home screen, which runs the same start/resume flow as
   // its "Start Now" / "Resume" button (missed-workout prompt, warm-up gate,
   // featured flow). See the startToday effect in pages/Workouts.jsx.
@@ -142,14 +183,21 @@ export default function BottomNav() {
 
         <div style={{ position: 'relative', height: 70, display: 'flex', alignItems: 'flex-start', padding: '8px 6px 0' }}>
           {left.map((t) => <NavTab key={t.to} tab={t} />)}
-          <div style={{ flex: '0 0 84px' }} />
+          {/* Middle gap for the seal — closes when the seal tucks away so
+              the four tabs spread evenly across the bar. */}
+          <div className="nv-gap" style={{ flex: `0 0 ${showSeal ? 84 : 0}px` }} />
           {right.map((t) => <NavTab key={t.to} tab={t} />)}
         </div>
       </div>
 
-      {/* Raised centre seal */}
-      <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', zIndex: 3, pointerEvents: 'auto' }}>
-        <NavSealButton onClick={handleStart} />
+      {/* Raised centre seal — only while today has an unfinished workout and
+          the user isn't in a session. Shrinks down into the bar to hide. */}
+      <div
+        className={`nv-seal${showSeal ? '' : ' nv-seal-hidden'}`}
+        aria-hidden={!showSeal}
+        style={{ position: 'absolute', top: 0, left: '50%', zIndex: 3, pointerEvents: showSeal ? 'auto' : 'none' }}
+      >
+        <NavSealButton onClick={handleStart} hidden={!showSeal} />
       </div>
     </nav>
   );

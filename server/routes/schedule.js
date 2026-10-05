@@ -23,6 +23,38 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 
+// GET /schedule/today?date=YYYY-MM-DD — drives the bottom-nav play button.
+// `date` is the client's local today. show = a non-rest workout is scheduled
+// that day and not marked complete, or a workout started that day (something
+// logged) isn't complete yet. Mirrors the home card's Start/Resume logic.
+router.get('/today', authMiddleware, async (req, res) => {
+  try {
+    const { date } = req.query;
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ error: 'date query param is required (YYYY-MM-DD)' });
+    }
+    const [days, { rows: sessions }] = await Promise.all([
+      db.getSchedule(req.userId, date, date),
+      pool.query(
+        `SELECT s.template_id, COALESCE(s.completed, FALSE) AS completed,
+                EXISTS (SELECT 1 FROM session_entries se
+                         WHERE se.session_id = s.id
+                           AND (se.weight <> 0 OR se.reps > 0 OR se.is_completed = TRUE)) AS has_logged_data
+           FROM sessions s
+          WHERE s.user_id = $1 AND s.date = $2 AND s.template_id IS NOT NULL`,
+        [req.userId, date]
+      ),
+    ]);
+    const completed = new Set(sessions.filter((s) => s.completed).map((s) => s.template_id));
+    const scheduled = days.find((d) => d.date === date && d.templateId && !d.isRest && !completed.has(d.templateId));
+    const inProgress = sessions.find((s) => !s.completed && s.has_logged_data);
+    res.json({ show: !!(scheduled || inProgress) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.put('/', authMiddleware, async (req, res) => {
   try {
     const { schedule } = req.body;

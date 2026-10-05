@@ -1439,3 +1439,12 @@ select:focus-visible {
 .nv-pulse { animation: nvPulse 2.4s ease-out infinite; }
 
 @media (prefers-reduced-motion: reduce) { .nv-shine, .nv-spin, .nv-pulse { animation: none; } }
+
+/* Center Seal show/hide: the seal shrinks and sinks into the bar while the
+   middle gap closes, and reverses when it comes back. */
+.nv-seal { transform: translateX(-50%); opacity: 1;
+  transition: transform .38s cubic-bezier(.2,.8,.2,1), opacity .3s ease; }
+.nv-seal-hidden { transform: translateX(-50%) translateY(34px) scale(.2); opacity: 0;
+  transition: transform .32s cubic-bezier(.5,0,.75,0), opacity .26s ease .06s; }
+.nv-gap { transition: flex-basis .38s cubic-bezier(.2,.8,.2,1); }
+@media (prefers-reduced-motion: reduce) { .nv-seal, .nv-seal-hidden, .nv-gap { transition: none; } }
