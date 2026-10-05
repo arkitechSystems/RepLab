@@ -2890,7 +2890,7 @@ export default function WorkoutSession() {
               inputsLocked={inputsLocked}
               onShowPRs={(name) => { setPrModalSort('weight'); setPrModalExercise(name); }}
               onLockedTap={inputsLocked ? () => setShowBeginPrompt(true) : undefined}
-              onCompletedSetTap={() => showToast('Uncheck this set to edit it')}
+              onCompletedSetTap={() => showToast('Uncheck this set to edit')}
               onChange={inputsLocked ? undefined : ((_n, ...args) => handleChange(fsKey, ...args))}
               onBlur={inputsLocked ? undefined : ((_n, ...args) => handleBlur(fsKey, ...args))}
               completedSets={completedSets}
@@ -3602,7 +3602,7 @@ export default function WorkoutSession() {
               inputsLocked={inputsLocked}
               onShowPRs={(name) => { setPrModalSort('weight'); setPrModalExercise(name); }}
               onLockedTap={inputsLocked ? () => setShowBeginPrompt(true) : undefined}
-              onCompletedSetTap={() => showToast('Uncheck this set to edit it')}
+              onCompletedSetTap={() => showToast('Uncheck this set to edit')}
               onChange={inputsLocked ? undefined : wrapCb(handleChange)}
               onBlur={inputsLocked ? undefined : wrapCb(handleBlur)}
               completedSets={completedSets}
