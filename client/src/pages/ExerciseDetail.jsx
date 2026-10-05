@@ -6,6 +6,7 @@ import { compareExerciseNames, exerciseDetailUrl } from '../utils/exerciseOrder'
 import { useExercises, setExerciseFavorite } from '../hooks/useExercises';
 import { useToast } from '../context/ToastContext';
 import ExerciseDetailCard from '../components/ExerciseDetailCard.jsx';
+import YouTubeSearchPrompt from '../components/YouTubeSearchPrompt.jsx';
 
 const RED = '#ef4444';
 const MONO = "'JetBrains Mono', ui-monospace, monospace";
@@ -22,6 +23,8 @@ export default function ExerciseDetail() {
   // playing iframe in-place. Tap × on the iframe (or navigate to a
   // different slug) returns to the thumbnail view.
   const [videoPlaying, setVideoPlaying] = useState(false);
+  // No video → confirm before leaving the app for a YouTube search.
+  const [showYtSearchPrompt, setShowYtSearchPrompt] = useState(false);
   // Master library for the fallback path — when the slug isn't in the
   // hand-authored static registry, we build a minimal exercise from the
   // matching master library row so every library entry still renders a
@@ -161,13 +164,18 @@ export default function ExerciseDetail() {
     if (exercise.videoId) {
       setVideoPlaying(true);
     } else {
-      const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(exercise.name + ' form')}`;
-      window.open(url, '_blank');
+      setShowYtSearchPrompt(true);
     }
   };
 
   return (
     <div style={{ background: '#0c0c0b', minHeight: '100vh', color: '#fff' }} className="pb-28">
+      {showYtSearchPrompt && (
+        <YouTubeSearchPrompt
+          onConfirm={() => window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(exercise.name + ' form')}`, '_blank')}
+          onClose={() => setShowYtSearchPrompt(false)}
+        />
+      )}
       {/* ── HERO ── */}
       <div style={{ position: 'relative' }}>
         <div style={{

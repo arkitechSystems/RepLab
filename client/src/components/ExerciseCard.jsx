@@ -23,6 +23,7 @@ import { plateCalcDefaults } from '../utils/plateCalcType';
 import CardioAccelerationCard from './CardioAccelerationCard.jsx';
 import { iosFocusRef } from '../utils/iosFocus.js';
 import useFocusTrap from '../hooks/useFocusTrap.js';
+import YouTubeSearchPrompt from './YouTubeSearchPrompt.jsx';
 
 function addToRecent(name) {
   try {
@@ -468,11 +469,14 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
     touchStartPos.current = null;
   }, [exercise.name, onToggleComplete, onDeleteSet]);
 
+  // No demo video → confirm before leaving the app for a YouTube search.
+  const [showYtSearchPrompt, setShowYtSearchPrompt] = useState(false);
+  const closeYtSearchPrompt = useCallback(() => setShowYtSearchPrompt(false), []);
   const handleVideoClick = () => {
     if (videoId) {
       setShowVideo(true);
     } else {
-      window.open(getExerciseSearchUrl(exercise.name), '_blank');
+      setShowYtSearchPrompt(true);
     }
   };
 
@@ -663,6 +667,13 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
           </div>
         )}
       </div>
+
+      {showYtSearchPrompt && (
+        <YouTubeSearchPrompt
+          onConfirm={() => window.open(getExerciseSearchUrl(exercise.name), '_blank')}
+          onClose={closeYtSearchPrompt}
+        />
+      )}
 
       {/* Inline Demo Section */}
       {showDemo && videoId && (
