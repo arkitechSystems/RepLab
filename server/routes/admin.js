@@ -377,6 +377,7 @@ function adminPage(title, body) {
   </div>
   <div class="sidebar-links" id="section-overview">
     <a href="/admin"${title === 'Dashboard' ? ' class="active"' : ''}>Dashboard</a>
+    <a href="/admin/projects"${title === 'Ongoing Projects' ? ' class="active"' : ''}>Ongoing Projects</a>
     <a href="/admin/users?format=html"${title === 'Users' ? ' class="active"' : ''}>User Sign Ups</a>
     <a href="/admin/analytics"${title === 'Analytics' ? ' class="active"' : ''}>Session Analytics</a>
     <a href="/admin/builds"${title === 'Builds' ? ' class="active"' : ''}>Pending Builds</a>
@@ -717,6 +718,11 @@ router.get('/', adminAuth, async (req, res) => {
     </div>
   </div>
   <div class="card-grid">
+    <a class="card glass" href="/admin/projects" style="border-color:rgba(255,255,255,0.55);box-shadow:0 0 22px rgba(255,255,255,0.28), 0 0 2px rgba(255,255,255,0.6);">
+      <div class="card-icon">${ICONS.flag}</div>
+      <div class="card-title">Ongoing Projects</div>
+      <div class="card-desc">Features in the works: AI Trainer, Trainer Central, programs, Challenges and more.</div>
+    </a>
     <a class="card glass" href="/admin/users?format=html">
       <div class="card-icon">${ICONS.users}</div>
       <div class="card-title">User Sign Ups</div>
@@ -6170,6 +6176,159 @@ router.delete('/exercise-library/delete/:id', adminAuth, async (req, res) => {
   } catch (err) {
     console.error('Delete exercise error:', err);
     res.status(500).json({ error: 'Failed to delete exercise' });
+  }
+});
+
+// ─── Ongoing Projects ───────────────────────────────────────────────
+// Features that are planned or partly built. The list lives here in code;
+// each project's status (picked on the page) is saved in admin_settings.
+const PROJECTS_STATUS_KEY = 'ongoing_projects_status';
+const PROJECT_STATUSES = [
+  ['planned', 'Planned', '#94a3b8'],
+  ['in_progress', 'In progress', '#60a5fa'],
+  ['blocked', 'Blocked', '#f59e0b'],
+  ['done', 'Done', '#22c55e'],
+];
+const ONGOING_PROJECTS = [
+  {
+    id: 'ai-trainer', name: 'AI Trainer', status: 'planned',
+    summary: 'A coach that reads your training history and suggests changes — e.g. why bicep sets drop from 12 to 7 to 5 reps at certain rep ranges and rest periods.',
+    built: 'AI workout generator (/ai routes, Anthropic key, AI Spend tracking).',
+    left: 'Trainer chat/insights screen, prompts over workout + PR history, rest-time data (below) as an input.',
+  },
+  {
+    id: 'rest-time-log', name: 'Rest time between sets', status: 'planned',
+    summary: 'Record when each set is checked so the time between sets can be measured. Data for the AI Trainer; can stay hidden from users.',
+    built: 'Nothing yet.',
+    left: 'Save a timestamp per set on check, handle unchecks/corrections and supersets, optional small "Rest" label under each set.',
+  },
+  {
+    id: 'trainer-central', name: 'Trainer Central', status: 'in_progress',
+    summary: 'Trainers join RepLab, take on clients and assign them workouts.',
+    built: 'Admin Trainer Central page (/admin/trainers), trainer applications, trainer routes; in-app Trainers card (visible to Wmartin only).',
+    left: 'Client-facing trainer flow, request-a-trainer (RequestTrainerTest prototype), launch for everyone.',
+  },
+  {
+    id: 'at-home-starter', name: 'At-home starter program', status: 'in_progress',
+    summary: 'A beginner program for people who train at home before joining a gym.',
+    built: 'Pre-Gym program screen (/pre-gym, PreGymProgram.jsx) with equipment + body-part filters.',
+    left: 'Replace the placeholder exercise list with real at-home exercises from the library, finish the program, open it to everyone.',
+  },
+  {
+    id: 'wills-hypertrophy', name: "Will's Hypertrophy Program", status: 'in_progress',
+    summary: 'The flagship featured program and launch marketing hook.',
+    built: 'Featured Workouts section and featured session flow (FeaturedWorkoutSession.jsx); visible to Wmartin only.',
+    left: 'Finalise the program content and videos, open Featured Workouts to everyone.',
+  },
+  {
+    id: 'challenges', name: 'Challenges', status: 'in_progress',
+    summary: 'Time-boxed challenges users can join and track.',
+    built: 'Challenges section in Workouts (visible to Wmartin only), TestChallengeSection prototype.',
+    left: 'Challenge content, progress tracking, launch for everyone.',
+  },
+  {
+    id: 'video-library', name: 'Exercise demo videos', status: 'in_progress',
+    summary: 'Every exercise with a correct demo, from approved channels, eventually self-recorded on the RepLab CDN.',
+    built: 'Title check, AI audit script, preferred-channel re-linker, Review column + filters on the Exercise Library page.',
+    left: 'Review flagged videos, run the re-linker ranking, record own videos for the CDN.',
+  },
+  {
+    id: 'body-parts-worked', name: 'Body Parts Worked (redesign)', status: 'planned',
+    summary: 'Post-workout section showing which muscles were trained.',
+    built: 'Original section exists but is switched off pre-launch.',
+    left: 'Redesign, then switch it back on.',
+  },
+  {
+    id: 'spanish', name: 'Spanish translation', status: 'blocked',
+    summary: 'Spanish version of the app.',
+    built: 'Translation setup saved as a git stash ("Spanish i18n infrastructure").',
+    left: 'Native Spanish review, then merge.',
+  },
+  {
+    id: 'android', name: 'Android / Google Play release', status: 'blocked',
+    summary: 'Ship the Android app on Google Play.',
+    built: 'Android project under client/android, signed .aab build steps.',
+    left: 'google-services.json for Google sign-in, Play listing, PLAY_STORE_URL on Render.',
+  },
+  {
+    id: 'push', name: 'Push notifications in production', status: 'blocked',
+    summary: 'PR celebrations, reminders and weekly summaries as pushes.',
+    built: 'Push code and schedulers (dormant).',
+    left: 'Add FCM_SERVICE_ACCOUNT_JSON on Render.',
+  },
+  {
+    id: 'loose-ends', name: 'Loose ends', status: 'planned',
+    summary: 'Small items noted along the way.',
+    built: '—',
+    left: 'Resend email issue; remove the temporary diagnostics button on Login; "Sign in to RepLab" on Google\'s account screen (custom auth domain); Video Audit admin page; community feed per-user cap; tighten the share picker at ~50 users; legacy blue cardio cards code (kept for reference).',
+  },
+];
+
+router.get('/projects', adminAuth, async (req, res) => {
+  try {
+    let saved = {};
+    try { saved = JSON.parse((await db.getAdminSetting(PROJECTS_STATUS_KEY)) || '{}'); } catch { saved = {}; }
+    const statusMeta = Object.fromEntries(PROJECT_STATUSES.map(([v, l, c]) => [v, { label: l, color: c }]));
+    const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const cards = ONGOING_PROJECTS.map((p) => {
+      const st = saved[p.id] || p.status;
+      return `
+        <div class="glass" style="padding:18px 20px;border-radius:14px;">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <div style="font-size:17px;font-weight:800;flex:1;min-width:180px;">${esc(p.name)}</div>
+            <select data-project="${p.id}" onchange="setProjectStatus(this)" aria-label="Status for ${esc(p.name)}"
+              style="padding:6px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:#111;color:${statusMeta[st]?.color || '#fff'};font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;">
+              ${PROJECT_STATUSES.map(([v, l]) => `<option value="${v}" style="background:#111;color:#fff;" ${v === st ? 'selected' : ''}>${l}</option>`).join('')}
+            </select>
+          </div>
+          <p style="color:rgba(255,255,255,0.65);font-size:13px;margin:8px 0 10px;line-height:1.5;">${esc(p.summary)}</p>
+          <div style="font-size:12px;line-height:1.55;color:rgba(255,255,255,0.5);">
+            <div><span style="color:rgba(255,255,255,0.8);font-weight:700;">Built so far:</span> ${esc(p.built)}</div>
+            <div style="margin-top:4px;"><span style="color:rgba(255,255,255,0.8);font-weight:700;">Still to do:</span> ${esc(p.left)}</div>
+          </div>
+        </div>`;
+    }).join('');
+
+    res.send(adminPage('Ongoing Projects', `
+      <div class="breadcrumb"><a href="/admin">Dashboard</a> / Ongoing Projects</div>
+      <h1 style="font-size:28px;font-weight:800;letter-spacing:-0.5px;">Ongoing Projects</h1>
+      <p style="color:rgba(255,255,255,0.4);margin-top:4px;font-size:14px;">Planned and partly built features. Pick a status to keep track — it saves right away.</p>
+      <div style="display:grid;gap:12px;margin-top:20px;">${cards}</div>
+      <script>
+        var PROJECT_COLORS = ${JSON.stringify(Object.fromEntries(PROJECT_STATUSES.map(([v, , c]) => [v, c])))};
+        async function setProjectStatus(sel) {
+          var prev = sel.dataset.prev || sel.value;
+          try {
+            var resp = await fetch('/admin/projects/status', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: sel.dataset.project, status: sel.value })
+            });
+            if (!resp.ok) throw new Error('Save failed');
+            sel.dataset.prev = sel.value;
+            sel.style.color = PROJECT_COLORS[sel.value] || '#fff';
+          } catch (e) { alert(e.message); sel.value = prev; }
+        }
+      </script>
+    `));
+  } catch (err) {
+    console.error('Projects page error:', err);
+    res.status(500).send('Failed to load projects');
+  }
+});
+
+router.post('/projects/status', adminAuth, express.json(), async (req, res) => {
+  try {
+    const { id, status } = req.body || {};
+    if (!ONGOING_PROJECTS.some((p) => p.id === id)) return res.status(400).json({ error: 'Unknown project' });
+    if (!PROJECT_STATUSES.some(([v]) => v === status)) return res.status(400).json({ error: 'Invalid status' });
+    let state = {};
+    try { state = JSON.parse((await db.getAdminSetting(PROJECTS_STATUS_KEY)) || '{}'); } catch { state = {}; }
+    state[id] = status;
+    await db.setAdminSetting(PROJECTS_STATUS_KEY, JSON.stringify(state));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Project status update failed', err);
+    res.status(500).json({ error: 'Failed to save' });
   }
 });
 
