@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { api } from '../api';
+import { api, cacheOnly } from '../api';
 
 // In-memory cache — survives re-renders, cleared on page reload
 let exerciseCache = null;
@@ -40,10 +40,22 @@ export function useExercises() {
   useEffect(() => {
     if (exerciseCache) return;
     setLoading(true);
+    let liveDone = false;
+    // Saved copy first (instant, works offline), then the live list.
+    Promise.all([cacheOnly('/exercises'), cacheOnly('/exercises/muscles')])
+      .then(([exs, muscles]) => {
+        if (liveDone || exerciseCache) return;
+        muscleGroupCache = muscles;
+        publish(exs);
+        setMuscleGroups(muscles);
+        setLoading(false);
+      })
+      .catch(() => {});
     Promise.all([
-      api('/exercises'),
-      api('/exercises/muscles'),
+      api('/exercises', { cache: true }),
+      api('/exercises/muscles', { cache: true }),
     ]).then(([exs, muscles]) => {
+      liveDone = true;
       muscleGroupCache = muscles;
       publish(exs);
       setMuscleGroups(muscles);

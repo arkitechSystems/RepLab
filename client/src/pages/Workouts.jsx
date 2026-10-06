@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { api } from '../api';
+import { api, cacheOnly, cachedAt, markShowingCached, clearShowingCached } from '../api';
 import { buildProgramColorMap, getColorFromMap } from '../utils/workoutColors';
 import StickyHeader from '../components/StickyHeader';
 import { iosFocusRef } from '../utils/iosFocus';
@@ -360,13 +360,24 @@ function WorkoutsWeeklyBarChart({ templates = [] }) {
 
   useEffect(() => {
     let cancelled = false;
+    let liveDone = false;
+    const schedPath = `/schedule?from=${weekDates[0]}&to=${weekDates[6]}`;
+    // Saved copy first (instant, works offline), then the live data.
+    Promise.all([cacheOnly(schedPath), cacheOnly('/sessions/completed')])
+      .then(([sched, completed]) => {
+        if (cancelled || liveDone) return;
+        setWeekSchedule(sched || []);
+        setCompletedSessions(completed || []);
+      })
+      .catch(() => {});
     Promise.all([
-      api(`/schedule?from=${weekDates[0]}&to=${weekDates[6]}`).catch(() => []),
-      api('/sessions/completed').catch(() => []),
+      api(schedPath, { cache: true }).catch(() => null),
+      api('/sessions/completed', { cache: true }).catch(() => null),
     ]).then(([sched, completed]) => {
       if (cancelled) return;
-      setWeekSchedule(sched || []);
-      setCompletedSessions(completed || []);
+      liveDone = true;
+      if (sched) setWeekSchedule(sched);
+      if (completed) setCompletedSessions(completed);
     });
     return () => { cancelled = true; };
   }, [weekDates]);
@@ -492,13 +503,24 @@ function WeekAtAGlanceCarousel({ templates = [] }) {
 
   useEffect(() => {
     let cancelled = false;
+    let liveDone = false;
+    const schedPath = `/schedule?from=${weekDates[0]}&to=${weekDates[6]}`;
+    // Saved copy first (instant, works offline), then the live data.
+    Promise.all([cacheOnly(schedPath), cacheOnly('/sessions/completed')])
+      .then(([sched, completed]) => {
+        if (cancelled || liveDone) return;
+        setWeekSchedule(sched || []);
+        setCompletedSessions(completed || []);
+      })
+      .catch(() => {});
     Promise.all([
-      api(`/schedule?from=${weekDates[0]}&to=${weekDates[6]}`).catch(() => []),
-      api('/sessions/completed').catch(() => []),
+      api(schedPath, { cache: true }).catch(() => null),
+      api('/sessions/completed', { cache: true }).catch(() => null),
     ]).then(([sched, completed]) => {
       if (cancelled) return;
-      setWeekSchedule(sched || []);
-      setCompletedSessions(completed || []);
+      liveDone = true;
+      if (sched) setWeekSchedule(sched);
+      if (completed) setCompletedSessions(completed);
     });
     return () => { cancelled = true; };
   }, [weekDates]);
@@ -1273,7 +1295,13 @@ export default function Workouts() {
       .finally(() => setTrainerAppLoading(false));
   }, [selectedGroup, user?.role]);
 
+  // opts.fromCache: run the same loader on the saved copies (cacheOnly) so
+  // the screen paints instantly / offline; otherwise fetch live and refresh
+  // the saved copies.
   async function fetchData(opts = {}) {
+    const { fromCache, ...reqOpts } = opts;
+    const get = fromCache ? (p) => cacheOnly(p) : (p, o) => api(p, { ...o, cache: true });
+    opts = reqOpts;
     // Use local date parts to avoid UTC timezone shift
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -1283,13 +1311,13 @@ export default function Workouts() {
     const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
 
     const [progs, tmpls, sessions, shares, accepted, prStatsData, scheduleData, completedData, bodyPartPRData, allPRsByMuscleData] = await Promise.all([
-      api('/programs', opts), api('/templates', opts), api('/sessions', opts),
-      api('/sharing/pending', opts).catch(() => []), api('/sharing/accepted', opts).catch(() => ({})),
-      api('/pbs/stats', opts).catch(() => null),
-      api(`/schedule?from=${todayStr}&to=${tomorrowStr}`, opts).catch(() => []),
-      api('/sessions/completed', opts).catch(() => []),
-      api('/pbs/by-body-part', opts).catch(() => []),
-      api('/pbs/all-by-muscle', opts).catch(() => []),
+      get('/programs', opts), get('/templates', opts), get('/sessions', opts),
+      get('/sharing/pending', opts).catch(() => []), get('/sharing/accepted', opts).catch(() => ({})),
+      get('/pbs/stats', opts).catch(() => null),
+      get(`/schedule?from=${todayStr}&to=${tomorrowStr}`, opts).catch(() => []),
+      get('/sessions/completed', opts).catch(() => []),
+      get('/pbs/by-body-part', opts).catch(() => []),
+      get('/pbs/all-by-muscle', opts).catch(() => []),
     ]);
 
     // Lazy-fetch featured enrollment — only if a featured program exists
@@ -1299,7 +1327,7 @@ export default function Workouts() {
       const futureDate = new Date(today);
       futureDate.setDate(futureDate.getDate() + 90);
       const futureDateStr = `${futureDate.getFullYear()}-${String(futureDate.getMonth() + 1).padStart(2, '0')}-${String(futureDate.getDate()).padStart(2, '0')}`;
-      fullScheduleData = await api(`/schedule?from=${todayStr}&to=${futureDateStr}`, opts).catch(() => []);
+      fullScheduleData = await get(`/schedule?from=${todayStr}&to=${futureDateStr}`, opts).catch(() => []);
     }
     setPrStats(prStatsData);
     setBodyPartPRs(bodyPartPRData || []);
@@ -1518,10 +1546,25 @@ export default function Workouts() {
 
   useEffect(() => {
     const controller = new AbortController();
+    let liveDone = false;
+    // Saved copy first: paints instantly and works offline. Skipped when
+    // there's no saved copy yet (first visit) — then the live load decides.
+    fetchData({ fromCache: true })
+      .then(() => {
+        if (liveDone || controller.signal.aborted) return;
+        setLoading(false);
+        markShowingCached('workouts-home', cachedAt('/programs'));
+      })
+      .catch(() => {});
     fetchData({ signal: controller.signal })
-      .catch((err) => { if (err.name !== 'AbortError') setLoadError('Failed to load workouts'); })
-      .finally(() => setLoading(false));
-    return () => controller.abort();
+      .then(() => { setLoadError(null); clearShowingCached('workouts-home'); })
+      .catch((err) => {
+        if (err.name === 'AbortError') return;
+        // Keep showing the saved copy if there is one; error only without it.
+        if (cachedAt('/programs') == null) setLoadError('Failed to load workouts');
+      })
+      .finally(() => { liveDone = true; setLoading(false); });
+    return () => { controller.abort(); clearShowingCached('workouts-home'); };
   }, []);
 
   // Refresh data when user returns to page (e.g. after completing a workout).

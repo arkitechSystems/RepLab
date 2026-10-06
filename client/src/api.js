@@ -20,6 +20,11 @@ let memoryRefreshToken = null;
 let onUnauthorized = null; // callback set by AuthContext
 
 export function setApiToken(token) {
+  // A different account signing in on this device: drop the previous
+  // account's cached screens so they can never show for the new one.
+  const prevUid = tokenUserId(getApiToken() || '');
+  const nextUid = tokenUserId(token || '');
+  if (prevUid != null && nextUid != null && prevUid !== nextUid) clearApiCache();
   memoryToken = token;
   try {
     if (token) {
@@ -74,6 +79,7 @@ export function clearAuthTokens() {
   setApiToken(null);
   setRefreshToken(null);
   try { localStorage.removeItem('replab_user'); } catch {}
+  clearApiCache();
 }
 
 export function setOnUnauthorized(callback) {
@@ -93,8 +99,10 @@ async function performRefresh() {
     throw new Error('No refresh token');
   }
 
-  // Same time limit + Retry prompt as api(). A connection failure here throws
-  // an isConnectionError error, which api() surfaces instead of logging out.
+  // Same time limit as api(). A POST, so it isn't retried automatically (a
+  // lost response may already have rotated the token). A connection failure
+  // throws an isConnectionError error, which api() surfaces instead of
+  // logging out.
   const res = await fetchWithRetry('/auth/refresh', {
     method: 'POST',
     body: JSON.stringify({ refreshToken }),
@@ -128,17 +136,23 @@ function getOrStartRefresh() {
   return refreshPromise;
 }
 
-// ── Request time limit + Retry prompt ──
+// ── Request time limit + automatic retries ──
 // Every request gives up after DEFAULT_TIMEOUT_MS (longer for AI features,
 // which take 5-20s to generate) instead of hanging forever — a lost response
-// used to leave buttons stuck on "Sending..." indefinitely. On a timeout or
-// network failure, api() asks the registered retry handler (the
-// <ConnectionRetryPrompt/> mounted in App) whether to try again; concurrent
-// failures share one prompt, and Retry re-sends all of them. Pass
-// { timeoutMs } to override per call, or { noRetryPrompt: true } to fail fast.
-const DEFAULT_TIMEOUT_MS = 5000;
+// used to leave buttons stuck on "Sending..." indefinitely. 30s leaves room
+// for slow gym Wi-Fi / weak cell signal (5s was too tight). On a timeout or
+// network failure, safe-to-repeat requests (GET, or { retry: true }) are
+// retried automatically after RETRY_DELAYS_MS; other requests (POST/PUT/
+// DELETE) aren't, because the first try may have reached the server. While
+// requests are slow or failing, the connection status below drives the
+// yellow banner in Layout. Pass { timeoutMs } to override the limit, or
+// { noRetryPrompt: true } for a quiet background call: fails fast, no
+// retries, and doesn't affect the banner.
+const DEFAULT_TIMEOUT_MS = 30000;
 const AI_TIMEOUT_MS = 60000;
+const RETRY_DELAYS_MS = [2000, 5000];
 export const CONNECTION_ERROR_MESSAGE = "Couldn't reach RepLab. Check your connection and try again.";
+export const OFFLINE_MESSAGE = "You're offline — try again when connected.";
 
 function timeoutFor(path, options) {
   if (options.timeoutMs) return options.timeoutMs;
@@ -146,20 +160,193 @@ function timeoutFor(path, options) {
   return DEFAULT_TIMEOUT_MS;
 }
 
-let retryHandler = null;
-let pendingRetryDecision = null;
-// Registered by ConnectionRetryPrompt: (message) => Promise<boolean>.
-export function setRetryHandler(fn) {
-  retryHandler = fn;
+function isRetryable(options) {
+  if (options.retry === true) return true;
+  const method = (options.method || 'GET').toUpperCase();
+  return method === 'GET' || method === 'HEAD';
 }
-function askToRetry() {
-  if (!retryHandler) return Promise.resolve(false);
-  if (!pendingRetryDecision) {
-    pendingRetryDecision = Promise.resolve(retryHandler(CONNECTION_ERROR_MESSAGE))
-      .catch(() => false)
-      .finally(() => { pendingRetryDecision = null; });
+
+function wait(ms, signal) {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(resolve, ms);
+    signal?.addEventListener('abort', () => {
+      clearTimeout(t);
+      const err = new Error('Aborted');
+      err.name = 'AbortError';
+      reject(err);
+    }, { once: true });
+  });
+}
+
+// ── Connection status: 'ok' | 'slow' | 'failed' ──
+// 'slow' while any request has been in flight > SLOW_AFTER_MS or is being
+// retried; 'failed' for FAILED_SHOW_MS after a request gives up. Going back
+// to 'ok' is delayed by OK_DEBOUNCE_MS so the banner doesn't flicker.
+const SLOW_AFTER_MS = 8000;
+const FAILED_SHOW_MS = 6000;
+const OK_DEBOUNCE_MS = 1500;
+let connectionState = 'ok';
+let slowRequests = 0;
+let failedUntil = 0;
+let connTimer = null;
+const connectionListeners = new Set();
+
+function targetConnectionState() {
+  if (Date.now() < failedUntil) return 'failed';
+  return slowRequests > 0 ? 'slow' : 'ok';
+}
+function updateConnectionState() {
+  clearTimeout(connTimer);
+  const next = targetConnectionState();
+  if (next === 'failed') {
+    connTimer = setTimeout(updateConnectionState, failedUntil - Date.now() + 10);
   }
-  return pendingRetryDecision;
+  if (next === connectionState) return;
+  if (next === 'ok') {
+    connTimer = setTimeout(() => {
+      if (targetConnectionState() === 'ok' && connectionState !== 'ok') {
+        connectionState = 'ok';
+        connectionListeners.forEach((fn) => fn('ok'));
+      }
+    }, OK_DEBOUNCE_MS);
+    return;
+  }
+  connectionState = next;
+  connectionListeners.forEach((fn) => fn(next));
+}
+export function getConnectionState() {
+  return connectionState;
+}
+// fn(state) is called whenever the status changes. Returns an unsubscribe.
+export function subscribeConnection(fn) {
+  connectionListeners.add(fn);
+  return () => connectionListeners.delete(fn);
+}
+
+// ── Last-copy cache (show saved data instantly, refresh in background) ──
+// GETs made with { cache: true } store their last successful JSON response
+// in localStorage, keyed by the signed-in user id + path, so a screen can
+// paint immediately from cacheOnly(path) and then refresh from the network.
+// Read-only: writes never touch it. Entries over CACHE_MAX_CHARS are skipped.
+// Cleared on logout (clearAuthTokens) and when a different user signs in.
+const CACHE_PREFIX = 'rl_cache_v1:';
+const CACHE_MAX_CHARS = 300000;
+
+function tokenUserId(token) {
+  try {
+    const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(payload)).userId ?? null;
+  } catch {
+    return null;
+  }
+}
+function cacheKey(path) {
+  const uid = tokenUserId(getApiToken() || '');
+  return uid == null ? null : `${CACHE_PREFIX}${uid}:${path}`;
+}
+function writeCache(path, data) {
+  const key = cacheKey(path);
+  if (!key) return;
+  try {
+    const raw = JSON.stringify({ at: Date.now(), data });
+    if (raw.length > CACHE_MAX_CHARS) return;
+    localStorage.setItem(key, raw);
+  } catch {
+    // Storage full or unavailable — caching is best-effort.
+  }
+}
+function readCache(path) {
+  const key = cacheKey(path);
+  if (!key) return null;
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const entry = JSON.parse(raw);
+    return entry && typeof entry === 'object' && 'data' in entry ? entry : null;
+  } catch {
+    return null;
+  }
+}
+// The cached copy of a GET, or a rejected promise when there isn't one.
+// Shaped like api() so a loader can swap one for the other.
+export function cacheOnly(path) {
+  const entry = readCache(path);
+  if (!entry) {
+    const err = new Error('Not cached');
+    err.notCached = true;
+    return Promise.reject(err);
+  }
+  return Promise.resolve(entry.data);
+}
+// When the cached copy of `path` was saved (ms), or null.
+export function cachedAt(path) {
+  return readCache(path)?.at ?? null;
+}
+export function clearApiCache() {
+  try {
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(CACHE_PREFIX)) keys.push(k);
+    }
+    keys.forEach((k) => localStorage.removeItem(k));
+  } catch {}
+  showingCached.clear();
+  notifyShowingCached();
+}
+
+// ── "Showing saved data" marks ──
+// A screen that painted from the cache calls markShowingCached(key, at) and
+// clears it once fresh data lands (or on unmount). Layout shows a small
+// "Showing saved data from <time>" line when a mark has been up > 8s.
+const showingCached = new Map(); // key -> { at, since }
+const showingCachedListeners = new Set();
+function notifyShowingCached() {
+  const list = [...showingCached.values()];
+  showingCachedListeners.forEach((fn) => fn(list));
+}
+// { immediate: true } when the refresh has already failed, so the label
+// shows right away instead of after the usual wait.
+export function markShowingCached(key, at, { immediate = false } = {}) {
+  if (at == null) return;
+  showingCached.set(key, { at, since: immediate ? 0 : Date.now() });
+  notifyShowingCached();
+}
+export function clearShowingCached(key) {
+  if (!showingCached.delete(key)) return;
+  notifyShowingCached();
+}
+// fn([{ at, since }, ...]) on every change. Returns an unsubscribe.
+export function subscribeShowingCached(fn) {
+  showingCachedListeners.add(fn);
+  fn([...showingCached.values()]);
+  return () => showingCachedListeners.delete(fn);
+}
+
+// Per-request tracker: flips the request to "slow" after SLOW_AFTER_MS or
+// on its first retry, and settles it when the request ends.
+function trackRequest(quiet) {
+  if (quiet) return { markSlow() {}, done() {} };
+  let slow = false;
+  let settled = false;
+  const markSlow = () => {
+    if (slow || settled) return;
+    slow = true;
+    slowRequests++;
+    updateConnectionState();
+  };
+  const timer = setTimeout(markSlow, SLOW_AFTER_MS);
+  return {
+    markSlow,
+    done(failed) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (slow) slowRequests--;
+      if (failed) failedUntil = Date.now() + FAILED_SHOW_MS;
+      updateConnectionState();
+    },
+  };
 }
 
 async function doFetch(path, options, token) {
@@ -198,18 +385,32 @@ async function doFetch(path, options, token) {
   }
 }
 
-// doFetch with the Retry prompt: on a timeout or network failure, ask the
-// user; Retry loops, Cancel throws. A caller-initiated abort is rethrown as-is.
+// doFetch with automatic retries: on a timeout or network failure, wait and
+// try again (up to RETRY_DELAYS_MS.length more times) for safe-to-repeat
+// requests, then throw an isConnectionError error. A caller-initiated abort
+// is rethrown as-is.
 async function fetchWithRetry(path, options, token) {
-  for (;;) {
+  const quiet = options.noRetryPrompt === true;
+  const tracker = trackRequest(quiet);
+  for (let attempt = 0; ; attempt++) {
     try {
-      return await doFetch(path, options, token);
+      const res = await doFetch(path, options, token);
+      tracker.done(false);
+      return res;
     } catch (err) {
-      if (err.name === 'AbortError') throw err;
-      if (options.noRetryPrompt || !(await askToRetry())) {
+      if (err.name === 'AbortError') { tracker.done(false); throw err; }
+      if (quiet || attempt >= RETRY_DELAYS_MS.length || !isRetryable(options)) {
+        tracker.done(true);
         const connErr = new Error(CONNECTION_ERROR_MESSAGE);
         connErr.isConnectionError = true;
         throw connErr;
+      }
+      tracker.markSlow();
+      try {
+        await wait(RETRY_DELAYS_MS[attempt], options.signal);
+      } catch (abortErr) {
+        tracker.done(false);
+        throw abortErr;
       }
     }
   }
@@ -217,6 +418,17 @@ async function fetchWithRetry(path, options, token) {
 
 export async function api(path, options = {}) {
   const token = getApiToken();
+
+  // Changes made while the phone reports no connection fail right away with
+  // a clear message instead of waiting out the time limit. (Workout sets and
+  // Mark Complete have their own offline queue in WorkoutSession.)
+  const method = (options.method || 'GET').toUpperCase();
+  if (method !== 'GET' && method !== 'HEAD' && typeof navigator !== 'undefined' && navigator.onLine === false) {
+    const offlineErr = new Error(OFFLINE_MESSAGE);
+    offlineErr.isConnectionError = true;
+    offlineErr.isOffline = true;
+    throw offlineErr;
+  }
 
   let res = await fetchWithRetry(path, options, token);
 
@@ -278,5 +490,8 @@ export async function api(path, options = {}) {
     throw err;
   }
 
+  if (options.cache === true && (options.method || 'GET').toUpperCase() === 'GET') {
+    writeCache(path, data);
+  }
   return data;
 }

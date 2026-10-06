@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { api } from '../api';
+import { api, cacheOnly } from '../api';
 
 // "Center Seal" nav: solid black grain bar, two tabs either side of a raised
 // engraved play button. Icons are clean line-art (1.8 stroke, round
@@ -130,7 +130,7 @@ function localToday() {
 // started and unfinished). Re-checked on every route change and when the
 // app comes back to the foreground, so Mark Complete, Calendar edits and a
 // new day are picked up. Keeps the last answer while a check is in flight
-// (no flicker) and stays hidden if a check fails.
+// (no flicker); if a check fails it falls back to the saved answer.
 function useTodayWorkoutPending() {
   const { pathname } = useLocation();
   const [pending, setPending] = useState(false);
@@ -145,9 +145,17 @@ function useTodayWorkoutPending() {
   useEffect(() => {
     if (IN_SESSION.test(pathname)) return; // hidden in a session anyway
     let cancelled = false;
-    api(`/schedule/today?date=${localToday()}`, { noRetryPrompt: true })
-      .then((r) => { if (!cancelled) setPending(!!r?.show); })
-      .catch(() => { if (!cancelled) setPending(false); });
+    let liveDone = false;
+    const path = `/schedule/today?date=${localToday()}`;
+    // Saved answer first (instant, works offline), then the live one. If the
+    // live check fails, the saved answer stands; with neither, it's hidden.
+    let saved = null;
+    cacheOnly(path)
+      .then((r) => { saved = r; if (!cancelled && !liveDone) setPending(!!r?.show); })
+      .catch(() => {});
+    api(path, { noRetryPrompt: true, cache: true })
+      .then((r) => { liveDone = true; if (!cancelled) setPending(!!r?.show); })
+      .catch(() => { liveDone = true; if (!cancelled) setPending(!!saved?.show); });
     return () => { cancelled = true; };
   }, [pathname, tick]);
 

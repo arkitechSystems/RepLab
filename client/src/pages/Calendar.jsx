@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { startOfWeek, startOfMonth, endOfMonth, addDays, format, isToday, isSameWeek, isSameMonth, isSameDay, isBefore, parseISO, differenceInCalendarWeeks, differenceInCalendarMonths, isValid } from 'date-fns';
-import { api } from '../api';
+import { api, cacheOnly, cachedAt, markShowingCached, clearShowingCached } from '../api';
 import { getWorkoutColor } from '../utils/workoutColors';
 import StickyHeader from '../components/StickyHeader';
 import LoadingSpinnerOverlay from '../components/LoadingSpinnerOverlay';
@@ -203,8 +203,8 @@ export default function Calendar() {
 
   async function refreshSchedule(opts = {}) {
     const [s, completed] = await Promise.all([
-      api(`/schedule?from=${fetchFrom}&to=${fetchTo}`, opts),
-      api('/sessions/completed', opts),
+      api(`/schedule?from=${fetchFrom}&to=${fetchTo}`, { ...opts, cache: true }),
+      api('/sessions/completed', { ...opts, cache: true }),
     ]);
     setSchedule(s);
     setCompletedSessions(completed);
@@ -213,12 +213,32 @@ export default function Calendar() {
 
   useEffect(() => {
     const controller = new AbortController();
-    const opts = { signal: controller.signal };
-    Promise.all([api(`/schedule?from=${fetchFrom}&to=${fetchTo}`, opts), api('/templates', opts), api('/programs', opts), api('/sessions/completed', opts)])
-      .then(([s, t, p, c]) => { setSchedule(s); setTemplates(t); setPrograms(p); setCompletedSessions(c); })
-      .catch((err) => { if (err.name !== 'AbortError') setLoadError('Failed to load calendar data'); })
-      .finally(() => setLoading(false));
-    return () => controller.abort();
+    const opts = { signal: controller.signal, cache: true };
+    const schedPath = `/schedule?from=${fetchFrom}&to=${fetchTo}`;
+    const paths = [schedPath, '/templates', '/programs', '/sessions/completed'];
+    let liveDone = false;
+    // Saved copy first (instant, works offline), then the live data.
+    Promise.all(paths.map((p) => cacheOnly(p)))
+      .then(([s, t, p, c]) => {
+        if (liveDone || controller.signal.aborted) return;
+        setSchedule(s); setTemplates(t); setPrograms(p); setCompletedSessions(c);
+        setLoading(false);
+        markShowingCached('calendar', cachedAt(schedPath));
+      })
+      .catch(() => {});
+    Promise.all(paths.map((p) => api(p, opts)))
+      .then(([s, t, p, c]) => {
+        setSchedule(s); setTemplates(t); setPrograms(p); setCompletedSessions(c);
+        setLoadError(null);
+        clearShowingCached('calendar');
+      })
+      .catch((err) => {
+        if (err.name === 'AbortError') return;
+        // Keep showing the saved copy if there is one; error only without it.
+        if (cachedAt(schedPath) == null) setLoadError('Failed to load calendar data');
+      })
+      .finally(() => { liveDone = true; setLoading(false); });
+    return () => { controller.abort(); clearShowingCached('calendar'); };
   }, [fetchFrom, fetchTo]);
 
   function getEnrichedPrograms() {

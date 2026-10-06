@@ -1,6 +1,7 @@
 // Convert raw error objects/messages into friendly, user-facing copy.
 // Keeps server stack traces and HTTP status text out of the UI.
 export function friendlyError(err, fallback = "Something went wrong. Try again in a moment.") {
+  if (err?.isOffline) return "You're offline — try again when connected.";
   const msg = (err?.message || String(err || '')).toLowerCase();
   if (/network|fetch|offline|connection/.test(msg)) return "Couldn't reach RepLab. Check your connection and try again.";
   if (/401|unauthor|session.*expir|jwt/.test(msg)) return "Your session expired. Please sign in again.";

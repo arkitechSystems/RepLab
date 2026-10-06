@@ -7,6 +7,16 @@ import PushPermissionPrompt from './PushPermissionPrompt';
 import { useTutorial } from '../context/TutorialContext';
 import { useAuth } from '../context/AuthContext';
 import { MiniPlayer, useVideoPlayer } from '../context/VideoPlayerContext';
+import { getConnectionState, subscribeConnection, subscribeShowingCached } from '../api';
+
+// "3:42 PM" today, "Oct 5, 3:42 PM" otherwise.
+function formatSavedAt(ms) {
+  const d = new Date(ms);
+  const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  if (d.toDateString() === new Date().toDateString()) return time;
+  return `${d.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${time}`;
+}
+const STALE_LABEL_AFTER_MS = 8000;
 
 // Layout normally renders the matched child route via &lt;Outlet /&gt;. Accepting
 // an optional `children` prop lets a non-route consumer (e.g. the conditional
@@ -28,6 +38,22 @@ export default function Layout({ children }) {
   }, []);
 
   const [syncStatus, setSyncStatus] = useState(null); // null | 'syncing' | 'synced'
+  // 'ok' | 'slow' | 'failed' — from api.js; drives the slow-connection banner.
+  const [connection, setConnection] = useState(getConnectionState);
+  useEffect(() => subscribeConnection(setConnection), []);
+  // Screens painted from the saved copy whose refresh hasn't landed yet.
+  // The "Showing saved data" line appears once one has waited > 8s.
+  const [cachedMarks, setCachedMarks] = useState([]);
+  const [, setStaleTick] = useState(0);
+  useEffect(() => subscribeShowingCached(setCachedMarks), []);
+  useEffect(() => {
+    const waits = cachedMarks.map((m) => m.since + STALE_LABEL_AFTER_MS - Date.now()).filter((ms) => ms > 0);
+    if (!waits.length) return undefined;
+    const t = setTimeout(() => setStaleTick((n) => n + 1), Math.min(...waits) + 20);
+    return () => clearTimeout(t);
+  }, [cachedMarks]);
+  const staleMarks = cachedMarks.filter((m) => Date.now() - m.since >= STALE_LABEL_AFTER_MS);
+  const staleSince = staleMarks.length ? Math.min(...staleMarks.map((m) => m.at)) : null;
 
   useEffect(() => {
     const goOnline = () => {
@@ -124,6 +150,22 @@ export default function Layout({ children }) {
           <div className="bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-2 flex items-center justify-center gap-2 z-30 relative">
             <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
             <span className="text-xs text-yellow-400 font-medium">You're offline — changes will sync when you reconnect</span>
+          </div>
+        )}
+        {!offline && connection !== 'ok' && (
+          <div className="bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-2 flex items-center justify-center gap-2 z-30 relative">
+            <div className={`w-2 h-2 shrink-0 rounded-full bg-yellow-500${connection === 'slow' ? ' animate-pulse' : ''}`} />
+            <span className="text-xs text-yellow-400 font-medium text-center">
+              {connection === 'slow'
+                ? 'Slow connection — still trying…'
+                : "Couldn't reach RepLab — your workout is saved on this phone and will sync when you're back online."}
+            </span>
+          </div>
+        )}
+        {staleSince != null && (
+          <div className="px-4 py-1.5 flex items-center justify-center gap-2 z-30 relative" style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-wf-gray-400 shrink-0" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+            <span className="text-[11px] text-wf-gray-400 font-medium">Showing saved data from {formatSavedAt(staleSince)}</span>
           </div>
         )}
         {syncStatus === 'syncing' && (

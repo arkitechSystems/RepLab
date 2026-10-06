@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { format, isToday, addDays, subDays } from 'date-fns';
-import { api } from '../api';
+import { api, cacheOnly, cachedAt, markShowingCached, clearShowingCached, CONNECTION_ERROR_MESSAGE } from '../api';
 import ExerciseCard from '../components/ExerciseCard';
 import { useExercises } from '../hooks/useExercises';
 import { savedExercises, savedFirst } from '../utils/savedExercises';
@@ -161,6 +161,11 @@ export default function WorkoutSession() {
   const [loadError, setLoadError] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  // A save that couldn't reach the server — the sets are in the local backup
+  // and the save is retried automatically until it goes through.
+  const [syncPending, setSyncPending] = useState(false);
+  // A save that's been in flight for more than a moment (shows "Saving…").
+  const [saveSlow, setSaveSlow] = useState(false);
   const [persisted, setPersisted] = useState(false);
   const [completedSets, setCompletedSets] = useState(new Set());
   const [newPBs, setNewPBs] = useState(null);
@@ -572,8 +577,27 @@ export default function WorkoutSession() {
       });
       return;
     }
-    handleSaveRef.current?.().catch((err) => { if (import.meta.env.DEV) console.error(err); });
+    handleSaveRef.current?.({ background: true }).catch((err) => { if (import.meta.env.DEV) console.error(err); });
   }
+  const runAutoSaveRef = useRef(null);
+  useEffect(() => { runAutoSaveRef.current = runAutoSave; });
+
+  // A save that couldn't reach the server is retried every 15s, and right
+  // away when the phone comes back online or the app returns to the
+  // foreground. Stops once a save succeeds (handleSave clears syncPending).
+  useEffect(() => {
+    if (!syncPending || tutorialMode) return undefined;
+    const retry = () => runAutoSaveRef.current?.();
+    const iv = setInterval(retry, 15000);
+    const onVisible = () => { if (document.visibilityState === 'visible') retry(); };
+    window.addEventListener('online', retry);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(iv);
+      window.removeEventListener('online', retry);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [syncPending, tutorialMode]);
 
   // Auto-save as soon as a set is checked or unchecked — skip in tutorial
   // mode. Runs after the render that committed the toggle, so the save
@@ -972,6 +996,30 @@ export default function WorkoutSession() {
 
     // Step 1: Ensure a session copy exists (creates one from template if needed)
     // Step 2: Load everything from the session — never from the template directly
+    // GETs here go live first and refresh the saved copy. If the connection
+    // fails (or the phone is offline) they fall back to the saved copy, so a
+    // workout opened before still opens; the "Showing saved data" line then
+    // says how old it is. Live-first (not saved-first) because this load
+    // also creates the session and restores the local backup.
+    let usedSavedCopy = false;
+    let savedCopyAt = null;
+    const fromSaved = (p) => {
+      const at = cachedAt(p);
+      if (at == null) return Promise.reject(Object.assign(new Error(CONNECTION_ERROR_MESSAGE), { isConnectionError: true }));
+      usedSavedCopy = true;
+      savedCopyAt = savedCopyAt == null ? at : Math.min(savedCopyAt, at);
+      return cacheOnly(p);
+    };
+    const get = (p) => {
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+        return fromSaved(p).catch(() => api(p, { cache: true }));
+      }
+      return api(p, { cache: true }).catch((err) => {
+        if (err?.isConnectionError && cachedAt(p) != null) return fromSaved(p);
+        throw err;
+      });
+    };
+
     async function loadSession() {
       try {
         // Fetch PBs, schedule, last session entries, and programs in parallel
@@ -979,23 +1027,23 @@ export default function WorkoutSession() {
         const schedFrom = format(subDays(parseDateLocal(date), 7), 'yyyy-MM-dd');
         const schedTo = format(addDays(parseDateLocal(date), 7), 'yyyy-MM-dd');
         const [pbList, scheduleData, lastEntries, programs, userMetrics, allPRsList] = await Promise.all([
-          api(`/pbs?templateId=${templateId}`),
-          api(`/schedule?from=${schedFrom}&to=${schedTo}`),
-          api(`/sessions/last-entries/${templateId}`).catch((err) => {
+          get(`/pbs?templateId=${templateId}`),
+          get(`/schedule?from=${schedFrom}&to=${schedTo}`).catch(() => []),
+          get(`/sessions/last-entries/${templateId}`).catch((err) => {
             if (import.meta.env.DEV) console.warn('Failed to load last-session entries; weight suggestions may be stale:', err);
             return {};
           }),
-          api('/programs').catch((err) => {
+          get('/programs').catch((err) => {
             if (import.meta.env.DEV) console.warn('Failed to load programs:', err);
             return [];
           }),
           // 1RM maxes — used to auto-fill %1RM-prescribed suggested weights
           // (see applyOneRMSuggestions below). Missing metrics = no-op.
-          api('/metrics').catch(() => ({})),
+          get('/metrics').catch(() => ({})),
           // All-time PRs across every template — drives the per-exercise PR
           // popup. Non-blocking for the page render path; defaults to [] on
           // failure so the rest of the session loads cleanly.
-          api('/pbs/all-by-muscle').catch(() => []),
+          get('/pbs/all-by-muscle').catch(() => []),
         ]);
         if (cancelled) return;
         setLastSession(lastEntries || {});
@@ -1033,15 +1081,25 @@ export default function WorkoutSession() {
         setSchedule(scheduleData);
 
         // Check for existing session
-        let session = await api(`/sessions/by-template/${templateId}/${date}`);
+        let session = await get(`/sessions/by-template/${templateId}/${date}`).catch((err) => {
+          // Offline with no saved copy of this day: build it from the
+          // template below; the first save creates the session.
+          if (err?.isConnectionError) return null;
+          throw err;
+        });
         if (cancelled) return;
 
         // If no session exists, initialize one from the template (creates independent copy)
         if (!session || !session.workoutData) {
-          session = await api('/sessions/initialize', {
-            method: 'POST',
-            body: JSON.stringify({ templateId: Number(templateId), date }),
-          });
+          try {
+            session = await api('/sessions/initialize', {
+              method: 'POST',
+              body: JSON.stringify({ templateId: Number(templateId), date }),
+            });
+          } catch (err) {
+            if (!err?.isConnectionError) throw err;
+            session = null; // offline: falls through to the template below
+          }
           if (cancelled) return;
         }
 
@@ -1060,7 +1118,7 @@ export default function WorkoutSession() {
         // If still no workout data (shouldn't happen, but safety net)
         if (!session?.workoutData?.exercises) {
           // Fallback: load template directly (legacy behavior)
-          const templates = await api('/templates');
+          const templates = await get('/templates');
           if (cancelled) return;
           const tmpl = templates.find((t) => t.id === Number(templateId));
           if (tmpl) {
@@ -1096,7 +1154,7 @@ export default function WorkoutSession() {
         setTemplate(sessionTemplate);
 
         // Look up program name
-        const tmplList = await api('/templates').catch(() => []);
+        const tmplList = await get('/templates').catch(() => []);
         if (cancelled) return;
         const tmplInfo = tmplList.find(t => t.id === Number(templateId));
         // /templates only returns the user's own templates (userId = them)
@@ -1208,17 +1266,23 @@ export default function WorkoutSession() {
         }
       } catch (err) {
         if (cancelled) return;
-        if (err.name !== 'AbortError') setLoadError('Failed to load workout — check your connection');
+        if (err.name !== 'AbortError') {
+          setLoadError(err?.isConnectionError
+            ? "You're offline and this workout hasn't been opened on this phone before — try again when connected."
+            : 'Failed to load workout — check your connection');
+        }
       } finally {
         if (!cancelled) {
           setLoading(false);
           setDayNavDisabled(false);
+          if (usedSavedCopy) markShowingCached('workout-session', savedCopyAt, { immediate: true });
+          else clearShowingCached('workout-session');
         }
       }
     }
 
     loadSession();
-    return () => { cancelled = true; };
+    return () => { cancelled = true; clearShowingCached('workout-session'); };
   }, [templateId, date]);
 
   // Keep the old useEffect structure reference for the rest of the file
@@ -2164,8 +2228,97 @@ export default function WorkoutSession() {
     }
   }
 
+  // ── Offline Mark Complete ──
+  // When the save or the complete call can't reach the server, the workout
+  // is marked complete on this phone and the completion is queued (also in
+  // localStorage, so reopening the workout later finishes the job). It's
+  // sent with the same triggers as pending saves: every 15s, when the phone
+  // comes back online, and when the app returns to the foreground.
+  const pendingCompleteKey = `wf-pending-complete-${templateId}-${date}`;
+  const [pendingComplete, setPendingComplete] = useState(false);
+  const flushingCompleteRef = useRef(false);
+
+  function completeOffline() {
+    try { localStorage.setItem(pendingCompleteKey, String(Date.now())); } catch (_) {}
+    setPendingComplete(true);
+    setIsCompleted(true);
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    stopRestTimer();
+    clearTimerStorage();
+    if (navigator.vibrate) navigator.vibrate([50, 30, 50, 30, 100]);
+    setShowSummary(true);
+    showToast("You're offline — workout marked complete on this phone. It'll sync when you're back online.", 'info', 5000);
+    track('workout_session_completed', {
+      templateId: Number(templateId) || undefined,
+      date,
+      elapsedSeconds: elapsed,
+      source: 'standard',
+      offline: true,
+    });
+  }
+
+  async function flushPendingComplete() {
+    if (flushingCompleteRef.current) return;
+    flushingCompleteRef.current = true;
+    try {
+      const savedOk = await handleSaveRef.current?.({ background: true });
+      if (savedOk !== true) return;
+      await api('/sessions/complete', {
+        method: 'PUT',
+        body: JSON.stringify({ templateId: Number(templateId), date, completed: true }),
+      });
+      try { localStorage.removeItem(pendingCompleteKey); } catch (_) {}
+      setPendingComplete(false);
+      clearSessionBackup();
+    } catch (_) {
+      // Still offline — the next trigger tries again.
+    } finally {
+      flushingCompleteRef.current = false;
+    }
+  }
+  const flushPendingCompleteRef = useRef(null);
+  useEffect(() => { flushPendingCompleteRef.current = flushPendingComplete; });
+
+  // A completion queued earlier (e.g. the app was closed while offline):
+  // show the workout as complete and send it once the session has loaded.
+  useEffect(() => {
+    if (loading || tutorialMode) return;
+    let queued = null;
+    try { queued = localStorage.getItem(pendingCompleteKey); } catch (_) {}
+    if (!queued) return;
+    if (isCompleted && !pendingComplete) {
+      // Server already has it complete — nothing left to send.
+      try { localStorage.removeItem(pendingCompleteKey); } catch (_) {}
+      return;
+    }
+    setIsCompleted(true);
+    setPendingComplete(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, pendingCompleteKey]);
+
+  useEffect(() => {
+    if (!pendingComplete || tutorialMode) return undefined;
+    const retry = () => flushPendingCompleteRef.current?.();
+    retry();
+    const iv = setInterval(retry, 15000);
+    const onVisible = () => { if (document.visibilityState === 'visible') retry(); };
+    window.addEventListener('online', retry);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(iv);
+      window.removeEventListener('online', retry);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [pendingComplete, tutorialMode]);
+
   async function handleMarkComplete() {
     const newCompleted = !isCompleted;
+    if (!newCompleted && pendingComplete) {
+      try { localStorage.removeItem(pendingCompleteKey); } catch (_) {}
+      setPendingComplete(false);
+      setIsCompleted(false);
+      return;
+    }
     try {
       if (tutorialMode) {
         if (newCompleted) {
@@ -2221,18 +2374,30 @@ export default function WorkoutSession() {
           return;
         }
       }
-      // Save the session first so users don't have to click save separately
+      // Save the session first so users don't have to click save separately.
+      // If that save doesn't reach the server, stop — completing would lock
+      // in whatever older copy the server has.
       if (newCompleted) {
-        await handleSave();
+        const savedOk = await handleSave();
+        if (savedOk === 'connection') { completeOffline(); return; }
+        if (savedOk === false) {
+          showCompleteError("Couldn't save your workout — try again in a moment. Your sets are saved on this phone.");
+          return;
+        }
       }
-      await api('/sessions/complete', {
-        method: 'PUT',
-        body: JSON.stringify({
-          templateId: Number(templateId),
-          date,
-          completed: newCompleted,
-        }),
-      });
+      try {
+        await api('/sessions/complete', {
+          method: 'PUT',
+          body: JSON.stringify({
+            templateId: Number(templateId),
+            date,
+            completed: newCompleted,
+          }),
+        });
+      } catch (err) {
+        if (newCompleted && err?.isConnectionError) { completeOffline(); return; }
+        throw err;
+      }
       setIsCompleted(newCompleted);
       if (newCompleted) {
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
@@ -2471,8 +2636,14 @@ export default function WorkoutSession() {
     }
   }
 
-  async function handleSave() {
-    if (tutorialMode) { setPersisted(true); setSaved(true); setTimeout(() => setSaved(false), 2000); return; }
+  // Resolves true when the save reached the server, 'connection' when it
+  // couldn't reach it (sets stay in the local backup), false on other errors.
+  // { background: true } (autosaves) never shows a toast for a connection
+  // failure — it marks the save pending and it's retried automatically.
+  // (The manual Save path passes a click event, hence the strict check.)
+  async function handleSave(opts) {
+    const background = opts?.background === true;
+    if (tutorialMode) { setPersisted(true); setSaved(true); setTimeout(() => setSaved(false), 2000); return true; }
     if (!template || template.isRest) return;
     // A save is already in flight — await it instead of throwing. Lets
     // handleMarkComplete safely `await handleSave()` even if the autosave
@@ -2481,6 +2652,7 @@ export default function WorkoutSession() {
 
     setSaving(true);
     savingRef.current = true;
+    const slowTimer = setTimeout(() => setSaveSlow(true), 1500);
     const savePromise = (async () => {
      try {
       // Snapshot current PBs before saving (deep copy since nested)
@@ -2642,11 +2814,24 @@ export default function WorkoutSession() {
 
       setPersisted(true);
       setSaved(true);
+      setSyncPending(false);
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
       savedTimerRef.current = setTimeout(() => setSaved(false), 2000);
+      return true;
      } catch (err) {
+      if (err?.isConnectionError) {
+        // Sets are in the local backup; keep retrying in the background.
+        setSyncPending(true);
+        if (!background) {
+          showToast("Couldn't reach RepLab. Your sets are saved on this phone and will sync automatically.", 'error', 5000);
+        }
+        return 'connection';
+      }
       showToast(friendlyError(err, "Couldn't save your workout. Your progress is still here — try again in a moment."), 'error', 5000);
+      return false;
      } finally {
+      clearTimeout(slowTimer);
+      setSaveSlow(false);
       setSaving(false);
       savingRef.current = false;
       inFlightSaveRef.current = null;
@@ -3177,7 +3362,16 @@ export default function WorkoutSession() {
           <div className="mt-2 space-y-2">
             <div>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-wf-gray-400 font-medium">Progress</span>
+                <span className="flex items-center gap-2 min-w-0">
+                  <span className="text-xs text-wf-gray-400 font-medium">Progress</span>
+                  {pendingComplete ? (
+                    <span className="text-[10px] font-semibold text-yellow-400 truncate" role="status">Completed on this phone — will sync</span>
+                  ) : (syncPending && !saving) ? (
+                    <span className="text-[10px] font-semibold text-yellow-400 truncate" role="status">Not saved yet — will retry</span>
+                  ) : saveSlow ? (
+                    <span className="text-[10px] font-semibold text-wf-gray-400 truncate" role="status">Saving…</span>
+                  ) : null}
+                </span>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-wf-gray-400 font-medium tabular-nums">
                     {completedCount}/{totalSets} sets
