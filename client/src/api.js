@@ -325,13 +325,15 @@ export function subscribeShowingCached(fn) {
 
 // Per-request tracker: flips the request to "slow" after SLOW_AFTER_MS or
 // on its first retry, and settles it when the request ends.
-function trackRequest(quiet) {
+function trackRequest(quiet, path) {
   if (quiet) return { markSlow() {}, done() {} };
   let slow = false;
   let settled = false;
   const markSlow = () => {
     if (slow || settled) return;
     slow = true;
+    // Names the request behind the yellow banner, for troubleshooting.
+    console.warn(`[RepLab] Slow request: ${path}`);
     slowRequests++;
     updateConnectionState();
   };
@@ -343,7 +345,10 @@ function trackRequest(quiet) {
       settled = true;
       clearTimeout(timer);
       if (slow) slowRequests--;
-      if (failed) failedUntil = Date.now() + FAILED_SHOW_MS;
+      if (failed) {
+        failedUntil = Date.now() + FAILED_SHOW_MS;
+        console.warn(`[RepLab] Request failed after retries: ${path}`);
+      }
       updateConnectionState();
     },
   };
@@ -366,9 +371,14 @@ async function doFetch(path, options, token) {
     if (options.signal.aborted) controller.abort();
     else options.signal.addEventListener('abort', onCallerAbort, { once: true });
   }
+  // Our own options (cache: true, retry, timeoutMs, noRetryPrompt) must not
+  // reach fetch() — it rejects a non-string `cache` with a TypeError, which
+  // looked like a network failure and broke every { cache: true } load.
+  // eslint-disable-next-line no-unused-vars
+  const { cache, retry, timeoutMs, noRetryPrompt, ...fetchOptions } = options;
   try {
     return await fetch(`${API_BASE}${path}`, {
-      ...options,
+      ...fetchOptions,
       headers,
       signal: controller.signal,
     });
@@ -391,7 +401,7 @@ async function doFetch(path, options, token) {
 // is rethrown as-is.
 async function fetchWithRetry(path, options, token) {
   const quiet = options.noRetryPrompt === true;
-  const tracker = trackRequest(quiet);
+  const tracker = trackRequest(quiet, path);
   for (let attempt = 0; ; attempt++) {
     try {
       const res = await doFetch(path, options, token);
