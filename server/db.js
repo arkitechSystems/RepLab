@@ -1229,7 +1229,7 @@ const db = {
           // Smart cardio: metric + value (null for strength sets).
           const cardioMetric = ['time', 'distance', 'reps'].includes(entry.cardioMetric) ? entry.cardioMetric : null;
           const cardioValue = cardioMetric && Number(entry.cardioValue) > 0 ? Number(entry.cardioValue) : null;
-          values.push(`(${off + 1}, ${off + 2}, ${off + 3}, ${off + 4}, ${off + 5}, ${off + 6}, ${off + 7}, ${off + 8}, ${off + 9})`);
+          values.push(`($${off + 1}, $${off + 2}, $${off + 3}, $${off + 4}, $${off + 5}, $${off + 6}, $${off + 7}, $${off + 8}, $${off + 9})`);
           params.push(sessionId, exId, entry.exerciseName, entry.setNumber, entry.weight || 0, entry.reps || 0, entry.isCompleted || false, cardioMetric, cardioValue);
         }
         await client.query(
