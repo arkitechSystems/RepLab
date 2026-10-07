@@ -7,6 +7,7 @@ import App from './App';
 import { AuthProvider } from './context/AuthContext';
 import { initAnalytics } from './utils/analytics';
 import { reportInstall } from './utils/installTracking';
+import { installGlobalErrorReporting } from './utils/errorReporting';
 import './index.css';
 
 // Native app only: stop iOS auto-zooming when a text input under 16px gets
@@ -18,6 +19,9 @@ if (Capacitor.isNativePlatform()) {
     .querySelector('meta[name="viewport"]')
     ?.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover');
 }
+
+// Crashes and unhandled errors → admin Coding Errors page (POST /errors/client).
+installGlobalErrorReporting();
 
 // Initialize Posthog analytics (no-op if VITE_POSTHOG_KEY is not set)
 initAnalytics();

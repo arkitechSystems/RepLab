@@ -1,5 +1,6 @@
 import { Component } from 'react';
 import { Sentry } from '../sentry';
+import { reportClientError } from '../utils/errorReporting';
 
 export default class ErrorBoundary extends Component {
   constructor(props) {
@@ -12,6 +13,7 @@ export default class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
+    reportClientError(error, 'boundary');
     // Report to Sentry with component stack when available, fall back to console
     if (Sentry?.captureException) {
       Sentry.captureException(error, {

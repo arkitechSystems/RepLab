@@ -414,6 +414,7 @@ function adminPage(title, body) {
   </div>
   <div class="sidebar-links" id="section-system">
     <a href="/admin/health"${title === 'Health' ? ' class="active"' : ''}>Health Check</a>
+    <a href="/admin/code-errors"${title === 'Coding Errors' ? ' class="active"' : ''}>Coding Errors</a>
     <a href="/admin/errors"${title === 'Errors' ? ' class="active"' : ''}>Error Log</a>
     <a href="/admin/monthly-costs"${title === 'Monthly Costs' ? ' class="active"' : ''}>Monthly Costs</a>
     <a href="/admin/revenue"${title === 'Revenue' ? ' class="active"' : ''}>Revenue</a>
@@ -807,6 +808,11 @@ router.get('/', adminAuth, async (req, res) => {
       <div class="card-icon">${ICONS.heartbeat}</div>
       <div class="card-title">Health Check</div>
       <div class="card-desc">Server status, database connection, memory usage, and uptime.</div>
+    </a>
+    <a class="card glass" href="/admin/code-errors">
+      <div class="card-icon">${ICONS.wrench}</div>
+      <div class="card-title">Coding Errors</div>
+      <div class="card-desc">Bugs in RepLab's own code, server and app, grouped with counts — for routine audits.</div>
     </a>
     <a class="card glass" href="/admin/errors">
       <div class="card-icon">${ICONS.alert}</div>
@@ -6328,6 +6334,156 @@ router.post('/projects/status', adminAuth, express.json(), async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('Project status update failed', err);
+    res.status(500).json({ error: 'Failed to save' });
+  }
+});
+
+// ─── Coding Errors ──────────────────────────────────────────────────
+// Distinct errors recorded by errorTracker.js (server console.error + client
+// crash reports), grouped with a running count. "Code bug" = a type/SQL/
+// syntax-style error in our own code; "Runtime" = timeouts, dropped
+// connections and other environment problems. A fixed error that happens
+// again reopens itself.
+const CODE_ERROR_STATUSES = [
+  ['open', 'Open', '#f87171'],
+  ['fixed', 'Fixed', '#22c55e'],
+  ['ignored', 'Ignored', '#94a3b8'],
+];
+
+router.get('/code-errors', adminAuth, async (req, res) => {
+  try {
+    const status = ['open', 'fixed', 'ignored', 'all'].includes(req.query.status) ? req.query.status : 'open';
+    const kind = ['code', 'runtime', 'all'].includes(req.query.kind) ? req.query.kind : 'code';
+    const source = ['server', 'client', 'all'].includes(req.query.source) ? req.query.source : 'all';
+    const where = [];
+    const params = [];
+    if (status !== 'all') { params.push(status); where.push(`status = $${params.length}`); }
+    if (kind !== 'all') { params.push(kind); where.push(`kind = $${params.length}`); }
+    if (source !== 'all') { params.push(source); where.push(`source = $${params.length}`); }
+    const { rows } = await pool.query(
+      `SELECT * FROM code_errors ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+        ORDER BY last_seen DESC LIMIT 300`,
+      params
+    );
+    const { rows: [stats] } = await pool.query(`
+      SELECT
+        COUNT(*) FILTER (WHERE status = 'open' AND kind = 'code')::int AS open_code,
+        COUNT(*) FILTER (WHERE status = 'open' AND kind = 'runtime')::int AS open_runtime,
+        COUNT(*) FILTER (WHERE last_seen > NOW() - INTERVAL '24 hours')::int AS last24,
+        COUNT(*) FILTER (WHERE reopened AND status = 'open')::int AS reopened
+      FROM code_errors`);
+
+    const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const fmt = (d) => new Date(d).toLocaleString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    const statusMeta = Object.fromEntries(CODE_ERROR_STATUSES.map(([v, l, c]) => [v, { label: l, color: c }]));
+    const pill = (text, color) => `<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;background:${color}22;color:${color};border:1px solid ${color}55;">${text}</span>`;
+    const filterLink = (key, value, label) => {
+      const q = { status, kind, source, [key]: value };
+      const active = q[key] === ({ status, kind, source })[key];
+      return `<a href="/admin/code-errors?status=${q.status}&kind=${q.kind}&source=${q.source}" style="padding:5px 12px;border-radius:999px;font-size:12px;font-weight:700;text-decoration:none;border:1px solid rgba(255,255,255,${active ? '0.5' : '0.12'});color:${active ? '#fff' : 'rgba(255,255,255,0.5)'};background:${active ? 'rgba(255,255,255,0.1)' : 'transparent'};">${label}</a>`;
+    };
+
+    const cards = rows.map((e) => `
+      <div class="glass" style="padding:16px 18px;border-radius:14px;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          ${e.kind === 'code' ? pill('Code bug', '#f87171') : pill('Runtime', '#fbbf24')}
+          ${pill(e.source === 'client' ? 'App' : 'Server', e.source === 'client' ? '#60a5fa' : '#a78bfa')}
+          ${e.reopened && e.status === 'open' ? pill('Came back after fix', '#f97316') : ''}
+          <span style="flex:1;"></span>
+          <select data-id="${e.id}" onchange="setErrorStatus(this)" aria-label="Status"
+            style="padding:5px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:#111;color:${statusMeta[e.status]?.color || '#fff'};font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;">
+            ${CODE_ERROR_STATUSES.map(([v, l]) => `<option value="${v}" style="background:#111;color:#fff;" ${v === e.status ? 'selected' : ''}>${l}</option>`).join('')}
+          </select>
+        </div>
+        <div style="margin-top:10px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:#fca5a5;word-break:break-word;">
+          ${esc(e.name)}${e.code ? ` <span style="color:rgba(255,255,255,0.4);">[${esc(e.code)}]</span>` : ''}: ${esc(e.message)}
+        </div>
+        <div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:rgba(255,255,255,0.55);">
+          ${e.location ? `<span><b style="color:rgba(255,255,255,0.8);">Where:</b> <code>${esc(e.location)}</code></span>` : ''}
+          ${e.route ? `<span><b style="color:rgba(255,255,255,0.8);">Request:</b> <code>${esc(e.route)}</code></span>` : ''}
+          <span><b style="color:rgba(255,255,255,0.8);">Count:</b> ${e.count.toLocaleString()}</span>
+          <span><b style="color:rgba(255,255,255,0.8);">First:</b> ${fmt(e.first_seen)}</span>
+          <span><b style="color:rgba(255,255,255,0.8);">Last:</b> ${fmt(e.last_seen)}</span>
+          ${e.last_user_id ? `<span><b style="color:rgba(255,255,255,0.8);">Last user id:</b> ${e.last_user_id}</span>` : ''}
+          ${e.app_version ? `<span><b style="color:rgba(255,255,255,0.8);">App:</b> v${esc(e.app_version)}</span>` : ''}
+        </div>
+        <details style="margin-top:8px;">
+          <summary style="cursor:pointer;font-size:12px;color:rgba(255,255,255,0.45);">Details</summary>
+          ${e.context ? `<div style="margin-top:8px;font-size:12px;color:rgba(255,255,255,0.6);"><b>Logged with:</b> ${esc(e.context)}</div>` : ''}
+          <pre style="margin-top:8px;padding:10px;border-radius:8px;background:rgba(0,0,0,0.4);font-size:11px;line-height:1.5;color:rgba(255,255,255,0.65);white-space:pre-wrap;word-break:break-word;max-height:320px;overflow:auto;">${esc(e.sample_stack || '(no stack)')}</pre>
+          <div style="margin-top:8px;display:flex;gap:8px;align-items:center;">
+            <input data-note="${e.id}" value="${esc(e.note || '')}" placeholder="Note (e.g. fixed in a899add)" maxlength="500"
+              style="flex:1;padding:7px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:#111;color:#fff;font-size:12px;font-family:inherit;">
+            <button onclick="saveErrorNote(${e.id})" style="padding:7px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">Save note</button>
+          </div>
+        </details>
+      </div>`).join('');
+
+    res.send(adminPage('Coding Errors', `
+      <div class="breadcrumb"><a href="/admin">Dashboard</a> / Coding Errors</div>
+      <h1 style="font-size:28px;font-weight:800;letter-spacing:-0.5px;">Coding Errors</h1>
+      <p style="color:rgba(255,255,255,0.4);margin-top:4px;font-size:14px;">Errors from RepLab's own code on the server and in the app, grouped so each bug shows once with a count. Mark one Fixed after the fix ships; if it happens again it reopens.</p>
+      <div class="stats" style="margin-top:18px;">
+        <div class="stat glass"><div class="value" style="color:${stats.open_code ? '#f87171' : '#4ade80'};">${stats.open_code}</div><div class="label">Open code bugs</div></div>
+        <div class="stat glass"><div class="value">${stats.open_runtime}</div><div class="label">Open runtime errors</div></div>
+        <div class="stat glass"><div class="value">${stats.last24}</div><div class="label">Seen in last 24h</div></div>
+        <div class="stat glass"><div class="value" style="color:${stats.reopened ? '#f97316' : 'inherit'};">${stats.reopened}</div><div class="label">Came back after fix</div></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:18px;align-items:center;">
+        ${filterLink('status', 'open', 'Open')}${filterLink('status', 'fixed', 'Fixed')}${filterLink('status', 'ignored', 'Ignored')}${filterLink('status', 'all', 'All statuses')}
+        <span style="width:12px;"></span>
+        ${filterLink('kind', 'code', 'Code bugs')}${filterLink('kind', 'runtime', 'Runtime')}${filterLink('kind', 'all', 'All types')}
+        <span style="width:12px;"></span>
+        ${filterLink('source', 'all', 'Server + App')}${filterLink('source', 'server', 'Server')}${filterLink('source', 'client', 'App')}
+      </div>
+      <div style="display:grid;gap:12px;margin-top:16px;">
+        ${cards || '<div class="glass" style="padding:24px;border-radius:14px;text-align:center;color:rgba(255,255,255,0.4);">Nothing here for these filters.</div>'}
+      </div>
+      ${rows.length === 300 ? '<p style="color:rgba(255,255,255,0.4);font-size:12px;margin-top:10px;">Showing the 300 most recent.</p>' : ''}
+      <script>
+        var ERROR_COLORS = ${JSON.stringify(Object.fromEntries(CODE_ERROR_STATUSES.map(([v, , c]) => [v, c])))};
+        async function postError(body) {
+          var resp = await fetch('/admin/code-errors/update', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+          });
+          if (!resp.ok) throw new Error('Save failed');
+        }
+        async function setErrorStatus(sel) {
+          var prev = sel.dataset.prev || sel.querySelector('option[selected]').value;
+          try {
+            await postError({ id: Number(sel.dataset.id), status: sel.value });
+            sel.dataset.prev = sel.value;
+            sel.style.color = ERROR_COLORS[sel.value] || '#fff';
+          } catch (e) { alert(e.message); sel.value = prev; }
+        }
+        async function saveErrorNote(id) {
+          var input = document.querySelector('[data-note="' + id + '"]');
+          try { await postError({ id: id, note: input.value }); input.style.borderColor = '#22c55e'; }
+          catch (e) { alert(e.message); }
+        }
+      </script>
+    `));
+  } catch (err) {
+    console.error('Coding Errors page error:', err);
+    res.status(500).send('Failed to load coding errors');
+  }
+});
+
+router.post('/code-errors/update', adminAuth, express.json(), async (req, res) => {
+  try {
+    const { id, status, note } = req.body || {};
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid id' });
+    if (status !== undefined) {
+      if (!CODE_ERROR_STATUSES.some(([v]) => v === status)) return res.status(400).json({ error: 'Invalid status' });
+      // Marking fixed/ignored clears "came back"; a later repeat sets it again.
+      await pool.query('UPDATE code_errors SET status = $1, reopened = FALSE WHERE id = $2', [status, id]);
+    }
+    if (note !== undefined) {
+      await pool.query('UPDATE code_errors SET note = $1 WHERE id = $2', [String(note).slice(0, 500), id]);
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Coding error update failed', err);
     res.status(500).json({ error: 'Failed to save' });
   }
 });

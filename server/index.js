@@ -50,6 +50,11 @@ import { startIdleReminderScheduler } from './pushScheduler.js';
 import { startStreakReminderScheduler } from './streakReminderScheduler.js';
 import { startWeeklySummaryScheduler } from './weeklySummaryScheduler.js';
 import { startCommunityLikeScheduler } from './communityLikeNotifier.js';
+import { installErrorTracker, requestContext } from './errorTracker.js';
+import errorReportRoutes from './routes/errors.js';
+
+// Record every Error logged with console.error for the admin Coding Errors page.
+installErrorTracker();
 
 // In-memory error log for admin dashboard
 export const errorLog = [];
@@ -66,6 +71,7 @@ const PORT = process.env.PORT || 3024;
 const corsOptions = process.env.NODE_ENV === 'production'
   ? {}
   : { origin: ['http://localhost:5173', 'http://127.0.0.1:5173'] };
+app.use(requestContext); // lets errorTracker name the route/user behind an error
 app.use(cors(corsOptions));
 app.use((req, res, next) => {
   if (req.originalUrl === '/billing/webhook') {
@@ -315,6 +321,15 @@ app.use('/feed/reactions', apiLimiter, feedReactionsRoutes);
 app.use('/community', apiLimiter, communityRoutes);
 app.use('/cardio', cardioRoutes);
 app.use('/waitlist', apiLimiter, waitlistRoutes);
+// Browser crash reports for the admin Coding Errors page. Sent at most once
+// per distinct error per page load, so a low per-IP cap is plenty.
+app.use('/errors', rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: process.env.NODE_ENV === 'production' ? 30 : 300,
+  message: { error: 'Too many requests. Please slow down.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+}), errorReportRoutes);
 // Unauthenticated install reporting — a real device hits this once or twice
 // per install (report + link), so a tight per-IP cap is plenty.
 app.use('/installs', rateLimit({
@@ -403,10 +418,8 @@ app.use((err, req, res, next) => {
     timestamp: new Date().toISOString(),
   });
   if (errorLog.length > 50) errorLog.length = 50;
-  // Report to Sentry
-  if (process.env.SENTRY_DSN) {
-    Sentry.captureException(err, { extra: { method: req.method, url: req.originalUrl } });
-  }
+  // console.error records it for Coding Errors and reports it to Sentry
+  // (errorTracker.js).
   console.error(err);
   res.status(500).json({ error: 'Internal server error' });
 });

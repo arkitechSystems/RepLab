@@ -1,4 +1,5 @@
 import { Capacitor } from '@capacitor/core';
+import { reportClientError, isNetworkFailure } from './utils/errorReporting';
 
 // On web the SPA is served from the same origin as the API (Express serves
 // client/dist directly), so relative paths work. The native app's WebView is
@@ -388,6 +389,13 @@ async function doFetch(path, options, token) {
       timeoutErr.name = 'TimeoutError';
       throw timeoutErr;
     }
+    // fetch() rejected for a reason other than the network (e.g. an invalid
+    // option): a bug in our code. Report it and don't retry — retrying can't
+    // fix it and would only show a false "slow connection" banner.
+    if (err?.name !== 'AbortError' && !isNetworkFailure(err)) {
+      err.isCodeError = true;
+      reportClientError(err, 'api', { kind: 'code', route: `${(options.method || 'GET').toUpperCase()} ${path.split('?')[0]}` });
+    }
     throw err;
   } finally {
     clearTimeout(timer);
@@ -408,7 +416,7 @@ async function fetchWithRetry(path, options, token) {
       tracker.done(false);
       return res;
     } catch (err) {
-      if (err.name === 'AbortError') { tracker.done(false); throw err; }
+      if (err.name === 'AbortError' || err.isCodeError) { tracker.done(false); throw err; }
       if (quiet || attempt >= RETRY_DELAYS_MS.length || !isRetryable(options)) {
         tracker.done(true);
         const connErr = new Error(CONNECTION_ERROR_MESSAGE);

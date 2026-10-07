@@ -20,6 +20,32 @@ export default async function initDb() {
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS account_id INT UNIQUE`);
   await pool.query(`ALTER TABLE users ALTER COLUMN account_id SET DEFAULT nextval('users_account_id_seq')`);
 
+  // Coding Errors admin page (errorTracker.js): one row per distinct error,
+  // with a running count. status: open | fixed | ignored.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS code_errors (
+      id SERIAL PRIMARY KEY,
+      fingerprint TEXT NOT NULL UNIQUE,
+      source TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      name TEXT,
+      code TEXT,
+      message TEXT NOT NULL,
+      location TEXT,
+      route TEXT,
+      sample_stack TEXT,
+      context TEXT,
+      count INT NOT NULL DEFAULT 1,
+      first_seen TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      last_seen TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      last_user_id INT,
+      app_version TEXT,
+      status TEXT NOT NULL DEFAULT 'open',
+      reopened BOOLEAN NOT NULL DEFAULT FALSE,
+      note TEXT
+    )`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_code_errors_last_seen ON code_errors(last_seen DESC)`);
+
   await pool.query(`ALTER TABLE programs ADD COLUMN IF NOT EXISTS description TEXT DEFAULT ''`);
   await pool.query(`ALTER TABLE programs ADD COLUMN IF NOT EXISTS sort_order INT DEFAULT 0`);
   await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS set_type TEXT DEFAULT 'straight'`);
