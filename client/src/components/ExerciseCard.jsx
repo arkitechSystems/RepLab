@@ -858,12 +858,14 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
             color: isCompleted ? 'rgba(var(--ink),0.55)' : isAutoFill ? 'rgba(var(--ink),0.4)' : 'var(--fg)',
             fontStyle: isAutoFill ? 'italic' : 'normal',
           };
-          // Goal cells: a quieter well than the actual-value cells, with the
-          // goal number in muted red (long-press to edit).
+          // Goal cells: no box — the goal number sits on the row in muted red,
+          // so only the actual-value cells look like inputs (long-press to
+          // edit). The transparent border keeps the size and lets the focus
+          // outline show while a goal is being edited.
           const goalCellStyle = {
             ...cellStyle,
-            background: 'rgba(var(--ink),0.025)',
-            border: XC_LINE,
+            background: 'transparent',
+            border: '1px solid transparent',
           };
           const goalLineStyle = {
             width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
