@@ -108,7 +108,7 @@ Checked off in phase 7. Anything that can't be kept goes to Will as a question f
 Each phase ends with a commit on `tanstack-query` (pushed), and the app must build and work at the
 end of every phase — unconverted screens keep using `api()` until their phase.
 
-0. **Prep** — tag + branch (done), this doc, install deps, client test harness (Vitest, Testing Library, MSW), `CLAUDE.md` pointer.
+0. **Prep** — ✅ done 2026-10-10. Tag + branch, this doc, `CLAUDE.md` pointer. Installed `@tanstack/react-query` 5.104, persist-client, async-storage-persister, `idb-keyval`, `@capacitor/network` 8 (native projects not synced yet — run `npx cap sync` before the phase 8 mobile builds), and dev-only Devtools, Vitest 3, jsdom, Testing Library, MSW 2, fake-indexeddb. `npm test` in `client/` runs `src/**/*.test.js(x)`; setup in `src/test/` (MSW fake server; the test `fetch` resolves relative URLs and handles abort signals itself because Node's fetch rejects jsdom's). Baseline `src/api.test.js` (6 tests) pins today's `api()` behavior, including the `cache: true` regression. Added `/errors` to the Vite dev proxy.
 1. **Foundation** — `QueryClient` + persisted provider, `onlineManager` (Capacitor Network), query-key factory (`src/queries/keys.js`), slimmed `api.js` (old options still accepted as no-ops until phase 6), status banner + sync count driven by query/mutation caches, cache wipe on logout/user switch. Tests for each.
 2. **Simple reads** — `useExercises`, BottomNav, missed-workouts prompt, Progress, History, SessionDetail/Summary, Profile, Community.
 3. **Workouts home + Calendar** — shared queries (programs, templates, sessions, schedule, PRs) and their writes (schedule edits, copy, move, delete, rest day, rename) with an invalidation map.

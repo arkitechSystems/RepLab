@@ -36,6 +36,13 @@ export default defineConfig({
       // Only the API paths — bare /community is a client route.
       '/community/feed': 'http://localhost:3024',
       '/community/settings': 'http://localhost:3024',
+      '/errors': 'http://localhost:3024',
     },
+  },
+  // Client tests (npm test): jsdom + MSW fake server, see src/test/setup.js.
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.js'],
+    include: ['src/**/*.test.{js,jsx}'],
   },
 });
