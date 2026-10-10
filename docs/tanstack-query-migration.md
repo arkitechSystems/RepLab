@@ -42,6 +42,7 @@ Oct 2026 bugs that this targets (see Admin → System → Coding Errors):
 | 6 | 2026-10-10 | Automated client tests? | **Add them.** Vitest + Testing Library + MSW for the save/offline paths, plus a manual device checklist. |
 | 7 | 2026-10-10 | Release order? | **Website first**, watch Coding Errors + Sentry for a few days, then iOS/Android builds. |
 | 8 | 2026-10-10 | Push tag and branch to GitHub? | **Push both** (backup + visible from any login). |
+| 9 | 2026-10-10 | Logging out with workout changes not yet synced? | **Warn first:** "You have N workout changes that haven't synced yet. If you log out now, they will be lost." — Stay logged in / Log out anyway. Logging out wipes everything, unsent changes included, so the next person on the device never sees or sends them. (A forced logout — refresh token rejected — can't ask and wipes them.) |
 
 ### Technical defaults (Claude's calls — change them here if they turn out wrong)
 
@@ -59,8 +60,9 @@ Oct 2026 bugs that this targets (see Admin → System → Coding Errors):
   Saves retry until they succeed while the failure is a connection error; any other error is shown.
 - **Freshness:** `staleTime` 30s by default; refetch on window focus and reconnect.
 - **Saved copies:** the query cache is persisted for **30 days** and cleared on logout and when a
-  different user signs in (same privacy rule as today). Cache `buster` = app version, so a release
-  that changes data shapes starts clean.
+  different user signs in (same privacy rule as today). Cache `buster` = `CACHE_SHAPE_VERSION` in
+  `queries/queryClient.js`, **not** the app version: changing the buster throws away queued saves too,
+  so bump it only for a release that changes cached data shapes.
 - **Workout saves:** one `saveSession` mutation with a `mutationKey` + `setMutationDefaults` (so a
   queued save still knows how to send itself after the app restarts) and a per-day `scope`
   (`session-<templateId>-<date>`) so saves for one day go out strictly in order. Mark Complete is a
@@ -109,7 +111,8 @@ Each phase ends with a commit on `tanstack-query` (pushed), and the app must bui
 end of every phase — unconverted screens keep using `api()` until their phase.
 
 0. **Prep** — ✅ done 2026-10-10. Tag + branch, this doc, `CLAUDE.md` pointer. Installed `@tanstack/react-query` 5.104, persist-client, async-storage-persister, `idb-keyval`, `@capacitor/network` 8 (native projects not synced yet — run `npx cap sync` before the phase 8 mobile builds), and dev-only Devtools, Vitest 3, jsdom, Testing Library, MSW 2, fake-indexeddb. `npm test` in `client/` runs `src/**/*.test.js(x)`; setup in `src/test/` (MSW fake server; the test `fetch` resolves relative URLs and handles abort signals itself because Node's fetch rejects jsdom's). Baseline `src/api.test.js` (6 tests) pins today's `api()` behavior, including the `cache: true` regression. Added `/errors` to the Vite dev proxy.
-1. **Foundation** — `QueryClient` + persisted provider, `onlineManager` (Capacitor Network), query-key factory (`src/queries/keys.js`), slimmed `api.js` (old options still accepted as no-ops until phase 6), status banner + sync count driven by query/mutation caches, cache wipe on logout/user switch. Tests for each.
+1. **Foundation** — ✅ done 2026-10-10. In `src/queries/`: `queryClient.js` (client, retry rules, IndexedDB persister, `clearQueryCache`, `getPendingSaveCount`), `QueryProvider.jsx` (restore, then resume queued saves; Devtools in dev), `network.js` (Capacitor Network → `onlineManager`), `keys.js` (key factory + `fetchPath`), `mutationDefaults.js` (empty registry for phase 4), `status.js` (`usePendingSaveCount`, `useSavedDataNotice`). `api.js`: `autoRetry: false` option (one attempt, banner tracking kept) and `onApiCacheClear` so logout/account switch wipes the query cache. Layout shows "N changes waiting to sync"; Profile logout warns (decision 9). Tests: 16 passing (retry rules, saved copy survives restart, offline save survives restart and sends once, per-day order, logout wipe, provider renders). Original plan text:
+   `QueryClient` + persisted provider, `onlineManager` (Capacitor Network), query-key factory (`src/queries/keys.js`), slimmed `api.js` (old options still accepted as no-ops until phase 6), status banner + sync count driven by query/mutation caches, cache wipe on logout/user switch. Tests for each.
 2. **Simple reads** — `useExercises`, BottomNav, missed-workouts prompt, Progress, History, SessionDetail/Summary, Profile, Community.
 3. **Workouts home + Calendar** — shared queries (programs, templates, sessions, schedule, PRs) and their writes (schedule edits, copy, move, delete, rest day, rename) with an invalidation map.
 4. **WorkoutSession** — load via queries; `initialize`, `saveSession`, `completeSession` mutations with offline persistence and per-day scope; PR refresh; cardio entries; old-localStorage upgrade step; remove the 15s retry loops and pending-complete keys.

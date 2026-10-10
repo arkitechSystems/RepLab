@@ -5,6 +5,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import App from './App';
 import { AuthProvider } from './context/AuthContext';
+import QueryProvider from './queries/QueryProvider';
 import { initAnalytics } from './utils/analytics';
 import { reportInstall } from './utils/installTracking';
 import { installGlobalErrorReporting } from './utils/errorReporting';
@@ -33,9 +34,11 @@ reportInstall();
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
+      <QueryProvider>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </QueryProvider>
     </BrowserRouter>
   </React.StrictMode>
 );

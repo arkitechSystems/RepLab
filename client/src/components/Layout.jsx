@@ -8,6 +8,7 @@ import { useTutorial } from '../context/TutorialContext';
 import { useAuth } from '../context/AuthContext';
 import { MiniPlayer, useVideoPlayer } from '../context/VideoPlayerContext';
 import { getConnectionState, subscribeConnection, subscribeShowingCached } from '../api';
+import { usePendingSaveCount } from '../queries/status';
 
 // "3:42 PM" today, "Oct 5, 3:42 PM" otherwise.
 function formatSavedAt(ms) {
@@ -40,6 +41,8 @@ export default function Layout({ children }) {
   const [syncStatus, setSyncStatus] = useState(null); // null | 'syncing' | 'synced'
   // 'ok' | 'slow' | 'failed' — from api.js; drives the slow-connection banner.
   const [connection, setConnection] = useState(getConnectionState);
+  // Saves queued by TanStack Query that the server hasn't confirmed yet.
+  const pendingSaves = usePendingSaveCount();
   useEffect(() => subscribeConnection(setConnection), []);
   // Screens painted from the saved copy whose refresh hasn't landed yet.
   // The "Showing saved data" line appears once one has waited > 8s.
@@ -159,6 +162,14 @@ export default function Layout({ children }) {
               {connection === 'slow'
                 ? 'Slow connection — still trying…'
                 : "Couldn't reach RepLab — your workout is saved on this phone and will sync when you're back online."}
+            </span>
+          </div>
+        )}
+        {pendingSaves > 0 && (
+          <div className="px-4 py-1.5 flex items-center justify-center gap-2 z-30 relative" style={{ background: 'rgba(234,179,8,0.06)', borderBottom: '1px solid rgba(234,179,8,0.12)' }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-400 shrink-0" aria-hidden="true"><path d="M21 12a9 9 0 11-3-6.7L21 8" /><path d="M21 3v5h-5" /></svg>
+            <span className="text-[11px] text-yellow-400 font-medium">
+              {pendingSaves === 1 ? '1 change waiting to sync' : `${pendingSaves} changes waiting to sync`}
             </span>
           </div>
         )}

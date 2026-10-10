@@ -294,6 +294,15 @@ export function clearApiCache() {
   } catch {}
   showingCached.clear();
   notifyShowingCached();
+  cacheClearListeners.forEach((fn) => { try { fn(); } catch {} });
+}
+
+// Other caches that must be wiped with this one (logout, a different user
+// signing in) — the TanStack Query cache registers here (queries/queryClient).
+const cacheClearListeners = new Set();
+export function onApiCacheClear(fn) {
+  cacheClearListeners.add(fn);
+  return () => cacheClearListeners.delete(fn);
 }
 
 // ── "Showing saved data" marks ──
@@ -376,7 +385,7 @@ async function doFetch(path, options, token) {
   // reach fetch() — it rejects a non-string `cache` with a TypeError, which
   // looked like a network failure and broke every { cache: true } load.
   // eslint-disable-next-line no-unused-vars
-  const { cache, retry, timeoutMs, noRetryPrompt, ...fetchOptions } = options;
+  const { cache, retry, timeoutMs, noRetryPrompt, autoRetry, ...fetchOptions } = options;
   try {
     return await fetch(`${API_BASE}${path}`, {
       ...fetchOptions,
@@ -417,7 +426,9 @@ async function fetchWithRetry(path, options, token) {
       return res;
     } catch (err) {
       if (err.name === 'AbortError' || err.isCodeError) { tracker.done(false); throw err; }
-      if (quiet || attempt >= RETRY_DELAYS_MS.length || !isRetryable(options)) {
+      // { autoRetry: false }: TanStack Query queries/mutations do their own
+      // retrying, so api() makes one attempt (still tracked for the banner).
+      if (quiet || options.autoRetry === false || attempt >= RETRY_DELAYS_MS.length || !isRetryable(options)) {
         tracker.done(true);
         const connErr = new Error(CONNECTION_ERROR_MESSAGE);
         connErr.isConnectionError = true;
