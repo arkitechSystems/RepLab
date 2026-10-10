@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import StickyHeader from '../components/StickyHeader';
 import { api } from '../api';
+import { loadPathOrSaved } from '../queries/data';
 import { track } from '../utils/analytics';
 import { lightTap } from '../utils/haptics';
 
@@ -302,7 +303,7 @@ export default function Community() {
 
   useEffect(() => {
     const controller = new AbortController();
-    api('/community/feed', { signal: controller.signal })
+    loadPathOrSaved('/community/feed', { signal: controller.signal })
       .catch(() => null)
       .then((res) => {
         if (controller.signal.aborted) return;

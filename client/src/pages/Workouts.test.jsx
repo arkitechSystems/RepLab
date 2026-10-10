@@ -6,13 +6,10 @@ import { screen, waitFor } from '@testing-library/react';
 import { server } from '../test/server';
 import { renderScreen, signIn } from '../test/renderScreen';
 import { onlineHandlers, offlineHandlers, WORKOUT_NAME, programs, templates, schedule, TODAY } from '../test/fixtures';
-import { queryClient, persister } from '../queries/queryClient';
+import { resetQueries } from '../test/resetQueries';
 import Workouts from './Workouts';
 
-afterEach(async () => {
-  queryClient.clear();
-  await persister.removeClient();
-});
+afterEach(resetQueries);
 
 describe('Workouts home', () => {
   it("loads live and shows today's workout, asking for each list once", async () => {

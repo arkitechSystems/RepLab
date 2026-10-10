@@ -61,6 +61,21 @@ export function loadPath(path, { signal } = {}) {
   });
 }
 
+// Live data, or the saved copy when the connection fails. Rejects like
+// loadPath when there's no saved copy or the error isn't a connection one.
+// For screens that load once into their own editable state (Profile,
+// Community) — a live hook could overwrite an edit in progress.
+export async function loadPathOrSaved(path, opts) {
+  try {
+    return await loadPath(path, opts);
+  } catch (err) {
+    if (err?.name === 'AbortError' || !err?.isConnectionError) throw err;
+    const data = queryClient.getQueryData(pathKey(path));
+    if (data === undefined) throw err;
+    return data;
+  }
+}
+
 // The saved copy of a GET path, or a rejection ({ notCached: true }) when
 // there isn't one — same contract as the old cacheOnly().
 export async function savedPath(path) {

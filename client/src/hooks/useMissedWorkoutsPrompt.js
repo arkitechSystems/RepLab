@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api';
+import { loadPath } from '../queries/data';
 import { track } from '../utils/analytics';
 
 // Shared state + handlers for the "It looks like you missed a workout" prompt
@@ -44,7 +45,7 @@ export default function useMissedWorkoutsPrompt({ trigger = 'start', promptOnLoa
   // Best-effort load on mount: a failure just means no prompt this time.
   useEffect(() => {
     let cancelled = false;
-    api(`/schedule/missed?today=${localDateStr()}`)
+    loadPath(`/schedule/missed?today=${localDateStr()}`)
       .then((data) => {
         if (cancelled || !data?.missed?.length) return;
         setMissed(data.missed);

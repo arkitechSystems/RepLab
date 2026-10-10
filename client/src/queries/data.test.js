@@ -3,7 +3,7 @@ import { server, http, HttpResponse } from '../test/server';
 import { api, setApiToken } from '../api';
 import { queryClient } from './queryClient';
 import { pathKey } from './keys';
-import { loadPath, savedPath, savedAt, importLegacyCache, markCacheRestored } from './data';
+import { loadPath, loadPathOrSaved, savedPath, savedAt, importLegacyCache, markCacheRestored } from './data';
 
 // A JWT whose payload is { userId }, enough for api.js's per-user cache keys.
 const tokenFor = (userId) => `x.${btoa(JSON.stringify({ userId }))}.y`;
@@ -68,6 +68,27 @@ describe('loadPath / savedPath / savedAt', () => {
     await expect(loadPath('/programs')).rejects.toMatchObject({ status: 500 });
     expect(savedAt('/programs')).toBeNull();
   });
+});
+
+describe('loadPathOrSaved (Profile, Community)', () => {
+  it('returns live data, falls back to the saved copy on a dropped connection, and still fails on other errors', async () => {
+    let mode = 'ok';
+    server.use(http.get('*/metrics', () => {
+      if (mode === 'drop') return HttpResponse.error();
+      if (mode === 'bad') return HttpResponse.json({ error: 'nope' }, { status: 400 });
+      return HttpResponse.json({ weight: 180 });
+    }));
+    await expect(loadPathOrSaved('/metrics')).resolves.toEqual({ weight: 180 });
+    mode = 'drop';
+    await expect(loadPathOrSaved('/metrics')).resolves.toEqual({ weight: 180 });
+    mode = 'bad';
+    await expect(loadPathOrSaved('/metrics')).rejects.toMatchObject({ status: 400 });
+  }, 10000);
+
+  it('with nothing saved, a dropped connection still fails', async () => {
+    server.use(http.get('*/community/feed', () => HttpResponse.error()));
+    await expect(loadPathOrSaved('/community/feed')).rejects.toMatchObject({ isConnectionError: true });
+  }, 10000);
 });
 
 describe('saving through api() marks cached reads stale', () => {

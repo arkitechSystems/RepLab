@@ -1,7 +1,18 @@
 // Status hooks for the banners in Layout and per-screen "saved data" notices.
 import { useEffect } from 'react';
-import { useMutationState } from '@tanstack/react-query';
+import { useMutationState, useQuery } from '@tanstack/react-query';
 import { markShowingCached, clearShowingCached } from '../api';
+import { pathKey, fetchPath } from './keys';
+
+// A screen's data for a GET path, from the shared cache: the saved copy
+// shows at once (and offline), the live data replaces it, and the "Showing
+// saved data" line appears while an old copy is on screen. `failed` is true
+// only when there's nothing to show — a failed refresh keeps the saved copy.
+export function useApiQuery(path, { enabled = true, ...options } = {}) {
+  const query = useQuery({ queryKey: pathKey(path), queryFn: fetchPath(path), enabled, ...options });
+  useSavedDataNotice(`query:${path}`, query);
+  return { ...query, failed: query.isError && query.data === undefined };
+}
 
 // Saves not yet confirmed by the server (paused offline or retrying) —
 // "N changes waiting to sync".

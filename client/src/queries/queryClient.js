@@ -45,6 +45,12 @@ export function createQueryClient() {
         gcTime: Infinity,
         retry: shouldRetryRead,
         retryDelay,
+        // Loads always try (then retry/fail as above) even when the device
+        // reports offline. TanStack's default pauses them instead, which
+        // left a screen with no saved copy spinning forever offline rather
+        // than showing its error + "Tap to retry". Saves (mutations) keep
+        // the default: they pause offline and are sent on reconnect.
+        networkMode: 'always',
         refetchOnWindowFocus: true,
         refetchOnReconnect: true,
       },
@@ -63,7 +69,8 @@ export function createPersister() {
   return createAsyncStoragePersister({
     storage: { getItem: get, setItem: set, removeItem: del },
     key: 'replab-query-cache',
-    throttleTime: SECOND,
+    // Tests write immediately so one test's late write can't leak into the next.
+    throttleTime: import.meta.env.MODE === 'test' ? 0 : SECOND,
   });
 }
 
@@ -99,8 +106,19 @@ onApiCacheClear(() => { clearQueryCache().catch(() => {}); });
 // Any change saved through api(), from any screen: mark every cached read
 // stale. Screens on screen refetch now; the rest refetch when next shown.
 // Broad on purpose — one save can touch the schedule, sessions, PRs and
-// templates at once, and a missed refresh would show old data.
-onApiWrite(() => { queryClient.invalidateQueries(); });
+// templates at once, and a missed refresh would show old data. A query whose
+// data only changes through one part of the API can narrow this with
+// meta: { refreshOnWritesTo: '/exercises' } (e.g. the large exercise
+// library, which would otherwise reload on every workout autosave).
+export function refreshAfterWrite(client, path) {
+  return client.invalidateQueries({
+    predicate: (query) => {
+      const scope = query.meta?.refreshOnWritesTo;
+      return !scope || String(path).startsWith(scope);
+    },
+  });
+}
+onApiWrite((path) => { refreshAfterWrite(queryClient, path); });
 
 // Connection banner (Layout, via api.js): "Slow connection — still trying…"
 // while a load or save is retrying after a connection failure, and "Couldn't
@@ -110,13 +128,15 @@ onApiWrite(() => { queryClient.invalidateQueries(); });
 export function watchConnectionStatus(client = queryClient) {
   const recount = () => {
     const retryingQueries = client.getQueryCache().getAll()
-      .filter((q) => q.state.fetchStatus === 'fetching' && q.state.fetchFailureCount > 0).length;
+      .filter((q) => !q.meta?.quiet && q.state.fetchStatus === 'fetching' && q.state.fetchFailureCount > 0).length;
     const retryingSaves = client.getMutationCache().getAll()
       .filter((m) => m.state.status === 'pending' && !m.state.isPaused && m.state.failureCount > 0).length;
     setRetryingCount(retryingQueries + retryingSaves);
   };
   const unsubQueries = client.getQueryCache().subscribe((event) => {
-    if (event.type === 'updated' && event.action?.type === 'error' && event.action.error?.isConnectionError) {
+    // Queries with meta: { quiet: true } (background checks like the bottom
+    // nav's) never drive the banner.
+    if (event.type === 'updated' && event.action?.type === 'error' && event.action.error?.isConnectionError && !event.query.meta?.quiet) {
       reportConnectionFailure();
     }
     recount();

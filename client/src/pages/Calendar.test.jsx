@@ -5,13 +5,10 @@ import { screen, waitFor } from '@testing-library/react';
 import { server } from '../test/server';
 import { renderScreen, signIn } from '../test/renderScreen';
 import { onlineHandlers, offlineHandlers, WORKOUT_NAME } from '../test/fixtures';
-import { queryClient, persister } from '../queries/queryClient';
+import { resetQueries } from '../test/resetQueries';
 import Calendar from './Calendar';
 
-afterEach(async () => {
-  queryClient.clear();
-  await persister.removeClient();
-});
+afterEach(resetQueries);
 
 describe('Calendar', () => {
   it("loads live and shows today's workout", async () => {

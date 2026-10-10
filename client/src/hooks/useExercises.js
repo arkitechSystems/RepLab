@@ -1,85 +1,62 @@
-import { useState, useEffect, useCallback } from 'react';
-import { api, cacheOnly } from '../api';
+import { useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../api';
+import { queryClient } from '../queries/queryClient';
+import { keys, fetchPath } from '../queries/keys';
 
-// In-memory cache — survives re-renders, cleared on page reload
-let exerciseCache = null;
-let muscleGroupCache = null;
-// Every mounted useExercises() instance, so a favorite toggle on one screen
-// (ExerciseDetail) shows up on the others (Library, pickers) without a refetch.
-const listeners = new Set();
+// The exercise library is large and rarely changes, so screens share one
+// copy for 10 minutes before checking for updates (it's still saved on the
+// device and shown offline). Every useExercises() reads the same cache, so
+// a favorite toggled on one screen (ExerciseDetail) shows on the others
+// (Library, pickers) at once.
+const LIBRARY_STALE_MS = 10 * 60 * 1000;
+// Only changes to exercises refresh it (not every workout autosave).
+const libraryMeta = { refreshOnWritesTo: '/exercises' };
+const exercisesQuery = { queryKey: keys.exercises(), queryFn: fetchPath('/exercises'), staleTime: LIBRARY_STALE_MS, meta: libraryMeta };
+const musclesQuery = { queryKey: keys.exerciseMuscles(), queryFn: fetchPath('/exercises/muscles'), staleTime: LIBRARY_STALE_MS, meta: libraryMeta };
+const EMPTY = [];
 
-function publish(next) {
-  exerciseCache = next;
-  for (const fn of listeners) fn(next);
-}
-
-// Save / unsave an exercise. Optimistic: the cache flips immediately and
-// rolls back (then rethrows) if the request fails.
+// Save / unsave an exercise. Optimistic: the cached list flips immediately
+// and rolls back (then rethrows) if the request fails.
 export async function setExerciseFavorite(exerciseId, favorite) {
-  const flip = (list, value) => (list || []).map((e) => (e.id === exerciseId ? { ...e, isFavorite: value } : e));
-  if (exerciseCache) publish(flip(exerciseCache, favorite));
+  const flip = (value) => queryClient.setQueryData(keys.exercises(), (list) => (
+    list ? list.map((e) => (e.id === exerciseId ? { ...e, isFavorite: value } : e)) : list
+  ));
+  flip(favorite);
   try {
-    await api(`/exercises/${exerciseId}/favorite`, { method: favorite ? 'PUT' : 'DELETE' });
+    // invalidate: false — the list is already right; no need to reload it.
+    await api(`/exercises/${exerciseId}/favorite`, { method: favorite ? 'PUT' : 'DELETE', invalidate: false });
   } catch (err) {
-    if (exerciseCache) publish(flip(exerciseCache, !favorite));
+    flip(!favorite);
     throw err;
   }
 }
 
+function refreshLibrary() {
+  return queryClient.invalidateQueries({ queryKey: keys.exercises() });
+}
+
 export function useExercises() {
-  const [exercises, setExercises] = useState(exerciseCache || []);
-  const [muscleGroups, setMuscleGroups] = useState(muscleGroupCache || []);
-
-  const [loading, setLoading] = useState(!exerciseCache);
-
-  useEffect(() => {
-    listeners.add(setExercises);
-    return () => { listeners.delete(setExercises); };
-  }, []);
-
-  useEffect(() => {
-    if (exerciseCache) return;
-    setLoading(true);
-    let liveDone = false;
-    // Saved copy first (instant, works offline), then the live list.
-    Promise.all([cacheOnly('/exercises'), cacheOnly('/exercises/muscles')])
-      .then(([exs, muscles]) => {
-        if (liveDone || exerciseCache) return;
-        muscleGroupCache = muscles;
-        publish(exs);
-        setMuscleGroups(muscles);
-        setLoading(false);
-      })
-      .catch(() => {});
-    Promise.all([
-      api('/exercises', { cache: true }),
-      api('/exercises/muscles', { cache: true }),
-    ]).then(([exs, muscles]) => {
-      liveDone = true;
-      muscleGroupCache = muscles;
-      publish(exs);
-      setMuscleGroups(muscles);
-    }).catch((err) => { if (import.meta.env.DEV) console.error(err); })
-    .finally(() => setLoading(false));
-  }, []);
+  const exercisesResult = useQuery(exercisesQuery);
+  const musclesResult = useQuery(musclesQuery);
 
   const createCustom = useCallback(async (name, muscleGroup, tags) => {
     const result = await api('/exercises', {
       method: 'POST',
       body: JSON.stringify({ name, muscleGroup, tags }),
     });
-    // Invalidate cache so next mount re-fetches
-    exerciseCache = null;
-    muscleGroupCache = null;
+    refreshLibrary();
     return result;
   }, []);
 
-  const invalidateCache = useCallback(() => {
-    exerciseCache = null;
-    muscleGroupCache = null;
-  }, []);
-
-  return { exercises, muscleGroups, loading, createCustom, invalidateCache, setFavorite: setExerciseFavorite };
+  return {
+    exercises: exercisesResult.data || EMPTY,
+    muscleGroups: musclesResult.data || EMPTY,
+    loading: exercisesResult.isPending,
+    createCustom,
+    invalidateCache: refreshLibrary,
+    setFavorite: setExerciseFavorite,
+  };
 }
 
 /**

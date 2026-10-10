@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { api, setApiToken, setAuthTokens, getApiToken } from '../api';
 import { getPendingSaveCount } from '../queries/queryClient';
+import { loadPathOrSaved } from '../queries/data';
 import StickyHeader from '../components/StickyHeader';
 import SplashScreen from '../components/SplashScreen';
 import useFocusTrap from '../hooks/useFocusTrap';
@@ -351,10 +352,10 @@ export default function Profile() {
 
   useEffect(() => {
     const controller = new AbortController();
-    api('/community/settings', { signal: controller.signal })
+    loadPathOrSaved('/community/settings', { signal: controller.signal })
       .then((s) => { if (s && typeof s === 'object') setCommunitySharing(s); })
       .catch(() => {});
-    api('/community/notifications', { signal: controller.signal })
+    loadPathOrSaved('/community/notifications', { signal: controller.signal })
       .then((s) => { if (typeof s?.likes === 'boolean') setLikePushesOn(s.likes); })
       .catch(() => {});
     return () => controller.abort();
@@ -446,15 +447,15 @@ export default function Profile() {
   useEffect(() => {
     const controller = new AbortController();
     const opts = { signal: controller.signal };
-    api('/metrics', opts)
+    loadPathOrSaved('/metrics', opts)
       .then(setMetrics)
       .catch((err) => { if (err.name !== 'AbortError' && import.meta.env.DEV) console.error(err); });
 
-    api('/sessions', opts)
+    loadPathOrSaved('/sessions', opts)
       .then(setSessions)
       .catch((err) => { if (err.name !== 'AbortError' && import.meta.env.DEV) console.error(err); })
       .finally(() => setSessionsLoading(false));
-    api('/pbs/by-body-part', opts)
+    loadPathOrSaved('/pbs/by-body-part', opts)
       .then((data) => setBodyPartPRs(Array.isArray(data) ? data : []))
       .catch((err) => { if (err.name !== 'AbortError' && import.meta.env.DEV) console.error(err); });
     return () => controller.abort();

@@ -67,6 +67,29 @@ describe('queries through api()', () => {
   });
 });
 
+describe('while the device reports offline', () => {
+  // Regression: TanStack's default networkMode paused loads offline, so a
+  // screen with nothing saved spun forever instead of showing its error.
+  it('a load still fails (so the screen can show its error), it does not hang', async () => {
+    onlineManager.setOnline(false);
+    const client = testClient();
+    server.use(http.get('*/programs', () => HttpResponse.error()));
+    await expect(client.fetchQuery({ queryKey: ['programs'], queryFn: fetchPath('/programs') }))
+      .rejects.toMatchObject({ isConnectionError: true });
+  });
+
+  it('a save pauses (queued) instead of failing', async () => {
+    onlineManager.setOnline(false);
+    const client = testClient();
+    registerTestSave(client);
+    new MutationObserver(client, { mutationKey: ['test', 'save'] }).mutate({ x: 1 });
+    await new Promise((r) => setTimeout(r, 10));
+    const [m] = client.getMutationCache().getAll();
+    expect(m.state.isPaused).toBe(true);
+    expect(m.state.status).toBe('pending');
+  });
+});
+
 describe('connection banner', () => {
   it('shows "slow" while a load retries and "failed" only after the last retry', async () => {
     const client = testClient();
