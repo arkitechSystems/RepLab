@@ -8,6 +8,7 @@
 //
 // The screen's own logic stays as it was; loading, retries, de-duplication
 // and the on-device saved copy come from TanStack Query.
+import { isCancelledError } from '@tanstack/react-query';
 import { legacyCacheEntries } from '../api';
 import { queryClient } from './queryClient';
 import { pathKey, fetchPath } from './keys';
@@ -52,7 +53,12 @@ function abortError() {
 // the request itself still finishes and updates the cache.
 export function loadPath(path, { signal } = {}) {
   if (signal?.aborted) return Promise.reject(abortError());
-  const request = queryClient.fetchQuery({ queryKey: pathKey(path), queryFn: fetchPath(path), staleTime: 0 });
+  const options = { queryKey: pathKey(path), queryFn: fetchPath(path), staleTime: 0 };
+  // If a screen watching the same data refreshes it mid-load, TanStack
+  // cancels this fetch in favour of the refresh — pick up the refresh's
+  // result instead of failing.
+  const request = queryClient.fetchQuery(options)
+    .catch((err) => (isCancelledError(err) ? queryClient.fetchQuery(options) : Promise.reject(err)));
   if (!signal) return request;
   return new Promise((resolve, reject) => {
     const onAbort = () => reject(abortError());

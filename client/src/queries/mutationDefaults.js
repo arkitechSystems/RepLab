@@ -6,10 +6,11 @@
 // Every entry needs:
 //   mutationKey  e.g. ['sessions', 'save']
 //   mutationFn   (variables) => api(...) — one attempt, { autoRetry: false }
-//   onSuccess    invalidate the queries the save changed
+//   onSuccess    anything to tidy up once the server has it
 // and callers should pass scope: { id } so saves for the same thing (one
 // workout day) go out strictly in order.
-//
-// Filled in as screens are converted (session saves land in phase 4).
-export function registerMutationDefaults(client) { // eslint-disable-line no-unused-vars
+import { registerSessionMutations } from './sessionMutations';
+
+export function registerMutationDefaults(client) {
+  registerSessionMutations(client);
 }

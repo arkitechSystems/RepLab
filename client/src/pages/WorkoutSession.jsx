@@ -2,7 +2,13 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { format, isToday, addDays, subDays } from 'date-fns';
-import { api, cacheOnly, cachedAt, markShowingCached, clearShowingCached, CONNECTION_ERROR_MESSAGE } from '../api';
+import { onlineManager, useMutationState } from '@tanstack/react-query';
+import { api, markShowingCached, clearShowingCached, CONNECTION_ERROR_MESSAGE } from '../api';
+import { queryClient } from '../queries/queryClient';
+import { loadPath, savedPath, savedAt } from '../queries/data';
+import {
+  SAVE_SESSION, COMPLETE_SESSION, sessionScope, startMutation, latestPendingSave, cancelPendingComplete,
+} from '../queries/sessionMutations';
 import ExerciseCard from '../components/ExerciseCard';
 import { useExercises } from '../hooks/useExercises';
 import { savedExercises, savedFirst } from '../utils/savedExercises';
@@ -161,9 +167,22 @@ export default function WorkoutSession() {
   const [loadError, setLoadError] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  // A save that couldn't reach the server — the sets are in the local backup
-  // and the save is retried automatically until it goes through.
-  const [syncPending, setSyncPending] = useState(false);
+  // This day's saves and completion that the server hasn't confirmed yet
+  // (queued offline, or retrying after a dropped connection). They're kept on
+  // the phone and sent in order by TanStack Query (queries/sessionMutations).
+  const dayScopeId = sessionScope(templateId, date).id;
+  const pendingDayChanges = useMutationState({
+    filters: { status: 'pending', predicate: (m) => m.options.scope?.id === dayScopeId },
+    select: (m) => ({
+      kind: m.options.mutationKey?.[1],
+      waiting: m.state.isPaused || m.state.failureCount > 0,
+      completed: m.state.variables?.completed,
+    }),
+  });
+  // "Not saved yet — will retry"
+  const syncPending = pendingDayChanges.some((m) => m.kind === 'save' && m.waiting);
+  // "Completed on this phone — will sync"
+  const pendingComplete = pendingDayChanges.some((m) => m.kind === 'complete' && m.completed === true && m.waiting);
   // A save that's been in flight for more than a moment (shows "Saving…").
   const [saveSlow, setSaveSlow] = useState(false);
   const [persisted, setPersisted] = useState(false);
@@ -579,25 +598,6 @@ export default function WorkoutSession() {
     }
     handleSaveRef.current?.({ background: true }).catch((err) => { if (import.meta.env.DEV) console.error(err); });
   }
-  const runAutoSaveRef = useRef(null);
-  useEffect(() => { runAutoSaveRef.current = runAutoSave; });
-
-  // A save that couldn't reach the server is retried every 15s, and right
-  // away when the phone comes back online or the app returns to the
-  // foreground. Stops once a save succeeds (handleSave clears syncPending).
-  useEffect(() => {
-    if (!syncPending || tutorialMode) return undefined;
-    const retry = () => runAutoSaveRef.current?.();
-    const iv = setInterval(retry, 15000);
-    const onVisible = () => { if (document.visibilityState === 'visible') retry(); };
-    window.addEventListener('online', retry);
-    document.addEventListener('visibilitychange', onVisible);
-    return () => {
-      clearInterval(iv);
-      window.removeEventListener('online', retry);
-      document.removeEventListener('visibilitychange', onVisible);
-    };
-  }, [syncPending, tutorialMode]);
 
   // Auto-save as soon as a set is checked or unchecked — skip in tutorial
   // mode. Runs after the render that committed the toggle, so the save
@@ -1003,20 +1003,28 @@ export default function WorkoutSession() {
     // also creates the session and restores the local backup.
     let usedSavedCopy = false;
     let savedCopyAt = null;
-    const fromSaved = (p) => {
-      const at = cachedAt(p);
-      if (at == null) return Promise.reject(Object.assign(new Error(CONNECTION_ERROR_MESSAGE), { isConnectionError: true }));
+    const fromSaved = async (p) => {
+      let data;
+      try {
+        data = await savedPath(p); // waits for the device cache restore
+      } catch {
+        throw Object.assign(new Error(CONNECTION_ERROR_MESSAGE), { isConnectionError: true });
+      }
+      const at = savedAt(p);
       usedSavedCopy = true;
       savedCopyAt = savedCopyAt == null ? at : Math.min(savedCopyAt, at);
-      return cacheOnly(p);
+      return data;
     };
     const get = (p) => {
-      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-        return fromSaved(p).catch(() => api(p, { cache: true }));
+      // Offline (per the Capacitor Network plugin on iOS/Android, where
+      // navigator.onLine is unreliable, or the browser): saved copy first,
+      // instead of waiting out the live load's retries for every step.
+      if (!onlineManager.isOnline() || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
+        return fromSaved(p).catch(() => loadPath(p));
       }
-      return api(p, { cache: true }).catch((err) => {
-        if (err?.isConnectionError && cachedAt(p) != null) return fromSaved(p);
-        throw err;
+      return loadPath(p).catch((err) => {
+        if (!err?.isConnectionError) throw err;
+        return fromSaved(p).catch(() => { throw err; });
       });
     };
 
@@ -1101,6 +1109,19 @@ export default function WorkoutSession() {
             session = null; // offline: falls through to the template below
           }
           if (cancelled) return;
+        }
+
+        // Saves for this day still waiting on the phone are newer than
+        // anything the server (or its saved copy) has. Show the newest one —
+        // otherwise the next autosave would overwrite the unsent sets.
+        const pendingBody = latestPendingSave(queryClient, templateId, date);
+        if (pendingBody?.workoutData?.exercises) {
+          session = {
+            ...(session || {}),
+            workoutData: pendingBody.workoutData,
+            entries: pendingBody.entries || [],
+            notes: pendingBody.notes || session?.notes,
+          };
         }
 
         setDayName(session?.customName || null);
@@ -2229,18 +2250,17 @@ export default function WorkoutSession() {
   }
 
   // ── Offline Mark Complete ──
-  // When the save or the complete call can't reach the server, the workout
-  // is marked complete on this phone and the completion is queued (also in
-  // localStorage, so reopening the workout later finishes the job). It's
-  // sent with the same triggers as pending saves: every 15s, when the phone
-  // comes back online, and when the app returns to the foreground.
-  const pendingCompleteKey = `wf-pending-complete-${templateId}-${date}`;
-  const [pendingComplete, setPendingComplete] = useState(false);
-  const flushingCompleteRef = useRef(false);
+  // A completion that can't reach the server right away is queued for this
+  // workout day behind its saves (queries/sessionMutations), kept on the
+  // phone through app restarts, and sent once the connection is back. The
+  // workout shows as complete here meanwhile ("Completed on this phone —
+  // will sync" while pendingComplete).
+  function queueComplete(completed) {
+    return startMutation(queryClient, { mutationKey: COMPLETE_SESSION, scope: sessionScope(templateId, date) },
+      { templateId: Number(templateId), date, completed });
+  }
 
   function completeOffline() {
-    try { localStorage.setItem(pendingCompleteKey, String(Date.now())); } catch (_) {}
-    setPendingComplete(true);
     setIsCompleted(true);
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     stopRestTimer();
@@ -2257,65 +2277,40 @@ export default function WorkoutSession() {
     });
   }
 
-  async function flushPendingComplete() {
-    if (flushingCompleteRef.current) return;
-    flushingCompleteRef.current = true;
-    try {
-      const savedOk = await handleSaveRef.current?.({ background: true });
-      if (savedOk !== true) return;
-      await api('/sessions/complete', {
-        method: 'PUT',
-        body: JSON.stringify({ templateId: Number(templateId), date, completed: true }),
-      });
-      try { localStorage.removeItem(pendingCompleteKey); } catch (_) {}
-      setPendingComplete(false);
-      clearSessionBackup();
-    } catch (_) {
-      // Still offline — the next trigger tries again.
-    } finally {
-      flushingCompleteRef.current = false;
-    }
-  }
-  const flushPendingCompleteRef = useRef(null);
-  useEffect(() => { flushPendingCompleteRef.current = flushPendingComplete; });
+  // A completion still queued when the workout is opened (e.g. the app was
+  // closed while offline): show the workout as complete.
+  useEffect(() => {
+    if (loading || tutorialMode) return;
+    if (pendingComplete && !isCompleted) setIsCompleted(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, pendingComplete]);
 
-  // A completion queued earlier (e.g. the app was closed while offline):
-  // show the workout as complete and send it once the session has loaded.
+  // Upgrade: a completion queued by the pre-TanStack version lived in this
+  // localStorage key. Move it onto the queue (a save of what's on screen,
+  // then the completion), then drop the key.
+  const legacyPendingCompleteKey = `wf-pending-complete-${templateId}-${date}`;
   useEffect(() => {
     if (loading || tutorialMode) return;
     let queued = null;
-    try { queued = localStorage.getItem(pendingCompleteKey); } catch (_) {}
+    try { queued = localStorage.getItem(legacyPendingCompleteKey); } catch (_) {}
     if (!queued) return;
-    if (isCompleted && !pendingComplete) {
-      // Server already has it complete — nothing left to send.
-      try { localStorage.removeItem(pendingCompleteKey); } catch (_) {}
-      return;
-    }
-    setIsCompleted(true);
-    setPendingComplete(true);
+    (async () => {
+      if (!isCompleted) {
+        const savedOk = await handleSaveRef.current?.({ background: true });
+        if (savedOk === false) return; // server refused the save — try again next open
+        queueComplete(true).catch(() => {});
+        setIsCompleted(true);
+      }
+      try { localStorage.removeItem(legacyPendingCompleteKey); } catch (_) {}
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, pendingCompleteKey]);
-
-  useEffect(() => {
-    if (!pendingComplete || tutorialMode) return undefined;
-    const retry = () => flushPendingCompleteRef.current?.();
-    retry();
-    const iv = setInterval(retry, 15000);
-    const onVisible = () => { if (document.visibilityState === 'visible') retry(); };
-    window.addEventListener('online', retry);
-    document.addEventListener('visibilitychange', onVisible);
-    return () => {
-      clearInterval(iv);
-      window.removeEventListener('online', retry);
-      document.removeEventListener('visibilitychange', onVisible);
-    };
-  }, [pendingComplete, tutorialMode]);
+  }, [loading, legacyPendingCompleteKey]);
 
   async function handleMarkComplete() {
     const newCompleted = !isCompleted;
     if (!newCompleted && pendingComplete) {
-      try { localStorage.removeItem(pendingCompleteKey); } catch (_) {}
-      setPendingComplete(false);
+      // Undo a completion that hasn't synced: take it off the queue.
+      cancelPendingComplete(queryClient, templateId, date);
       setIsCompleted(false);
       return;
     }
@@ -2379,25 +2374,20 @@ export default function WorkoutSession() {
       // in whatever older copy the server has.
       if (newCompleted) {
         const savedOk = await handleSave();
-        if (savedOk === 'connection') { completeOffline(); return; }
+        if (savedOk === 'connection') {
+          // The save is queued; queue the completion right behind it.
+          queueComplete(true).catch(() => {});
+          completeOffline();
+          return;
+        }
         if (savedOk === false) {
           showCompleteError("Couldn't save your workout — try again in a moment. Your sets are saved on this phone.");
           return;
         }
       }
-      try {
-        await api('/sessions/complete', {
-          method: 'PUT',
-          body: JSON.stringify({
-            templateId: Number(templateId),
-            date,
-            completed: newCompleted,
-          }),
-        });
-      } catch (err) {
-        if (newCompleted && err?.isConnectionError) { completeOffline(); return; }
-        throw err;
-      }
+      const completeResult = await queueComplete(newCompleted);
+      if (completeResult.outcome === 'queued' && newCompleted) { completeOffline(); return; }
+      // (An un-complete that's queued just syncs later; the screen updates now.)
       setIsCompleted(newCompleted);
       if (newCompleted) {
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
@@ -2732,20 +2722,27 @@ export default function WorkoutSession() {
       // workout. The protection is meant for cold-open paths (Calendar copy,
       // a fresh "Start Workout" tap on a logged date) — not for users
       // actively logging sets.
-      const saveResp = await api('/sessions', {
-        method: 'POST',
-        body: JSON.stringify({
-          templateId: Number(templateId),
-          date,
-          entries: allEntries,
-          notes,
-          workoutData,
-          confirmOverwrite: true,
-        }),
-      });
-      // Server returns an error envelope if the write failed; treat that as a save failure.
-      if (saveResp && saveResp.error) {
-        throw new Error(saveResp.error);
+      // Queued per workout day (queries/sessionMutations): goes out now if it
+      // can; otherwise it waits on the phone — through app restarts — and is
+      // sent in order once the connection is back.
+      const result = await startMutation(
+        queryClient,
+        { mutationKey: SAVE_SESSION, scope: sessionScope(templateId, date) },
+        {
+          body: {
+            templateId: Number(templateId),
+            date,
+            entries: allEntries,
+            notes,
+            workoutData,
+            confirmOverwrite: true,
+          },
+        },
+      );
+      if (result.outcome === 'queued') {
+        // Same path as before for "couldn't reach the server": the save is
+        // kept and retried automatically.
+        throw Object.assign(new Error(CONNECTION_ERROR_MESSAGE), { isConnectionError: true });
       }
 
       // Save succeeded on the server — the local offline backup is no longer
@@ -2814,14 +2811,13 @@ export default function WorkoutSession() {
 
       setPersisted(true);
       setSaved(true);
-      setSyncPending(false);
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
       savedTimerRef.current = setTimeout(() => setSaved(false), 2000);
       return true;
      } catch (err) {
       if (err?.isConnectionError) {
-        // Sets are in the local backup; keep retrying in the background.
-        setSyncPending(true);
+        // The save is queued on the phone and retried until it gets through
+        // (syncPending reflects it).
         if (!background) {
           showToast("Couldn't reach RepLab. Your sets are saved on this phone and will sync automatically.", 'error', 5000);
         }
