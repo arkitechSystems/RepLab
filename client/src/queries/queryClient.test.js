@@ -2,10 +2,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { MutationObserver, QueryObserver, onlineManager } from '@tanstack/react-query';
 import { persistQueryClientRestore, persistQueryClientSave } from '@tanstack/react-query-persist-client';
 import { server, http, HttpResponse } from '../test/server';
-import { api, clearApiCache } from '../api';
+import { api, clearApiCache, subscribeConnection, getConnectionState } from '../api';
 import {
   createQueryClient, createPersister, clearQueryCache, getPendingSaveCount,
-  persistOptions, queryClient as appQueryClient, shouldRetryRead, shouldRetrySave,
+  persistOptions, queryClient as appQueryClient, shouldRetryRead, shouldRetrySave, watchConnectionStatus,
 } from './queryClient';
 import { fetchPath } from './keys';
 
@@ -64,6 +64,24 @@ describe('queries through api()', () => {
     await expect(client.fetchQuery({ queryKey: ['templates'], queryFn: fetchPath('/templates') })).rejects.toMatchObject({ status: 400 });
     expect(dropped).toBe(3);
     expect(bad).toBe(1);
+  });
+});
+
+describe('connection banner', () => {
+  it('shows "slow" while a load retries and "failed" only after the last retry', async () => {
+    const client = testClient();
+    client.setDefaultOptions({ queries: { ...client.getDefaultOptions().queries, retryDelay: 60 } });
+    const stop = watchConnectionStatus(client);
+    const states = [];
+    const unsub = subscribeConnection((s) => states.push(s));
+    server.use(http.get('*/programs', () => HttpResponse.error()));
+    await client.fetchQuery({ queryKey: ['programs'], queryFn: fetchPath('/programs') }).catch(() => {});
+    unsub();
+    stop();
+    expect(states[0]).toBe('slow');
+    expect(states).toContain('failed');
+    expect(states.indexOf('failed')).toBeGreaterThan(states.indexOf('slow'));
+    expect(getConnectionState()).toBe('failed');
   });
 });
 

@@ -1,27 +1,36 @@
-// Query keys and the shared fetcher. Keys mirror the API path so related
-// data invalidates together: invalidating ['schedule'] refreshes every
-// schedule range, ['pbs'] every PR view, and so on.
+// Query keys and the shared fetcher. A key is the API path split into its
+// segments, plus the query string as an object:
+//   '/schedule?from=a&to=b'          → ['schedule', { from: 'a', to: 'b' }]
+//   '/sessions/by-template/835/2026-10-07' → ['sessions', 'by-template', '835', '2026-10-07']
+// so related data invalidates together: ['schedule'] covers every schedule
+// range, ['sessions'] every session view, ['pbs'] every PR view.
 import { api } from '../api';
 
+export function pathKey(path) {
+  const [pathname, search = ''] = String(path).split('?');
+  const segments = pathname.split('/').filter(Boolean).map(decodeURIComponent);
+  const params = Object.fromEntries(new URLSearchParams(search));
+  return Object.keys(params).length ? [...segments, params] : segments;
+}
+
+// Named keys for the common paths (same shape as pathKey of the path).
 export const keys = {
-  programs: () => ['programs'],
-  templates: () => ['templates'],
-  sessions: () => ['sessions'],
-  sessionsCompleted: () => ['sessions', 'completed'],
-  sessionDay: (templateId, date) => ['sessions', 'by-template', Number(templateId), date],
-  lastEntries: (templateId) => ['sessions', 'last-entries', Number(templateId)],
-  schedule: (from, to) => ['schedule', { from, to }],
-  scheduleToday: (date) => ['schedule', 'today', date],
-  scheduleMissed: (today) => ['schedule', 'missed', today],
-  pbs: (templateId) => ['pbs', { templateId: Number(templateId) }],
-  pbStats: () => ['pbs', 'stats'],
-  pbsByBodyPart: () => ['pbs', 'by-body-part'],
-  pbsAllByMuscle: () => ['pbs', 'all-by-muscle'],
-  metrics: () => ['metrics'],
-  exercises: () => ['exercises'],
-  exerciseMuscles: () => ['exercises', 'muscles'],
-  sharingPending: () => ['sharing', 'pending'],
-  sharingAccepted: () => ['sharing', 'accepted'],
+  programs: () => pathKey('/programs'),
+  templates: () => pathKey('/templates'),
+  sessions: () => pathKey('/sessions'),
+  sessionsCompleted: () => pathKey('/sessions/completed'),
+  sessionDay: (templateId, date) => pathKey(`/sessions/by-template/${templateId}/${date}`),
+  lastEntries: (templateId) => pathKey(`/sessions/last-entries/${templateId}`),
+  schedule: (from, to) => pathKey(`/schedule?from=${from}&to=${to}`),
+  pbs: (templateId) => pathKey(`/pbs?templateId=${templateId}`),
+  pbStats: () => pathKey('/pbs/stats'),
+  pbsByBodyPart: () => pathKey('/pbs/by-body-part'),
+  pbsAllByMuscle: () => pathKey('/pbs/all-by-muscle'),
+  metrics: () => pathKey('/metrics'),
+  exercises: () => pathKey('/exercises'),
+  exerciseMuscles: () => pathKey('/exercises/muscles'),
+  sharingPending: () => pathKey('/sharing/pending'),
+  sharingAccepted: () => pathKey('/sharing/accepted'),
 };
 
 // queryFn for a GET: one attempt through api() (TanStack does the retrying),

@@ -1,11 +1,12 @@
 // Wraps the app in the TanStack Query client with the on-device saved cache.
 // At start-up the saved cache is restored from IndexedDB; then any saves that
 // were still queued when the app closed are sent (in order, per scope).
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { queryClient, persistOptions } from './queryClient';
 import { registerMutationDefaults } from './mutationDefaults';
 import { setupOnlineManager } from './network';
+import { beginCacheRestore, markCacheRestored, importLegacyCache } from './data';
 
 // Queued saves restored from storage only know their mutationKey, so the code
 // that sends each kind must be registered before the restore.
@@ -17,11 +18,14 @@ const Devtools = import.meta.env.DEV
   : null;
 
 export default function QueryProvider({ children }) {
+  // Before any screen asks for a saved copy (savedPath waits on this).
+  useState(beginCacheRestore);
   return (
     <PersistQueryClientProvider
       client={queryClient}
       persistOptions={persistOptions}
-      onSuccess={() => queryClient.resumePausedMutations()}
+      onSuccess={() => { importLegacyCache(); markCacheRestored(); queryClient.resumePausedMutations(); }}
+      onError={() => { importLegacyCache(); markCacheRestored(); }}
     >
       {children}
       {Devtools && (

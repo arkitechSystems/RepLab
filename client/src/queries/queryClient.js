@@ -4,7 +4,7 @@
 import { QueryClient } from '@tanstack/react-query';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import { get, set, del } from 'idb-keyval';
-import { onApiCacheClear } from '../api';
+import { onApiCacheClear, onApiWrite, setRetryingCount, reportConnectionFailure } from '../api';
 
 const SECOND = 1000;
 // See persistOptions.buster.
@@ -38,8 +38,11 @@ export function createQueryClient() {
       queries: {
         staleTime: 30 * SECOND,
         // Must be at least PERSIST_MAX_AGE, or saved copies are dropped from
-        // memory (and so from storage) before they expire.
-        gcTime: PERSIST_MAX_AGE,
+        // memory (and so from storage) before they expire. Infinity, not
+        // PERSIST_MAX_AGE: 30 days is past setTimeout's limit (~24.8 days),
+        // which wraps around and drops every unwatched query the moment it
+        // loads. PERSIST_MAX_AGE still expires old saved copies at restore.
+        gcTime: Infinity,
         retry: shouldRetryRead,
         retryDelay,
         refetchOnWindowFocus: true,
@@ -92,6 +95,36 @@ export async function clearQueryCache(client = queryClient, p = persister) {
   await p.removeClient();
 }
 onApiCacheClear(() => { clearQueryCache().catch(() => {}); });
+
+// Any change saved through api(), from any screen: mark every cached read
+// stale. Screens on screen refetch now; the rest refetch when next shown.
+// Broad on purpose — one save can touch the schedule, sessions, PRs and
+// templates at once, and a missed refresh would show old data.
+onApiWrite(() => { queryClient.invalidateQueries(); });
+
+// Connection banner (Layout, via api.js): "Slow connection — still trying…"
+// while a load or save is retrying after a connection failure, and "Couldn't
+// reach RepLab" once a load has used up its retries. Same wording and timing
+// users saw before the migration. Saves paused because the device is offline
+// don't count — the offline banner covers those.
+export function watchConnectionStatus(client = queryClient) {
+  const recount = () => {
+    const retryingQueries = client.getQueryCache().getAll()
+      .filter((q) => q.state.fetchStatus === 'fetching' && q.state.fetchFailureCount > 0).length;
+    const retryingSaves = client.getMutationCache().getAll()
+      .filter((m) => m.state.status === 'pending' && !m.state.isPaused && m.state.failureCount > 0).length;
+    setRetryingCount(retryingQueries + retryingSaves);
+  };
+  const unsubQueries = client.getQueryCache().subscribe((event) => {
+    if (event.type === 'updated' && event.action?.type === 'error' && event.action.error?.isConnectionError) {
+      reportConnectionFailure();
+    }
+    recount();
+  });
+  const unsubMutations = client.getMutationCache().subscribe(recount);
+  return () => { unsubQueries(); unsubMutations(); };
+}
+watchConnectionStatus();
 
 // Saves not yet confirmed by the server (paused offline or retrying).
 export function getPendingSaveCount(client = queryClient) {

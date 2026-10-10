@@ -10,6 +10,27 @@ import { afterAll, afterEach, beforeAll } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import { server } from './server';
 
+// Browser features jsdom doesn't have, used by real screens (scroll effects,
+// media queries, animations). Inert stand-ins.
+class InertObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+  takeRecords() { return []; }
+}
+globalThis.IntersectionObserver ??= InertObserver;
+globalThis.ResizeObserver ??= InertObserver;
+window.matchMedia ??= (query) => ({
+  matches: false, media: query, onchange: null,
+  addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return false; },
+});
+window.scrollTo = () => {};
+Element.prototype.scrollTo ??= function scrollTo() {};
+Element.prototype.scrollBy ??= function scrollBy() {};
+Element.prototype.scrollIntoView ??= function scrollIntoView() {};
+HTMLMediaElement.prototype.play = () => Promise.resolve();
+HTMLMediaElement.prototype.pause = () => {};
+
 beforeAll(() => {
   server.listen({ onUnhandledRequest: 'error' });
   // Wrapped after listen() so requests still go through MSW:

@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { api, cacheOnly, cachedAt, markShowingCached, clearShowingCached } from '../api';
+import { api, markShowingCached, clearShowingCached } from '../api';
+import { loadPath, savedPath, savedAt } from '../queries/data';
 import { buildProgramColorMap, getColorFromMap } from '../utils/workoutColors';
 import StickyHeader from '../components/StickyHeader';
 import { iosFocusRef } from '../utils/iosFocus';
@@ -363,7 +364,7 @@ function WorkoutsWeeklyBarChart({ templates = [] }) {
     let liveDone = false;
     const schedPath = `/schedule?from=${weekDates[0]}&to=${weekDates[6]}`;
     // Saved copy first (instant, works offline), then the live data.
-    Promise.all([cacheOnly(schedPath), cacheOnly('/sessions/completed')])
+    Promise.all([savedPath(schedPath), savedPath('/sessions/completed')])
       .then(([sched, completed]) => {
         if (cancelled || liveDone) return;
         setWeekSchedule(sched || []);
@@ -371,8 +372,8 @@ function WorkoutsWeeklyBarChart({ templates = [] }) {
       })
       .catch(() => {});
     Promise.all([
-      api(schedPath, { cache: true }).catch(() => null),
-      api('/sessions/completed', { cache: true }).catch(() => null),
+      loadPath(schedPath).catch(() => null),
+      loadPath('/sessions/completed').catch(() => null),
     ]).then(([sched, completed]) => {
       if (cancelled) return;
       liveDone = true;
@@ -506,7 +507,7 @@ function WeekAtAGlanceCarousel({ templates = [] }) {
     let liveDone = false;
     const schedPath = `/schedule?from=${weekDates[0]}&to=${weekDates[6]}`;
     // Saved copy first (instant, works offline), then the live data.
-    Promise.all([cacheOnly(schedPath), cacheOnly('/sessions/completed')])
+    Promise.all([savedPath(schedPath), savedPath('/sessions/completed')])
       .then(([sched, completed]) => {
         if (cancelled || liveDone) return;
         setWeekSchedule(sched || []);
@@ -514,8 +515,8 @@ function WeekAtAGlanceCarousel({ templates = [] }) {
       })
       .catch(() => {});
     Promise.all([
-      api(schedPath, { cache: true }).catch(() => null),
-      api('/sessions/completed', { cache: true }).catch(() => null),
+      loadPath(schedPath).catch(() => null),
+      loadPath('/sessions/completed').catch(() => null),
     ]).then(([sched, completed]) => {
       if (cancelled) return;
       liveDone = true;
@@ -1295,12 +1296,12 @@ export default function Workouts() {
       .finally(() => setTrainerAppLoading(false));
   }, [selectedGroup, user?.role]);
 
-  // opts.fromCache: run the same loader on the saved copies (cacheOnly) so
+  // opts.fromCache: run the same loader on the saved copies (savedPath) so
   // the screen paints instantly / offline; otherwise fetch live and refresh
   // the saved copies.
   async function fetchData(opts = {}) {
     const { fromCache, ...reqOpts } = opts;
-    const get = fromCache ? (p) => cacheOnly(p) : (p, o) => api(p, { ...o, cache: true });
+    const get = fromCache ? (p) => savedPath(p) : (p, o) => loadPath(p, o);
     opts = reqOpts;
     // Use local date parts to avoid UTC timezone shift
     const now = new Date();
@@ -1553,15 +1554,19 @@ export default function Workouts() {
       .then(() => {
         if (liveDone || controller.signal.aborted) return;
         setLoading(false);
-        markShowingCached('workouts-home', cachedAt('/programs'));
+        markShowingCached('workouts-home', savedAt('/programs'));
       })
       .catch(() => {});
     fetchData({ signal: controller.signal })
       .then(() => { setLoadError(null); clearShowingCached('workouts-home'); })
       .catch((err) => {
-        if (err.name === 'AbortError') return;
-        // Keep showing the saved copy if there is one; error only without it.
-        if (cachedAt('/programs') == null) setLoadError('Failed to load workouts');
+        if (err.name === 'AbortError') return undefined;
+        // Show the saved copy if there is one (it may have finished
+        // restoring after the first look); error only without it.
+        if (savedAt('/programs') == null) { setLoadError('Failed to load workouts'); return undefined; }
+        return fetchData({ fromCache: true })
+          .then(() => markShowingCached('workouts-home', savedAt('/programs'), { immediate: true }))
+          .catch(() => setLoadError('Failed to load workouts'));
       })
       .finally(() => { liveDone = true; setLoading(false); });
     return () => { controller.abort(); clearShowingCached('workouts-home'); };

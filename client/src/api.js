@@ -194,7 +194,20 @@ const connectionListeners = new Set();
 
 function targetConnectionState() {
   if (Date.now() < failedUntil) return 'failed';
-  return slowRequests > 0 ? 'slow' : 'ok';
+  return slowRequests + retryingCount > 0 ? 'slow' : 'ok';
+}
+// TanStack Query side (queries/queryClient): how many loads/saves are
+// between retries after a connection failure ("slow"), and a load that gave
+// up on its last retry ("failed").
+let retryingCount = 0;
+export function setRetryingCount(n) {
+  if (n === retryingCount) return;
+  retryingCount = n;
+  updateConnectionState();
+}
+export function reportConnectionFailure() {
+  failedUntil = Date.now() + FAILED_SHOW_MS;
+  updateConnectionState();
 }
 function updateConnectionState() {
   clearTimeout(connTimer);
@@ -268,6 +281,30 @@ function readCache(path) {
     return null;
   }
 }
+// Every saved copy belonging to the signed-in user: [{ path, at, data }].
+// Lets the TanStack Query cache take over existing saved copies on the first
+// run after the migration (queries/data importLegacyCache), so offline
+// viewing keeps working across the update. Remove with this cache (phase 6).
+export function legacyCacheEntries() {
+  const uid = tokenUserId(getApiToken() || '');
+  if (uid == null) return [];
+  const prefix = `${CACHE_PREFIX}${uid}:`;
+  const out = [];
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || !k.startsWith(prefix)) continue;
+      try {
+        const entry = JSON.parse(localStorage.getItem(k));
+        if (entry && typeof entry === 'object' && 'data' in entry) {
+          out.push({ path: k.slice(prefix.length), at: entry.at, data: entry.data });
+        }
+      } catch {}
+    }
+  } catch {}
+  return out;
+}
+
 // The cached copy of a GET, or a rejected promise when there isn't one.
 // Shaped like api() so a loader can swap one for the other.
 export function cacheOnly(path) {
@@ -295,6 +332,17 @@ export function clearApiCache() {
   showingCached.clear();
   notifyShowingCached();
   cacheClearListeners.forEach((fn) => { try { fn(); } catch {} });
+}
+
+// Called after every successful change (POST/PUT/PATCH/DELETE) made through
+// api(), so cached reads can be marked stale (queries/queryClient). Requests
+// that don't change app data are skipped; a caller that refreshes exactly
+// what it changed can pass { invalidate: false }.
+const NO_INVALIDATE_RE = /^\/(auth|errors|installs|feedback)(\/|$|\?)/;
+const writeListeners = new Set();
+export function onApiWrite(fn) {
+  writeListeners.add(fn);
+  return () => writeListeners.delete(fn);
 }
 
 // Other caches that must be wiped with this one (logout, a different user
@@ -385,7 +433,7 @@ async function doFetch(path, options, token) {
   // reach fetch() — it rejects a non-string `cache` with a TypeError, which
   // looked like a network failure and broke every { cache: true } load.
   // eslint-disable-next-line no-unused-vars
-  const { cache, retry, timeoutMs, noRetryPrompt, autoRetry, ...fetchOptions } = options;
+  const { cache, retry, timeoutMs, noRetryPrompt, autoRetry, invalidate, ...fetchOptions } = options;
   try {
     return await fetch(`${API_BASE}${path}`, {
       ...fetchOptions,
@@ -429,7 +477,10 @@ async function fetchWithRetry(path, options, token) {
       // { autoRetry: false }: TanStack Query queries/mutations do their own
       // retrying, so api() makes one attempt (still tracked for the banner).
       if (quiet || options.autoRetry === false || attempt >= RETRY_DELAYS_MS.length || !isRetryable(options)) {
-        tracker.done(true);
+        // Under TanStack the attempt failing isn't the end — it retries, and
+        // reports the final failure itself (setRetryingCount /
+        // reportConnectionFailure) — so don't flash "Couldn't reach" here.
+        tracker.done(options.autoRetry !== false);
         const connErr = new Error(CONNECTION_ERROR_MESSAGE);
         connErr.isConnectionError = true;
         throw connErr;
@@ -519,8 +570,11 @@ export async function api(path, options = {}) {
     throw err;
   }
 
-  if (options.cache === true && (options.method || 'GET').toUpperCase() === 'GET') {
+  if (options.cache === true && method === 'GET') {
     writeCache(path, data);
+  }
+  if (method !== 'GET' && method !== 'HEAD' && options.invalidate !== false && !NO_INVALIDATE_RE.test(path)) {
+    writeListeners.forEach((fn) => { try { fn(path, method); } catch {} });
   }
   return data;
 }

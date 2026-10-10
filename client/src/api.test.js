@@ -40,9 +40,9 @@ describe('api()', () => {
   it("doesn't pass its own options through to fetch()", async () => {
     const spy = vi.spyOn(globalThis, 'fetch');
     server.use(http.get('*/programs', () => HttpResponse.json([])));
-    await api('/programs', { cache: true, retry: true, timeoutMs: 5000, noRetryPrompt: true });
+    await api('/programs', { cache: true, retry: true, timeoutMs: 5000, noRetryPrompt: true, autoRetry: false, invalidate: false });
     const init = spy.mock.calls[0][1];
-    for (const key of ['cache', 'retry', 'timeoutMs', 'noRetryPrompt']) {
+    for (const key of ['cache', 'retry', 'timeoutMs', 'noRetryPrompt', 'autoRetry', 'invalidate']) {
       expect(init).not.toHaveProperty(key);
     }
   });
