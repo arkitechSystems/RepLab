@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
-import { api } from '../api';
+import { useApiQuery } from '../queries/status';
 import StickyHeader from '../components/StickyHeader';
 import LoadingSpinnerOverlay from '../components/LoadingSpinnerOverlay';
 import { formatCardioSet } from '../utils/cardio';
@@ -9,18 +8,10 @@ import { formatCardioSet } from '../utils/cardio';
 export default function SessionDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [session, setSession] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(null);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    api(`/sessions/${id}`, { signal: controller.signal })
-      .then(setSession)
-      .catch((err) => { if (err.name !== 'AbortError') setLoadError('Failed to load session'); })
-      .finally(() => setLoading(false));
-    return () => controller.abort();
-  }, [id]);
+  const sessionQuery = useApiQuery(`/sessions/${id}`);
+  const session = sessionQuery.data ?? null;
+  const loading = sessionQuery.isPending;
+  const loadError = sessionQuery.failed ? 'Failed to load session' : null;
 
   if (loading) {
     return (
@@ -38,7 +29,7 @@ export default function SessionDetail() {
     return (
       <div className="px-4 pt-6 text-center">
         <p className="text-red-400 mb-3">{loadError}</p>
-        <button onClick={() => window.location.reload()} className="text-wf-cyan text-sm">Tap to retry</button>
+        <button onClick={() => sessionQuery.refetch()} className="text-wf-cyan text-sm">Tap to retry</button>
       </div>
     );
   }

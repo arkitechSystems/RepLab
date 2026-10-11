@@ -1,0 +1,107 @@
+// Load-by-path helpers for screens that manage their own state (Workouts,
+// Calendar, WorkoutSession, …), backed by the TanStack Query cache:
+//
+//   loadPath(path, { signal })  live data (replaced api(path, { cache: true }))
+//   savedPath(path)             the saved copy (replaced cacheOnly)
+//   savedAt(path)               when it was saved (replaced cachedAt)
+//
+// The screen's own logic stays as it was; loading, retries, de-duplication
+// and the on-device saved copy come from TanStack Query.
+import { isCancelledError } from '@tanstack/react-query';
+import { legacyCacheEntries, removeLegacyCacheEntry } from '../api';
+import { queryClient } from './queryClient';
+import { pathKey, fetchPath } from './keys';
+
+// Resolved once the saved cache has been restored from the device at
+// start-up (QueryProvider), so a screen asking for its saved copy right
+// away doesn't miss it. Gives up after a short wait — the live load still
+// runs either way.
+let markRestored;
+let restored;
+// Called when QueryProvider mounts (once per app start; per test in tests).
+export function beginCacheRestore() {
+  restored = new Promise((resolve) => { markRestored = resolve; });
+}
+beginCacheRestore();
+export function markCacheRestored() { markRestored(); }
+const RESTORE_WAIT_MS = 1500;
+function whenRestored() {
+  return Promise.race([restored, new Promise((r) => setTimeout(r, RESTORE_WAIT_MS))]);
+}
+
+// First run after the migration: saved copies made by the old api.js cache
+// become TanStack saved copies (keeping their original time), unless the
+// cache already has newer data for that path. Runs after the restore. An old
+// copy is deleted once the restored cache already holds that path (so it has
+// been stored on the device) — not on the first run, in case the app closes
+// before the new cache is written.
+export function importLegacyCache(client = queryClient) {
+  for (const { path, at, data } of legacyCacheEntries()) {
+    const key = pathKey(path);
+    const state = client.getQueryState(key);
+    if (state?.data !== undefined) {
+      removeLegacyCacheEntry(path);
+      if (state.dataUpdatedAt >= (at || 0)) continue;
+    }
+    client.setQueryData(key, data, { updatedAt: at || Date.now() });
+  }
+}
+
+function abortError() {
+  return new DOMException('The operation was aborted.', 'AbortError');
+}
+
+// Live data for a GET path, always checked with the server (same as the old
+// api(path) call), through the shared cache: two screens asking at once share
+// one request, connection errors are retried, and the result becomes the
+// saved copy. A caller's aborted signal rejects with AbortError, as before;
+// the request itself still finishes and updates the cache.
+export function loadPath(path, { signal } = {}) {
+  if (signal?.aborted) return Promise.reject(abortError());
+  const options = { queryKey: pathKey(path), queryFn: fetchPath(path), staleTime: 0 };
+  // If a screen watching the same data refreshes it mid-load, TanStack
+  // cancels this fetch in favour of the refresh — pick up the refresh's
+  // result instead of failing.
+  const request = queryClient.fetchQuery(options)
+    .catch((err) => (isCancelledError(err) ? queryClient.fetchQuery(options) : Promise.reject(err)));
+  if (!signal) return request;
+  return new Promise((resolve, reject) => {
+    const onAbort = () => reject(abortError());
+    signal.addEventListener('abort', onAbort, { once: true });
+    request.then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort));
+  });
+}
+
+// Live data, or the saved copy when the connection fails. Rejects like
+// loadPath when there's no saved copy or the error isn't a connection one.
+// For screens that load once into their own editable state (Profile,
+// Community) — a live hook could overwrite an edit in progress.
+export async function loadPathOrSaved(path, opts) {
+  try {
+    return await loadPath(path, opts);
+  } catch (err) {
+    if (err?.name === 'AbortError' || !err?.isConnectionError) throw err;
+    const data = queryClient.getQueryData(pathKey(path));
+    if (data === undefined) throw err;
+    return data;
+  }
+}
+
+// The saved copy of a GET path, or a rejection ({ notCached: true }) when
+// there isn't one — same contract as the old cacheOnly().
+export async function savedPath(path) {
+  await whenRestored();
+  const data = queryClient.getQueryData(pathKey(path));
+  if (data === undefined) {
+    const err = new Error('Not cached');
+    err.notCached = true;
+    throw err;
+  }
+  return data;
+}
+
+// When the saved copy of a GET path was loaded (ms), or null.
+export function savedAt(path) {
+  const state = queryClient.getQueryState(pathKey(path));
+  return state?.data !== undefined && state.dataUpdatedAt ? state.dataUpdatedAt : null;
+}

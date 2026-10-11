@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { api, cacheOnly } from '../api';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../api';
+import { pathKey } from '../queries/keys';
 
 // "Center Seal" nav: solid black grain bar, two tabs either side of a raised
 // engraved play button. Icons are clean line-art (1.8 stroke, round
@@ -133,33 +135,30 @@ function localToday() {
 // (no flicker); if a check fails it falls back to the saved answer.
 function useTodayWorkoutPending() {
   const { pathname } = useLocation();
-  const [pending, setPending] = useState(false);
-  const [tick, setTick] = useState(0);
+  const inSession = IN_SESSION.test(pathname);
+  const path = `/schedule/today?date=${localToday()}`;
+  // Saved answer first (instant, works offline), then the live one; if a
+  // check fails the last answer stands, and with neither it's hidden.
+  // Quiet: one attempt, never drives the connection banner. Re-checked when
+  // the app returns to the foreground (refetchOnWindowFocus) and below on
+  // every route change.
+  const { data, refetch } = useQuery({
+    queryKey: pathKey(path),
+    queryFn: ({ signal }) => api(path, { signal, noRetryPrompt: true }),
+    enabled: !inSession, // hidden in a session anyway
+    retry: false,
+    staleTime: 0,
+    meta: { quiet: true },
+  });
 
+  const prevPath = useRef(pathname);
   useEffect(() => {
-    const onVisible = () => { if (document.visibilityState === 'visible') setTick((t) => t + 1); };
-    document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
-  }, []);
+    if (prevPath.current === pathname) return; // mount loads on its own
+    prevPath.current = pathname;
+    if (!inSession) refetch();
+  }, [pathname, inSession, refetch]);
 
-  useEffect(() => {
-    if (IN_SESSION.test(pathname)) return; // hidden in a session anyway
-    let cancelled = false;
-    let liveDone = false;
-    const path = `/schedule/today?date=${localToday()}`;
-    // Saved answer first (instant, works offline), then the live one. If the
-    // live check fails, the saved answer stands; with neither, it's hidden.
-    let saved = null;
-    cacheOnly(path)
-      .then((r) => { saved = r; if (!cancelled && !liveDone) setPending(!!r?.show); })
-      .catch(() => {});
-    api(path, { noRetryPrompt: true, cache: true })
-      .then((r) => { liveDone = true; if (!cancelled) setPending(!!r?.show); })
-      .catch(() => { liveDone = true; if (!cancelled) setPending(!!saved?.show); });
-    return () => { cancelled = true; };
-  }, [pathname, tick]);
-
-  return pending;
+  return !!data?.show;
 }
 
 export default function BottomNav() {

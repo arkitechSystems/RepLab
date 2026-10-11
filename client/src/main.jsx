@@ -5,6 +5,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import App from './App';
 import { AuthProvider } from './context/AuthContext';
+import QueryProvider from './queries/QueryProvider';
 import { initAnalytics } from './utils/analytics';
 import { reportInstall } from './utils/installTracking';
 import { installGlobalErrorReporting } from './utils/errorReporting';
@@ -33,9 +34,11 @@ reportInstall();
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
+      <QueryProvider>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </QueryProvider>
     </BrowserRouter>
   </React.StrictMode>
 );
@@ -49,16 +52,8 @@ if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
     });
-
-    window.addEventListener('online', () => {
-      navigator.serviceWorker.ready.then((reg) => {
-        if (reg.sync) {
-          reg.sync.register('replab-sync');
-        } else {
-          reg.active?.postMessage('process-sync-queue');
-        }
-      });
-    });
+    // Offline saves are TanStack Query's job now (queries/), not the
+    // service worker's — it only caches the app's own files.
   } else {
     // Dev kill-switch: unregister any previously-installed SW and drop its caches.
     navigator.serviceWorker.getRegistrations().then((regs) => {

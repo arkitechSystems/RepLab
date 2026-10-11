@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { api, cacheOnly, cachedAt, markShowingCached, clearShowingCached } from '../api';
+import { api, markShowingCached, clearShowingCached } from '../api';
+import { loadPath, savedPath, savedAt } from '../queries/data';
+import { queueEdit, offlineMessage, requireOnline } from '../queries/edits';
 import { buildProgramColorMap, getColorFromMap } from '../utils/workoutColors';
 import StickyHeader from '../components/StickyHeader';
 import { iosFocusRef } from '../utils/iosFocus';
@@ -363,7 +365,7 @@ function WorkoutsWeeklyBarChart({ templates = [] }) {
     let liveDone = false;
     const schedPath = `/schedule?from=${weekDates[0]}&to=${weekDates[6]}`;
     // Saved copy first (instant, works offline), then the live data.
-    Promise.all([cacheOnly(schedPath), cacheOnly('/sessions/completed')])
+    Promise.all([savedPath(schedPath), savedPath('/sessions/completed')])
       .then(([sched, completed]) => {
         if (cancelled || liveDone) return;
         setWeekSchedule(sched || []);
@@ -371,8 +373,8 @@ function WorkoutsWeeklyBarChart({ templates = [] }) {
       })
       .catch(() => {});
     Promise.all([
-      api(schedPath, { cache: true }).catch(() => null),
-      api('/sessions/completed', { cache: true }).catch(() => null),
+      loadPath(schedPath).catch(() => null),
+      loadPath('/sessions/completed').catch(() => null),
     ]).then(([sched, completed]) => {
       if (cancelled) return;
       liveDone = true;
@@ -506,7 +508,7 @@ function WeekAtAGlanceCarousel({ templates = [] }) {
     let liveDone = false;
     const schedPath = `/schedule?from=${weekDates[0]}&to=${weekDates[6]}`;
     // Saved copy first (instant, works offline), then the live data.
-    Promise.all([cacheOnly(schedPath), cacheOnly('/sessions/completed')])
+    Promise.all([savedPath(schedPath), savedPath('/sessions/completed')])
       .then(([sched, completed]) => {
         if (cancelled || liveDone) return;
         setWeekSchedule(sched || []);
@@ -514,8 +516,8 @@ function WeekAtAGlanceCarousel({ templates = [] }) {
       })
       .catch(() => {});
     Promise.all([
-      api(schedPath, { cache: true }).catch(() => null),
-      api('/sessions/completed', { cache: true }).catch(() => null),
+      loadPath(schedPath).catch(() => null),
+      loadPath('/sessions/completed').catch(() => null),
     ]).then(([sched, completed]) => {
       if (cancelled) return;
       liveDone = true;
@@ -1295,12 +1297,12 @@ export default function Workouts() {
       .finally(() => setTrainerAppLoading(false));
   }, [selectedGroup, user?.role]);
 
-  // opts.fromCache: run the same loader on the saved copies (cacheOnly) so
+  // opts.fromCache: run the same loader on the saved copies (savedPath) so
   // the screen paints instantly / offline; otherwise fetch live and refresh
   // the saved copies.
   async function fetchData(opts = {}) {
     const { fromCache, ...reqOpts } = opts;
-    const get = fromCache ? (p) => cacheOnly(p) : (p, o) => api(p, { ...o, cache: true });
+    const get = fromCache ? (p) => savedPath(p) : (p, o) => loadPath(p, o);
     opts = reqOpts;
     // Use local date parts to avoid UTC timezone shift
     const now = new Date();
@@ -1530,17 +1532,29 @@ export default function Workouts() {
     setStreak(count);
   }
 
+  // Rest day, add to a day, rename, delete, move, reorder: queued edits
+  // (decision 10). The change shows right away; offline it's sent on
+  // reconnect (counted in "N changes waiting to sync"). Refreshes this screen
+  // from the server once it lands, or from the (already updated) saved copies
+  // while it waits. Rejects when the server refuses it.
+  async function saveEdit(request, patch, { refresh = true } = {}) {
+    const result = await queueEdit({ ...request, patch });
+    if (refresh) {
+      const reload = result.outcome === 'sent' ? fetchData() : fetchData({ fromCache: true });
+      reload.catch(() => {});
+    }
+    return result;
+  }
+
   async function markRestDay() {
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     try {
-      await api('/schedule', {
-        method: 'PUT',
-        body: JSON.stringify({ schedule: [{ date: todayStr, isRest: true }] }),
-      });
-      await fetchData();
+      const days = [{ date: todayStr, isRest: true }];
+      await saveEdit({ path: '/schedule', method: 'PUT', body: { schedule: days } }, { kind: 'schedule', days });
     } catch (err) {
       if (import.meta.env.DEV) console.error('Failed to mark rest day:', err);
+      showToast(err.message || 'Failed to save. Please try again.', 'error');
     }
   }
 
@@ -1553,15 +1567,19 @@ export default function Workouts() {
       .then(() => {
         if (liveDone || controller.signal.aborted) return;
         setLoading(false);
-        markShowingCached('workouts-home', cachedAt('/programs'));
+        markShowingCached('workouts-home', savedAt('/programs'));
       })
       .catch(() => {});
     fetchData({ signal: controller.signal })
       .then(() => { setLoadError(null); clearShowingCached('workouts-home'); })
       .catch((err) => {
-        if (err.name === 'AbortError') return;
-        // Keep showing the saved copy if there is one; error only without it.
-        if (cachedAt('/programs') == null) setLoadError('Failed to load workouts');
+        if (err.name === 'AbortError') return undefined;
+        // Show the saved copy if there is one (it may have finished
+        // restoring after the first look); error only without it.
+        if (savedAt('/programs') == null) { setLoadError('Failed to load workouts'); return undefined; }
+        return fetchData({ fromCache: true })
+          .then(() => markShowingCached('workouts-home', savedAt('/programs'), { immediate: true }))
+          .catch(() => setLoadError('Failed to load workouts'));
       })
       .finally(() => { liveDone = true; setLoading(false); });
     return () => { controller.abort(); clearShowingCached('workouts-home'); };
@@ -1934,10 +1952,11 @@ export default function Workouts() {
   async function applyAddWorkout(entry) {
     try {
       if (!tutorial.active) {
-        await api('/schedule', {
-          method: 'PUT',
-          body: JSON.stringify({ schedule: [entry] }),
-        });
+        await saveEdit(
+          { path: '/schedule', method: 'PUT', body: { schedule: [entry] } },
+          { kind: 'schedule', days: [entry] },
+          { refresh: false },
+        );
       }
       closeAddWorkoutModal();
       if (tutorial.active) {
@@ -2102,14 +2121,18 @@ export default function Workouts() {
   async function exitEditMode(program) {
     // Save name if changed
     if (editName.trim() && editName.trim() !== program.name) {
+      const name = editName.trim();
+      setPrograms((prev) => prev.map((p) => p.id === program.id ? { ...p, name } : p));
       try {
-        await api(`/programs/${program.id}`, {
-          method: 'PUT',
-          body: JSON.stringify({ name: editName.trim() }),
-        });
-        setPrograms((prev) => prev.map((p) => p.id === program.id ? { ...p, name: editName.trim() } : p));
+        await saveEdit(
+          { path: `/programs/${program.id}`, method: 'PUT', body: { name } },
+          { kind: 'programRename', id: program.id, name },
+          { refresh: false },
+        );
       } catch (err) {
         if (import.meta.env.DEV) console.error(err);
+        setPrograms((prev) => prev.map((p) => p.id === program.id ? { ...p, name: program.name } : p));
+        showToast(err.message || 'Could not rename program. Please try again.', 'error');
       }
     }
     setEditMode(false);
@@ -2136,12 +2159,15 @@ export default function Workouts() {
     });
 
     try {
-      await api('/templates/reorder', {
-        method: 'PUT',
-        body: JSON.stringify({ programId: program.id, templateIds: orderedIds }),
-      });
+      await saveEdit(
+        { path: '/templates/reorder', method: 'PUT', body: { programId: program.id, templateIds: orderedIds } },
+        { kind: 'templateReorder', programId: program.id, templateIds: orderedIds },
+        { refresh: false },
+      );
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
+      showToast(err.message || 'Could not reorder. Please try again.', 'error');
+      fetchData().catch(() => {});
     }
   }
 
@@ -2153,10 +2179,15 @@ export default function Workouts() {
       danger: true,
     }))) return;
     try {
-      await api(`/templates/${templateId}`, { method: 'DELETE' });
+      await saveEdit(
+        { path: `/templates/${templateId}`, method: 'DELETE' },
+        { kind: 'templateDelete', id: templateId },
+        { refresh: false },
+      );
       setTemplates((prev) => prev.filter((t) => t.id !== templateId));
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
+      showToast(err.message || 'Could not delete workout. Please try again.', 'error');
     }
   }
 
@@ -2169,10 +2200,11 @@ export default function Workouts() {
     const prev = templates;
     setTemplates((cur) => cur.map((t) => (t.id === templateId ? { ...t, programId: targetProgramId } : t)));
     try {
-      await api(`/templates/${templateId}/program`, {
-        method: 'PUT',
-        body: JSON.stringify({ programId: targetProgramId }),
-      });
+      await saveEdit(
+        { path: `/templates/${templateId}/program`, method: 'PUT', body: { programId: targetProgramId } },
+        { kind: 'templateProgram', id: templateId, programId: targetProgramId },
+        { refresh: false },
+      );
       setMoveTemplateModal(null);
     } catch (err) {
       setTemplates(prev);
@@ -2200,6 +2232,7 @@ export default function Workouts() {
     }
     setLogAsYouGoSaving(true);
     try {
+      requireOnline();
       const date = localDateStr();
       const result = await api('/sessions/start-empty', {
         method: 'POST',
@@ -2209,7 +2242,7 @@ export default function Workouts() {
       navigate(`/session/${result.templateId}/${date}`);
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
-      setLogAsYouGoError('Failed to create workout. Please try again.');
+      setLogAsYouGoError(offlineMessage(err, 'Failed to create workout. Please try again.'));
     } finally {
       setLogAsYouGoSaving(false);
     }
@@ -2232,14 +2265,13 @@ export default function Workouts() {
     setRenameBusy(true);
     setTemplates((cur) => cur.map((t) => (t.id === id ? { ...t, name: newName } : t)));
     try {
-      await api(`/templates/${id}/name`, {
-        method: 'PUT',
-        body: JSON.stringify({ name: newName }),
-      });
+      // Renames are linked everywhere: saveEdit refreshes so the top card,
+      // last-workout line and other derived names pick up the new name.
+      await saveEdit(
+        { path: `/templates/${id}/name`, method: 'PUT', body: { name: newName } },
+        { kind: 'templateRename', id, name: newName },
+      );
       setRenameModal(null);
-      // Renames are linked everywhere: refresh so the top card, last-workout
-      // line and other derived names pick up the new name right away.
-      fetchData().catch(() => {});
     } catch (err) {
       setTemplates((cur) => cur.map((t) => (t.id === id ? { ...t, name: prevName } : t)));
       showToast(err.message || 'Could not rename workout. Please try again.', 'error');
@@ -2256,7 +2288,12 @@ export default function Workouts() {
       danger: true,
     }))) return;
     try {
-      await api(`/programs/${programId}`, { method: 'DELETE' });
+      const templateIds = templates.filter((t) => t.programId === programId).map((t) => t.id);
+      await saveEdit(
+        { path: `/programs/${programId}`, method: 'DELETE' },
+        { kind: 'programDelete', id: programId, templateIds },
+        { refresh: false },
+      );
       setPrograms((prev) => prev.filter((p) => p.id !== programId));
       setTemplates((prev) => prev.filter((t) => t.programId !== programId));
       setSelectedProgram(null);
@@ -2264,6 +2301,7 @@ export default function Workouts() {
       setEditMode(false);
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
+      showToast(err.message || 'Could not delete program. Please try again.', 'error');
     }
   }
 
@@ -2283,7 +2321,11 @@ export default function Workouts() {
     try {
       // Delete all templates in this week
       for (const t of weekToDelete) {
-        await api(`/templates/${t.id}`, { method: 'DELETE' });
+        await saveEdit(
+          { path: `/templates/${t.id}`, method: 'DELETE' },
+          { kind: 'templateDelete', id: t.id },
+          { refresh: false },
+        );
       }
       // Remove deleted templates from state
       const deletedIds = new Set(weekToDelete.map((t) => t.id));
@@ -2302,15 +2344,19 @@ export default function Workouts() {
       const remaining = program.templates.filter((t) => !deletedIds.has(t.id));
       for (let i = 0; i < remaining.length; i++) {
         if (remaining[i].sortOrder !== i) {
-          await api(`/templates/reorder`, {
-            method: 'PUT',
-            body: JSON.stringify({ programId: program.id, templateIds: remaining.map((t) => t.id) }),
-          });
+          const templateIds = remaining.map((t) => t.id);
+          await saveEdit(
+            { path: '/templates/reorder', method: 'PUT', body: { programId: program.id, templateIds } },
+            { kind: 'templateReorder', programId: program.id, templateIds },
+            { refresh: false },
+          );
           break;
         }
       }
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
+      showToast(err.message || 'Could not delete week. Please try again.', 'error');
+      fetchData().catch(() => {});
     }
   }
 

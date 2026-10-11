@@ -45,11 +45,11 @@ export function AuthProvider({ children }) {
     // and local-state cleanup below should happen regardless of server result.
     api('/auth/logout', { method: 'POST' }).catch(() => {});
 
-    // Tell the service worker to wipe its cache BEFORE we clear tokens.
-    // The SW caches authed GETs (/templates, /sessions, /pbs, …) keyed by URL
-    // only, so on a shared device the next user would see the outgoing user's
-    // data on first paint. CLEAR_AUTH_CACHE evicts the lot. Best-effort:
-    // missing controller (first load, hard refresh) is fine — nothing cached.
+    // Tell the service worker to wipe its cache BEFORE we clear tokens. The
+    // current worker (v7) caches only app files, but an older v6 worker still
+    // active during the upgrade cached authed GETs by URL, which the next user
+    // on a shared device could see. Best-effort: no controller = nothing cached.
+    // (Saved data and queued saves are wiped by clearAuthTokens below.)
     try {
       if (typeof navigator !== 'undefined' && navigator.serviceWorker && navigator.serviceWorker.controller) {
         navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_AUTH_CACHE' });

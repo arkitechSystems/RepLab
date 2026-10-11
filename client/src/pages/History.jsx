@@ -1,29 +1,22 @@
-import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
-import { api } from '../api';
+import { useApiQuery } from '../queries/status';
 import { getWorkoutColor } from '../utils/workoutColors';
 import StickyHeader from '../components/StickyHeader';
 import LoadingSpinnerOverlay from '../components/LoadingSpinnerOverlay';
 import useCountUp from '../hooks/useCountUp';
 
+const NO_SESSIONS = [];
+
 export default function History() {
-  const [sessions, setSessions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(null);
+  const sessionsQuery = useApiQuery('/sessions');
+  const sessions = sessionsQuery.data || NO_SESSIONS;
+  const loading = sessionsQuery.isPending;
+  const loadError = sessionsQuery.failed ? 'Failed to load session history' : null;
   const navigate = useNavigate();
 
   const sessionCount = useCountUp(sessions.length);
   const uniqueWorkouts = useCountUp([...new Set(sessions.map((s) => s.templateName))].length);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    api('/sessions', { signal: controller.signal })
-      .then(setSessions)
-      .catch((err) => { if (err.name !== 'AbortError') setLoadError('Failed to load session history'); })
-      .finally(() => setLoading(false));
-    return () => controller.abort();
-  }, []);
 
   const ACCENT = '#f97316'; // orange — matches the WORKOUT HISTORY block on Profile
 
@@ -94,7 +87,7 @@ export default function History() {
             ) : loadError ? (
               <div className="pt-3 border-t border-white/10 text-center py-8">
                 <p className="text-red-400 mb-3">{loadError}</p>
-                <button onClick={() => window.location.reload()} className="text-wf-cyan text-sm">Tap to retry</button>
+                <button onClick={() => sessionsQuery.refetch()} className="text-wf-cyan text-sm">Tap to retry</button>
               </div>
             ) : sessions.length === 0 ? (
               <div className="pt-3 border-t border-white/10 text-center py-12">

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../api';
+import { useApiQuery } from '../queries/status';
 import StickyHeader from '../components/StickyHeader';
 import { classifyExercise } from '../utils/muscleGroup';
 
@@ -151,17 +151,10 @@ function shapeRows(raw) {
 
 export default function Progress() {
   const navigate = useNavigate();
-  const [raw, setRaw] = useState(null);
-  const [loadError, setLoadError] = useState(null);
+  const progressQuery = useApiQuery('/sessions/progress-overload');
+  const raw = progressQuery.data ?? null;
+  const loadError = progressQuery.failed ? 'Failed to load progress data' : null;
   const [selectedBodyPart, setSelectedBodyPart] = useState('All');
-
-  useEffect(() => {
-    const controller = new AbortController();
-    api('/sessions/progress-overload', { signal: controller.signal })
-      .then(setRaw)
-      .catch((err) => { if (err.name !== 'AbortError') setLoadError('Failed to load progress data'); });
-    return () => controller.abort();
-  }, []);
 
   const allRows = useMemo(() => raw ? shapeRows(raw) : [], [raw]);
 
@@ -335,7 +328,7 @@ export default function Progress() {
         {loadError && (
           <div className="text-center py-8">
             <p className="text-red-400 mb-3 text-sm">{loadError}</p>
-            <button onClick={() => window.location.reload()} className="text-wf-cyan text-sm">Tap to retry</button>
+            <button onClick={() => progressQuery.refetch()} className="text-wf-cyan text-sm">Tap to retry</button>
           </div>
         )}
         {raw !== null && allRows.length === 0 && (

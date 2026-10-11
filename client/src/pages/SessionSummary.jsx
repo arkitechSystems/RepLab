@@ -1,6 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { api } from '../api';
+import { useApiQuery } from '../queries/status';
+import { queryClient } from '../queries/queryClient';
+import { pathKey } from '../queries/keys';
+import { queueEdit } from '../queries/edits';
 import { exKey, WorkoutSummary } from './WorkoutSession';
 import RenameWorkoutModal from '../components/RenameWorkoutModal';
 
@@ -21,35 +24,33 @@ function formatTimeFromSeconds(secs) {
 export default function SessionSummary() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [data, setData] = useState(null);
-  const [error, setError] = useState(null);
+  const path = `/sessions/${id}`;
+  const summaryQuery = useApiQuery(path);
+  const data = summaryQuery.data ?? null;
+  const error = summaryQuery.failed ? 'Failed to load summary' : null;
+  // Edits the cached session in place (optimistic rename).
+  const setData = (update) => queryClient.setQueryData(pathKey(path), update);
   const [renameOpen, setRenameOpen] = useState(false);
 
   // Rename the workout itself — linked everywhere (My Workouts, Calendar,
   // every day that uses it). Optimistic, rolled back on failure; the modal
-  // shows the error.
+  // shows the error. Queued (decision 10): offline it syncs later.
   async function handleRename(newName) {
     const prev = { templateName: data.templateName, customName: data.customName };
     setData((d) => ({ ...d, templateName: newName, customName: null }));
     try {
-      const res = await api(`/templates/${data.templateId}/name`, {
-        method: 'PUT',
-        body: JSON.stringify({ name: newName }),
+      const id = Number(data.templateId);
+      const result = await queueEdit({
+        path: `/templates/${id}/name`, method: 'PUT', body: { name: newName },
+        patch: { kind: 'templateRename', id, name: newName },
       });
-      setData((d) => ({ ...d, templateName: res?.name || newName }));
+      setData((d) => ({ ...d, templateName: (result.outcome === 'sent' && result.data?.name) || newName }));
     } catch (err) {
       setData((d) => ({ ...d, ...prev }));
       throw err;
     }
   }
 
-  useEffect(() => {
-    const controller = new AbortController();
-    api(`/sessions/${id}`, { signal: controller.signal })
-      .then(setData)
-      .catch((err) => { if (err.name !== 'AbortError') setError('Failed to load summary'); });
-    return () => controller.abort();
-  }, [id]);
 
   if (error) {
     return (

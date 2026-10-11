@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { api } from '../api';
+import { loadPathOrSaved } from '../queries/data';
 import { useExercises } from '../hooks/useExercises';
 import { savedExercises, savedFirst } from '../utils/savedExercises';
 import { useUnsavedGuard } from '../components/UnsavedGuard';
@@ -37,7 +38,7 @@ export default function CreateWorkout() {
   const { guardedNavigate, UnsavedModal } = useUnsavedGuard({ isDirty });
 
   useEffect(() => {
-    api('/programs')
+    loadPathOrSaved('/programs')
       .then(async (progs) => {
         // User content stays in My Workouts: only show programs the user
         // owns (userId !== null). Library programs (admin-seeded, userId

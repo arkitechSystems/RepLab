@@ -194,7 +194,20 @@ const connectionListeners = new Set();
 
 function targetConnectionState() {
   if (Date.now() < failedUntil) return 'failed';
-  return slowRequests > 0 ? 'slow' : 'ok';
+  return slowRequests + retryingCount > 0 ? 'slow' : 'ok';
+}
+// TanStack Query side (queries/queryClient): how many loads/saves are
+// between retries after a connection failure ("slow"), and a load that gave
+// up on its last retry ("failed").
+let retryingCount = 0;
+export function setRetryingCount(n) {
+  if (n === retryingCount) return;
+  retryingCount = n;
+  updateConnectionState();
+}
+export function reportConnectionFailure() {
+  failedUntil = Date.now() + FAILED_SHOW_MS;
+  updateConnectionState();
 }
 function updateConnectionState() {
   clearTimeout(connTimer);
@@ -224,14 +237,13 @@ export function subscribeConnection(fn) {
   return () => connectionListeners.delete(fn);
 }
 
-// ── Last-copy cache (show saved data instantly, refresh in background) ──
-// GETs made with { cache: true } store their last successful JSON response
-// in localStorage, keyed by the signed-in user id + path, so a screen can
-// paint immediately from cacheOnly(path) and then refresh from the network.
-// Read-only: writes never touch it. Entries over CACHE_MAX_CHARS are skipped.
-// Cleared on logout (clearAuthTokens) and when a different user signs in.
+// ── Old saved copies (before the TanStack Query migration) ──
+// The previous version kept each screen's last response in localStorage
+// ('rl_cache_v1:<userId>:<path>'). Saved copies now live in the TanStack
+// Query cache (queries/); these are only read once after the update so
+// offline viewing survives it (queries/data importLegacyCache), then removed.
+// Still wiped on logout and when a different user signs in.
 const CACHE_PREFIX = 'rl_cache_v1:';
-const CACHE_MAX_CHARS = 300000;
 
 function tokenUserId(token) {
   try {
@@ -241,48 +253,36 @@ function tokenUserId(token) {
     return null;
   }
 }
-function cacheKey(path) {
+// Every old saved copy belonging to the signed-in user: [{ path, at, data }].
+export function legacyCacheEntries() {
   const uid = tokenUserId(getApiToken() || '');
-  return uid == null ? null : `${CACHE_PREFIX}${uid}:${path}`;
-}
-function writeCache(path, data) {
-  const key = cacheKey(path);
-  if (!key) return;
+  if (uid == null) return [];
+  const prefix = `${CACHE_PREFIX}${uid}:`;
+  const out = [];
   try {
-    const raw = JSON.stringify({ at: Date.now(), data });
-    if (raw.length > CACHE_MAX_CHARS) return;
-    localStorage.setItem(key, raw);
-  } catch {
-    // Storage full or unavailable — caching is best-effort.
-  }
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || !k.startsWith(prefix)) continue;
+      try {
+        const entry = JSON.parse(localStorage.getItem(k));
+        if (entry && typeof entry === 'object' && 'data' in entry) {
+          out.push({ path: k.slice(prefix.length), at: entry.at, data: entry.data });
+        }
+      } catch {}
+    }
+  } catch {}
+  return out;
 }
-function readCache(path) {
-  const key = cacheKey(path);
-  if (!key) return null;
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return null;
-    const entry = JSON.parse(raw);
-    return entry && typeof entry === 'object' && 'data' in entry ? entry : null;
-  } catch {
-    return null;
-  }
+
+// Drop one old saved copy once the TanStack cache has it.
+export function removeLegacyCacheEntry(path) {
+  const uid = tokenUserId(getApiToken() || '');
+  if (uid == null) return;
+  try { localStorage.removeItem(`${CACHE_PREFIX}${uid}:${path}`); } catch {}
 }
-// The cached copy of a GET, or a rejected promise when there isn't one.
-// Shaped like api() so a loader can swap one for the other.
-export function cacheOnly(path) {
-  const entry = readCache(path);
-  if (!entry) {
-    const err = new Error('Not cached');
-    err.notCached = true;
-    return Promise.reject(err);
-  }
-  return Promise.resolve(entry.data);
-}
-// When the cached copy of `path` was saved (ms), or null.
-export function cachedAt(path) {
-  return readCache(path)?.at ?? null;
-}
+// Logout or a different user signing in: wipe every saved copy on this
+// device — old ones here, and the TanStack Query cache and queued saves
+// (registered through onApiCacheClear).
 export function clearApiCache() {
   try {
     const keys = [];
@@ -294,6 +294,26 @@ export function clearApiCache() {
   } catch {}
   showingCached.clear();
   notifyShowingCached();
+  cacheClearListeners.forEach((fn) => { try { fn(); } catch {} });
+}
+
+// Called after every successful change (POST/PUT/PATCH/DELETE) made through
+// api(), so cached reads can be marked stale (queries/queryClient). Requests
+// that don't change app data are skipped; a caller that refreshes exactly
+// what it changed can pass { invalidate: false }.
+const NO_INVALIDATE_RE = /^\/(auth|errors|installs|feedback)(\/|$|\?)/;
+const writeListeners = new Set();
+export function onApiWrite(fn) {
+  writeListeners.add(fn);
+  return () => writeListeners.delete(fn);
+}
+
+// Other caches that must be wiped with this one (logout, a different user
+// signing in) — the TanStack Query cache registers here (queries/queryClient).
+const cacheClearListeners = new Set();
+export function onApiCacheClear(fn) {
+  cacheClearListeners.add(fn);
+  return () => cacheClearListeners.delete(fn);
 }
 
 // ── "Showing saved data" marks ──
@@ -376,7 +396,7 @@ async function doFetch(path, options, token) {
   // reach fetch() — it rejects a non-string `cache` with a TypeError, which
   // looked like a network failure and broke every { cache: true } load.
   // eslint-disable-next-line no-unused-vars
-  const { cache, retry, timeoutMs, noRetryPrompt, ...fetchOptions } = options;
+  const { cache, retry, timeoutMs, noRetryPrompt, autoRetry, invalidate, ...fetchOptions } = options;
   try {
     return await fetch(`${API_BASE}${path}`, {
       ...fetchOptions,
@@ -417,8 +437,13 @@ async function fetchWithRetry(path, options, token) {
       return res;
     } catch (err) {
       if (err.name === 'AbortError' || err.isCodeError) { tracker.done(false); throw err; }
-      if (quiet || attempt >= RETRY_DELAYS_MS.length || !isRetryable(options)) {
-        tracker.done(true);
+      // { autoRetry: false }: TanStack Query queries/mutations do their own
+      // retrying, so api() makes one attempt (still tracked for the banner).
+      if (quiet || options.autoRetry === false || attempt >= RETRY_DELAYS_MS.length || !isRetryable(options)) {
+        // Under TanStack the attempt failing isn't the end — it retries, and
+        // reports the final failure itself (setRetryingCount /
+        // reportConnectionFailure) — so don't flash "Couldn't reach" here.
+        tracker.done(options.autoRetry !== false);
         const connErr = new Error(CONNECTION_ERROR_MESSAGE);
         connErr.isConnectionError = true;
         throw connErr;
@@ -434,14 +459,25 @@ async function fetchWithRetry(path, options, token) {
   }
 }
 
+// Whether the device says it's offline. The browser's flag, plus TanStack's
+// onlineManager (fed by the Capacitor Network plugin on iOS/Android, where
+// navigator.onLine is unreliable), registered by queries/network.
+let offlineCheck = () => false;
+export function setOfflineCheck(fn) { offlineCheck = fn; }
+function isDeviceOffline() {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return true;
+  try { return offlineCheck() === true; } catch { return false; }
+}
+
 export async function api(path, options = {}) {
   const token = getApiToken();
 
   // Changes made while the phone reports no connection fail right away with
-  // a clear message instead of waiting out the time limit. (Workout sets and
-  // Mark Complete have their own offline queue in WorkoutSession.)
+  // a clear message instead of waiting out the time limit. (Queued changes —
+  // workout saves, Calendar/Workouts edits — wait on the phone instead; see
+  // queries/sessionMutations and queries/edits.)
   const method = (options.method || 'GET').toUpperCase();
-  if (method !== 'GET' && method !== 'HEAD' && typeof navigator !== 'undefined' && navigator.onLine === false) {
+  if (method !== 'GET' && method !== 'HEAD' && isDeviceOffline()) {
     const offlineErr = new Error(OFFLINE_MESSAGE);
     offlineErr.isConnectionError = true;
     offlineErr.isOffline = true;
@@ -508,8 +544,8 @@ export async function api(path, options = {}) {
     throw err;
   }
 
-  if (options.cache === true && (options.method || 'GET').toUpperCase() === 'GET') {
-    writeCache(path, data);
+  if (method !== 'GET' && method !== 'HEAD' && options.invalidate !== false && !NO_INVALIDATE_RE.test(path)) {
+    writeListeners.forEach((fn) => { try { fn(path, method); } catch {} });
   }
   return data;
 }

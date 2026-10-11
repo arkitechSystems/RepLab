@@ -1,7 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { startOfWeek, startOfMonth, endOfMonth, addDays, format, isToday, isSameWeek, isSameMonth, isSameDay, isBefore, parseISO, differenceInCalendarWeeks, differenceInCalendarMonths, isValid } from 'date-fns';
-import { api, cacheOnly, cachedAt, markShowingCached, clearShowingCached } from '../api';
+import { api, markShowingCached, clearShowingCached } from '../api';
+import { loadPath, savedPath, savedAt } from '../queries/data';
+import { queryClient } from '../queries/queryClient';
+import { pathKey } from '../queries/keys';
+import { queueEdit, applyPatch, offlineMessage, requireOnline } from '../queries/edits';
+import { useToast } from '../context/ToastContext';
 import { getWorkoutColor } from '../utils/workoutColors';
 import StickyHeader from '../components/StickyHeader';
 import LoadingSpinnerOverlay from '../components/LoadingSpinnerOverlay';
@@ -103,6 +108,7 @@ export default function Calendar() {
   const clearCompletedTrapRef = useFocusTrap(!!clearCalendarCompletedWarn && !!editingDay);
   const copyTrapRef = useFocusTrap(!!copySource && !!copyStep);
   const navigate = useNavigate();
+  const showToast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [tutorialDone, setTutorialDone] = useState(() => searchParams.get('tutorialDone') === '1');
 
@@ -203,8 +209,8 @@ export default function Calendar() {
 
   async function refreshSchedule(opts = {}) {
     const [s, completed] = await Promise.all([
-      api(`/schedule?from=${fetchFrom}&to=${fetchTo}`, { ...opts, cache: true }),
-      api('/sessions/completed', { ...opts, cache: true }),
+      loadPath(`/schedule?from=${fetchFrom}&to=${fetchTo}`, opts),
+      loadPath('/sessions/completed', opts),
     ]);
     setSchedule(s);
     setCompletedSessions(completed);
@@ -213,29 +219,37 @@ export default function Calendar() {
 
   useEffect(() => {
     const controller = new AbortController();
-    const opts = { signal: controller.signal, cache: true };
+    const opts = { signal: controller.signal };
     const schedPath = `/schedule?from=${fetchFrom}&to=${fetchTo}`;
     const paths = [schedPath, '/templates', '/programs', '/sessions/completed'];
     let liveDone = false;
     // Saved copy first (instant, works offline), then the live data.
-    Promise.all(paths.map((p) => cacheOnly(p)))
+    Promise.all(paths.map((p) => savedPath(p)))
       .then(([s, t, p, c]) => {
         if (liveDone || controller.signal.aborted) return;
         setSchedule(s); setTemplates(t); setPrograms(p); setCompletedSessions(c);
         setLoading(false);
-        markShowingCached('calendar', cachedAt(schedPath));
+        markShowingCached('calendar', savedAt(schedPath));
       })
       .catch(() => {});
-    Promise.all(paths.map((p) => api(p, opts)))
+    Promise.all(paths.map((p) => loadPath(p, opts)))
       .then(([s, t, p, c]) => {
         setSchedule(s); setTemplates(t); setPrograms(p); setCompletedSessions(c);
         setLoadError(null);
         clearShowingCached('calendar');
       })
       .catch((err) => {
-        if (err.name === 'AbortError') return;
-        // Keep showing the saved copy if there is one; error only without it.
-        if (cachedAt(schedPath) == null) setLoadError('Failed to load calendar data');
+        if (err.name === 'AbortError') return undefined;
+        // Show the saved copy if there is one (it may have finished
+        // restoring after the first look); error only without it.
+        if (savedAt(schedPath) == null) { setLoadError('Failed to load calendar data'); return undefined; }
+        return Promise.all(paths.map((p) => savedPath(p)))
+          .then(([s, t, p, c]) => {
+            if (controller.signal.aborted) return;
+            setSchedule(s); setTemplates(t); setPrograms(p); setCompletedSessions(c);
+            markShowingCached('calendar', savedAt(schedPath), { immediate: true });
+          })
+          .catch(() => setLoadError('Failed to load calendar data'));
       })
       .finally(() => { liveDone = true; setLoading(false); });
     return () => { controller.abort(); clearShowingCached('calendar'); };
@@ -312,15 +326,28 @@ export default function Calendar() {
     setEditingDay(date);
   }
 
+  // Rest day, clear a day, assign/move workouts, clear from a date: queued
+  // edits (decision 10). The calendar shows the change right away; offline
+  // it's sent on reconnect (counted in "N changes waiting to sync"). Rejects
+  // when the server refuses it.
+  async function saveScheduleEdit(request, patch) {
+    const result = await queueEdit({ ...request, patch });
+    const key = pathKey(`/schedule?from=${fetchFrom}&to=${fetchTo}`);
+    setSchedule((s) => applyPatch(queryClient, key, s, patch));
+    if (result.outcome === 'sent') await refreshSchedule().catch(() => {});
+  }
+  function saveScheduleDays(days) {
+    return saveScheduleEdit(
+      { path: '/schedule', method: 'PUT', body: { schedule: days } },
+      { kind: 'schedule', days },
+    );
+  }
+
   async function handleSwap(templateId) {
     const dateStr = format(editingDay, 'yyyy-MM-dd');
     setScheduleSaving(true);
     try {
-      await api('/schedule', {
-        method: 'PUT',
-        body: JSON.stringify({ schedule: [{ date: dateStr, templateId }] }),
-      });
-      await refreshSchedule();
+      await saveScheduleDays([{ date: dateStr, templateId }]);
       setEditingDay(null);
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
@@ -334,11 +361,7 @@ export default function Calendar() {
     const dateStr = format(editingDay, 'yyyy-MM-dd');
     setScheduleSaving(true);
     try {
-      await api('/schedule', {
-        method: 'PUT',
-        body: JSON.stringify({ schedule: [{ date: dateStr, templateId: null }] }),
-      });
-      await refreshSchedule();
+      await saveScheduleDays([{ date: dateStr, templateId: null }]);
       setEditingDay(null);
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
@@ -355,11 +378,7 @@ export default function Calendar() {
     const dateStr = format(editingDay, 'yyyy-MM-dd');
     setScheduleSaving(true);
     try {
-      await api('/schedule', {
-        method: 'PUT',
-        body: JSON.stringify({ schedule: [{ date: dateStr, templateId: null }] }),
-      });
-      await refreshSchedule();
+      await saveScheduleDays([{ date: dateStr, templateId: null }]);
       setRestDayPrompt(false);
       setEditingDay(null);
     } catch (err) {
@@ -401,11 +420,7 @@ export default function Calendar() {
         ([date, templateId]) => ({ date, templateId })
       );
 
-      await api('/schedule', {
-        method: 'PUT',
-        body: JSON.stringify({ schedule: updates }),
-      });
-      await refreshSchedule();
+      await saveScheduleDays(updates);
       setRestDayPrompt(false);
       setEditingDay(null);
     } catch (err) {
@@ -423,6 +438,7 @@ export default function Calendar() {
   async function handlePushScheduleBack(date) {
     setScheduleSaving(true);
     try {
+      requireOnline();
       await api('/schedule/shift', {
         method: 'POST',
         body: JSON.stringify({
@@ -433,7 +449,7 @@ export default function Calendar() {
       await refreshSchedule();
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
-      setEditError('Failed to save. Please try again.');
+      setEditError(offlineMessage(err, 'Failed to save. Please try again.'));
       throw err;
     } finally {
       setScheduleSaving(false);
@@ -488,6 +504,7 @@ export default function Calendar() {
     }
     setStartEmptySaving(true);
     try {
+      requireOnline();
       const result = await api('/sessions/start-empty', {
         method: 'POST',
         body: JSON.stringify({
@@ -506,7 +523,7 @@ export default function Calendar() {
       navigate(`/session/${result.templateId}/${dateStr}`);
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
-      setEditError('Failed to create workout. Please try again.');
+      setEditError(offlineMessage(err, 'Failed to create workout. Please try again.'));
     } finally {
       setStartEmptySaving(false);
     }
@@ -522,8 +539,10 @@ export default function Calendar() {
     const dateStr = format(editingDay, 'yyyy-MM-dd');
     setScheduleSaving(true);
     try {
-      await api(`/schedule?from=${dateStr}`, { method: 'DELETE' });
-      await refreshSchedule();
+      await saveScheduleEdit(
+        { path: `/schedule?from=${dateStr}`, method: 'DELETE' },
+        { kind: 'scheduleClearFrom', from: dateStr },
+      );
       setClearCalendarConfirm(false);
       setClearCalendarCompletedWarn(false);
       setEditingDay(null);
@@ -603,6 +622,7 @@ export default function Calendar() {
   async function executeCopy(targetDate, useReps, confirmOverwrite = false) {
     setCopying(true);
     try {
+      requireOnline();
       const targetDateStr = format(targetDate, 'yyyy-MM-dd');
 
       // Fetch source session to copy weights (and optionally reps as goals)
@@ -692,6 +712,7 @@ export default function Calendar() {
       cancelCopy();
     } catch (err) {
       if (import.meta.env.DEV) console.error('Copy failed:', err);
+      showToast(offlineMessage(err, 'Could not copy the workout. Please try again.'), 'error');
       cancelCopy();
     }
   }
@@ -1148,6 +1169,7 @@ export default function Calendar() {
                               {/* Edit button */}
                               <div
                                 role="button"
+                                aria-label={`Edit ${format(date, 'EEEE, MMM d')}`}
                                 onClick={(e) => openEditor(e, date)}
                                 className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center shrink-0 active:bg-white/20 transition-colors"
                               >
@@ -1300,6 +1322,7 @@ export default function Calendar() {
                         {/* Edit button */}
                         <div
                           role="button"
+                          aria-label={`Edit ${format(date, 'EEEE, MMM d')}`}
                           onClick={(e) => openEditor(e, date)}
                           className="w-9 h-9 flex items-center justify-center active:bg-white/15 transition-colors"
                           style={{ borderRadius: '2px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
