@@ -124,6 +124,8 @@ end of every phase — unconverted screens keep using `api()` until their phase.
    - ⏳ Manual (Will): the checklist and device tests below — website with DevTools Slow 3G / Offline, iPhone + Android airplane mode (needs the phase 8 native build with `npx cap sync` for `@capacitor/network`), two devices, account switch, Coding Errors quiet afterwards.
    - Correction to "Upgrade safety" above: unsent `replab:session:*` backups are not turned into queued saves at start-up; as before, they are restored when that workout is opened and then saved through the queue.
 8. **Release** — merge to `main` → website deploy → watch Coding Errors + Sentry for a few days → iOS (Xcode Cloud tag) and Android (.aab) builds.
+   - ✅ Merged to `main` 2026-10-11 with Will's approval (merge commit `f3bb7ca`; undo with `git revert -m 1 f3bb7ca`). Website deploying on Render.
+   - ⏳ Watch Coding Errors + Sentry; then `npx cap sync` and the iOS/Android builds.
 9. **Zod** — schemas for the session, schedule and template routes on the server; reject bad shapes with a 400 that names the field. Decide then whether to share schemas with the client.
    - ✅ Built 2026-10-10 on its own branch **`zod-validation`** (contains this branch plus the Zod work; details in that branch's copy of this doc). Merge it after `tanstack-query` has been live and quiet for a few days.
 
