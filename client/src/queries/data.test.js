@@ -135,4 +135,14 @@ describe('importLegacyCache', () => {
     importLegacyCache();
     expect(queryClient.getQueryData(['programs'])).toEqual([{ id: 'new' }]);
   });
+
+  it('keeps an old copy on the first run, and deletes it once the new cache holds that data', () => {
+    setApiToken(tokenFor(37));
+    localStorage.setItem('rl_cache_v1:37:/templates', JSON.stringify({ at: 1000, data: [{ id: 7 }] }));
+    importLegacyCache();
+    expect(localStorage.getItem('rl_cache_v1:37:/templates')).not.toBeNull();
+    importLegacyCache(); // next start: restored cache already has it
+    expect(localStorage.getItem('rl_cache_v1:37:/templates')).toBeNull();
+    expect(queryClient.getQueryData(['templates'])).toEqual([{ id: 7 }]);
+  });
 });

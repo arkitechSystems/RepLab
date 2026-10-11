@@ -1,6 +1,6 @@
 // Status hooks for the banners in Layout and per-screen "saved data" notices.
-import { useEffect } from 'react';
-import { useMutationState, useQuery } from '@tanstack/react-query';
+import { useEffect, useSyncExternalStore } from 'react';
+import { onlineManager, useMutationState, useQuery } from '@tanstack/react-query';
 import { markShowingCached, clearShowingCached } from '../api';
 import { pathKey, fetchPath } from './keys';
 
@@ -12,6 +12,16 @@ export function useApiQuery(path, { enabled = true, ...options } = {}) {
   const query = useQuery({ queryKey: pathKey(path), queryFn: fetchPath(path), enabled, ...options });
   useSavedDataNotice(`query:${path}`, query);
   return { ...query, failed: query.isError && query.data === undefined };
+}
+
+// Whether the device is online (onlineManager: Capacitor Network on iOS/
+// Android, browser events on the web). Drives the offline banner.
+export function useIsOnline() {
+  return useSyncExternalStore(
+    (onChange) => onlineManager.subscribe(onChange),
+    () => onlineManager.isOnline(),
+    () => true,
+  );
 }
 
 // Saves not yet confirmed by the server (paused offline or retrying) —

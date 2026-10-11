@@ -10,7 +10,11 @@ import { setOfflineCheck } from '../api';
 export function setupOnlineManager() {
   // Changes that need a connection fail fast with "You're offline" (api.js).
   setOfflineCheck(() => !onlineManager.isOnline());
-  if (!Capacitor.isNativePlatform()) return;
+  if (!Capacitor.isNativePlatform()) {
+    // TanStack assumes online at start; the browser may already know better.
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) onlineManager.setOnline(false);
+    return;
+  }
   onlineManager.setEventListener((setOnline) => {
     let handle = null;
     let stopped = false;

@@ -1,15 +1,14 @@
 // Load-by-path helpers for screens that manage their own state (Workouts,
-// Calendar, …). Drop-in replacements for the old api.js saved-copy calls,
-// backed by the TanStack Query cache:
+// Calendar, WorkoutSession, …), backed by the TanStack Query cache:
 //
-//   api(path, { cache: true })  →  loadPath(path, { signal })
-//   cacheOnly(path)             →  savedPath(path)
-//   cachedAt(path)              →  savedAt(path)
+//   loadPath(path, { signal })  live data (replaced api(path, { cache: true }))
+//   savedPath(path)             the saved copy (replaced cacheOnly)
+//   savedAt(path)               when it was saved (replaced cachedAt)
 //
 // The screen's own logic stays as it was; loading, retries, de-duplication
 // and the on-device saved copy come from TanStack Query.
 import { isCancelledError } from '@tanstack/react-query';
-import { legacyCacheEntries } from '../api';
+import { legacyCacheEntries, removeLegacyCacheEntry } from '../api';
 import { queryClient } from './queryClient';
 import { pathKey, fetchPath } from './keys';
 
@@ -32,12 +31,18 @@ function whenRestored() {
 
 // First run after the migration: saved copies made by the old api.js cache
 // become TanStack saved copies (keeping their original time), unless the
-// cache already has newer data for that path. Runs after the restore.
+// cache already has newer data for that path. Runs after the restore. An old
+// copy is deleted once the restored cache already holds that path (so it has
+// been stored on the device) — not on the first run, in case the app closes
+// before the new cache is written.
 export function importLegacyCache(client = queryClient) {
   for (const { path, at, data } of legacyCacheEntries()) {
     const key = pathKey(path);
     const state = client.getQueryState(key);
-    if (state?.data !== undefined && state.dataUpdatedAt >= (at || 0)) continue;
+    if (state?.data !== undefined) {
+      removeLegacyCacheEntry(path);
+      if (state.dataUpdatedAt >= (at || 0)) continue;
+    }
     client.setQueryData(key, data, { updatedAt: at || Date.now() });
   }
 }

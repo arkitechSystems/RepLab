@@ -237,14 +237,13 @@ export function subscribeConnection(fn) {
   return () => connectionListeners.delete(fn);
 }
 
-// ── Last-copy cache (show saved data instantly, refresh in background) ──
-// GETs made with { cache: true } store their last successful JSON response
-// in localStorage, keyed by the signed-in user id + path, so a screen can
-// paint immediately from cacheOnly(path) and then refresh from the network.
-// Read-only: writes never touch it. Entries over CACHE_MAX_CHARS are skipped.
-// Cleared on logout (clearAuthTokens) and when a different user signs in.
+// ── Old saved copies (before the TanStack Query migration) ──
+// The previous version kept each screen's last response in localStorage
+// ('rl_cache_v1:<userId>:<path>'). Saved copies now live in the TanStack
+// Query cache (queries/); these are only read once after the update so
+// offline viewing survives it (queries/data importLegacyCache), then removed.
+// Still wiped on logout and when a different user signs in.
 const CACHE_PREFIX = 'rl_cache_v1:';
-const CACHE_MAX_CHARS = 300000;
 
 function tokenUserId(token) {
   try {
@@ -254,37 +253,7 @@ function tokenUserId(token) {
     return null;
   }
 }
-function cacheKey(path) {
-  const uid = tokenUserId(getApiToken() || '');
-  return uid == null ? null : `${CACHE_PREFIX}${uid}:${path}`;
-}
-function writeCache(path, data) {
-  const key = cacheKey(path);
-  if (!key) return;
-  try {
-    const raw = JSON.stringify({ at: Date.now(), data });
-    if (raw.length > CACHE_MAX_CHARS) return;
-    localStorage.setItem(key, raw);
-  } catch {
-    // Storage full or unavailable — caching is best-effort.
-  }
-}
-function readCache(path) {
-  const key = cacheKey(path);
-  if (!key) return null;
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return null;
-    const entry = JSON.parse(raw);
-    return entry && typeof entry === 'object' && 'data' in entry ? entry : null;
-  } catch {
-    return null;
-  }
-}
-// Every saved copy belonging to the signed-in user: [{ path, at, data }].
-// Lets the TanStack Query cache take over existing saved copies on the first
-// run after the migration (queries/data importLegacyCache), so offline
-// viewing keeps working across the update. Remove with this cache (phase 6).
+// Every old saved copy belonging to the signed-in user: [{ path, at, data }].
 export function legacyCacheEntries() {
   const uid = tokenUserId(getApiToken() || '');
   if (uid == null) return [];
@@ -305,21 +274,15 @@ export function legacyCacheEntries() {
   return out;
 }
 
-// The cached copy of a GET, or a rejected promise when there isn't one.
-// Shaped like api() so a loader can swap one for the other.
-export function cacheOnly(path) {
-  const entry = readCache(path);
-  if (!entry) {
-    const err = new Error('Not cached');
-    err.notCached = true;
-    return Promise.reject(err);
-  }
-  return Promise.resolve(entry.data);
+// Drop one old saved copy once the TanStack cache has it.
+export function removeLegacyCacheEntry(path) {
+  const uid = tokenUserId(getApiToken() || '');
+  if (uid == null) return;
+  try { localStorage.removeItem(`${CACHE_PREFIX}${uid}:${path}`); } catch {}
 }
-// When the cached copy of `path` was saved (ms), or null.
-export function cachedAt(path) {
-  return readCache(path)?.at ?? null;
-}
+// Logout or a different user signing in: wipe every saved copy on this
+// device — old ones here, and the TanStack Query cache and queued saves
+// (registered through onApiCacheClear).
 export function clearApiCache() {
   try {
     const keys = [];
@@ -581,9 +544,6 @@ export async function api(path, options = {}) {
     throw err;
   }
 
-  if (options.cache === true && method === 'GET') {
-    writeCache(path, data);
-  }
   if (method !== 'GET' && method !== 'HEAD' && options.invalidate !== false && !NO_INVALIDATE_RE.test(path)) {
     writeListeners.forEach((fn) => { try { fn(path, method); } catch {} });
   }

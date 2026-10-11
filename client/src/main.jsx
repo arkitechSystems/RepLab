@@ -52,16 +52,8 @@ if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
     });
-
-    window.addEventListener('online', () => {
-      navigator.serviceWorker.ready.then((reg) => {
-        if (reg.sync) {
-          reg.sync.register('replab-sync');
-        } else {
-          reg.active?.postMessage('process-sync-queue');
-        }
-      });
-    });
+    // Offline saves are TanStack Query's job now (queries/), not the
+    // service worker's — it only caches the app's own files.
   } else {
     // Dev kill-switch: unregister any previously-installed SW and drop its caches.
     navigator.serviceWorker.getRegistrations().then((regs) => {
