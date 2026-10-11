@@ -1,31 +1,15 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { validateBody, templateBody } from '../validation.js';
 
 const router = Router();
 
 // Reject absurdly long strings before they hit the DB. Without these caps, an
 // authenticated attacker could POST a 10 MB workout name and bloat the DB.
+// (Name / description / exercise caps for create + edit are in templateBody,
+// validation.js; this one is for PUT /:id/name.)
 const MAX_NAME_LEN = 200;
-const MAX_DESCRIPTION_LEN = 5000;
-const MAX_EXERCISES_PER_TEMPLATE = 100;
-
-function validateTemplatePayload({ name, description, exercises }) {
-  if (typeof name !== 'string' || !name.trim()) return 'Template name is required';
-  if (name.length > MAX_NAME_LEN) return `Template name must be ${MAX_NAME_LEN} characters or fewer`;
-  if (description != null && typeof description !== 'string') return 'Description must be a string';
-  if (description && description.length > MAX_DESCRIPTION_LEN) return `Description must be ${MAX_DESCRIPTION_LEN} characters or fewer`;
-  if (exercises != null) {
-    if (!Array.isArray(exercises)) return 'Exercises must be an array';
-    if (exercises.length > MAX_EXERCISES_PER_TEMPLATE) return `Max ${MAX_EXERCISES_PER_TEMPLATE} exercises per template`;
-    for (const ex of exercises) {
-      if (ex && typeof ex.name === 'string' && ex.name.length > MAX_NAME_LEN) {
-        return `Exercise name must be ${MAX_NAME_LEN} characters or fewer`;
-      }
-    }
-  }
-  return null;
-}
 
 router.get('/', authMiddleware, async (req, res) => {
   try {
@@ -37,11 +21,9 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 
-router.post('/', authMiddleware, async (req, res) => {
+router.post('/', authMiddleware, validateBody(templateBody), async (req, res) => {
   try {
     const { name, description, exercises, programId, isRest } = req.body;
-    const validationError = validateTemplatePayload({ name, description, exercises });
-    if (validationError) return res.status(400).json({ error: validationError });
     const result = await db.createTemplate(req.userId, name, description || '', exercises, programId, isRest);
     // The client sets communityShare when a user builds and saves their own
     // workout (not for copies/save-as), which posts a community feed event.
@@ -76,12 +58,10 @@ router.put('/reorder', authMiddleware, async (req, res) => {
   }
 });
 
-router.put('/:id', authMiddleware, async (req, res) => {
+router.put('/:id', authMiddleware, validateBody(templateBody), async (req, res) => {
   try {
     const { name, description, exercises } = req.body;
     const templateId = Number(req.params.id);
-    const validationError = validateTemplatePayload({ name, description, exercises });
-    if (validationError) return res.status(400).json({ error: validationError });
     const result = await db.updateTemplate(req.userId, templateId, name, description || '', exercises);
     if (!result) {
       return res.status(404).json({ error: 'Template not found' });

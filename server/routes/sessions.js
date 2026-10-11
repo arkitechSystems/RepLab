@@ -3,17 +3,15 @@ import db, { findOrCreateMyWorkoutsProgram, uniqueTemplateName } from '../db.js'
 import pool from '../dbPool.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { notifyPRCelebration, notifyFirstWorkout } from '../postSessionPushes.js';
+import { validateBody, saveSessionBody, completeSessionBody, initializeSessionBody } from '../validation.js';
 
 const MAX_WORKOUT_NAME_LEN = 200; // same cap as template names
 
 const router = Router();
 
-router.post('/', authMiddleware, async (req, res) => {
+router.post('/', authMiddleware, validateBody(saveSessionBody), async (req, res) => {
   try {
     const { templateId, date, entries, notes, workoutData, confirmOverwrite } = req.body;
-    if (!templateId || !date || !entries || !entries.length) {
-      return res.status(400).json({ error: 'templateId, date, and entries are required' });
-    }
     // Ownership gate: prevents a caller from saving a session that attaches
     // their data to another user's private template. Global (userId IS NULL)
     // templates are allowed. Matches the check at /sessions/initialize.
@@ -176,10 +174,9 @@ async function ensureSessionCopy(userId, templateId, date) {
 }
 
 // POST /sessions/initialize — Create initial session copy from template (no entries yet)
-router.post('/initialize', authMiddleware, async (req, res) => {
+router.post('/initialize', authMiddleware, validateBody(initializeSessionBody), async (req, res) => {
   try {
     const { templateId, date } = req.body;
-    if (!templateId || !date) return res.status(400).json({ error: 'templateId and date required' });
     const result = await ensureSessionCopy(req.userId, Number(templateId), date);
     if (!result.session) return res.status(result.status).json({ error: result.error });
     res.status(result.status).json(result.session);
@@ -230,7 +227,7 @@ router.get('/by-template/:templateId/:date', authMiddleware, async (req, res) =>
   }
 });
 
-router.put('/complete', authMiddleware, async (req, res) => {
+router.put('/complete', authMiddleware, validateBody(completeSessionBody), async (req, res) => {
   try {
     const { templateId, date, completed } = req.body;
     const result = await db.toggleSessionComplete(req.userId, templateId, date, completed);
