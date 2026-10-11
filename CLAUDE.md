@@ -8,3 +8,6 @@ Work happens on the `tanstack-query` branch. The save point before it is tag `pr
 Read `docs/tanstack-query-migration.md` before touching data loading, saving or offline code — it holds the
 decisions already made with Will, the phase plan, and the behavior that must keep working. Record new
 questions and answers in its decision log.
+
+Its **To-do** section lists what's left after the 2026-10-11 website release (merge `zod-validation`
+on or after 2026-10-14, manual and device checks). Remind Will of open items there.
