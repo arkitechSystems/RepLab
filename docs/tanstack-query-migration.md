@@ -7,6 +7,23 @@ that caused the Oct 2026 bugs. Server-side Zod checks are the final phase.
 **Read this first if you're picking the project up on another computer or Claude login.**
 Decisions below are settled. Add new questions and answers to the decision log as they come up.
 
+## To-do (after the 2026-10-11 website release)
+
+Claude: remind Will of any open item here at the start of a session.
+
+- [ ] **Merge `zod-validation` into `main`** — on or after **2026-10-14**, once the website has been
+  quiet. Will chose to wait so a problem can be traced to TanStack or to Zod (2026-10-11). Ask Will
+  before merging; it deploys the website. This merge also brings the two Android files from
+  `npx cap sync android` (network plugin) onto `main`.
+- [ ] **Will: manual website checks** — on replab-fitness.com, log sets, go Offline in DevTools,
+  log a set and edit the calendar, go back online, confirm "All changes synced" and the changes
+  survive a refresh.
+- [ ] **Watch Coding Errors + Sentry** for a few days after the release (reading the production
+  database needs Will's OK).
+- [ ] **Will: iPhone build** — Xcode Cloud runs `npx cap sync ios` itself; test airplane mode on the device.
+- [ ] **Will: Android build** — build only after the `zod-validation` merge (or once the two Android
+  files reach `main`); test airplane mode on the device.
+
 ## Save point and branches
 
 | | |
