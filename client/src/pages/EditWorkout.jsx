@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { api } from '../api';
+import { loadPathOrSaved } from '../queries/data';
 import { useExercises } from '../hooks/useExercises';
 import { savedExercises, savedFirst } from '../utils/savedExercises';
 import { useUnsavedGuard } from '../components/UnsavedGuard';
@@ -26,7 +27,7 @@ export default function EditWorkout() {
   const { guardedNavigate, UnsavedModal } = useUnsavedGuard({ isDirty });
 
   useEffect(() => {
-    api('/templates')
+    loadPathOrSaved('/templates')
       .then((templates) => {
         const tmpl = templates.find((t) => t.id === Number(id));
         if (!tmpl) {

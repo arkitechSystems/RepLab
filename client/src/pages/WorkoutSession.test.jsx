@@ -161,6 +161,32 @@ describe('Workout session saving', () => {
     expect(screen.queryByText('Completed on this phone — will sync')).toBeNull();
   }, 15000);
 
+  // Phase 5 (decision 10): renaming is queued like the sets.
+  it('renaming the workout offline shows the new name now and sends it on reconnect', async () => {
+    signIn();
+    const state = { log: [] };
+    fakeServer(state);
+    server.use(
+      http.get('*/templates', () => (state.down ? HttpResponse.error() : HttpResponse.json([{ id: 835, name: 'Rehab Leg Workout', userId: 37, isRest: false, exercises: [] }]))),
+      http.put('*/templates/835/name', async ({ request }) => {
+        if (state.down) return HttpResponse.error();
+        state.log.push(`rename ${(await request.json()).name}`);
+        return HttpResponse.json({ id: 835, name: 'Knee Rehab' });
+      }),
+    );
+    await openWorkout();
+    goOffline(state);
+    fireEvent.click(screen.getAllByLabelText('Rename this workout')[0]);
+    fireEvent.change(await screen.findByDisplayValue('Rehab Leg Workout'), { target: { value: 'Knee Rehab' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect((await screen.findAllByText('KNEE REHAB')).length).toBeGreaterThan(0);
+    await waitFor(() => expect(getPendingSaveCount(queryClient)).toBe(1));
+    expect(state.log).toEqual([]);
+
+    goOnline(state);
+    await waitFor(() => expect(state.log).toEqual(['rename Knee Rehab']));
+  }, 15000);
+
   it('a completion queued by the old version is moved onto the new queue and sent', async () => {
     signIn();
     const state = { log: [], session: { ...SESSION, entries: [{ exerciseName: 'Leg Extension', setNumber: 1, weight: 20, reps: 12, isCompleted: true }] } };

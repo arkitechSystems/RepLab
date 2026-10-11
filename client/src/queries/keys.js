@@ -33,8 +33,13 @@ export const keys = {
   sharingAccepted: () => pathKey('/sharing/accepted'),
 };
 
+// Applied to every fresh load (queries/edits: edits still waiting to sync are
+// shown on top of what the server sent).
+let overlay = (_key, data) => data;
+export function setFetchOverlay(fn) { overlay = fn; }
+
 // queryFn for a GET: one attempt through api() (TanStack does the retrying),
 // cancelled when the query is.
 export function fetchPath(path) {
-  return ({ signal }) => api(path, { signal, autoRetry: false });
+  return async ({ signal }) => overlay(pathKey(path), await api(path, { signal, autoRetry: false }));
 }

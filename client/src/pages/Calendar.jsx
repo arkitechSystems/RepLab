@@ -3,6 +3,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { startOfWeek, startOfMonth, endOfMonth, addDays, format, isToday, isSameWeek, isSameMonth, isSameDay, isBefore, parseISO, differenceInCalendarWeeks, differenceInCalendarMonths, isValid } from 'date-fns';
 import { api, markShowingCached, clearShowingCached } from '../api';
 import { loadPath, savedPath, savedAt } from '../queries/data';
+import { queryClient } from '../queries/queryClient';
+import { pathKey } from '../queries/keys';
+import { queueEdit, applyPatch, offlineMessage, requireOnline } from '../queries/edits';
+import { useToast } from '../context/ToastContext';
 import { getWorkoutColor } from '../utils/workoutColors';
 import StickyHeader from '../components/StickyHeader';
 import LoadingSpinnerOverlay from '../components/LoadingSpinnerOverlay';
@@ -104,6 +108,7 @@ export default function Calendar() {
   const clearCompletedTrapRef = useFocusTrap(!!clearCalendarCompletedWarn && !!editingDay);
   const copyTrapRef = useFocusTrap(!!copySource && !!copyStep);
   const navigate = useNavigate();
+  const showToast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [tutorialDone, setTutorialDone] = useState(() => searchParams.get('tutorialDone') === '1');
 
@@ -321,15 +326,28 @@ export default function Calendar() {
     setEditingDay(date);
   }
 
+  // Rest day, clear a day, assign/move workouts, clear from a date: queued
+  // edits (decision 10). The calendar shows the change right away; offline
+  // it's sent on reconnect (counted in "N changes waiting to sync"). Rejects
+  // when the server refuses it.
+  async function saveScheduleEdit(request, patch) {
+    const result = await queueEdit({ ...request, patch });
+    const key = pathKey(`/schedule?from=${fetchFrom}&to=${fetchTo}`);
+    setSchedule((s) => applyPatch(queryClient, key, s, patch));
+    if (result.outcome === 'sent') await refreshSchedule().catch(() => {});
+  }
+  function saveScheduleDays(days) {
+    return saveScheduleEdit(
+      { path: '/schedule', method: 'PUT', body: { schedule: days } },
+      { kind: 'schedule', days },
+    );
+  }
+
   async function handleSwap(templateId) {
     const dateStr = format(editingDay, 'yyyy-MM-dd');
     setScheduleSaving(true);
     try {
-      await api('/schedule', {
-        method: 'PUT',
-        body: JSON.stringify({ schedule: [{ date: dateStr, templateId }] }),
-      });
-      await refreshSchedule();
+      await saveScheduleDays([{ date: dateStr, templateId }]);
       setEditingDay(null);
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
@@ -343,11 +361,7 @@ export default function Calendar() {
     const dateStr = format(editingDay, 'yyyy-MM-dd');
     setScheduleSaving(true);
     try {
-      await api('/schedule', {
-        method: 'PUT',
-        body: JSON.stringify({ schedule: [{ date: dateStr, templateId: null }] }),
-      });
-      await refreshSchedule();
+      await saveScheduleDays([{ date: dateStr, templateId: null }]);
       setEditingDay(null);
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
@@ -364,11 +378,7 @@ export default function Calendar() {
     const dateStr = format(editingDay, 'yyyy-MM-dd');
     setScheduleSaving(true);
     try {
-      await api('/schedule', {
-        method: 'PUT',
-        body: JSON.stringify({ schedule: [{ date: dateStr, templateId: null }] }),
-      });
-      await refreshSchedule();
+      await saveScheduleDays([{ date: dateStr, templateId: null }]);
       setRestDayPrompt(false);
       setEditingDay(null);
     } catch (err) {
@@ -410,11 +420,7 @@ export default function Calendar() {
         ([date, templateId]) => ({ date, templateId })
       );
 
-      await api('/schedule', {
-        method: 'PUT',
-        body: JSON.stringify({ schedule: updates }),
-      });
-      await refreshSchedule();
+      await saveScheduleDays(updates);
       setRestDayPrompt(false);
       setEditingDay(null);
     } catch (err) {
@@ -432,6 +438,7 @@ export default function Calendar() {
   async function handlePushScheduleBack(date) {
     setScheduleSaving(true);
     try {
+      requireOnline();
       await api('/schedule/shift', {
         method: 'POST',
         body: JSON.stringify({
@@ -442,7 +449,7 @@ export default function Calendar() {
       await refreshSchedule();
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
-      setEditError('Failed to save. Please try again.');
+      setEditError(offlineMessage(err, 'Failed to save. Please try again.'));
       throw err;
     } finally {
       setScheduleSaving(false);
@@ -497,6 +504,7 @@ export default function Calendar() {
     }
     setStartEmptySaving(true);
     try {
+      requireOnline();
       const result = await api('/sessions/start-empty', {
         method: 'POST',
         body: JSON.stringify({
@@ -515,7 +523,7 @@ export default function Calendar() {
       navigate(`/session/${result.templateId}/${dateStr}`);
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
-      setEditError('Failed to create workout. Please try again.');
+      setEditError(offlineMessage(err, 'Failed to create workout. Please try again.'));
     } finally {
       setStartEmptySaving(false);
     }
@@ -531,8 +539,10 @@ export default function Calendar() {
     const dateStr = format(editingDay, 'yyyy-MM-dd');
     setScheduleSaving(true);
     try {
-      await api(`/schedule?from=${dateStr}`, { method: 'DELETE' });
-      await refreshSchedule();
+      await saveScheduleEdit(
+        { path: `/schedule?from=${dateStr}`, method: 'DELETE' },
+        { kind: 'scheduleClearFrom', from: dateStr },
+      );
       setClearCalendarConfirm(false);
       setClearCalendarCompletedWarn(false);
       setEditingDay(null);
@@ -612,6 +622,7 @@ export default function Calendar() {
   async function executeCopy(targetDate, useReps, confirmOverwrite = false) {
     setCopying(true);
     try {
+      requireOnline();
       const targetDateStr = format(targetDate, 'yyyy-MM-dd');
 
       // Fetch source session to copy weights (and optionally reps as goals)
@@ -701,6 +712,7 @@ export default function Calendar() {
       cancelCopy();
     } catch (err) {
       if (import.meta.env.DEV) console.error('Copy failed:', err);
+      showToast(offlineMessage(err, 'Could not copy the workout. Please try again.'), 'error');
       cancelCopy();
     }
   }
@@ -1157,6 +1169,7 @@ export default function Calendar() {
                               {/* Edit button */}
                               <div
                                 role="button"
+                                aria-label={`Edit ${format(date, 'EEEE, MMM d')}`}
                                 onClick={(e) => openEditor(e, date)}
                                 className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center shrink-0 active:bg-white/20 transition-colors"
                               >
@@ -1309,6 +1322,7 @@ export default function Calendar() {
                         {/* Edit button */}
                         <div
                           role="button"
+                          aria-label={`Edit ${format(date, 'EEEE, MMM d')}`}
                           onClick={(e) => openEditor(e, date)}
                           className="w-9 h-9 flex items-center justify-center active:bg-white/15 transition-colors"
                           style={{ borderRadius: '2px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}

@@ -496,14 +496,25 @@ async function fetchWithRetry(path, options, token) {
   }
 }
 
+// Whether the device says it's offline. The browser's flag, plus TanStack's
+// onlineManager (fed by the Capacitor Network plugin on iOS/Android, where
+// navigator.onLine is unreliable), registered by queries/network.
+let offlineCheck = () => false;
+export function setOfflineCheck(fn) { offlineCheck = fn; }
+function isDeviceOffline() {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return true;
+  try { return offlineCheck() === true; } catch { return false; }
+}
+
 export async function api(path, options = {}) {
   const token = getApiToken();
 
   // Changes made while the phone reports no connection fail right away with
-  // a clear message instead of waiting out the time limit. (Workout sets and
-  // Mark Complete have their own offline queue in WorkoutSession.)
+  // a clear message instead of waiting out the time limit. (Queued changes —
+  // workout saves, Calendar/Workouts edits — wait on the phone instead; see
+  // queries/sessionMutations and queries/edits.)
   const method = (options.method || 'GET').toUpperCase();
-  if (method !== 'GET' && method !== 'HEAD' && typeof navigator !== 'undefined' && navigator.onLine === false) {
+  if (method !== 'GET' && method !== 'HEAD' && isDeviceOffline()) {
     const offlineErr = new Error(OFFLINE_MESSAGE);
     offlineErr.isConnectionError = true;
     offlineErr.isOffline = true;

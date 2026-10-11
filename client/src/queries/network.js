@@ -5,8 +5,11 @@
 import { onlineManager } from '@tanstack/react-query';
 import { Capacitor } from '@capacitor/core';
 import { Network } from '@capacitor/network';
+import { setOfflineCheck } from '../api';
 
 export function setupOnlineManager() {
+  // Changes that need a connection fail fast with "You're offline" (api.js).
+  setOfflineCheck(() => !onlineManager.isOnline());
   if (!Capacitor.isNativePlatform()) return;
   onlineManager.setEventListener((setOnline) => {
     let handle = null;

@@ -6,6 +6,8 @@ import { useConfirm } from '../context/ConfirmContext';
 import { api, setApiToken, setAuthTokens, getApiToken } from '../api';
 import { getPendingSaveCount } from '../queries/queryClient';
 import { loadPathOrSaved } from '../queries/data';
+import { offlineMessage } from '../queries/edits';
+import { useToast } from '../context/ToastContext';
 import StickyHeader from '../components/StickyHeader';
 import SplashScreen from '../components/SplashScreen';
 import useFocusTrap from '../hooks/useFocusTrap';
@@ -247,6 +249,7 @@ function HeightInput({ label, value, onChange }) {
 export default function Profile() {
   const { user, logout, updateUser, setPassword: setAccountPassword } = useAuth();
   const confirmDialog = useConfirm();
+  const showToast = useToast();
   const navigate = useNavigate();
   const [metrics, setMetrics] = useState({
     height: null,
@@ -373,9 +376,9 @@ export default function Profile() {
         body: JSON.stringify({ likes: next }),
       });
       if (typeof updated?.likes === 'boolean') setLikePushesOn(updated.likes);
-    } catch {
+    } catch (err) {
       setLikePushesOn(!next);
-      setCommunitySharingError("Couldn't save your notification setting. Please try again.");
+      setCommunitySharingError(offlineMessage(err, "Couldn't save your notification setting. Please try again."));
     } finally {
       setLikePushesSaving(false);
     }
@@ -392,9 +395,9 @@ export default function Profile() {
         body: JSON.stringify({ category, enabled, removePast }),
       });
       if (updated && typeof updated === 'object') setCommunitySharing(updated);
-    } catch {
+    } catch (err) {
       setCommunitySharing(previous);
-      setCommunitySharingError("Couldn't save your sharing setting. Please try again.");
+      setCommunitySharingError(offlineMessage(err, "Couldn't save your sharing setting. Please try again."));
     } finally {
       setCommunitySharingSaving(false);
     }
@@ -477,6 +480,7 @@ export default function Profile() {
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);
+      showToast(offlineMessage(err, "Couldn't save. Please try again."), 'error');
     } finally {
       setSaving(false);
     }
@@ -596,6 +600,7 @@ export default function Profile() {
       updateUser({ ...user, photoUrl: result.photoUrl });
     } catch (err) {
       if (import.meta.env.DEV) console.error('Failed to upload photo:', err);
+      showToast(offlineMessage(err, "Couldn't update your photo. Please try again."), 'error');
     } finally {
       setUploadingPhoto(false);
     }
@@ -609,6 +614,7 @@ export default function Profile() {
       updateUser({ ...user, photoUrl: null });
     } catch (err) {
       if (import.meta.env.DEV) console.error('Failed to remove photo:', err);
+      showToast(offlineMessage(err, "Couldn't remove your photo. Please try again."), 'error');
     } finally {
       setUploadingPhoto(false);
     }

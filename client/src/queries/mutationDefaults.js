@@ -10,7 +10,9 @@
 // and callers should pass scope: { id } so saves for the same thing (one
 // workout day) go out strictly in order.
 import { registerSessionMutations } from './sessionMutations';
+import { registerEditMutations } from './edits';
 
 export function registerMutationDefaults(client) {
   registerSessionMutations(client);
+  registerEditMutations(client);
 }

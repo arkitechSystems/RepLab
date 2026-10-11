@@ -6,6 +6,7 @@ import { onlineManager, useMutationState } from '@tanstack/react-query';
 import { api, markShowingCached, clearShowingCached, CONNECTION_ERROR_MESSAGE } from '../api';
 import { queryClient } from '../queries/queryClient';
 import { loadPath, savedPath, savedAt } from '../queries/data';
+import { queueEdit, requireOnline } from '../queries/edits';
 import {
   SAVE_SESSION, COMPLETE_SESSION, sessionScope, startMutation, latestPendingSave, cancelPendingComplete,
 } from '../queries/sessionMutations';
@@ -284,8 +285,10 @@ export default function WorkoutSession() {
 
   // "Save to My Workouts?" → Yes → name. The server copies this date's saved
   // session (structure + logged sets) into a new My Workouts workout. Throws
-  // so the prompt shows the error and stays open.
+  // so the prompt shows the error and stays open. Needs a connection (the
+  // server copies what it has), so offline it says so up front.
   async function handleSaveCustomWorkout(name) {
+    requireOnline();
     const res = await api(`/sessions/by-template/${templateId}/${date}/save-as-workout`, {
       method: 'POST',
       body: JSON.stringify({ name }),
@@ -305,11 +308,13 @@ export default function WorkoutSession() {
     setDayName(null);
     setCurrentTemplateName(newName);
     try {
-      const res = await api(`/templates/${templateId}/name`, {
-        method: 'PUT',
-        body: JSON.stringify({ name: newName }),
+      // Queued (decision 10): offline the new name shows now and syncs later.
+      const id = Number(templateId);
+      const result = await queueEdit({
+        path: `/templates/${id}/name`, method: 'PUT', body: { name: newName },
+        patch: { kind: 'templateRename', id, name: newName },
       });
-      const saved = res?.name || newName;
+      const saved = (result.outcome === 'sent' && result.data?.name) || newName;
       setCurrentTemplateName(saved);
       // Keep the session snapshot in step so auto-save writes the new name.
       setTemplate((prev) => (prev ? { ...prev, name: saved } : prev));
