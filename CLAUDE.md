@@ -12,6 +12,14 @@ questions and answers in its decision log.
 Its **To-do** section lists what's left after the 2026-10-11 website release (merge `zod-validation`
 on or after 2026-10-14, manual and device checks). Remind Will of open items there.
 
+## Keep in sync: trainer workout template
+
+The trainer spreadsheet template (Excel/Google Sheets), the app's workout fields (workout session,
+Create/Edit Workout), the Trainer Central upload importer, and the future Trainer Central
+"Create a Workout / Program" web page must always match, so a filled-out sheet uploads straight into
+the app. When you change workout/exercise/program fields or options in any of them, update all of
+them — see `docs/trainer-workout-template.md`.
+
 ## Next project: functionality improvement plan
 
 `docs/functionality-improvement-plan.md` — replace hand-built backend code with tested libraries,
