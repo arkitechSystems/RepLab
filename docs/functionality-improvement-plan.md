@@ -78,7 +78,7 @@ Add new questions and answers to the decision log.
 | Step | Status |
 |---|---|
 | 1. Audit fix + Dependabot | Built on branch `deps-audit` (0507e2c), tests pass; push needs the GitHub `workflow` permission; merge needs Will |
-| 2. Playwright | Not started |
+| 2. Playwright | Built on branch `playwright` (2aa1764, 318248f, 1eecb19), pushed; 10 e2e tests pass (20/20 over 2 runs), server 127/127 with the test DB, client 79/79. Found + fixed: fresh DB could not be built; offline sets lost if the app closed within 1s. Merge needs Will |
 | 3. pg-boss | Not started |
 | 4. node-pg-migrate | Not started |
 | 5. Finish Zod | Waiting on `zod-validation` merge (on/after 2026-10-14) |
@@ -91,3 +91,6 @@ Add new questions and answers to the decision log.
 | 2 | 2026-10-11 | Rewrite auth or db.js? | No (see "Not planned") |
 | 3 | 2026-10-11 | Playwright test database | Recommended: Postgres in Docker (Docker Desktop already installed); never production |
 | 4 | 2026-10-11 | Audit items left on purpose | Server `uuid` (inside firebase-admin / exceljs; only affects calls with a buffer argument, and the forced fix downgrades Firebase). Client `@grpc/grpc-js` via firebase (server-side gRPC issues, never runs in the app). Client `react-router` 6 (open redirect needs user-controlled links; the other issue is SSR-only) → follow-up: React Router 7 upgrade. Client build/test tools (vite 5 / esbuild, vitest 3 / tinypool, tailwind 3 / braces) never ship → follow-up: client Vite + Vitest upgrade. |
+| 5 | 2026-10-12 | Playwright test database | Postgres 16 in Docker (`replab-e2e-db`, port 5433), wiped every run; tests live in `e2e/` (own package.json). Setup in `e2e/README.md`. Running it in GitHub Actions is a later option. |
+| 6 | 2026-10-12 | Found by Playwright: offline set lost on quick close | Queued saves were stored on the 1-second throttle. Now written to the phone on every change (client/src/queries/queryClient.js `persistQueuedSavesImmediately`). Calendar offline test now simulates a real restart. |
+| 7 | 2026-10-12 | Found by the test DB: a new database could not be built | schema.sql referenced `exercises` before creating it; initDb indexed `challenge_entries` before creating it; duplicate Nordic Hamstring Curl seed. Fixed; existing databases unaffected. Matters for node-pg-migrate (step 4). |
