@@ -8,6 +8,7 @@ import pool from '../dbPool.js';
 import config from '../config.js';
 import { syncFromWger } from '../syncExercises.js';
 import { exerciseCardScript } from '../exerciseCardBuilder.js';
+import { rowsToXlsxBuffer } from '../xlsxExport.js';
 import { DASHBOARD_CSS, ICONS } from '../dashboardCSS.js';
 import { evaluateAndMaybeNotify as evaluateStreakReminder } from '../streakReminderScheduler.js';
 
@@ -5610,7 +5611,6 @@ router.get('/exercise-library', adminAuth, async (req, res) => {
 // GET /admin/exercise-library/export.xlsx — Download exercise master list as .xlsx
 router.get('/exercise-library/export.xlsx', adminAuth, async (req, res) => {
   try {
-    const XLSX = await import('xlsx');
     // The `programs` subquery aggregates the library programs (user_id IS NULL)
     // that reference each exercise name, joining program_name_abbreviations so
     // we ship the short name when one exists and fall back to the full name
@@ -5665,15 +5665,6 @@ router.get('/exercise-library/export.xlsx', adminAuth, async (req, res) => {
       programs: r.programs || '',
     }));
 
-    const ws = XLSX.utils.json_to_sheet(sheetRows, {
-      header: ['id', 'name', 'muscle_group', 'is_custom', 'tags', 'video_id', 'has_video', 'pr_count', 'programs'],
-    });
-    ws['!cols'] = [
-      { wch: 6 }, { wch: 40 }, { wch: 18 }, { wch: 10 },
-      { wch: 24 }, { wch: 14 }, { wch: 10 }, { wch: 10 }, { wch: 50 },
-    ];
-    ws['!freeze'] = { xSplit: 0, ySplit: 1 };
-
     // Sheet 2: orphan PR rows — personal_bests with no matching exercises
     // row. Now identified via exercise_id IS NULL (the canonical FK), which
     // also catches rows whose exercise was deleted post-creation (the FK
@@ -5695,16 +5686,22 @@ router.get('/exercise-library/export.xlsx', adminAuth, async (req, res) => {
       distinct_users: r.distinct_users,
       latest_achieved_at: r.latest_achieved_at ? new Date(r.latest_achieved_at).toISOString().slice(0, 10) : '',
     }));
-    const ws2 = XLSX.utils.json_to_sheet(orphanRows, {
-      header: ['exercise_name', 'pr_count', 'distinct_users', 'latest_achieved_at'],
-    });
-    ws2['!cols'] = [{ wch: 40 }, { wch: 10 }, { wch: 14 }, { wch: 18 }];
-    ws2['!freeze'] = { xSplit: 0, ySplit: 1 };
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Exercises');
-    XLSX.utils.book_append_sheet(wb, ws2, 'Orphan PRs');
-    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    const buf = await rowsToXlsxBuffer([
+      {
+        name: 'Exercises',
+        rows: sheetRows,
+        header: ['id', 'name', 'muscle_group', 'is_custom', 'tags', 'video_id', 'has_video', 'pr_count', 'programs'],
+        widths: [6, 40, 18, 10, 24, 14, 10, 10, 50],
+        freezeHeader: true,
+      },
+      {
+        name: 'Orphan PRs',
+        rows: orphanRows,
+        header: ['exercise_name', 'pr_count', 'distinct_users', 'latest_achieved_at'],
+        widths: [40, 10, 14, 18],
+        freezeHeader: true,
+      },
+    ]);
 
     const ts = new Date().toISOString().slice(0, 10);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -7638,7 +7635,6 @@ router.get('/backup', adminAuth, async (req, res) => {
 
   if (isExcel) {
     try {
-      const XLSX = await import('xlsx');
 
       // Fetch all raw tables
       const usersR = await pool.query(`SELECT id, email, first_name, last_name, phone, plan, created_at FROM users ORDER BY id`);
@@ -7728,20 +7724,19 @@ router.get('/backup', adminAuth, async (req, res) => {
         { Instructions: '- "Show PR history timeline for a specific user"' },
       ];
 
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(claudePrompt), 'Claude Prompt');
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(joinedRows), 'Session Report');
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(pbJoined), 'Personal Bests');
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(usersR.rows), 'Users');
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(programsR.rows), 'Programs');
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(templatesR.rows), 'Templates');
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(templateExR.rows), 'Template Exercises');
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sessionsR.rows), 'Sessions');
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(entriesR.rows), 'Session Entries');
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(scheduleR.rows), 'Schedule');
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(metricsR.rows), 'User Metrics');
-
-      const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+      const buf = await rowsToXlsxBuffer([
+        { name: 'Claude Prompt', rows: claudePrompt },
+        { name: 'Session Report', rows: joinedRows },
+        { name: 'Personal Bests', rows: pbJoined },
+        { name: 'Users', rows: usersR.rows },
+        { name: 'Programs', rows: programsR.rows },
+        { name: 'Templates', rows: templatesR.rows },
+        { name: 'Template Exercises', rows: templateExR.rows },
+        { name: 'Sessions', rows: sessionsR.rows },
+        { name: 'Session Entries', rows: entriesR.rows },
+        { name: 'Schedule', rows: scheduleR.rows },
+        { name: 'User Metrics', rows: metricsR.rows },
+      ]);
       const ct = new Date().toLocaleString('en-US', { timeZone: 'UTC', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true }).replace(/[/,:\s]+/g, '-').replace(/-+/g, '-');
       res.setHeader('Content-Disposition', `attachment; filename="replab-report-${ct}.xlsx"`);
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
