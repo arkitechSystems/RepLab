@@ -3,6 +3,7 @@
 // docs/tanstack-query-migration.md.
 import { QueryClient } from '@tanstack/react-query';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
+import { persistQueryClientSave } from '@tanstack/react-query-persist-client';
 import { get, set, del } from 'idb-keyval';
 import { onApiCacheClear, onApiWrite, setRetryingCount, reportConnectionFailure } from '../api';
 
@@ -75,6 +76,30 @@ export function createPersister() {
 }
 
 export const persister = createPersister();
+
+// The persister above writes at most once a second. That's fine for saved
+// copies, but a set logged offline must survive the app closing right after
+// the tap (found by the Playwright offline test: reload within a second lost
+// the set). So whenever a save is queued, sent or dropped, write straight
+// away — a sent save also leaves storage at once, so it can't be re-sent
+// after a quick restart. Several changes in one tick share one write.
+export function persistQueuedSavesImmediately(client, options) {
+  const now = createAsyncStoragePersister({
+    storage: { getItem: get, setItem: set, removeItem: del },
+    key: 'replab-query-cache',
+    throttleTime: 0,
+  });
+  let scheduled = false;
+  return client.getMutationCache().subscribe((event) => {
+    if (event.type !== 'updated' && event.type !== 'removed') return;
+    if (scheduled) return;
+    scheduled = true;
+    queueMicrotask(() => {
+      scheduled = false;
+      persistQueryClientSave({ ...options, persister: now, queryClient: client }).catch(() => {});
+    });
+  });
+}
 
 export const persistOptions = {
   persister,
