@@ -9,11 +9,12 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.79.0",
+    "@anthropic-ai/sdk": "^0.133.0",
     "@sentry/node": "^10.47.0",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
+    "exceljs": "^4.4.0",
     "express": "^4.21.1",
     "express-rate-limit": "^8.3.1",
     "firebase-admin": "^13.8.0",
@@ -23,12 +24,11 @@
     "pg": "^8.18.0",
     "resend": "^4.8.0",
     "stripe": "^20.4.1",
-    "xlsx": "^0.18.5",
     "xss": "^1.0.15"
   },
   "devDependencies": {
-    "exceljs": "^4.4.0",
     "supertest": "^7.2.2",
-    "vitest": "^4.1.4"
+    "vitest": "^5.0.3",
+    "xlsx": "^0.18.5"
   }
 }
