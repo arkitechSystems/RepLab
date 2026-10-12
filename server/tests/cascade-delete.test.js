@@ -87,9 +87,13 @@ const DEPENDENT_TABLES = [
 //   (UNIQUE), not the user FK. Deleting the user nulls the link so the email
 //   row survives as a standalone waitlist entry. This matches the FK's
 //   ON DELETE SET NULL.
+// - app_installs.user_id: an install record (platform + app version, no
+//   personal data) still counts the install; deleting the user only unlinks
+//   it. Matches the FK's ON DELETE SET NULL.
 const PRESERVE_BUT_NULL = [
   ['exercises', 'created_by'],
   ['pro_waiting_list', 'user_id'],
+  ['app_installs', 'user_id'],
 ];
 
 const describeIfDb = HAS_DB ? describe : describe.skip;
@@ -106,7 +110,7 @@ describeIfDb('db.deleteUser cascade (integration)', () => {
   // keep row, sever linkage). They have no user FK left after the test, so
   // afterAll has to remove them explicitly or each run leaves debris.
   // Map of table → array of row ids to delete on teardown.
-  const preserveButNullRowsToCleanup = { exercises: [], pro_waiting_list: [] };
+  const preserveButNullRowsToCleanup = { exercises: [], pro_waiting_list: [], app_installs: [] };
 
   beforeAll(async () => {
     // Import lazily — dbPool.js opens a connection at module load.
@@ -413,6 +417,28 @@ describeIfDb('db.deleteUser cascade (integration)', () => {
     const waitlistRowId = waitRows[0].id;
     preserveButNullRowsToCleanup.pro_waiting_list.push(waitlistRowId);
 
+    // user_identities — Google/Apple sign-in link, CASCADEd.
+    await pool.query(
+      `INSERT INTO user_identities (user_id, provider, provider_uid, email)
+       VALUES ($1, 'google', $2, $3)`,
+      [testUserId, `cascade-uid-${uniqueSuffix}`, `cascade-identity-${uniqueSuffix}@example.com`]
+    );
+
+    // exercise_favorites — a saved exercise, CASCADEd.
+    await pool.query(
+      `INSERT INTO exercise_favorites (user_id, exercise_id) VALUES ($1, $2)`,
+      [testUserId, customExerciseId]
+    );
+
+    // app_installs — preserved-but-NULLed.
+    const { rows: installRows } = await pool.query(
+      `INSERT INTO app_installs (install_id, platform, user_id)
+       VALUES ($1, 'ios', $2) RETURNING id`,
+      [`cascade-install-${uniqueSuffix}`, testUserId]
+    );
+    const installRowId = installRows[0].id;
+    preserveButNullRowsToCleanup.app_installs.push(installRowId);
+
     // -- 3. Sanity check: confirm setup populated every table.
     for (const [table, col] of DEPENDENT_TABLES) {
       const { rowCount } = await pool.query(
@@ -458,6 +484,7 @@ describeIfDb('db.deleteUser cascade (integration)', () => {
     const preservedRowIds = {
       exercises: customExerciseId,
       pro_waiting_list: waitlistRowId,
+      app_installs: installRowId,
     };
     for (const [table, col] of PRESERVE_BUT_NULL) {
       const rowId = preservedRowIds[table];

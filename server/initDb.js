@@ -301,7 +301,6 @@ export default async function initDb() {
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_reset_token ON users(reset_token) WHERE reset_token IS NOT NULL`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_exercises_created_by ON exercises(created_by)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_feedback_user_id ON feedback(user_id)`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_challenge_entries_user_challenge ON challenge_entries(user_id, challenge)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_ai_usage_user_id ON ai_usage(user_id)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON sessions(created_at)`);
 
@@ -678,6 +677,7 @@ export default async function initDb() {
     value INT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
   )`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_challenge_entries_user_challenge ON challenge_entries(user_id, challenge)`);
 
   // Native app installs (first launch of the iOS/Android app). Also defined in
   // schema.sql; repeated here so existing DBs pick it up via the migration path.

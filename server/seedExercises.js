@@ -214,7 +214,6 @@ const SEED_EXERCISES = [
   { name: 'Inverted Row', muscle: 'Back', tags: ['pull', 'horizontal', 'bodyweight', 'compound'] },
   { name: 'Push Press', muscle: 'Shoulders', tags: ['press', 'vertical', 'barbell', 'compound', 'explosive'] },
   { name: 'Glute-Ham Raise', muscle: 'Hamstrings', tags: ['compound', 'machine', 'bodyweight', 'glutes'] },
-  { name: 'Nordic Hamstring Curl', muscle: 'Hamstrings', tags: ['compound', 'bodyweight', 'eccentric'] },
 
   // === CORE additions ===
   { name: 'Pallof Press', muscle: 'Core', tags: ['anti-rotation', 'cable', 'isolation', 'stability'] },
