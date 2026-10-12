@@ -61,6 +61,9 @@ Add new questions and answers to the decision log.
 - Steps 3–5 can overlap with this one route group at a time.
 
 ### Later / smaller (after the above)
+- **Client Vite + Vitest upgrade** (dev tools only; clears the remaining dev-only audit items).
+- **React Router 6 → 7** (clears the moderate react-router advisory).
+- **Firebase 13** — evaluate carefully (sign-in on iOS/Android).
 - **Helmet** — standard security headers (the server sets a few by hand in `index.js`).
 - **pino + pino-http** — structured logs with a request ID per request.
 - **Express 5** — async route errors handled automatically.
@@ -74,7 +77,7 @@ Add new questions and answers to the decision log.
 
 | Step | Status |
 |---|---|
-| 1. Audit fix + Dependabot | Not started |
+| 1. Audit fix + Dependabot | Built on branch `deps-audit` (0507e2c), tests pass; push needs the GitHub `workflow` permission; merge needs Will |
 | 2. Playwright | Not started |
 | 3. pg-boss | Not started |
 | 4. node-pg-migrate | Not started |
@@ -86,3 +89,5 @@ Add new questions and answers to the decision log.
 |---|---|---|---|
 | 1 | 2026-10-11 | Order of work | Audit fix → Playwright → pg-boss → node-pg-migrate → finish Zod; then Helmet/pino/Express 5 |
 | 2 | 2026-10-11 | Rewrite auth or db.js? | No (see "Not planned") |
+| 3 | 2026-10-11 | Playwright test database | Recommended: Postgres in Docker (Docker Desktop already installed); never production |
+| 4 | 2026-10-11 | Audit items left on purpose | Server `uuid` (inside firebase-admin / exceljs; only affects calls with a buffer argument, and the forced fix downgrades Firebase). Client `@grpc/grpc-js` via firebase (server-side gRPC issues, never runs in the app). Client `react-router` 6 (open redirect needs user-controlled links; the other issue is SSR-only) → follow-up: React Router 7 upgrade. Client build/test tools (vite 5 / esbuild, vitest 3 / tinypool, tailwind 3 / braces) never ship → follow-up: client Vite + Vitest upgrade. |
