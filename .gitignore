@@ -34,3 +34,7 @@ _backups/
 
 # Local caches for one-off scripts (video audit etc.)
 server/scripts/.cache/
+
+# Playwright end-to-end test output
+e2e/test-results/
+e2e/playwright-report/
