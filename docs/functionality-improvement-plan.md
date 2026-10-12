@@ -77,7 +77,7 @@ Add new questions and answers to the decision log.
 
 | Step | Status |
 |---|---|
-| 1. Audit fix + Dependabot | Built on branch `deps-audit` (0507e2c), tests pass; push needs the GitHub `workflow` permission; merge needs Will |
+| 1. Audit fix + Dependabot | Branch `deps-audit` (0507e2c) pushed; PR #1 open, CI passes (server + client). Merge needs Will — plan: a few days after Zod (on/after 2026-10-14); Capacitor 8.5.3 then needs iOS/Android builds + device check |
 | 2. Playwright | Built on branch `playwright` (2aa1764, 318248f, 1eecb19), pushed; 10 e2e tests pass (20/20 over 2 runs), server 127/127 with the test DB, client 79/79. Found + fixed: fresh DB could not be built; offline sets lost if the app closed within 1s. Merge needs Will |
 | 3. pg-boss | Not started |
 | 4. node-pg-migrate | Not started |
