@@ -65,3 +65,17 @@ Where the app's options live (keep the template's lists equal to these):
 - **Exercise Library**: A ID, B Exercise, C Muscle Group, D Demo Video.
 - **Lists** (hidden): dropdown sources, label ↔ key maps, J2 = template version.
 - Importer should only trust the data cells, not the Check formulas, and re-check everything.
+
+## Planned (2026-10-11): Program Builder web page + features both sides must get
+
+Design brief for Claude Design: `docs/claude-design-program-builder-prompt.md`. Under the sync
+rule, these also need to reach the spreadsheet template and the importer:
+- **Split** presets (Full Body, Upper/Lower, PPL, Bro Split, Custom) and a **cycle** (repeats every
+  1 week, 2 weeks, or N days); fill the first cycle, later weeks fill automatically.
+- Type workout names / Rest straight into calendar days; click a day to open its workout.
+- **Auto-Progression** rules: weight / reps / sets, by % or fixed amount, every week / cycle /
+  session, scoped to program / workout / exercise / muscle group, optional rep cap (double
+  progression) and deload; trainer overrides kept.
+- **Rounding** to loadable increments by equipment (barbell / Smith / trap bar 5 lb, dumbbell 5 lb
+  or 2.5 lb under 25 lb, machine/cable 5 lb, bodyweight → progress reps), overridable per exercise,
+  applied to the running total from the starting weight so small % increases still add up.
