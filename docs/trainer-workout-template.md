@@ -46,17 +46,21 @@ Where the app's options live (keep the template's lists equal to these):
 |---|---|---|
 | 1 | Macros for green/red sheets? | **No macros.** Formulas + conditional formatting only (VBA doesn't run in Google Sheets; Apps Script would need a scary "unverified app" prompt and not work in Excel). Each sheet has a green "FILL OUT" / red "NOT NEEDED" banner, and the Start sheet lists every sheet in green/red. Tab colors can't change automatically. |
 | 2 | Program layout | **Workout sheets + weekly grid.** 12 "Workout N" sheets (each distinct workout written once) + a Schedule sheet: Week 1–52 × Day 1–7, each cell a workout name or REST. |
-| 3 | Sets entry | **Row per set group:** Exercise, Set Type, Sets, Goal Reps, Goal Weight. Consecutive rows of the same exercise = one exercise in the app. Sets/reps/weight are the GOAL columns, not actuals. |
+| 3 | Sets entry | First built as one row per set group; **changed same day at Will's request to exercise cards that look like the workout session**: exercise on top, one row per set below it (Set, Type, Goal Wt, Goal Reps, Rep Range). Sets/reps/weight are the GOAL columns, not actuals. |
 | 4 | Exercise list | Live library pulled from the production DB (read only, approved). 318 exercises on 2026-10-11. Library dropdown + separate Custom Exercise and Custom Muscle Group columns. |
 
 ## Layout (v1) — what the importer reads
 
 - **Start**: C4 Single Workout | Program; C5 program name; C6 description; C7 program type
   (label); C8 weeks; C9 number of different workouts; C10 created by.
-- **Workout 1–12**: C3 workout name, H3 workout notes; exercise rows 7–56: B Section Header,
-  C Library Exercise, D Custom Exercise, E Custom Muscle Group, F Superset letter, G Set Type
-  (label; blank = Regular, or Super Set when F is set), H Sets, I Goal Reps, J Rep Range,
-  K Goal Weight (lbs), L Coach Notes, M Check (formula). Hidden O1 = FILL/SKIP, O2 = problem count.
+- **Workout 1–12** (exercise cards, like the session screen): C3 workout name, C4 workout notes,
+  G3 workout check. 15 cards; card n starts at row k = 6 + (n−1)×14:
+  k: C section title (optional), E section notes · k+1: C library exercise (dark bar), G card check ·
+  k+2: C custom exercise, E custom muscle group · k+3: C superset letter, E coach notes ·
+  k+4: column titles · k+5…k+12: sets 1–8 — C Type (label; blank = Regular, or Super Set when a
+  superset letter is set), D Goal Wt (lbs), E Goal Reps, F Rep Range; a set counts when Goal Reps
+  is filled · k+13 spacer. Hidden: O1 = FILL/SKIP, O2 = problem count, P = superset helper,
+  Q = set-missing-reps helper.
 - **Schedule**: rows 6–57 = weeks 1–52, B–H = Day 1–7 (workout name or REST), I Check.
 - **Exercise Library**: A ID, B Exercise, C Muscle Group, D Demo Video.
 - **Lists** (hidden): dropdown sources, label ↔ key maps, J2 = template version.
