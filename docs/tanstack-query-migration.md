@@ -12,7 +12,9 @@ Decisions below are settled. Add new questions and answers to the decision log a
 Claude: remind Will of any open item here at the start of a session.
 
 - [ ] **Merge `zod-validation` into `main`** — on or after **2026-10-14**, once the website has been
-  quiet. Will chose to wait so a problem can be traced to TanStack or to Zod (2026-10-11). Ask Will
+  quiet. Will chose to wait so a problem can be traced to TanStack or to Zod (2026-10-11). On
+  2026-10-13 Will added: hold until he has logged some workouts on the website himself (he is the
+  only active website user; other users are on the iOS app, which is unaffected). Ask Will
   before merging; it deploys the website. This merge also brings the two Android files from
   `npx cap sync android` (network plugin) onto `main`.
 - [ ] **Then merge the improvement-plan branches, a few quiet days apart** (order Will chose
