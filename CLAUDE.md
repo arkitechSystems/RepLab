@@ -2,6 +2,10 @@
 
 Monorepo: `client/` (React 18 + Vite + Tailwind, Capacitor iOS/Android) and `server/` (Express + PostgreSQL on Render). `npm run dev` at the root runs both.
 
+Local development uses the Docker database `replab-dev-db` (port 5435), not production — see
+`docs/local-dev-database.md`. Production's URL is in `server/.env.production-db`; never point
+`server/.env` back at production, and production database reads/writes need Will's OK.
+
 ## Active project: TanStack Query migration
 
 Work happens on the `tanstack-query` branch. The save point before it is tag `pre-tanstack-query` (commit `0e5bb7f`).

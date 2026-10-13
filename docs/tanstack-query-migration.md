@@ -25,9 +25,8 @@ Claude: remind Will of any open item here at the start of a session.
   5. `node-pg-migrate` (about 2026-10-26); first deploy logs `[migrate]` and records the baseline
      in `pgmigrations` without changing anything
   6. `zod-routes` (about 2026-10-29); checks request bodies on the remaining routes
-- [ ] **Will: decide on a local dev database** — `server/.env` points `npm run dev` at production,
-  so running a branch locally applies its database migrations to production early (see the
-  functionality plan, decision 13).
+- [x] **Local dev database** — done 2026-10-13: `npm run dev` uses Docker `replab-dev-db`, not
+  production (docs/local-dev-database.md).
 - [ ] **Will: manual website checks** — on replab-fitness.com, log sets, go Offline in DevTools,
   log a set and edit the calendar, go back online, confirm "All changes synced" and the changes
   survive a refresh.
