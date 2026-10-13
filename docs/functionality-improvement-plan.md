@@ -81,7 +81,7 @@ Add new questions and answers to the decision log.
 |---|---|
 | 1. Audit fix + Dependabot | Branch `deps-audit` (0507e2c) pushed; PR #1 open, CI passes (server + client). Merge needs Will — plan: a few days after Zod (on/after 2026-10-14); Capacitor 8.5.3 then needs iOS/Android builds + device check |
 | 2. Playwright | Built on branch `playwright` (2aa1764, 318248f, 1eecb19), pushed; 10 e2e tests pass (20/20 over 2 runs), server 127/127 with the test DB, client 79/79. Found + fixed: fresh DB could not be built; offline sets lost if the app closed within 1s. Merge needs Will |
-| 3. pg-boss | Not started |
+| 3. pg-boss | Built on branch `pg-boss` (01826be), pushed. 5 timers now pg-boss jobs; server 132/132 (+6 DB tests pass with the test DB, apart from the 2 cascade tests fixed on `playwright`); two local servers on one DB ran each job exactly once per slot for 22 min. Found + fixed: daily summary marked sent when Resend failed. Merge needs Will (after `playwright`), Node 22 pin |
 | 4. node-pg-migrate | Not started |
 | 5. Finish Zod | Waiting on `zod-validation` merge (on/after 2026-10-14) |
 
@@ -96,3 +96,6 @@ Add new questions and answers to the decision log.
 | 5 | 2026-10-12 | Playwright test database | Postgres 16 in Docker (`replab-e2e-db`, port 5433), wiped every run; tests live in `e2e/` (own package.json). Setup in `e2e/README.md`. Running it in GitHub Actions is a later option. |
 | 6 | 2026-10-12 | Found by Playwright: offline set lost on quick close | Queued saves were stored on the 1-second throttle. Now written to the phone on every change (client/src/queries/queryClient.js `persistQueuedSavesImmediately`). Calendar offline test now simulates a real restart. |
 | 7 | 2026-10-12 | Found by the test DB: a new database could not be built | schema.sql referenced `exercises` before creating it; initDb indexed `challenge_entries` before creating it; duplicate Nordic Hamstring Curl seed. Fixed; existing databases unaffected. Matters for node-pg-migrate (step 4). |
+| 8 | 2026-10-13 | pg-boss version / Node | pg-boss 12 (current) needs Node 22.12+. Production's Node version isn't visible outside the admin page, so `package.json` now pins `"node": "22.x"` (same as CI; Node 20 is end-of-life). Check the Render deploy log says Node 22 after the merge. |
+| 9 | 2026-10-13 | How the jobs run | Same work, same cadence, cron in UTC: daily summary `*/10`, idle sessions `*/15`, daily reminder `*/15`, weekly summary `*/30`, Community applause `* * * * *`. Queue policy `stately` (one running + one waiting per job across all servers), 2 retries, 15-min timeout, 7 days of history in the `pgboss` schema. `BACKGROUND_JOBS=timers` (Render env var) switches back to the old timers without a code change; they also start if pg-boss can't. node-pg-migrate (step 4) must leave the `pgboss` schema alone. |
+| 10 | 2026-10-13 | Found: daily summary marked sent when the email failed | `sendDailySummaryEmail` swallowed Resend errors, so a failed day was recorded as sent and never retried. Now it throws; the job retries and the admin "send now" button shows the error. |
