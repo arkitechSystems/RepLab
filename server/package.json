@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "node --watch --env-file=.env index.js",
     "start": "node index.js",
-    "test": "vitest run"
+    "test": "vitest run",
+    "migrate:create": "node scripts/migrate-cli.js create",
+    "migrate:up": "node scripts/migrate-cli.js up",
+    "migrate:down": "node scripts/migrate-cli.js down"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.79.0",
@@ -19,6 +22,7 @@
     "firebase-admin": "^13.8.0",
     "jose": "^6.2.12",
     "jsonwebtoken": "^9.0.2",
+    "node-pg-migrate": "^9.0.0",
     "pdfkit": "^0.18.0",
     "pg": "^8.18.0",
     "resend": "^4.8.0",

@@ -1,116 +1,31 @@
-import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
 import pool from './dbPool.js';
 import SEED_EXERCISES from './seedExercises.js';
+import { runMigrations } from './migrate.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// Runs on every server start:
+//   1. Structure: node-pg-migrate applies any new migrations in db-migrations/
+//      (tables, columns, indexes). Until 2026-10 this file re-ran ~150
+//      CREATE/ALTER statements on every boot; those now live in the baseline
+//      migration, and every later change is a new migration file.
+//   2. Data: the library seeds and one-time data fixes below. Each is safe to
+//      run again — it does nothing once applied. They run under a database
+//      lock, so while two servers overlap during a deploy the second waits
+//      instead of seeding or fixing the same rows at the same time.
+const DATA_STEPS_LOCK = 724100; // any fixed number, unique to this lock
 
 export default async function initDb() {
-  // Run schema
-  const schema = readFileSync(join(__dirname, 'schema.sql'), 'utf-8');
-  await pool.query(schema);
+  await runMigrations();
+  const lock = await pool.connect();
+  try {
+    await lock.query('SELECT pg_advisory_lock($1)', [DATA_STEPS_LOCK]);
+    await applyDataSteps();
+  } finally {
+    await lock.query('SELECT pg_advisory_unlock($1)', [DATA_STEPS_LOCK]).catch(() => {});
+    lock.release();
+  }
+}
 
-  // Migrations
-  // Public 5-digit account identifier (distinct from the SERIAL id).
-  // Sequence seeded at 23231; existing users are backfilled by
-  // add-account-ids-starting-at-23231.js (idempotent).
-  await pool.query(`CREATE SEQUENCE IF NOT EXISTS users_account_id_seq START 23231`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS account_id INT UNIQUE`);
-  await pool.query(`ALTER TABLE users ALTER COLUMN account_id SET DEFAULT nextval('users_account_id_seq')`);
-
-  // Coding Errors admin page (errorTracker.js): one row per distinct error,
-  // with a running count. status: open | fixed | ignored.
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS code_errors (
-      id SERIAL PRIMARY KEY,
-      fingerprint TEXT NOT NULL UNIQUE,
-      source TEXT NOT NULL,
-      kind TEXT NOT NULL,
-      name TEXT,
-      code TEXT,
-      message TEXT NOT NULL,
-      location TEXT,
-      route TEXT,
-      sample_stack TEXT,
-      context TEXT,
-      count INT NOT NULL DEFAULT 1,
-      first_seen TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      last_seen TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      last_user_id INT,
-      app_version TEXT,
-      status TEXT NOT NULL DEFAULT 'open',
-      reopened BOOLEAN NOT NULL DEFAULT FALSE,
-      note TEXT
-    )`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_code_errors_last_seen ON code_errors(last_seen DESC)`);
-
-  await pool.query(`ALTER TABLE programs ADD COLUMN IF NOT EXISTS description TEXT DEFAULT ''`);
-  await pool.query(`ALTER TABLE programs ADD COLUMN IF NOT EXISTS sort_order INT DEFAULT 0`);
-  await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS set_type TEXT DEFAULT 'straight'`);
-  await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS rep_range TEXT DEFAULT ''`);
-  await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS exercise_description TEXT DEFAULT ''`);
-  // Per-exercise overrides for Robin Gallant program (and future xlsx imports):
-  // video_url overrides the demo-button target; program_notes renders below the
-  // exercise card as a static program-provided note (separate from user notes).
-  await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS video_url TEXT DEFAULT ''`);
-  await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS program_notes TEXT DEFAULT ''`);
-  // Optional warm-up template attached to a workout. When set, the Begin
-  // Workout flow asks the user if they want to run the prehab routine first.
-  // is_prehab marks the template as a warm-up so the weekly view can hide it.
-  await pool.query(`ALTER TABLE templates ADD COLUMN IF NOT EXISTS prehab_template_id INT`);
-  await pool.query(`ALTER TABLE templates ADD COLUMN IF NOT EXISTS is_prehab BOOLEAN DEFAULT FALSE`);
-  await pool.query(`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS notes JSONB DEFAULT '{}'`);
-  await pool.query(`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS completed BOOLEAN DEFAULT FALSE`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT UNIQUE`);
-  await pool.query(`ALTER TABLE users ALTER COLUMN email DROP NOT NULL`);
-  // Google/Apple-only accounts have no password (see user_identities).
-  await pool.query(`ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name TEXT`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name TEXT`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS gender TEXT`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT UNIQUE`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_source TEXT`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code TEXT`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS plan TEXT DEFAULT 'Free'`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS signup_device TEXT`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS utm_source TEXT`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS utm_medium TEXT`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS utm_campaign TEXT`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS utm_content TEXT`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS utm_term TEXT`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS zip_code TEXT`);
-  // IANA timezone name captured on signup (e.g., 'America/Los_Angeles'). Used to
-  // format dates in the user's local calendar instead of assuming server time.
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS timezone TEXT DEFAULT 'UTC'`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS signup_city TEXT`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS signup_state TEXT`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMPTZ`);
-  // token_version is included in JWTs and compared in authMiddleware. Incremented
-  // on password change so existing tokens for that user become invalid.
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INT NOT NULL DEFAULT 0`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_end TIMESTAMPTZ`);
-
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_photo TEXT`);
-  await pool.query(`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS workout_data JSONB`);
-  // Per-day workout name (session pencil). Its own column rather than a key in
-  // workout_data so auto-save, which rewrites workout_data wholesale, can't
-  // clobber it. NULL = show the template's current name.
-  await pool.query(`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS custom_name TEXT`);
-  await pool.query(`ALTER TABLE session_entries ADD COLUMN IF NOT EXISTS is_completed BOOLEAN DEFAULT FALSE`);
-  // Smart cardio: Conditioning exercises log a per-set metric ('time' |
-  // 'distance' | 'reps') and its value; weight holds the machine setting
-  // (resistance / level / speed / damper) and reps stays 0.
-  await pool.query(`ALTER TABLE session_entries ADD COLUMN IF NOT EXISTS cardio_metric TEXT`);
-  await pool.query(`ALTER TABLE session_entries ADD COLUMN IF NOT EXISTS cardio_value NUMERIC`);
-  await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS is_section_header BOOLEAN DEFAULT FALSE`);
-  await pool.query(`ALTER TABLE template_exercises ADD COLUMN IF NOT EXISTS section_notes TEXT DEFAULT ''`);
-
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT`);
-
-  await pool.query(`ALTER TABLE programs ADD COLUMN IF NOT EXISTS program_type TEXT DEFAULT 'other'`);
+async function applyDataSteps() {
 
   // One-shot backfill: Robin Gallant's program was originally seeded as
   // 'hypertrophy'; reclassified to 'glute_focused' so it picks up the pink
@@ -140,212 +55,12 @@ export default async function initDb() {
     console.error('[initDb] backfillExerciseLibrary failed (non-fatal):', err.message);
   }
 
-  // Role column for trainer/client designation (admin-set)
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'client'`);
-
-  // Trainer-client relationship table
-  await pool.query(`CREATE TABLE IF NOT EXISTS trainer_clients (
-    id SERIAL PRIMARY KEY,
-    trainer_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    client_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(trainer_id, client_id)
-  )`);
-
-  // Trainer application table
-  await pool.query(`CREATE TABLE IF NOT EXISTS trainer_applications (
-    id SERIAL PRIMARY KEY,
-    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    message TEXT DEFAULT '',
-    status TEXT DEFAULT 'pending',
-    reviewed_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-  )`);
-
-  // One-time dedup pass for (user_id, lower(name)) duplicates — must run
-  // BEFORE the partial unique index below or index creation will fail on
-  // existing dupes. Idempotent: no-op when there are no duplicate groups.
-  // Reassigns templates of non-keeper programs to the lowest-id keeper, then
-  // deletes the non-keepers. Wrapped in a transaction so partial failure rolls
-  // back cleanly.
-  const dedupClient = await pool.connect();
-  try {
-    await dedupClient.query('BEGIN');
-    const { rows: dupGroups } = await dedupClient.query(`
-      SELECT user_id, lower(name) AS lname, MIN(id) AS keeper_id, array_agg(id ORDER BY id) AS all_ids
-      FROM programs
-      WHERE user_id IS NOT NULL
-      GROUP BY user_id, lower(name)
-      HAVING COUNT(*) > 1
-    `);
-    let mergedCount = 0;
-    for (const g of dupGroups) {
-      const losers = g.all_ids.filter((id) => id !== g.keeper_id);
-      if (losers.length === 0) continue;
-      await dedupClient.query(
-        `UPDATE templates SET program_id = $1 WHERE program_id = ANY($2::int[])`,
-        [g.keeper_id, losers]
-      );
-      await dedupClient.query(
-        `DELETE FROM programs WHERE id = ANY($1::int[])`,
-        [losers]
-      );
-      mergedCount += losers.length;
-    }
-    await dedupClient.query(`
-      CREATE UNIQUE INDEX IF NOT EXISTS idx_programs_user_lower_name
-      ON programs(user_id, lower(name))
-      WHERE user_id IS NOT NULL
-    `);
-    await dedupClient.query('COMMIT');
-    if (mergedCount > 0) {
-      console.log(`[initDb] Merged ${mergedCount} duplicate program(s)`);
-    }
-  } catch (err) {
-    try { await dedupClient.query('ROLLBACK'); } catch (_) {}
-    console.error('[initDb] program dedup/index failed:', err);
-  } finally {
-    dedupClient.release();
-  }
-
-  // Indexes for common queries
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_programs_user_id ON programs(user_id)`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_templates_user_id ON templates(user_id)`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_templates_program_id ON templates(program_id)`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_template_exercises_template_id ON template_exercises(template_id)`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id)`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_sessions_user_template_date ON sessions(user_id, template_id, date)`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_session_entries_session_id ON session_entries(session_id)`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_personal_bests_user_template ON personal_bests(user_id, template_id)`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_personal_bests_lookup ON personal_bests(user_id, template_id, exercise_name, best_weight)`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_trainer_clients_trainer ON trainer_clients(trainer_id)`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_trainer_clients_client ON trainer_clients(client_id)`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_trainer_applications_user ON trainer_applications(user_id)`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_trainer_applications_status ON trainer_applications(status)`);
-
-  await pool.query(`CREATE TABLE IF NOT EXISTS page_visits (
-    id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(id) ON DELETE CASCADE,
-    path TEXT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-  )`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_page_visits_user ON page_visits(user_id)`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_page_visits_created ON page_visits(created_at)`);
-
-  await pool.query(`CREATE TABLE IF NOT EXISTS user_login_history (
-    id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(id) ON DELETE CASCADE,
-    email TEXT,
-    ip TEXT,
-    user_agent TEXT,
-    city TEXT,
-    state TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-  )`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_user_login_history_user ON user_login_history(user_id)`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_user_login_history_created ON user_login_history(created_at)`);
-
-  await pool.query(`CREATE TABLE IF NOT EXISTS shared_programs (
-    id SERIAL PRIMARY KEY,
-    source_program_id INT REFERENCES programs(id) ON DELETE SET NULL,
-    sender_id INT NOT NULL REFERENCES users(id),
-    recipient_id INT NOT NULL REFERENCES users(id),
-    copied_program_id INT REFERENCES programs(id) ON DELETE SET NULL,
-    status TEXT DEFAULT 'pending',
-    created_at TIMESTAMPTZ DEFAULT NOW()
-  )`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_shared_programs_recipient ON shared_programs(recipient_id, status)`);
-  // Every push notification send does `WHERE user_id = $1` on device_tokens;
-  // without this, it's a full-table scan per send.
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_device_tokens_user_id ON device_tokens(user_id)`);
-  // Admin analytics query COUNT(DISTINCT user_id) on sessions in a date range.
-  // idx_sessions_user_template_date doesn't cover created_at ranges.
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_sessions_user_created_at ON sessions(user_id, created_at)`);
-  // Stats endpoint filters PBs by user + achieved_at month boundary.
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_personal_bests_user_achieved ON personal_bests(user_id, achieved_at)`);
-
-  // Drop redundant indexes from earlier iterations:
-  // - idx_personal_bests_upsert duplicates idx_personal_bests_lookup (same 4-col composite)
-  // - idx_schedule_days_user_day is dead weight (day_of_week column was replaced
-  //   by schedule_date; no query reads it anymore)
-  await pool.query(`DROP INDEX IF EXISTS idx_personal_bests_upsert`);
-  await pool.query(`DROP INDEX IF EXISTS idx_schedule_days_user_day`);
-
-  // Rewrite shared_programs FKs to cascade on user deletion. db.deleteUser
-  // already explicitly DELETEs these rows, but CASCADE is belt-and-suspenders
-  // for GDPR erasure — any future path that deletes a user row without going
-  // through db.deleteUser will still cleanly remove the shares.
-  await pool.query(`
-    DO $$
-    BEGIN
-      IF EXISTS (
-        SELECT 1 FROM information_schema.referential_constraints
-        WHERE constraint_name = 'shared_programs_sender_id_fkey' AND delete_rule <> 'CASCADE'
-      ) THEN
-        ALTER TABLE shared_programs DROP CONSTRAINT shared_programs_sender_id_fkey;
-        ALTER TABLE shared_programs ADD CONSTRAINT shared_programs_sender_id_fkey
-          FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE;
-      END IF;
-      IF EXISTS (
-        SELECT 1 FROM information_schema.referential_constraints
-        WHERE constraint_name = 'shared_programs_recipient_id_fkey' AND delete_rule <> 'CASCADE'
-      ) THEN
-        ALTER TABLE shared_programs DROP CONSTRAINT shared_programs_recipient_id_fkey;
-        ALTER TABLE shared_programs ADD CONSTRAINT shared_programs_recipient_id_fkey
-          FOREIGN KEY (recipient_id) REFERENCES users(id) ON DELETE CASCADE;
-      END IF;
-    END $$;
-  `);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_sessions_completed_lookup ON sessions(user_id, template_id) WHERE completed = TRUE`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_schedule_days_user_id ON schedule_days(user_id)`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_reset_token ON users(reset_token) WHERE reset_token IS NOT NULL`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_exercises_created_by ON exercises(created_by)`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_feedback_user_id ON feedback(user_id)`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_ai_usage_user_id ON ai_usage(user_id)`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON sessions(created_at)`);
-
-  // Unique constraints for upserts
-  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_schedule_days_user_day ON schedule_days(user_id, day_of_week)`);
-  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_personal_bests_upsert ON personal_bests(user_id, template_id, exercise_name, best_weight)`);
-
-  // Migration: add schedule_date column and drop NOT NULL on day_of_week
-  await pool.query(`ALTER TABLE schedule_days ADD COLUMN IF NOT EXISTS schedule_date DATE`);
-  await pool.query(`ALTER TABLE schedule_days ALTER COLUMN day_of_week DROP NOT NULL`);
-  // Clean up old day_of_week rows that don't have a schedule_date
+  // Clean up old day_of_week schedule rows that don't have a schedule_date
   await pool.query(`DELETE FROM schedule_days WHERE schedule_date IS NULL`);
-  // Ensure unique index exists for date-based scheduling
-  await pool.query(`DROP INDEX IF EXISTS idx_schedule_days_user_date`);
-  await pool.query(`CREATE UNIQUE INDEX idx_schedule_days_user_date ON schedule_days(user_id, schedule_date)`);
 
-  // Migration: add is_rest column to schedule_days for standalone rest days
-  await pool.query(`ALTER TABLE schedule_days ADD COLUMN IF NOT EXISTS is_rest BOOLEAN DEFAULT FALSE`);
-  // Set when the user taps Skip on the missed-workouts prompt, so that day is
-  // never offered again (the Calendar still shows it as Missed).
-  await pool.query(`ALTER TABLE schedule_days ADD COLUMN IF NOT EXISTS missed_skipped_at TIMESTAMPTZ`);
-
-  // Migration: add group_id to templates for linking repeated workouts across weeks
-  await pool.query(`ALTER TABLE templates ADD COLUMN IF NOT EXISTS group_id TEXT`);
-  // Migration: add is_featured flag to programs
-  await pool.query(`ALTER TABLE programs ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT FALSE`);
-
-  // Migration: device_tokens table for push notifications
-  await pool.query(`CREATE TABLE IF NOT EXISTS device_tokens (
-    id SERIAL PRIMARY KEY,
-    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    push_token TEXT NOT NULL UNIQUE,
-    platform TEXT DEFAULT 'ios',
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-  )`);
-
-  // Migration: short-name lookup for library programs. Display-only — the
-  // canonical full name stays on the programs row.
-  await pool.query(`CREATE TABLE IF NOT EXISTS program_name_abbreviations (
-    full_name TEXT PRIMARY KEY,
-    short_name TEXT NOT NULL
-  )`);
-  // Seed (idempotent — ON CONFLICT updates the short_name so editing a row
-  // here is the way to change a program's display abbreviation).
+  // Short-name lookup for library programs (display-only). Idempotent — ON
+  // CONFLICT updates the short_name so editing a row here is the way to
+  // change a program's display abbreviation.
   await pool.query(`
     INSERT INTO program_name_abbreviations (full_name, short_name) VALUES
       ('Will''s Hypertrophy Program',                              'Will''s Hypertrophy'),
@@ -359,47 +74,6 @@ export default async function initDb() {
       ('Katie Sonier''s 6-Week Glute Building Program',            'Katie''s Glutes')
     ON CONFLICT (full_name) DO UPDATE SET short_name = EXCLUDED.short_name
   `);
-
-  // Migration: trainer_sessions DB-backed session table (replaces in-memory Map
-  // so server restarts don't log every trainer out).
-  await pool.query(`CREATE TABLE IF NOT EXISTS trainer_sessions (
-    id SERIAL PRIMARY KEY,
-    token_hash TEXT UNIQUE NOT NULL,
-    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    expires_at TIMESTAMPTZ NOT NULL
-  )`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_trainer_sessions_token ON trainer_sessions(token_hash)`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_trainer_sessions_expires ON trainer_sessions(expires_at)`);
-
-  // Migration: password reset audit log. One row per reset request; used_at
-  // is populated when the token is consumed.
-  await pool.query(`CREATE TABLE IF NOT EXISTS password_reset_log (
-    id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(id) ON DELETE CASCADE,
-    token_hash TEXT NOT NULL,
-    requested_at TIMESTAMPTZ DEFAULT NOW(),
-    used_at TIMESTAMPTZ,
-    request_ip TEXT,
-    use_ip TEXT,
-    user_agent TEXT
-  )`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_password_reset_log_user ON password_reset_log(user_id)`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_password_reset_log_token ON password_reset_log(token_hash)`);
-
-  // Migration: account deletion confirmation tokens (web-based deletion flow,
-  // Google Play 2024 policy compliance). See schema.sql for design notes.
-  await pool.query(`CREATE TABLE IF NOT EXISTS account_deletion_tokens (
-    id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(id) ON DELETE CASCADE,
-    token_hash TEXT NOT NULL,
-    requested_at TIMESTAMPTZ DEFAULT NOW(),
-    expires_at TIMESTAMPTZ NOT NULL,
-    used_at TIMESTAMPTZ,
-    request_ip TEXT
-  )`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_account_deletion_tokens_user ON account_deletion_tokens(user_id)`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_account_deletion_tokens_hash ON account_deletion_tokens(token_hash)`);
 
   // Add WARM UP section header to "Leg 1 (anterior chain)" before Leg Press (one-time migration)
   const { rows: leg1Templates } = await pool.query(
@@ -430,62 +104,6 @@ export default async function initDb() {
       }
     }
   }
-
-  await pool.query(`CREATE TABLE IF NOT EXISTS trainer_login_history (
-    id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(id) ON DELETE CASCADE,
-    email TEXT,
-    ip TEXT,
-    user_agent TEXT,
-    city TEXT,
-    state TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-  )`);
-  await pool.query(`ALTER TABLE trainer_login_history ADD COLUMN IF NOT EXISTS city TEXT`);
-  await pool.query(`ALTER TABLE trainer_login_history ADD COLUMN IF NOT EXISTS state TEXT`);
-
-  // Workout invite support on shared_programs
-  await pool.query(`ALTER TABLE shared_programs ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'program'`);
-  await pool.query(`ALTER TABLE shared_programs ADD COLUMN IF NOT EXISTS template_id INT`);
-  await pool.query(`ALTER TABLE shared_programs ADD COLUMN IF NOT EXISTS message TEXT`);
-
-  await pool.query(`CREATE TABLE IF NOT EXISTS email_templates (
-    id SERIAL PRIMARY KEY,
-    name TEXT UNIQUE NOT NULL,
-    subject TEXT NOT NULL,
-    html TEXT NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-  )`);
-
-  await pool.query(`CREATE TABLE IF NOT EXISTS ai_usage (
-    id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(id),
-    input_tokens INT DEFAULT 0,
-    output_tokens INT DEFAULT 0,
-    model TEXT,
-    cost_cents NUMERIC DEFAULT 0,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-  )`);
-
-  // New tables for admin features
-  await pool.query(`CREATE TABLE IF NOT EXISTS feedback (
-    id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(id),
-    type TEXT NOT NULL,
-    message TEXT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-  )`);
-  await pool.query(`CREATE TABLE IF NOT EXISTS announcements (
-    id SERIAL PRIMARY KEY,
-    message TEXT NOT NULL,
-    active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-  )`);
-  await pool.query(`CREATE TABLE IF NOT EXISTS feature_flags (
-    key TEXT PRIMARY KEY,
-    enabled BOOLEAN DEFAULT FALSE,
-    description TEXT DEFAULT ''
-  )`);
 
   // Rename Face Pulls to Cable Warm Up in Will's Pull 1
   await pool.query(`
@@ -536,17 +154,7 @@ export default async function initDb() {
     ) AND sort_order IN (0, 1, 2, 3)
   `, ["Will's Pull 1", "Will's PPL"]);
 
-  // Exercises table + seed
-  await pool.query(`CREATE TABLE IF NOT EXISTS exercises (
-    id SERIAL PRIMARY KEY,
-    name TEXT NOT NULL,
-    muscle_group TEXT NOT NULL,
-    tags TEXT[] DEFAULT '{}',
-    is_custom BOOLEAN DEFAULT FALSE,
-    created_by INT REFERENCES users(id) ON DELETE SET NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-  )`);
-
+  // Seed the exercise library on a brand-new database.
   const { rows: exCount } = await pool.query('SELECT COUNT(*) FROM exercises');
   if (parseInt(exCount[0].count) === 0) {
     const client = await pool.connect();
@@ -567,76 +175,6 @@ export default async function initDb() {
       client.release();
     }
   }
-
-  // Video ID column for exercise YouTube videos
-  await pool.query(`ALTER TABLE exercises ADD COLUMN IF NOT EXISTS video_id TEXT`);
-  // Provenance of the video link: 'admin' (manual) or 'claude_code' (auto-linked
-  // via server/scripts/auto-link-videos.js). NULL = unknown (rows linked
-  // before this column existed). Admin dashboard exposes a dropdown so the
-  // admin can recategorize after reviewing — e.g. flip 'claude_code' to
-  // 'admin' once verified.
-  await pool.query(`ALTER TABLE exercises ADD COLUMN IF NOT EXISTS video_linked_by TEXT`);
-  // Program-specific variants (tempo/pause/drop-set versions etc.) stay in the
-  // DB so the programs that use them keep working, but are left out of the
-  // Exercise Library page. Exercise search/pickers still include them.
-  await pool.query(`ALTER TABLE exercises ADD COLUMN IF NOT EXISTS hidden_from_library BOOLEAN NOT NULL DEFAULT FALSE`);
-  // Demo-video review status, set from the admin Exercise Library page:
-  // 'checked' | 'good_enough' | 'needs_ai' | 'needs_video' | 'remove_video', NULL = not
-  // reviewed. When the column is first created, videos an admin linked by
-  // hand start out as 'checked' (one time only, so later edits stick).
-  const { rowCount: hasVideoReview } = await pool.query(
-    `SELECT 1 FROM information_schema.columns WHERE table_name = 'exercises' AND column_name = 'video_review'`
-  );
-  if (!hasVideoReview) {
-    await pool.query(`ALTER TABLE exercises ADD COLUMN IF NOT EXISTS video_review TEXT`);
-    await pool.query(`UPDATE exercises SET video_review = 'checked' WHERE video_linked_by = 'admin' AND video_id IS NOT NULL`);
-  }
-  // Per-user saved exercises (bookmark on ExerciseDetail). Cascades with both
-  // the user and the exercise.
-  await pool.query(`CREATE TABLE IF NOT EXISTS exercise_favorites (
-    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    exercise_id INT NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (user_id, exercise_id)
-  )`);
-
-  // Streak-reminder push de-dupe: track when we last pinged a given user so
-  // the scheduler doesn't double-send across overlapping ticks. 18h cooldown
-  // matches the daily-evening cadence.
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_streak_reminder_at TIMESTAMPTZ`);
-  // First-workout celebration push dedup. Set once when the user marks
-  // their first session complete; checked in postSessionPushes.notifyFirstWorkout
-  // so the welcome push fires exactly once per user.
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS welcomed_at TIMESTAMPTZ`);
-  // Weekly summary push cooldown. Set when the Sunday-evening scheduler
-  // sends the weekly digest; prevents re-firing within 7 days.
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_weekly_summary_at TIMESTAMPTZ`);
-
-  // Programs that run cardio acceleration between sets (Jim Stoppani-style
-  // conditioning). Opt-in per program; the WorkoutSession UI reads this flag
-  // to decide whether to render between-set cardio cards.
-  await pool.query(`ALTER TABLE programs ADD COLUMN IF NOT EXISTS cardio_acceleration_enabled BOOLEAN DEFAULT FALSE`);
-
-  // Rich program description surfaced as an expandable card at the top of
-  // the Browse Library weekly view. Flexible JSON so different programs can
-  // carry different field sets (goal, duration, equipment, overview, etc).
-  await pool.query(`ALTER TABLE programs ADD COLUMN IF NOT EXISTS program_details JSONB`);
-
-  // Optional phase label on templates (e.g. "Phase 1" / "Phase 2"). Used by
-  // the Browse Library weekly view to group weeks by phase.
-  await pool.query(`ALTER TABLE templates ADD COLUMN IF NOT EXISTS phase TEXT`);
-
-  // Idle-session push reminder tracking.
-  // last_activity_at: updated each time the user completes a set (or otherwise
-  // interacts with an in-progress session). reminder_sent_at: set when we
-  // push "You forgot to mark your workout complete." to make the send
-  // idempotent per session.
-  await pool.query(`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS last_activity_at TIMESTAMPTZ`);
-  await pool.query(`ALTER TABLE sessions ADD COLUMN IF NOT EXISTS reminder_sent_at TIMESTAMPTZ`);
-  // Partial index to make the reminder-checker sweep cheap.
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_sessions_idle_reminder ON sessions(last_activity_at) WHERE completed = FALSE AND reminder_sent_at IS NULL`);
-
-  console.log('Database schema initialized');
 
   // Seed default program if none exist
   const { rows } = await pool.query('SELECT COUNT(*) FROM programs');
@@ -668,94 +206,6 @@ export default async function initDb() {
   // seedWillsLegs2, seedWillsPush1, expandPPLto7Days, expandPPLto4Weeks)
   // are kept so the original program can still be re-imported manually
   // into a user's own workouts later if needed.
-
-  // Challenge entries table
-  await pool.query(`CREATE TABLE IF NOT EXISTS challenge_entries (
-    id SERIAL PRIMARY KEY,
-    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    challenge TEXT NOT NULL,
-    value INT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-  )`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_challenge_entries_user_challenge ON challenge_entries(user_id, challenge)`);
-
-  // Native app installs (first launch of the iOS/Android app). Also defined in
-  // schema.sql; repeated here so existing DBs pick it up via the migration path.
-  await pool.query(`CREATE TABLE IF NOT EXISTS app_installs (
-    id SERIAL PRIMARY KEY,
-    install_id TEXT NOT NULL UNIQUE,
-    platform TEXT NOT NULL,
-    app_version TEXT,
-    user_id INT REFERENCES users(id) ON DELETE SET NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    linked_at TIMESTAMPTZ
-  )`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_app_installs_created ON app_installs(created_at)`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_app_installs_user ON app_installs(user_id)`);
-
-  // Community feed program-start events. Also defined in schema.sql; repeated
-  // here so existing DBs pick it up via the migration path.
-  await pool.query(`CREATE TABLE IF NOT EXISTS program_starts (
-    id SERIAL PRIMARY KEY,
-    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    program_id INT REFERENCES programs(id) ON DELETE SET NULL,
-    program_name TEXT NOT NULL,
-    started_at TIMESTAMPTZ DEFAULT NOW()
-  )`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_program_starts_started ON program_starts(started_at)`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_program_starts_user_program ON program_starts(user_id, program_id)`);
-
-  // Community custom-workout events + sharing settings. Also defined in
-  // schema.sql; repeated here so existing DBs pick them up.
-  await pool.query(`CREATE TABLE IF NOT EXISTS custom_workout_events (
-    id SERIAL PRIMARY KEY,
-    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    template_id INT NOT NULL REFERENCES templates(id) ON DELETE CASCADE,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-  )`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_custom_workout_events_created ON custom_workout_events(created_at)`);
-  await pool.query(`CREATE TABLE IF NOT EXISTS community_sharing_periods (
-    id SERIAL PRIMARY KEY,
-    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    category TEXT NOT NULL,
-    off_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    on_at TIMESTAMPTZ
-  )`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_community_sharing_periods_user ON community_sharing_periods(user_id, category)`);
-  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS community_sharing_periods_one_open
-    ON community_sharing_periods(user_id, category) WHERE on_at IS NULL`);
-  await pool.query(`CREATE TABLE IF NOT EXISTS community_hidden_before (
-    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    category TEXT NOT NULL,
-    hidden_before TIMESTAMPTZ NOT NULL,
-    PRIMARY KEY (user_id, category)
-  )`);
-
-  // Community likes + their push bookkeeping. Also defined in schema.sql.
-  // notify_community_likes is the Profile "Likes on my activity" toggle.
-  await pool.query(`CREATE TABLE IF NOT EXISTS community_likes (
-    id SERIAL PRIMARY KEY,
-    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    item_type TEXT NOT NULL,
-    item_id INT NOT NULL,
-    owner_user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE (user_id, item_type, item_id)
-  )`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_community_likes_item ON community_likes(item_type, item_id)`);
-  await pool.query(`CREATE TABLE IF NOT EXISTS community_like_notices (
-    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    item_type TEXT NOT NULL,
-    item_id INT NOT NULL,
-    owner_user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    notified_at TIMESTAMPTZ,
-    pushed BOOLEAN NOT NULL DEFAULT FALSE,
-    PRIMARY KEY (user_id, item_type, item_id)
-  )`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_community_like_notices_item ON community_like_notices(item_type, item_id, notified_at)`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_community_like_notices_pending ON community_like_notices(created_at) WHERE notified_at IS NULL`);
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_community_likes BOOLEAN NOT NULL DEFAULT TRUE`);
 
   // PPL expansion migration removed — Will's PPL is no longer in the public
   // library (see comment above near the seed block). The user_id IS NULL

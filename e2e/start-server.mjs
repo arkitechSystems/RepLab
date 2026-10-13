@@ -1,8 +1,9 @@
 // Starts the RepLab server for Playwright against the local test database.
 //
 // - Refuses any database that isn't on this computer (never production).
-// - Wipes the test database and rebuilds it from schema.sql + initDb.js, so
-//   every run starts from the same seeded state.
+// - Wipes the test database; the server rebuilds it on start (migrations in
+//   server/db-migrations, then the seeds in initDb.js), so every run starts
+//   from the same seeded state.
 // - Serves the built website from client/dist (run `npm run build` in client/
 //   first — `npm run e2e` at the repo root does both).
 // - Leaves out email, payment, AI and push keys so nothing real is sent.
