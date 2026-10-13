@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { validateBody } from '../validation.js';
+import { communitySettingsBody, communityNotificationsBody } from '../schemas/misc.js';
 import { parseCommunityItemKey } from '../communityItems.js';
 import { notifyCommunityLike } from '../communityLikeNotifier.js';
 
@@ -25,8 +27,6 @@ router.get('/feed', authMiddleware, async (req, res) => {
   }
 });
 
-// Keep in sync with COMMUNITY_SETTING_KEYS in db.js.
-const SETTING_KEYS = new Set(['all', 'pr', 'program', 'workout', 'custom']);
 
 // GET /community/settings -> { all, pr, program, workout, custom } (booleans)
 router.get('/settings', authMiddleware, async (req, res) => {
@@ -41,18 +41,9 @@ router.get('/settings', authMiddleware, async (req, res) => {
 // PUT /community/settings  body: { category, enabled, removePast? }
 // category is 'all' (master) or one feed category. removePast only applies
 // when turning off: it hides everything already posted in that category.
-router.put('/settings', authMiddleware, async (req, res) => {
+router.put('/settings', authMiddleware, validateBody(communitySettingsBody), async (req, res) => {
   try {
-    const { category, enabled, removePast } = req.body || {};
-    if (!SETTING_KEYS.has(category)) {
-      return res.status(400).json({ error: 'Invalid category' });
-    }
-    if (typeof enabled !== 'boolean') {
-      return res.status(400).json({ error: 'enabled must be a boolean' });
-    }
-    if (removePast !== undefined && typeof removePast !== 'boolean') {
-      return res.status(400).json({ error: 'removePast must be a boolean' });
-    }
+    const { category, enabled, removePast } = req.body;
     const settings = await db.setCommunitySharing(req.userId, category, enabled, !enabled && removePast === true);
     res.json(settings);
   } catch (err) {
@@ -108,12 +99,9 @@ router.get('/notifications', authMiddleware, async (req, res) => {
 });
 
 // PUT /community/notifications  body: { likes: boolean }
-router.put('/notifications', authMiddleware, async (req, res) => {
+router.put('/notifications', authMiddleware, validateBody(communityNotificationsBody), async (req, res) => {
   try {
-    const { likes } = req.body || {};
-    if (typeof likes !== 'boolean') {
-      return res.status(400).json({ error: 'likes must be a boolean' });
-    }
+    const { likes } = req.body;
     res.json(await db.setCommunityLikeNotifications(req.userId, likes));
   } catch (err) {
     console.error(err);

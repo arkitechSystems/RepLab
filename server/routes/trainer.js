@@ -7,6 +7,8 @@ import config from '../config.js';
 import { DASHBOARD_CSS, SIDEBAR_JS, ICONS } from '../dashboardCSS.js';
 import { exerciseCardScript } from '../exerciseCardBuilder.js';
 import { generateToken, generateAccessToken, generateRefreshToken } from '../middleware/auth.js';
+import { validateBody } from '../validation.js';
+import { staffCreateExerciseBody, staffCreateProgramBody, assignClientBody, clientProgramBody } from '../schemas/staff.js';
 
 const router = Router();
 
@@ -538,7 +540,7 @@ router.get('/api/muscle-groups', trainerAuth, async (req, res) => {
 });
 
 // JSON API: create custom exercise
-router.post('/api/exercises', trainerAuth, express.json(), async (req, res) => {
+router.post('/api/exercises', trainerAuth, express.json(), validateBody(staffCreateExerciseBody), async (req, res) => {
   try {
     const { name, muscleGroup } = req.body;
     if (!name || !muscleGroup) return res.status(400).json({ error: 'Name and muscle group required' });
@@ -550,7 +552,7 @@ router.post('/api/exercises', trainerAuth, express.json(), async (req, res) => {
 });
 
 // JSON API: create program
-router.post('/api/programs', trainerAuth, express.json(), async (req, res) => {
+router.post('/api/programs', trainerAuth, express.json(), validateBody(staffCreateProgramBody), async (req, res) => {
   try {
     const { name, description } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: 'Program name is required' });
@@ -1381,7 +1383,7 @@ router.get('/api/clients/search', trainerAuth, async (req, res) => {
 });
 
 // Assign a client to this trainer
-router.post('/api/clients', trainerAuth, express.json(), async (req, res) => {
+router.post('/api/clients', trainerAuth, express.json(), validateBody(assignClientBody), async (req, res) => {
   try {
     const { clientId } = req.body;
     if (!clientId) return res.status(400).json({ error: 'clientId required' });
@@ -1476,7 +1478,7 @@ router.get('/api/clients/:clientId/sessions/:sessionId', trainerAuth, async (req
 });
 
 // Create a program and assign it to a client (Pro+ only)
-router.post('/api/clients/:clientId/programs', trainerAuth, express.json(), async (req, res) => {
+router.post('/api/clients/:clientId/programs', trainerAuth, express.json(), validateBody(clientProgramBody), async (req, res) => {
   try {
     if (!requireProPlan(req.trainer)) {
       return res.status(403).json({ error: 'Pro or Elite plan required to create programs for clients' });

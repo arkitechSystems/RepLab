@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import pool from '../dbPool.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { validateBody } from '../validation.js';
+import { pushRegisterBody, pushUnregisterBody } from '../schemas/misc.js';
 import { sendFcmToTokens, isFcmConfigured } from '../pushProvider.js';
 
 const router = Router();
@@ -11,12 +13,9 @@ const VALID_PLATFORMS = new Set(['ios', 'android', 'web']);
 // Capacitor's @capacitor-firebase/messaging plugin returns an FCM registration
 // token directly on both iOS and Android — that's what firebase-admin (see
 // pushProvider.js) expects for sends, so no per-platform handling is needed here.
-router.post('/register', authMiddleware, async (req, res) => {
+router.post('/register', authMiddleware, validateBody(pushRegisterBody), async (req, res) => {
   try {
     const { pushToken, platform } = req.body;
-    if (!pushToken || typeof pushToken !== 'string') {
-      return res.status(400).json({ error: 'pushToken is required' });
-    }
     const normalizedPlatform = VALID_PLATFORMS.has(platform) ? platform : 'ios';
 
     await pool.query(
@@ -33,10 +32,9 @@ router.post('/register', authMiddleware, async (req, res) => {
   }
 });
 
-router.delete('/unregister', authMiddleware, async (req, res) => {
+router.delete('/unregister', authMiddleware, validateBody(pushUnregisterBody), async (req, res) => {
   try {
     const { pushToken } = req.body;
-    if (!pushToken) return res.status(400).json({ error: 'pushToken is required' });
 
     await pool.query(
       'DELETE FROM device_tokens WHERE push_token = $1 AND user_id = $2',

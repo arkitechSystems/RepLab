@@ -13,13 +13,13 @@
 // (workout_data is stored as JSON and grows new fields over time).
 import { z } from 'zod';
 
-const MAX_NAME_LEN = 200;
-const MAX_DESCRIPTION_LEN = 5000;
+export const MAX_NAME_LEN = 200;
+export const MAX_DESCRIPTION_LEN = 5000;
 const MAX_EXERCISES_PER_TEMPLATE = 100;
 const MAX_ENTRIES_PER_SESSION = 2000;
 
 // Zod error option: 'is required' when the field is missing, else `text`.
-const say = (text) => ({ error: (issue) => (issue.input === undefined ? 'is required' : text) });
+export const say = (text) => ({ error: (issue) => (issue.input === undefined ? 'is required' : text) });
 
 export const dateString = z.string(say('must be a date (YYYY-MM-DD)'))
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'must be a date (YYYY-MM-DD)');
@@ -31,7 +31,7 @@ export const id = z.preprocess(
 );
 
 // '' / null / undefined → 0; numeric strings → numbers.
-const toNumber = (v) => {
+export const toNumber = (v) => {
   if (v === '' || v === null || v === undefined) return 0;
   if (typeof v === 'string' && v.trim() !== '' && Number.isFinite(Number(v))) return Number(v);
   return v;
@@ -43,7 +43,7 @@ const optionalNumber = z.preprocess(
   z.number({ error: 'must be a number' }).finite('must be a number').nullable(),
 );
 
-const plainObject = (what) => z.record(z.string(), z.unknown(), { error: `must be ${what}` });
+export const plainObject = (what) => z.record(z.string(), z.unknown(), { error: `must be ${what}` });
 
 // ── Sessions ──
 
@@ -124,17 +124,48 @@ export const templateBody = z.looseObject({
   isRest: z.boolean({ error: 'must be true or false' }).nullable().optional(),
 });
 
-// Messages that already read as a full sentence are sent as-is; others get
-// the field path in front ("entries.3.reps: must be a whole number").
+// Messages that already read as a full sentence ("Program name is required")
+// or already name their field ("duration_secs must be ...") are sent as-is;
+// others get the field path in front ("entries.3.reps: must be a whole number").
 const SENTENCE = /^[A-Z]/;
 
 export function firstIssueMessage(error) {
   const issue = error.issues[0];
   if (!issue) return 'Invalid request';
   const path = issue.path.join('.');
-  if (SENTENCE.test(issue.message) || !path) return issue.message;
+  const field = String(issue.path[issue.path.length - 1] ?? '');
+  if (SENTENCE.test(issue.message) || !path || (field && issue.message.startsWith(`${field} `))) return issue.message;
   return `${path}: ${issue.message}`;
 }
+
+// Shared field types for the route schemas in schemas/.
+
+// Optional text: missing / null allowed; anything else must be a string.
+export const optionalText = (max, label) => z.string({ error: label ? `${label} must be text` : 'must be text' })
+  .max(max, label ? `${label} must be ${max} characters or fewer` : `must be ${max} characters or fewer`)
+  .nullable().optional();
+
+// Like optionalText, but a number is accepted and turned into text (zip
+// codes, phone numbers typed into number-ish inputs).
+export const optionalTextish = (max, label) => z.preprocess(
+  (v) => (typeof v === 'number' && Number.isFinite(v) ? String(v) : v),
+  z.string({ error: label ? `${label} must be text` : 'must be text' })
+    .max(max, label ? `${label} must be ${max} characters or fewer` : `must be ${max} characters or fewer`)
+    .nullable(),
+).optional();
+
+// Optional number: '' / null / missing → null; numeric strings → numbers.
+export const optionalAmount = (label) => z.preprocess(
+  (v) => (v === '' || v === undefined || v === null ? null : toNumber(v)),
+  z.number({ error: label ? `${label} must be a number` : 'must be a number' })
+    .finite(label ? `${label} must be a number` : 'must be a number').nullable(),
+).optional();
+
+// '' / null → missing, then a positive id (numeric strings accepted).
+export const optionalId = z.preprocess((v) => (v === '' || v === null ? undefined : v), id.optional());
+
+export const optionalBoolean = z.boolean({ error: 'must be true or false' }).nullable().optional();
+export const optionalObject = plainObject('an object').nullable().optional();
 
 // Express middleware: replaces req.body with the parsed (normalized) body, or
 // answers 400 naming the first bad field.

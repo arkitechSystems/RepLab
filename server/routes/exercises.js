@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { validateBody } from '../validation.js';
+import { createExerciseBody } from '../schemas/misc.js';
 
 const router = Router();
 
@@ -32,12 +34,9 @@ router.get('/muscles', authMiddleware, async (req, res) => {
 });
 
 // POST /exercises — create custom exercise
-router.post('/', authMiddleware, async (req, res) => {
+router.post('/', authMiddleware, validateBody(createExerciseBody), async (req, res) => {
   try {
     const { name, muscleGroup, tags } = req.body;
-    if (!name || !muscleGroup) {
-      return res.status(400).json({ error: 'Name and muscle group are required' });
-    }
     const exercise = await db.createExercise(req.userId, name.trim(), muscleGroup, tags || []);
     res.status(201).json(exercise);
   } catch (err) {
