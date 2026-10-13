@@ -6,7 +6,7 @@
 // more likes on that item within WINDOW_MIN of the last push wait in
 // community_like_notices (notified_at IS NULL) and go out together as one
 // follow-up push ("Sam and 3 others applauded your Bench Press PR") once the
-// window has passed. The flush runs on a 1-minute tick, and pending rows
+// window has passed. The flush runs every minute, and pending rows
 // live in the DB, so a restart delays the follow-up rather than losing it.
 //
 // A notice row is written only the first time a user likes an item
@@ -222,6 +222,8 @@ export async function flushPendingLikePushes() {
   return rows.length;
 }
 
+// Fallback timer (BACKGROUND_JOBS=timers, or the job queue failed to start).
+// Normally flushPendingLikePushes runs as a 1-minute background job.
 export function startCommunityLikeScheduler() {
   const tick = () => flushPendingLikePushes()
     .catch((err) => console.error('[community-like] tick failed:', err.message));

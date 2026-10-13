@@ -1,6 +1,7 @@
 // Idle-session scheduler.
 //
-// Runs on an interval and does two things each tick:
+// Runs every 15 minutes (a background job, see backgroundJobs.js) and does
+// two things each tick:
 //
 //   1. AUTO-COMPLETE (always, regardless of push config): finds sessions the
 //      user started but walked away from — not yet complete, idle for
@@ -28,9 +29,27 @@ const TICK_MS = 15 * 60 * 1000; // 15 minutes
 const DEFAULT_IDLE_HOURS = 4;
 const DEFAULT_AUTO_COMPLETE_HOURS = 4;
 
+function settings() {
+  return {
+    idleHours: Number(process.env.IDLE_REMINDER_HOURS) || DEFAULT_IDLE_HOURS,
+    autoCompleteHours: Number(process.env.AUTO_COMPLETE_HOURS) || DEFAULT_AUTO_COMPLETE_HOURS,
+  };
+}
+
+// One pass — what the background job (backgroundJobs.js) runs every 15 min.
+export function runIdleSessionTick() {
+  const { idleHours, autoCompleteHours } = settings();
+  return runTick(idleHours, autoCompleteHours);
+}
+
+export function describeIdleSessionJob() {
+  const { idleHours, autoCompleteHours } = settings();
+  return `auto-complete: ${autoCompleteHours}h, reminder: ${idleHours}h${isFcmConfigured() ? '' : ' — dormant, FCM not configured'}`;
+}
+
+// Fallback timer (BACKGROUND_JOBS=timers, or the job queue failed to start).
 export function startIdleReminderScheduler() {
-  const idleHours = Number(process.env.IDLE_REMINDER_HOURS) || DEFAULT_IDLE_HOURS;
-  const autoCompleteHours = Number(process.env.AUTO_COMPLETE_HOURS) || DEFAULT_AUTO_COMPLETE_HOURS;
+  const { idleHours, autoCompleteHours } = settings();
 
   console.log(
     `[session-scheduler] Started (auto-complete: ${autoCompleteHours}h, ` +

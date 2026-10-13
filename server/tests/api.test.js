@@ -62,6 +62,7 @@ vi.mock('../firebaseAuth.js', () => ({
 vi.mock('../communityLikeNotifier.js', () => ({
   notifyCommunityLike: vi.fn().mockResolvedValue(undefined),
   startCommunityLikeScheduler: vi.fn(),
+  flushPendingLikePushes: vi.fn().mockResolvedValue(0),
 }));
 
 // Mock db module with fake implementations for all methods used by routes
