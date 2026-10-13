@@ -20,6 +20,8 @@ Claude: remind Will of any open item here at the start of a session.
   1. `zod-validation` (on/after 2026-10-14)
   2. `deps-audit` — PR #1 (about 2026-10-17); brings Capacitor 8.5.3, so new iOS/Android builds after
   3. `playwright` (about 2026-10-20); has the offline quick-close save fix + fresh-database fixes
+  4. `pg-boss` (about 2026-10-23); background jobs + Node 22 pin — check the Render deploy log shows
+     Node 22 and `[jobs]` lines, and the next daily summary email arrives
 - [ ] **Will: manual website checks** — on replab-fitness.com, log sets, go Offline in DevTools,
   log a set and edit the calendar, go back online, confirm "All changes synced" and the changes
   survive a refresh.
