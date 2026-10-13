@@ -15,6 +15,11 @@ Claude: remind Will of any open item here at the start of a session.
   quiet. Will chose to wait so a problem can be traced to TanStack or to Zod (2026-10-11). Ask Will
   before merging; it deploys the website. This merge also brings the two Android files from
   `npx cap sync android` (network plugin) onto `main`.
+- [ ] **Then merge the improvement-plan branches, a few quiet days apart** (order Will chose
+  2026-10-12; ask before each, every merge deploys the website):
+  1. `zod-validation` (on/after 2026-10-14)
+  2. `deps-audit` — PR #1 (about 2026-10-17); brings Capacitor 8.5.3, so new iOS/Android builds after
+  3. `playwright` (about 2026-10-20); has the offline quick-close save fix + fresh-database fixes
 - [ ] **Will: manual website checks** — on replab-fitness.com, log sets, go Offline in DevTools,
   log a set and edit the calendar, go back online, confirm "All changes synced" and the changes
   survive a refresh.

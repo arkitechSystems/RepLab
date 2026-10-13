@@ -14,6 +14,8 @@ Add new questions and answers to the decision log.
 - Automated tests for what changed; run the full client + server suites before asking to merge.
 - Merge to `main` (= website deploy) only with Will's approval. Leave a few quiet days between
   merges so a problem can be traced to one change.
+- Merge order (Will, 2026-10-12): `zod-validation` (on/after 2026-10-14) → `deps-audit` (PR #1,
+  ~2026-10-17) → `playwright` (~2026-10-20). Later steps follow the same pattern.
 - Production database reads/writes need Will's OK.
 - Simple separate git commands; no Co-Authored-By trailer; never commit
   `client/src/pages/LandingPageTest.jsx` (Will's own uncommitted edits).
