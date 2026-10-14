@@ -7,6 +7,23 @@ that caused the Oct 2026 bugs. Server-side Zod checks are the final phase.
 **Read this first if you're picking the project up on another computer or Claude login.**
 Decisions below are settled. Add new questions and answers to the decision log as they come up.
 
+## To-do (after the 2026-10-11 website release)
+
+Claude: remind Will of any open item here at the start of a session.
+
+- [ ] **Merge `zod-validation` into `main`** — on or after **2026-10-14**, once the website has been
+  quiet. Will chose to wait so a problem can be traced to TanStack or to Zod (2026-10-11). Ask Will
+  before merging; it deploys the website. This merge also brings the two Android files from
+  `npx cap sync android` (network plugin) onto `main`.
+- [ ] **Will: manual website checks** — on replab-fitness.com, log sets, go Offline in DevTools,
+  log a set and edit the calendar, go back online, confirm "All changes synced" and the changes
+  survive a refresh.
+- [ ] **Watch Coding Errors + Sentry** for a few days after the release (reading the production
+  database needs Will's OK).
+- [ ] **Will: iPhone build** — Xcode Cloud runs `npx cap sync ios` itself; test airplane mode on the device.
+- [ ] **Will: Android build** — build only after the `zod-validation` merge (or once the two Android
+  files reach `main`); test airplane mode on the device.
+
 ## Save point and branches
 
 | | |
@@ -124,8 +141,10 @@ end of every phase — unconverted screens keep using `api()` until their phase.
    - ⏳ Manual (Will): the checklist and device tests below — website with DevTools Slow 3G / Offline, iPhone + Android airplane mode (needs the phase 8 native build with `npx cap sync` for `@capacitor/network`), two devices, account switch, Coding Errors quiet afterwards.
    - Correction to "Upgrade safety" above: unsent `replab:session:*` backups are not turned into queued saves at start-up; as before, they are restored when that workout is opened and then saved through the queue.
 8. **Release** — merge to `main` → website deploy → watch Coding Errors + Sentry for a few days → iOS (Xcode Cloud tag) and Android (.aab) builds.
+   - ✅ Merged to `main` 2026-10-11 with Will's approval (merge commit `f3bb7ca`; undo with `git revert -m 1 f3bb7ca`). Website deploying on Render.
+   - ⏳ Watch Coding Errors + Sentry; then `npx cap sync` and the iOS/Android builds.
 9. **Zod** — schemas for the session, schedule and template routes on the server; reject bad shapes with a 400 that names the field. Decide then whether to share schemas with the client.
-   - ✅ Built 2026-10-10 on its own branch **`zod-validation`** (contains this branch plus the Zod work; details in that branch's copy of this doc). Merge it after `tanstack-query` has been live and quiet for a few days.
+   - ✅ Built 2026-10-10 on branch **`zod-validation`** (branched from `tanstack-query`, so it contains it; merge it *after* `tanstack-query` has been live and quiet for a few days, so a problem can be traced to one change or the other). `server/validation.js` (Zod 4): `saveSessionBody` (POST /sessions), `completeSessionBody` (PUT /sessions/complete — `completed` must now be true/false; a missing one used to store NULL), `initializeSessionBody`, `scheduleBody` (PUT /schedule), `templateBody` (POST /templates, PUT /templates/:id), applied with `validateBody(schema)`, which answers `400 { error: 'entries.3.reps: must be a whole number', field }`. Lenient on purpose — a rejected workout save is shown as an error and not retried: typed numbers arriving as strings, `''` and `null` are normalized; unknown fields kept (workout_data is free-form JSON); only what the database would refuse or misstore is rejected (e.g. reps that aren't whole numbers, isCompleted not true/false, bad dates/ids). Template messages unchanged ("Template name is required", …). Tests: `server/tests/validation.test.js` (10) runs the real payloads the app sends (autosave with typed strings, cardio, section headers, superset labels; Calendar copy; Begin Program; AI / Featured "save as workout") plus bad ones; server 135 passed / 2 skipped. **Not shared with the client** (Claude's call): the client builds these bodies in several screens rather than from one model, and sharing needs a shared package between `client/` and `server/`; revisit if a client-side form starts needing the same rules.
 
 ## Test plan
 
