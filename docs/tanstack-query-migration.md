@@ -11,15 +11,12 @@ Decisions below are settled. Add new questions and answers to the decision log a
 
 Claude: remind Will of any open item here at the start of a session.
 
-- [ ] **Merge `zod-validation` into `main`** — on or after **2026-10-14**, once the website has been
-  quiet. Will chose to wait so a problem can be traced to TanStack or to Zod (2026-10-11). On
-  2026-10-13 Will added: hold until he has logged some workouts on the website himself (he is the
-  only active website user; other users are on the iOS app, which is unaffected). Ask Will
-  before merging; it deploys the website. This merge also brings the two Android files from
-  `npx cap sync android` (network plugin) onto `main`.
+- [x] **Merge `zod-validation` into `main`** — done 2026-10-14 (merge `925708b`, pushed with Will's
+  OK after he confirmed the app was working). Server 135 pass (2 need the test DB), client 79/79.
+  Also brought the two Android network-plugin files onto `main`. Watch Sentry for a few days.
 - [ ] **Then merge the improvement-plan branches, a few quiet days apart** (order Will chose
   2026-10-12; ask before each, every merge deploys the website):
-  1. `zod-validation` (on/after 2026-10-14)
+  1. ~~`zod-validation`~~ — merged 2026-10-14
   2. `deps-audit` — PR #1 (about 2026-10-17); brings Capacitor 8.5.3, so new iOS/Android builds after
   3. `playwright` (about 2026-10-20); has the offline quick-close save fix + fresh-database fixes
   4. `pg-boss` (about 2026-10-23); background jobs + Node 22 pin — check the Render deploy log shows
@@ -35,8 +32,8 @@ Claude: remind Will of any open item here at the start of a session.
 - [ ] **Watch Coding Errors + Sentry** for a few days after the release (reading the production
   database needs Will's OK).
 - [ ] **Will: iPhone build** — Xcode Cloud runs `npx cap sync ios` itself; test airplane mode on the device.
-- [ ] **Will: Android build** — build only after the `zod-validation` merge (or once the two Android
-  files reach `main`); test airplane mode on the device.
+- [ ] **Will: Android build** — ready to build from `main` now (the two Android files arrived with the
+  `zod-validation` merge, 2026-10-14); test airplane mode on the device.
 
 ## Save point and branches
 
