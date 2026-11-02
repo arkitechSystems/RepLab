@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import PasswordInput from './PasswordInput';
 
 // Shown when "Continue with Google / Apple" finds an existing RepLab account
 // (same verified email) that has a password. Entering that password once
@@ -65,15 +66,15 @@ export default function ConnectAccountModal({ linkToken, provider, email, onSign
                 Enter your RepLab password to connect {providerName}. After this you can sign in either way.
               </p>
               {/* 16px so iOS Safari doesn't auto-zoom on focus. */}
-              <input
-                type="password"
+              <PasswordInput
+                wrapperClassName="mt-4"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoFocus
                 autoComplete="current-password"
                 placeholder="RepLab password"
                 aria-label="RepLab password"
-                className="w-full mt-4 glass-input rounded-md px-3 py-2.5 text-white text-base placeholder:text-wf-gray-500 focus:outline-none transition-all"
+                className="w-full glass-input rounded-md px-3 py-2.5 text-white text-base placeholder:text-wf-gray-500 focus:outline-none transition-all"
                 onKeyDown={(e) => { if (e.key === 'Enter') connect(); }}
               />
               {error && <p className="text-sm text-red-400 mt-2">{error}</p>}

@@ -6,6 +6,7 @@ import { friendlyError } from '../utils/errors';
 import { API_BASE } from '../api';
 import SocialAuthButtons from '../components/SocialAuthButtons';
 import SignInHelpRow from '../components/SignInHelpRow';
+import PasswordInput from '../components/PasswordInput';
 
 // TEMPORARY — remove once the native login/network issue is confirmed fixed.
 // Runs a raw, unwrapped fetch (bypasses api.js's friendly-error translation)
@@ -233,9 +234,8 @@ export default function Login() {
 
             <div style={{ marginBottom: 16 }}>
               <label htmlFor="login-password" style={labelStyle}>Password</label>
-              <input
+              <PasswordInput
                 id="login-password"
-                type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter password"

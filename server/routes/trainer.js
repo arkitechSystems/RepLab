@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import pool from '../dbPool.js';
 import db, { clearDayNamesForTemplate } from '../db.js';
 import config from '../config.js';
-import { DASHBOARD_CSS, SIDEBAR_JS, ICONS } from '../dashboardCSS.js';
+import { DASHBOARD_CSS, SIDEBAR_JS, ICONS, PASSWORD_TOGGLE_JS } from '../dashboardCSS.js';
 import { exerciseCardScript } from '../exerciseCardBuilder.js';
 import { generateToken, generateAccessToken, generateRefreshToken } from '../middleware/auth.js';
 
@@ -120,6 +120,7 @@ function trainerLoginPage(error) {
       </form>
     </div>
   </div>
+<script>${PASSWORD_TOGGLE_JS}</script>
 </body>
 </html>`;
 }

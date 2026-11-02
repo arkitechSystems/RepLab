@@ -14,6 +14,7 @@ import useFocusTrap from '../hooks/useFocusTrap';
 import { APP_VERSION } from '../version';
 import { getWorkoutColor } from '../utils/workoutColors';
 import { signInWithProvider, finishSocialAccountDeletion, signOutSocial, isSocialCancel } from '../utils/socialAuth';
+import PasswordInput from '../components/PasswordInput';
 
 // RepLab Community sharing categories (keys match /community/settings).
 const COMMUNITY_SHARE_CATEGORIES = [
@@ -1294,9 +1295,8 @@ export default function Profile() {
                 )}
                 {!socialOnly && <div>
                   <label htmlFor="profile-current-password" className="text-[10px] text-white/40 uppercase mb-1.5 block font-semibold" style={{ letterSpacing: '0.25em' }}>Current Password</label>
-                  <input
+                  <PasswordInput
                     id="profile-current-password"
-                    type="password"
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
                     placeholder="Enter current password"
@@ -1311,9 +1311,8 @@ export default function Profile() {
                 </div>}
                 <div>
                   <label htmlFor="profile-new-password" className="text-[10px] text-white/40 uppercase mb-1.5 block font-semibold" style={{ letterSpacing: '0.25em' }}>New Password</label>
-                  <input
+                  <PasswordInput
                     id="profile-new-password"
-                    type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Enter new password"
@@ -1328,9 +1327,8 @@ export default function Profile() {
                 </div>
                 <div>
                   <label htmlFor="profile-confirm-new-password" className="text-[10px] text-white/40 uppercase mb-1.5 block font-semibold" style={{ letterSpacing: '0.25em' }}>Confirm New Password</label>
-                  <input
+                  <PasswordInput
                     id="profile-confirm-new-password"
-                    type="password"
                     value={confirmNewPassword}
                     onChange={(e) => setConfirmNewPassword(e.target.value)}
                     placeholder="Confirm new password"
@@ -1642,9 +1640,8 @@ export default function Profile() {
                 ) : (
                   <div>
                     <label htmlFor="profile-delete-password" className="text-xs text-wf-gray-500 mb-1 block">Enter your password</label>
-                    <input
+                    <PasswordInput
                       id="profile-delete-password"
-                      type="password"
                       value={deletePassword}
                       onChange={(e) => setDeletePassword(e.target.value)}
                       placeholder="Password"

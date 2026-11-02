@@ -274,6 +274,18 @@ export const DASHBOARD_CSS = `
       outline: none; transition: border-color 0.2s, box-shadow 0.2s;
     }
     input:focus { border-color: rgba(239,68,68,0.6); box-shadow: 0 0 0 2px rgba(239,68,68,0.15); }
+    /* Show/hide password eye — added to every password field by PASSWORD_TOGGLE_JS */
+    .pw-wrap { position: relative; }
+    .pw-toggle {
+      position: absolute; top: 0; right: 0; bottom: 0; width: 44px; min-height: 40px;
+      display: flex; align-items: center; justify-content: center;
+      background: none; border: none; padding: 0; cursor: pointer;
+      color: rgba(255,255,255,0.45); transition: color 0.2s;
+    }
+    .pw-toggle:hover { color: rgba(255,255,255,0.8); }
+    .pw-toggle:focus { outline: none; }
+    .pw-toggle:focus-visible { outline: 2px solid rgba(239,68,68,0.6); outline-offset: -4px; border-radius: 8px; }
+    .pw-toggle svg { width: 20px; height: 20px; display: block; pointer-events: none; }
     .field { margin-bottom: 16px; }
     .error {
       background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3);
@@ -468,4 +480,45 @@ try {
     }
   }
 } catch {}
+`;
+
+// Show/hide password toggle for the server-rendered pages. Include it as
+// <script>${PASSWORD_TOGGLE_JS}</script> after the form (end of <body>): it
+// wraps every input[type=password] on the page in .pw-wrap and adds an eye
+// button (styles: .pw-toggle in DASHBOARD_CSS). No inline handlers — events
+// are attached here, same as SIDEBAR_JS.
+export const PASSWORD_TOGGLE_JS = `
+(function () {
+  var SVG_OPEN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">';
+  var EYE = SVG_OPEN + '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+  var EYE_OFF = SVG_OPEN + '<path d="M10.6 5.1A10.6 10.6 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-2.9 3.9"/><path d="M6.6 6.6C3.7 8.4 2 12 2 12s3.6 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="M2 2l20 20"/></svg>';
+  var inputs = document.querySelectorAll('input[type="password"]');
+  Array.prototype.forEach.call(inputs, function (input) {
+    if (input.getAttribute('data-pw-toggle')) return;
+    input.setAttribute('data-pw-toggle', '1');
+    var wrap = document.createElement('div');
+    wrap.className = 'pw-wrap';
+    input.parentNode.insertBefore(wrap, input);
+    wrap.appendChild(input);
+    input.style.paddingRight = '44px';
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'pw-toggle';
+    if (input.id) btn.setAttribute('aria-controls', input.id);
+    function render(visible) {
+      btn.setAttribute('aria-label', visible ? 'Hide password' : 'Show password');
+      btn.setAttribute('aria-pressed', visible ? 'true' : 'false');
+      btn.innerHTML = visible ? EYE_OFF : EYE;
+    }
+    render(false);
+    // Keep focus (and the phone keyboard) on the field when tapping the eye.
+    btn.addEventListener('mousedown', function (e) { e.preventDefault(); });
+    btn.addEventListener('click', function () {
+      var visible = input.type === 'password';
+      input.type = visible ? 'text' : 'password';
+      render(visible);
+    });
+    wrap.appendChild(btn);
+  });
+})();
 `;
