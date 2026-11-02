@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { Fragment, useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { api } from '../api';
 import { loadPathOrSaved } from '../queries/data';
 import { useExercises } from '../hooks/useExercises';
-import { savedExercises, savedFirst } from '../utils/savedExercises';
+import { savedExercises } from '../utils/savedExercises';
+import { pickerSearch, startsFuzzyGroup, CLOSEST_MATCHES_LABEL } from '../utils/exerciseSearch';
 import { useUnsavedGuard } from '../components/UnsavedGuard';
 import ExerciseCard from '../components/ExerciseCard';
 import { friendlyError } from '../utils/errors';
@@ -507,22 +508,11 @@ function TemplateExerciseWrapper({
 
   // Empty box → the user's saved exercises (the "Saved" list). Typing →
   // matches, with saved ones floated to the top before the 8-row cap.
+  // Abbreviations ("db row") and misspellings are handled by pickerSearch;
+  // spelling-fallback rows come back marked isFuzzy.
   function getSuggestions(query) {
     if (!query || query.length < 1) return savedExercises(allExercises);
-    const q = query.toLowerCase();
-    const seen = new Set();
-    return savedFirst(allExercises
-      .filter((ex) => {
-        if (seen.has(ex.name)) return false;
-        seen.add(ex.name);
-        return ex.name.toLowerCase().includes(q);
-      })
-      .sort((a, b) => {
-        const aStarts = a.name.toLowerCase().startsWith(q) ? 0 : 1;
-        const bStarts = b.name.toLowerCase().startsWith(q) ? 0 : 1;
-        return aStarts - bStarts || a.name.localeCompare(b.name);
-      }))
-      .slice(0, 8);
+    return pickerSearch(allExercises, query, { limit: 8 });
   }
 
   // Section header — editable card
@@ -610,9 +600,12 @@ function TemplateExerciseWrapper({
                 {!ex.name.trim() && suggestions.length > 0 && (
                   <p className="px-3 pt-2.5 pb-1 text-[10px] uppercase tracking-widest text-wf-red font-semibold">Saved</p>
                 )}
-                {suggestions.map((suggestion) => (
+                {suggestions.map((suggestion, i) => (
+                  <Fragment key={suggestion.name}>
+                  {startsFuzzyGroup(suggestions, i) && (
+                    <p className="px-3 pt-2.5 pb-1 text-[10px] uppercase tracking-widest text-wf-gray-500 font-semibold">{CLOSEST_MATCHES_LABEL}</p>
+                  )}
                   <button
-                    key={suggestion.name}
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => {
@@ -625,6 +618,7 @@ function TemplateExerciseWrapper({
                     <span className="text-sm text-white">{suggestion.name}</span>
                     <span className="text-[10px] text-wf-gray-500 uppercase tracking-wider ml-2 shrink-0">{suggestion.muscle}</span>
                   </button>
+                  </Fragment>
                 ))}
                 {!hasExactMatch && ex.name.trim() && (
                   <>

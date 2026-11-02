@@ -1,6 +1,7 @@
 import pool from './dbPool.js';
 import crypto from 'crypto';
 import { DAY_SESSION_NAME_JOIN, sessionDisplayNameSql } from './workoutDayName.js';
+import { searchExercises } from './exerciseSearch.js';
 
 // Password reset tokens are high-entropy random strings. We hash them with
 // SHA-256 before storing so a DB leak can't be used to reset any account.
@@ -2035,20 +2036,27 @@ const db = {
       paramIdx++;
     }
 
-    if (search) {
-      query += ` AND e.name ILIKE $${paramIdx}`;
-      params.push(`%${search}%`);
-      paramIdx++;
-    }
-
     query += ' ORDER BY e.is_custom ASC, e.name ASC';
 
-    if (limit) {
+    // With a search, fetch every visible row (muscle filter already applied)
+    // and run the shared exercise search in JS (abbreviations, word by word,
+    // best match first, closest spellings marked isFuzzy when fewer than 3
+    // match — see shared/exerciseSearch.js); the limit applies after.
+    const searchText = typeof search === 'string' ? search.trim() : '';
+    if (limit && !searchText) {
       query += ` LIMIT $${paramIdx}`;
       params.push(limit);
     }
 
-    const { rows } = await pool.query(query, params);
+    const { rows: allRows } = await pool.query(query, params);
+    let rows = allRows;
+    let fuzzy = null;
+    if (searchText) {
+      const { matches, suggestions } = searchExercises(allRows, searchText);
+      fuzzy = new Set(suggestions);
+      rows = matches.concat(suggestions);
+      if (limit) rows = rows.slice(0, Number(limit));
+    }
     return rows.map(e => ({
       id: e.id,
       name: e.name,
@@ -2059,6 +2067,7 @@ const db = {
       videoId: e.video_id || null,
       hiddenFromLibrary: !!e.hidden_from_library,
       isFavorite: !!e.is_favorite,
+      ...(fuzzy && fuzzy.has(e) ? { isFuzzy: true } : {}),
     }));
   },
 

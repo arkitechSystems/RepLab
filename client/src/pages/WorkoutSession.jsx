@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { Fragment, useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { format, isToday, addDays, subDays } from 'date-fns';
@@ -13,6 +13,7 @@ import {
 import ExerciseCard from '../components/ExerciseCard';
 import { useExercises } from '../hooks/useExercises';
 import { savedExercises, savedFirst } from '../utils/savedExercises';
+import { searchExercises, startsFuzzyGroup, CLOSEST_MATCHES_LABEL } from '../utils/exerciseSearch';
 import RestDayCard from '../components/RestDayCard';
 import StickyHeader from '../components/StickyHeader';
 import { useUnsavedGuard } from '../components/UnsavedGuard';
@@ -4798,13 +4799,15 @@ export default function WorkoutSession() {
         const matchesMuscleFilter = (ex) => muscleFilter === 'all' || ex.muscle === muscleFilter;
         const seen = new Set();
         const muscleScoped = allExercises.filter(matchesMuscleFilter);
-        // Saved (bookmarked) exercises float to the top of search results.
-        const filtered = q
-          ? savedFirst(muscleScoped.filter((ex) => {
-              if (seen.has(ex.name)) return false;
-              seen.add(ex.name);
-              return ex.name.toLowerCase().includes(q);
-            }))
+        // Search within the muscle filter (abbreviations + misspellings, see
+        // utils/exerciseSearch). Saved (bookmarked) exercises float to the
+        // top of the matches; spelling-fallback rows (isFuzzy) follow under
+        // "Closest matches" when fewer than 3 exercises match.
+        const filtered = q.trim()
+          ? (() => {
+              const { matches, suggestions } = searchExercises(muscleScoped, addExerciseSearch, { uniqueNames: true });
+              return savedFirst(matches).concat(suggestions.map((ex) => ({ ...ex, isFuzzy: true })));
+            })()
           : [];
         // With no search, a "Saved" shelf sits above the muscle groups. Saved
         // exercises also stay in their own muscle group below it.
@@ -4901,15 +4904,19 @@ export default function WorkoutSession() {
                   </>
                 )}
                 {/* Search results */}
-                {q && filtered.map((ex) => (
+                {q && filtered.map((ex, i) => (
+                  <Fragment key={ex.name}>
+                  {startsFuzzyGroup(filtered, i) && (
+                    <p className="text-[10px] uppercase tracking-widest text-wf-gray-500 font-semibold mt-2 mb-1 px-1">{CLOSEST_MATCHES_LABEL}</p>
+                  )}
                   <button
-                    key={ex.name}
                     onClick={() => handleAddExercise(ex.name)}
                     className="w-full text-left rounded-xl px-4 py-3 flex items-center justify-between active:bg-white/10 active:scale-[0.98] transition-all"
                   >
                     <span className="text-sm text-white">{ex.name}</span>
                     <span className="text-[10px] text-wf-gray-500 uppercase tracking-wider ml-2 shrink-0">{ex.muscle}</span>
                   </button>
+                  </Fragment>
                 ))}
                 {!q && savedShelf.length > 0 && (
                   <div className="mb-4">

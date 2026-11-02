@@ -3,7 +3,8 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import pool from '../dbPool.js';
 import db, { clearDayNamesForTemplate } from '../db.js';
-import { DASHBOARD_CSS, SIDEBAR_JS } from '../dashboardCSS.js';
+import { DASHBOARD_CSS, SIDEBAR_JS, PASSWORD_TOGGLE_JS } from '../dashboardCSS.js';
+import { exerciseSearchBrowserScript } from '../exerciseSearch.js';
 
 const router = Router();
 
@@ -95,6 +96,7 @@ function clientLoginPage(error) {
       </form>
     </div>
   </div>
+<script>${PASSWORD_TOGGLE_JS}</script>
 </body>
 </html>`;
 }
@@ -354,6 +356,7 @@ ${error ? '<div class="glass" style="padding:14px 20px;margin-bottom:20px;border
   </div>
 </div>
 
+<script src="/workouts/exercise-search.js"></script>
 <script>
 let exerciseCount = 0;
 let exerciseLibrary = [];
@@ -448,7 +451,14 @@ function searchExercises(input, exIdx) {
   const badge = document.getElementById('valid-badge-' + exIdx);
   if (!query) { results.style.display = 'none'; badge.style.display = 'none'; return; }
 
-  const matches = exerciseLibrary.filter(e => e.name.toLowerCase().includes(query)).slice(0, 8);
+  // Shared exercise search (abbreviations, word by word, closest spellings
+  // when fewer than 3 match) — window.RepLabExerciseSearch comes from
+  // /workouts/exercise-search.js (shared/exerciseSearch.js).
+  const found = window.RepLabExerciseSearch
+    ? RepLabExerciseSearch.searchExercises(exerciseLibrary, input.value)
+    : { matches: exerciseLibrary.filter(e => e.name.toLowerCase().includes(query)), suggestions: [] };
+  const fuzzy = new Set(found.suggestions);
+  const matches = found.matches.slice(0, 8).concat(found.suggestions);
 
   // Check if exact match
   const exact = exerciseLibrary.some(e => e.name.toLowerCase() === query);
@@ -460,7 +470,8 @@ function searchExercises(input, exIdx) {
     return;
   }
 
-  results.innerHTML = matches.map(e =>
+  results.innerHTML = matches.map((e, i) =>
+    (fuzzy.has(e) && !fuzzy.has(matches[i - 1]) ? '<div style="padding:8px 14px 4px;font-size:9px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:1.5px;font-weight:600;">Closest matches</div>' : '') +
     '<div style="padding:8px 14px;cursor:pointer;font-size:13px;color:rgba(255,255,255,0.7);border-bottom:1px solid rgba(255,255,255,0.05);transition:background 0.15s;" onmouseover="this.style.background=\\'rgba(255,255,255,0.05)\\'" onmouseout="this.style.background=\\'none\\'" onclick="selectExercise(' + exIdx + ',\\'' + e.name.replace(/'/g, "\\\\'") + '\\')">' +
     '<span style="font-weight:600;color:#fff;">' + e.name + '</span>' +
     (e.muscle_group ? '<span style="margin-left:8px;font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;">' + e.muscle_group + '</span>' : '') +
@@ -836,6 +847,7 @@ router.get('/edit-workout/:id', clientAuth, async (req, res) => {
       </div>
     </div>
 
+    <script src="/workouts/exercise-search.js"></script>
     <script>
     let exerciseCount = 0;
     let exerciseLibrary = [];
@@ -930,7 +942,14 @@ router.get('/edit-workout/:id', clientAuth, async (req, res) => {
       const badge = document.getElementById('valid-badge-' + exIdx);
       if (!query) { results.style.display = 'none'; badge.style.display = 'none'; return; }
 
-      const matches = exerciseLibrary.filter(e => e.name.toLowerCase().includes(query)).slice(0, 8);
+      // Shared exercise search (abbreviations, word by word, closest
+      // spellings when fewer than 3 match) — window.RepLabExerciseSearch
+      // comes from /workouts/exercise-search.js (shared/exerciseSearch.js).
+      const found = window.RepLabExerciseSearch
+        ? RepLabExerciseSearch.searchExercises(exerciseLibrary, input.value)
+        : { matches: exerciseLibrary.filter(e => e.name.toLowerCase().includes(query)), suggestions: [] };
+      const fuzzy = new Set(found.suggestions);
+      const matches = found.matches.slice(0, 8).concat(found.suggestions);
       const exact = exerciseLibrary.some(e => e.name.toLowerCase() === query);
       badge.style.display = exact ? 'inline' : 'none';
 
@@ -940,7 +959,8 @@ router.get('/edit-workout/:id', clientAuth, async (req, res) => {
         return;
       }
 
-      results.innerHTML = matches.map(e =>
+      results.innerHTML = matches.map((e, i) =>
+        (fuzzy.has(e) && !fuzzy.has(matches[i - 1]) ? '<div style="padding:8px 14px 4px;font-size:9px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:1.5px;font-weight:600;">Closest matches</div>' : '') +
         '<div style="padding:8px 14px;cursor:pointer;font-size:13px;color:rgba(255,255,255,0.7);border-bottom:1px solid rgba(255,255,255,0.05);transition:background 0.15s;" onmouseover="this.style.background=\\'rgba(255,255,255,0.05)\\'" onmouseout="this.style.background=\\'none\\'" onclick="selectExercise(' + exIdx + ',\\'' + e.name.replace(/'/g, "\\\\'") + '\\')">' +
         '<span style="font-weight:600;color:#fff;">' + e.name + '</span>' +
         (e.muscle_group ? '<span style="margin-left:8px;font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;">' + e.muscle_group + '</span>' : '') +
@@ -1175,6 +1195,14 @@ router.get('/history', clientAuth, async (req, res) => {
     console.error('History error:', err);
     res.send(clientPage('Workout History', '<p style="color:#f87171;">Failed to load workout history.</p>', req.client));
   }
+});
+
+// GET /workouts/exercise-search.js — the shared exercise search as a browser
+// script (Fuse.js + shared/exerciseSearch.js) for the create/edit pages above.
+router.get('/exercise-search.js', (req, res) => {
+  res.type('application/javascript');
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.send(exerciseSearchBrowserScript());
 });
 
 // GET /workouts/api/exercises

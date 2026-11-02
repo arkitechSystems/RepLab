@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig, searchForWorkspaceRoot } from 'vite';
 import react from '@vitejs/plugin-react';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 
@@ -17,6 +17,9 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
+    // ../shared holds plain-JS modules shared with the server (e.g. the
+    // exercise search); let the dev server read it alongside client/.
+    fs: { allow: [searchForWorkspaceRoot(process.cwd()), '../shared'] },
     proxy: {
       '/auth': 'http://localhost:3024',
       '/programs': 'http://localhost:3024',

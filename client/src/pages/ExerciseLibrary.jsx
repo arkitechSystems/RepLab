@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useExercises } from '../hooks/useExercises';
 import LoadingSpinnerOverlay from '../components/LoadingSpinnerOverlay';
 import { compareExerciseNames, exerciseDetailUrl } from '../utils/exerciseOrder';
+import { searchExercises, CLOSEST_MATCHES_LABEL } from '../utils/exerciseSearch';
+import { savedFirst } from '../utils/savedExercises';
 
 // Equipment derivation from the tags array. The master library doesn't have
 // a dedicated equipment column — instead each exercise carries a tags array
@@ -41,7 +43,11 @@ export default function ExerciseLibrary() {
   // master and custom alike.
   const SAVED_FILTER = 'saved';
 
-  const filtered = useMemo(() => {
+  // Search results come back as { list, closest }: `list` is what's shown
+  // (search matches, or the whole filtered library), `closest` the
+  // spelling-fallback rows shown under "Closest matches" when fewer than 3
+  // exercises match.
+  const { list: filtered, closest } = useMemo(() => {
     // Default: master library only — exclude user-created custom exercises.
     // The "Custom" stat card inverts this to show ONLY the user's own
     // custom exercises. Per-muscle pills also stay master-only since
@@ -57,10 +63,6 @@ export default function ExerciseLibrary() {
     if (selectedMuscle && !showOnlyCustom && !showOnlySaved) {
       result = result.filter(e => e.muscle === selectedMuscle);
     }
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter(e => e.name.toLowerCase().includes(q));
-    }
     // The user's saved (bookmarked) exercises are pinned first, then the
     // rest; each part alphabetical, numbered names last (see
     // utils/exerciseOrder). Muscle groups below preserve this order, so a
@@ -71,11 +73,16 @@ export default function ExerciseLibrary() {
     );
     // Deduplicate by name (after sorting, so a saved copy wins)
     const seen = new Set();
-    return sorted.filter(e => {
+    const unique = sorted.filter(e => {
       if (seen.has(e.name)) return false;
       seen.add(e.name);
       return true;
     });
+    if (!search.trim()) return { list: unique, closest: [] };
+    // Search within the current filter (abbreviations + misspellings, see
+    // utils/exerciseSearch): best matches first, saved first within that.
+    const { matches, suggestions } = searchExercises(unique, search);
+    return { list: savedFirst(matches), closest: suggestions };
   }, [exercises, search, selectedMuscle]);
 
   // Group by muscle for display when not searching: [[title, exercises], ...].
@@ -106,8 +113,8 @@ export default function ExerciseLibrary() {
   // detail page so its ‹ › arrows step through exactly what's listed here
   // (current filter/search included).
   const navList = useMemo(
-    () => (grouped ? grouped.flatMap(([, exs]) => exs) : filtered).map((e) => exerciseDetailUrl(e.name)),
-    [grouped, filtered]
+    () => (grouped ? grouped.flatMap(([, exs]) => exs) : [...filtered, ...closest]).map((e) => exerciseDetailUrl(e.name)),
+    [grouped, filtered, closest]
   );
 
   // ── Tactile theme tokens ──
@@ -308,7 +315,18 @@ export default function ExerciseLibrary() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {filtered.map((ex) => renderRow(ex, true))}
           </div>
-          {filtered.length === 0 && <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: 14, padding: '32px 0' }}>No exercises found</p>}
+          {closest.length > 0 && (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '20px 4px 12px' }}>
+                <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.3em', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>{CLOSEST_MATCHES_LABEL}</span>
+                <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {closest.map((ex) => renderRow(ex, true))}
+              </div>
+            </>
+          )}
+          {filtered.length === 0 && closest.length === 0 && <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: 14, padding: '32px 0' }}>No exercises found</p>}
         </div>
       )}
 
