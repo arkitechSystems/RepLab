@@ -1,4 +1,4 @@
-import { Fragment, useState, useEffect, useRef, useCallback } from 'react';
+import { Fragment, useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { format, isToday, addDays, subDays } from 'date-fns';
@@ -1898,6 +1898,20 @@ export default function WorkoutSession() {
   const exerciseRefs = useRef({});
   const scrollToExercise = useRef(null);
 
+  // Checking a set must not move the page. The first check starts the workout
+  // timer, which swaps the header (day arrows and Begin Workout go away), and
+  // the rest timer changes size, so everything below would jump. Remember
+  // where the tapped card sat on screen, and after the re-render put it back.
+  const setCompleteAnchor = useRef(null);
+  useLayoutEffect(() => {
+    const anchor = setCompleteAnchor.current;
+    if (!anchor) return;
+    setCompleteAnchor.current = null;
+    if (!anchor.el.isConnected) return;
+    const delta = anchor.el.getBoundingClientRect().top - anchor.top;
+    if (Math.abs(delta) > 1) window.scrollBy({ top: delta, behavior: 'instant' });
+  }, [completedSets]);
+
   // Persist a new cardio entry to the server, then append to local state so
   // the card appears under the Add Cardio button without a refetch. Throws
   // on failure so the modal can surface the error to the user.
@@ -2460,6 +2474,9 @@ export default function WorkoutSession() {
     if (document.activeElement && document.activeElement.tagName === 'INPUT') {
       document.activeElement.blur();
     }
+    // Full-screen mode has its own overlay; only the card list can jump.
+    const anchorEl = fullScreenIdx === null ? exerciseRefs.current[exerciseKey] : null;
+    if (anchorEl) setCompleteAnchor.current = { el: anchorEl, top: anchorEl.getBoundingClientRect().top };
     setPersisted(false);
     const key = `${exerciseKey}-${setIdx}`;
     setCompletedSets((prev) => {

@@ -383,12 +383,19 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
   const cardRef = useRef(null);
   const prevTopRef = useRef(null);
   const wasJustClickedRef = useRef(false);
+  const prevNumberRef = useRef(exerciseNumber);
 
   useLayoutEffect(() => {
     const el = cardRef.current;
     if (!el) return;
     const top = el.offsetTop;
-    if (prevTopRef.current != null && prevTopRef.current !== top) {
+    // Only animate when the card's place in the list changed (move, insert,
+    // delete). A shift caused by something else changing height — the header
+    // swapping when the first set is checked, notes opening, a set added —
+    // just updates the stored position, so cards don't slide around.
+    const positionChanged = prevNumberRef.current !== exerciseNumber;
+    prevNumberRef.current = exerciseNumber;
+    if (prevTopRef.current != null && prevTopRef.current !== top && (positionChanged || wasJustClickedRef.current)) {
       const dy = prevTopRef.current - top;
       const isClicked = wasJustClickedRef.current;
       wasJustClickedRef.current = false;
