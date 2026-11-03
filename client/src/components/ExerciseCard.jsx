@@ -1311,7 +1311,10 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
               placeholder="Add a note..."
               rows={2}
               className="xc-input"
-              style={{ width: '100%', resize: 'none', fontSize: 13, lineHeight: 1.4, padding: '8px 10px', borderRadius: 10, background: 'var(--well)', border: XC_IN, color: 'rgba(var(--ink),0.8)', outline: 'none' }}
+              // 16px, not 13: iOS zooms in on any focused field under 16px and
+              // zooms/scrolls back out on blur — the jump when tapping in and
+              // out of notes.
+              style={{ width: '100%', resize: 'none', fontSize: 16, lineHeight: 1.4, padding: '8px 10px', borderRadius: 10, background: 'var(--well)', border: XC_IN, color: 'rgba(var(--ink),0.8)', outline: 'none' }}
             />
           ) : (
             <button
