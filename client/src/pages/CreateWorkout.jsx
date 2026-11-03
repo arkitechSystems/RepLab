@@ -282,8 +282,6 @@ export default function CreateWorkout() {
             sets: (e.sets || []).map(({ edited: _edited, ...s }) => s),
           })),
           programId: Number(selectedProgramId),
-          // Posts "created a custom workout" to the RepLab Community feed.
-          communityShare: true,
         }),
       });
       // Auto-save any custom exercises not in the library

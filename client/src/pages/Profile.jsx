@@ -16,13 +16,7 @@ import { getWorkoutColor } from '../utils/workoutColors';
 import { signInWithProvider, finishSocialAccountDeletion, signOutSocial, isSocialCancel } from '../utils/socialAuth';
 import PasswordInput from '../components/PasswordInput';
 
-// RepLab Community sharing categories (keys match /community/settings).
-const COMMUNITY_SHARE_CATEGORIES = [
-  { key: 'pr', label: 'PRs', helper: 'New personal records you hit during workouts.' },
-  { key: 'program', label: 'Workout programs started', helper: 'Featured or library programs, when you tap Begin Program and pick a start date.' },
-  { key: 'workout', label: 'Completed workouts', helper: 'Workout name, total volume, and number of lifts.' },
-  { key: 'custom', label: 'Custom workouts created', helper: 'Workouts you build and save, and empty workouts you start.' },
-];
+import { COMMUNITY_SHARE_CATEGORIES, applyCommunityToggle } from '../utils/communitySharing';
 
 // Touch-reactive ticker for the Personal Records strip. Scrolls left at a
 // steady speed; while a finger is down it freezes and the user can drag the
@@ -272,8 +266,9 @@ export default function Profile() {
   const [languagePref, setLanguagePref] = useState(() => localStorage.getItem('replab_locale') || 'en');
   // RepLab Community sharing — stored server-side (GET/PUT /community/settings)
   // because the feed is built on the server; defaults to everything on.
-  // `all` is the master toggle; the rest are per-category.
-  const [communitySharing, setCommunitySharing] = useState({ all: true, pr: true, program: true, workout: true, custom: true });
+  // `all` is the master toggle; the rest are per-category (master off/on
+  // switches them all — see applyCommunityToggle).
+  const [communitySharing, setCommunitySharing] = useState({ all: true, pr: true, program: true, programComplete: true, streak: true });
   const [communitySharingSaving, setCommunitySharingSaving] = useState(false);
   const [communitySharingError, setCommunitySharingError] = useState('');
   // "Likes on my activity" push toggle — server-side (GET/PUT
@@ -387,7 +382,7 @@ export default function Profile() {
 
   async function saveCommunitySharing(category, enabled, removePast = false) {
     const previous = communitySharing;
-    setCommunitySharing((s) => ({ ...s, [category]: enabled }));
+    setCommunitySharing((s) => applyCommunityToggle(s, category, enabled));
     setCommunitySharingSaving(true);
     setCommunitySharingError('');
     try {
@@ -951,7 +946,9 @@ export default function Profile() {
 
               {/* RepLab Community — what this user shares to the Community
                   feed. Saved server-side so it applies on every device.
-                  Master off grays out and disables the categories. */}
+                  Master off switches every category off; master on switches
+                  them all back on. A category can be turned on by itself
+                  (which turns the master back on). */}
               <div className="pt-3 border-t border-white/10 -mx-6 px-6 space-y-4">
                 <p className="text-[10px] uppercase font-bold" style={{ color: 'rgba(255,255,255,0.4)', letterSpacing: '0.2em' }}>
                   RepLab Community
@@ -974,10 +971,10 @@ export default function Profile() {
                   </button>
                 </div>
 
-                <div className={`pl-6 space-y-4 transition-opacity ${communitySharing.all ? '' : 'opacity-40'}`}>
+                <div className="pl-6 space-y-4">
                   {COMMUNITY_SHARE_CATEGORIES.map(({ key, label, helper }) => {
-                    const on = communitySharing[key];
-                    const disabled = !communitySharing.all || communitySharingSaving;
+                    const on = communitySharing[key] !== false;
+                    const disabled = communitySharingSaving;
                     return (
                       <div key={key} className="flex flex-col gap-1">
                         <div className="flex items-center justify-between gap-px">
@@ -986,7 +983,7 @@ export default function Profile() {
                             onClick={() => handleCommunityToggle(key)}
                             disabled={disabled}
                             aria-label={on ? `Stop sharing ${label.toLowerCase()}` : `Share ${label.toLowerCase()}`}
-                            className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${on ? 'bg-wf-red' : 'bg-white/15'} ${!communitySharing.all ? 'cursor-not-allowed' : ''}`}
+                            className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${on ? 'bg-wf-red' : 'bg-white/15'}`}
                           >
                             <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${on ? 'translate-x-5' : 'translate-x-0.5'}`} />
                           </button>
@@ -1530,7 +1527,8 @@ export default function Profile() {
       {/* RepLab Community — turn-off prompt: remove or keep past activity */}
       {sharingOffPrompt && (() => {
         const isMaster = sharingOffPrompt === 'all';
-        const label = isMaster ? null : COMMUNITY_SHARE_CATEGORIES.find((c) => c.key === sharingOffPrompt)?.label;
+        const cat = isMaster ? null : COMMUNITY_SHARE_CATEGORIES.find((c) => c.key === sharingOffPrompt);
+        const noun = cat?.noun || 'activity';
         return (
           <div
             className="fixed inset-0 z-[100] flex items-center justify-center px-4"
@@ -1548,12 +1546,12 @@ export default function Profile() {
             >
               <div className="px-5 pt-5 pb-4">
                 <h3 id="profile-sharing-off-title" className="text-lg font-bold text-white text-center">
-                  {isMaster ? 'Stop sharing to RepLab Community?' : `Stop sharing ${label}?`}
+                  {isMaster ? 'Stop sharing to RepLab Community?' : `Stop sharing ${noun}?`}
                 </h3>
                 <p id="profile-sharing-off-desc" className="text-sm text-wf-gray-400 text-center mt-2">
                   {isMaster
-                    ? "Nothing new will be shared while this is off. Do you want to remove everything you've already shared from the community, or keep it there?"
-                    : `New ${label.toLowerCase()} won't be shared while this is off. Do you want to remove the ${label.toLowerCase()} you've already shared from the community, or keep them there?`}
+                    ? "This turns off every sharing option, so nothing new will be shared. Do you want to remove everything you've already shared from the community, or keep it there?"
+                    : `New ${noun} won't be shared while this is off. Do you want to remove the ${noun} you've already shared from the community, or keep them there?`}
                 </p>
                 <p className="text-[11px] text-wf-gray-500 text-center mt-2">
                   Removed activity stays hidden even if you turn sharing back on.

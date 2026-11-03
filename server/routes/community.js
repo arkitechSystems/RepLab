@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { authMiddleware } from '../middleware/auth.js';
-import { parseCommunityItemKey } from '../communityItems.js';
+import { parseCommunityItemKey, COMMUNITY_ITEM_TYPES } from '../communityItems.js';
 import { notifyCommunityLike } from '../communityLikeNotifier.js';
 
 const router = Router();
@@ -10,7 +10,8 @@ const MAX_LIMIT = 100;
 const MAX_SINCE_DAYS = 90;
 
 // GET /community/feed?limit=50&sinceDays=30
-// Cross-user feed of PRs, program starts, and completed workouts.
+// Cross-user feed of PRs, program enrollments, program completions and
+// workout-streak milestones (5, 10, 15… days).
 // Returns { items: [...], authors: { [userId]: { name, photoUrl } } }. Each
 // item carries likeCount, likedByMe, and isMine for the viewer.
 router.get('/feed', authMiddleware, async (req, res) => {
@@ -25,10 +26,15 @@ router.get('/feed', authMiddleware, async (req, res) => {
   }
 });
 
-// Keep in sync with COMMUNITY_SETTING_KEYS in db.js.
-const SETTING_KEYS = new Set(['all', 'pr', 'program', 'workout', 'custom']);
+// 'all' (master) plus one key per feed kind — same list db.js uses.
+const SETTING_KEYS = new Set(['all', ...COMMUNITY_ITEM_TYPES]);
+// Categories removed from the feed in 2026-11. Older app builds still have
+// these toggles, so a change to one is accepted and ignored instead of
+// showing an error.
+const RETIRED_SETTING_KEYS = new Set(['workout', 'custom']);
 
-// GET /community/settings -> { all, pr, program, workout, custom } (booleans)
+// GET /community/settings -> { all, pr, program, programComplete, streak }
+// (booleans; 'program' = enrolling in a program)
 router.get('/settings', authMiddleware, async (req, res) => {
   try {
     res.json(await db.getCommunitySettings(req.userId));
@@ -41,9 +47,14 @@ router.get('/settings', authMiddleware, async (req, res) => {
 // PUT /community/settings  body: { category, enabled, removePast? }
 // category is 'all' (master) or one feed category. removePast only applies
 // when turning off: it hides everything already posted in that category.
+// Master off/on switches every category off/on (see db.setCommunitySharing).
+// Returns the full settings object.
 router.put('/settings', authMiddleware, async (req, res) => {
   try {
     const { category, enabled, removePast } = req.body || {};
+    if (RETIRED_SETTING_KEYS.has(category)) {
+      return res.json(await db.getCommunitySettings(req.userId));
+    }
     if (!SETTING_KEYS.has(category)) {
       return res.status(400).json({ error: 'Invalid category' });
     }

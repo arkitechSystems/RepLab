@@ -45,8 +45,9 @@ export function describeLikedItem(item) {
     return `your ${item.exercise} PR (${load})`;
   }
   if (item.type === 'program') return `that you started ${item.programName}`;
-  if (item.type === 'custom') return `your custom workout: ${item.workoutName}`;
-  return `your completed workout: ${item.workoutName}`;
+  if (item.type === 'programComplete') return `that you completed ${item.programName}`;
+  if (item.type === 'streak') return `your ${item.days}-day workout streak`;
+  return 'your activity';
 }
 
 export function buildLikePush(likerName, othersCount, item) {

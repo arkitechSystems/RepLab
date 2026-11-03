@@ -757,6 +757,30 @@ export default async function initDb() {
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_community_like_notices_pending ON community_like_notices(created_at) WHERE notified_at IS NULL`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_community_likes BOOLEAN NOT NULL DEFAULT TRUE`);
 
+  // Community feed v2 (2026-11): program completions + workout-streak
+  // milestones. Also defined in schema.sql.
+  await pool.query(`CREATE TABLE IF NOT EXISTS program_completions (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    program_start_id INT NOT NULL UNIQUE REFERENCES program_starts(id) ON DELETE CASCADE,
+    program_id INT REFERENCES programs(id) ON DELETE SET NULL,
+    program_name TEXT NOT NULL,
+    completed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_program_completions_completed ON program_completions(completed_at)`);
+  await pool.query(`CREATE TABLE IF NOT EXISTS streak_milestones (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    milestone INT NOT NULL,
+    run_start DATE NOT NULL,
+    reached_on DATE NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (user_id, milestone, reached_on)
+  )`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_streak_milestones_created ON streak_milestones(created_at)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_streak_milestones_user ON streak_milestones(user_id, reached_on)`);
+  await migrateCommunitySettingsV2();
+
   // PPL expansion migration removed — Will's PPL is no longer in the public
   // library (see comment above near the seed block). The user_id IS NULL
   // lookup wouldn't match the migrated program anyway.
@@ -792,6 +816,65 @@ export default async function initDb() {
   } else {
     // Ensure it's marked as featured
     await pool.query("UPDATE programs SET is_featured = TRUE WHERE id = $1", [featRows[0].id]);
+  }
+}
+
+// One-time move of RepLab Community sharing settings to the 2026-11 set
+// (pr, program, programComplete, streak), recorded in admin_settings so it
+// never runs twice (re-running would undo later choices):
+//   - 'program' (now "enrolled in a program") carries over to the new
+//     'programComplete' toggle: currently off → off, and a "remove past"
+//     cutoff is copied too.
+//   - Master off now means every toggle is off, so users whose master is off
+//     get every category switched off as well (turning the master back on
+//     turns them all on). 'streak' is otherwise on, like 'pr'.
+// Runs in one transaction under an advisory lock so two servers starting
+// together can't both apply it.
+async function migrateCommunitySettingsV2() {
+  const FLAG = 'community_settings_v2_migrated';
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query("SELECT pg_advisory_xact_lock(hashtext('community-settings-v2'))");
+    const { rows } = await client.query('SELECT 1 FROM admin_settings WHERE key = $1', [FLAG]);
+    if (rows.length > 0) {
+      await client.query('COMMIT');
+      return;
+    }
+    await client.query(
+      `INSERT INTO community_sharing_periods (user_id, category, off_at)
+       SELECT user_id, 'programComplete', off_at
+         FROM community_sharing_periods
+        WHERE category = 'program' AND on_at IS NULL
+       ON CONFLICT (user_id, category) WHERE on_at IS NULL DO NOTHING`
+    );
+    await client.query(
+      `INSERT INTO community_hidden_before (user_id, category, hidden_before)
+       SELECT user_id, 'programComplete', hidden_before
+         FROM community_hidden_before
+        WHERE category = 'program'
+       ON CONFLICT (user_id, category) DO NOTHING`
+    );
+    await client.query(
+      `INSERT INTO community_sharing_periods (user_id, category, off_at)
+       SELECT m.user_id, c.category, m.off_at
+         FROM community_sharing_periods m
+        CROSS JOIN (VALUES ('pr'), ('program'), ('programComplete'), ('streak')) AS c(category)
+        WHERE m.category = 'all' AND m.on_at IS NULL
+       ON CONFLICT (user_id, category) WHERE on_at IS NULL DO NOTHING`
+    );
+    await client.query(
+      `INSERT INTO admin_settings (key, value) VALUES ($1, $2)
+       ON CONFLICT (key) DO NOTHING`,
+      [FLAG, new Date().toISOString()]
+    );
+    await client.query('COMMIT');
+    console.log('[initDb] community sharing settings moved to the 2026-11 set');
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
   }
 }
 

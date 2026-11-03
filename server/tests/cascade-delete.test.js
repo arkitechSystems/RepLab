@@ -68,6 +68,8 @@ const DEPENDENT_TABLES = [
   ['account_deletion_tokens', 'user_id'],
   ['program_starts', 'user_id'],
   ['custom_workout_events', 'user_id'],
+  ['program_completions', 'user_id'],
+  ['streak_milestones', 'user_id'],
   ['community_sharing_periods', 'user_id'],
   ['community_hidden_before', 'user_id'],
   ['community_likes', 'user_id'],
@@ -361,9 +363,21 @@ describeIfDb('db.deleteUser cascade (integration)', () => {
     );
 
     // program_starts — community feed events, CASCADEd via user_id FK.
-    await pool.query(
-      `INSERT INTO program_starts (user_id, program_id, program_name) VALUES ($1, $2, 'Cascade Program')`,
+    const { rows: [startRow] } = await pool.query(
+      `INSERT INTO program_starts (user_id, program_id, program_name) VALUES ($1, $2, 'Cascade Program') RETURNING id`,
       [testUserId, programId]
+    );
+
+    // Community program-completion + streak-milestone events.
+    await pool.query(
+      `INSERT INTO program_completions (user_id, program_start_id, program_id, program_name)
+       VALUES ($1, $2, $3, 'Cascade Program')`,
+      [testUserId, startRow.id, programId]
+    );
+    await pool.query(
+      `INSERT INTO streak_milestones (user_id, milestone, run_start, reached_on)
+       VALUES ($1, 5, '2026-01-01', '2026-01-05')`,
+      [testUserId]
     );
 
     // Community custom-workout events + sharing settings — CASCADEd via

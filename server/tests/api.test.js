@@ -64,6 +64,12 @@ vi.mock('../communityLikeNotifier.js', () => ({
   startCommunityLikeScheduler: vi.fn(),
 }));
 
+// Community streak / program-complete events — rules covered in
+// communityMilestones.test.js.
+vi.mock('../communityMilestones.js', () => ({
+  recordCommunityMilestones: vi.fn().mockResolvedValue({ streakId: null, programCompletionId: null }),
+}));
+
 // Mock db module with fake implementations for all methods used by routes
 vi.mock('../db.js', () => {
   const mockDb = {
@@ -132,6 +138,8 @@ vi.mock('../db.js', () => {
     countCommunityLikes: vi.fn().mockResolvedValue(0),
     getCommunityNotificationSettings: vi.fn(),
     setCommunityLikeNotifications: vi.fn(),
+    getCommunitySettings: vi.fn(),
+    setCommunitySharing: vi.fn(),
 
     // Exercises
     getExercises: vi.fn().mockResolvedValue([]),
@@ -1029,7 +1037,7 @@ describe('Community Likes', () => {
     db.getCommunityItem.mockResolvedValue(null);
 
     const res = await request(app)
-      .put('/community/likes/wk-9')
+      .put('/community/likes/st-9')
       .set('Authorization', authHeader(1));
 
     expect(res.status).toBe(404);
@@ -1037,7 +1045,8 @@ describe('Community Likes', () => {
   });
 
   it('400s for malformed item keys', async () => {
-    for (const key of ['bogus-1', 'pr-abc', 'pr-0', 'pr-99999999999']) {
+    // wk-/cw- were the retired completed-workout / custom-workout kinds.
+    for (const key of ['bogus-1', 'pr-abc', 'pr-0', 'pr-99999999999', 'wk-9', 'cw-7']) {
       const res = await request(app)
         .put(`/community/likes/${key}`)
         .set('Authorization', authHeader(1));
@@ -1050,12 +1059,88 @@ describe('Community Likes', () => {
     db.countCommunityLikes.mockResolvedValue(0);
 
     const res = await request(app)
-      .delete('/community/likes/cw-7')
+      .delete('/community/likes/pc-7')
       .set('Authorization', authHeader(1));
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ liked: false, likeCount: 0 });
-    expect(db.unlikeCommunityItem).toHaveBeenCalledWith(1, 'custom', 7);
+    expect(db.unlikeCommunityItem).toHaveBeenCalledWith(1, 'programComplete', 7);
+  });
+
+  it('likes program-completion and streak items by their own keys', async () => {
+    db.likeCommunityItem.mockResolvedValue({ firstTime: false });
+    db.countCommunityLikes.mockResolvedValue(1);
+    db.getCommunityItem.mockResolvedValue({ type: 'streak', id: 3, ownerId: 2, days: 10 });
+
+    const res = await request(app)
+      .put('/community/likes/st-3')
+      .set('Authorization', authHeader(1));
+    expect(res.status).toBe(200);
+    expect(db.getCommunityItem).toHaveBeenCalledWith('streak', 3);
+    expect(db.likeCommunityItem).toHaveBeenCalledWith(1, 'streak', 3, 2);
+  });
+});
+
+describe('Community sharing settings', () => {
+  const ALL_ON = { all: true, pr: true, program: true, programComplete: true, streak: true };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockAuthPoolQuery(1);
+  });
+
+  it('accepts the four feed categories and the master', async () => {
+    db.setCommunitySharing.mockResolvedValue(ALL_ON);
+    for (const category of ['all', 'pr', 'program', 'programComplete', 'streak']) {
+      const res = await request(app)
+        .put('/community/settings')
+        .set('Authorization', authHeader(1))
+        .send({ category, enabled: true });
+      expect(res.status).toBe(200);
+      expect(db.setCommunitySharing).toHaveBeenLastCalledWith(1, category, true, false);
+    }
+  });
+
+  it('passes removePast only when turning off', async () => {
+    db.setCommunitySharing.mockResolvedValue({ ...ALL_ON, streak: false });
+    await request(app)
+      .put('/community/settings')
+      .set('Authorization', authHeader(1))
+      .send({ category: 'streak', enabled: false, removePast: true });
+    expect(db.setCommunitySharing).toHaveBeenLastCalledWith(1, 'streak', false, true);
+
+    await request(app)
+      .put('/community/settings')
+      .set('Authorization', authHeader(1))
+      .send({ category: 'streak', enabled: true, removePast: true });
+    expect(db.setCommunitySharing).toHaveBeenLastCalledWith(1, 'streak', true, false);
+  });
+
+  it('ignores the retired workout / custom toggles from older app builds', async () => {
+    db.getCommunitySettings.mockResolvedValue(ALL_ON);
+    const res = await request(app)
+      .put('/community/settings')
+      .set('Authorization', authHeader(1))
+      .send({ category: 'workout', enabled: false });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(ALL_ON);
+    expect(db.setCommunitySharing).not.toHaveBeenCalled();
+  });
+
+  it('rejects unknown categories and bad values', async () => {
+    const bad = [
+      { category: 'bogus', enabled: true },
+      { category: 'pr', enabled: 'yes' },
+      { category: 'pr', enabled: false, removePast: 'yes' },
+    ];
+    for (const body of bad) {
+      const res = await request(app)
+        .put('/community/settings')
+        .set('Authorization', authHeader(1))
+        .send(body);
+      expect(res.status).toBe(400);
+    }
+    expect(db.setCommunitySharing).not.toHaveBeenCalled();
   });
 
   it('saves the "Likes on my activity" setting and validates it', async () => {
