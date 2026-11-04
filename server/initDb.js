@@ -569,6 +569,20 @@ export default async function initDb() {
     }
   }
 
+  // Master exercises added after the first seed (the seed above only runs on
+  // an empty table). Idempotent: inserts each name only if no master row with
+  // that name exists (case-insensitive, matching exercises_master_name_unique).
+  for (const name of ['Heel Elevated Goblet Squat', 'Heel Elevated Barbell Squat']) {
+    const ex = SEED_EXERCISES.find((e) => e.name === name);
+    if (!ex) continue;
+    await pool.query(
+      `INSERT INTO exercises (name, muscle_group, tags, is_custom, created_by)
+       SELECT $1, $2, $3, FALSE, NULL
+       WHERE NOT EXISTS (SELECT 1 FROM exercises WHERE created_by IS NULL AND LOWER(name) = LOWER($1))`,
+      [ex.name, ex.muscle, ex.tags]
+    );
+  }
+
   // Video ID column for exercise YouTube videos
   await pool.query(`ALTER TABLE exercises ADD COLUMN IF NOT EXISTS video_id TEXT`);
   // Provenance of the video link: 'admin' (manual) or 'claude_code' (auto-linked
