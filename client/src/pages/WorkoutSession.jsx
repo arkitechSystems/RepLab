@@ -1,4 +1,4 @@
-import { Fragment, useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
+import { Fragment, useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { format, isToday, addDays, subDays } from 'date-fns';
@@ -626,30 +626,6 @@ export default function WorkoutSession() {
     runAutoSave();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [completedSets]);
-
-  // A new PR shows its banner over the screen as it is. Refreshing the PBs
-  // re-renders every card (PR badges, suggestions), which could shift the
-  // page, so hold the first card on screen in place across that render.
-  const pbRefreshAnchor = useRef(null);
-  useLayoutEffect(() => {
-    const anchor = pbRefreshAnchor.current;
-    if (!anchor) return;
-    pbRefreshAnchor.current = null;
-    if (!anchor.el.isConnected) return;
-    const delta = anchor.el.getBoundingClientRect().top - anchor.top;
-    if (Math.abs(delta) > 1) window.scrollBy({ top: delta, behavior: 'instant' });
-  }, [pbs, newPBs]);
-  function captureVisibleCardAnchor() {
-    if (fullScreenIdx !== null) return null;
-    let best = null;
-    for (const el of Object.values(exerciseRefs.current)) {
-      if (!el || !el.isConnected) continue;
-      const r = el.getBoundingClientRect();
-      if (r.bottom <= 0 || r.top >= window.innerHeight) continue;
-      if (!best || r.top < best.top) best = { el, top: r.top };
-    }
-    return best;
-  }
 
   // Auto-save after structural changes (exercise/set add/delete/swap/move) — debounced 1.5s
   useEffect(() => {
@@ -1934,19 +1910,6 @@ export default function WorkoutSession() {
     if (e.target === e.currentTarget) e.currentTarget.classList.remove('fade-slide-up');
   }, []);
 
-  // Checking a set must not move the page. The first check starts the workout
-  // timer, which swaps the header (day arrows and Begin Workout go away), and
-  // the rest timer changes size, so everything below would jump. Remember
-  // where the tapped card sat on screen, and after the re-render put it back.
-  const setCompleteAnchor = useRef(null);
-  useLayoutEffect(() => {
-    const anchor = setCompleteAnchor.current;
-    if (!anchor) return;
-    setCompleteAnchor.current = null;
-    if (!anchor.el.isConnected) return;
-    const delta = anchor.el.getBoundingClientRect().top - anchor.top;
-    if (Math.abs(delta) > 1) window.scrollBy({ top: delta, behavior: 'instant' });
-  }, [completedSets]);
 
   // Persist a new cardio entry to the server, then append to local state so
   // the card appears under the Add Cardio button without a refetch. Throws
@@ -2510,9 +2473,6 @@ export default function WorkoutSession() {
     if (document.activeElement && document.activeElement.tagName === 'INPUT') {
       document.activeElement.blur();
     }
-    // Full-screen mode has its own overlay; only the card list can jump.
-    const anchorEl = fullScreenIdx === null ? exerciseRefs.current[exerciseKey] : null;
-    if (anchorEl) setCompleteAnchor.current = { el: anchorEl, top: anchorEl.getBoundingClientRect().top };
     setPersisted(false);
     const key = `${exerciseKey}-${setIdx}`;
     setCompletedSets((prev) => {
@@ -2825,7 +2785,6 @@ export default function WorkoutSession() {
         // No scroll restore after a save: on a slow connection the save can
         // land seconds later, and snapping back to a captured position
         // yanked the page away from wherever the user had moved on to.
-        pbRefreshAnchor.current = captureVisibleCardAnchor();
         setPbs(pbMap);
 
         // Compare old vs new PBs to detect improvements

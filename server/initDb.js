@@ -572,7 +572,7 @@ export default async function initDb() {
   // Master exercises added after the first seed (the seed above only runs on
   // an empty table). Idempotent: inserts each name only if no master row with
   // that name exists (case-insensitive, matching exercises_master_name_unique).
-  for (const name of ['Heel Elevated Goblet Squat', 'Heel Elevated Barbell Squat']) {
+  for (const name of ['Heel Elevated Goblet Squat', 'Heel Elevated Barbell Squat', 'Jog']) {
     const ex = SEED_EXERCISES.find((e) => e.name === name);
     if (!ex) continue;
     await pool.query(
