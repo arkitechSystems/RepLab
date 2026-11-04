@@ -1898,6 +1898,16 @@ export default function WorkoutSession() {
   const exerciseRefs = useRef({});
   const scrollToExercise = useRef(null);
 
+  // Cards fade in once when the session opens. Moving a card re-inserts its
+  // element, and browsers restart CSS animations on re-insert — so the moved
+  // card went invisible for its staggered delay (idx × 60ms) and faded in
+  // again, which read as a ~1s lag on Move Up / Move Down. Drop the class
+  // after the first run so it can never replay. (React leaves the class
+  // alone on later renders because the className prop doesn't change.)
+  const endIntroFade = useCallback((e) => {
+    if (e.target === e.currentTarget) e.currentTarget.classList.remove('fade-slide-up');
+  }, []);
+
   // Checking a set must not move the page. The first check starts the workout
   // timer, which swaps the header (day arrows and Begin Workout go away), and
   // the rest timer changes size, so everything below would jump. Remember
@@ -3838,7 +3848,7 @@ export default function WorkoutSession() {
               />
             )}
             {exercise.isSectionHeader ? (
-            <div className="fade-slide-up mb-3 mt-2" style={{ animationDelay: `${idx * 60}ms` }}>
+            <div className="fade-slide-up mb-3 mt-2" onAnimationEnd={endIntroFade} style={{ animationDelay: `${idx * 60}ms` }}>
               {/* Long-press (500ms, cancelled on lift/move) opens the
                   edit-or-delete modal. Movement during press cancels so
                   scroll gestures don't trigger an edit. Read-only when
@@ -3887,7 +3897,7 @@ export default function WorkoutSession() {
           ) : (
           <>
           {(supersetPos === 'start' || supersetPos === 'only') && <SupersetDivider />}
-          <div ref={(el) => { exerciseRefs.current[eKey] = el; if (el && scrollToExercise.current === idx) { scrollToExercise.current = null; setTimeout(() => { const target = Math.max(0, el.getBoundingClientRect().top + window.scrollY - window.innerHeight / 2); const start = window.scrollY; const dist = target - start; const duration = 600; let t0 = null; function step(ts) { if (!t0) t0 = ts; const p = Math.min((ts - t0) / duration, 1); const ease = p < 0.5 ? 2 * p * p : -1 + (4 - 2 * p) * p; window.scrollTo(0, start + dist * ease); if (p < 1) requestAnimationFrame(step); } requestAnimationFrame(step); }, 50); } }} className="fade-slide-up" style={{ animationDelay: `${idx * 60}ms` }}>
+          <div ref={(el) => { exerciseRefs.current[eKey] = el; if (el && scrollToExercise.current === idx) { scrollToExercise.current = null; setTimeout(() => { const target = Math.max(0, el.getBoundingClientRect().top + window.scrollY - window.innerHeight / 2); const start = window.scrollY; const dist = target - start; const duration = 600; let t0 = null; function step(ts) { if (!t0) t0 = ts; const p = Math.min((ts - t0) / duration, 1); const ease = p < 0.5 ? 2 * p * p : -1 + (4 - 2 * p) * p; window.scrollTo(0, start + dist * ease); if (p < 1) requestAnimationFrame(step); } requestAnimationFrame(step); }, 50); } }} className="fade-slide-up" onAnimationEnd={endIntroFade} style={{ animationDelay: `${idx * 60}ms` }}>
             <ExerciseCard
               exercise={exercise}
               exerciseKey={eKey}
