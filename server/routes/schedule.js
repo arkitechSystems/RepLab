@@ -2,6 +2,7 @@ import { Router } from 'express';
 import db from '../db.js';
 import pool from '../dbPool.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { validateBody, scheduleBody } from '../validation.js';
 import {
   isValidDate, isPlausibleToday, daysBetween,
   getMissedWorkouts, shiftScheduleFrom, markMissedSkipped,
@@ -55,28 +56,10 @@ router.get('/today', authMiddleware, async (req, res) => {
   }
 });
 
-router.put('/', authMiddleware, async (req, res) => {
+// Body shape (dates, ids, isRest) is checked by scheduleBody (validation.js).
+router.put('/', authMiddleware, validateBody(scheduleBody), async (req, res) => {
   try {
     const { schedule } = req.body;
-    if (!schedule || !Array.isArray(schedule)) {
-      return res.status(400).json({ error: 'Schedule array is required' });
-    }
-    for (const day of schedule) {
-      if (!day.date || !/^\d{4}-\d{2}-\d{2}$/.test(day.date)) {
-        return res.status(400).json({ error: 'Each entry must have a date in YYYY-MM-DD format' });
-      }
-      if (day.templateId !== undefined && day.templateId !== null &&
-          (!Number.isInteger(day.templateId) || day.templateId < 1)) {
-        return res.status(400).json({ error: 'templateId must be a positive integer' });
-      }
-    }
-
-    // Normalize isRest flag
-    for (const day of schedule) {
-      if (day.isRest !== undefined && typeof day.isRest !== 'boolean') {
-        return res.status(400).json({ error: 'isRest must be a boolean' });
-      }
-    }
 
     // Verify all templateIds belong to user or are global
     const templateIds = schedule.map(s => s.templateId).filter(id => id != null);
