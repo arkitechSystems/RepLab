@@ -92,8 +92,19 @@ function supersetPositionAt(exercises, idx) {
   return 'only';
 }
 
+// Which superset this card belongs to, counting groups from the top of the
+// workout: 1 for the first superset, 2 for the next, and so on.
+function supersetNumberAt(exercises, idx) {
+  let n = 0;
+  for (let i = 0; i <= idx; i++) {
+    const pos = supersetPositionAt(exercises, i);
+    if (pos === 'start' || pos === 'only') n++;
+  }
+  return n;
+}
+
 // Small divider above / below a superset group.
-function SupersetDivider({ end = false }) {
+function SupersetDivider({ end = false, number }) {
   return (
     <div className={`flex items-center gap-2 px-1 ${end ? 'mt-1.5 mb-3' : 'mt-1 mb-1.5'}`} aria-hidden="true">
       <span style={{ width: 14, height: 3, background: end ? 'rgba(239,68,68,0.45)' : '#ef4444' }} />
@@ -101,7 +112,7 @@ function SupersetDivider({ end = false }) {
         className="text-[10px] uppercase font-bold"
         style={{ color: end ? 'rgba(239,68,68,0.6)' : '#ef4444', letterSpacing: '0.3em' }}
       >
-        {end ? 'End Superset' : 'Superset'}
+        {end ? 'End Superset' : 'Superset'}{number ? ` ${number}` : ''}
       </span>
       <span className="flex-1 h-px" style={{ background: 'rgba(239,68,68,0.25)' }} />
     </div>
@@ -615,6 +626,30 @@ export default function WorkoutSession() {
     runAutoSave();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [completedSets]);
+
+  // A new PR shows its banner over the screen as it is. Refreshing the PBs
+  // re-renders every card (PR badges, suggestions), which could shift the
+  // page, so hold the first card on screen in place across that render.
+  const pbRefreshAnchor = useRef(null);
+  useLayoutEffect(() => {
+    const anchor = pbRefreshAnchor.current;
+    if (!anchor) return;
+    pbRefreshAnchor.current = null;
+    if (!anchor.el.isConnected) return;
+    const delta = anchor.el.getBoundingClientRect().top - anchor.top;
+    if (Math.abs(delta) > 1) window.scrollBy({ top: delta, behavior: 'instant' });
+  }, [pbs, newPBs]);
+  function captureVisibleCardAnchor() {
+    if (fullScreenIdx !== null) return null;
+    let best = null;
+    for (const el of Object.values(exerciseRefs.current)) {
+      if (!el || !el.isConnected) continue;
+      const r = el.getBoundingClientRect();
+      if (r.bottom <= 0 || r.top >= window.innerHeight) continue;
+      if (!best || r.top < best.top) best = { el, top: r.top };
+    }
+    return best;
+  }
 
   // Auto-save after structural changes (exercise/set add/delete/swap/move) — debounced 1.5s
   useEffect(() => {
@@ -1819,13 +1854,6 @@ export default function WorkoutSession() {
       const after = partnerIdxs.find((i) => (Number(rest[i].supersetLabel.slice(1)) || 0) > num);
       const insertAt = after !== undefined ? after : partnerIdxs[partnerIdxs.length - 1] + 1;
       rest.splice(insertAt, 0, moving);
-      if (insertAt !== tIdx) {
-        // Bring the card into view at its new spot once React re-renders.
-        setTimeout(() => {
-          const el = exerciseRefs.current[targetKey];
-          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 50);
-      }
       return { ...prev, exercises: rest };
     });
     setEntries((prev) => {
@@ -1887,8 +1915,7 @@ export default function WorkoutSession() {
       [newKey]: [{ weight: '', reps: '' }],
     }));
     setShowAddExercise(false);
-    // Mark that we want to scroll to this exercise after render
-    scrollToExercise.current = insertIdx;
+    // No scroll to the new card: adding an exercise leaves the page where it is.
     // If the user added the exercise while in full-screen mode, switch the
     // overlay to show the newly-created card so they can start logging it
     // immediately instead of being left on the previous exercise.
@@ -1896,7 +1923,6 @@ export default function WorkoutSession() {
   }
 
   const exerciseRefs = useRef({});
-  const scrollToExercise = useRef(null);
 
   // Cards fade in once when the session opens. Moving a card re-inserts its
   // element, and browsers restart CSS animations on re-insert — so the moved
@@ -2799,6 +2825,7 @@ export default function WorkoutSession() {
         // No scroll restore after a save: on a slow connection the save can
         // land seconds later, and snapping back to a captured position
         // yanked the page away from wherever the user had moved on to.
+        pbRefreshAnchor.current = captureVisibleCardAnchor();
         setPbs(pbMap);
 
         // Compare old vs new PBs to detect improvements
@@ -3896,8 +3923,8 @@ export default function WorkoutSession() {
             </div>
           ) : (
           <>
-          {(supersetPos === 'start' || supersetPos === 'only') && <SupersetDivider />}
-          <div ref={(el) => { exerciseRefs.current[eKey] = el; if (el && scrollToExercise.current === idx) { scrollToExercise.current = null; setTimeout(() => { const target = Math.max(0, el.getBoundingClientRect().top + window.scrollY - window.innerHeight / 2); const start = window.scrollY; const dist = target - start; const duration = 600; let t0 = null; function step(ts) { if (!t0) t0 = ts; const p = Math.min((ts - t0) / duration, 1); const ease = p < 0.5 ? 2 * p * p : -1 + (4 - 2 * p) * p; window.scrollTo(0, start + dist * ease); if (p < 1) requestAnimationFrame(step); } requestAnimationFrame(step); }, 50); } }} className="fade-slide-up" onAnimationEnd={endIntroFade} style={{ animationDelay: `${idx * 60}ms` }}>
+          {(supersetPos === 'start' || supersetPos === 'only') && <SupersetDivider number={supersetNumberAt(template.exercises, idx)} />}
+          <div ref={(el) => { exerciseRefs.current[eKey] = el; }} className="fade-slide-up" onAnimationEnd={endIntroFade} style={{ animationDelay: `${idx * 60}ms` }}>
             <ExerciseCard
               exercise={exercise}
               exerciseKey={eKey}
@@ -3965,7 +3992,7 @@ export default function WorkoutSession() {
               />
             )}
           </div>
-          {(supersetPos === 'end' || supersetPos === 'only') && <SupersetDivider end />}
+          {(supersetPos === 'end' || supersetPos === 'only') && <SupersetDivider end number={supersetNumberAt(template.exercises, idx)} />}
           </>
           )}
           {/* Undo toast after last exercise for exercise deletion at end */}

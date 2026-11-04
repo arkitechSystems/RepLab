@@ -41,7 +41,7 @@ export default function useFocusTrap(active) {
     if (focusables.length > 0) {
       // Don't steal focus if focus is already inside the container
       if (!container.contains(document.activeElement)) {
-        focusables[0].focus();
+        focusables[0].focus({ preventScroll: true });
       }
     }
 
@@ -72,7 +72,7 @@ export default function useFocusTrap(active) {
       container.removeEventListener('keydown', handleKey);
       // Restore focus to the element that was focused before the modal opened
       if (previouslyFocused && typeof previouslyFocused.focus === 'function') {
-        try { previouslyFocused.focus(); } catch (e) { /* element gone */ }
+        try { previouslyFocused.focus({ preventScroll: true }); } catch (e) { /* element gone */ }
       }
     };
   }, [active]);
