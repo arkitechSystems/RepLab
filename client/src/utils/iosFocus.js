@@ -5,6 +5,6 @@
  */
 export function iosFocusRef(el) {
   if (el) {
-    setTimeout(() => el.focus(), 50);
+    setTimeout(() => el.focus({ preventScroll: true }), 50);
   }
 }

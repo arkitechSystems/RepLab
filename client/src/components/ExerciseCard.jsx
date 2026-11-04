@@ -288,26 +288,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
   const [swapSearch, setSwapSearch] = useState('');
   const [showAddBelow, setShowAddBelow] = useState(false);
   const addBelowRef = useRef(null);
-  // When the inline "add exercise below" panel mounts, scroll the page so its
-  // top edge sits at ~25% of viewport height (halfway between the top and the
-  // vertical center). Without this, cards with many sets push the search bar
-  // below the fold and new users can't see where to type. rAF defers the
-  // measurement to after layout so getBoundingClientRect reads the real rect
-  // rather than the pre-animation rect.
-  useEffect(() => {
-    if (!showAddBelow) return;
-    const raf = requestAnimationFrame(() => {
-      const el = addBelowRef.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const targetTop = window.innerHeight * 0.25;
-      const delta = rect.top - targetTop;
-      if (Math.abs(delta) > 4) {
-        window.scrollTo({ top: window.scrollY + delta, behavior: 'smooth' });
-      }
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [showAddBelow]);
+  // The inline "add exercise below" panel opens in place — no auto-scroll.
   const [addBelowSearch, setAddBelowSearch] = useState('');
   // Index of the set whose weight input is currently driving the plate
   // calculator modal. null = modal closed. Set by long-press on a weight
@@ -530,7 +511,8 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
   const menuItems = [
     onMoveUp && { label: 'Move up', onClick: () => { wasJustClickedRef.current = true; onMoveUp(); }, icon: <path d="M4.5 15.75l7.5-7.5 7.5 7.5" /> },
     onMoveDown && { label: 'Move down', onClick: () => { wasJustClickedRef.current = true; onMoveDown(); }, icon: <path d="M19.5 8.25l-7.5 7.5-7.5-7.5" /> },
-    onSwapExercise && { label: 'Swap exercise', onClick: () => { setShowSwap(true); setSwapSearch(''); }, icon: <path d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" /> },
+    // In a workout session Swap sits in the header next to Demo instead.
+    onSwapExercise && isTemplate && { label: 'Swap exercise', onClick: () => { setShowSwap(true); setSwapSearch(''); }, icon: <path d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" /> },
     onOpenSupersetPicker && !isTemplate && { label: exercise.supersetLabel ? `Superset ${exercise.supersetLabel}` : 'Add to superset', onClick: () => onOpenSupersetPicker(exerciseKey || exercise.name), icon: <path d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /> },
     onAddExercise && { label: 'Add exercise below', onClick: () => { setShowAddBelow(true); setAddBelowSearch(''); }, icon: <path d="M12 4.5v15m7.5-7.5h-15" /> },
     onDeleteExercise && { divider: true },
@@ -639,6 +621,14 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                 data-tutorial={dataTutorial ? 'demo-button' : undefined}
                 onClick={(e) => { e.stopPropagation(); videoId ? setShowDemoLocal(!showDemoLocal) : handleVideoClick(); }}
                 icon={<path d="M7 4.5v15l12.5-7.5z" fill="currentColor" stroke="none" />}
+              />
+            )}
+            {menuLayout && !isTemplate && !readOnly && onSwapExercise && (
+              <ToolBtn
+                label="Swap"
+                aria-label={`Swap ${exercise.name} for another exercise`}
+                onClick={(e) => { e.stopPropagation(); setShowSwap(true); setSwapSearch(''); }}
+                icon={<path d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />}
               />
             )}
             {showMenuBtn && (
@@ -1771,7 +1761,8 @@ function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelec
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Search exercises..."
               ref={iosFocusRef}
-              className="w-full glass-input rounded-xl pl-10 pr-4 py-3 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none"
+              // 16px (text-base) so iOS doesn't auto-zoom the page on focus.
+              className="w-full glass-input rounded-xl pl-10 pr-4 py-3 text-white text-base placeholder:text-wf-gray-500 focus:outline-none"
             />
           </div>
           {/* Body-part filter pills — narrow the swap results by muscle group.

@@ -178,6 +178,7 @@ const EXERCISES = [
   { name: 'Treadmill', muscle: 'Conditioning', tags: ['cardio', 'conditioning'] },
   { name: 'Rowing Machine', muscle: 'Conditioning', tags: ['cardio', 'conditioning', 'full body'] },
   { name: 'Battle Ropes', muscle: 'Conditioning', tags: ['cardio', 'conditioning', 'upper body'] },
+  { name: 'Jog', muscle: 'Conditioning', tags: ['cardio', 'conditioning', 'running', 'bodyweight'] },
 ];
 
 // Build a lookup map for O(1) access

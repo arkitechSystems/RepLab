@@ -169,6 +169,7 @@ const SEED_EXERCISES = [
   { name: 'Treadmill', muscle: 'Conditioning', tags: ['cardio', 'conditioning'] },
   { name: 'Rowing Machine', muscle: 'Conditioning', tags: ['cardio', 'conditioning', 'full body'] },
   { name: 'Battle Ropes', muscle: 'Conditioning', tags: ['cardio', 'conditioning', 'upper body'] },
+  { name: 'Jog', muscle: 'Conditioning', tags: ['cardio', 'conditioning', 'running', 'bodyweight'] },
 
   // === ADDITIONAL from seed workouts ===
   // 'Incline Bench Press' and 'Dumbbell Shoulder Press' were originally
