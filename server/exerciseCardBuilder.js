@@ -312,7 +312,15 @@ export function exerciseCardScript(apiBase) {
             var resp = await fetch(API + '/exercises?q=' + encodeURIComponent(query));
             var exercises = await resp.json();
             resultsDiv.innerHTML = '';
-            exercises.forEach(function(ex) {
+            exercises.forEach(function(ex, i) {
+              // Spelling-fallback rows (isFuzzy, see shared/exerciseSearch.js)
+              // get a small "Closest matches" label above the first one.
+              if (ex.isFuzzy && !(exercises[i - 1] && exercises[i - 1].isFuzzy)) {
+                var fuzzyLabel = document.createElement('div');
+                fuzzyLabel.textContent = 'Closest matches';
+                fuzzyLabel.style.cssText = 'padding:8px 14px 4px;font-size:9px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:1.5px;font-weight:600;';
+                resultsDiv.appendChild(fuzzyLabel);
+              }
               var btn = document.createElement('button');
               btn.type = 'button';
               btn.style.cssText = 'width:100%;text-align:left;padding:10px 14px;border:none;background:none;color:#fff;font-size:13px;cursor:pointer;font-family:inherit;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.05);';

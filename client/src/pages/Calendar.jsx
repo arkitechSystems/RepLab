@@ -1963,7 +1963,12 @@ export default function Calendar() {
                         key={dateStr}
                         disabled={isSourceDay}
                         onClick={() => handlePickCopyDay(date)}
-                        className={`w-full text-left rounded-xl px-4 py-3 flex items-center gap-3 transition-all ${
+                        aria-current={dayIsToday ? 'date' : undefined}
+                        // White border marks today's row; the other rows keep a
+                        // transparent border so nothing shifts.
+                        className={`w-full text-left rounded-xl px-4 py-3 flex items-center gap-3 transition-all border ${
+                          dayIsToday ? 'border-white' : 'border-transparent'
+                        } ${
                           isSourceDay
                             ? 'bg-white/5 opacity-40 cursor-not-allowed'
                             : 'bg-white/5 active:bg-white/10 active:scale-[0.98]'

@@ -94,6 +94,8 @@ const EXERCISES = [
   { name: 'BB Squats', muscle: 'Quads', tags: ['squat', 'barbell', 'compound', 'bilateral'] },
   { name: 'Front Squat', muscle: 'Quads', tags: ['squat', 'barbell', 'compound', 'bilateral'] },
   { name: 'Goblet Squat', muscle: 'Quads', tags: ['squat', 'dumbbell', 'compound', 'bilateral'] },
+  { name: 'Heel Elevated Goblet Squat', muscle: 'Quads', tags: ['squat', 'dumbbell', 'compound', 'bilateral', 'heel elevated'] },
+  { name: 'Heel Elevated Barbell Squat', muscle: 'Quads', tags: ['squat', 'barbell', 'compound', 'bilateral', 'heel elevated'] },
   { name: 'Hack Squat', muscle: 'Quads', tags: ['squat', 'machine', 'compound', 'bilateral'] },
   { name: 'Leg Press', muscle: 'Quads', tags: ['press', 'machine', 'compound', 'bilateral'] },
   { name: 'Single Leg Leg Press', muscle: 'Quads', tags: ['press', 'machine', 'compound', 'unilateral'] },

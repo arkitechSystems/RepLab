@@ -11,18 +11,29 @@ Decisions below are settled. Add new questions and answers to the decision log a
 
 Claude: remind Will of any open item here at the start of a session.
 
-- [ ] **Merge `zod-validation` into `main`** — on or after **2026-10-14**, once the website has been
-  quiet. Will chose to wait so a problem can be traced to TanStack or to Zod (2026-10-11). Ask Will
-  before merging; it deploys the website. This merge also brings the two Android files from
-  `npx cap sync android` (network plugin) onto `main`.
+- [x] **Merge `zod-validation` into `main`** — done 2026-10-14 (merge `925708b`, pushed with Will's
+  OK after he confirmed the app was working). Server 135 pass (2 need the test DB), client 79/79.
+  Also brought the two Android network-plugin files onto `main`. Watch Sentry for a few days.
+- [ ] **Then merge the improvement-plan branches, a few quiet days apart** (order Will chose
+  2026-10-12; ask before each, every merge deploys the website):
+  1. ~~`zod-validation`~~ — merged 2026-10-14
+  2. `deps-audit` — PR #1 (about 2026-10-17); brings Capacitor 8.5.3, so new iOS/Android builds after
+  3. `playwright` (about 2026-10-20); has the offline quick-close save fix + fresh-database fixes
+  4. `pg-boss` (about 2026-10-23); background jobs + Node 22 pin — check the Render deploy log shows
+     Node 22 and `[jobs]` lines, and the next daily summary email arrives
+  5. `node-pg-migrate` (about 2026-10-26); first deploy logs `[migrate]` and records the baseline
+     in `pgmigrations` without changing anything
+  6. `zod-routes` (about 2026-10-29); checks request bodies on the remaining routes
+- [x] **Local dev database** — done 2026-10-13: `npm run dev` uses Docker `replab-dev-db`, not
+  production (docs/local-dev-database.md).
 - [ ] **Will: manual website checks** — on replab-fitness.com, log sets, go Offline in DevTools,
   log a set and edit the calendar, go back online, confirm "All changes synced" and the changes
   survive a refresh.
 - [ ] **Watch Coding Errors + Sentry** for a few days after the release (reading the production
   database needs Will's OK).
 - [ ] **Will: iPhone build** — Xcode Cloud runs `npx cap sync ios` itself; test airplane mode on the device.
-- [ ] **Will: Android build** — build only after the `zod-validation` merge (or once the two Android
-  files reach `main`); test airplane mode on the device.
+- [ ] **Will: Android build** — ready to build from `main` now (the two Android files arrived with the
+  `zod-validation` merge, 2026-10-14); test airplane mode on the device.
 
 ## Save point and branches
 
@@ -61,6 +72,7 @@ Oct 2026 bugs that this targets (see Admin → System → Coding Errors):
 | 8 | 2026-10-10 | Push tag and branch to GitHub? | **Push both** (backup + visible from any login). |
 | 10 | 2026-10-10 | Offline edits outside a workout (Calendar / Workouts)? | **The stack's way where it fits.** Self-contained edits — rest day, rename, delete, move a workout to another day — are queued like workout saves: the screen updates immediately (optimistic), they sync later and count in "N changes waiting to sync"; last change wins (decision 4). Multi-step edits that need the server's answer first — copy a workout, start empty, create workout/program — fail with "You're offline — try again when connected." Built in phase 5. |
 | 9 | 2026-10-10 | Logging out with workout changes not yet synced? | **Warn first:** "You have N workout changes that haven't synced yet. If you log out now, they will be lost." — Stay logged in / Log out anyway. Logging out wipes everything, unsent changes included, so the next person on the device never sees or sends them. (A forced logout — refresh token rejected — can't ask and wipes them.) |
+| 11 | 2026-11-03 | Community feed now shows only PRs, program started, program completed and 5/10/15…-day streaks — what about saved copies of the old feed? | **Filter on screen.** Community still loads through `loadPathOrSaved`; the page drops any item kind it doesn't know (an offline saved copy from before the change can hold completed/custom-workout items). Profile's sharing toggles still load with `loadPathOrSaved` and save online-only; the screen applies the master/category rule optimistically (`utils/communitySharing.js`) and then takes the server's answer. No cache-shape bump needed. |
 
 ### Technical defaults (Claude's calls — change them here if they turn out wrong)
 

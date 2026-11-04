@@ -3,6 +3,7 @@ import { getExerciseVideoId, getExerciseSearchUrl } from '../utils/exerciseVideo
 import { useExercises, getSubstitutesFromList } from '../hooks/useExercises.js';
 import VideoPlayerModal from './VideoPlayerModal.jsx';
 import { iosFocusRef } from '../utils/iosFocus.js';
+import { pickerSearch, searchExerciseList } from '../utils/exerciseSearch.js';
 import { api } from '../api.js';
 
 const SET_TYPES = [
@@ -525,14 +526,8 @@ export default function ExerciseCardTest({ exercise, entries, pbs, onChange, onB
       {showAddBelow && onAddExercise && (() => {
         const allEx = allExercises;
         const q = addBelowSearch.toLowerCase().trim();
-        const seen = new Set();
-        const filtered = q
-          ? allEx.filter((ex) => {
-              if (seen.has(ex.name)) return false;
-              seen.add(ex.name);
-              return ex.name.toLowerCase().includes(q);
-            }).slice(0, 8)
-          : [];
+        // Shared exercise search (abbreviations + closest spellings).
+        const filtered = q ? pickerSearch(allEx, addBelowSearch, { limit: 8 }) : [];
         return (
           <div className="glass-card rounded-xl overflow-hidden mb-3 border border-green-500/20 animate-drop-down">
             <div className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
@@ -607,9 +602,10 @@ function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelec
   const filtered = useMemo(() => {
     if (!search.trim()) return substitutes;
     const q = search.toLowerCase().trim();
-    return substitutes.filter((e) =>
-      e.name.toLowerCase().includes(q) || e.muscle.toLowerCase().includes(q)
-    );
+    // Name search via the shared exercise search, plus muscle-group matches.
+    const byName = searchExerciseList(substitutes, search);
+    const found = new Set(byName);
+    return byName.concat(substitutes.filter((e) => !found.has(e) && e.muscle.toLowerCase().includes(q)));
   }, [substitutes, search]);
 
   const handleAISuggest = async () => {

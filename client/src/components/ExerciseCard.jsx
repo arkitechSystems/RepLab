@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, useLayoutEffect, useMemo, memo } from 'react';
+import { Fragment, useState, useRef, useCallback, useEffect, useLayoutEffect, useMemo, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { Capacitor } from '@capacitor/core';
 import {
@@ -15,13 +15,14 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { getExerciseVideoId, getExerciseSearchUrl } from '../utils/exerciseVideos.js';
+import { getExerciseVideoId, getExerciseSearchUrl, cdnPosterUrl, isLikelyTallVideo } from '../utils/exerciseVideos.js';
 import { useExercises, getSubstitutesFromList } from '../hooks/useExercises.js';
 import VideoPlayerModal from './VideoPlayerModal.jsx';
 import PlateCalculatorModal from './PlateCalculatorModal.jsx';
 import { plateCalcDefaults } from '../utils/plateCalcType';
 import CardioAccelerationCard from './CardioAccelerationCard.jsx';
 import { iosFocusRef } from '../utils/iosFocus.js';
+import { pickerSearch, searchExercises, startsFuzzyGroup, CLOSEST_MATCHES_LABEL } from '../utils/exerciseSearch.js';
 import useFocusTrap from '../hooks/useFocusTrap.js';
 import YouTubeSearchPrompt from './YouTubeSearchPrompt.jsx';
 import { CARDIO_MUSCLE, machineFor, metricUnit, METRIC_LABEL, nextMetric, DEFAULT_CARDIO_METRIC, formatCardioSet } from '../utils/cardio.js';
@@ -261,6 +262,11 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
   // embedded player requires, so an in-app iframe just errors out. This
   // is a placeholder until each exercise has its own CDN-hosted video.
   const isCdnVideo = !!videoId && (videoId.startsWith('http') || videoId.startsWith('/'));
+  // Tall (9:16) CDN videos get a tall Demo box instead of a 16:9 strip.
+  // Start from a guess by CDN, then use the video's real size once loaded.
+  const [cdnVideoTall, setCdnVideoTall] = useState(null);
+  useEffect(() => { setCdnVideoTall(null); }, [videoId]);
+  const demoTall = isCdnVideo && (cdnVideoTall ?? isLikelyTallVideo(videoId));
   const [showVideo, setShowVideo] = useState(false);
   // Full-screen mode is positioned as a beginner-friendly view: when the
   // exercise has a linked demo video, the inline demo opens automatically so
@@ -382,12 +388,19 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
   const cardRef = useRef(null);
   const prevTopRef = useRef(null);
   const wasJustClickedRef = useRef(false);
+  const prevNumberRef = useRef(exerciseNumber);
 
   useLayoutEffect(() => {
     const el = cardRef.current;
     if (!el) return;
     const top = el.offsetTop;
-    if (prevTopRef.current != null && prevTopRef.current !== top) {
+    // Only animate when the card's place in the list changed (move, insert,
+    // delete). A shift caused by something else changing height — the header
+    // swapping when the first set is checked, notes opening, a set added —
+    // just updates the stored position, so cards don't slide around.
+    const positionChanged = prevNumberRef.current !== exerciseNumber;
+    prevNumberRef.current = exerciseNumber;
+    if (prevTopRef.current != null && prevTopRef.current !== top && (positionChanged || wasJustClickedRef.current)) {
       const dy = prevTopRef.current - top;
       const isClicked = wasJustClickedRef.current;
       wasJustClickedRef.current = false;
@@ -688,9 +701,25 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
 
       {/* Inline Demo Section */}
       {showDemo && videoId && (
-        <div style={{ margin: '0 12px 12px', borderRadius: 14, overflow: 'hidden', aspectRatio: '16 / 9', background: 'radial-gradient(120% 100% at 30% 0%, #26262a, #050506)', border: '1px solid rgba(255,255,255,0.10)' }}>
+        <div style={{
+          borderRadius: 14, overflow: 'hidden', background: 'radial-gradient(120% 100% at 30% 0%, #26262a, #050506)', border: '1px solid rgba(255,255,255,0.10)',
+          // Tall video: 9:16 box, capped so it never takes over the screen,
+          // centered in the card. Wide video / YouTube: full-width 16:9.
+          ...(demoTall
+            ? { height: 'min(60vh, 520px)', width: 'calc(min(60vh, 520px) * 9 / 16)', maxWidth: 'calc(100% - 24px)', margin: '0 auto 12px' }
+            : { margin: '0 12px 12px', aspectRatio: '16 / 9' }),
+        }}>
           {isCdnVideo ? (
-            <video src={videoId} className="w-full h-full object-contain" controls playsInline preload="metadata" controlsList="nodownload" />
+            <video
+              src={videoId}
+              poster={cdnPosterUrl(videoId) || undefined}
+              className="w-full h-full object-contain"
+              controls playsInline preload="metadata" controlsList="nodownload"
+              onLoadedMetadata={(e) => {
+                const { videoWidth: w, videoHeight: h } = e.currentTarget;
+                if (w && h) setCdnVideoTall(h > w);
+              }}
+            />
           ) : (
             // YouTube plays inline. In the native app it goes through the
             // /yt-embed shim on the real domain (the WebView's
@@ -1310,7 +1339,10 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
               placeholder="Add a note..."
               rows={2}
               className="xc-input"
-              style={{ width: '100%', resize: 'none', fontSize: 13, lineHeight: 1.4, padding: '8px 10px', borderRadius: 10, background: 'var(--well)', border: XC_IN, color: 'rgba(var(--ink),0.8)', outline: 'none' }}
+              // 16px, not 13: iOS zooms in on any focused field under 16px and
+              // zooms/scrolls back out on blur — the jump when tapping in and
+              // out of notes.
+              style={{ width: '100%', resize: 'none', fontSize: 16, lineHeight: 1.4, padding: '8px 10px', borderRadius: 10, background: 'var(--well)', border: XC_IN, color: 'rgba(var(--ink),0.8)', outline: 'none' }}
             />
           ) : (
             <button
@@ -1529,17 +1561,11 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
       {showAddBelow && onAddExercise && (() => {
         const allEx = allExercises;
         const q = addBelowSearch.toLowerCase().trim();
-        const seen = new Set();
         // No cap — the dropdown body is `max-h-48 overflow-y-auto` so the
         // user can scroll the full filtered list. Capping at 8 hid the
-        // rest behind the cut-off.
-        const filtered = q
-          ? allEx.filter((ex) => {
-              if (seen.has(ex.name)) return false;
-              seen.add(ex.name);
-              return ex.name.toLowerCase().includes(q);
-            })
-          : [];
+        // rest behind the cut-off. Abbreviations + misspellings via
+        // utils/exerciseSearch; spelling-fallback rows are marked isFuzzy.
+        const filtered = q ? pickerSearch(allEx, addBelowSearch, { limit: Infinity }) : [];
         return (
           <div ref={addBelowRef} className="glass-card rounded-xl overflow-hidden mb-3 border border-green-500/20 animate-drop-down">
             <div className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
@@ -1581,9 +1607,12 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                 </button>
               )}
               {/* Search results */}
-              {filtered.map((ex) => (
+              {filtered.map((ex, i) => (
+                <Fragment key={ex.name}>
+                {startsFuzzyGroup(filtered, i) && (
+                  <p className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-medium mt-3 mb-1 px-4">{CLOSEST_MATCHES_LABEL}</p>
+                )}
                 <button
-                  key={ex.name}
                   type="button"
                   onClick={() => { addToRecent(ex.name); onAddExercise(ex.name); setShowAddBelow(false); }}
                   className="w-full text-left px-4 py-2.5 flex items-center justify-between active:bg-white/10 transition-colors"
@@ -1591,6 +1620,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                   <span className="text-sm text-white">{ex.name}</span>
                   <span className="text-[10px] text-wf-gray-500 uppercase tracking-wider ml-2 shrink-0">{ex.muscle}</span>
                 </button>
+                </Fragment>
               ))}
               {/* Empty state */}
               {q && filtered.length === 0 && !allEx.some((ex) => ex.name.toLowerCase() === q) && (
@@ -1662,25 +1692,20 @@ function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelec
     }
     if (!search.trim()) return base;
     const q = search.toLowerCase().trim();
-    // Score results by match quality so prefix/word-start matches rank above
-    // buried substring matches. Keeps "row" → "Barbell Row" above
-    // "Single-Arm Arrow Shoulder Fly" (contrived example).
-    return base
-      .map((e) => {
-        const name = (e.name || '').toLowerCase();
-        const muscle = (e.muscle || '').toLowerCase();
-        const words = name.split(/\s+/);
-        let relevance = 0;
-        if (name === q) relevance = 100;
-        else if (name.startsWith(q)) relevance = 60;
-        else if (words.some((w) => w.startsWith(q))) relevance = 40;
-        else if (name.includes(q)) relevance = 25;
-        else if (muscle === q) relevance = 15;
-        else if (muscle.includes(q)) relevance = 10;
-        return { ...e, relevance };
-      })
-      .filter((e) => e.relevance > 0)
-      .sort((a, b) => b.relevance - a.relevance || a.name.localeCompare(b.name));
+    // Name matches first (abbreviations, word by word, best match first —
+    // see utils/exerciseSearch; keeps "row" → "Barbell Row" above
+    // "Single-Arm Arrow Shoulder Fly"), then exercises whose muscle group
+    // matches ("chest"), then — if that's fewer than 3 — the closest
+    // spellings (marked isFuzzy, shown under "Closest matches").
+    const alpha = [...base].sort((a, b) => a.name.localeCompare(b.name));
+    const { matches } = searchExercises(alpha, search, { minResults: 0 });
+    const matched = new Set(matches);
+    const byMuscle = alpha.filter((e) => !matched.has(e) && (e.muscle || '').toLowerCase().includes(q));
+    const found = matches.concat(byMuscle);
+    if (found.length >= 3) return found;
+    const foundSet = new Set(found);
+    const { suggestions } = searchExercises(alpha.filter((e) => !foundSet.has(e)), search, { minResults: 3 - found.length });
+    return found.concat(suggestions.map((e) => ({ ...e, isFuzzy: true })));
   }, [substitutes, search, muscleFilter]);
 
   // Only used when NOT searching: group by same-muscle score.
@@ -1811,8 +1836,13 @@ function SwapModal({ exerciseName, allExercises, search, onSearchChange, onSelec
           {search.trim() && filtered.length > 0 && (
             <div className="mt-3">
               <p className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-medium mb-2">Matches</p>
-              {filtered.map((ex) => (
-                <ExerciseOption key={ex.name} exercise={ex} onSelect={onSelect} />
+              {filtered.map((ex, i) => (
+                <Fragment key={ex.name}>
+                  {startsFuzzyGroup(filtered, i) && (
+                    <p className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-medium mt-3 mb-2">{CLOSEST_MATCHES_LABEL}</p>
+                  )}
+                  <ExerciseOption exercise={ex} onSelect={onSelect} />
+                </Fragment>
               ))}
             </div>
           )}

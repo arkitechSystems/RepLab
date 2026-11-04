@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { friendlyError } from '../utils/errors';
+import PasswordInput from '../components/PasswordInput';
 
 export default function ResetPassword() {
   const { token } = useParams();
@@ -117,9 +118,8 @@ export default function ResetPassword() {
 
                 <div>
                   <label htmlFor="reset-password" className={labelClass} style={labelStyle}>New Password</label>
-                  <input
+                  <PasswordInput
                     id="reset-password"
-                    type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter new password"
@@ -131,9 +131,8 @@ export default function ResetPassword() {
 
                 <div>
                   <label htmlFor="reset-password-confirm" className={labelClass} style={labelStyle}>Confirm Password</label>
-                  <input
+                  <PasswordInput
                     id="reset-password-confirm"
-                    type="password"
                     value={confirm}
                     onChange={(e) => setConfirm(e.target.value)}
                     placeholder="Confirm new password"

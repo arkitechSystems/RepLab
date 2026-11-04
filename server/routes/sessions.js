@@ -3,6 +3,7 @@ import db, { findOrCreateMyWorkoutsProgram, uniqueTemplateName } from '../db.js'
 import pool from '../dbPool.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { notifyPRCelebration, notifyFirstWorkout } from '../postSessionPushes.js';
+import { recordCommunityMilestones } from '../communityMilestones.js';
 import { validateBody, saveSessionBody, completeSessionBody, initializeSessionBody } from '../validation.js';
 
 const MAX_WORKOUT_NAME_LEN = 200; // same cap as template names
@@ -101,10 +102,6 @@ router.post('/start-empty', authMiddleware, async (req, res) => {
        DO UPDATE SET template_id = $3, is_rest = FALSE`,
       [req.userId, date, tmpl.id]
     );
-
-    // Community feed "created a custom workout" event. The feed shows the
-    // template's current name, so a later rename carries through.
-    await db.recordCustomWorkoutCreated(req.userId, tmpl.id, client);
 
     await client.query('COMMIT');
     res.status(201).json({ templateId: tmpl.id, finalName });
@@ -238,6 +235,8 @@ router.put('/complete', authMiddleware, validateBody(completeSessionBody), async
     // the client never blocks on FCM. Only run when transitioning to
     // completed; uncompleting silently no-ops.
     if (completed === true) {
+      // Community feed: workout-streak milestone / program completed.
+      recordCommunityMilestones(req.userId, result.id).catch(() => {});
       notifyPRCelebration(req.userId, result.id).catch(() => {});
       notifyFirstWorkout(req.userId).catch(() => {});
     }

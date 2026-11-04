@@ -1093,15 +1093,13 @@ export default function FeaturedWorkoutSession() {
   const totalExercises = workout ? workout.exercises.length : 0;
   const exercise = currentIdx >= 0 && workout && currentIdx < workout.exercises.length ? workout.exercises[currentIdx] : null;
 
-  // Auto-scroll to Next Exercise button when all sets on current exercise are completed
+  // Highlight the Next Exercise button when all sets on the current exercise
+  // are completed. No auto-scroll to it (removed at Will's request 2026-11-02).
   useEffect(() => {
     if (!exercise || exercise.sets.length === 0) return;
     const allDone = exercise.sets.every((_, idx) => completedSets.has(`${exercise.name}-${idx}`));
     if (allDone) {
       setHighlightNext(true);
-      setTimeout(() => {
-        nextBtnRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 200);
     } else {
       setHighlightNext(false);
     }

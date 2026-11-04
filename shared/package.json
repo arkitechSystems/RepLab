@@ -1,0 +1,6 @@
+{
+  "name": "replab-shared",
+  "private": true,
+  "type": "module",
+  "description": "Plain-JS modules shared by client/ and server/ (no dependencies of their own)."
+}

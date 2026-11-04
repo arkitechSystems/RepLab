@@ -409,10 +409,8 @@ CREATE TABLE IF NOT EXISTS program_starts (
 CREATE INDEX IF NOT EXISTS idx_program_starts_started ON program_starts(started_at);
 CREATE INDEX IF NOT EXISTS idx_program_starts_user_program ON program_starts(user_id, program_id);
 
--- Community feed "created a custom workout" events. Recorded when a user
--- builds and saves a workout (CreateWorkout / AI generator, flagged by the
--- client) or starts an empty session. The feed joins templates live, so a
--- rename shows the current name and deleting the template drops the event.
+-- Community feed "created a custom workout" events. RETIRED 2026-11: no
+-- longer recorded or shown in the feed; existing rows are kept.
 CREATE TABLE IF NOT EXISTS custom_workout_events (
   id SERIAL PRIMARY KEY,
   user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -421,8 +419,39 @@ CREATE TABLE IF NOT EXISTS custom_workout_events (
 );
 CREATE INDEX IF NOT EXISTS idx_custom_workout_events_created ON custom_workout_events(created_at);
 
--- REPLAB Community sharing settings. category is 'all' (master toggle) or
--- one of 'pr' | 'program' | 'workout' | 'custom'. Each row is a period during
+-- Community feed "completed a program" events, once per enrollment
+-- (program_starts row). Recorded when a completed workout finishes the
+-- program — see communityMilestones.js for the rule. program_name is
+-- snapshotted like program_starts.
+CREATE TABLE IF NOT EXISTS program_completions (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  program_start_id INT NOT NULL UNIQUE REFERENCES program_starts(id) ON DELETE CASCADE,
+  program_id INT REFERENCES programs(id) ON DELETE SET NULL,
+  program_name TEXT NOT NULL,
+  completed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_program_completions_completed ON program_completions(completed_at);
+
+-- Community feed workout-streak milestones (5, 10, 15… days in a row).
+-- run_start = first day of the streak, reached_on = the day the milestone
+-- was hit (run_start + milestone - 1). See communityMilestones.js.
+CREATE TABLE IF NOT EXISTS streak_milestones (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  milestone INT NOT NULL,
+  run_start DATE NOT NULL,
+  reached_on DATE NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (user_id, milestone, reached_on)
+);
+CREATE INDEX IF NOT EXISTS idx_streak_milestones_created ON streak_milestones(created_at);
+CREATE INDEX IF NOT EXISTS idx_streak_milestones_user ON streak_milestones(user_id, reached_on);
+
+-- RepLab Community sharing settings. category is 'all' (master toggle) or
+-- one of 'pr' | 'program' (enrolled) | 'programComplete' | 'streak' (rows for
+-- the retired 'workout' | 'custom' are kept but unused). Master off also
+-- opens a period for every category. Each row is a period during
 -- which that category was switched off; on_at IS NULL means it's off right
 -- now. No rows = everything shared (the default). Activity whose timestamp
 -- falls inside any off period is never shown, even after re-enabling.
@@ -448,8 +477,9 @@ CREATE TABLE IF NOT EXISTS community_hidden_before (
 
 -- Community feed likes. There's no posts table: a like points at the
 -- underlying activity row by (item_type, item_id), where item_type is the
--- feed kind ('pr' → personal_bests, 'program' → program_starts, 'workout' →
--- sessions, 'custom' → custom_workout_events). owner_user_id is resolved
+-- feed kind ('pr' → personal_bests, 'program' → program_starts,
+-- 'programComplete' → program_completions, 'streak' → streak_milestones;
+-- retired: 'workout' → sessions, 'custom' → custom_workout_events). owner_user_id is resolved
 -- server-side when the like is made. Likes on activity that's hidden by the
 -- owner's sharing settings are kept, just not shown.
 CREATE TABLE IF NOT EXISTS community_likes (

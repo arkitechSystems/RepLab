@@ -8,7 +8,7 @@ import pool from '../dbPool.js';
 import config from '../config.js';
 import { syncFromWger } from '../syncExercises.js';
 import { exerciseCardScript } from '../exerciseCardBuilder.js';
-import { DASHBOARD_CSS, ICONS } from '../dashboardCSS.js';
+import { DASHBOARD_CSS, ICONS, PASSWORD_TOGGLE_JS } from '../dashboardCSS.js';
 import { evaluateAndMaybeNotify as evaluateStreakReminder } from '../streakReminderScheduler.js';
 
 const router = Router();
@@ -295,6 +295,7 @@ function adminLoginPage(error, customContent) {
       `}
     </div>
   </div>
+<script>${PASSWORD_TOGGLE_JS}</script>
 </body>
 </html>`;
 }
@@ -496,6 +497,7 @@ try {
 ${body}
 </div>
 </div>
+<script>${PASSWORD_TOGGLE_JS}</script>
 </body>
 </html>`;
 }

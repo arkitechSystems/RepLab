@@ -6,6 +6,10 @@ import { loadPathOrSaved } from '../queries/data';
 import { track } from '../utils/analytics';
 import { lightTap } from '../utils/haptics';
 
+// The feed's four kinds: PR, enrolled in a program, completed a program,
+// workout-streak milestone (5, 10, 15… days).
+const FEED_KINDS = new Set(['pr', 'program', 'programComplete', 'streak']);
+
 function formatTimeAgo(daysAgo) {
   if (daysAgo === 0) return 'today';
   if (daysAgo === 1) return '1d ago';
@@ -191,11 +195,10 @@ function CommunityTimeline({ items, onToggleLike, highlightId }) {
         <p className="text-[10px] uppercase font-bold mb-4" style={{ letterSpacing: '0.25em', color: 'rgba(239,68,68,0.7)' }}>
           RepLab Feed
         </p>
-        <p className="text-[12px] text-white/40 font-light py-8 text-center">No activity yet — complete a workout, start a program, or hit a PR to kick off the RepLab feed.</p>
+        <p className="text-[12px] text-white/40 font-light py-8 text-center">No activity yet — hit a PR, start or finish a program, or build a workout streak to kick off the RepLab feed.</p>
       </div>
     );
   }
-  const formatVolume = (v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(Math.round(v)));
   return (
     <div>
       <p className="text-[10px] uppercase font-bold mb-4" style={{ letterSpacing: '0.25em', color: 'rgba(239,68,68,0.7)' }}>
@@ -207,8 +210,8 @@ function CommunityTimeline({ items, onToggleLike, highlightId }) {
           {items.map((item) => {
             const isPR = item.kind === 'pr';
             const isProgram = item.kind === 'program';
-            const isCustom = item.kind === 'custom';
-            const dotColor = isPR ? '#ef4444' : isProgram ? '#3b82f6' : isCustom ? '#a855f7' : '#22c55e';
+            const isProgramComplete = item.kind === 'programComplete';
+            const dotColor = isPR ? '#ef4444' : isProgram ? '#3b82f6' : isProgramComplete ? '#22c55e' : '#f97316';
             return (
               <div
                 key={item.id}
@@ -250,31 +253,17 @@ function CommunityTimeline({ items, onToggleLike, highlightId }) {
                     <p className="text-[14px] font-bold text-white mt-1">Started {item.programName}</p>
                     <p className="text-[12px] mt-1" style={{ color: 'rgba(255,255,255,0.55)' }}>New program</p>
                   </>
-                ) : isCustom ? (
+                ) : isProgramComplete ? (
                   <>
-                    <p className="text-[14px] font-bold text-white mt-1">Created {item.workoutName}</p>
-                    <p className="text-[12px] mt-1" style={{ color: 'rgba(255,255,255,0.55)' }}>Custom workout</p>
+                    <p className="text-[14px] font-bold text-white mt-1">Completed {item.programName}</p>
+                    <p className="text-[12px] mt-1" style={{ color: 'rgba(255,255,255,0.55)' }}>Program finished</p>
                   </>
                 ) : (
                   <>
-                    <p className="text-[14px] font-bold text-white mt-1">{item.workoutName}</p>
-                    {(item.totalVolume > 0 || item.exerciseCount > 0) && (
-                      <p className="text-[12px] mt-1" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                        {item.totalVolume > 0 && (
-                          <>
-                            <span className="text-white font-semibold">{formatVolume(item.totalVolume)}</span> lb volume
-                          </>
-                        )}
-                        {item.totalVolume > 0 && item.exerciseCount > 0 && (
-                          <span style={{ color: 'rgba(255,255,255,0.25)', margin: '0 6px' }}>·</span>
-                        )}
-                        {item.exerciseCount > 0 && (
-                          <>
-                            <span className="text-white font-semibold">{item.exerciseCount}</span> {item.exerciseCount === 1 ? 'lift' : 'lifts'}
-                          </>
-                        )}
-                      </p>
-                    )}
+                    <p className="text-[14px] font-bold text-white mt-1">🔥 {item.days}-day workout streak</p>
+                    <p className="text-[12px] mt-1" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                      <span className="text-white font-semibold">{item.days}</span> days in a row
+                    </p>
                   </>
                 )}
                 <div className="mt-2">
@@ -353,11 +342,12 @@ export default function Community() {
 
   const items = useMemo(() => {
     const now = new Date();
-    return feed.items.map((item) => {
+    // A saved copy from before 2026-11 can still hold retired kinds
+    // (completed / custom workouts) — show only the four current ones.
+    return feed.items.filter((item) => FEED_KINDS.has(item.kind)).map((item) => {
       const author = feed.authors[item.userId] || {};
       const name = author.name || 'Lifter';
-      // Workouts carry the user-local session day; PRs/program starts a timestamp.
-      const when = item.kind === 'workout' && item.date ? item.date : item.occurredAt;
+      const when = item.occurredAt;
       return {
         ...item,
         author: name,
@@ -378,13 +368,10 @@ export default function Community() {
       if (item.kind === 'program') {
         return `${item.author} started ${item.programName}`;
       }
-      if (item.kind === 'custom') {
-        return `${item.author} created ${item.workoutName}`;
+      if (item.kind === 'programComplete') {
+        return `${item.author} completed ${item.programName}`;
       }
-      if (item.totalVolume > 0) {
-        return `${item.author} completed ${item.workoutName} · ${Math.round(item.totalVolume).toLocaleString()} lbs total volume`;
-      }
-      return `${item.author} completed ${item.workoutName}`;
+      return `🔥 ${item.author} hit a ${item.days}-day workout streak`;
     });
   }, [items]);
 

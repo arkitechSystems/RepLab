@@ -520,19 +520,17 @@ export default function LandingPageTest() {
             >
               {primaryCta.label}
             </button>
-            {/* "Get the App" — ghost outline (was red previously). Non-clickable
-                until the apps are live in their stores; the styling swap with
-                primaryCta puts visual weight on the action that actually
-                works right now. */}
-            <button
-              type="button"
-              className="lp-btn lp-btn-ghost lp-disabled"
-              onClick={swallow}
-              aria-disabled="true"
-              title="Coming soon to the App Store and Google Play"
+            {/* "Get the App" — ghost outline, links to the iOS App Store
+                listing (Android isn't live yet). */}
+            <a
+              className="lp-btn lp-btn-ghost"
+              href={APP_STORE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Download RepLab on the App Store"
             >
               Get the App <span className="lp-arrow">↗</span>
-            </button>
+            </a>
           </div>
         </div>
       </nav>

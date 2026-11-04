@@ -1,6 +1,8 @@
 import pool from './dbPool.js';
 import crypto from 'crypto';
 import { DAY_SESSION_NAME_JOIN, sessionDisplayNameSql } from './workoutDayName.js';
+import { searchExercises } from './exerciseSearch.js';
+import { COMMUNITY_ITEM_TYPES } from './communityItems.js';
 
 // Password reset tokens are high-entropy random strings. We hash them with
 // SHA-256 before storing so a DB leak can't be used to reset any account.
@@ -353,8 +355,9 @@ async function rebuildPBsForTemplateOnClient(client, userId, templateId, current
   );
 }
 
-// RepLab Community feed categories. 'all' is the master sharing toggle.
-const COMMUNITY_CATEGORIES = ['pr', 'program', 'workout', 'custom'];
+// RepLab Community feed categories: 'pr', 'program' (enrolled in a program),
+// 'programComplete', 'streak'. 'all' is the master sharing toggle.
+const COMMUNITY_CATEGORIES = COMMUNITY_ITEM_TYPES;
 const COMMUNITY_SETTING_KEYS = ['all', ...COMMUNITY_CATEGORIES];
 
 // How far back an item can still be liked — matches the feed's max window.
@@ -1513,7 +1516,6 @@ const db = {
         [userId, programId, finalName, '', sortRow.next_sort]
       );
       await batchInsertTemplateExercises(client, tmpl.id, exercises, userId);
-      await this.recordCustomWorkoutCreated(userId, tmpl.id, client);
       await client.query('COMMIT');
       return { id: tmpl.id, name: finalName };
     } catch (err) {
@@ -2035,20 +2037,27 @@ const db = {
       paramIdx++;
     }
 
-    if (search) {
-      query += ` AND e.name ILIKE $${paramIdx}`;
-      params.push(`%${search}%`);
-      paramIdx++;
-    }
-
     query += ' ORDER BY e.is_custom ASC, e.name ASC';
 
-    if (limit) {
+    // With a search, fetch every visible row (muscle filter already applied)
+    // and run the shared exercise search in JS (abbreviations, word by word,
+    // best match first, closest spellings marked isFuzzy when fewer than 3
+    // match — see shared/exerciseSearch.js); the limit applies after.
+    const searchText = typeof search === 'string' ? search.trim() : '';
+    if (limit && !searchText) {
       query += ` LIMIT $${paramIdx}`;
       params.push(limit);
     }
 
-    const { rows } = await pool.query(query, params);
+    const { rows: allRows } = await pool.query(query, params);
+    let rows = allRows;
+    let fuzzy = null;
+    if (searchText) {
+      const { matches, suggestions } = searchExercises(allRows, searchText);
+      fuzzy = new Set(suggestions);
+      rows = matches.concat(suggestions);
+      if (limit) rows = rows.slice(0, Number(limit));
+    }
     return rows.map(e => ({
       id: e.id,
       name: e.name,
@@ -2059,6 +2068,7 @@ const db = {
       videoId: e.video_id || null,
       hiddenFromLibrary: !!e.hidden_from_library,
       isFavorite: !!e.is_favorite,
+      ...(fuzzy && fuzzy.has(e) ? { isFuzzy: true } : {}),
     }));
   },
 
@@ -2501,19 +2511,9 @@ const db = {
     return rowCount > 0;
   },
 
-  // Record a "created a custom workout" event. `client` lets start-empty
-  // record inside its own transaction. Only the user's own templates count.
-  async recordCustomWorkoutCreated(userId, templateId, client = pool) {
-    const { rowCount } = await client.query(
-      `INSERT INTO custom_workout_events (user_id, template_id)
-       SELECT $1, t.id FROM templates t WHERE t.id = $2 AND t.user_id = $1`,
-      [userId, templateId]
-    );
-    return rowCount > 0;
-  },
-
   // RepLab Community sharing settings, derived from open off-periods.
-  // Everything defaults to on (no rows).
+  // Everything defaults to on (no rows). Keys: all, pr, program,
+  // programComplete, streak.
   async getCommunitySettings(userId) {
     const { rows } = await pool.query(
       'SELECT category FROM community_sharing_periods WHERE user_id = $1 AND on_at IS NULL',
@@ -2529,22 +2529,28 @@ const db = {
   // period; with removePast, activity already posted in that category (every
   // category for 'all') is hidden permanently. Turning on closes the open
   // period, so only activity from then on is shared.
+  //
+  // The master drives the categories (2026-11): master off also switches
+  // every category off, master on switches every category back on. Turning
+  // a category on while the master is off turns the master back on too (with
+  // just that category). Turning every category off leaves the master on.
   async setCommunitySharing(userId, category, enabled, removePast = false) {
+    const affected = category === 'all' ? ['all', ...COMMUNITY_CATEGORIES] : [category];
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
       if (enabled) {
         await client.query(
           `UPDATE community_sharing_periods SET on_at = NOW()
-            WHERE user_id = $1 AND category = $2 AND on_at IS NULL`,
-          [userId, category]
+            WHERE user_id = $1 AND category = ANY($2::text[]) AND on_at IS NULL`,
+          [userId, category === 'all' ? affected : [category, 'all']]
         );
       } else {
         await client.query(
           `INSERT INTO community_sharing_periods (user_id, category)
-           VALUES ($1, $2)
+           SELECT $1, c FROM UNNEST($2::text[]) AS c
            ON CONFLICT (user_id, category) WHERE on_at IS NULL DO NOTHING`,
-          [userId, category]
+          [userId, affected]
         );
         if (removePast) {
           const categories = category === 'all' ? COMMUNITY_CATEGORIES : [category];
@@ -2568,7 +2574,7 @@ const db = {
   },
 
   // Cross-user community feed: PRs, featured/library program starts,
-  // completed workouts, and custom workouts created, from every user within
+  // program completions and workout-streak milestones, from every user within
   // the last `sinceDays`, newest first, capped at `limit`. Each author's
   // sharing settings are enforced here (communityVisibleSql). Profile photos
   // are base64 data URIs (up to ~500KB each), so they are returned once per
@@ -2618,54 +2624,33 @@ const db = {
       params
     );
 
-    // Completed workouts. Volume/exercise count use the same completed-set
-    // rules as getSessions. sessions.date is a user-local YYYY-MM-DD string,
-    // so last_activity_at (when it falls on that day) orders same-day rows.
-    // Sharing is checked against both when the session was created and its
-    // last activity, so a workout touched during an off period stays hidden.
-    const workoutQuery = pool.query(
-      `WITH done AS (
-         SELECT s.id, s.user_id, s.date, s.template_id, s.created_at, s.last_activity_at, s.custom_name,
-                CASE WHEN s.date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' THEN s.date::date END AS day
-           FROM sessions s
-          WHERE s.completed = TRUE
-       )
-       SELECT d.id, d.user_id, d.date,
-              CASE WHEN d.last_activity_at IS NOT NULL
-                        AND ABS(d.last_activity_at::date - d.day) <= 1
-                   THEN d.last_activity_at
-                   ELSE (d.day + TIME '12:00') AT TIME ZONE 'UTC'
-              END AS occurred_at,
-              ${sessionDisplayNameSql('d', 't.name')} AS template_name,
-              COALESCE(SUM(se.weight * se.reps) FILTER (WHERE se.is_completed = TRUE AND se.weight > 0), 0)::NUMERIC AS total_volume,
-              COUNT(DISTINCT se.exercise_name) FILTER (WHERE se.is_completed = TRUE) AS exercise_count
-         FROM done d
-         LEFT JOIN templates t ON t.id = d.template_id
-         LEFT JOIN session_entries se ON se.session_id = d.id
-        WHERE d.day >= CURRENT_DATE - $1::int
-          AND d.day <= CURRENT_DATE + 1
-          AND ${communityVisibleSql('d.user_id', 'workout', ['d.created_at', 'COALESCE(d.last_activity_at, d.created_at)'])}
-        GROUP BY d.id, d.user_id, d.date, d.day, d.last_activity_at, d.custom_name, t.name
-        ORDER BY occurred_at DESC
+    // Program completions (see communityMilestones.js for the definition).
+    // program_name is snapshotted like program_starts.
+    const completionQuery = pool.query(
+      `SELECT pc.id, pc.user_id, pc.completed_at,
+              COALESCE(pna.short_name, pc.program_name) AS program_name
+         FROM program_completions pc
+         LEFT JOIN program_name_abbreviations pna ON pna.full_name = pc.program_name
+        WHERE pc.completed_at >= NOW() - ($1::int * INTERVAL '1 day')
+          AND ${communityVisibleSql('pc.user_id', 'programComplete', ['pc.completed_at'])}
+        ORDER BY pc.completed_at DESC
         LIMIT $2`,
       params
     );
 
-    // Custom workouts created. Inner join on templates: the current name is
-    // shown (renames carry through) and deleted templates drop out.
-    const customQuery = pool.query(
-      `SELECT cwe.id, cwe.user_id, cwe.created_at, t.name AS template_name
-         FROM custom_workout_events cwe
-         JOIN templates t ON t.id = cwe.template_id
-        WHERE cwe.created_at >= NOW() - ($1::int * INTERVAL '1 day')
-          AND ${communityVisibleSql('cwe.user_id', 'custom', ['cwe.created_at'])}
-        ORDER BY cwe.created_at DESC
+    // Workout-streak milestones (5, 10, 15… days in a row).
+    const streakQuery = pool.query(
+      `SELECT sm.id, sm.user_id, sm.milestone, sm.created_at
+         FROM streak_milestones sm
+        WHERE sm.created_at >= NOW() - ($1::int * INTERVAL '1 day')
+          AND ${communityVisibleSql('sm.user_id', 'streak', ['sm.created_at'])}
+        ORDER BY sm.created_at DESC
         LIMIT $2`,
       params
     );
 
-    const [{ rows: prRows }, { rows: programRows }, { rows: workoutRows }, { rows: customRows }] =
-      await Promise.all([prQuery, programQuery, workoutQuery, customQuery]);
+    const [{ rows: prRows }, { rows: programRows }, { rows: completionRows }, { rows: streakRows }] =
+      await Promise.all([prQuery, programQuery, completionQuery, streakQuery]);
 
     const items = [
       ...prRows.map((r) => {
@@ -2689,22 +2674,19 @@ const db = {
         occurredAt: r.started_at,
         programName: r.program_name,
       })),
-      ...workoutRows.map((r) => ({
-        id: `wk-${r.id}`,
-        kind: 'workout',
+      ...completionRows.map((r) => ({
+        id: `pc-${r.id}`,
+        kind: 'programComplete',
         userId: r.user_id,
-        occurredAt: r.occurred_at,
-        date: r.date,
-        workoutName: r.template_name,
-        totalVolume: Number(r.total_volume) || 0,
-        exerciseCount: Number(r.exercise_count) || 0,
+        occurredAt: r.completed_at,
+        programName: r.program_name,
       })),
-      ...customRows.map((r) => ({
-        id: `cw-${r.id}`,
-        kind: 'custom',
+      ...streakRows.map((r) => ({
+        id: `st-${r.id}`,
+        kind: 'streak',
         userId: r.user_id,
         occurredAt: r.created_at,
-        workoutName: r.template_name,
+        days: r.milestone,
       })),
     ]
       .sort((a, b) => new Date(b.occurredAt) - new Date(a.occurredAt))
@@ -2768,19 +2750,17 @@ const db = {
                LEFT JOIN program_name_abbreviations pna ON pna.full_name = ps.program_name
               WHERE ps.id = $1 AND ps.started_at >= ${since}
                 AND ${communityVisibleSql('ps.user_id', 'program', ['ps.started_at'])}`;
-    } else if (type === 'workout') {
-      sql = `SELECT s.user_id, ${sessionDisplayNameSql('s', 't.name')} AS workout_name
-               FROM sessions s
-               LEFT JOIN templates t ON t.id = s.template_id
-              WHERE s.id = $1 AND s.completed = TRUE
-                AND COALESCE(s.last_activity_at, s.created_at) >= ${since}
-                AND ${communityVisibleSql('s.user_id', 'workout', ['s.created_at', 'COALESCE(s.last_activity_at, s.created_at)'])}`;
-    } else if (type === 'custom') {
-      sql = `SELECT cwe.user_id, t.name AS workout_name
-               FROM custom_workout_events cwe
-               JOIN templates t ON t.id = cwe.template_id
-              WHERE cwe.id = $1 AND cwe.created_at >= ${since}
-                AND ${communityVisibleSql('cwe.user_id', 'custom', ['cwe.created_at'])}`;
+    } else if (type === 'programComplete') {
+      sql = `SELECT pc.user_id, COALESCE(pna.short_name, pc.program_name) AS program_name
+               FROM program_completions pc
+               LEFT JOIN program_name_abbreviations pna ON pna.full_name = pc.program_name
+              WHERE pc.id = $1 AND pc.completed_at >= ${since}
+                AND ${communityVisibleSql('pc.user_id', 'programComplete', ['pc.completed_at'])}`;
+    } else if (type === 'streak') {
+      sql = `SELECT sm.user_id, sm.milestone
+               FROM streak_milestones sm
+              WHERE sm.id = $1 AND sm.created_at >= ${since}
+                AND ${communityVisibleSql('sm.user_id', 'streak', ['sm.created_at'])}`;
     } else {
       return null;
     }
@@ -2795,7 +2775,7 @@ const db = {
       weight: r.best_weight == null ? undefined : Number(r.best_weight),
       reps: r.best_reps,
       programName: r.program_name,
-      workoutName: r.workout_name,
+      days: r.milestone,
     };
   },
 

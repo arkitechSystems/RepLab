@@ -78,12 +78,16 @@ describe('like push text', () => {
     expect(describeLikedItem(PR_ITEM)).toBe('your Bench Press PR (225 lbs)');
     expect(describeLikedItem({ type: 'pr', exercise: 'Pull-Ups', weight: 0, reps: 12 }))
       .toBe('your Pull-Ups PR (BW × 12)');
-    expect(describeLikedItem({ type: 'workout', workoutName: 'Push Day' }))
-      .toBe('your completed workout: Push Day');
     expect(describeLikedItem({ type: 'program', programName: "Will's Hypertrophy Program" }))
       .toBe("that you started Will's Hypertrophy Program");
-    expect(describeLikedItem({ type: 'custom', workoutName: 'Leg Blaster' }))
-      .toBe('your custom workout: Leg Blaster');
+    expect(describeLikedItem({ type: 'programComplete', programName: "Will's Hypertrophy Program" }))
+      .toBe("that you completed Will's Hypertrophy Program");
+    expect(describeLikedItem({ type: 'streak', days: 10 }))
+      .toBe('your 10-day workout streak');
+    expect(buildLikePush('sam', 0, { type: 'streak', id: 4, days: 15 }).data)
+      .toEqual({ kind: 'community_like', itemKey: 'st-4' });
+    expect(buildLikePush('sam', 0, { type: 'programComplete', id: 5, programName: 'X' }).data)
+      .toEqual({ kind: 'community_like', itemKey: 'pc-5' });
   });
 
   it('groups later likers into "and N others" and deep-links to the item', () => {

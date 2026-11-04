@@ -147,7 +147,8 @@ describe('saveSessionAsWorkout', () => {
       ['Warm-up', 1, 0, 0, 1, true],        // section header kept
       ['Dips', 1, 12, 0, 2, false],
     ]);
-    expect(state.calls.some(([s]) => s.includes('INSERT INTO custom_workout_events'))).toBe(true);
+    // "Created a custom workout" is no longer a Community feed event (2026-11).
+    expect(state.calls.some(([s]) => s.includes('INSERT INTO custom_workout_events'))).toBe(false);
   });
 
   it('returns null (and creates nothing) when the caller has no such session', async () => {
@@ -208,21 +209,14 @@ describe('History list + Community feed', () => {
     expect(sql).toMatch(/COALESCE\(NULLIF\(TRIM\(s\.custom_name\), ''\), t\.name, 'Unknown'\) AS template_name/);
   });
 
-  it("feed 'completed workout' items carry the day's name", async () => {
-    state.handlers = [
-      ['WITH done AS', [{ id: 50, user_id: 2, date: '2026-09-28', occurred_at: new Date().toISOString(), template_name: 'Heavy Legs', total_volume: 1000, exercise_count: 3 }]],
-    ];
-    const feed = await db.getCommunityFeed({ limit: 10, sinceDays: 7, viewerId: 1 });
-    const wk = feed.items.find((i) => i.kind === 'workout');
-    expect(wk.workoutName).toBe('Heavy Legs');
-    const feedSql = state.calls.find(([sql]) => sql.includes('WITH done AS'))[0];
-    expect(feedSql).toMatch(/NULLIF\(TRIM\(d\.custom_name\), ''\), t\.name, 'Workout'\) AS template_name/);
-  });
-
-  it("like push text for a workout uses the day's name", async () => {
-    state.handlers = [['FROM sessions s', [{ user_id: 2, workout_name: 'Heavy Legs' }]]];
-    const item = await db.getCommunityItem('workout', 50);
-    expect(item.workoutName).toBe('Heavy Legs');
-    expect(state.calls[0][0]).toMatch(/NULLIF\(TRIM\(s\.custom_name\), ''\), t\.name, 'Workout'\) AS workout_name/);
+  // Completed workouts left the Community feed in 2026-11 (it now shows PRs,
+  // program starts/completions and streak milestones only).
+  it('the Community feed no longer lists completed or custom workouts', async () => {
+    await db.getCommunityFeed({ limit: 10, sinceDays: 7, viewerId: 1 });
+    const sqls = state.calls.map(([sql]) => sql);
+    expect(sqls.some((sql) => sql.includes('FROM sessions'))).toBe(false);
+    expect(sqls.some((sql) => sql.includes('custom_workout_events'))).toBe(false);
+    expect(await db.getCommunityItem('workout', 50)).toBeNull();
+    expect(await db.getCommunityItem('custom', 50)).toBeNull();
   });
 });

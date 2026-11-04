@@ -23,6 +23,7 @@ import db from './db.js';
 import { sendPushToUser } from './routes/push.js';
 import { isFcmConfigured } from './pushProvider.js';
 import { notifyPRCelebration, notifyFirstWorkout } from './postSessionPushes.js';
+import { recordCommunityMilestones } from './communityMilestones.js';
 
 const TICK_MS = 15 * 60 * 1000; // 15 minutes
 const DEFAULT_IDLE_HOURS = 4;
@@ -65,6 +66,12 @@ async function runAutoCompleteTick(autoCompleteHours) {
   if (!completed || completed.length === 0) return;
 
   console.log(`[session-scheduler] auto-completed ${completed.length} idle session(s)`);
+
+  // Community feed milestones (streak / program completed). Not push, so
+  // these run whether or not FCM is configured. Never throws.
+  for (const session of completed) {
+    await recordCommunityMilestones(session.user_id, session.id);
+  }
 
   // Fire the same post-complete notifications a manual "Mark Complete" would,
   // so the user still gets their PR celebration. Push-only + fire-and-forget;

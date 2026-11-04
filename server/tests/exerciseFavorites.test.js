@@ -49,11 +49,15 @@ describe('getExercises isFavorite', () => {
   });
 
   it('keeps search and muscle filters working with the join', async () => {
-    await db.getExercises(7, { search: 'press', muscle: 'Chest' });
+    // Search runs in JS (shared exercise search) over the muscle-filtered
+    // rows, so the SQL only carries the muscle filter.
+    state.handlers = [['FROM exercises e', [exRow({ id: 1 }), exRow({ id: 2, name: 'Cable Fly' })]]];
+    const list = await db.getExercises(7, { search: 'press', muscle: 'Chest' });
     const [sql, params] = state.calls[0];
     expect(sql).toContain('e.muscle_group = $2');
-    expect(sql).toContain('e.name ILIKE $3');
-    expect(params).toEqual([7, 'Chest', '%press%']);
+    expect(sql).not.toContain('ILIKE');
+    expect(params).toEqual([7, 'Chest']);
+    expect(list.map((e) => e.name)).toContain('Barbell Bench Press');
   });
 });
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { Fragment, useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { format, isToday, addDays, subDays } from 'date-fns';
@@ -13,6 +13,7 @@ import {
 import ExerciseCard from '../components/ExerciseCard';
 import { useExercises } from '../hooks/useExercises';
 import { savedExercises, savedFirst } from '../utils/savedExercises';
+import { searchExercises, startsFuzzyGroup, CLOSEST_MATCHES_LABEL } from '../utils/exerciseSearch';
 import RestDayCard from '../components/RestDayCard';
 import StickyHeader from '../components/StickyHeader';
 import { useUnsavedGuard } from '../components/UnsavedGuard';
@@ -1897,6 +1898,30 @@ export default function WorkoutSession() {
   const exerciseRefs = useRef({});
   const scrollToExercise = useRef(null);
 
+  // Cards fade in once when the session opens. Moving a card re-inserts its
+  // element, and browsers restart CSS animations on re-insert — so the moved
+  // card went invisible for its staggered delay (idx × 60ms) and faded in
+  // again, which read as a ~1s lag on Move Up / Move Down. Drop the class
+  // after the first run so it can never replay. (React leaves the class
+  // alone on later renders because the className prop doesn't change.)
+  const endIntroFade = useCallback((e) => {
+    if (e.target === e.currentTarget) e.currentTarget.classList.remove('fade-slide-up');
+  }, []);
+
+  // Checking a set must not move the page. The first check starts the workout
+  // timer, which swaps the header (day arrows and Begin Workout go away), and
+  // the rest timer changes size, so everything below would jump. Remember
+  // where the tapped card sat on screen, and after the re-render put it back.
+  const setCompleteAnchor = useRef(null);
+  useLayoutEffect(() => {
+    const anchor = setCompleteAnchor.current;
+    if (!anchor) return;
+    setCompleteAnchor.current = null;
+    if (!anchor.el.isConnected) return;
+    const delta = anchor.el.getBoundingClientRect().top - anchor.top;
+    if (Math.abs(delta) > 1) window.scrollBy({ top: delta, behavior: 'instant' });
+  }, [completedSets]);
+
   // Persist a new cardio entry to the server, then append to local state so
   // the card appears under the Add Cardio button without a refetch. Throws
   // on failure so the modal can surface the error to the user.
@@ -2459,6 +2484,9 @@ export default function WorkoutSession() {
     if (document.activeElement && document.activeElement.tagName === 'INPUT') {
       document.activeElement.blur();
     }
+    // Full-screen mode has its own overlay; only the card list can jump.
+    const anchorEl = fullScreenIdx === null ? exerciseRefs.current[exerciseKey] : null;
+    if (anchorEl) setCompleteAnchor.current = { el: anchorEl, top: anchorEl.getBoundingClientRect().top };
     setPersisted(false);
     const key = `${exerciseKey}-${setIdx}`;
     setCompletedSets((prev) => {
@@ -3820,7 +3848,7 @@ export default function WorkoutSession() {
               />
             )}
             {exercise.isSectionHeader ? (
-            <div className="fade-slide-up mb-3 mt-2" style={{ animationDelay: `${idx * 60}ms` }}>
+            <div className="fade-slide-up mb-3 mt-2" onAnimationEnd={endIntroFade} style={{ animationDelay: `${idx * 60}ms` }}>
               {/* Long-press (500ms, cancelled on lift/move) opens the
                   edit-or-delete modal. Movement during press cancels so
                   scroll gestures don't trigger an edit. Read-only when
@@ -3869,7 +3897,7 @@ export default function WorkoutSession() {
           ) : (
           <>
           {(supersetPos === 'start' || supersetPos === 'only') && <SupersetDivider />}
-          <div ref={(el) => { exerciseRefs.current[eKey] = el; if (el && scrollToExercise.current === idx) { scrollToExercise.current = null; setTimeout(() => { const target = Math.max(0, el.getBoundingClientRect().top + window.scrollY - window.innerHeight / 2); const start = window.scrollY; const dist = target - start; const duration = 600; let t0 = null; function step(ts) { if (!t0) t0 = ts; const p = Math.min((ts - t0) / duration, 1); const ease = p < 0.5 ? 2 * p * p : -1 + (4 - 2 * p) * p; window.scrollTo(0, start + dist * ease); if (p < 1) requestAnimationFrame(step); } requestAnimationFrame(step); }, 50); } }} className="fade-slide-up" style={{ animationDelay: `${idx * 60}ms` }}>
+          <div ref={(el) => { exerciseRefs.current[eKey] = el; if (el && scrollToExercise.current === idx) { scrollToExercise.current = null; setTimeout(() => { const target = Math.max(0, el.getBoundingClientRect().top + window.scrollY - window.innerHeight / 2); const start = window.scrollY; const dist = target - start; const duration = 600; let t0 = null; function step(ts) { if (!t0) t0 = ts; const p = Math.min((ts - t0) / duration, 1); const ease = p < 0.5 ? 2 * p * p : -1 + (4 - 2 * p) * p; window.scrollTo(0, start + dist * ease); if (p < 1) requestAnimationFrame(step); } requestAnimationFrame(step); }, 50); } }} className="fade-slide-up" onAnimationEnd={endIntroFade} style={{ animationDelay: `${idx * 60}ms` }}>
             <ExerciseCard
               exercise={exercise}
               exerciseKey={eKey}
@@ -4798,13 +4826,15 @@ export default function WorkoutSession() {
         const matchesMuscleFilter = (ex) => muscleFilter === 'all' || ex.muscle === muscleFilter;
         const seen = new Set();
         const muscleScoped = allExercises.filter(matchesMuscleFilter);
-        // Saved (bookmarked) exercises float to the top of search results.
-        const filtered = q
-          ? savedFirst(muscleScoped.filter((ex) => {
-              if (seen.has(ex.name)) return false;
-              seen.add(ex.name);
-              return ex.name.toLowerCase().includes(q);
-            }))
+        // Search within the muscle filter (abbreviations + misspellings, see
+        // utils/exerciseSearch). Saved (bookmarked) exercises float to the
+        // top of the matches; spelling-fallback rows (isFuzzy) follow under
+        // "Closest matches" when fewer than 3 exercises match.
+        const filtered = q.trim()
+          ? (() => {
+              const { matches, suggestions } = searchExercises(muscleScoped, addExerciseSearch, { uniqueNames: true });
+              return savedFirst(matches).concat(suggestions.map((ex) => ({ ...ex, isFuzzy: true })));
+            })()
           : [];
         // With no search, a "Saved" shelf sits above the muscle groups. Saved
         // exercises also stay in their own muscle group below it.
@@ -4901,15 +4931,19 @@ export default function WorkoutSession() {
                   </>
                 )}
                 {/* Search results */}
-                {q && filtered.map((ex) => (
+                {q && filtered.map((ex, i) => (
+                  <Fragment key={ex.name}>
+                  {startsFuzzyGroup(filtered, i) && (
+                    <p className="text-[10px] uppercase tracking-widest text-wf-gray-500 font-semibold mt-2 mb-1 px-1">{CLOSEST_MATCHES_LABEL}</p>
+                  )}
                   <button
-                    key={ex.name}
                     onClick={() => handleAddExercise(ex.name)}
                     className="w-full text-left rounded-xl px-4 py-3 flex items-center justify-between active:bg-white/10 active:scale-[0.98] transition-all"
                   >
                     <span className="text-sm text-white">{ex.name}</span>
                     <span className="text-[10px] text-wf-gray-500 uppercase tracking-wider ml-2 shrink-0">{ex.muscle}</span>
                   </button>
+                  </Fragment>
                 ))}
                 {!q && savedShelf.length > 0 && (
                   <div className="mb-4">

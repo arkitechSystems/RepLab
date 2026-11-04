@@ -6,6 +6,7 @@ import { friendlyError } from '../utils/errors';
 import SocialAuthButtons from '../components/SocialAuthButtons';
 import SignInHelpRow from '../components/SignInHelpRow';
 import { REFERRAL_OPTIONS, GENDER_OPTIONS, buildReferralSource } from '../utils/signupOptions';
+import PasswordInput from '../components/PasswordInput';
 
 function isPhone(value) {
   return /^\+?\d[\d\s\-().]{6,}$/.test(value.trim());
@@ -212,9 +213,8 @@ export default function Signup() {
               {/* Password */}
               <div>
                 <label htmlFor="signup-password" className={labelClass} style={labelStyle}>Password *</label>
-                <input
+                <PasswordInput
                   id="signup-password"
-                  type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Create password"
@@ -234,9 +234,8 @@ export default function Signup() {
               {/* Confirm Password */}
               <div>
                 <label htmlFor="signup-password-confirm" className={labelClass} style={labelStyle}>Confirm Password *</label>
-                <input
+                <PasswordInput
                   id="signup-password-confirm"
-                  type="password"
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
                   placeholder="Confirm password"

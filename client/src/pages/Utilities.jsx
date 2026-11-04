@@ -5,6 +5,7 @@ import StickyHeader from '../components/StickyHeader';
 import { beepCountdown, beepPhaseChange, beepComplete, initAudio } from '../utils/sounds';
 import { useToast } from '../context/ToastContext';
 import { MUSCLE_GROUPS, classifyExercise } from '../utils/muscleGroup';
+import { searchExercises, searchExerciseList, CLOSEST_MATCHES_LABEL } from '../utils/exerciseSearch';
 
 function PRsSection() {
   const navigate = useNavigate();
@@ -61,12 +62,20 @@ function PRsSection() {
 
   const hasAny = Object.keys(grouped).length > 0;
 
-  // Filter by search
+  // Filter by search (shared exercise search: abbreviations, word by word,
+  // closest spellings when fewer than 3 match). `prRank` = name → position
+  // in the search results; names not in it are hidden.
   const q = prSearch.toLowerCase().trim();
+  const prSearchResult = q
+    ? searchExercises(Object.values(grouped).flatMap((g) => Object.keys(g)), prSearch)
+    : null;
+  const prRank = new Map(
+    prSearchResult ? [...prSearchResult.matches, ...prSearchResult.suggestions].map((name, i) => [name, i]) : []
+  );
   const filteredGroups = MUSCLE_GROUPS.filter((g) => {
     if (!grouped[g]) return false;
     if (!q) return true;
-    return Object.keys(grouped[g]).some((ex) => ex.toLowerCase().includes(q));
+    return Object.keys(grouped[g]).some((ex) => prRank.has(ex));
   });
 
   const NIKE_PANEL = {
@@ -119,6 +128,9 @@ function PRsSection() {
           <p className="text-wf-gray-400 text-sm">Complete workouts to start tracking your personal bests for each exercise.</p>
         </div>
       )}
+      {q && prSearchResult.matches.length === 0 && filteredGroups.length > 0 && (
+        <p className="px-1 text-[10px] uppercase tracking-widest text-wf-gray-500 font-semibold">{CLOSEST_MATCHES_LABEL}</p>
+      )}
       {q && filteredGroups.length === 0 && (
         <div className="p-6 text-center" style={NIKE_PANEL}>
           <p className="text-wf-gray-400 text-sm">No exercises matching "{prSearch}"</p>
@@ -127,7 +139,7 @@ function PRsSection() {
       {filteredGroups.map((group) => {
         const allExercises = grouped[group];
         const exerciseNames = q
-          ? Object.keys(allExercises).filter((ex) => ex.toLowerCase().includes(q))
+          ? Object.keys(allExercises).filter((ex) => prRank.has(ex)).sort((a, b) => prRank.get(a) - prRank.get(b))
           : Object.keys(allExercises);
         const exercises = {};
         for (const name of exerciseNames) exercises[name] = allExercises[name];
@@ -846,12 +858,16 @@ function OneRepMaxEstimator({ onClose }) {
 
   const percentages = [100, 95, 90, 85, 80, 75, 70, 65, 60];
 
-  // Filter exercises by search
+  // Filter exercises by search (shared exercise search: abbreviations, word
+  // by word, closest spellings when fewer than 3 match), best match first
+  // within each category.
+  const ormResult = searchExerciseList(ORM_EXERCISES.flatMap((cat) => cat.exercises), searchQuery);
+  const ormRank = new Map(ormResult.map((name, i) => [name, i]));
   const filteredCategories = ORM_EXERCISES.map((cat) => ({
     ...cat,
-    exercises: cat.exercises.filter((ex) =>
-      ex.toLowerCase().includes(searchQuery.toLowerCase())
-    ),
+    exercises: searchQuery.trim()
+      ? cat.exercises.filter((ex) => ormRank.has(ex)).sort((a, b) => ormRank.get(a) - ormRank.get(b))
+      : cat.exercises,
   })).filter((cat) => cat.exercises.length > 0);
 
   const NIKE_PANEL = {
