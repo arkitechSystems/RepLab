@@ -47,6 +47,15 @@ export default function WheelPicker({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, items, itemHeight]);
 
+  // Tap a row above or below the center to scroll it into the center band.
+  // The scroll-settle handler then fires onChange like a swipe would.
+  function selectIndex(idx) {
+    const el = containerRef.current;
+    if (!el) return;
+    ignoreNextSettleRef.current = false;
+    el.scrollTo({ top: idx * itemHeight, behavior: 'smooth' });
+  }
+
   function handleScroll() {
     if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
     scrollTimerRef.current = setTimeout(() => {
@@ -110,7 +119,9 @@ export default function WheelPicker({
               key={`${item}-${idx}`}
               role="option"
               aria-selected={selected}
+              onClick={() => { if (!selected) selectIndex(idx); }}
               style={{
+                cursor: selected ? 'default' : 'pointer',
                 height: itemHeight,
                 scrollSnapAlign: 'center',
                 display: 'flex',
