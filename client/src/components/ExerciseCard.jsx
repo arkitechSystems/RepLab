@@ -15,7 +15,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { getExerciseVideoId, getExerciseSearchUrl } from '../utils/exerciseVideos.js';
+import { getExerciseVideoId, getExerciseSearchUrl, cdnPosterUrl, isLikelyTallVideo } from '../utils/exerciseVideos.js';
 import { useExercises, getSubstitutesFromList } from '../hooks/useExercises.js';
 import VideoPlayerModal from './VideoPlayerModal.jsx';
 import PlateCalculatorModal from './PlateCalculatorModal.jsx';
@@ -262,6 +262,11 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
   // embedded player requires, so an in-app iframe just errors out. This
   // is a placeholder until each exercise has its own CDN-hosted video.
   const isCdnVideo = !!videoId && (videoId.startsWith('http') || videoId.startsWith('/'));
+  // Tall (9:16) CDN videos get a tall Demo box instead of a 16:9 strip.
+  // Start from a guess by CDN, then use the video's real size once loaded.
+  const [cdnVideoTall, setCdnVideoTall] = useState(null);
+  useEffect(() => { setCdnVideoTall(null); }, [videoId]);
+  const demoTall = isCdnVideo && (cdnVideoTall ?? isLikelyTallVideo(videoId));
   const [showVideo, setShowVideo] = useState(false);
   // Full-screen mode is positioned as a beginner-friendly view: when the
   // exercise has a linked demo video, the inline demo opens automatically so
@@ -696,9 +701,25 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
 
       {/* Inline Demo Section */}
       {showDemo && videoId && (
-        <div style={{ margin: '0 12px 12px', borderRadius: 14, overflow: 'hidden', aspectRatio: '16 / 9', background: 'radial-gradient(120% 100% at 30% 0%, #26262a, #050506)', border: '1px solid rgba(255,255,255,0.10)' }}>
+        <div style={{
+          borderRadius: 14, overflow: 'hidden', background: 'radial-gradient(120% 100% at 30% 0%, #26262a, #050506)', border: '1px solid rgba(255,255,255,0.10)',
+          // Tall video: 9:16 box, capped so it never takes over the screen,
+          // centered in the card. Wide video / YouTube: full-width 16:9.
+          ...(demoTall
+            ? { height: 'min(60vh, 520px)', width: 'calc(min(60vh, 520px) * 9 / 16)', maxWidth: 'calc(100% - 24px)', margin: '0 auto 12px' }
+            : { margin: '0 12px 12px', aspectRatio: '16 / 9' }),
+        }}>
           {isCdnVideo ? (
-            <video src={videoId} className="w-full h-full object-contain" controls playsInline preload="metadata" controlsList="nodownload" />
+            <video
+              src={videoId}
+              poster={cdnPosterUrl(videoId) || undefined}
+              className="w-full h-full object-contain"
+              controls playsInline preload="metadata" controlsList="nodownload"
+              onLoadedMetadata={(e) => {
+                const { videoWidth: w, videoHeight: h } = e.currentTarget;
+                if (w && h) setCdnVideoTall(h > w);
+              }}
+            />
           ) : (
             // YouTube plays inline. In the native app it goes through the
             // /yt-embed shim on the real domain (the WebView's

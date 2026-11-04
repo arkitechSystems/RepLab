@@ -7,6 +7,7 @@ import { useExercises, setExerciseFavorite } from '../hooks/useExercises';
 import { useToast } from '../context/ToastContext';
 import ExerciseDetailCard from '../components/ExerciseDetailCard.jsx';
 import YouTubeSearchPrompt from '../components/YouTubeSearchPrompt.jsx';
+import { cdnPosterUrl, isLikelyTallVideo } from '../utils/exerciseVideos.js';
 
 const RED = '#ef4444';
 const MONO = "'JetBrains Mono', ui-monospace, monospace";
@@ -141,11 +142,16 @@ export default function ExerciseDetail() {
 
   // A videoId starting with "http"/"/" is a direct CDN-hosted file (e.g.
   // replab-videos.onrender.com), not a YouTube ID — same convention as
-  // ExerciseCard.jsx. There's no YouTube thumbnail to fetch for those.
+  // ExerciseCard.jsx. Their thumbnail is the .jpg saved next to the .mp4.
   const isCdnVideo = !!exercise.videoId && (exercise.videoId.startsWith('http') || exercise.videoId.startsWith('/'));
+  const cdnPoster = isCdnVideo ? cdnPosterUrl(exercise.videoId) : null;
+  // Tall (9:16) CDN video? Guess by CDN, then the real size once it loads.
+  const [cdnVideoTall, setCdnVideoTall] = useState(null);
+  useEffect(() => { setCdnVideoTall(null); }, [exercise.videoId]);
+  const heroTall = isCdnVideo && (cdnVideoTall ?? isLikelyTallVideo(exercise.videoId));
   const heroImg = exercise.videoId && !isCdnVideo
     ? `https://img.youtube.com/vi/${exercise.videoId}/maxresdefault.jpg`
-    : null;
+    : cdnPoster;
   const isYouTube = !!exercise.videoId && !isCdnVideo;
   const youTubeWatchUrl = isYouTube ? `https://www.youtube.com/watch?v=${exercise.videoId}` : null;
   // In the native app YouTube goes through our /yt-embed shim on the real
@@ -179,10 +185,16 @@ export default function ExerciseDetail() {
       {/* ── HERO ── */}
       <div style={{ position: 'relative' }}>
         <div style={{
-          width: '100%', height: 300, position: 'relative',
-          background: heroImg
-            ? `#15130f center/cover no-repeat url(${heroImg})`
-            : 'linear-gradient(160deg, #2a2724 0%, #15130f 100%)',
+          // Self-recorded CDN videos are tall (9:16): while one plays the hero
+          // grows so the whole frame shows instead of a cropped strip.
+          width: '100%', height: videoPlaying && heroTall ? 'min(70vh, 600px)' : 300, position: 'relative',
+          background: videoPlaying && isCdnVideo
+            ? '#000'
+            : heroImg
+              // Tall thumbnails crop to the upper-middle so the face and
+              // movement stay in frame rather than the floor.
+              ? `#15130f ${cdnPoster ? 'center 30%' : 'center'}/cover no-repeat url("${heroImg}")`
+              : 'linear-gradient(160deg, #2a2724 0%, #15130f 100%)',
         }}>
           {videoPlaying && isYouTube ? (
             /* YouTube form video, inline in the hero slot. Close (×)
@@ -221,10 +233,15 @@ export default function ExerciseDetail() {
             <>
               <video
                 src={exercise.videoId}
+                poster={cdnPoster || undefined}
+                onLoadedMetadata={(e) => {
+                  const { videoWidth: w, videoHeight: h } = e.currentTarget;
+                  if (w && h) setCdnVideoTall(h > w);
+                }}
                 title={`${exercise.name} form video`}
                 width="100%"
                 height="100%"
-                style={{ width: '100%', height: '100%', maxWidth: '100%', objectFit: 'cover', display: 'block' }}
+                style={{ width: '100%', height: '100%', maxWidth: '100%', objectFit: 'contain', display: 'block', background: '#000' }}
                 autoPlay
                 controls
                 playsInline
