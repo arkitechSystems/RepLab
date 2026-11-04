@@ -6137,7 +6137,7 @@ export default function Workouts() {
                       {/* CTAs — left primary action shifts with status so the
                           card actually fulfils its "open app, go to next workout"
                           promise. Order of precedence:
-                            completedToday → Workout Completed (deeplink to summary)
+                            completedToday → Workout Completed (opens the completed session)
                             status start/resume/upcoming → Start/Resume/Preview that workout
                             status rest/none → Log as You Go (Start Empty Workout)
                           Disabled while `nextWorkoutInfo` is still loading so a
@@ -6148,7 +6148,10 @@ export default function Workouts() {
                           const { templateId, date } = info.completedToday;
                           primary = {
                             label: 'Workout Completed',
-                            onClick: () => navigate(`/session/${templateId}/${date}?summary=1`),
+                            // Opens the session itself (the familiar set/rep
+                            // screen), not the summary. View Summary is still
+                            // a button inside the session.
+                            onClick: () => navigate(`/session/${templateId}/${date}`),
                             bg: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
                             color: '#fff',
                             shadow: '0 6px 18px rgba(34,197,94,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
