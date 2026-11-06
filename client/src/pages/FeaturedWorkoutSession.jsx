@@ -9,7 +9,7 @@ import StickyHeader from '../components/StickyHeader';
 import useFocusTrap from '../hooks/useFocusTrap';
 
 // RepLab exercise video CDN (Render static site, source: replab-videos/)
-const VIDEO_CDN = 'https://replab-videos.onrender.com';
+const VIDEO_CDN = 'https://replab-media.onrender.com';
 
 // Daily workout templates
 const WORKOUTS = {
@@ -23,7 +23,7 @@ const WORKOUTS = {
         isSectionHeader: true,
         sectionNotes: 'Warm up with progressive sets. Pause reps on sets 2 and 3 — hold the bar 1 inch off the chest for 2 seconds before pressing.',
         setType: 'warm_up',
-        videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+        videoUrl: `${VIDEO_CDN}/exercises/ez-bar-curl.mp4`,
         warmupNotes: "Perform your preferred chest warm-up if you feel like you need to before doing the three warm-up sets of barbell bench, whether that be cardio, push-ups, etc. Performing pull-ups or pull-up isometric holds at the top reinforces proper scapular control by encouraging you to keep your shoulders pulled down and back, protecting the shoulder during the press.",
         description: "1. First set is 40% of one rep max, 10 reps.\n2. Second set is 60% for 6 reps.\n3. The third set is 70% for 2 reps.",
         hideGoals: true,
@@ -37,7 +37,7 @@ const WORKOUTS = {
         name: 'Barbell Bench',
         setType: 'straight',
         description: "Working sets. Controlled reps with a full range of motion — touch the chest, press to full lockout. Aim for 8-10 reps per set. If you hit 10 on all 3 sets, increase weight next session.",
-        videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+        videoUrl: `${VIDEO_CDN}/exercises/ez-bar-curl.mp4`,
         sets: [
           { setNumber: 1, plannedReps: 10, suggestedWeight: 0 },
           { setNumber: 2, plannedReps: 10, suggestedWeight: 0 },
@@ -48,7 +48,7 @@ const WORKOUTS = {
         name: 'DB Incline Bench Press',
         setType: 'straight',
         description: "10×10 German Volume Training — 10 sets of 10 reps with only 60 seconds rest between sets. Use a weight you could do 20 reps with. This is about volume and time under tension, not max weight. The burn will be intense by set 6.",
-        videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+        videoUrl: `${VIDEO_CDN}/exercises/ez-bar-curl.mp4`,
         sets: [
           { setNumber: 1, plannedReps: 10, suggestedWeight: 0, restAfter: 60 },
           { setNumber: 2, plannedReps: 10, suggestedWeight: 0, restAfter: 60 },
@@ -66,7 +66,7 @@ const WORKOUTS = {
         name: 'Single-Arm Kneeling Upper Chest Cable Flyes',
         setType: 'straight',
         description: "Kneel in front of a low cable with arms straight. Bring the handles up and together in front of your upper chest, squeezing at the top. This targets the upper chest fibers that are hard to hit with pressing alone. Keep the arms nearly straight throughout.",
-        videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+        videoUrl: `${VIDEO_CDN}/exercises/ez-bar-curl.mp4`,
         sets: [
           { setNumber: 1, plannedReps: 15, suggestedWeight: 0 },
           { setNumber: 2, plannedReps: 15, suggestedWeight: 0 },
@@ -77,7 +77,7 @@ const WORKOUTS = {
         name: 'One-Arm Hammer Strength Angled Press',
         setType: 'straight',
         description: "Unilateral pressing on the angled Hammer Strength machine. Drive through one arm at a time with full range of motion, squeezing the chest at lockout and controlling the negative. Go to near-failure on each set.",
-        videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+        videoUrl: `${VIDEO_CDN}/exercises/ez-bar-curl.mp4`,
         sets: [
           { setNumber: 1, plannedReps: 15, suggestedWeight: 0 },
           { setNumber: 2, plannedReps: 15, suggestedWeight: 0 },
@@ -88,7 +88,7 @@ const WORKOUTS = {
         name: 'Max Push-Ups',
         setType: 'straight',
         description: "Final burnout. Perform as many push-ups as you can in two minutes.",
-        videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+        videoUrl: `${VIDEO_CDN}/exercises/ez-bar-curl.mp4`,
         hideWeight: true,
         scoreboardTimer: 120,
         sets: [
@@ -108,7 +108,7 @@ const WORKOUTS = {
         isSectionHeader: true,
         setType: 'warm_up',
         hideGoals: true,
-        videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+        videoUrl: `${VIDEO_CDN}/exercises/ez-bar-curl.mp4`,
         description: "Three progressive warm-up sets to prime the legs.\n1. 2×45s for 15 reps\n2. 4×45s for 8 reps\n3. 6×45s for 4 reps",
         sets: [
           { setNumber: 1, plannedReps: 15, suggestedWeight: 0 },
@@ -120,7 +120,7 @@ const WORKOUTS = {
         name: 'Leg Press',
         setType: 'straight',
         description: "Working sets. Controlled eccentric, full depth without losing lower-back contact with the pad. Target 8 reps per set.",
-        videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+        videoUrl: `${VIDEO_CDN}/exercises/ez-bar-curl.mp4`,
         sets: [
           { setNumber: 1, plannedReps: 8, suggestedWeight: 0 },
           { setNumber: 2, plannedReps: 8, suggestedWeight: 0 },
@@ -131,7 +131,7 @@ const WORKOUTS = {
         name: 'Hack Squat',
         setType: 'straight',
         description: "10×10 — 10 sets of 10 reps with only 60 seconds rest between sets. Pick a weight you could rep 15-20 times fresh; the short rest makes the later sets brutal.",
-        videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+        videoUrl: `${VIDEO_CDN}/exercises/ez-bar-curl.mp4`,
         sets: [
           { setNumber: 1, plannedReps: 10, suggestedWeight: 0, restAfter: 60 },
           { setNumber: 2, plannedReps: 10, suggestedWeight: 0, restAfter: 60 },
@@ -149,7 +149,7 @@ const WORKOUTS = {
         name: 'DB Split Squats',
         setType: 'straight',
         description: "DBs held at your sides (on the outside of the body, not goblet). Keep the torso upright and drive through the front heel.",
-        videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+        videoUrl: `${VIDEO_CDN}/exercises/ez-bar-curl.mp4`,
         sets: [
           { setNumber: 1, plannedReps: 8, suggestedWeight: 25 },
           { setNumber: 2, plannedReps: 8, suggestedWeight: 25 },
@@ -159,7 +159,7 @@ const WORKOUTS = {
         name: 'Leg Extension Burnout',
         setType: 'straight',
         description: "Constant-tension drop set — move through only the top 3/4 of the range to keep the quads under load. Drop the weight each set and rep to failure.",
-        videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+        videoUrl: `${VIDEO_CDN}/exercises/ez-bar-curl.mp4`,
         sets: [
           { setNumber: 1, plannedReps: 0, suggestedWeight: 260 },
           { setNumber: 2, plannedReps: 0, suggestedWeight: 220 },
@@ -188,7 +188,7 @@ const WEEK_OVERRIDES = {
           isSectionHeader: true,
           setType: 'warm_up',
           hideGoals: true,
-          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          videoUrl: `${VIDEO_CDN}/exercises/ez-bar-curl.mp4`,
           description: "Progressive warm-up to prime the lats and grip.\n1. Bodyweight × 8\n2. +45 lb × 3\n3. +90 lb × 1",
           sets: [
             { setNumber: 1, plannedReps: 8, suggestedWeight: 0 },
@@ -200,7 +200,7 @@ const WEEK_OVERRIDES = {
           name: 'Weighted Chins',
           setType: 'straight',
           description: "Cluster sets at +35 lb — inside each working set, do 4, 3, 3, 2, 1 reps with 30 seconds rest between each mini-set. All 13 reps count as one set. 3 working sets total.",
-          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          videoUrl: `${VIDEO_CDN}/exercises/ez-bar-curl.mp4`,
           sets: [
             { setNumber: 1, plannedReps: 13, suggestedWeight: 35 },
             { setNumber: 2, plannedReps: 13, suggestedWeight: 35 },
@@ -211,7 +211,7 @@ const WEEK_OVERRIDES = {
           name: 'DB Rear Delt Raises / W\'s',
           setType: 'straight',
           description: "Horizontal Pull Sandwich — position 1 of 5. Rotate through the full five-movement sandwich in order: RD Raises/W's → Overhand Rows → Underhand Cable Rows → Overhand Rows → RD Raises/W's.",
-          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          videoUrl: `${VIDEO_CDN}/exercises/ez-bar-curl.mp4`,
           sets: [
             { setNumber: 1, plannedReps: 0, suggestedWeight: 0 },
             { setNumber: 2, plannedReps: 0, suggestedWeight: 0 },
@@ -222,7 +222,7 @@ const WEEK_OVERRIDES = {
           name: 'Overhand Rows',
           setType: 'straight',
           description: "Sandwich position 2 of 5.",
-          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          videoUrl: `${VIDEO_CDN}/exercises/ez-bar-curl.mp4`,
           sets: [
             { setNumber: 1, plannedReps: 0, suggestedWeight: 0 },
             { setNumber: 2, plannedReps: 0, suggestedWeight: 0 },
@@ -233,7 +233,7 @@ const WEEK_OVERRIDES = {
           name: 'Underhand Cable Rows',
           setType: 'straight',
           description: "Sandwich position 3 of 5.",
-          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          videoUrl: `${VIDEO_CDN}/exercises/ez-bar-curl.mp4`,
           sets: [
             { setNumber: 1, plannedReps: 0, suggestedWeight: 0 },
             { setNumber: 2, plannedReps: 0, suggestedWeight: 0 },
@@ -244,7 +244,7 @@ const WEEK_OVERRIDES = {
           name: 'Overhand Rows',
           setType: 'straight',
           description: "Sandwich position 4 of 5.",
-          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          videoUrl: `${VIDEO_CDN}/exercises/ez-bar-curl.mp4`,
           sets: [
             { setNumber: 1, plannedReps: 0, suggestedWeight: 0 },
             { setNumber: 2, plannedReps: 0, suggestedWeight: 0 },
@@ -255,7 +255,7 @@ const WEEK_OVERRIDES = {
           name: 'DB Rear Delt Raises / W\'s',
           setType: 'straight',
           description: "Sandwich position 5 of 5.",
-          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          videoUrl: `${VIDEO_CDN}/exercises/ez-bar-curl.mp4`,
           sets: [
             { setNumber: 1, plannedReps: 0, suggestedWeight: 0 },
             { setNumber: 2, plannedReps: 0, suggestedWeight: 0 },
@@ -266,7 +266,7 @@ const WEEK_OVERRIDES = {
           name: 'BB Shrugs',
           setType: 'straight',
           description: "1-second holds at the top of each rep. Set 1: underhand grip. Set 2: overhand grip.",
-          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          videoUrl: `${VIDEO_CDN}/exercises/ez-bar-curl.mp4`,
           sets: [
             { setNumber: 1, plannedReps: 9, suggestedWeight: 225 },
             { setNumber: 2, plannedReps: 10, suggestedWeight: 225 },
@@ -276,7 +276,7 @@ const WEEK_OVERRIDES = {
           name: 'Overhead Squats',
           setType: 'straight',
           description: "Thoracic mobility and overhead stability work. Keep the bar tracking over the mid-foot with arms locked out.",
-          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          videoUrl: `${VIDEO_CDN}/exercises/ez-bar-curl.mp4`,
           sets: [
             { setNumber: 1, plannedReps: 7, suggestedWeight: 95 },
             { setNumber: 2, plannedReps: 7, suggestedWeight: 95 },
@@ -286,7 +286,7 @@ const WEEK_OVERRIDES = {
         {
           name: 'Straight Arm Pull Downs',
           setType: 'straight',
-          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          videoUrl: `${VIDEO_CDN}/exercises/ez-bar-curl.mp4`,
           sets: [
             { setNumber: 1, plannedReps: 0, suggestedWeight: 0 },
             { setNumber: 2, plannedReps: 0, suggestedWeight: 0 },
@@ -296,7 +296,7 @@ const WEEK_OVERRIDES = {
         {
           name: 'DB Hammer Curls',
           setType: 'straight',
-          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          videoUrl: `${VIDEO_CDN}/exercises/ez-bar-curl.mp4`,
           sets: [
             { setNumber: 1, plannedReps: 0, suggestedWeight: 35 },
             { setNumber: 2, plannedReps: 0, suggestedWeight: 35 },
@@ -315,7 +315,7 @@ const WEEK_OVERRIDES = {
           isSectionHeader: true,
           setType: 'warm_up',
           hideGoals: true,
-          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          videoUrl: `${VIDEO_CDN}/exercises/ez-bar-curl.mp4`,
           description: "Four progressive warm-up sets with just the bar to prime the hinge.\n1. BW × 6\n2. BW × 3\n3. BW × 1\n4. BW × 1",
           sets: [
             { setNumber: 1, plannedReps: 6, suggestedWeight: 0 },
@@ -328,7 +328,7 @@ const WEEK_OVERRIDES = {
           name: 'Barbell Romanian Deadlift',
           setType: 'straight',
           description: "Working sets. Hinge at the hips with a neutral spine; keep the bar tracking over the mid-foot and feel the stretch in the hamstrings at the bottom.",
-          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          videoUrl: `${VIDEO_CDN}/exercises/ez-bar-curl.mp4`,
           sets: [
             { setNumber: 1, plannedReps: 10, suggestedWeight: 0 },
             { setNumber: 2, plannedReps: 0, suggestedWeight: 0 },
@@ -339,7 +339,7 @@ const WEEK_OVERRIDES = {
           name: 'Lying Leg Curls',
           setType: 'straight',
           description: "10×10 — 10 sets of 10 reps at 100 lb with only 60 seconds rest between sets.",
-          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          videoUrl: `${VIDEO_CDN}/exercises/ez-bar-curl.mp4`,
           sets: [
             { setNumber: 1, plannedReps: 10, suggestedWeight: 100, restAfter: 60 },
             { setNumber: 2, plannedReps: 10, suggestedWeight: 100, restAfter: 60 },
@@ -356,7 +356,7 @@ const WEEK_OVERRIDES = {
         {
           name: 'GHD Glute Ham Raise',
           setType: 'straight',
-          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          videoUrl: `${VIDEO_CDN}/exercises/ez-bar-curl.mp4`,
           sets: [
             { setNumber: 1, plannedReps: 10, suggestedWeight: 17.5 },
             { setNumber: 2, plannedReps: 10, suggestedWeight: 20 },
@@ -366,7 +366,7 @@ const WEEK_OVERRIDES = {
         {
           name: 'Machine Hip Adduction',
           setType: 'straight',
-          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          videoUrl: `${VIDEO_CDN}/exercises/ez-bar-curl.mp4`,
           sets: [
             { setNumber: 1, plannedReps: 8, suggestedWeight: 80 },
             { setNumber: 2, plannedReps: 6, suggestedWeight: 80 },
@@ -376,7 +376,7 @@ const WEEK_OVERRIDES = {
         {
           name: 'Machine Hip Abduction',
           setType: 'straight',
-          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          videoUrl: `${VIDEO_CDN}/exercises/ez-bar-curl.mp4`,
           sets: [
             { setNumber: 1, plannedReps: 8, suggestedWeight: 200 },
             { setNumber: 2, plannedReps: 8, suggestedWeight: 200 },
@@ -387,7 +387,7 @@ const WEEK_OVERRIDES = {
           name: 'DB Hip Flexors / Side Plank Holds',
           setType: 'straight',
           description: "Paired movement — DB hip flexor raises alternated with side plank holds.",
-          videoUrl: `${VIDEO_CDN}/wills-hypertrophy-program/DB%20Bent%20Arm%20Lateral%20Raises.mp4`,
+          videoUrl: `${VIDEO_CDN}/exercises/ez-bar-curl.mp4`,
           sets: [
             { setNumber: 1, plannedReps: 10, suggestedWeight: 30 },
             { setNumber: 2, plannedReps: 10, suggestedWeight: 30 },
