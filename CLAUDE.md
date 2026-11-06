@@ -6,9 +6,14 @@ Local development uses the Docker database `replab-dev-db` (port 5435), not prod
 `docs/local-dev-database.md`. Production's URL is in `server/.env.production-db`; never point
 `server/.env` back at production, and production database reads/writes need Will's OK.
 
+## Branch rule
+
+Commit and push everything to `main` (which deploys the live site) unless Will says to use
+another branch. Don't commit to `tanstack-query` or other feature branches on your own.
+
 ## Active project: TanStack Query migration
 
-Work happens on the `tanstack-query` branch. The save point before it is tag `pre-tanstack-query` (commit `0e5bb7f`).
+The migration was done on the `tanstack-query` branch (now merged; new work goes on `main`). The save point before it is tag `pre-tanstack-query` (commit `0e5bb7f`).
 Read `docs/tanstack-query-migration.md` before touching data loading, saving or offline code — it holds the
 decisions already made with Will, the phase plan, and the behavior that must keep working. Record new
 questions and answers in its decision log.
