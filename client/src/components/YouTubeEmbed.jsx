@@ -20,16 +20,11 @@ function loadYouTubeApi() {
   return ytApiPromise;
 }
 
-// TEMPORARY diagnostic — a bare <iframe src="youtube..."> gives no way to
-// see why an embed fails: no JS callback fires for content-level errors
-// (e.g. YouTube's own "Video player configuration error" card) inside a
-// cross-origin iframe. This uses the postMessage-based IFrame Player API
-// instead, so onError gives YouTube's real numeric error code (2 = bad
-// parameter, 5 = HTML5 player error, 100 = video not found, 101/150 =
-// embedding blocked by the video owner), surfaced via alert() so a
-// TestFlight tester with no console can screenshot it. Every YouTube
-// embed in the app should go through this one component so the
-// diagnostic (and later, the real fix) only needs to live in one place.
+// Uses the postMessage-based IFrame Player API rather than a bare iframe, so a
+// failed embed reports YouTube's numeric error code (2 = bad parameter,
+// 5 = HTML5 player error, 100 = video not found, 101/150 = embedding blocked
+// by the video owner) to the console. Every YouTube embed in the app goes
+// through this one component.
 export default function YouTubeEmbed({ videoId, title, className, autoplay = true, onReady }) {
   const containerRef = useRef(null);
   const playerRef = useRef(null);
@@ -57,15 +52,13 @@ export default function YouTubeEmbed({ videoId, title, className, autoplay = tru
               if (onReady) onReady(e);
             },
             onError: (e) => {
-              window.alert(
-                `YouTube player error\ncode: ${e.data}\nvideoId: ${videoId}\norigin: ${window.location.origin}`
-              );
+              console.warn(`YouTube player error ${e.data} (video ${videoId})`);
             },
           },
         });
       })
       .catch((err) => {
-        window.alert(`YouTube API failed to load\n${err.name}: ${err.message}\norigin: ${window.location.origin}`);
+        console.warn(`YouTube API failed to load: ${err.message}`);
       });
 
     return () => {
