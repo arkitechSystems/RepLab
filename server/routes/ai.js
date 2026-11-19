@@ -63,7 +63,7 @@ router.post('/generate-workout', authMiddleware, async (req, res) => {
       const pbs = await db.getPBs(req.userId);
       if (pbs.length > 0) {
         const topPBs = pbs.slice(0, 20).map(pb =>
-          `${pb.exerciseName}: ${pb.bestWeight} lbs x ${pb.bestReps} reps`
+          `${pb.exerciseName}: ${pb.bestWeight > 0 ? `${pb.bestWeight} lbs` : 'bodyweight'} x ${pb.bestReps} reps`
         ).join('\n');
         prContext = `\n\nThe user's current personal records:\n${topPBs}`;
       }

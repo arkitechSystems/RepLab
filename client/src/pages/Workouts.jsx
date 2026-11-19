@@ -6386,7 +6386,7 @@ export default function Workouts() {
                         <span style={{ color: 'rgba(255,255,255,0.2)', margin: '0 6px' }}>-</span>
                         <span style={{ color: 'rgba(255,255,255,0.6)' }}>{pr.exercise_name}</span>
                         <span style={{ color: 'rgba(255,255,255,0.2)', margin: '0 6px' }}>-</span>
-                        <span style={{ color: 'rgba(255,255,255,0.3)' }}>{Number(pr.best_weight)} LBS × {pr.best_reps} REPS</span>
+                        <span style={{ color: 'rgba(255,255,255,0.3)' }}>{Number(pr.best_weight) > 0 ? `${Number(pr.best_weight)} LBS` : 'BW'} × {pr.best_reps} REPS</span>
                         <span style={{ color: 'rgba(255,255,255,0.1)', margin: '0 12px' }}>|</span>
                       </span>
                     ));
@@ -6898,7 +6898,7 @@ export default function Workouts() {
                                 <div>
                                   <div style={{ fontSize: '14px', color: 'white', fontWeight: 500 }}>{exercise}</div>
                                   <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '2px', fontVariantNumeric: 'tabular-nums' }}>
-                                    Top: {topLift.weight} lbs × {topLift.reps}
+                                    Top: {topLift.weight > 0 ? `${topLift.weight} lbs` : 'BW'} × {topLift.reps}
                                     {byVolume && (
                                       <span style={{ color: 'rgba(239,68,68,0.7)', marginLeft: '8px', fontWeight: 700 }}>
                                         = {topLift.volume.toLocaleString()} vol
@@ -6934,7 +6934,7 @@ export default function Workouts() {
                                           {String(i + 1).padStart(2, '0')}
                                         </span>
                                         <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.85)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
-                                          {lift.weight} lbs × {lift.reps}
+                                          {lift.weight > 0 ? `${lift.weight} lbs` : 'BW'} × {lift.reps}
                                           {byVolume && (
                                             <span style={{ color: 'rgba(239,68,68,0.7)', marginLeft: '8px', fontWeight: 700 }}>
                                               = {lift.volume.toLocaleString()}
@@ -7303,7 +7303,7 @@ export default function Workouts() {
                         <span style={{ flex: '0 0 33.333%', fontSize: '11px', color: 'rgba(255,255,255,0.55)', letterSpacing: '1px', textTransform: 'uppercase', paddingTop: '1px', textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>{muscle}</span>
                         {pr ? (
                           <span style={{ flex: 1, textAlign: 'right', fontSize: '13px', fontWeight: 700, color: 'white', textShadow: '0 0 10px rgba(239,68,68,0.5), 0 1px 4px rgba(0,0,0,0.7)', wordBreak: 'break-word' }}>
-                            {pr.exercise_name} — {Number(pr.best_weight)} lbs × {pr.best_reps} reps
+                            {pr.exercise_name} — {Number(pr.best_weight) > 0 ? `${Number(pr.best_weight)} lbs` : 'BW'} × {pr.best_reps} reps
                           </span>
                         ) : (
                           <span style={{ flex: 1, textAlign: 'right', fontSize: '13px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>

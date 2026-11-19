@@ -215,7 +215,7 @@ function PRsSection() {
                                 className="flex items-center px-3 py-2 rounded-lg bg-white/[0.03]"
                               >
                                 <span className="flex-1 text-sm text-white font-medium tabular-nums">
-                                  {r.weight} <span className="text-xs text-wf-gray-500">lbs</span>
+                                  {r.weight > 0 ? <>{r.weight} <span className="text-xs text-wf-gray-500">lbs</span></> : 'BW'}
                                 </span>
                                 {calDate ? (
                                   <button

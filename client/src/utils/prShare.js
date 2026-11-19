@@ -134,10 +134,12 @@ async function drawPRCard({ muscle, exercise, weight, reps, achievedAt }) {
   ctx.font = `900 220px ${font}`;
   ctx.textBaseline = 'top';
 
-  const weightText = String(weight);
+  // Bodyweight PRs are stored at weight 0 — show "BW" with no LBS suffix.
+  const isBW = !(Number(weight) > 0);
+  const weightText = isBW ? 'BW' : String(weight);
   const xText = '×';
   const repsText = String(reps);
-  const lbsText = ' LBS';
+  const lbsText = isBW ? '' : ' LBS';
 
   // Measure for layout
   const wW = ctx.measureText(weightText).width;
@@ -189,11 +191,11 @@ async function drawPRCard({ muscle, exercise, weight, reps, achievedAt }) {
 export async function sharePR(pr) {
   const dataUrl = await drawPRCard(pr);
   const blob = dataURLtoBlob(dataUrl);
-  const filename = `RepLab-PR-${pr.exercise}-${pr.weight}lb.png`
+  const filename = `RepLab-PR-${pr.exercise}-${Number(pr.weight) > 0 ? `${pr.weight}lb` : 'BW'}.png`
     .replace(/[^a-zA-Z0-9.\-]/g, '_');
   const file = new File([blob], filename, { type: 'image/png' });
 
-  const text = `${pr.exercise} — ${pr.weight} lbs × ${pr.reps} reps. New PR. 💪 #RepLab`;
+  const text = `${pr.exercise} — ${Number(pr.weight) > 0 ? `${pr.weight} lbs` : 'BW'} × ${pr.reps} reps. New PR. 💪 #RepLab`;
 
   // Best path: share file via Web Share API
   if (navigator.canShare && navigator.canShare({ files: [file] })) {

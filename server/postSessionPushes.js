@@ -53,7 +53,7 @@ export async function notifyPRCelebration(userId, sessionId) {
     if (rows.length === 1) {
       const pr = rows[0];
       title = '🏆 New PR!';
-      body = `${pr.exercise_name}: ${formatWeight(pr.best_weight)} lb × ${Number(pr.best_reps)}`;
+      body = `${pr.exercise_name}: ${Number(pr.best_weight) > 0 ? `${formatWeight(pr.best_weight)} lb` : 'BW'} × ${Number(pr.best_reps)}`;
     } else {
       title = `🏆 ${rows.length} new PRs!`;
       const names = rows.slice(0, 3).map((pr) => pr.exercise_name);

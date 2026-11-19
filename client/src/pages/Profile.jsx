@@ -140,7 +140,7 @@ function PRTicker({ items }) {
           <span key={i}>
             <span style={{ color: '#ef4444', fontWeight: 700 }}>{pr.muscle} PR</span>
             <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 300 }}>
-              {` — ${pr.exercise} — ${pr.weight} LBS × ${pr.reps}`}
+              {` — ${pr.exercise} — ${pr.weight > 0 ? `${pr.weight} LBS` : 'BW'} × ${pr.reps}`}
             </span>
             <span style={{ color: 'rgba(255,255,255,0.1)', margin: '0 16px' }}>|</span>
           </span>

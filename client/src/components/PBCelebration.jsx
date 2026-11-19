@@ -159,10 +159,10 @@ export default function PBCelebration({ prs, onDismiss }) {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12 }}>
                     <MonolithSeal size={66} />
                     <div style={{ fontWeight: 900, fontSize: 56, lineHeight: 0.82, letterSpacing: '-0.05em', fontVariantNumeric: 'tabular-nums', background: 'linear-gradient(180deg, #fff 0%, #fff 55%, #9a9aa0 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', flexShrink: 0 }}>
-                      {hero.weight}
+                      {hero.weight > 0 ? hero.weight : 'BW'}
                     </div>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontFamily: PB_MONO, fontSize: 12, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.1em' }}>LB × {hero.reps}</div>
+                      <div style={{ fontFamily: PB_MONO, fontSize: 12, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.1em' }}>{hero.weight > 0 ? 'LB ' : ''}× {hero.reps}</div>
                       <div style={{ fontSize: 13.5, fontWeight: 700, color: '#fff', marginTop: 4, letterSpacing: '-0.01em' }}>{hero.name}</div>
                     </div>
                   </div>
@@ -190,7 +190,7 @@ export default function PBCelebration({ prs, onDismiss }) {
                       {rest.map((pr, i) => (
                         <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 11px', borderRadius: 11, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)' }}>
                           <span style={{ fontSize: 12.5, fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: 8 }}>{pr.name}</span>
-                          <span style={{ fontFamily: PB_MONO, fontSize: 12, fontWeight: 600, color: '#fff', flexShrink: 0 }}>{pr.weight} × {pr.reps}</span>
+                          <span style={{ fontFamily: PB_MONO, fontSize: 12, fontWeight: 600, color: '#fff', flexShrink: 0 }}>{pr.weight > 0 ? pr.weight : 'BW'} × {pr.reps}</span>
                         </div>
                       ))}
                     </div>

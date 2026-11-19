@@ -5565,19 +5565,22 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
     api(`/pbs?templateId=${template.id}`).then((data) => {
       if (cancelled) return;
       const keys = new Set();
+      // /pbs returns camelCase fields (exerciseName, bestWeight, bestReps).
       for (const pr of data || []) {
-        const w = Number(pr.best_weight);
-        const r = Number(pr.best_reps);
+        const w = Number(pr.bestWeight);
+        const r = Number(pr.bestReps);
         if (!Number.isFinite(w) || !Number.isFinite(r)) continue;
-        keys.add(`${String(pr.exercise_name).toLowerCase()}::${w}::${r}`);
+        keys.add(`${String(pr.exerciseName).toLowerCase()}::${w}::${r}`);
       }
       setPrKeys(keys);
     }).catch(() => {});
     return () => { cancelled = true; };
   }, [template?.id]);
   function isPRSet(exerciseName, weight, reps) {
-    if (!prKeys || weight <= 0 || reps <= 0) return false;
-    return prKeys.has(`${String(exerciseName).toLowerCase()}::${Number(weight)}::${Number(reps)}`);
+    if (!prKeys || !(Number(reps) > 0)) return false;
+    // Bodyweight (blank, 0 or -1 "BW") PRs are stored at weight 0.
+    const w = Number(weight) > 0 ? Number(weight) : 0;
+    return prKeys.has(`${String(exerciseName).toLowerCase()}::${w}::${Number(reps)}`);
   }
 
   // Per-exercise data with per-set volume breakdown (goal volume vs actual volume).

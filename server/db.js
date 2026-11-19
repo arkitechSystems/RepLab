@@ -301,18 +301,20 @@ async function rebuildPBsForTemplateOnClient(client, userId, templateId, current
   // Only completed sets count as PRs — planned/pre-filled sets are
   // explicitly excluded (is_completed=FALSE) so a user writing down their
   // plan ahead of time can't accidentally set a PR they didn't actually lift.
+  // Bodyweight sets (weight 0 or the -1 "BW" value) count as a weight-0 PR;
+  // cardio sets are skipped (same rules as createSession).
   // MAX(exercise_id) picks any non-null id for each (name, weight) group —
   // they should all be the same id post-Path-A, but MAX is defensive
   // against any rows that have NULL.
   const { rows } = await client.query(
     `WITH done AS (
-       SELECT se.exercise_name, se.exercise_id, se.weight, se.reps, s.id AS session_id, s.date
+       SELECT se.exercise_name, se.exercise_id, GREATEST(se.weight, 0) AS weight, se.reps, s.id AS session_id, s.date
          FROM session_entries se
          JOIN sessions s ON s.id = se.session_id
         WHERE s.user_id = $1
           AND s.template_id = $2
-          AND se.weight > 0
           AND se.reps > 0
+          AND se.cardio_metric IS NULL
           AND se.is_completed = TRUE
      ),
      first_hit AS (
@@ -1243,13 +1245,18 @@ const db = {
 
       // Track best reps per exercise per weight for PB updates (straight,
       // *completed* sets only — planned/pre-filled sets never count as PRs).
+      // Bodyweight: blank, 0 and the -1 "BW" value all mean bodyweight, so
+      // they're stored together as a weight-0 PR (most reps at bodyweight).
+      // Cardio sets are skipped — they log time/distance, not a lift.
       const bestRepsAtWeight = new Map();
       for (const entry of entries) {
         if (entry.setType && entry.setType !== 'straight') continue;
         if (!entry.isCompleted) continue;
-        const w = entry.weight || 0;
-        const r = entry.reps || 0;
-        if (w > 0 && r > 0) {
+        if (['time', 'distance', 'reps'].includes(entry.cardioMetric)) continue;
+        const rawW = Number(entry.weight) || 0;
+        const w = rawW > 0 ? rawW : 0;
+        const r = Number(entry.reps) || 0;
+        if (r > 0) {
           const key = `${entry.exerciseName}::${w}`;
           const current = bestRepsAtWeight.get(key);
           if (!current || r > current.reps) {
