@@ -1,23 +1,10 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { validateBody } from '../validation.js';
+import { createProgramBody, renameProgramBody } from '../schemas/misc.js';
 
 const router = Router();
-
-const MAX_NAME_LEN = 200;
-const MAX_DESCRIPTION_LEN = 5000;
-
-function validateProgramName(name) {
-  if (typeof name !== 'string' || !name.trim()) return 'Program name is required';
-  if (name.length > MAX_NAME_LEN) return `Program name must be ${MAX_NAME_LEN} characters or fewer`;
-  return null;
-}
-function validateProgramDescription(description) {
-  if (description == null) return null;
-  if (typeof description !== 'string') return 'Description must be a string';
-  if (description.length > MAX_DESCRIPTION_LEN) return `Description must be ${MAX_DESCRIPTION_LEN} characters or fewer`;
-  return null;
-}
 
 router.get('/', authMiddleware, async (req, res) => {
   try {
@@ -29,13 +16,10 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 
-router.post('/', authMiddleware, async (req, res) => {
+// Name / description rules: createProgramBody, renameProgramBody (schemas/misc.js).
+router.post('/', authMiddleware, validateBody(createProgramBody), async (req, res) => {
   try {
     const { name, description } = req.body;
-    const nameErr = validateProgramName(name);
-    if (nameErr) return res.status(400).json({ error: nameErr });
-    const descErr = validateProgramDescription(description);
-    if (descErr) return res.status(400).json({ error: descErr });
     const result = await db.createProgram(req.userId, name, description || '');
     res.status(201).json(result);
   } catch (err) {
@@ -44,12 +28,10 @@ router.post('/', authMiddleware, async (req, res) => {
   }
 });
 
-router.put('/:id', authMiddleware, async (req, res) => {
+router.put('/:id', authMiddleware, validateBody(renameProgramBody), async (req, res) => {
   try {
     const { name } = req.body;
     const programId = Number(req.params.id);
-    const nameErr = validateProgramName(name);
-    if (nameErr) return res.status(400).json({ error: nameErr });
     const result = await db.updateProgram(req.userId, programId, name);
     if (!result) {
       return res.status(404).json({ error: 'Program not found' });

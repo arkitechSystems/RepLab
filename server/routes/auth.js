@@ -7,6 +7,11 @@ import { generateToken, generateAccessToken, generateRefreshToken, verifyRefresh
 import { sendWelcomeEmail, sendPasswordResetEmail, sendNewSignupNotification, sendDeletionConfirmationEmail } from '../email.js';
 import config from '../config.js';
 import { verifyFirebaseIdToken } from '../firebaseAuth.js';
+import { validateBody } from '../validation.js';
+import {
+  signupBody, loginBody, socialBody, socialLinkBody, signupProfileBody, refreshBody, requestResetBody,
+  resetPasswordBody, changePasswordBody, setPasswordBody, planBody, applyTrainerBody, deleteAccountBody,
+} from '../schemas/auth.js';
 
 const router = Router();
 
@@ -124,7 +129,7 @@ function passwordRuleError(password) {
   return errors.length > 0 ? 'Password must have: ' + errors.join(', ') : null;
 }
 
-router.post('/signup', async (req, res) => {
+router.post('/signup', validateBody(signupBody), async (req, res) => {
   try {
     const { identifier, password, firstName, lastName, phone: extraPhone, gender, username, referralSource, referralCode, zipCode, timezone, utmSource, utmMedium, utmCampaign, utmContent, utmTerm, deviceInfo } = req.body;
 
@@ -214,7 +219,7 @@ router.post('/signup', async (req, res) => {
   }
 });
 
-router.post('/login', async (req, res) => {
+router.post('/login', validateBody(loginBody), async (req, res) => {
   try {
     const { identifier, password } = req.body;
 
@@ -260,7 +265,7 @@ router.post('/login', async (req, res) => {
 //   3. otherwise create a new, password-less user
 // Responds with the same auth payload as /login + /signup, plus isNewUser so
 // the client knows to show the optional "finish your profile" step.
-router.post('/social', async (req, res) => {
+router.post('/social', validateBody(socialBody), async (req, res) => {
   try {
     const { idToken, firstName, lastName, referralCode, timezone, utmSource, utmMedium, utmCampaign, utmContent, utmTerm, deviceInfo } = req.body || {};
     if (!idToken || typeof idToken !== 'string') {
@@ -396,7 +401,7 @@ async function resolveLinkToken(linkToken, res) {
 // POST /auth/social/link — connect Google/Apple to an existing account by
 // confirming its password once. The password keeps working afterwards, so
 // the user can sign in either way on any device.
-router.post('/social/link', async (req, res) => {
+router.post('/social/link', validateBody(socialLinkBody), async (req, res) => {
   try {
     const { linkToken, password } = req.body || {};
     const resolved = await resolveLinkToken(linkToken, res);
@@ -419,7 +424,7 @@ router.post('/social/link', async (req, res) => {
 // Google/Apple": the provider proved the email, so link the account but turn
 // its password off (and sign out other devices), since we can't confirm who
 // set it. A new password can be set later in Profile → Set a password.
-router.post('/social/link-without-password', async (req, res) => {
+router.post('/social/link-without-password', validateBody(socialLinkBody), async (req, res) => {
   try {
     const { linkToken } = req.body || {};
     const resolved = await resolveLinkToken(linkToken, res);
@@ -440,7 +445,7 @@ router.post('/social/link-without-password', async (req, res) => {
 // PUT /auth/signup-profile — optional "finish your profile" step shown after
 // a first-time Google/Apple sign-up (the providers don't share zip, phone,
 // gender, or referral info). Every field is optional; blanks are ignored.
-router.put('/signup-profile', authMiddleware, async (req, res) => {
+router.put('/signup-profile', authMiddleware, validateBody(signupProfileBody), async (req, res) => {
   try {
     const body = req.body || {};
     const clean = (v) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, 200) : undefined);
@@ -500,7 +505,7 @@ router.post('/demo', async (req, res) => {
 // side reuse detection. Password-change invalidation works here the same way
 // it does in authMiddleware: the refresh token carries tokenVersion, and we
 // reject it if the DB's token_version has advanced past it.
-router.post('/refresh', async (req, res) => {
+router.post('/refresh', validateBody(refreshBody), async (req, res) => {
   try {
     const { refreshToken } = req.body || {};
     if (!refreshToken || typeof refreshToken !== 'string') {
@@ -577,7 +582,7 @@ function canSendReset(email) {
 }
 
 // Request password reset email
-router.post('/request-reset', async (req, res) => {
+router.post('/request-reset', validateBody(requestResetBody), async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email is required' });
@@ -606,7 +611,7 @@ router.post('/request-reset', async (req, res) => {
 });
 
 // Reset password with token
-router.post('/reset-password', async (req, res) => {
+router.post('/reset-password', validateBody(resetPasswordBody), async (req, res) => {
   try {
     const { token, password } = req.body;
     if (!token || !password) return res.status(400).json({ error: 'Token and password are required' });
@@ -739,7 +744,7 @@ router.get('/confirm-deletion', async (req, res) => {
 });
 
 // Change password (logged in)
-router.post('/change-password', authMiddleware, async (req, res) => {
+router.post('/change-password', authMiddleware, validateBody(changePasswordBody), async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
     if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Current and new passwords are required' });
@@ -786,7 +791,7 @@ router.post('/change-password', authMiddleware, async (req, res) => {
 // connecting). The user is already signed in, so no current password or
 // email is needed. updatePassword bumps token_version, so a fresh token pair
 // is returned to keep this device signed in.
-router.put('/set-password', authMiddleware, async (req, res) => {
+router.put('/set-password', authMiddleware, validateBody(setPasswordBody), async (req, res) => {
   try {
     const { password } = req.body || {};
     const ruleError = passwordRuleError(password);
@@ -808,7 +813,7 @@ router.put('/set-password', authMiddleware, async (req, res) => {
 });
 
 // Start free trial
-router.post('/start-trial', authMiddleware, async (req, res) => {
+router.post('/start-trial', authMiddleware, validateBody(planBody), async (req, res) => {
   try {
     const { plan } = req.body;
     if (!plan || !['Pro', 'Elite'].includes(plan)) {
@@ -841,7 +846,7 @@ router.post('/start-trial', authMiddleware, async (req, res) => {
 });
 
 // Upgrade plan (payment)
-router.post('/upgrade', authMiddleware, async (req, res) => {
+router.post('/upgrade', authMiddleware, validateBody(planBody), async (req, res) => {
   try {
     const { plan, billing } = req.body;
     if (!plan || !['Pro', 'Elite'].includes(plan)) {
@@ -913,7 +918,7 @@ router.post('/page-visit', authMiddleware, async (req, res) => {
 });
 
 // Apply to become a trainer
-router.post('/apply-trainer', authMiddleware, async (req, res) => {
+router.post('/apply-trainer', authMiddleware, validateBody(applyTrainerBody), async (req, res) => {
   try {
     const { message } = req.body;
     // Check if already a trainer
@@ -1041,7 +1046,7 @@ router.get('/export-data', authMiddleware, async (req, res) => {
   }
 });
 
-router.delete('/delete-account', authMiddleware, async (req, res) => {
+router.delete('/delete-account', authMiddleware, validateBody(deleteAccountBody), async (req, res) => {
   try {
     const { password, idToken } = req.body;
     const user = await db.findUserById(req.userId);

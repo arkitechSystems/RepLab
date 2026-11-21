@@ -1,48 +1,14 @@
 import { Router } from 'express';
 import pool from '../dbPool.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { validateBody } from '../validation.js';
+import { cardioBody } from '../schemas/misc.js';
 
 const router = Router();
 
-const VALID_TYPES = new Set([
-  'treadmill',
-  'elliptical',
-  'stationary_bike',
-  'stair_master',
-  'rowing',
-  'assault_bike',
-  'jogging',
-]);
-
-function sanitize(body) {
-  const cardio_type = String(body.cardio_type || '').trim();
-  if (!VALID_TYPES.has(cardio_type)) return { error: 'Invalid cardio_type' };
-  const duration_secs = Number(body.duration_secs);
-  if (!Number.isFinite(duration_secs) || duration_secs <= 0 || duration_secs > 60 * 60 * 12) {
-    return { error: 'duration_secs must be a positive number under 12 hours' };
-  }
-  const distance_m = body.distance_m == null || body.distance_m === '' ? null : Number(body.distance_m);
-  if (distance_m != null && (!Number.isFinite(distance_m) || distance_m < 0)) {
-    return { error: 'distance_m must be a non-negative number' };
-  }
-  const calories = body.calories == null || body.calories === '' ? null : Math.round(Number(body.calories));
-  if (calories != null && (!Number.isFinite(calories) || calories < 0)) {
-    return { error: 'calories must be a non-negative integer' };
-  }
-  const avg_heart_rate = body.avg_heart_rate == null || body.avg_heart_rate === ''
-    ? null
-    : Math.round(Number(body.avg_heart_rate));
-  if (avg_heart_rate != null && (!Number.isFinite(avg_heart_rate) || avg_heart_rate < 30 || avg_heart_rate > 230)) {
-    return { error: 'avg_heart_rate out of plausible range (30-230)' };
-  }
-  const notes = body.notes == null ? null : String(body.notes).slice(0, 500);
-  const metadata = body.metadata && typeof body.metadata === 'object' && !Array.isArray(body.metadata)
-    ? body.metadata
-    : {};
-  const session_id = body.session_id == null || body.session_id === '' ? null : Number(body.session_id);
-  if (session_id != null && !Number.isInteger(session_id)) return { error: 'session_id must be an integer' };
-  return { cardio_type, duration_secs, distance_m, calories, avg_heart_rate, notes, metadata, session_id };
-}
+// Body checks + normalization (type, duration, distance, calories, heart
+// rate, notes, metadata, session_id): cardioBody / sanitizeCardio in
+// schemas/misc.js.
 
 // GET /cardio?session_id=X — list entries for a session
 // GET /cardio?from=YYYY-MM-DD&to=YYYY-MM-DD — date-range list (uses created_at)
@@ -90,10 +56,9 @@ router.get('/', authMiddleware, async (req, res) => {
 });
 
 // POST /cardio — create
-router.post('/', authMiddleware, async (req, res) => {
+router.post('/', authMiddleware, validateBody(cardioBody), async (req, res) => {
   try {
-    const data = sanitize(req.body || {});
-    if (data.error) return res.status(400).json({ error: data.error });
+    const data = req.body;
 
     if (data.session_id != null) {
       // Verify the session belongs to this user before linking.
@@ -143,13 +108,12 @@ router.post('/', authMiddleware, async (req, res) => {
 });
 
 // PUT /cardio/:id — update
-router.put('/:id', authMiddleware, async (req, res) => {
+router.put('/:id', authMiddleware, validateBody(cardioBody), async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid id' });
 
-    const data = sanitize(req.body || {});
-    if (data.error) return res.status(400).json({ error: data.error });
+    const data = req.body;
 
     const { rowCount, rows } = await pool.query(
       `UPDATE cardio_entries

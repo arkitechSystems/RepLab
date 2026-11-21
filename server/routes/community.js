@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { authMiddleware } from '../middleware/auth.js';
-import { parseCommunityItemKey, COMMUNITY_ITEM_TYPES } from '../communityItems.js';
+import { validateBody } from '../validation.js';
+import { communitySettingsBody, communityNotificationsBody, RETIRED_COMMUNITY_SETTING_KEYS } from '../schemas/misc.js';
+import { parseCommunityItemKey } from '../communityItems.js';
 import { notifyCommunityLike } from '../communityLikeNotifier.js';
 
 const router = Router();
@@ -26,12 +28,6 @@ router.get('/feed', authMiddleware, async (req, res) => {
   }
 });
 
-// 'all' (master) plus one key per feed kind — same list db.js uses.
-const SETTING_KEYS = new Set(['all', ...COMMUNITY_ITEM_TYPES]);
-// Categories removed from the feed in 2026-11. Older app builds still have
-// these toggles, so a change to one is accepted and ignored instead of
-// showing an error.
-const RETIRED_SETTING_KEYS = new Set(['workout', 'custom']);
 
 // GET /community/settings -> { all, pr, program, programComplete, streak }
 // (booleans; 'program' = enrolling in a program)
@@ -48,21 +44,13 @@ router.get('/settings', authMiddleware, async (req, res) => {
 // category is 'all' (master) or one feed category. removePast only applies
 // when turning off: it hides everything already posted in that category.
 // Master off/on switches every category off/on (see db.setCommunitySharing).
-// Returns the full settings object.
-router.put('/settings', authMiddleware, async (req, res) => {
+// Returns the full settings object. Retired categories (older app builds) are
+// accepted and ignored instead of showing an error.
+router.put('/settings', authMiddleware, validateBody(communitySettingsBody), async (req, res) => {
   try {
-    const { category, enabled, removePast } = req.body || {};
-    if (RETIRED_SETTING_KEYS.has(category)) {
+    const { category, enabled, removePast } = req.body;
+    if (RETIRED_COMMUNITY_SETTING_KEYS.has(category)) {
       return res.json(await db.getCommunitySettings(req.userId));
-    }
-    if (!SETTING_KEYS.has(category)) {
-      return res.status(400).json({ error: 'Invalid category' });
-    }
-    if (typeof enabled !== 'boolean') {
-      return res.status(400).json({ error: 'enabled must be a boolean' });
-    }
-    if (removePast !== undefined && typeof removePast !== 'boolean') {
-      return res.status(400).json({ error: 'removePast must be a boolean' });
     }
     const settings = await db.setCommunitySharing(req.userId, category, enabled, !enabled && removePast === true);
     res.json(settings);
@@ -119,12 +107,9 @@ router.get('/notifications', authMiddleware, async (req, res) => {
 });
 
 // PUT /community/notifications  body: { likes: boolean }
-router.put('/notifications', authMiddleware, async (req, res) => {
+router.put('/notifications', authMiddleware, validateBody(communityNotificationsBody), async (req, res) => {
   try {
-    const { likes } = req.body || {};
-    if (typeof likes !== 'boolean') {
-      return res.status(400).json({ error: 'likes must be a boolean' });
-    }
+    const { likes } = req.body;
     res.json(await db.setCommunityLikeNotifications(req.userId, likes));
   } catch (err) {
     console.error(err);

@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import Anthropic from '@anthropic-ai/sdk';
 import { authMiddleware } from '../middleware/auth.js';
+import { validateBody } from '../validation.js';
+import { aiSuggestSwapBody } from '../schemas/misc.js';
 import db from '../db.js';
 
 const router = Router();
@@ -242,7 +244,7 @@ Rules:
   }
 });
 
-router.post('/suggest-swap', authMiddleware, async (req, res) => {
+router.post('/suggest-swap', authMiddleware, validateBody(aiSuggestSwapBody), async (req, res) => {
   if (!process.env.ANTHROPIC_API_KEY) {
     return res.status(503).json({ error: 'AI is not configured' });
   }

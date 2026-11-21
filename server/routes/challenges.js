@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { validateBody } from '../validation.js';
+import { challengeEntryBody } from '../schemas/misc.js';
 
 const router = Router();
 
@@ -27,12 +29,9 @@ router.get('/:challenge/my-entry', authMiddleware, async (req, res) => {
 });
 
 // POST /challenges/:challenge
-router.post('/:challenge', authMiddleware, async (req, res) => {
+router.post('/:challenge', authMiddleware, validateBody(challengeEntryBody), async (req, res) => {
   try {
     const { value } = req.body;
-    if (!value || typeof value !== 'number' || value < 1 || value > 99999) {
-      return res.status(400).json({ error: 'A valid number is required (1–99999)' });
-    }
     await db.postChallengeEntry(req.userId, req.params.challenge, value);
     const entries = await db.getChallengeLeaderboard(req.params.challenge);
     res.status(201).json(entries);

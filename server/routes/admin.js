@@ -11,6 +11,11 @@ import { exerciseCardScript } from '../exerciseCardBuilder.js';
 import { rowsToXlsxBuffer } from '../xlsxExport.js';
 import { DASHBOARD_CSS, ICONS, PASSWORD_TOGGLE_JS } from '../dashboardCSS.js';
 import { evaluateAndMaybeNotify as evaluateStreakReminder } from '../streakReminderScheduler.js';
+import { validateBody } from '../validation.js';
+import {
+  staffCreateExerciseBody, staffCreateProgramBody, adminResetPasswordBody, exerciseVideoBody,
+  exerciseAddBody, exerciseRenameBody, codeErrorUpdateBody,
+} from '../schemas/staff.js';
 
 const router = Router();
 
@@ -1261,7 +1266,7 @@ router.delete('/users/:id', adminAuth, async (req, res) => {
 });
 
 // POST /admin/users/:id/reset-password — Admin resets a user's password
-router.post('/users/:id/reset-password', adminAuth, express.json(), async (req, res) => {
+router.post('/users/:id/reset-password', adminAuth, express.json(), validateBody(adminResetPasswordBody), async (req, res) => {
   try {
     const userId = Number(req.params.id);
     if (!userId) return res.status(400).json({ error: 'Invalid user ID' });
@@ -3024,7 +3029,7 @@ router.get('/workout-manager/api/muscle-groups', adminAuth, async (req, res) => 
   } catch (err) { res.status(500).json({ error: 'Failed' }); }
 });
 
-router.post('/workout-manager/api/exercises', adminAuth, express.json(), async (req, res) => {
+router.post('/workout-manager/api/exercises', adminAuth, express.json(), validateBody(staffCreateExerciseBody), async (req, res) => {
   try {
     const { name, muscleGroup } = req.body;
     if (!name || !muscleGroup) return res.status(400).json({ error: 'Name and muscle group required' });
@@ -3040,7 +3045,7 @@ router.post('/workout-manager/api/exercises', adminAuth, express.json(), async (
   } catch (err) { res.status(500).json({ error: 'Failed' }); }
 });
 
-router.post('/workout-manager/api/programs', adminAuth, express.json(), async (req, res) => {
+router.post('/workout-manager/api/programs', adminAuth, express.json(), validateBody(staffCreateProgramBody), async (req, res) => {
   try {
     const { name, description } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: 'Program name is required' });
@@ -5978,7 +5983,7 @@ router.post('/exercise-library/merge', adminAuth, express.json(), async (req, re
 // An admin manually editing the video automatically stamps video_linked_by as
 // 'admin' so the dashboard can distinguish hand-verified rows from
 // auto-linked ones. Clearing the video also clears the provenance.
-router.put('/exercise-library/video/:id', adminAuth, express.json(), async (req, res) => {
+router.put('/exercise-library/video/:id', adminAuth, express.json(), validateBody(exerciseVideoBody), async (req, res) => {
   try {
     const { videoId } = req.body;
     const trimmed = (videoId || '').trim();
@@ -6044,7 +6049,7 @@ router.put('/exercise-library/linked-by/:id', adminAuth, express.json(), async (
 });
 
 // POST /admin/exercise-library/add — Add a new exercise
-router.post('/exercise-library/add', adminAuth, express.json(), async (req, res) => {
+router.post('/exercise-library/add', adminAuth, express.json(), validateBody(exerciseAddBody), async (req, res) => {
   try {
     const { name, muscle, videoId } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ error: 'Exercise name is required' });
@@ -6083,7 +6088,7 @@ router.post('/exercise-library/add', adminAuth, express.json(), async (req, res)
 // the denormalized name column on each.
 // All four UPDATEs run inside one transaction so a unique-index violation
 // on `exercises` rolls back any propagated renames.
-router.put('/exercise-library/rename/:id', adminAuth, express.json(), async (req, res) => {
+router.put('/exercise-library/rename/:id', adminAuth, express.json(), validateBody(exerciseRenameBody), async (req, res) => {
   const client = await pool.connect();
   try {
     const { name } = req.body;
@@ -6468,7 +6473,7 @@ router.get('/code-errors', adminAuth, async (req, res) => {
   }
 });
 
-router.post('/code-errors/update', adminAuth, express.json(), async (req, res) => {
+router.post('/code-errors/update', adminAuth, express.json(), validateBody(codeErrorUpdateBody), async (req, res) => {
   try {
     const { id, status, note } = req.body || {};
     if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid id' });

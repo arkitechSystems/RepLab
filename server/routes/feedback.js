@@ -1,16 +1,15 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { validateBody } from '../validation.js';
+import { feedbackBody } from '../schemas/misc.js';
 
 const router = Router();
 
 // POST /feedback — Submit feedback from client app
-router.post('/', authMiddleware, async (req, res) => {
+router.post('/', authMiddleware, validateBody(feedbackBody), async (req, res) => {
   try {
     const { type, message } = req.body;
-    if (!type || !message) {
-      return res.status(400).json({ error: 'type and message are required' });
-    }
     await db.saveFeedback(req.userId, type, message);
     res.status(201).json({ success: true });
   } catch (err) {

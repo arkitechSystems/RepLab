@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth.js';
+import { validateBody } from '../validation.js';
+import { shareProgramBody, inviteBody } from '../schemas/misc.js';
 import db from '../db.js';
 import pool from '../dbPool.js';
 
@@ -61,12 +63,9 @@ router.get('/users', authMiddleware, async (req, res) => {
 });
 
 // Send a share
-router.post('/send', authMiddleware, async (req, res) => {
+router.post('/send', authMiddleware, validateBody(shareProgramBody), async (req, res) => {
   try {
     const { programId, recipientIdentifier } = req.body;
-    if (!programId || !recipientIdentifier) {
-      return res.status(400).json({ error: 'Program and recipient are required' });
-    }
 
     // Verify program belongs to sender
     const { rows: progRows } = await pool.query('SELECT id FROM programs WHERE id = $1 AND user_id = $2', [programId, req.userId]);
@@ -154,12 +153,9 @@ router.post('/:id/decline', authMiddleware, async (req, res) => {
 });
 
 // Send a workout invite (browse library workouts)
-router.post('/invite', authMiddleware, async (req, res) => {
+router.post('/invite', authMiddleware, validateBody(inviteBody), async (req, res) => {
   try {
     const { templateId, recipientIdentifier } = req.body;
-    if (!templateId || !recipientIdentifier) {
-      return res.status(400).json({ error: 'Workout and recipient are required' });
-    }
 
     // Verify template exists AND the sender is allowed to share it. Global
     // library templates have user_id NULL and can be shared by anyone; a
