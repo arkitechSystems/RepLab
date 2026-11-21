@@ -14,16 +14,12 @@ Claude: remind Will of any open item here at the start of a session.
 - [x] **Merge `zod-validation` into `main`** — done 2026-10-14 (merge `925708b`, pushed with Will's
   OK after he confirmed the app was working). Server 135 pass (2 need the test DB), client 79/79.
   Also brought the two Android network-plugin files onto `main`. Watch Sentry for a few days.
-- [ ] **Then merge the improvement-plan branches, a few quiet days apart** (order Will chose
-  2026-10-12; ask before each, every merge deploys the website):
-  1. ~~`zod-validation`~~ — merged 2026-10-14
-  2. `deps-audit` — PR #1 (about 2026-10-17); brings Capacitor 8.5.3, so new iOS/Android builds after
-  3. `playwright` (about 2026-10-20); has the offline quick-close save fix + fresh-database fixes
-  4. `pg-boss` (about 2026-10-23); background jobs + Node 22 pin — check the Render deploy log shows
-     Node 22 and `[jobs]` lines, and the next daily summary email arrives
-  5. `node-pg-migrate` (about 2026-10-26); first deploy logs `[migrate]` and records the baseline
-     in `pgmigrations` without changing anything
-  6. `zod-routes` (about 2026-10-29); checks request bodies on the remaining routes
+- [x] **Merge the improvement-plan branches** — all five merged 2026-11-20 at Will's request, one
+  after another before the app release: `deps-audit` (0cad8cb), `playwright` (8cf795a), `pg-boss`
+  (7a00d2b), `node-pg-migrate` (a25ebc2), `zod-routes` (9ec8862). Each passed server (test DB),
+  client and e2e tests and the deploy was health-checked before the next. Capacitor is now 8.5.3,
+  so the next iOS/Android builds need `npx cap sync`. Watch Sentry / Coding Errors and confirm the
+  next daily summary email arrives (now a pg-boss job).
 - [x] **Local dev database** — done 2026-10-13: `npm run dev` uses Docker `replab-dev-db`, not
   production (docs/local-dev-database.md).
 - [ ] **Will: manual website checks** — on replab-fitness.com, log sets, go Offline in DevTools,

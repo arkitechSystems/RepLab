@@ -18,9 +18,8 @@ Read `docs/tanstack-query-migration.md` before touching data loading, saving or 
 decisions already made with Will, the phase plan, and the behavior that must keep working. Record new
 questions and answers in its decision log.
 
-Its **To-do** section lists what's left after the 2026-10-11 website release (`zod-validation` was
-merged 2026-10-14; still open: merging `deps-audit`, `playwright`, `pg-boss`, `node-pg-migrate`,
-`zod-routes`, plus manual and device checks). Remind Will of open items there.
+Its **To-do** section lists what's left after the 2026-10-11 website release (all improvement-plan
+branches merged by 2026-11-20; still open: manual and device checks). Remind Will of open items there.
 
 ## Keep in sync: trainer workout template
 
