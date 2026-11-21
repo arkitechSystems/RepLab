@@ -27,6 +27,12 @@ import useFocusTrap from '../hooks/useFocusTrap.js';
 import YouTubeSearchPrompt from './YouTubeSearchPrompt.jsx';
 import { CARDIO_MUSCLE, machineFor, metricUnit, METRIC_LABEL, nextMetric, DEFAULT_CARDIO_METRIC, formatCardioSet } from '../utils/cardio.js';
 
+// Opens the goal box with the cursor in it without scrolling the page to it
+// (autoFocus lets the browser scroll the focused field into view).
+function focusWithoutScroll(el) {
+  if (el && document.activeElement !== el) el.focus({ preventScroll: true });
+}
+
 function addToRecent(name) {
   try {
     const recent = JSON.parse(localStorage.getItem('replab_recent_exercises') || '[]');
@@ -1004,7 +1010,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                       max="9999"
                       aria-label={`Set ${idx + 1} goal weight`}
                       value={displayValue}
-                      autoFocus
+                      ref={focusWithoutScroll}
                       onChange={(e) => onGoalChange?.(exercise.name, idx, 'weight', e.target.value)}
                       onFocus={(e) => e.target.select()}
                       onBlur={() => setEditingGoalKey(null)}
@@ -1104,7 +1110,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                       max="9999"
                       aria-label={`Set ${idx + 1} goal reps`}
                       value={displayValue}
-                      autoFocus
+                      ref={focusWithoutScroll}
                       onChange={(e) => onGoalChange?.(exercise.name, idx, 'reps', e.target.value)}
                       onFocus={(e) => e.target.select()}
                       onBlur={() => setEditingGoalKey(null)}

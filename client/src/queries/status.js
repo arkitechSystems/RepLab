@@ -25,9 +25,15 @@ export function useIsOnline() {
 }
 
 // Saves not yet confirmed by the server (paused offline or retrying) —
-// "N changes waiting to sync".
+// "N changes waiting to sync". A save that's simply on its way (the normal
+// case, done in well under a second) doesn't count: counting it flashed the
+// "waiting" bar and then "All changes synced" on every autosave, and since
+// those bars sit above the page, the whole workout jumped down and up.
 export function usePendingSaveCount() {
-  return useMutationState({ filters: { status: 'pending' } }).length;
+  return useMutationState({
+    filters: { status: 'pending' },
+    select: (m) => m.state.isPaused || m.state.failureCount > 0,
+  }).filter(Boolean).length;
 }
 
 // Shows Layout's "Showing saved data from <time>" line while a screen is

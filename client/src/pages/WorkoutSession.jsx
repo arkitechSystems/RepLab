@@ -1908,6 +1908,31 @@ export default function WorkoutSession() {
   const endIntroFade = useCallback((e) => {
     if (e.target === e.currentTarget) e.currentTarget.classList.remove('fade-slide-up');
   }, []);
+  // The intro fade is only for the cards on screen when the session opens.
+  // A card added later would otherwise get the staggered delay too (idx ×
+  // 60ms — invisible for most of a second on a long workout) and then pop in.
+  const introFadePlayedRef = useRef(false);
+  useEffect(() => {
+    if (template?.exercises?.length) introFadePlayedRef.current = true;
+  }, [template]);
+  const introFadeClass = introFadePlayedRef.current ? '' : 'fade-slide-up';
+
+  // Cards slide into place on move/add/delete via ExerciseCard's own
+  // position animation. Scroll anchoring is off for the whole page while a
+  // session is open — otherwise the browser scrolls the page to follow
+  // whatever element it anchored to when a card moves, is added or removed,
+  // which read as the screen jumping by a card's height.
+  useEffect(() => {
+    const html = document.documentElement;
+    const prevHtml = html.style.overflowAnchor;
+    const prevBody = document.body.style.overflowAnchor;
+    html.style.overflowAnchor = 'none';
+    document.body.style.overflowAnchor = 'none';
+    return () => {
+      html.style.overflowAnchor = prevHtml;
+      document.body.style.overflowAnchor = prevBody;
+    };
+  }, []);
 
 
   // Persist a new cardio entry to the server, then append to local state so
@@ -2052,18 +2077,14 @@ export default function WorkoutSession() {
   function handleMoveExercise(fromIdx, toIdx) {
     setPersisted(false);
     structureSaveNeeded.current = true;
-    const movingKey = exKey(template.exercises, template.exercises[fromIdx], fromIdx);
     setTemplate((prev) => {
       const exercises = [...prev.exercises];
       const [moved] = exercises.splice(fromIdx, 1);
       exercises.splice(toIdx, 0, moved);
       return { ...prev, exercises };
     });
-    // Scroll to the moved card after React re-renders
-    setTimeout(() => {
-      const el = exerciseRefs.current[movingKey];
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 50);
+    // No scroll to the moved card — the cards slide into their new places
+    // (ExerciseCard's position animation) and the page stays put.
   }
 
   // Reorder sets WITHIN an exercise. Triggered by drag-and-drop on the set
@@ -2986,20 +3007,9 @@ export default function WorkoutSession() {
   const allSetsComplete = totalSets > 0 && completedCount === totalSets;
 
   function exitFullScreen() {
-    const idx = fullScreenIdx;
+    // No scroll on exit: the page stays exactly where it was before
+    // full-screen opened.
     setFullScreenIdx(null);
-    // Scroll the underlying view to the last-shown exercise after the
-    // overlay unmounts and the regular cards repaint.
-    if (idx !== null) {
-      const ex = template.exercises[idx];
-      if (ex && !ex.isSectionHeader) {
-        const key = exKey(template.exercises, ex, idx);
-        setTimeout(() => {
-          const el = exerciseRefs.current[key];
-          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 50);
-      }
-    }
   }
 
   // completed sets only — planned/pre-filled values are excluded so the
@@ -3833,7 +3843,7 @@ export default function WorkoutSession() {
               />
             )}
             {exercise.isSectionHeader ? (
-            <div className="fade-slide-up mb-3 mt-2" onAnimationEnd={endIntroFade} style={{ animationDelay: `${idx * 60}ms` }}>
+            <div className={`${introFadeClass} mb-3 mt-2`} onAnimationEnd={endIntroFade} style={{ animationDelay: `${idx * 60}ms` }}>
               {/* Long-press (500ms, cancelled on lift/move) opens the
                   edit-or-delete modal. Movement during press cancels so
                   scroll gestures don't trigger an edit. Read-only when
@@ -3882,7 +3892,7 @@ export default function WorkoutSession() {
           ) : (
           <>
           {(supersetPos === 'start' || supersetPos === 'only') && <SupersetDivider number={supersetNumberAt(template.exercises, idx)} />}
-          <div ref={(el) => { exerciseRefs.current[eKey] = el; }} className="fade-slide-up" onAnimationEnd={endIntroFade} style={{ animationDelay: `${idx * 60}ms` }}>
+          <div ref={(el) => { exerciseRefs.current[eKey] = el; }} className={introFadeClass} onAnimationEnd={endIntroFade} style={{ animationDelay: `${idx * 60}ms` }}>
             <ExerciseCard
               exercise={exercise}
               exerciseKey={eKey}

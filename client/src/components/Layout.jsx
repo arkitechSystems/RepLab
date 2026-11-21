@@ -19,6 +19,16 @@ function formatSavedAt(ms) {
 }
 const STALE_LABEL_AFTER_MS = 8000;
 
+// Floating status pill (offline / syncing / saved-data notices).
+const PILL = 'max-w-md px-3.5 py-1.5 rounded-full flex items-center justify-center gap-2';
+const PILL_STYLE = {
+  background: 'rgba(12,12,14,0.92)',
+  border: '1px solid rgba(255,255,255,0.12)',
+  boxShadow: '0 6px 20px rgba(0,0,0,0.5)',
+  backdropFilter: 'blur(8px)',
+  WebkitBackdropFilter: 'blur(8px)',
+};
+
 // Layout normally renders the matched child route via &lt;Outlet /&gt;. Accepting
 // an optional `children` prop lets a non-route consumer (e.g. the conditional
 // HomeRoute in App.jsx) wrap a component in the chrome without nesting under
@@ -125,15 +135,25 @@ export default function Layout({ children }) {
           </button>
         </div>
       )}
-      <div role="status" aria-live="polite">
+      {/* Connection / sync notices float above the bottom nav instead of
+          sitting above the page: a bar in the page's flow pushed every card
+          down when it appeared and back up when it left, so the workout
+          jumped on saves and when the connection changed. Floating pills
+          never move anything; taps pass through them. */}
+      <div
+        role="status"
+        aria-live="polite"
+        className="fixed left-0 right-0 z-[55] flex flex-col items-center gap-1.5 px-4 pointer-events-none"
+        style={{ bottom: isDashboardEmbed ? 12 : 'calc(70px + 40px + env(safe-area-inset-bottom, 0px))' }}
+      >
         {offline && (
-          <div className="bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-2 flex items-center justify-center gap-2 z-30 relative">
-            <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+          <div className={PILL} style={{ ...PILL_STYLE, borderColor: 'rgba(234,179,8,0.35)' }}>
+            <div className="w-2 h-2 shrink-0 rounded-full bg-yellow-500 animate-pulse" />
             <span className="text-xs text-yellow-400 font-medium">You're offline — changes will sync when you reconnect</span>
           </div>
         )}
         {!offline && connection !== 'ok' && (
-          <div className="bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-2 flex items-center justify-center gap-2 z-30 relative">
+          <div className={PILL} style={{ ...PILL_STYLE, borderColor: 'rgba(234,179,8,0.35)', borderRadius: 16 }}>
             <div className={`w-2 h-2 shrink-0 rounded-full bg-yellow-500${connection === 'slow' ? ' animate-pulse' : ''}`} />
             <span className="text-xs text-yellow-400 font-medium text-center">
               {connection === 'slow'
@@ -143,7 +163,7 @@ export default function Layout({ children }) {
           </div>
         )}
         {pendingSaves > 0 && (
-          <div className="px-4 py-1.5 flex items-center justify-center gap-2 z-30 relative" style={{ background: 'rgba(234,179,8,0.06)', borderBottom: '1px solid rgba(234,179,8,0.12)' }}>
+          <div className={PILL} style={{ ...PILL_STYLE, borderColor: 'rgba(234,179,8,0.3)' }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-400 shrink-0" aria-hidden="true"><path d="M21 12a9 9 0 11-3-6.7L21 8" /><path d="M21 3v5h-5" /></svg>
             <span className="text-[11px] text-yellow-400 font-medium">
               {pendingSaves === 1 ? '1 change waiting to sync' : `${pendingSaves} changes waiting to sync`}
@@ -151,14 +171,14 @@ export default function Layout({ children }) {
           </div>
         )}
         {staleSince != null && (
-          <div className="px-4 py-1.5 flex items-center justify-center gap-2 z-30 relative" style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+          <div className={PILL} style={PILL_STYLE}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-wf-gray-400 shrink-0" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
             <span className="text-[11px] text-wf-gray-400 font-medium">Showing saved data from {formatSavedAt(staleSince)}</span>
           </div>
         )}
         {justSynced && pendingSaves === 0 && (
-          <div className="bg-green-500/10 border-b border-green-500/20 px-4 py-2 flex items-center justify-center gap-2 z-30 relative">
-            <div className="w-2 h-2 rounded-full bg-green-500" />
+          <div className={PILL} style={{ ...PILL_STYLE, borderColor: 'rgba(34,197,94,0.35)' }}>
+            <div className="w-2 h-2 shrink-0 rounded-full bg-green-500" />
             <span className="text-xs text-green-400 font-medium">All changes synced</span>
           </div>
         )}
