@@ -2,9 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { BAR_OPTIONS, PLATES, QUICK_PLATES, expandPlatesPerSide, countPlatesFromStack } from '../utils/plateMath';
 
-// In-session plate calculator. Opens pre-filled with whatever weight the
-// user was editing (long-pressed the weight input OR tapped the ⚖ icon
-// next to it). Layout mirrors the /plate-calculator page exactly — same
+// In-session plate calculator. Opens loaded with the set's weight
+// (long-pressed the weight input OR tapped the ⚖ icon in the card header). Layout mirrors the /plate-calculator page exactly — same
 // sections, same chips, same plate visual — so users get one mental
 // model.
 //
@@ -88,51 +87,56 @@ function freshState(defaults) {
   };
 }
 
-export default function PlateCalculatorModal({ open, initialWeight = 0, restoreState = null, defaults = null, onUse, onApplyToFirstUncompleted, onPersist, onClose }) {
+// Opening state. preloadWeight (from the set — see ExerciseCard's
+// plateCalcWeightFor) loads that weight onto the bar. The plates the user
+// last left on this card (restoreState) come back as-is when they add up to
+// that same weight, so a hand-loaded 35 stays a 35; otherwise the weight is
+// rebuilt from standard plates, keeping their bar and Both Sides / Free Load
+// / Machine choice. With no weight to load: their last setup, else the
+// exercise's default type with no plates.
+function openingState(restoreState, defaults, preloadWeight) {
   const fresh = freshState(defaults);
-  const [bar, setBar] = useState(restoreState?.bar ?? fresh.bar);
+  const base = restoreState
+    ? { bar: restoreState.bar ?? 45, mode: restoreState.mode ?? 'both' }
+    : { bar: fresh.bar, mode: fresh.mode };
+  const lastBar = base.bar > 0 ? base.bar : fresh.lastBar;
+  const weight = Number(preloadWeight) || 0;
+  const remembered = restoreState
+    ? { ...base, lastBar, manualPlates: restoreState.manualPlates ?? [], target: restoreState.target ?? String(base.bar) }
+    : null;
+  if (weight > 0) {
+    if (remembered && Number(remembered.target) === weight) return remembered;
+    return { ...base, lastBar, manualPlates: seedStack(weight, base.bar, base.mode), target: String(weight) };
+  }
+  return remembered ?? { ...base, lastBar, manualPlates: [], target: String(base.bar) };
+}
+
+export default function PlateCalculatorModal({ open, preloadWeight = 0, restoreState = null, defaults = null, onUse, onApplyToFirstUncompleted, onPersist, onClose }) {
+  // Worked out once per open (the modal unmounts on close), so it opens
+  // already loaded — no flash of an empty bar first.
+  const [opening] = useState(() => openingState(restoreState, defaults, preloadWeight));
+  const [bar, setBar] = useState(opening.bar);
   // Remembers the user's last barbell weight while in Machine mode, so
   // toggling back to Both/One Side restores their chosen bar (not a fixed 45).
-  const lastBarRef = useRef(restoreState?.bar > 0 ? restoreState.bar : fresh.lastBar);
-  // Per-exercise-card memory: when the parent passes restoreState (the plate
-  // setup the user last left on THIS card), seed from it so the weight +
-  // plates + bar + mode come back exactly as they left them — they can
-  // add/strip plates from their real-world load without rebuilding it. With
-  // NO restoreState (first open on a card, or a freshly-switched card), fall
-  // back to the exercise's default type (`defaults`) with zero plates: total =
-  // bar weight, empty plate stack. initialWeight is intentionally NOT
-  // consulted in either case.
-  const [target, setTarget] = useState(restoreState ? restoreState.target : String(fresh.bar));
-  const [mode, setMode] = useState(restoreState?.mode ?? fresh.mode);
+  const lastBarRef = useRef(opening.lastBar);
+  const [target, setTarget] = useState(opening.target);
+  const [mode, setMode] = useState(opening.mode);
   const [selectedPlate, setSelectedPlate] = useState(45);
   // Stack-based plate model: flat per-side array (e.g. [45, 25, 10]).
   // The +/- chip pushes/pops entries here directly so a user-added 35 lb
   // plate stays a 35 lb plate — it doesn't get re-greedy-filled into a
   // 45 + 10 combo just because the new total happens to factor that way.
-  // Seeded from this card's remembered stack when one exists; otherwise empty
-  // (bar-only default).
-  const [manualPlates, setManualPlates] = useState(restoreState?.manualPlates ?? []);
+  const [manualPlates, setManualPlates] = useState(opening.manualPlates);
 
-  // On open: restore this card's remembered setup if the parent supplied one,
-  // else reset to the bar-only zero-plates state. (The modal unmounts on
-  // close, so this also covers every fresh open.)
+  // Re-apply the opening state if the same mounted modal is opened again.
   useEffect(() => {
     if (!open) return;
-    if (restoreState) {
-      setBar(restoreState.bar ?? 45);
-      setMode(restoreState.mode ?? 'both');
-      setManualPlates(restoreState.manualPlates ?? []);
-      setTarget(restoreState.target ?? String(restoreState.bar ?? 45));
-      if ((restoreState.bar ?? 0) > 0) lastBarRef.current = restoreState.bar;
-    } else {
-      const f = freshState(defaults);
-      setBar(f.bar);
-      setMode(f.mode);
-      setSelectedPlate(45);
-      setManualPlates([]);
-      setTarget(String(f.bar));
-      lastBarRef.current = f.lastBar;
-    }
+    const o = openingState(restoreState, defaults, preloadWeight);
+    setBar(o.bar);
+    setMode(o.mode);
+    setManualPlates(o.manualPlates);
+    setTarget(o.target);
+    lastBarRef.current = o.lastBar;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 

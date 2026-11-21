@@ -241,7 +241,7 @@ const SUPERSET_CARD_SHAPE = {
   end: 'rounded-b-[18px]',
 };
 
-function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, onCompletedSetTap, completedSets, autoFilled, onToggleComplete, onAddSet, onDeleteSet, onReorderSets, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, onShowPRs, note, onNoteChange, weightSuggestion, onApplySuggestion, onApplyCalculatedWeight, goalOverrides, onGoalChange, allWorkoutExercises, lastEntries, forceShowDemo, mode = 'session', dataTutorial, showGoalWeight = true, showGoalReps = true, showSetType = true, exerciseNumber, cardioEnabled = false, cardioSelections, onCardioChange, cardTheme = 'light', onEnterFullScreen, fullScreen = false, onOpenSupersetPicker, supersetPosition = null }) {
+function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, onCompletedSetTap, completedSets, autoFilled, userEdited, onToggleComplete, onAddSet, onDeleteSet, onReorderSets, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, onShowPRs, note, onNoteChange, weightSuggestion, onApplySuggestion, onApplyCalculatedWeight, goalOverrides, onGoalChange, allWorkoutExercises, lastEntries, forceShowDemo, mode = 'session', dataTutorial, showGoalWeight = true, showGoalReps = true, showSetType = true, exerciseNumber, cardioEnabled = false, cardioSelections, onCardioChange, cardTheme = 'light', onEnterFullScreen, fullScreen = false, onOpenSupersetPicker, supersetPosition = null }) {
   // 'light' = #e8e8e8 card with dark text (default)
   // 'dark'  = transparent card, white text — page bg shows through
   // Card colour follows the page: the session's default black page gets
@@ -487,6 +487,37 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
   const doneCount = isTemplate ? 0 : exercise.sets.filter((_, i) => completedSets?.has(`${keyName}-${i}`)).length;
   const firstIncompleteIdx = isTemplate ? -1 : exercise.sets.findIndex((_, i) => !completedSets?.has(`${keyName}-${i}`));
   const isFocusedCard = firstIncompleteIdx !== -1;
+
+  // A set's goal weight as the Goal cell shows it: this session's override,
+  // else last session's weight for that set, else (extra sets) last
+  // session's first set. '' when there's none.
+  const goalWeightAt = (idx) => {
+    const overrideWeight = goalOverrides?.[idx]?.weight;
+    if (overrideWeight !== undefined) return overrideWeight;
+    const lastAt = lastEntries?.[idx]?.weight;
+    if (lastAt !== undefined && lastAt !== null && lastAt !== '') return lastAt;
+    const lastFirstW = lastEntries?.[0]?.weight;
+    if (idx >= (lastEntries?.length || 0) && lastFirstW !== undefined && lastFirstW !== null && lastFirstW !== '') return lastFirstW;
+    return '';
+  };
+
+  // Weight the plate calculator opens loaded with, for set idx: a weight the
+  // user typed in that set's box (or applied from the calculator), else the
+  // set's goal weight, else whatever the box shows (autofilled from an
+  // earlier set, or the workout's suggestion). A checked-off set uses the
+  // weight it was logged with. 0 = nothing to load.
+  const plateCalcWeightFor = (idx) => {
+    if (idx === null || idx === undefined || idx < 0) return 0;
+    const entry = entries?.[idx] || {};
+    const shown = Number(entry.weight ?? exercise.sets?.[idx]?.suggestedWeight) || 0;
+    const key = `${keyName}-${idx}`;
+    if (completedSets?.has(key)) return shown > 0 ? shown : 0;
+    const typed = userEdited?.has(`${key}:weight`) ? Number(entry.weight) || 0 : 0;
+    if (typed > 0) return typed;
+    const goal = showGoalWeight ? Number(goalWeightAt(idx)) || 0 : 0;
+    if (goal > 0) return goal;
+    return shown > 0 ? shown : 0;
+  };
   const muscleLabel = exercise.muscle || exercise.muscleGroup || dbExercise?.muscle || '';
   const lastFirst = lastEntries?.[0];
   const showLast = !isTemplate && !!lastFirst && (Number(lastFirst.weight) > 0 || lastFirst.weight === -1 || Number(lastFirst.reps) > 0 || Number(lastFirst.cardioValue) > 0);
@@ -992,14 +1023,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
               {!isTemplate && showGoalWeight && showFirstCol && (
               <div className="xc-cell" style={goalCellStyle}>
                 {(() => {
-                  const overrideWeight = goalOverrides?.[idx]?.weight;
-                  const lastAt = lastEntries?.[idx]?.weight;
-                  const lastFirstW = lastEntries?.[0]?.weight;
-                  const displayValue = overrideWeight !== undefined
-                    ? overrideWeight
-                    : (lastAt !== undefined && lastAt !== null && lastAt !== ''
-                      ? lastAt
-                      : (idx >= (lastEntries?.length || 0) && lastFirstW !== undefined && lastFirstW !== null && lastFirstW !== '' ? lastFirstW : ''));
+                  const displayValue = goalWeightAt(idx);
                   const editingThis = editingGoalKey === `${idx}-weight`;
                   const editable = !!onGoalChange && !readOnly && !inputsLocked;
                   return editingThis ? (
@@ -1474,16 +1498,12 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
           header (informational; pre-fills from the last focused set's
           weight if any, otherwise opens at the bar). */}
       {plateCalcSetIdx !== null && (() => {
-        const setEntry = entries?.[plateCalcSetIdx] || {};
-        // Only pre-fill with the user's actually-logged weight. Skip the
-        // template's suggestedWeight so the calc opens at a clean
-        // bar-only state when the set hasn't been entered yet (modal
-        // defaults target to bar weight when initialWeight is 0).
-        const initial = Number(setEntry.weight) || 0;
+        // Long-press: opens loaded with the pressed set's weight (typed,
+        // else goal, else the box's autofill — see plateCalcWeightFor).
         return (
           <PlateCalculatorModal
             open={true}
-            initialWeight={initial}
+            preloadWeight={plateCalcWeightFor(plateCalcSetIdx)}
             onUse={(weight) => {
               // Use writes to the first non-completed set and cascades to
               // remaining non-completed-non-user-edited sets, same as the
@@ -1511,21 +1531,14 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
         );
       })()}
       {plateCalcFromHeader && (() => {
-        // Header-triggered: pick a sensible initial weight. If the user
-        // most recently focused a weight input on this card, use that
-        // set's current weight (or its suggested weight as a fallback).
-        // Otherwise pass 0 so the modal falls back to bar weight (45).
-        const lastIdx = lastFocusedSetIdxRef.current;
-        let initial = 0;
-        if (lastIdx !== null && lastIdx !== undefined) {
-          const e = entries?.[lastIdx] || {};
-          const s = exercise.sets?.[lastIdx] || {};
-          initial = Number(e.weight) || Number(s.suggestedWeight) || 0;
-        }
+        // Header button: opens loaded with the next set that isn't checked
+        // off (typed, else goal, else the box's autofill), or the last
+        // set's logged weight once every set is done.
+        const nextIdx = firstIncompleteIdx !== -1 ? firstIncompleteIdx : (exercise.sets?.length || 0) - 1;
         return (
           <PlateCalculatorModal
             open={true}
-            initialWeight={initial}
+            preloadWeight={plateCalcWeightFor(nextIdx)}
             onUse={(weight) => {
               // Same unified behavior as the long-press path: Use writes
               // to the first non-completed set (and cascades) regardless of

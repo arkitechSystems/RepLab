@@ -3189,6 +3189,7 @@ export default function WorkoutSession() {
               onBlur={inputsLocked ? undefined : ((_n, ...args) => handleBlur(fsKey, ...args))}
               completedSets={completedSets}
               autoFilled={autoFilled}
+              userEdited={userEdited}
               onToggleComplete={completionLocked ? () => setShowBeginPrompt(true) : ((_n, ...args) => handleToggleComplete(fsKey, ...args))}
               onAddSet={structureLocked ? undefined : ((_n, ...args) => handleAddSet(fsKey, ...args))}
               onDeleteSet={structureLocked ? undefined : ((_n, ...args) => handleDeleteSet(fsKey, ...args))}
@@ -3907,6 +3908,7 @@ export default function WorkoutSession() {
               onBlur={inputsLocked ? undefined : wrapCb(handleBlur)}
               completedSets={completedSets}
               autoFilled={autoFilled}
+              userEdited={userEdited}
               onToggleComplete={completionLocked ? () => setShowBeginPrompt(true) : wrapCb(handleToggleComplete)}
               onAddSet={structureLocked ? undefined : wrapCb(handleAddSet)}
               onDeleteSet={structureLocked ? undefined : wrapCb(handleDeleteSet)}
