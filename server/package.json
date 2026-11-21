@@ -15,7 +15,7 @@
     "migrate:down": "node scripts/migrate-cli.js down"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.133.0",
+    "@anthropic-ai/sdk": "^1.10.0",
     "@sentry/node": "^10.47.0",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.7",
