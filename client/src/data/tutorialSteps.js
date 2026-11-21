@@ -40,8 +40,11 @@ export const PHASE_1A = [
     type: 'spotlight',
     target: '[data-tutorial="week-add-btn"]',
     title: 'Add a Workout',
-    description: 'Tap the Add button to schedule this workout on a specific day of the week.',
+    description: 'Tap Add, then choose Today or pick a date to put this workout on your calendar.',
     position: 'bottom',
+    // Never fired on purpose: the Add modal sits above this overlay, and
+    // picking a day ends the tutorial (applyAddWorkout in Workouts.jsx).
+    // Firing it would advance to the begin-modal step below.
     waitFor: 'add-workout-opened',
     allowInteraction: true,
   },
@@ -59,25 +62,34 @@ export const PHASE_1A = [
 
 // Phase 1B: Create Workout Flow
 //
-// Step 1 spotlights the "+ Create" button on the Workouts hub. The user taps
-// it, which fires the `create-menu-opened` action and advances the tutorial.
-// CreateWorkout itself is reached via the Create menu; the remaining two
-// steps spotlight the add-exercise search and the save button on that page.
+// Step 1 spotlights the "+ Create" button on the Workouts hub (fires
+// `create-menu-opened`). Step 2 spotlights "Create a Workout" in the menu
+// that opens (fires `create-workout-chosen` and navigates to CreateWorkout).
+// The last two steps spotlight the add-exercise search and save button there.
 export const PHASE_1B = [
   {
     type: 'spotlight',
     target: '[data-tutorial="create-btn"]',
     title: 'Create from Scratch',
-    description: 'Tap + Create to build a workout. You\'ll name it, add exercises, set rep targets, and save it to My Workouts.',
+    description: 'Tap + Create to start building your own workout.',
     position: 'bottom',
     waitFor: 'create-menu-opened',
     allowInteraction: true,
   },
   {
     type: 'spotlight',
+    target: '[data-tutorial="create-workout-option"]',
+    title: 'Create a Workout',
+    description: 'Choose Create a Workout to build a single workout. (New Program is for grouping several workouts together.)',
+    position: 'bottom',
+    waitFor: 'create-workout-chosen',
+    allowInteraction: true,
+  },
+  {
+    type: 'spotlight',
     target: '[data-tutorial="add-exercise-search"]',
     title: 'Add Exercises',
-    description: 'Search the RepLab library or type a custom name. You can drag-reorder, set the rest interval, and pick a set type (straight, drop, pyramid).',
+    description: 'Search the RepLab library or type a custom name, then set your sets and reps. Use the ⋯ menu on a card to move, swap or remove an exercise, and tap a set\'s type to mark warm-up or drop sets.',
     position: 'bottom',
   },
   {

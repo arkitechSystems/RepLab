@@ -62,16 +62,29 @@ export default function Tutorial() {
     if (!showSpotlight) return;
     // Scroll to top and delay measure to let DOM settle after navigation
     window.scrollTo({ top: 0, behavior: 'instant' });
-    const timer = setTimeout(measureTarget, 400);
+    // Keep looking for the target for up to ~10s — after a navigation the
+    // next page may still be loading (e.g. Create Workout's quick-create
+    // setup), and a single measure would leave "Loading next step…" up.
+    let retryTimer;
+    let attempts = 0;
+    const tryMeasure = () => {
+      measureTarget();
+      if (current?.target && !document.querySelector(current.target) && attempts < 40) {
+        attempts++;
+        retryTimer = setTimeout(tryMeasure, 250);
+      }
+    };
+    const timer = setTimeout(tryMeasure, 400);
     const handler = () => requestAnimationFrame(measureTarget);
     window.addEventListener('resize', handler);
     window.addEventListener('scroll', handler, true);
     return () => {
       clearTimeout(timer);
+      clearTimeout(retryTimer);
       window.removeEventListener('resize', handler);
       window.removeEventListener('scroll', handler, true);
     };
-  }, [measureTarget, showSpotlight]);
+  }, [measureTarget, showSpotlight, current]);
 
   // Listen for tutorial action completions
   useEffect(() => {

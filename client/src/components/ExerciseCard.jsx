@@ -494,7 +494,9 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
     : (lastFirst.cardioMetric
       ? formatCardioSet(exercise.name, lastFirst.weight, lastFirst.cardioMetric, lastFirst.cardioValue)
       : `${lastFirst.weight === -1 ? 'BW' : (lastFirst.weight ?? 0)}×${lastFirst.reps ?? 0}`);
-  const menuLayout = CARD_CONTROLS_LAYOUT === 'menu' && !dataTutorial;
+  // The tutorial card uses the same layout as real cards so the walkthrough
+  // teaches the controls users will actually see.
+  const menuLayout = CARD_CONTROLS_LAYOUT === 'menu';
   const [menuOpen, setMenuOpen] = useState(false);
   const menuBtnRef = useRef(null);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
@@ -626,6 +628,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
             {menuLayout && !isTemplate && !readOnly && onSwapExercise && (
               <ToolBtn
                 label="Swap"
+                data-tutorial={dataTutorial ? 'swap-button' : undefined}
                 aria-label={`Swap ${exercise.name} for another exercise`}
                 onClick={(e) => { e.stopPropagation(); setShowSwap(true); setSwapSearch(''); }}
                 icon={<path d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />}
@@ -636,6 +639,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                 <button
                   ref={menuBtnRef}
                   type="button"
+                  data-tutorial={dataTutorial ? 'card-menu' : undefined}
                   onClick={(e) => { e.stopPropagation(); setMenuOpen((o) => !o); }}
                   aria-label={`More actions for ${exercise.name}`}
                   aria-haspopup="menu"

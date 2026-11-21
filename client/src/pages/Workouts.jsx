@@ -1933,6 +1933,12 @@ export default function Workouts() {
       // User-local YYYY-MM-DD — avoids the UTC rollover bug where a user in
       // Sydney logging at 11pm Monday would send Tuesday's date.
       const dateStr = date.toLocaleDateString('en-CA');
+      // Tutorial saves nothing, so skip the conflict check — its popup sits
+      // under the tutorial overlay and would leave the user stuck.
+      if (tutorial.active) {
+        await applyAddWorkout({ date: dateStr, templateId: template.id });
+        return;
+      }
       const schedule = await api(`/schedule?from=${dateStr}&to=${dateStr}`);
       const existing = schedule.find((s) => s.date === dateStr && s.templateId);
       if (existing) {
@@ -3227,7 +3233,8 @@ export default function Workouts() {
 
             <div className="relative p-2 space-y-0.5">
               <button
-                onClick={() => { setShowCreateMenu(false); navigate('/clientworkouts/create?quick=1'); }}
+                data-tutorial="create-workout-option"
+                onClick={() => { completeTutorialAction('create-workout-chosen'); setShowCreateMenu(false); navigate('/clientworkouts/create?quick=1'); }}
                 className="w-full text-left p-3 flex items-center gap-3.5 active:scale-[0.98] transition-all hover:bg-white/5 active:bg-white/10"
                 style={{ borderRadius: '2px' }}
               >
