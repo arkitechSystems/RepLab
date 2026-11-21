@@ -46,6 +46,12 @@ function formatVolume(lb) {
   return String(Math.round(n));
 }
 
+// One pass — what the background job (backgroundJobs.js) runs every 30 min.
+export function runWeeklySummaryTick() {
+  return runTick();
+}
+
+// Fallback timer (BACKGROUND_JOBS=timers, or the job queue failed to start).
 export function startWeeklySummaryScheduler() {
   if (!isFcmConfigured()) {
     console.log('[weekly-summary] FCM not configured — scheduler dormant');

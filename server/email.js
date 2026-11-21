@@ -600,5 +600,8 @@ export async function sendDailySummaryEmail(stats) {
     console.log('Daily summary email sent');
   } catch (err) {
     console.error('Failed to send daily summary:', err.message);
+    // Rethrown so the daily job doesn't record the day as sent and retries,
+    // and the admin "send now" button reports the failure.
+    throw err;
   }
 }

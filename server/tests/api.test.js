@@ -62,6 +62,7 @@ vi.mock('../firebaseAuth.js', () => ({
 vi.mock('../communityLikeNotifier.js', () => ({
   notifyCommunityLike: vi.fn().mockResolvedValue(undefined),
   startCommunityLikeScheduler: vi.fn(),
+  flushPendingLikePushes: vi.fn().mockResolvedValue(0),
 }));
 
 // Community streak / program-complete events — rules covered in

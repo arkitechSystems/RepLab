@@ -2,6 +2,9 @@
   "name": "replab",
   "version": "1.0.3",
   "private": true,
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "install:all": "cd client && npm install && cd ../server && npm install",
     "build": "npm run install:all && cd client && npm run build",

@@ -128,6 +128,12 @@ function isWithinReminderWindow(localMin, avgMin, hour) {
   return { ok: false, debug: `fallback-out (hour ${hour})` };
 }
 
+// One pass — what the background job (backgroundJobs.js) runs every 15 min.
+export function runDailyReminderTick() {
+  return runTick();
+}
+
+// Fallback timer (BACKGROUND_JOBS=timers, or the job queue failed to start).
 export function startStreakReminderScheduler() {
   if (!isFcmConfigured()) {
     console.log('[daily-reminder] FCM not configured — scheduler dormant');

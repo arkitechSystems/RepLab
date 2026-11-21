@@ -42,14 +42,9 @@ import communityRoutes from './routes/community.js';
 import cardioRoutes from './routes/cardio.js';
 import waitlistRoutes from './routes/waitlist.js';
 import installRoutes from './routes/installs.js';
-import db from './db.js';
 import config from './config.js';
-import { sendDailySummaryEmail } from './email.js';
 import { userGuidePage } from './userGuide.js';
-import { startIdleReminderScheduler } from './pushScheduler.js';
-import { startStreakReminderScheduler } from './streakReminderScheduler.js';
-import { startWeeklySummaryScheduler } from './weeklySummaryScheduler.js';
-import { startCommunityLikeScheduler } from './communityLikeNotifier.js';
+import { startBackgroundJobs } from './backgroundJobs.js';
 import { installErrorTracker, requestContext } from './errorTracker.js';
 import errorReportRoutes from './routes/errors.js';
 
@@ -433,46 +428,9 @@ if (process.env.NODE_ENV !== 'test') {
       app.listen(PORT, '0.0.0.0', () => {
         console.log(`RepLab server running on http://localhost:${PORT}`);
 
-        // Daily summary email heartbeat. Replaces a fragile recursive setTimeout
-        // that was lost on every server restart and silently dropped the day's
-        // send if Resend hit an error. This polls every 10 minutes and fires
-        // once per UTC day once the target hour has passed. The "already sent"
-        // flag is persisted in admin_settings so restarts can't double-send,
-        // and failed sends don't update the flag → automatic retry next tick.
-        const DAILY_SUMMARY_TARGET_UTC_HOUR = 13; // 13:00 UTC, honestly labeled
-        const DAILY_SUMMARY_FLAG = 'daily_summary_last_sent_date';
-        const HEARTBEAT_MS = 10 * 60 * 1000;
-
-        async function tickDailySummary() {
-          try {
-            const now = new Date();
-            const todayUTC = now.toISOString().slice(0, 10);
-            if (now.getUTCHours() < DAILY_SUMMARY_TARGET_UTC_HOUR) return;
-            const lastSent = await db.getAdminSetting(DAILY_SUMMARY_FLAG);
-            if (lastSent === todayUTC) return;
-            const stats = await db.getDailyStats();
-            await sendDailySummaryEmail(stats);
-            // Only record success. A thrown error here means the flag is NOT
-            // updated, and the next heartbeat will retry within ~10 min.
-            await db.setAdminSetting(DAILY_SUMMARY_FLAG, todayUTC);
-            console.log(`Daily summary sent for ${todayUTC}`);
-          } catch (err) {
-            console.error('Daily summary tick failed (will retry):', err.message);
-          }
-        }
-
-        tickDailySummary();
-        setInterval(tickDailySummary, HEARTBEAT_MS);
-
-        // Idle-session push reminders. Dormant until FCM_SERVICE_ACCOUNT_JSON is set.
-        startIdleReminderScheduler();
-        // Daily workout reminder (streak-protection + non-streak nudge,
-        // fires at each user's personalized workout time). Same dormancy rule.
-        startStreakReminderScheduler();
-        // Weekly summary digest (Sunday 6–8 PM local). Same dormancy rule.
-        startWeeklySummaryScheduler();
-        // Batched follow-up pushes for Community likes (1-minute flush).
-        startCommunityLikeScheduler();
+        // Daily summary email, idle-session auto-complete + reminder, daily
+        // workout reminder, weekly summary push, Community applause pushes.
+        startBackgroundJobs();
       });
     })
     .catch((err) => {
