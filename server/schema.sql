@@ -49,6 +49,29 @@ CREATE TABLE IF NOT EXISTS templates (
   phase TEXT
 );
 
+-- Created before template_exercises / session_entries / personal_bests,
+-- which reference it — otherwise a brand-new database fails to build.
+CREATE TABLE IF NOT EXISTS exercises (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  muscle_group TEXT NOT NULL,
+  tags TEXT[] DEFAULT '{}',
+  is_custom BOOLEAN DEFAULT FALSE,
+  -- video_review ('checked' | 'good_enough' | 'needs_ai' | 'needs_video' | 'remove_video') is
+  -- added in initDb.js alongside video_id / video_linked_by.
+  created_by INT REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+-- Master library uniqueness guard. No two master rows (created_by IS NULL)
+-- may share the same name, case-insensitive. Customs are exempt — each user
+-- can hold their own private custom with any name, including names that
+-- collide with another user's customs or with a master row (the master
+-- always wins on resolution). This is the safety net that prevents the
+-- Path A 2026-05-17 cleanup from ever needing to happen again.
+CREATE UNIQUE INDEX IF NOT EXISTS exercises_master_name_unique
+  ON exercises (LOWER(name))
+  WHERE created_by IS NULL;
+
 CREATE TABLE IF NOT EXISTS template_exercises (
   id SERIAL PRIMARY KEY,
   template_id INT REFERENCES templates(id) ON DELETE CASCADE,
@@ -185,27 +208,6 @@ CREATE TABLE IF NOT EXISTS feature_flags (
   enabled BOOLEAN DEFAULT FALSE,
   description TEXT DEFAULT ''
 );
-
-CREATE TABLE IF NOT EXISTS exercises (
-  id SERIAL PRIMARY KEY,
-  name TEXT NOT NULL,
-  muscle_group TEXT NOT NULL,
-  tags TEXT[] DEFAULT '{}',
-  is_custom BOOLEAN DEFAULT FALSE,
-  -- video_review ('checked' | 'good_enough' | 'needs_ai' | 'needs_video' | 'remove_video') is
-  -- added in initDb.js alongside video_id / video_linked_by.
-  created_by INT REFERENCES users(id) ON DELETE SET NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
--- Master library uniqueness guard. No two master rows (created_by IS NULL)
--- may share the same name, case-insensitive. Customs are exempt — each user
--- can hold their own private custom with any name, including names that
--- collide with another user's customs or with a master row (the master
--- always wins on resolution). This is the safety net that prevents the
--- Path A 2026-05-17 cleanup from ever needing to happen again.
-CREATE UNIQUE INDEX IF NOT EXISTS exercises_master_name_unique
-  ON exercises (LOWER(name))
-  WHERE created_by IS NULL;
 
 -- Per-user saved ("bookmarked") exercises — the Saved filter in the Exercise
 -- Library and the Saved section at the top of the exercise pickers.

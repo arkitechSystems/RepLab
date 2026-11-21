@@ -69,7 +69,11 @@ describe('Calendar edits offline', () => {
     expect(getPendingSaveCount(queryClient)).toBe(1);
     expect(state.sent).toEqual([]);
 
+    // Close and reopen the app: memory is gone, so the cleared day has to
+    // come back from the copy saved on the phone.
     first.unmount();
+    queryClient.getMutationCache().clear();
+    queryClient.clear();
     renderScreen(<Calendar />);
     expect(await screen.findByText('No schedule set up yet')).toBeInTheDocument();
     expect(screen.queryByText(WORKOUT_NAME)).toBeNull();
