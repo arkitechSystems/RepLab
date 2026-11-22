@@ -900,9 +900,9 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
           const setLocked = isCompleted && !!onToggleComplete;
           const setType = entry.setType || exercise.setType || 'straight';
           const typeChip = setType === 'straight'
-            ? { text: 'STD', color: 'rgba(var(--ink),0.3)', bg: 'transparent', border: 'rgba(var(--ink),0.08)' }
+            ? { text: 'STD', color: 'rgba(var(--ink),0.65)', bg: 'rgba(var(--ink),0.06)', border: 'rgba(var(--ink),0.14)' }
             : setType === 'warm_up'
-              ? { text: 'W', color: 'rgba(var(--ink),0.65)', bg: 'rgba(var(--ink),0.06)', border: 'rgba(var(--ink),0.14)' }
+              ? { text: 'WU', color: 'rgba(var(--ink),0.3)', bg: 'transparent', border: 'rgba(var(--ink),0.08)' }
               : { text: getSetTypeShort(setType), color: XC_RED, bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.35)' };
           // Row tint over an opaque base so the swipe actions stay hidden.
           const rowTint = isCompleted ? 'rgba(62,168,104,0.05)' : isActive ? 'rgba(239,68,68,0.045)' : 'transparent';
@@ -992,7 +992,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                 </span>
                 {showSetType && (
                   <>
-                    <span className="xc-mono" style={{ fontSize: 7, fontWeight: 600, letterSpacing: '0.08em', lineHeight: 1, padding: '2px 4px', borderRadius: 5, color: typeChip.color, background: typeChip.bg, border: '1px solid ' + typeChip.border, pointerEvents: 'none' }}>
+                    <span className="xc-mono" style={{ fontSize: 8.4, fontWeight: 600, letterSpacing: '0.08em', lineHeight: 1, padding: '3.38px 4px', borderRadius: 5, color: typeChip.color, background: typeChip.bg, border: '1px solid ' + typeChip.border, pointerEvents: 'none' }}>
                       {typeChip.text}
                     </span>
                     {!readOnly && (

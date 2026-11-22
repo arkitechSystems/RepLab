@@ -1478,9 +1478,13 @@ export default function WorkoutSession() {
         const key = `${exerciseName}-${i}`;
         if (completedNow.has(key)) continue;
         if (userEditedNow.has(`${key}:${field}`)) continue;
+        // A later set with its own goal weight + reps fills from its goals.
+        const goals = (field === 'weight' || field === 'reps') && !updated[exerciseName][i]?.cardioMetric
+          ? goalsForAutofill(exerciseName, exercise.name, i)
+          : null;
         updated[exerciseName][i] = {
           ...updated[exerciseName][i],
-          [field]: value,
+          [field]: goals ? goals[field] : value,
         };
       }
       return updated;
@@ -1510,6 +1514,29 @@ export default function WorkoutSession() {
   // to lastSession[exerciseName][setIdx] (positional match), then to
   // lastSession[exerciseName][0] (first-set fallback for extra sets), then
   // to blank if no prior session for the exercise exists.
+  // A set's goal weight + goal reps, resolved the same way ExerciseCard shows
+  // them (this day's override → last session at the same set → last
+  // session's first set for extra sets). Returns null unless BOTH are shown
+  // and present — autofill then uses the goals instead of copying the
+  // previous set.
+  function goalsForAutofill(exerciseKey, exerciseName, idx) {
+    if (!tutorialMode && !(showGoalWeight && showGoalReps)) return null;
+    const has = (v) => v !== undefined && v !== null && v !== '';
+    const last = lastSession[exerciseName] || [];
+    const override = goalOverrides[exerciseKey]?.[idx] || {};
+    const pick = (field) => {
+      if (override[field] !== undefined) return override[field];
+      if (has(last[idx]?.[field])) return last[idx][field];
+      if (idx >= last.length && has(last[0]?.[field])) return last[0][field];
+      return '';
+    };
+    const weight = pick('weight');
+    const reps = pick('reps');
+    // A 0 goal isn't a real target (BW is -1), so it doesn't count.
+    const real = (v) => has(v) && Number(v) !== 0 && !Number.isNaN(Number(v));
+    return real(weight) && real(reps) ? { weight, reps } : null;
+  }
+
   function handleGoalChange(exerciseKey, setIdx, field, value) {
     setGoalOverrides((prev) => {
       const next = { ...prev };
@@ -2577,17 +2604,25 @@ export default function WorkoutSession() {
                   const weightUserEdited = userEditedNow.has(`${laterKey}:weight`);
                   const repsUserEdited = userEditedNow.has(`${laterKey}:reps`);
 
+                  // A later set with its own goal weight + reps fills from
+                  // its goals; otherwise it copies the set just completed.
+                  const goals = !cm && !current.cardioMetric
+                    ? goalsForAutofill(exerciseKey, exercise.name, i)
+                    : null;
+                  const fillWeight = goals ? goals.weight : w;
+                  const fillReps = goals ? goals.reps : r;
+
                   // Decide per-field whether to overwrite. A field is eligible
                   // when (empty || the set was autofilled before) AND the user
                   // hasn't typed into it.
                   const overwriteWeight =
                     !weightUserEdited &&
                     (weightEmpty || isCurrentAutoFilled) &&
-                    w !== '' && w !== undefined;
+                    fillWeight !== '' && fillWeight !== undefined;
                   const overwriteReps =
                     !repsUserEdited &&
                     (repsEmpty || isCurrentAutoFilled) &&
-                    r !== '' && r !== undefined;
+                    fillReps !== '' && fillReps !== undefined;
 
                   // Smart cardio: metric + value follow the same rules.
                   const cvEmpty = current.cardioValue === '' || current.cardioValue === undefined;
@@ -2602,8 +2637,8 @@ export default function WorkoutSession() {
                   if (overwriteWeight || overwriteReps || overwriteCv || overwriteCm) {
                     updated[exerciseKey][i] = {
                       ...current,
-                      weight: overwriteWeight ? w : current.weight,
-                      reps: overwriteReps ? r : current.reps,
+                      weight: overwriteWeight ? fillWeight : current.weight,
+                      reps: overwriteReps ? fillReps : current.reps,
                       ...(overwriteCv ? { cardioValue: cv } : {}),
                       ...(overwriteCm ? { cardioMetric: cm } : {}),
                     };
