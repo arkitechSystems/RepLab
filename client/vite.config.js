@@ -36,6 +36,7 @@ export default defineConfig({
       '/trainer': 'http://localhost:3024',
       '/workouts': 'http://localhost:3024',
       '/installs': 'http://localhost:3024',
+      '/sharing': 'http://localhost:3024',
       // Only the API paths — bare /community is a client route.
       '/community/feed': 'http://localhost:3024',
       '/community/settings': 'http://localhost:3024',

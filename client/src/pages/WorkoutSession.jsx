@@ -47,6 +47,7 @@ import { friendlyError } from '../utils/errors';
 import RenameWorkoutModal, { RenamePencilButton } from '../components/RenameWorkoutModal';
 import SaveCustomWorkoutModal from '../components/SaveCustomWorkoutModal';
 import { workoutStructureChanged, customWorkoutDefaultName } from '../utils/workoutStructure';
+import ShareUserPicker from '../components/ShareUserPicker';
 
 // Parse a 'YYYY-MM-DD' string as a LOCAL date (not UTC). parseISO('2026-04-24')
 // returns midnight UTC, which is the wrong calendar day for any user with a
@@ -5065,6 +5066,7 @@ export default function WorkoutSession() {
       {showSummary && (
         <WorkoutSummary
           template={{ ...template, name: displayName }}
+          inviteTemplateId={tutorialMode ? null : template?.id}
           onRename={canRenameDay ? () => setRenameDayOpen(true) : undefined}
           programName={programName}
           entries={entries}
@@ -5515,7 +5517,7 @@ export default function WorkoutSession() {
 // `template.name` arrives as the day's display name. `onRename` (optional)
 // shows a pencil beside the title for a per-day rename; omitted for workouts
 // the user didn't create and for the tutorial.
-export function WorkoutSummary({ template, programName, entries, completedSets, elapsed, formatTime, onClose, sessionDate, onViewWorkout, onRename }) {
+export function WorkoutSummary({ template, programName, entries, completedSets, elapsed, formatTime, onClose, sessionDate, onViewWorkout, onRename, inviteTemplateId = null }) {
   const navigate = useNavigate();
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [shareImage, setShareImage] = useState(null);
@@ -6332,6 +6334,18 @@ export function WorkoutSummary({ template, programName, entries, completedSets, 
               </div>
 
               <div className="flex-1 overflow-y-auto px-6 pb-24 relative">
+                {/* Invite a RepLab user to this workout — same picker as
+                    the My Workouts Share screen — then the external options. */}
+                {inviteTemplateId && (
+                  <>
+                    <ShareUserPicker templateId={inviteTemplateId} workoutName={template?.name} />
+                    <div className="flex items-center gap-3 mt-5 mb-4">
+                      <div className="flex-1 h-px bg-white/10" />
+                      <span className="text-[10px] text-wf-gray-500 uppercase tracking-widest font-semibold">Or share externally</span>
+                      <div className="flex-1 h-px bg-white/10" />
+                    </div>
+                  </>
+                )}
                 {/* Image preview */}
                 {generatingImage && (
                   <div className="mb-5 p-8 flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '2px', border: '1px solid rgba(255,255,255,0.06)' }}>

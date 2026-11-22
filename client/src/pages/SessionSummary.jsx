@@ -180,6 +180,7 @@ export default function SessionSummary() {
     <>
       <WorkoutSummary
         template={template}
+        inviteTemplateId={data.templateId ?? null}
         programName={data.programName || ''}
         entries={entries}
         completedSets={completedSets}
