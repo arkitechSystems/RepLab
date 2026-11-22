@@ -57,7 +57,7 @@ export default function CardioAccelerationCard({ value, onChange, readOnly }) {
   // tick so the input has actually mounted in the portal before we try.
   useEffect(() => {
     if (!open) return;
-    const t = setTimeout(() => searchRef.current?.focus(), 0);
+    const t = setTimeout(() => searchRef.current?.focus({ preventScroll: true }), 0);
     return () => clearTimeout(t);
   }, [open]);
 

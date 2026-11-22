@@ -234,6 +234,9 @@ function ToolBtn({ icon, label, on = false, tone, ...rest }) {
 // Card shape inside a superset group: cards stack flush with no gap, with
 // rounded corners only on the group's outer edges. The previous card's
 // bottom border is the divider (middle/end cards drop their top border).
+// Demo video URL → true if it's taller than wide, learned on loadedmetadata.
+const videoShapeCache = new Map();
+
 const SUPERSET_CARD_SHAPE = {
   only: 'rounded-[18px]',
   start: 'rounded-t-[18px]',
@@ -241,7 +244,7 @@ const SUPERSET_CARD_SHAPE = {
   end: 'rounded-b-[18px]',
 };
 
-function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, onCompletedSetTap, completedSets, autoFilled, userEdited, onToggleComplete, onAddSet, onDeleteSet, onReorderSets, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, onShowPRs, note, onNoteChange, weightSuggestion, onApplySuggestion, onApplyCalculatedWeight, goalOverrides, onGoalChange, allWorkoutExercises, lastEntries, forceShowDemo, mode = 'session', dataTutorial, showGoalWeight = true, showGoalReps = true, showSetType = true, exerciseNumber, cardioEnabled = false, cardioSelections, onCardioChange, cardTheme = 'light', onEnterFullScreen, fullScreen = false, onOpenSupersetPicker, supersetPosition = null }) {
+function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, readOnly, inputsLocked, onLockedTap, onCompletedSetTap, completedSets, autoFilled, userEdited, onToggleComplete, onAddSet, onDeleteSet, onReorderSets, onSwapExercise, onAddExercise, onDeleteExercise, onMoveUp, onMoveDown, onShowPRs, note, onNoteChange, weightSuggestion, onApplySuggestion, onApplyCalculatedWeight, goalOverrides, onGoalChange, allWorkoutExercises, lastEntries, forceShowDemo, mode = 'session', dataTutorial, showGoalWeight = true, showGoalReps = true, showSetType = true, exerciseNumber, cardioEnabled = false, cardioSelections, onCardioChange, cardTheme = 'light', onEnterFullScreen, fullScreen = false, onOpenSupersetPicker, supersetPosition = null, layoutKey = null }) {
   // 'light' = #e8e8e8 card with dark text (default)
   // 'dark'  = transparent card, white text — page bg shows through
   // Card colour follows the page: the session's default black page gets
@@ -270,8 +273,10 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
   const isCdnVideo = !!videoId && (videoId.startsWith('http') || videoId.startsWith('/'));
   // Tall (9:16) CDN videos get a tall Demo box instead of a 16:9 strip.
   // Start from a guess by CDN, then use the video's real size once loaded.
-  const [cdnVideoTall, setCdnVideoTall] = useState(null);
-  useEffect(() => { setCdnVideoTall(null); }, [videoId]);
+  // The real shape is remembered per video (videoShapeCache) so a wrong
+  // guess resizes the box at most once, not every time Demo is opened.
+  const [cdnVideoTall, setCdnVideoTall] = useState(() => videoShapeCache.get(videoId) ?? null);
+  useEffect(() => { setCdnVideoTall(videoShapeCache.get(videoId) ?? null); }, [videoId]);
   const demoTall = isCdnVideo && (cdnVideoTall ?? isLikelyTallVideo(videoId));
   const [showVideo, setShowVideo] = useState(false);
   // Full-screen mode is positioned as a beginner-friendly view: when the
@@ -323,6 +328,12 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
   // for editing; the input blurs back to display on focus loss. Key
   // format: `${setIdx}-weight` or `${setIdx}-reps`.
   const [editingGoalKey, setEditingGoalKey] = useState(null);
+  // Notes box opened from "Add notes" (before anything is typed).
+  const [notesOpen, setNotesOpen] = useState(false);
+  const noteRef = useRef(null);
+  useEffect(() => {
+    if (notesOpen) noteRef.current?.focus({ preventScroll: true });
+  }, [notesOpen]);
   const goalLongPressRef = useRef(null);
   function startGoalLongPress(setIdx, field) {
     if (!onGoalChange || readOnly || inputsLocked) return;
@@ -376,6 +387,9 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
   const prevTopRef = useRef(null);
   const wasJustClickedRef = useRef(false);
   const prevNumberRef = useRef(exerciseNumber);
+  // Changes when superset groupings change (dividers added/removed), so the
+  // cards below slide into place instead of snapping.
+  const prevLayoutKeyRef = useRef(layoutKey);
 
   useLayoutEffect(() => {
     const el = cardRef.current;
@@ -385,8 +399,9 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
     // delete). A shift caused by something else changing height — the header
     // swapping when the first set is checked, notes opening, a set added —
     // just updates the stored position, so cards don't slide around.
-    const positionChanged = prevNumberRef.current !== exerciseNumber;
+    const positionChanged = prevNumberRef.current !== exerciseNumber || prevLayoutKeyRef.current !== layoutKey;
     prevNumberRef.current = exerciseNumber;
+    prevLayoutKeyRef.current = layoutKey;
     if (prevTopRef.current != null && prevTopRef.current !== top && (positionChanged || wasJustClickedRef.current)) {
       const dy = prevTopRef.current - top;
       const isClicked = wasJustClickedRef.current;
@@ -606,7 +621,9 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
             ) : (
               <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--fg)', letterSpacing: '-0.012em', lineHeight: 1.2 }}>{exercise.name}</div>
             )}
-            <div className="xc-mono" style={{ fontSize: 8.5, letterSpacing: '0.2em', color: 'rgba(var(--ink),0.42)', textTransform: 'uppercase', marginTop: 4 }}>
+            {/* One line only: going from 9/12 to 10/12 sets mustn't wrap it
+                and push the set rows down. */}
+            <div className="xc-mono" style={{ fontSize: 8.5, letterSpacing: '0.2em', color: 'rgba(var(--ink),0.42)', textTransform: 'uppercase', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {muscleLabel ? `${muscleLabel} · ` : ''}{isTemplate ? `${exercise.sets.length} set${exercise.sets.length !== 1 ? 's' : ''}` : `${doneCount}/${exercise.sets.length} sets`}
               {showLast && (
                 <span> · Last <span style={{ color: 'rgba(var(--ink),0.6)' }}>{lastText}</span></span>
@@ -748,7 +765,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
               controls playsInline preload="metadata" controlsList="nodownload"
               onLoadedMetadata={(e) => {
                 const { videoWidth: w, videoHeight: h } = e.currentTarget;
-                if (w && h) setCdnVideoTall(h > w);
+                if (w && h) { videoShapeCache.set(videoId, h > w); setCdnVideoTall(h > w); }
               }}
             />
           ) : (
@@ -932,7 +949,8 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
             fontSize: 15, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: 'rgba(239,68,68,0.65)',
             whiteSpace: 'nowrap',
           };
-          const goalInputStyle = { ...inputStyle, fontSize: 15, color: 'rgba(239,68,68,0.85)', fontStyle: 'normal' };
+          // 16px: iPhone Safari zooms (moving the page) into any field under 16px.
+          const goalInputStyle = { ...inputStyle, fontSize: 16, color: 'rgba(239,68,68,0.85)', fontStyle: 'normal' };
           const fmtGoal = (v) => (v === '' || v === undefined || v === null ? '—' : (Number(v) === -1 ? 'BW' : v));
           const rowContent = (
             <div
@@ -1002,7 +1020,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                         onPointerDown={setLocked && onCompletedSetTap ? (e) => { e.preventDefault(); onCompletedSetTap(); } : undefined}
                         value={setType}
                         onChange={(e) => onChange?.(exercise.name, idx, 'setType', e.target.value)}
-                        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, appearance: 'none', cursor: 'pointer' }}
+                        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, appearance: 'none', cursor: 'pointer', fontSize: 16 }}
                       >
                         {SET_TYPES.map(t => (
                           <option key={t.value} value={t.value} className="bg-wf-gray-900 text-white text-sm">
@@ -1356,24 +1374,29 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
       {/* Notes */}
       {!readOnly && onNoteChange && (
         <div data-tutorial={dataTutorial ? 'exercise-notes' : undefined} style={{ padding: '0 12px 12px' }}>
-          {note ? (
+          {/* The note box and the Add notes button are the same height (40px)
+              so opening or closing notes never changes the card's height. The
+              box stays open while focused, even if emptied. */}
+          {(note || notesOpen) ? (
             <textarea
-              value={note}
+              ref={noteRef}
+              value={note || ''}
+              onBlur={() => { if (!note || !note.trim()) setNotesOpen(false); }}
               onChange={(e) => onNoteChange(exercise.name, e.target.value)}
               placeholder="Add a note..."
-              rows={2}
+              rows={1}
               className="xc-input"
               // 16px, not 13: iOS zooms in on any focused field under 16px and
               // zooms/scrolls back out on blur — the jump when tapping in and
               // out of notes.
-              style={{ width: '100%', resize: 'none', fontSize: 16, lineHeight: 1.4, padding: '8px 10px', borderRadius: 10, background: 'var(--well)', border: XC_IN, color: 'rgba(var(--ink),0.8)', outline: 'none' }}
+              style={{ width: '100%', height: 40, display: 'block', resize: 'none', fontSize: 16, lineHeight: 1.4, padding: '8px 10px', borderRadius: 10, background: 'var(--well)', border: XC_IN, color: 'rgba(var(--ink),0.8)', outline: 'none' }}
             />
           ) : (
             <button
               type="button"
-              onClick={() => onNoteChange(exercise.name, ' ')}
+              onClick={() => setNotesOpen(true)}
               className="xc-mono active:scale-[0.99] transition-transform"
-              style={{ width: '100%', height: 34, borderRadius: 10, border: '1px dashed rgba(var(--ink),0.14)', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 9, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(var(--ink),0.55)' }}
+              style={{ width: '100%', height: 40, borderRadius: 10, border: '1px dashed rgba(var(--ink),0.14)', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 9, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(var(--ink),0.55)' }}
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h9" /></svg>
               Add notes

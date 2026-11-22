@@ -1388,12 +1388,25 @@ export default function WorkoutSession() {
   // number) does NOT re-fire, so the user's mid-session drag/dock choices
   // are still respected as long as they stay in full-screen.
   const prevFullScreenIdxRef = useRef(null);
+  // Rest timer's docked/locked state from before full-screen popped it out,
+  // put back on exit — otherwise a docked timer stays popped out and the
+  // header behind shrinks, shifting the page the user returns to.
+  const restStateBeforeFsRef = useRef(null);
   useEffect(() => {
     const wasOutside = prevFullScreenIdxRef.current === null;
     prevFullScreenIdxRef.current = fullScreenIdx;
-    if (fullScreenIdx === null) return;   // exit full-screen — nothing to do
+    if (fullScreenIdx === null) {
+      const saved = restStateBeforeFsRef.current;
+      restStateBeforeFsRef.current = null;
+      if (saved && !wasOutside) {
+        setRestFloating(saved.floating);
+        setPinRestTimer(saved.pin);
+      }
+      return;
+    }
     if (!wasOutside) return;              // intra-FS navigation (number → number) — leave the timer alone
     if (tutorialMode) return;             // tutorial: keep the rest timer docked, don't auto-pop it out
+    restStateBeforeFsRef.current = { floating: restFloating, pin: pinRestTimer };
     setRestFloating(true);
     // Bottom-left: x=16 left margin, y = viewport height - approx card
     // height (~170px includes the rounded card + outer red glow ring) -
@@ -1747,7 +1760,7 @@ export default function WorkoutSession() {
       return next;
     });
 
-    setUndoToast({
+    setUndoToast({ id: Date.now(),
       type: 'set',
       exerciseName: exerciseKey,
       message: `Removed set ${setIdx + 1} from ${baseName}`,
@@ -1933,17 +1946,29 @@ export default function WorkoutSession() {
   // again, which read as a ~1s lag on Move Up / Move Down. Drop the class
   // after the first run so it can never replay. (React leaves the class
   // alone on later renders because the className prop doesn't change.)
+  const introDoneRef = useRef(new Set());
   const endIntroFade = useCallback((e) => {
-    if (e.target === e.currentTarget) e.currentTarget.classList.remove('fade-slide-up');
+    if (e.target !== e.currentTarget) return;
+    e.currentTarget.classList.remove('fade-slide-up');
+    const k = e.currentTarget.dataset.introKey;
+    if (k) introDoneRef.current.add(k);
   }, []);
   // The intro fade is only for the cards on screen when the session opens.
   // A card added later would otherwise get the staggered delay too (idx ×
   // 60ms — invisible for most of a second on a long workout) and then pop in.
-  const introFadePlayedRef = useRef(false);
+  // The cards present at open keep the class until their own animation ends
+  // (dropping it on the next re-render cut the slide off mid-way, a visible
+  // snap); cards added later never get it.
+  const introKeysRef = useRef(null);
   useEffect(() => {
-    if (template?.exercises?.length) introFadePlayedRef.current = true;
+    if (introKeysRef.current || !template?.exercises?.length) return;
+    introKeysRef.current = new Set(template.exercises.map((ex, i) => (ex.isSectionHeader ? `section-${i}` : exKey(template.exercises, ex, i))));
   }, [template]);
-  const introFadeClass = introFadePlayedRef.current ? '' : 'fade-slide-up';
+  const introFadeFor = (k) => {
+    if (introDoneRef.current.has(k)) return '';
+    if (!introKeysRef.current) return 'fade-slide-up';
+    return introKeysRef.current.has(k) ? 'fade-slide-up' : '';
+  };
 
   // Cards slide into place on move/add/delete via ExerciseCard's own
   // position animation. Scroll anchoring is off for the whole page while a
@@ -2072,7 +2097,7 @@ export default function WorkoutSession() {
       return next;
     });
 
-    setUndoToast({
+    setUndoToast({ id: Date.now(),
       type: 'exercise',
       exerciseName: exerciseKey,
       exerciseIndex: exerciseIdx,
@@ -2255,7 +2280,7 @@ export default function WorkoutSession() {
     });
 
     // Show undo toast
-    setUndoToast({
+    setUndoToast({ id: Date.now(),
       type: 'exercise',
       exerciseName: newKey,
       exerciseIndex: tIdx,
@@ -3377,8 +3402,10 @@ export default function WorkoutSession() {
           </svg>
           {tutorialMode ? 'Exit Tutorial' : 'Back'}
         </button>
-        {!timerStarted && !tutorialMode && schedule && (
-          <div className="flex items-center gap-2 mb-2">
+        {/* Hidden (not removed) once the workout starts so the row keeps
+            its height and the page doesn't shift up. */}
+        {!tutorialMode && schedule && (
+          <div className={`flex items-center gap-2 mb-2 ${timerStarted ? 'invisible' : ''}`} aria-hidden={timerStarted || undefined}>
             <button
               onClick={() => hasPrev && !dayNavDisabled && navigateToDay(prevDate)}
               disabled={!hasPrev || dayNavDisabled}
@@ -3449,12 +3476,16 @@ export default function WorkoutSession() {
                 />
               </div>
             </div>
+            {/* Begin + View Summary and the timers share one slot with the same
+                height (96px — the two buttons), so tapping Begin Workout doesn't
+                move the cards. Not while collapsed: the header spacer covers that. */}
+            <div style={collapsed ? undefined : { minHeight: 96, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
             {!timerStarted ? (
               <>
                 <button
                   data-tutorial="begin-workout-btn"
                   onClick={handleBeginWorkout}
-                  className="active:scale-[0.98] transition-all w-full mt-1"
+                  className="active:scale-[0.98] transition-all w-full"
                   style={{
                     padding: '14px', borderRadius: '2px', border: 'none',
                     background: 'linear-gradient(135deg, rgba(239,68,68,0.95) 0%, rgba(220,38,38,0.95) 100%)',
@@ -3481,7 +3512,7 @@ export default function WorkoutSession() {
                 </button>
               </>
             ) : (
-              <div className="mt-2">
+              <div>
                 <div
                   data-tutorial="workout-timer"
                   className={`overflow-hidden relative transition-all duration-300 ${collapsed && !pinWorkoutTimer ? 'hidden' : ''}`}
@@ -3544,9 +3575,11 @@ export default function WorkoutSession() {
                       : '0 8px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)',
                   }}
                 >
-                  {/* Progress bar at top — visible only while counting down (Nike style: subtle track, red gradient fill) */}
-                  {restRemaining !== null && restRemaining > 0 && (
-                    <div className="h-[2px]" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                  {/* Progress bar at top — filled only while counting down (Nike style: subtle track, red gradient fill).
+                      The 2px strip is always there and the row below has a fixed height, so the bar
+                      stays the same size when rest starts, hits Go, or is dismissed. */}
+                  <div className="h-[2px]" style={{ background: restRemaining !== null && restRemaining > 0 ? 'rgba(255,255,255,0.04)' : 'transparent' }}>
+                    {restRemaining !== null && restRemaining > 0 && (
                       <div
                         className="h-full transition-all duration-1000 ease-linear"
                         style={{
@@ -3554,9 +3587,9 @@ export default function WorkoutSession() {
                           background: 'linear-gradient(90deg, #ef4444, rgba(239,68,68,0.6))',
                         }}
                       />
-                    </div>
-                  )}
-                  <div className="relative px-4 py-1.5 flex items-center justify-between">
+                    )}
+                  </div>
+                  <div className="relative px-4 py-1.5 flex items-center justify-between" style={{ height: 38 }}>
                     <div className="flex items-center gap-3">
                       <div
                         className="w-2 h-2 rounded-full"
@@ -3597,7 +3630,7 @@ export default function WorkoutSession() {
                           {/* Rest complete — GO badge + Dismiss */}
                           <span
                             style={{
-                              padding: '4px 14px', borderRadius: '2px',
+                              padding: '2px 14px', borderRadius: '2px', lineHeight: 1.2,
                               fontSize: '14px', fontWeight: 800, letterSpacing: '0.25em',
                               textTransform: 'uppercase',
                               border: '1px solid rgba(34,197,94,0.5)',
@@ -3700,6 +3733,7 @@ export default function WorkoutSession() {
                 </div>
               </div>
             )}
+            </div>
           </div>
         }
       >
@@ -3862,7 +3896,7 @@ export default function WorkoutSession() {
 
       {/* Exercise Cards */}
       <div className="px-4">
-        {(() => { let visibleIdx = 0; return template.exercises.map((exercise, idx) => {
+        {(() => { let visibleIdx = 0; const supersetLayoutKey = template.exercises.map((e) => (e.isSectionHeader ? '|' : (e.supersetLabel || ''))).join(','); return template.exercises.map((exercise, idx) => {
           if (!exercise.isSectionHeader) visibleIdx++;
           const exerciseNumber = visibleIdx;
           const eKey = exercise.isSectionHeader ? null : exKey(template.exercises, exercise, idx);
@@ -3871,16 +3905,8 @@ export default function WorkoutSession() {
           const supersetPos = supersetPositionAt(template.exercises, idx);
           return (
           <div key={exercise.isSectionHeader ? `section-${idx}` : eKey}>
-            {/* Inline undo toast for deleted exercise — show at this position */}
-            {undoToast && undoToast.type === 'exercise' && undoToast.exerciseIndex === idx && (
-              <UndoToast
-                message={undoToast.message}
-                onUndo={() => { undoToast.undoFn(); setUndoToast(null); }}
-                onExpire={() => setUndoToast(null)}
-              />
-            )}
             {exercise.isSectionHeader ? (
-            <div className={`${introFadeClass} mb-3 mt-2`} onAnimationEnd={endIntroFade} style={{ animationDelay: `${idx * 60}ms` }}>
+            <div className={`${introFadeFor(`section-${idx}`)} mb-3 mt-2`} data-intro-key={`section-${idx}`} onAnimationEnd={endIntroFade} style={{ animationDelay: `${idx * 60}ms` }}>
               {/* Long-press (500ms, cancelled on lift/move) opens the
                   edit-or-delete modal. Movement during press cancels so
                   scroll gestures don't trigger an edit. Read-only when
@@ -3929,7 +3955,7 @@ export default function WorkoutSession() {
           ) : (
           <>
           {(supersetPos === 'start' || supersetPos === 'only') && <SupersetDivider number={supersetNumberAt(template.exercises, idx)} />}
-          <div ref={(el) => { exerciseRefs.current[eKey] = el; }} className={introFadeClass} onAnimationEnd={endIntroFade} style={{ animationDelay: `${idx * 60}ms` }}>
+          <div ref={(el) => { exerciseRefs.current[eKey] = el; }} className={introFadeFor(eKey)} data-intro-key={eKey} onAnimationEnd={endIntroFade} style={{ animationDelay: `${idx * 60}ms` }}>
             <ExerciseCard
               exercise={exercise}
               exerciseKey={eKey}
@@ -3988,15 +4014,8 @@ export default function WorkoutSession() {
               onEnterFullScreen={() => setFullScreenIdx(idx)}
               onOpenSupersetPicker={structureLocked ? undefined : (key) => setSupersetPicker({ exerciseKey: key })}
               supersetPosition={supersetPos}
+              layoutKey={supersetLayoutKey}
             />
-            {/* Inline undo toast for deleted set — show below this exercise */}
-            {undoToast && undoToast.type === 'set' && undoToast.exerciseName === eKey && (
-              <UndoToast
-                message={undoToast.message}
-                onUndo={() => { undoToast.undoFn(); setUndoToast(null); }}
-                onExpire={() => setUndoToast(null)}
-              />
-            )}
           </div>
           {(supersetPos === 'end' || supersetPos === 'only') && <SupersetDivider end number={supersetNumberAt(template.exercises, idx)} />}
           </>
@@ -4167,7 +4186,7 @@ export default function WorkoutSession() {
                   type="text"
                   value={sectionEditing.name}
                   onChange={(e) => setSectionEditing((prev) => ({ ...prev, name: e.target.value }))}
-                  autoFocus
+                  ref={iosFocusRef}
                   className="w-full text-white placeholder:text-white/30 text-sm bg-transparent focus:outline-none"
                   style={{
                     background: 'rgba(255,255,255,0.04)',
@@ -4623,18 +4642,24 @@ export default function WorkoutSession() {
           </div>
         </div>
       )}
-      {undoToast && undoToast.type === 'exercise' && undoToast.exerciseIndex >= template.exercises.length && idx === template.exercises.length - 1 && (
-            <div className="fixed bottom-32 left-4 right-4 z-50">
-              <UndoToast
-                message={undoToast.message}
-                onUndo={() => { undoToast.undoFn(); setUndoToast(null); }}
-                onExpire={() => setUndoToast(null)}
-              />
-            </div>
-          )}
           </div>
         );
         }); })()}
+        {/* Undo bar for a deleted set or exercise. Floating (fixed), not in
+            the page flow, so it never pushes the cards down when it appears
+            or pulls them back up when it times out. Above the full-screen
+            overlay (z-[90]) so deletes made there can be undone too. */}
+        {undoToast && createPortal(
+          <div className="fixed bottom-32 left-4 right-4 z-[100] max-w-lg mx-auto">
+            <UndoToast
+              key={undoToast.id}
+              message={undoToast.message}
+              onUndo={() => { undoToast.undoFn(); setUndoToast(null); }}
+              onExpire={() => setUndoToast(null)}
+            />
+          </div>,
+          document.body
+        )}
 
         {/* Add Exercise Button */}
         {!structureLocked && (
@@ -4804,7 +4829,6 @@ export default function WorkoutSession() {
                 onChange={(e) => setAddSectionName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && addSectionName.trim()) handleAddSectionHeader(); }}
                 placeholder="e.g. Superset A, Warmup, Main Lifts"
-                autoFocus
                 ref={iosFocusRef}
                 className="w-full glass-input rounded-xl px-4 py-3 text-white text-sm placeholder:text-wf-gray-500 focus:outline-none transition-all"
               />
@@ -5109,7 +5133,10 @@ export default function WorkoutSession() {
           elapsed={tutorialMode ? 2717 : elapsed}
           formatTime={formatTime}
           sessionDate={date}
-          onViewWorkout={() => setShowSummary(false)}
+          // Completing adds the banner above the cards and locks every card
+          // (shorter), so the old scroll spot no longer matches — open the
+          // finished workout at the top, where the banner is.
+          onViewWorkout={() => { setShowSummary(false); window.scrollTo({ top: 0 }); }}
           onClose={() => {
             setShowSummary(false);
             // If this was a 7th-workout milestone, let the verse overlay take
