@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
-import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { SplashScreen as CapSplashScreen } from '@capacitor/splash-screen';
 import { useAuth } from './context/AuthContext';
@@ -49,6 +49,14 @@ import Signup from './pages/Signup';
 import Workouts from './pages/Workouts';
 import Calendar from './pages/Calendar';
 import WorkoutSession from './pages/WorkoutSession';
+
+// A fresh session page per workout day: the day arrows change the URL, and
+// reusing one page instance carried the previous day's state (completed flag,
+// notes, autofill marks, pending saves) into the next day.
+function KeyedWorkoutSession() {
+  const { templateId, date } = useParams();
+  return <WorkoutSession key={`${templateId}-${date}`} />;
+}
 
 // Lazy-loaded routes — downloaded on demand
 const CreateWorkout = lazyWithRetry(() => import('./pages/CreateWorkout'));
@@ -305,7 +313,7 @@ export default function App() {
         }
       >
         <Route path="/calendar" element={<Calendar />} />
-        <Route path="/session/:templateId/:date" element={<WorkoutSession />} />
+        <Route path="/session/:templateId/:date" element={<KeyedWorkoutSession />} />
         <Route path="/clientworkouts/create" element={<CreateWorkout />} />
         {/* Apple 3.1.1 — Pro feature, must not be reachable from iOS native
             shell. Web + Android can use it normally. */}

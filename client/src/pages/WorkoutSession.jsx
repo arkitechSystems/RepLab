@@ -633,9 +633,61 @@ export default function WorkoutSession() {
     if (!structureSaveNeeded.current) return;
     structureSaveNeeded.current = false;
     if (structureSaveRef.current) clearTimeout(structureSaveRef.current);
-    structureSaveRef.current = setTimeout(runAutoSave, 1500);
+    pendingAutoSaveRef.current = true;
+    structureSaveRef.current = setTimeout(() => { pendingAutoSaveRef.current = false; runAutoSave(); }, 1500);
     return () => { if (structureSaveRef.current) clearTimeout(structureSaveRef.current); };
   }, [template]);
+
+  // Auto-save typed values too (weights, reps, notes, goals, plate-calculator
+  // and cardio picks) — 2s after the last change. Before, only checking a set
+  // saved, so numbers typed for the current set were lost if the phone closed
+  // the app before the next check.
+  const typingSaveNeededRef = useRef(false);
+  const typingSaveTimerRef = useRef(null);
+  // A save is scheduled but hasn't started — sent right away if the page
+  // closes, is hidden, or the user switches day.
+  const pendingAutoSaveRef = useRef(false);
+  const markTypingSave = () => { typingSaveNeededRef.current = true; };
+  useEffect(() => {
+    if (tutorialMode) return;
+    if (!typingSaveNeededRef.current) return;
+    // Numbers pre-filled before Begin Workout stay local until the workout
+    // starts (or already has a saved copy) — saving them would make an
+    // unstarted workout look in progress.
+    if (!timerStarted && !sessionId) return;
+    if (isCompleted) { typingSaveNeededRef.current = false; return; }
+    typingSaveNeededRef.current = false;
+    if (typingSaveTimerRef.current) clearTimeout(typingSaveTimerRef.current);
+    pendingAutoSaveRef.current = true;
+    typingSaveTimerRef.current = setTimeout(() => {
+      typingSaveTimerRef.current = null;
+      pendingAutoSaveRef.current = false;
+      runAutoSave();
+    }, 2000);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entries, notes, goalOverrides, cardioSelections]);
+
+  // Send a pending save now instead of dropping it.
+  const flushPendingSaveRef = useRef(() => {});
+  flushPendingSaveRef.current = () => {
+    if (!pendingAutoSaveRef.current) return;
+    pendingAutoSaveRef.current = false;
+    if (typingSaveTimerRef.current) { clearTimeout(typingSaveTimerRef.current); typingSaveTimerRef.current = null; }
+    if (structureSaveRef.current) { clearTimeout(structureSaveRef.current); structureSaveRef.current = null; }
+    runAutoSave();
+  };
+  useEffect(() => {
+    const onHide = () => { if (document.visibilityState === 'hidden') flushPendingSaveRef.current(); };
+    const onPageHide = () => flushPendingSaveRef.current();
+    document.addEventListener('visibilitychange', onHide);
+    window.addEventListener('pagehide', onPageHide);
+    return () => {
+      document.removeEventListener('visibilitychange', onHide);
+      window.removeEventListener('pagehide', onPageHide);
+      // Leaving the page (or switching day): send what's pending.
+      flushPendingSaveRef.current();
+    };
+  }, []);
 
   const MAX_TIMER_SECS = 14400; // 4 hours
   const timerStorageKey = `wf-timer-${templateId}-${date}`;
@@ -1224,6 +1276,11 @@ export default function WorkoutSession() {
 
         // Track how many sets we've consumed for each exercise name
         const consumedSets = {};
+        // Values the user saved earlier count as typed by the user, so
+        // tapping into set 1 and back out doesn't copy over them (the
+        // forward-fill only replaces values the user didn't enter).
+        const loadedEdited = new Set();
+        const hasVal = (v) => v !== undefined && v !== null && v !== '' && Number(v) !== 0;
         for (let exIdx = 0; exIdx < wd.exercises.length; exIdx++) {
           const ex = wd.exercises[exIdx];
           if (ex.isSectionHeader) continue;
@@ -1241,6 +1298,9 @@ export default function WorkoutSession() {
           if (mySaved.length > 0) {
             saved[key] = mySaved.map((s, i) => {
               if (s.isCompleted) restoredCompleted.add(`${key}-${i}`);
+              if (hasVal(s.weight)) loadedEdited.add(`${key}-${i}:weight`);
+              if (hasVal(s.reps)) loadedEdited.add(`${key}-${i}:reps`);
+              if (hasVal(s.cardioValue)) loadedEdited.add(`${key}-${i}:cardioValue`);
               const wdSet = ex.sets?.[i];
               const setType = wdSet?.setType || ex.setType || 'straight';
               return {
@@ -1258,6 +1318,13 @@ export default function WorkoutSession() {
         }
 
         setEntries(saved);
+        if (loadedEdited.size) {
+          setUserEdited((prev) => {
+            const next = new Set(prev);
+            loadedEdited.forEach((k) => next.add(k));
+            return next;
+          });
+        }
 
         // Saved per-set goals (sets[].goalWeight / goalReps) — written by the
         // Calendar's copy-with-"Use Reps" and by auto-save of long-press goal
@@ -1429,6 +1496,7 @@ export default function WorkoutSession() {
 
   function handleChange(exerciseName, setIdx, field, value) {
     setPersisted(false);
+    markTypingSave();
     setEntries((prev) => {
       const updated = { ...prev };
       updated[exerciseName] = [...(updated[exerciseName] || [])];
@@ -1551,6 +1619,7 @@ export default function WorkoutSession() {
   }
 
   function handleGoalChange(exerciseKey, setIdx, field, value) {
+    markTypingSave();
     setGoalOverrides((prev) => {
       const next = { ...prev };
       const list = (next[exerciseKey] || []).slice();
@@ -1572,8 +1641,11 @@ export default function WorkoutSession() {
   // first non-completed set gets marked user-edited (so future autofill from
   // an earlier set won't clobber it), and the cascaded sets get marked
   // autoFilled so the UI can visually distinguish predicted values.
-  function handleApplyCalculatedWeight(exerciseKey, weight) {
+  function handleApplyCalculatedWeight(exerciseKey, weight, targetIdx) {
     if (!template) return;
+    // A 0 / empty weight is never applied (it would blank every later set).
+    if (!(Number(weight) > 0)) return;
+    markTypingSave();
     let exercise = null;
     for (let i = 0; i < template.exercises.length; i++) {
       const e = template.exercises[i];
@@ -1588,9 +1660,16 @@ export default function WorkoutSession() {
 
     // First non-completed set is the write target; everything after that
     // which isn't completed AND hasn't been user-edited gets the cascade.
+    // Opened by long-pressing a set (targetIdx): write to THAT set. Opened
+    // from the header ⚖ button: the first unchecked set.
     let firstUncompleted = -1;
-    for (let i = 0; i < setCount; i++) {
-      if (!completedNow.has(`${exerciseKey}-${i}`)) { firstUncompleted = i; break; }
+    if (Number.isInteger(targetIdx) && targetIdx >= 0 && targetIdx < setCount) {
+      if (completedNow.has(`${exerciseKey}-${targetIdx}`)) return; // checked sets are locked
+      firstUncompleted = targetIdx;
+    } else {
+      for (let i = 0; i < setCount; i++) {
+        if (!completedNow.has(`${exerciseKey}-${i}`)) { firstUncompleted = i; break; }
+      }
     }
     if (firstUncompleted < 0) return; // every set already completed — no-op
 
@@ -2204,6 +2283,7 @@ export default function WorkoutSession() {
   }
 
   function handleNoteChange(exerciseName, value) {
+    markTypingSave();
     setPersisted(false);
     setNotes((prev) => ({ ...prev, [exerciseName]: value }));
   }
@@ -2526,6 +2606,7 @@ export default function WorkoutSession() {
   // (between set N and set N+1) applies to all later slots for the same
   // exercise. Earlier slots and other exercises are left alone.
   function handleCardioChange(exerciseKey, setIdx, value) {
+    markTypingSave();
     if (!template) return;
     const ex = template.exercises.find((e, i) =>
       !e.isSectionHeader && exKey(template.exercises, e, i) === exerciseKey
@@ -2616,14 +2697,18 @@ export default function WorkoutSession() {
           setEntries((prev) => {
             const updated = { ...prev };
             updated[exerciseKey] = [...(updated[exerciseKey] || [])];
-            const newAutoFilled = new Set(autoFilled);
+            // Read the latest autofill marks from the ref and ADD to them (a
+            // functional update) — building from this render's copy dropped
+            // marks the blur just before the check had added.
+            const autoFilledNow = autoFilledRef.current;
+            const addedAutoFilled = [];
             for (let i = setIdx + 1; i < exercise.sets.length; i++) {
               const laterKey = `${exerciseKey}-${i}`;
               if (!completedSets.has(laterKey)) {
                   const current = updated[exerciseKey][i] || {};
                   const currentWeight = current.weight;
                   const currentReps = current.reps;
-                  const isCurrentAutoFilled = autoFilled.has(laterKey);
+                  const isCurrentAutoFilled = autoFilledNow.has(laterKey);
                   const weightEmpty = currentWeight === '' || currentWeight === undefined;
                   const repsEmpty = currentReps === '' || currentReps === undefined;
                   const weightUserEdited = userEditedNow.has(`${laterKey}:weight`);
@@ -2667,11 +2752,17 @@ export default function WorkoutSession() {
                       ...(overwriteCv ? { cardioValue: cv } : {}),
                       ...(overwriteCm ? { cardioMetric: cm } : {}),
                     };
-                    if (overwriteWeight || overwriteReps || overwriteCv) newAutoFilled.add(laterKey);
+                    if (overwriteWeight || overwriteReps || overwriteCv) addedAutoFilled.push(laterKey);
                   }
                 }
               }
-              setAutoFilled(newAutoFilled);
+              if (addedAutoFilled.length) {
+                setAutoFilled((prevAF) => {
+                  const nextAF = new Set(prevAF);
+                  addedAutoFilled.forEach((k) => nextAF.add(k));
+                  return nextAF;
+                });
+              }
               return updated;
             });
           }
@@ -2937,10 +3028,11 @@ export default function WorkoutSession() {
     return savePromise;
   }
 
-  // Dirty if any entry has user-typed weight or reps
-  const hasEntryData = Object.values(entries).some((exEntries) =>
-    exEntries.some((e) => (e.weight !== '' && e.weight !== undefined) || (e.reps !== '' && e.reps !== undefined) || (e.cardioValue !== '' && e.cardioValue !== undefined))
-  );
+  // Dirty only if the user actually entered something (typed a value, checked
+  // a set, wrote a note). Pre-filled suggested weights don't count — they made
+  // a workout that was just opened ask "Leave site? unsaved changes".
+  const hasEntryData = userEdited.size > 0 || completedSets.size > 0 ||
+    Object.values(notes || {}).some((n) => typeof n === 'string' && n.trim());
   const sessionDirty = hasEntryData && !persisted;
   // inputsLocked: weight/reps/notes are NOT editable. Only blocks once the
   // session is completed; pre-Begin Workout, users can pre-fill planned values.
@@ -3273,7 +3365,7 @@ export default function WorkoutSession() {
                 });
                 setWeightSuggestions(prev => { const next = { ...prev }; delete next[fsExercise.name]; return next; });
               }}
-              onApplyCalculatedWeight={inputsLocked ? undefined : ((_n, weight) => handleApplyCalculatedWeight(fsKey, weight))}
+              onApplyCalculatedWeight={inputsLocked ? undefined : ((_n, weight, targetIdx) => handleApplyCalculatedWeight(fsKey, weight, targetIdx))}
               goalOverrides={goalOverrides[fsKey]}
               onGoalChange={inputsLocked ? undefined : ((_n, setIdx, field, value) => handleGoalChange(fsKey, setIdx, field, value))}
               allWorkoutExercises={template.exercises.map(e => e.name)}
@@ -3996,7 +4088,7 @@ export default function WorkoutSession() {
                 });
                 setWeightSuggestions(prev => { const next = { ...prev }; delete next[exercise.name]; return next; });
               }}
-              onApplyCalculatedWeight={inputsLocked ? undefined : ((_n, weight) => handleApplyCalculatedWeight(eKey, weight))}
+              onApplyCalculatedWeight={inputsLocked ? undefined : ((_n, weight, targetIdx) => handleApplyCalculatedWeight(eKey, weight, targetIdx))}
               goalOverrides={goalOverrides[eKey]}
               onGoalChange={inputsLocked ? undefined : ((_n, setIdx, field, value) => handleGoalChange(eKey, setIdx, field, value))}
               allWorkoutExercises={template.exercises.map(e => e.name)}

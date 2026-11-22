@@ -214,9 +214,13 @@ export default function PlateCalculatorModal({ open, preloadWeight = 0, restoreS
     if (onClose) onClose();
   };
 
+  // Use is only allowed for a real load (not empty / 0 / below the bar) —
+  // "Use 0 lbs" used to write 0 into this set and every later one.
+  const canUse = valid && Number(target) > 0;
   const handleUse = () => {
+    if (!canUse) return;
     persist();
-    if (onUse) onUse(Number(target) || 0);
+    if (onUse) onUse(Number(target));
     if (onClose) onClose();
   };
 
@@ -431,7 +435,7 @@ export default function PlateCalculatorModal({ open, preloadWeight = 0, restoreS
                     {mode === 'one' ? 'lbs loaded' : 'lbs / side'}
                   </span>
                 </div>
-                {onApplyToFirstUncompleted && valid && (
+                {onApplyToFirstUncompleted && valid && Number(target) > 0 && (
                   <button
                     type="button"
                     onClick={() => { persist(); onApplyToFirstUncompleted(Number(target) || 0); }}
@@ -624,7 +628,8 @@ export default function PlateCalculatorModal({ open, preloadWeight = 0, restoreS
         <div className="relative px-4 pb-4 pt-2 space-y-2 shrink-0 border-t border-white/5">
           <button
             onClick={handleUse}
-            className="w-full text-white font-bold uppercase active:scale-[0.98] transition-all"
+            disabled={!canUse}
+            className="w-full text-white font-bold uppercase active:scale-[0.98] transition-all disabled:opacity-40 disabled:active:scale-100"
             style={{
               letterSpacing: '0.15em',
               fontSize: '11px',

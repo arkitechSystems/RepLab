@@ -1,0 +1,62 @@
+{
+  "project_info": {
+    "project_number": "691787433234",
+    "project_id": "replabapp-c3a0d",
+    "storage_bucket": "replabapp-c3a0d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:691787433234:android:4e7f5984e2edf195821fcb",
+        "android_client_info": {
+          "package_name": "com.replab.fitness"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "691787433234-csnptnet1jldptj8l9bus9u8atchtkba.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.replab.fitness",
+            "certificate_hash": "8aca3dfa41774e32cfaa409667cd84efcaf3e508"
+          }
+        },
+        {
+          "client_id": "691787433234-dog3jq3t0eged5fs14ldatoba401lo5t.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.replab.fitness",
+            "certificate_hash": "8ea37007bdd8c8aa40f62e4664b42d7599701ac0"
+          }
+        },
+        {
+          "client_id": "691787433234-i0nd8mpucer0epnu0evgd4o759tp0fci.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD_OkMe0HSbzcmen6mFyTRbTun3gWu4YYw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "691787433234-i0nd8mpucer0epnu0evgd4o759tp0fci.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "691787433234-9k62alg0t8oa8pvkgg5j3de25669umsp.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.replab.fitness"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

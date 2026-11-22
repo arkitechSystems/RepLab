@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Capacitor } from '@capacitor/core';
 import {
   DndContext,
-  PointerSensor,
+  MouseSensor,
   TouchSensor,
   useSensor,
   useSensors,
@@ -71,6 +71,24 @@ export { SET_TYPES };
 //   • Swipe: > 15px horizontal motion before 500ms = sideways gesture
 // `disabled` blocks drag activation entirely (used for completed sets,
 // template/readOnly modes, and when the parent hasn't passed onReorderSets).
+// Set-row drag sensors that don't start from elements marked data-no-drag
+// (the weight box and goal cells, whose long-press opens the plate
+// calculator / goal editor — a drag lifting the row at the same time broke
+// both).
+const startsOnNoDrag = (event) => !!event?.target?.closest?.('[data-no-drag]');
+class RowTouchSensor extends TouchSensor {
+  static activators = [{
+    eventName: 'onTouchStart',
+    handler: (evt, opts) => !startsOnNoDrag(evt.nativeEvent) && TouchSensor.activators[0].handler(evt, opts),
+  }];
+}
+class RowMouseSensor extends MouseSensor {
+  static activators = [{
+    eventName: 'onMouseDown',
+    handler: (evt, opts) => !startsOnNoDrag(evt.nativeEvent) && MouseSensor.activators[0].handler(evt, opts),
+  }];
+}
+
 function SortableSetRow({ id, disabled, children }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled });
   const style = {
@@ -335,8 +353,16 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
     if (notesOpen) noteRef.current?.focus({ preventScroll: true });
   }, [notesOpen]);
   const goalLongPressRef = useRef(null);
-  function startGoalLongPress(setIdx, field) {
+  // Where the current long-press started; small finger jitter (under 8px)
+  // no longer cancels it.
+  const longPressStartRef = useRef(null);
+  const movedTooFar = (e) => {
+    const st = longPressStartRef.current;
+    return !st || Math.hypot(e.clientX - st.x, e.clientY - st.y) > 8;
+  };
+  function startGoalLongPress(setIdx, field, e) {
     if (!onGoalChange || readOnly || inputsLocked) return;
+    longPressStartRef.current = e ? { x: e.clientX, y: e.clientY } : null;
     if (goalLongPressRef.current) clearTimeout(goalLongPressRef.current);
     goalLongPressRef.current = setTimeout(() => {
       setEditingGoalKey(`${setIdx}-${field}`);
@@ -362,8 +388,10 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
   // works — only a stationary long-press kicks off a drag. Mouse uses a
   // small distance constraint so a click doesn't accidentally start a drag.
   const sortableSensors = useSensors(
-    useSensor(TouchSensor, { activationConstraint: { delay: 500, tolerance: 8 } }),
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+    useSensor(RowTouchSensor, { activationConstraint: { delay: 500, tolerance: 8 } }),
+    // Mouse only (not Pointer): the pointer sensor also handled touches and
+    // started a drag after 8px of finger movement, skipping the 500ms hold.
+    useSensor(RowMouseSensor, { activationConstraint: { distance: 8 } })
   );
 
   const handleSetDragEnd = useCallback((event) => {
@@ -471,10 +499,15 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
       const rowEl = swipeRowRefs.current[idx];
       if (rowEl) {
         const currentX = parseFloat(rowEl.style.transform?.replace(/[^-\d.]/g, '') || '0');
+        const wasChecked = !!completedSets?.has(keyName + '-' + idx);
+        // Swipe right only checks a set (the panel says Complete) — it never
+        // un-checks one. Swipe left on a checked set asks first, like the
+        // Remove set button, instead of deleting a logged set outright.
         if (currentX > 60 && onToggleComplete) {
-          onToggleComplete(keyName, idx);
+          if (!wasChecked) onToggleComplete(keyName, idx);
         } else if (currentX < -60 && onDeleteSet) {
-          onDeleteSet(keyName, idx);
+          if (wasChecked) setDeleteIdx(idx);
+          else onDeleteSet(keyName, idx);
         }
         rowEl.style.transition = 'transform 0.2s ease';
         rowEl.style.transform = 'translateX(0)';
@@ -483,7 +516,20 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
 
     swipeActive.current = false;
     touchStartPos.current = null;
-  }, [exercise.name, onToggleComplete, onDeleteSet]);
+  }, [keyName, completedSets, onToggleComplete, onDeleteSet]);
+
+  // The phone cancelled the touch (system gesture, alert, scroll takeover):
+  // put the row back instead of leaving it half-swiped.
+  const handleTouchCancel = useCallback(() => {
+    const idx = touchStartPos.current?.idx;
+    const rowEl = idx != null ? swipeRowRefs.current[idx] : null;
+    if (rowEl) {
+      rowEl.style.transition = 'transform 0.2s ease';
+      rowEl.style.transform = 'translateX(0)';
+    }
+    swipeActive.current = false;
+    touchStartPos.current = null;
+  }, []);
 
   // No demo video → confirm before leaving the app for a YouTube search.
   const [showYtSearchPrompt, setShowYtSearchPrompt] = useState(false);
@@ -651,7 +697,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
             right. Template mode (Create / Edit Workout) shows only Add / Remove. */}
         {(!isTemplate || showMenuBtn || (!menuLayout && !readOnly && (onAddExercise || onDeleteExercise))) && (
           <div style={{ padding: '0 12px 12px', display: 'flex', gap: 5 }}>
-            {!isTemplate && !readOnly && (
+            {!isTemplate && !readOnly && !cardioMode && (
               <ToolBtn
                 label="PC"
                 data-tutorial={dataTutorial ? 'plate-calc' : undefined}
@@ -966,6 +1012,7 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
               }}
               onTouchStart={isSwipeable ? (e) => handleTouchStart(idx, e) : undefined}
               onTouchEnd={isSwipeable ? handleTouchEnd : undefined}
+              onTouchCancel={isSwipeable ? handleTouchCancel : undefined}
               onTouchMove={isSwipeable ? handleTouchMove : undefined}
               onContextMenu={!readOnly && onDeleteSet ? (e) => { e.preventDefault(); setDeleteIdx(idx); } : undefined}
             >
@@ -1064,12 +1111,13 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                       role={editable ? 'button' : undefined}
                       tabIndex={editable ? 0 : undefined}
                       aria-label={editable ? `Set ${idx + 1} goal weight (long-press to edit)` : undefined}
-                      onPointerDown={editable ? () => startGoalLongPress(idx, 'weight') : undefined}
+                      data-no-drag=""
+                      onPointerDown={editable ? (e) => startGoalLongPress(idx, 'weight', e) : undefined}
                       onPointerUp={editable ? cancelGoalLongPress : undefined}
                       onPointerLeave={editable ? cancelGoalLongPress : undefined}
-                      onPointerMove={editable ? cancelGoalLongPress : undefined}
+                      onPointerMove={editable ? (e) => { if (movedTooFar(e)) cancelGoalLongPress(); } : undefined}
                       onPointerCancel={editable ? cancelGoalLongPress : undefined}
-                      onContextMenu={editable ? (e) => e.preventDefault() : undefined}
+                      onContextMenu={editable ? (e) => { e.preventDefault(); e.stopPropagation(); } : undefined}
                       className="xc-mono select-none"
                       style={{ ...goalLineStyle, cursor: editable ? 'pointer' : 'default' }}
                     >
@@ -1097,16 +1145,19 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                     e.target.select();
                   }}
                   onBlur={() => onBlur?.(exercise.name, idx, 'weight')}
-                  onPointerDown={(readOnly || inputsLocked || setLocked || cardioMode) ? undefined : () => {
+                  data-no-drag=""
+                  onPointerDown={(readOnly || inputsLocked || setLocked || cardioMode) ? undefined : (e) => {
+                    if (plateCalcLongPressRef.current) clearTimeout(plateCalcLongPressRef.current);
+                    longPressStartRef.current = { x: e.clientX, y: e.clientY };
                     plateCalcLongPressRef.current = setTimeout(() => {
                       setPlateCalcSetIdx(idx);
                     }, 600);
                   }}
                   onPointerUp={() => { if (plateCalcLongPressRef.current) { clearTimeout(plateCalcLongPressRef.current); plateCalcLongPressRef.current = null; } }}
-                  onPointerMove={() => { if (plateCalcLongPressRef.current) { clearTimeout(plateCalcLongPressRef.current); plateCalcLongPressRef.current = null; } }}
+                  onPointerMove={(e) => { if (plateCalcLongPressRef.current && movedTooFar(e)) { clearTimeout(plateCalcLongPressRef.current); plateCalcLongPressRef.current = null; } }}
                   onPointerCancel={() => { if (plateCalcLongPressRef.current) { clearTimeout(plateCalcLongPressRef.current); plateCalcLongPressRef.current = null; } }}
                   onPointerLeave={() => { if (plateCalcLongPressRef.current) { clearTimeout(plateCalcLongPressRef.current); plateCalcLongPressRef.current = null; } }}
-                  onContextMenu={(e) => e.preventDefault()}
+                  onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); }}
                   readOnly={readOnly || inputsLocked || setLocked}
                   className="xc-input disabled:opacity-50"
                   style={inputStyle}
@@ -1164,12 +1215,13 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
                       role={editable ? 'button' : undefined}
                       tabIndex={editable ? 0 : undefined}
                       aria-label={editable ? `Set ${idx + 1} goal reps (long-press to edit)` : undefined}
-                      onPointerDown={editable ? () => startGoalLongPress(idx, 'reps') : undefined}
+                      data-no-drag=""
+                      onPointerDown={editable ? (e) => startGoalLongPress(idx, 'reps', e) : undefined}
                       onPointerUp={editable ? cancelGoalLongPress : undefined}
                       onPointerLeave={editable ? cancelGoalLongPress : undefined}
-                      onPointerMove={editable ? cancelGoalLongPress : undefined}
+                      onPointerMove={editable ? (e) => { if (movedTooFar(e)) cancelGoalLongPress(); } : undefined}
                       onPointerCancel={editable ? cancelGoalLongPress : undefined}
-                      onContextMenu={editable ? (e) => e.preventDefault() : undefined}
+                      onContextMenu={editable ? (e) => { e.preventDefault(); e.stopPropagation(); } : undefined}
                       className="xc-mono select-none"
                       style={{ ...goalLineStyle, cursor: editable ? 'pointer' : 'default' }}
                     >
@@ -1528,22 +1580,19 @@ function ExerciseCard({ exercise, exerciseKey, entries, pbs, onChange, onBlur, r
             open={true}
             preloadWeight={plateCalcWeightFor(plateCalcSetIdx)}
             onUse={(weight) => {
-              // Use writes to the first non-completed set and cascades to
-              // remaining non-completed-non-user-edited sets, same as the
-              // → Apply pill on the Per Side row. Falls back to writing
-              // directly to the originating set if the WorkoutSession parent
-              // didn't supply onApplyCalculatedWeight (e.g. the standalone
-              // /plate-calculator utility page, which doesn't render this
-              // modal from a card context).
+              // Opened from a set's long-press: Use writes to THAT set and
+              // cascades to the later non-completed, non-user-edited sets.
+              // Falls back to writing directly to the originating set if the
+              // parent didn't supply onApplyCalculatedWeight.
               if (onApplyCalculatedWeight) {
-                onApplyCalculatedWeight(exercise.name, Number(weight) || 0);
+                onApplyCalculatedWeight(exercise.name, Number(weight) || 0, plateCalcSetIdx);
               } else if (onChange) {
                 onChange(exercise.name, plateCalcSetIdx, 'weight', String(weight));
               }
               setPlateCalcSetIdx(null);
             }}
             onApplyToFirstUncompleted={onApplyCalculatedWeight ? (weight) => {
-              onApplyCalculatedWeight(exercise.name, Number(weight) || 0);
+              onApplyCalculatedWeight(exercise.name, Number(weight) || 0, plateCalcSetIdx);
               setPlateCalcSetIdx(null);
             } : undefined}
             restoreState={plateCalcMemoryRef.current[keyName] || null}
