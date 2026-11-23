@@ -22,23 +22,23 @@
     "cors": "^2.8.5",
     "exceljs": "^4.4.0",
     "express": "^4.21.1",
-    "express-rate-limit": "^8.3.1",
+    "express-rate-limit": "^8.7.5",
     "firebase-admin": "^13.8.0",
-    "fuse.js": "7.1.0",
-    "jose": "^6.2.12",
+    "fuse.js": "7.5.0",
+    "jose": "^6.2.18",
     "jsonwebtoken": "^9.0.2",
     "node-pg-migrate": "^9.0.0",
-    "pdfkit": "^0.18.0",
+    "pdfkit": "^0.21.0",
     "pg": "^8.18.0",
     "pg-boss": "^12.37.1",
     "resend": "^4.8.0",
     "stripe": "^20.4.1",
-    "xss": "^1.0.15",
+    "xss": "^1.0.17",
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "supertest": "^7.2.2",
-    "vitest": "^5.0.3",
+    "supertest": "^7.3.2",
+    "vitest": "^5.1.1",
     "xlsx": "^0.18.5"
   }
 }
