@@ -1,7 +1,7 @@
 {
-  "name": "REPLAB",
-  "short_name": "REPLAB",
-  "description": "Track Your Gains, Share Your Workouts, Level Up!",
+  "name": "RepLab: Fitness Training App",
+  "short_name": "RepLab",
+  "description": "RepLab is a fitness training app: follow programs, log every set, and track your progress.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",

@@ -52,7 +52,7 @@ v1 on time). Plan: post-launch App Transfer to a renamed LLC entity.
 > Store Connect **App name** to `REPLAB`.
 
 ### Subtitle — 30 chars max
-**Value:** `Strength & Hypertrophy Coach` (28 chars)
+**Value:** `Fitness Training App` (20 chars)
 
 ### Promotional Text — 170 chars max
 Editable after launch without resubmission. Use for time-sensitive
@@ -186,7 +186,7 @@ remain visible since Android keeps Stripe billing, so the Play copy
 can mention membership features.)
 
 ### App name — 50 chars max
-**Value:** `REPLAB: Strength & Hypertrophy` (30 chars)
+**Value:** `RepLab: Fitness Training App` (28 chars)
 
 ### Short description — 80 chars max
 **Value:** `Workout tracker for lifters. Programs, PRs, and progressive overload.` (69 chars)
@@ -213,12 +213,12 @@ the `—` block headers for `<b>` tags if you want them bolded.
 | Field | Limit | Value | Length |
 |---|---|---|---|
 | App Store app name | 30 | `REPLAB` | 6 |
-| App Store subtitle | 30 | `Strength & Hypertrophy Coach` | 28 |
+| App Store subtitle | 30 | `Fitness Training App` | 20 |
 | App Store promo text | 170 | (see above) | 157 |
 | App Store keywords | 100 | (see above) | 97 |
 | App Store description | 4000 | (see above) | ~2,060 |
 | App Store "What's New" | 4000 | (see above) | ~480 |
-| Play app name | 50 | `REPLAB: Strength & Hypertrophy` | 30 |
+| Play app name | 50 | `RepLab: Fitness Training App` | 28 |
 | Play short description | 80 | (see above) | 69 |
 | Play full description | 4000 | (see above) | ~2,060 |
 
