@@ -26,6 +26,8 @@ import useFocusTrap from '../hooks/useFocusTrap';
 import MissedWorkoutsModal from '../components/MissedWorkoutsModal';
 import useMissedWorkoutsPrompt, { localDateStr } from '../hooks/useMissedWorkoutsPrompt';
 import StartEmptyWorkoutModal from '../components/StartEmptyWorkoutModal';
+import CreateWorkoutModal from '../components/CreateWorkoutModal';
+import { createWorkoutUrl } from '../utils/createWorkout';
 import { APP_SHARE_FOOTER, workoutLabel } from '../utils/shareText';
 import ExternalShareButtons from '../components/ExternalShareButtons';
 
@@ -1201,6 +1203,8 @@ export default function Workouts() {
   const [logAsYouGoName, setLogAsYouGoName] = useState(null); // null = closed
   const [logAsYouGoSaving, setLogAsYouGoSaving] = useState(false);
   const [logAsYouGoError, setLogAsYouGoError] = useState('');
+  // Create a Workout name prompt (create menu) — opens the session screen in create mode.
+  const [createWorkoutOpen, setCreateWorkoutOpen] = useState(false);
   // Share program state
   const [shareModal, setShareModal] = useState(null); // program object
   const [prToShare, setPrToShare] = useState(null); // PR the Share PR screen is open for
@@ -3189,7 +3193,7 @@ export default function Workouts() {
             <div className="relative p-2 space-y-0.5">
               <button
                 data-tutorial="create-workout-option"
-                onClick={() => { completeTutorialAction('create-workout-chosen'); setShowCreateMenu(false); navigate('/clientworkouts/create?quick=1'); }}
+                onClick={() => { completeTutorialAction('create-workout-chosen'); setShowCreateMenu(false); setCreateWorkoutOpen(true); }}
                 className="w-full text-left p-3 flex items-center gap-3.5 active:scale-[0.98] transition-all hover:bg-white/5 active:bg-white/10"
                 style={{ borderRadius: '2px' }}
               >
@@ -3250,6 +3254,13 @@ export default function Workouts() {
             Yes routes to the prehab session; No skips straight to the
             real workout via skipPrehab=true. */}
         <MissedWorkoutsModal {...missedPromptCtl.modalProps} />
+        {createWorkoutOpen && (
+          <CreateWorkoutModal
+            programs={programs}
+            onCancel={() => setCreateWorkoutOpen(false)}
+            onConfirm={(values) => { setCreateWorkoutOpen(false); navigate(createWorkoutUrl(values)); }}
+          />
+        )}
         {logAsYouGoName !== null && (
           <StartEmptyWorkoutModal
             name={logAsYouGoName}

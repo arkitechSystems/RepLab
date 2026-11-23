@@ -4,6 +4,7 @@ import pool from '../dbPool.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { notifyPRCelebration, notifyFirstWorkout } from '../postSessionPushes.js';
 import { recordCommunityMilestones } from '../communityMilestones.js';
+import { buildSessionWorkoutData, blankEntriesFor } from '../sessionCopy.js';
 import { validateBody, saveSessionBody, completeSessionBody, initializeSessionBody } from '../validation.js';
 
 const MAX_WORKOUT_NAME_LEN = 200; // same cap as template names
@@ -128,42 +129,15 @@ async function ensureSessionCopy(userId, templateId, date) {
   if (!tmpl || tmpl.isRest) return { status: 404, error: 'Template not found', session: null };
   if (tmpl.userId && tmpl.userId !== userId) return { status: 403, error: 'Template does not belong to you', session: null };
 
-  // Goal weight/reps seed: for each exercise, the greater-by-volume of the
-  // user's last completed performance vs their all-time volume PR, matched by
-  // exercise NAME across every workout (not scoped to this template). One
-  // goal per exercise, applied to all its sets. See
-  // db.getVolumeGoalsByExerciseName.
+  // Planned values + goals for the copy — see buildSessionWorkoutData
+  // (sessionCopy.js): last performance / volume PR by exercise name, and on
+  // the user's own workouts the template's weight and reps as the goals.
   const exerciseNames = tmpl.exercises
     .filter((ex) => !ex.isSectionHeader)
     .map((ex) => ex.name);
   const volumeGoals = await db.getVolumeGoalsByExerciseName(userId, exerciseNames);
-
-  // Build workout_data — the independent copy, with previous bests as goals
-  const workoutData = {
-    name: tmpl.name,
-    exercises: tmpl.exercises.map(ex => ({
-      name: ex.name,
-      setType: ex.setType || 'straight',
-      ...(ex.exerciseDescription ? { exerciseDescription: ex.exerciseDescription } : {}),
-      ...(ex.isSectionHeader ? { isSectionHeader: true, sectionNotes: ex.sectionNotes || '' } : {}),
-      sets: ex.sets.map(s => {
-        const goal = volumeGoals[ex.name];
-        return {
-          setNumber: s.setNumber,
-          plannedReps: goal ? goal.reps : (s.plannedReps ?? 10),
-          suggestedWeight: goal ? goal.weight : (s.suggestedWeight ?? 0),
-        };
-      }),
-    })),
-  };
-
-  // Build blank entries (weight: 0, reps: 0) so the session exists in DB
-  const entries = [];
-  for (const ex of tmpl.exercises) {
-    for (const s of ex.sets) {
-      entries.push({ exerciseName: ex.name, setNumber: s.setNumber, weight: 0, reps: 0 });
-    }
-  }
+  const workoutData = buildSessionWorkoutData(tmpl, volumeGoals, userId);
+  const entries = blankEntriesFor(tmpl);
 
   await db.createSession(userId, templateId, date, entries, {}, workoutData);
   const session = await db.getSessionByTemplateAndDate(userId, templateId, date);

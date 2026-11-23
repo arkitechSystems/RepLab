@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import db from '../db.js';
+import db, { findOrCreateMyWorkoutsProgram } from '../db.js';
+import pool from '../dbPool.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { validateBody, templateBody } from '../validation.js';
 
@@ -23,7 +24,14 @@ router.get('/', authMiddleware, async (req, res) => {
 
 router.post('/', authMiddleware, validateBody(templateBody), async (req, res) => {
   try {
-    const { name, description, exercises, programId, isRest } = req.body;
+    const { name, description, exercises, isRest } = req.body;
+    let { programId } = req.body;
+    // saveToMyWorkouts: no program picked (the session screen's Create a
+    // Workout) — file it in the user's My Workouts program, creating that on
+    // first use (race-safe, same as /sessions/start-empty).
+    if (programId == null && req.body.saveToMyWorkouts === true) {
+      programId = await findOrCreateMyWorkoutsProgram(pool, req.userId);
+    }
     const result = await db.createTemplate(req.userId, name, description || '', exercises, programId, isRest);
     res.status(201).json(result);
   } catch (err) {

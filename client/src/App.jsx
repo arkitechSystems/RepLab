@@ -313,6 +313,9 @@ export default function App() {
         }
       >
         <Route path="/calendar" element={<Calendar />} />
+        {/* Create a Workout on the session screen (create mode): nothing is
+            saved until Create Workout is pressed. */}
+        <Route path="/session/create" element={<WorkoutSession key="create" createMode />} />
         <Route path="/session/:templateId/:date" element={<KeyedWorkoutSession />} />
         <Route path="/clientworkouts/create" element={<CreateWorkout />} />
         {/* Apple 3.1.1 — Pro feature, must not be reachable from iOS native

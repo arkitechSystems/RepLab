@@ -15,6 +15,8 @@ import MissedWorkoutsModal from '../components/MissedWorkoutsModal';
 import useMissedWorkoutsPrompt from '../hooks/useMissedWorkoutsPrompt';
 import useFocusTrap from '../hooks/useFocusTrap';
 import StartEmptyWorkoutModal from '../components/StartEmptyWorkoutModal';
+import CreateWorkoutModal from '../components/CreateWorkoutModal';
+import { createWorkoutUrl } from '../utils/createWorkout';
 import { buildCopiedWorkoutData } from '../utils/copyWorkout';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -99,6 +101,9 @@ export default function Calendar() {
   const [startEmptyStep, setStartEmptyStep] = useState(null); // 'overwrite-options' | 'name-prompt' | null
   const [startEmptyName, setStartEmptyName] = useState('');
   const [startEmptySaving, setStartEmptySaving] = useState(false);
+  // Create a Workout name prompt. Holds the day (yyyy-MM-dd) the new workout
+  // goes on once it's saved, '' for none; null = closed.
+  const [createWorkoutDate, setCreateWorkoutDate] = useState(null);
   // Focus traps for accessible modal dialogs. Each ref is attached to the
   // inner panel of its modal; the boolean argument keeps the trap active only
   // while the modal is rendered.
@@ -1479,7 +1484,7 @@ export default function Calendar() {
                 {!pickerSearch && selectedProgramId == null && (
                   <div className="mb-4 space-y-1.5">
                     <button
-                      onClick={() => { setEditingDay(null); navigate(`/clientworkouts/create?quick=1&date=${format(editingDay, 'yyyy-MM-dd')}`); }}
+                      onClick={() => { const d = format(editingDay, 'yyyy-MM-dd'); setEditingDay(null); setCreateWorkoutDate(d); }}
                       className="w-full text-left rounded-xl px-4 py-3 flex items-center gap-3 bg-white/5 active:bg-white/10 active:scale-[0.98] transition-all"
                     >
                       <div className="w-8 h-8 rounded-full btn-gradient flex items-center justify-center shrink-0">
@@ -1633,7 +1638,7 @@ export default function Calendar() {
 
                 {/* Create new workout */}
                 <button
-                  onClick={() => { const d = editingDay ? format(editingDay, 'yyyy-MM-dd') : ''; setEditingDay(null); navigate(`/clientworkouts/create?quick=1${d ? '&date=' + d : ''}`); }}
+                  onClick={() => { const d = editingDay ? format(editingDay, 'yyyy-MM-dd') : ''; setEditingDay(null); setCreateWorkoutDate(d); }}
                   className="w-full text-left rounded-xl px-4 py-3.5 flex items-center gap-3 bg-white/5 active:bg-white/10 active:scale-[0.98] transition-all mt-1 mb-2"
                 >
                   <div className="w-8 h-8 rounded-full btn-gradient flex items-center justify-center shrink-0">
@@ -2154,6 +2159,20 @@ export default function Calendar() {
             )}
           </div>
         </div>
+      )}
+
+      {/* Create a Workout — name prompt; opens the session screen in create
+          mode, which puts the saved workout on this day. */}
+      {createWorkoutDate !== null && (
+        <CreateWorkoutModal
+          programs={programs}
+          onCancel={() => setCreateWorkoutDate(null)}
+          onConfirm={(values) => {
+            const d = createWorkoutDate;
+            setCreateWorkoutDate(null);
+            navigate(createWorkoutUrl({ ...values, date: d }));
+          }}
+        />
       )}
 
       {/* Start Empty — Name Prompt Modal */}

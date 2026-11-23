@@ -197,3 +197,62 @@ describe('Workout session saving', () => {
     expect(localStorage.getItem(`wf-pending-complete-835-${D}`)).toBeNull();
   }, 15000);
 });
+
+// "Create a Workout" on the session screen (create mode): nothing touches the
+// server until Create Workout, which POSTs one new template whose sets carry
+// the entered weight and reps as goals. No session, schedule or PB calls.
+describe('Create a Workout (create mode)', () => {
+  const CREATE_ROUTE = { path: '/session/create', route: '/session/create?name=Push%20Day&description=Chest' };
+
+  function createServer(state) {
+    server.use(
+      http.all('*', ({ request }) => {
+        const { pathname } = new URL(request.url);
+        if (!pathname.startsWith('/exercises')) state.calls.push(`${request.method} ${pathname}`);
+        return undefined;
+      }),
+      http.post('*/templates', async ({ request }) => {
+        state.body = await request.json();
+        return HttpResponse.json({ id: 901, name: state.body.name }, { status: 201 });
+      }),
+      http.all('*', () => HttpResponse.json([])),
+    );
+  }
+
+  it('shows Create Workout, has no set checks, and saves weights and reps as the goals', async () => {
+    signIn();
+    const state = { calls: [] };
+    createServer(state);
+    renderScreen(<WorkoutSession createMode />, CREATE_ROUTE);
+
+    expect(await screen.findByText('PUSH DAY')).toBeInTheDocument();
+    expect(screen.queryByText('Begin Workout')).toBeNull();
+    fireEvent.click(screen.getByText('Add Exercise'));
+    fireEvent.change(screen.getByPlaceholderText('Search exercises or type a custom name...'), { target: { value: 'Bench Press' } });
+    fireEvent.click(await screen.findByText((_, el) => el?.tagName === 'SPAN' && el.textContent === 'Add "Bench Press"'));
+
+    fireEvent.change(await screen.findByLabelText('Set 1 weight'), { target: { value: '135' } });
+    fireEvent.change(screen.getByLabelText('Set 1 reps'), { target: { value: '8' } });
+    expect(screen.queryAllByLabelText('Mark set complete')).toHaveLength(0);
+
+    fireEvent.click(screen.getByText('Create Workout'));
+    await waitFor(() => expect(state.body).toBeTruthy());
+    expect(state.body).toMatchObject({
+      name: 'Push Day',
+      description: 'Chest',
+      saveToMyWorkouts: true,
+      exercises: [{ name: 'Bench Press', sets: [{ weight: 135, reps: 8 }] }],
+    });
+    expect(await screen.findByText('other page')).toBeInTheDocument();
+    // Only the template create (plus the custom-exercise add) — no session, schedule, PB or history calls.
+    expect(state.calls.filter((c) => !c.startsWith('POST /templates') && !c.includes('/exercises'))).toEqual([]);
+  }, 15000);
+
+  it('a missing name fails gracefully with a way back', async () => {
+    signIn();
+    createServer({ calls: [] });
+    renderScreen(<WorkoutSession createMode />, { path: '/session/create', route: '/session/create' });
+    expect(await screen.findByText(/missing its name/)).toBeInTheDocument();
+    expect(screen.getByText('Back to Workouts')).toBeInTheDocument();
+  });
+});

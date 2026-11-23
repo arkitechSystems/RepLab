@@ -6,7 +6,7 @@ import { onlineManager, useMutationState } from '@tanstack/react-query';
 import { api, markShowingCached, clearShowingCached, CONNECTION_ERROR_MESSAGE } from '../api';
 import { queryClient } from '../queries/queryClient';
 import { loadPath, savedPath, savedAt } from '../queries/data';
-import { queueEdit, requireOnline } from '../queries/edits';
+import { queueEdit, requireOnline, offlineMessage } from '../queries/edits';
 import {
   SAVE_SESSION, COMPLETE_SESSION, sessionScope, startMutation, latestPendingSave, cancelPendingComplete,
 } from '../queries/sessionMutations';
@@ -25,6 +25,8 @@ import LoadingSpinnerOverlay from '../components/LoadingSpinnerOverlay';
 import { iosFocusRef } from '../utils/iosFocus';
 import { getWeightSuggestion } from '../utils/weightSuggestion';
 import { goalsFromWorkoutData } from '../utils/copyWorkout';
+import { buildCreateWorkoutBody, hasRealExercise, parseCreateWorkoutParams } from '../utils/createWorkout';
+import { useToast } from '../context/ToastContext';
 import { APP_SHARE_FOOTER, workoutLabel } from '../utils/shareText';
 import { calculateOneRMSuggestion } from '../utils/oneRepMaxSuggestion';
 import { beepCountdown, beepRestEnd, initAudio } from '../utils/sounds';
@@ -134,11 +136,24 @@ function findExIdx(exercises, key) {
   return -1;
 }
 
-export default function WorkoutSession() {
-  const { templateId, date } = useParams();
+export default function WorkoutSession({ createMode = false }) {
+  const params = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  // Create mode (/session/create?name=…): "Create a Workout" built on this
+  // screen. Like the tutorial it runs on a local in-memory workout — no
+  // session load, autosave, timer, set completion, PB / cardio / history
+  // calls. Create Workout (the Begin Workout button's slot) saves it as a new
+  // template (utils/createWorkout.js). Nothing exists on the server before.
+  const [createToday] = useState(() => format(new Date(), 'yyyy-MM-dd'));
+  const templateId = createMode ? 'create' : params.templateId;
+  const date = createMode ? createToday : params.date;
+  const createParams = createMode ? parseCreateWorkoutParams(location.search) : null;
   const tutorialMode = templateId === 'tutorial';
+  // No server session behind the screen (tutorial or create mode).
+  const localMode = tutorialMode || createMode;
+  const showAppToast = useToast();
+  const [creatingWorkout, setCreatingWorkout] = useState(false);
   const tutorialTemplate = location.state?.tutorialTemplate || null;
   const { exercises: allExercisesFromDB, muscleGroups: allMuscleGroups, createCustom } = useExercises();
   const [template, setTemplate] = useState(null);
@@ -620,7 +635,7 @@ export default function WorkoutSession() {
   // mode. Runs after the render that committed the toggle, so the save
   // includes it.
   useEffect(() => {
-    if (tutorialMode) return;
+    if (localMode) return;
     if (!autoSaveNeeded.current) return;
     autoSaveNeeded.current = false;
     runAutoSave();
@@ -629,7 +644,7 @@ export default function WorkoutSession() {
 
   // Auto-save after structural changes (exercise/set add/delete/swap/move) — debounced 1.5s
   useEffect(() => {
-    if (tutorialMode) return;
+    if (localMode) return;
     if (!structureSaveNeeded.current) return;
     structureSaveNeeded.current = false;
     if (structureSaveRef.current) clearTimeout(structureSaveRef.current);
@@ -649,7 +664,7 @@ export default function WorkoutSession() {
   const pendingAutoSaveRef = useRef(false);
   const markTypingSave = () => { typingSaveNeededRef.current = true; };
   useEffect(() => {
-    if (tutorialMode) return;
+    if (localMode) return;
     if (!typingSaveNeededRef.current) return;
     // Numbers pre-filled before Begin Workout stay local until the workout
     // starts (or already has a saved copy) — saving them would make an
@@ -842,7 +857,7 @@ export default function WorkoutSession() {
   // Tutorial mode has no real session, so we skip it.
   // ─────────────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (tutorialMode) return;
+    if (localMode) return;
     if (sessionRestoredRef.current) return;
     // Suppress the backup-write effect until we've had a chance to restore.
     suppressBackupRef.current = true;
@@ -928,7 +943,7 @@ export default function WorkoutSession() {
   // navigation / dropped signal doesn't lose logged sets. ~200ms debounce.
   // ─────────────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (tutorialMode) return;
+    if (localMode) return;
     if (!sessionRestoredRef.current) return; // wait until restore pass ran
     if (suppressBackupRef.current) return;
     if (isCompleted) return; // completed sessions are server-persisted
@@ -1031,6 +1046,18 @@ export default function WorkoutSession() {
     setDayName(null);
     setCurrentTemplateName(null);
     setCanRenameDay(false);
+    // Create mode: start from an empty local workout with the chosen name.
+    if (createMode) {
+      if (!createParams.name) {
+        setLoadError('This new workout is missing its name. Go back and tap Create a Workout again.');
+        setLoading(false);
+        return;
+      }
+      setTemplate({ id: 'create', name: createParams.name, description: createParams.description, isRest: false, exercises: [] });
+      setEntries({});
+      setLoading(false);
+      return;
+    }
     // Tutorial mode: load from hardcoded template, no API calls
     if (tutorialMode) {
       if (!tutorialTemplate) {
@@ -1402,7 +1429,7 @@ export default function WorkoutSession() {
 
   // Fetch exercise history for smart weight suggestions after template loads
   useEffect(() => {
-    if (tutorialMode) return;
+    if (localMode) return;
     if (!template || template.isRest) return;
     const realExercises = template.exercises.filter(e => !e.isSectionHeader);
     const exerciseNames = realExercises.map(e => e.name);
@@ -2452,7 +2479,7 @@ export default function WorkoutSession() {
   // A completion still queued when the workout is opened (e.g. the app was
   // closed while offline): show the workout as complete.
   useEffect(() => {
-    if (loading || tutorialMode) return;
+    if (loading || localMode) return;
     if (pendingComplete && !isCompleted) setIsCompleted(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, pendingComplete]);
@@ -2462,7 +2489,7 @@ export default function WorkoutSession() {
   // then the completion), then drop the key.
   const legacyPendingCompleteKey = `wf-pending-complete-${templateId}-${date}`;
   useEffect(() => {
-    if (loading || tutorialMode) return;
+    if (loading || localMode) return;
     let queued = null;
     try { queued = localStorage.getItem(legacyPendingCompleteKey); } catch (_) {}
     if (!queued) return;
@@ -2824,6 +2851,7 @@ export default function WorkoutSession() {
   // (The manual Save path passes a click event, hence the strict check.)
   async function handleSave(opts) {
     const background = opts?.background === true;
+    if (createMode) return true; // create mode saves only through Create Workout
     if (tutorialMode) { setPersisted(true); setSaved(true); setTimeout(() => setSaved(false), 2000); return true; }
     if (!template || template.isRest) return;
     // A save is already in flight — await it instead of throwing. Lets
@@ -3041,11 +3069,69 @@ export default function WorkoutSession() {
   const inputsLocked = isCompleted;
   const completionLocked = !timerStarted || isCompleted;
   const structureLocked = isCompleted; // exercise/set editing allowed before Begin Workout
-  const { guardedNavigate, UnsavedModal } = useUnsavedGuard({
+  // Create mode: leaving with exercises added loses them (nothing is saved
+  // until Create Workout), so the guard asks first — Leave / Stay only.
+  const createDirty = createMode && hasRealExercise(template?.exercises);
+  const { guardedNavigate, UnsavedModal } = useUnsavedGuard(createMode ? {
+    isDirty: createDirty,
+  } : {
     isDirty: sessionDirty,
     onSave: handleSave,
     saveLabel: 'Save Workout',
   });
+
+  // Create mode: save what's on screen as a new workout (template) — in the
+  // chosen program, else My Workouts. Each set's weight and reps become the
+  // workout's goal weight / goal reps. No session, no calendar day (unless
+  // the Calendar opened this with a date: then the workout goes on that day).
+  async function handleCreateWorkout() {
+    if (creatingWorkout || !template) return;
+    if (!hasRealExercise(template.exercises)) {
+      showToast('Add at least one exercise first.', 'error');
+      return;
+    }
+    setCreatingWorkout(true);
+    let created;
+    try {
+      requireOnline();
+      const body = buildCreateWorkoutBody({
+        name: createParams.name,
+        description: createParams.description,
+        programId: createParams.programId,
+        exercises: template.exercises,
+        entries,
+        goals: goalOverrides,
+        keyFor: exKey,
+      });
+      created = await api('/templates', { method: 'POST', body: JSON.stringify(body) });
+      // Exercises typed in that aren't in the library become custom ones (same as Save).
+      const knownNames = new Set(allExercisesFromDB.map((e) => e.name.toLowerCase()));
+      for (const ex of body.exercises) {
+        if (!ex.isSectionHeader && !knownNames.has(ex.name.toLowerCase())) createCustom(ex.name, 'Other').catch(() => {});
+      }
+    } catch (err) {
+      if (import.meta.env.DEV) console.error(err);
+      showToast(offlineMessage(err, "Couldn't create the workout. Please try again."), 'error', 4000);
+      setCreatingWorkout(false);
+      return;
+    }
+    const savedName = created?.name || createParams.name;
+    if (createParams.date && created?.id) {
+      try {
+        await api('/schedule', {
+          method: 'PUT',
+          body: JSON.stringify({ schedule: [{ date: createParams.date, templateId: created.id }] }),
+        });
+        showAppToast(`"${savedName}" created and added to your calendar.`);
+      } catch {
+        showAppToast(`"${savedName}" was created, but it couldn't be added to your calendar.`, 'error', 4000);
+      }
+      navigate('/calendar', { replace: true });
+      return;
+    }
+    showAppToast(createParams.programId ? `"${savedName}" created.` : `"${savedName}" created in My Workouts.`);
+    navigate('/app', { replace: true, state: { openSection: 'my' } });
+  }
 
   // Navigate to adjacent day's workout (uses schedule to find templateId for that day)
   const [dayNavDisabled, setDayNavDisabled] = useState(false);
@@ -3094,7 +3180,11 @@ export default function WorkoutSession() {
     return (
       <div className="px-4 pt-6 text-center">
         <p className="text-red-400 mb-3">{loadError}</p>
-        <button onClick={() => window.location.reload()} className="text-wf-cyan text-sm">Tap to retry</button>
+        {createMode ? (
+          <button onClick={() => navigate('/app', { replace: true })} className="text-wf-cyan text-sm">Back to Workouts</button>
+        ) : (
+          <button onClick={() => window.location.reload()} className="text-wf-cyan text-sm">Tap to retry</button>
+        )}
       </div>
     );
   }
@@ -3107,7 +3197,15 @@ export default function WorkoutSession() {
     );
   }
 
-  const displayDate = date ? format(parseDateLocal(date), 'EEE, MMM d') : '';
+  const displayDate = createMode ? 'New workout' : (date ? format(parseDateLocal(date), 'EEE, MMM d') : '');
+  // Create mode's status line (in place of the sets-completed progress bar).
+  const createSummaryText = (() => {
+    if (!createMode) return '';
+    const real = template.exercises.filter((e) => !e.isSectionHeader);
+    if (real.length === 0) return 'Add exercises below, then tap Create Workout.';
+    const sets = real.reduce((n, e) => n + (e.sets?.length || 0), 0);
+    return `${real.length} exercise${real.length === 1 ? '' : 's'} · ${sets} set${sets === 1 ? '' : 's'} — your weights and reps become the goals`;
+  })();
 
   const prevDate = date ? subDays(parseDateLocal(date), 1) : null;
   const nextDate = date ? addDays(parseDateLocal(date), 1) : null;
@@ -3343,7 +3441,7 @@ export default function WorkoutSession() {
               completedSets={completedSets}
               autoFilled={autoFilled}
               userEdited={userEdited}
-              onToggleComplete={completionLocked ? () => setShowBeginPrompt(true) : ((_n, ...args) => handleToggleComplete(fsKey, ...args))}
+              onToggleComplete={createMode ? undefined : completionLocked ? () => setShowBeginPrompt(true) : ((_n, ...args) => handleToggleComplete(fsKey, ...args))}
               onAddSet={structureLocked ? undefined : ((_n, ...args) => handleAddSet(fsKey, ...args))}
               onDeleteSet={structureLocked ? undefined : ((_n, ...args) => handleDeleteSet(fsKey, ...args))}
               onReorderSets={structureLocked ? undefined : (fromIdx, toIdx) => handleReorderSets(fsKey, fromIdx, toIdx)}
@@ -3371,8 +3469,8 @@ export default function WorkoutSession() {
               allWorkoutExercises={template.exercises.map(e => e.name)}
               lastEntries={lastSession[fsExercise.name]}
               forceShowDemo={showAllDemos}
-              showGoalWeight={tutorialMode ? true : showGoalWeight}
-              showGoalReps={tutorialMode ? true : showGoalReps}
+              showGoalWeight={tutorialMode ? true : createMode ? false : showGoalWeight}
+              showGoalReps={tutorialMode ? true : createMode ? false : showGoalReps}
               showSetType={tutorialMode ? true : showSetType}
               exerciseNumber={fsPos + 1}
               cardioEnabled={cardioEnabled}
@@ -3488,7 +3586,7 @@ export default function WorkoutSession() {
       )}
       {/* Back button + Day navigation arrows */}
       <div className="px-4 pt-6 flex items-center justify-between">
-        <button data-tutorial="exit-workout" onClick={() => tutorialMode ? navigate('/app') : guardedNavigate(() => navigate(-1))} className="flex items-center gap-1 text-[11px] uppercase font-bold mb-2 active:opacity-70" style={{ color: 'rgba(239,68,68,0.9)', letterSpacing: '0.2em' }}>
+        <button data-tutorial="exit-workout" onClick={() => tutorialMode ? navigate('/app') : guardedNavigate(() => (createMode && !(window.history.state?.idx > 0) ? navigate('/app') : navigate(-1)))} className="flex items-center gap-1 text-[11px] uppercase font-bold mb-2 active:opacity-70" style={{ color: 'rgba(239,68,68,0.9)', letterSpacing: '0.2em' }}>
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>
@@ -3496,7 +3594,7 @@ export default function WorkoutSession() {
         </button>
         {/* Hidden (not removed) once the workout starts so the row keeps
             its height and the page doesn't shift up. */}
-        {!tutorialMode && schedule && (
+        {!localMode && schedule && (
           <div className={`flex items-center gap-2 mb-2 ${timerStarted ? 'invisible' : ''}`} aria-hidden={timerStarted || undefined}>
             <button
               onClick={() => hasPrev && !dayNavDisabled && navigateToDay(prevDate)}
@@ -3540,6 +3638,11 @@ export default function WorkoutSession() {
         subtitle={`${displayDate}${template.description ? ` · ${template.description}` : ''}`}
         bottomContent={(collapsed) =>
           <div className="mt-2 space-y-2">
+            {createMode ? (
+              <p className="text-xs text-wf-gray-400 font-medium text-center" role="status">
+                {createSummaryText}
+              </p>
+            ) : (
             <div>
               <div className="flex items-center justify-between mb-1">
                 <span className="flex items-center gap-2 min-w-0">
@@ -3568,6 +3671,7 @@ export default function WorkoutSession() {
                 />
               </div>
             </div>
+            )}
             {/* Begin + View Summary and the timers share one slot with the same
                 height (96px — the two buttons), so tapping Begin Workout doesn't
                 move the cards. Not while collapsed: the header spacer covers that. */}
@@ -3575,9 +3679,10 @@ export default function WorkoutSession() {
             {!timerStarted ? (
               <>
                 <button
-                  data-tutorial="begin-workout-btn"
-                  onClick={handleBeginWorkout}
-                  className="active:scale-[0.98] transition-all w-full"
+                  data-tutorial={createMode ? 'save-workout-btn' : 'begin-workout-btn'}
+                  onClick={createMode ? handleCreateWorkout : handleBeginWorkout}
+                  disabled={createMode && creatingWorkout}
+                  className={`active:scale-[0.98] transition-all w-full ${createMode && creatingWorkout ? 'opacity-60' : ''}`}
                   style={{
                     padding: '14px', borderRadius: '2px', border: 'none',
                     background: 'linear-gradient(135deg, rgba(239,68,68,0.95) 0%, rgba(220,38,38,0.95) 100%)',
@@ -3586,8 +3691,9 @@ export default function WorkoutSession() {
                     boxShadow: '0 4px 20px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
                   }}
                 >
-                  Begin Workout
+                  {createMode ? (creatingWorkout ? 'Creating…' : 'Create Workout') : 'Begin Workout'}
                 </button>
+                {!createMode && (
                 <button
                   onClick={() => setShowPrebeginSummary(true)}
                   className="active:scale-[0.97] transition-all w-full mt-2"
@@ -3602,6 +3708,7 @@ export default function WorkoutSession() {
                 >
                   View Summary
                 </button>
+                )}
               </>
             ) : (
               <div>
@@ -4063,7 +4170,7 @@ export default function WorkoutSession() {
               completedSets={completedSets}
               autoFilled={autoFilled}
               userEdited={userEdited}
-              onToggleComplete={completionLocked ? () => setShowBeginPrompt(true) : wrapCb(handleToggleComplete)}
+              onToggleComplete={createMode ? undefined : completionLocked ? () => setShowBeginPrompt(true) : wrapCb(handleToggleComplete)}
               onAddSet={structureLocked ? undefined : wrapCb(handleAddSet)}
               onDeleteSet={structureLocked ? undefined : wrapCb(handleDeleteSet)}
               onReorderSets={structureLocked ? undefined : (fromIdx, toIdx) => handleReorderSets(eKey, fromIdx, toIdx)}
@@ -4095,8 +4202,8 @@ export default function WorkoutSession() {
               lastEntries={lastSession[exercise.name]}
               forceShowDemo={showAllDemos}
               dataTutorial={tutorialMode && idx === 1 ? 'exercise-header' : undefined}
-              showGoalWeight={tutorialMode ? true : showGoalWeight}
-              showGoalReps={tutorialMode ? true : showGoalReps}
+              showGoalWeight={tutorialMode ? true : createMode ? false : showGoalWeight}
+              showGoalReps={tutorialMode ? true : createMode ? false : showGoalReps}
               showSetType={tutorialMode ? true : showSetType}
               exerciseNumber={exerciseNumber}
               cardioEnabled={cardioEnabled}
@@ -4756,6 +4863,7 @@ export default function WorkoutSession() {
         {/* Add Exercise Button */}
         {!structureLocked && (
           <button
+            data-tutorial={createMode ? 'add-exercise-search' : undefined}
             onClick={() => { setShowAddExercise(true); setAddExerciseSearch(''); setAddExerciseMuscleFilter('all'); }}
             className="w-full border border-dashed rounded-xl py-3.5 text-sm font-medium active:border-wf-red active:text-wf-red transition-colors flex items-center justify-center gap-2 mb-3"
             style={cardTheme === 'dark' ? {
@@ -5137,7 +5245,7 @@ export default function WorkoutSession() {
       })()}
 
       {/* Total Volume — Nike "Your Stats" style */}
-      {totalVolume > 0 && (
+      {totalVolume > 0 && !createMode && (
         <div className="px-4 mt-4 mb-2">
           <div
             className="text-center py-3 px-2"

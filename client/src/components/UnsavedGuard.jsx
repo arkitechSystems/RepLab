@@ -44,11 +44,11 @@ export function useUnsavedGuard({ isDirty, onSave, saveLabel = 'Save' }) {
       if (isDirtyRef.current) {
         if (showModalRef.current) {
           // Modal already open, just prevent navigation
-          window.history.pushState(null, '', location.pathname);
+          window.history.pushState(null, '', location.pathname + location.search);
           return;
         }
         // Re-push so we stay on the page
-        window.history.pushState(null, '', location.pathname);
+        window.history.pushState(null, '', location.pathname + location.search);
         pushCountRef.current++;
         setPendingPath('__back__');
         setShowModal(true);
@@ -57,7 +57,7 @@ export function useUnsavedGuard({ isDirty, onSave, saveLabel = 'Save' }) {
 
     // Push one extra history entry so back button triggers popstate instead of leaving
     if (!pushedStateRef.current) {
-      window.history.pushState(null, '', location.pathname);
+      window.history.pushState(null, '', location.pathname + location.search);
       pushedStateRef.current = true;
       pushCountRef.current = 1;
     }
@@ -69,7 +69,7 @@ export function useUnsavedGuard({ isDirty, onSave, saveLabel = 'Save' }) {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('popstate', handlePopState);
     };
-  }, [isDirty, location.pathname]);
+  }, [isDirty, location.pathname, location.search]);
 
   const guardedNavigate = useCallback((pathOrFn) => {
     if (isDirtyRef.current) {

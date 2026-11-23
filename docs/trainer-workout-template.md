@@ -32,12 +32,19 @@ Where the app's options live (keep the template's lists equal to these):
 - Program types: `programs.program_type`; labels in `client/src/pages/Workouts.jsx` (`TYPE_DISPLAY`).
 - Exercise library: `exercises` table, `NOT is_custom AND NOT hidden_from_library`
   (re-run the generator to refresh the Exercise Library sheet when the library changes).
-- Template exercise columns: `template_exercises` (`server/schema.sql` + `initDb.js`): `exercise_id`,
-  `name`, `set_type`, `set_number`, `planned_reps`, `suggested_weight`, `rep_range`,
-  `program_notes`, `is_section_header`, `section_notes`, `sort_order`.
-- Supersets: `supersetLabel` (A1, A2…) exists only in a session's `workout_data` today (set in
-  the workout session screen). **Templates have no superset column yet** — the importer step must
-  add one (e.g. `template_exercises.superset_label`) and have sessions start from it.
+- Template exercise columns: `template_exercises` (`server/db-migrations/`): `exercise_id`,
+  `name`, `set_type` (per set row — a set's own type, else the exercise's), `set_number`,
+  `planned_reps`, `suggested_weight`, `rep_range`, `program_notes`, `is_section_header`,
+  `section_notes`, `sort_order`, `superset_label`.
+- Supersets: `supersetLabel` (A1, A2…) is set on the workout session screen. Since 2026-11-22
+  templates keep it too (`template_exercises.superset_label`, migration
+  `1795305600000_template-superset-label.js`): "Create a Workout" (built on the session screen)
+  saves it, `GET /templates` returns it, Edit Workout keeps it (can't edit it yet), and a session
+  copied from the template starts with it. The importer should write the sheet's superset letter
+  + order into it.
+- Goals: on a user's own workout, a session started from it shows the template's goal weight
+  (`suggestedWeight`) and goal reps (`plannedReps`) as that day's Goal Wt / Goal Reps (2026-11-22),
+  so the sheet's Goal Wt / Goal Reps carry straight through to the session.
 - Programs: 7 templates per week, rest days are `isRest` templates (week count = templates / 7).
 
 ## Decisions (2026-10-11)

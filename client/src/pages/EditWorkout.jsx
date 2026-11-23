@@ -43,6 +43,9 @@ export default function EditWorkout() {
             name: ex.name,
             nameConfirmed: true,
             setType: ex.setType || 'straight',
+            // Not editable here, but kept so saving doesn't drop supersets
+            // made on the session screen (Create a Workout).
+            ...(ex.supersetLabel ? { supersetLabel: ex.supersetLabel } : {}),
             sets: ex.sets.map((s) => ({ reps: s.plannedReps, weight: s.suggestedWeight })),
           };
         });

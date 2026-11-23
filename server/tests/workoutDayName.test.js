@@ -137,10 +137,10 @@ describe('saveSessionAsWorkout', () => {
     expect(insertTmpl[1]).toEqual([1, 3, '10/4/26 custom workout (2)', '', 4]);
 
     const insertEx = state.calls.find(([s]) => s.includes('INSERT INTO template_exercises'));
-    // (template_id, exercise_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes)
+    // (template_id, exercise_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes, superset_label)
     const p = insertEx[1];
     const rows = [];
-    for (let i = 0; i < p.length; i += 10) rows.push(p.slice(i, i + 10));
+    for (let i = 0; i < p.length; i += 11) rows.push(p.slice(i, i + 11));
     expect(rows.map((r) => [r[2], r[4], r[5], r[6], r[7], r[8]])).toEqual([
       ['Bench Press', 1, 6, 205, 0, false], // logged set → logged values
       ['Bench Press', 2, 8, 185, 0, false], // unlogged set → planned values

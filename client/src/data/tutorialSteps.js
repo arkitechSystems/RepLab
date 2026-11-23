@@ -64,8 +64,11 @@ export const PHASE_1A = [
 //
 // Step 1 spotlights the "+ Create" button on the Workouts hub (fires
 // `create-menu-opened`). Step 2 spotlights "Create a Workout" in the menu
-// that opens (fires `create-workout-chosen` and navigates to CreateWorkout).
-// The last two steps spotlight the add-exercise search and save button there.
+// that opens (fires `create-workout-chosen` and opens the Create a Workout
+// name prompt; Confirm opens the session screen in create mode,
+// /session/create). The last two steps spotlight its Add Exercise button and
+// its Create Workout button (data-tutorial add-exercise-search /
+// save-workout-btn in WorkoutSession.jsx).
 export const PHASE_1B = [
   {
     type: 'spotlight',
@@ -89,7 +92,7 @@ export const PHASE_1B = [
     type: 'spotlight',
     target: '[data-tutorial="add-exercise-search"]',
     title: 'Add Exercises',
-    description: 'Search the RepLab library or type a custom name, then set your sets and reps. Use the ⋯ menu on a card to move, swap or remove an exercise, and tap a set\'s type to mark warm-up or drop sets.',
+    description: 'Search the RepLab library or type a custom name, then enter each set\'s weight and reps — they become the workout\'s goals. Use the ⋯ menu on a card to move, swap or remove an exercise, and tap a set\'s type to mark warm-up or drop sets.',
     position: 'bottom',
   },
   {

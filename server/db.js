@@ -149,6 +149,7 @@ export function sessionExercisesForTemplate(wdExercises, entries) {
     return {
       name: ex.name,
       setType: ex.setType || sets[0]?.setType || 'straight',
+      ...(ex.supersetLabel ? { supersetLabel: ex.supersetLabel } : {}),
       sets: sets.map((s, i) => {
         const logged = mine[i];
         const loggedWeight = logged ? Number(logged.weight) : 0;
@@ -175,28 +176,34 @@ async function batchInsertTemplateExercises(client, templateId, exercises, userI
 
   const values = [];
   const params = [];
-  let paramIdx = 1;
+  const addRow = (row) => {
+    const start = params.length + 1;
+    values.push(`(${row.map((_, i) => `$${start + i}`).join(', ')})`);
+    params.push(...row);
+  };
   for (let sortOrder = 0; sortOrder < exercises.length; sortOrder++) {
     const ex = exercises[sortOrder];
     if (ex.isSectionHeader) {
       // Section headers carry exercise_id = NULL — `name` is a section label.
-      values.push(`($${paramIdx}, $${paramIdx + 1}, $${paramIdx + 2}, $${paramIdx + 3}, $${paramIdx + 4}, $${paramIdx + 5}, $${paramIdx + 6}, $${paramIdx + 7}, $${paramIdx + 8}, $${paramIdx + 9})`);
-      params.push(templateId, null, ex.name, 'straight', 1, 0, 0, sortOrder, true, ex.sectionNotes || '');
-      paramIdx += 10;
+      addRow([templateId, null, ex.name, 'straight', 1, 0, 0, sortOrder, true, ex.sectionNotes || '', null]);
       continue;
     }
     const sets = ex.sets || [{ reps: 10, weight: 0 }];
     const setType = ex.setType || 'straight';
     const resolvedId = idFor(ex.name);
+    // Superset label (A1, A2…) — set on the workout session screen.
+    const supersetLabel = typeof ex.supersetLabel === 'string' && ex.supersetLabel.trim()
+      ? ex.supersetLabel.trim().slice(0, 10)
+      : null;
     for (let i = 0; i < sets.length; i++) {
-      values.push(`($${paramIdx}, $${paramIdx + 1}, $${paramIdx + 2}, $${paramIdx + 3}, $${paramIdx + 4}, $${paramIdx + 5}, $${paramIdx + 6}, $${paramIdx + 7}, $${paramIdx + 8}, $${paramIdx + 9})`);
-      params.push(templateId, resolvedId, ex.name, setType, i + 1, sets[i].reps || 10, sets[i].weight || 0, sortOrder, false, '');
-      paramIdx += 10;
+      // A set's own type (warm-up, drop…) when the caller sends one; else the exercise's.
+      const rowType = typeof sets[i]?.setType === 'string' && sets[i].setType ? sets[i].setType : setType;
+      addRow([templateId, resolvedId, ex.name, rowType, i + 1, sets[i].reps || 10, sets[i].weight || 0, sortOrder, false, '', supersetLabel]);
     }
   }
   if (values.length > 0) {
     await client.query(
-      `INSERT INTO template_exercises (template_id, exercise_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes) VALUES ${values.join(', ')}`,
+      `INSERT INTO template_exercises (template_id, exercise_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes, superset_label) VALUES ${values.join(', ')}`,
       params
     );
   }
@@ -251,6 +258,7 @@ export async function syncEmptyTemplateFromWorkoutData(client, userId, templateI
     return {
       name: ex && ex.name,
       setType: (ex && ex.setType) || 'straight',
+      ...(ex && ex.supersetLabel ? { supersetLabel: ex.supersetLabel } : {}),
       sets: sets.map((s) => ({
         reps: s && s.plannedReps != null ? s.plannedReps : 10,
         // Seed the template's suggestedWeight from whatever weight the user
@@ -921,6 +929,7 @@ const db = {
             exerciseDescription: ex.exercise_description || '',
             videoUrl: ex.video_url || '',
             programNotes: ex.program_notes || '',
+            ...(ex.superset_label ? { supersetLabel: ex.superset_label } : {}),
             sets: [],
           });
         }
@@ -930,6 +939,16 @@ const db = {
           suggestedWeight: Number(ex.suggested_weight),
           setType: ex.set_type || 'straight',
         });
+      }
+      // Sets can carry their own type (a warm-up first set, a drop set last);
+      // the exercise's type is the most common one, not just set 1's.
+      for (const g of grouped) {
+        if (g.isSectionHeader || g.sets.length < 2) continue;
+        const counts = new Map();
+        for (const s of g.sets) counts.set(s.setType, (counts.get(s.setType) || 0) + 1);
+        let best = g.setType;
+        for (const [type, n] of counts) if (n > (counts.get(best) || 0)) best = type;
+        g.setType = best;
       }
 
       return {
@@ -2383,12 +2402,12 @@ const db = {
           const params = [];
           let pi = 1;
           for (const ex of srcExercises) {
-            values.push(`($${pi}, $${pi+1}, $${pi+2}, $${pi+3}, $${pi+4}, $${pi+5}, $${pi+6}, $${pi+7}, $${pi+8}, $${pi+9})`);
-            params.push(newTmplId, ex.exercise_id ?? null, ex.name, ex.set_type, ex.set_number, ex.planned_reps, ex.suggested_weight, ex.sort_order, ex.is_section_header || false, ex.section_notes || '');
-            pi += 10;
+            values.push(`($${pi}, $${pi+1}, $${pi+2}, $${pi+3}, $${pi+4}, $${pi+5}, $${pi+6}, $${pi+7}, $${pi+8}, $${pi+9}, $${pi+10})`);
+            params.push(newTmplId, ex.exercise_id ?? null, ex.name, ex.set_type, ex.set_number, ex.planned_reps, ex.suggested_weight, ex.sort_order, ex.is_section_header || false, ex.section_notes || '', ex.superset_label ?? null);
+            pi += 11;
           }
           await client.query(
-            `INSERT INTO template_exercises (template_id, exercise_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes) VALUES ${values.join(', ')}`,
+            `INSERT INTO template_exercises (template_id, exercise_id, name, set_type, set_number, planned_reps, suggested_weight, sort_order, is_section_header, section_notes, superset_label) VALUES ${values.join(', ')}`,
             params
           );
         }

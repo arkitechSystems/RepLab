@@ -31,6 +31,9 @@ run against the same container:
   previous user's data.
 - `session.spec.js` — checking/unchecking a set saves at once, a logged set is
   there after a reload, Mark Complete.
+- `create-workout.spec.js` — Create a Workout on the session screen: the entered weight and reps
+  are saved as the workout's goals in My Workouts, a scheduled start shows them as Goal Wt /
+  Goal Reps, and an exercise added mid-session stays out of the saved workout.
 - `offline.spec.js` — sets logged offline survive a reload and save once on
   reconnect, several offline changes go out in order, Mark Complete offline.
 
