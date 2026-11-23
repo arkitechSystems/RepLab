@@ -51,6 +51,11 @@
         </provider>
     </application>
 
+    <!-- screenOrientation="portrait" makes Play infer a required portrait
+         screen, which blocks installs on devices without one (some tablets,
+         Chromebooks, Android XR). Portrait is preferred, not required. -->
+    <uses-feature android:name="android.hardware.screen.portrait" android:required="false" />
+
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
