@@ -32,9 +32,13 @@ router.post('/', authMiddleware, validateBody(templateBody), async (req, res) =>
     if (programId == null && req.body.saveToMyWorkouts === true) {
       programId = await findOrCreateMyWorkoutsProgram(pool, req.userId);
     }
-    const result = await db.createTemplate(req.userId, name, description || '', exercises, programId, isRest);
+    // slotIndex: Create a Workout opened from a program builder day puts the
+    // new workout on that day (programLayout.js).
+    const slotIndex = programId != null && Number.isInteger(req.body.slotIndex) ? req.body.slotIndex : undefined;
+    const result = await db.createTemplate(req.userId, name, description || '', exercises, programId, isRest, { slotIndex });
     res.status(201).json(result);
   } catch (err) {
+    if (err.status === 400) return res.status(400).json({ error: err.message });
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -60,7 +64,9 @@ router.put('/:id', authMiddleware, validateBody(templateBody), async (req, res) 
   try {
     const { name, description, exercises } = req.body;
     const templateId = Number(req.params.id);
-    const result = await db.updateTemplate(req.userId, templateId, name, description || '', exercises);
+    // alsoApplyTo: "apply this change to all copies in this program".
+    const alsoApplyTo = Array.isArray(req.body.alsoApplyTo) ? req.body.alsoApplyTo : [];
+    const result = await db.updateTemplate(req.userId, templateId, name, description || '', exercises, { alsoApplyTo });
     if (!result) {
       return res.status(404).json({ error: 'Template not found' });
     }

@@ -13,14 +13,23 @@ describe('createWorkoutUrl / parseCreateWorkoutParams', () => {
     const url = createWorkoutUrl({ name: '  Push Day ', description: 'Chest & tris', programId: 12, date: '2026-11-25' });
     expect(url.startsWith('/session/create?')).toBe(true);
     expect(parseCreateWorkoutParams(url.slice(url.indexOf('?')))).toEqual({
-      name: 'Push Day', description: 'Chest & tris', programId: 12, date: '2026-11-25',
+      name: 'Push Day', description: 'Chest & tris', programId: 12, date: '2026-11-25', slot: null,
     });
   });
 
   it('leaves out an empty description, no program and a bad date', () => {
     const url = createWorkoutUrl({ name: 'Legs', description: '  ', programId: null, date: 'tomorrow' });
     expect(url).toBe('/session/create?name=Legs');
-    expect(parseCreateWorkoutParams('?name=Legs&programId=abc')).toEqual({ name: 'Legs', description: '', programId: null, date: null });
+    expect(parseCreateWorkoutParams('?name=Legs&programId=abc')).toEqual({ name: 'Legs', description: '', programId: null, date: null, slot: null });
+  });
+
+  it('carries the program builder day (slot) only with a program', () => {
+    const url = createWorkoutUrl({ name: 'Legs', programId: 4, slot: 9 });
+    expect(url).toBe('/session/create?name=Legs&programId=4&slot=9');
+    expect(parseCreateWorkoutParams(url.slice(url.indexOf('?'))).slot).toBe(9);
+    expect(createWorkoutUrl({ name: 'Legs', slot: 9 })).toBe('/session/create?name=Legs');
+    expect(parseCreateWorkoutParams('?name=Legs&slot=9').slot).toBeNull();
+    expect(parseCreateWorkoutParams('?name=Legs&programId=4&slot=x').slot).toBeNull();
   });
 });
 

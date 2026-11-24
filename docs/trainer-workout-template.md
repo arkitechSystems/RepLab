@@ -46,6 +46,18 @@ Where the app's options live (keep the template's lists equal to these):
   (`suggestedWeight`) and goal reps (`plannedReps`) as that day's Goal Wt / Goal Reps (2026-11-22),
   so the sheet's Goal Wt / Goal Reps carry straight through to the session.
 - Programs: 7 templates per week, rest days are `isRest` templates (week count = templates / 7).
+- **In-app program builder (2026-11-23)** — the program page's Weekly / Monthly "sample calendar"
+  (`client/src/components/ProgramCalendar.jsx`; Create Program opens it) uses the same layout as
+  the sheet's **Schedule** sheet and the planned Trainer Central builder: **Week N × Day 1–7**, each
+  day a workout or Rest, whole weeks only (max 52, same as the sheet). A workout used on several
+  days is stored as a separate copy per day (own goal weights), exactly what the importer should
+  write for a Schedule row that names the same "Workout N" on several days. Optional **start
+  weekday** ("Day 1 is Monday" → days show Mon–Sun) is stored in `programs.program_details`
+  `startWeekday` (0 = Sunday … 6 = Saturday); the sheet has no such field yet — if one is added,
+  the importer writes it there. Server: `PUT /programs/:id/layout` (`server/programLayout.js`)
+  rewrites a program's day list in one transaction — the importer / web builder can reuse it
+  (`{ templateId } | { copyOf } | { rest: true }` per day). **Importer: no change needed** (not
+  built yet; it already plans Week × Day 1–7 with rest days as `isRest` templates).
 
 ## Decisions (2026-10-11)
 

@@ -12,6 +12,7 @@
 // the database would refuse or misstore anyway. Unknown fields are kept
 // (workout_data is stored as JSON and grows new fields over time).
 import { z } from 'zod';
+import { MAX_PROGRAM_SLOTS } from './programLayout.js';
 
 export const MAX_NAME_LEN = 200;
 export const MAX_DESCRIPTION_LEN = 5000;
@@ -122,6 +123,12 @@ export const templateBody = z.looseObject({
     .nullable().optional(),
   programId: id.nullable().optional(),
   isRest: z.boolean({ error: 'must be true or false' }).nullable().optional(),
+  // POST: put the new workout on this day of its program (0 = Week 1 Day 1).
+  slotIndex: z.number({ error: 'must be a day number' }).int('must be a day number')
+    .min(0, 'must be a day number').max(MAX_PROGRAM_SLOTS - 1, 'must be a day number')
+    .nullable().optional(),
+  // PUT: also update these copies of the workout in the same program.
+  alsoApplyTo: z.array(id, { error: 'must be a list' }).max(MAX_PROGRAM_SLOTS, 'too many copies').optional(),
 });
 
 // Messages that already read as a full sentence ("Program name is required")

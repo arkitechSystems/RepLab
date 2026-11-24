@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { DAY_SESSION_NAME_JOIN, sessionDisplayNameSql } from './workoutDayName.js';
 import { searchExercises } from './exerciseSearch.js';
 import { COMMUNITY_ITEM_TYPES } from './communityItems.js';
+import { applyProgramLayout, placeTemplateAtSlot } from './programLayout.js';
 
 // Password reset tokens are high-entropy random strings. We hash them with
 // SHA-256 before storing so a DB leak can't be used to reset any account.
@@ -885,6 +886,24 @@ const db = {
     }
   },
 
+  // Program builder: rewrite the program's day list in one transaction
+  // (programLayout.js). null = not the user's program; throws LayoutError
+  // (status 400) for a bad slot list.
+  async setProgramLayout(userId, programId, slots, opts = {}) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const result = await applyProgramLayout(client, userId, programId, slots, opts);
+      await client.query(result ? 'COMMIT' : 'ROLLBACK');
+      return result;
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  },
+
   // Templates
   async getTemplates(userId) {
     // Get all templates visible to this user
@@ -968,7 +987,11 @@ const db = {
     });
   },
 
-  async updateTemplate(userId, templateId, name, description, exercises) {
+  // alsoApplyTo: ids of other copies of this workout in the same program
+  // (program builder, "apply this change to all copies in this program").
+  // Only the user's own, non-rest templates in the same program are updated;
+  // other ids are ignored. All in one transaction.
+  async updateTemplate(userId, templateId, name, description, exercises, { alsoApplyTo = [] } = {}) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -981,17 +1004,29 @@ const db = {
         await client.query('ROLLBACK');
         return null;
       }
-      // Linked naming: the (possibly new) name shows on every dated day.
-      await clearDayNames(client, userId, templateId);
-
-      // Remove old exercises and batch insert new ones
-      await client.query('DELETE FROM template_exercises WHERE template_id = $1', [templateId]);
-      if (exercises) {
-        await batchInsertTemplateExercises(client, templateId, exercises, userId);
+      let copyIds = [];
+      if (alsoApplyTo.length && rows[0].program_id != null) {
+        const { rows: copies } = await client.query(
+          `UPDATE templates SET name = $1, description = $2
+            WHERE id = ANY($3) AND id <> $4 AND user_id = $5 AND program_id = $6
+              AND NOT COALESCE(is_rest, false)
+            RETURNING id`,
+          [name, description, alsoApplyTo, templateId, userId, rows[0].program_id]
+        );
+        copyIds = copies.map((r) => r.id);
+      }
+      for (const tid of [templateId, ...copyIds]) {
+        // Linked naming: the (possibly new) name shows on every dated day.
+        await clearDayNames(client, userId, tid);
+        // Remove old exercises and batch insert new ones
+        await client.query('DELETE FROM template_exercises WHERE template_id = $1', [tid]);
+        if (exercises) {
+          await batchInsertTemplateExercises(client, tid, exercises, userId);
+        }
       }
 
       await client.query('COMMIT');
-      return { id: templateId, name, description };
+      return { id: templateId, name, description, ...(copyIds.length ? { copiesUpdated: copyIds } : {}) };
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;
@@ -1000,7 +1035,10 @@ const db = {
     }
   },
 
-  async createTemplate(userId, name, description, exercises, programId, isRest) {
+  // slotIndex (Create a Workout opened from a program builder day): put the
+  // new workout on that day of the program (0 = Week 1 Day 1) in the same
+  // transaction — programLayout.js placeTemplateAtSlot.
+  async createTemplate(userId, name, description, exercises, programId, isRest, { slotIndex } = {}) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -1021,9 +1059,13 @@ const db = {
       if (exercises) {
         await batchInsertTemplateExercises(client, templateId, exercises, userId);
       }
+      let slotPlaced = false;
+      if (programId && Number.isInteger(slotIndex) && slotIndex >= 0) {
+        slotPlaced = await placeTemplateAtSlot(client, userId, programId, templateId, slotIndex);
+      }
 
       await client.query('COMMIT');
-      return { id: templateId, name, description };
+      return { id: templateId, name, description, ...(slotPlaced ? { slotPlaced: true } : {}) };
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;

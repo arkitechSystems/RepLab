@@ -30,6 +30,8 @@ import CreateWorkoutModal from '../components/CreateWorkoutModal';
 import { createWorkoutUrl } from '../utils/createWorkout';
 import { APP_SHARE_FOOTER, workoutLabel } from '../utils/shareText';
 import ExternalShareButtons from '../components/ExternalShareButtons';
+import ProgramCalendar from '../components/ProgramCalendar';
+import { CalendarViewToggle } from '../components/calendar/CalendarViews';
 
 const DAY_NAMES_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -748,7 +750,8 @@ function ProgramDetailsCard({ details }) {
   // "Main Goal" duplicates the program-type pill on the Browse Library card,
   // so it's filtered out here too. "Descriptions" / "Schedule" arrays are
   // rendered above as their own blocks so don't duplicate them in the grid.
-  const SKIP = new Set(['Overview', 'overview', 'PDF', 'Main Goal', 'Descriptions', 'Schedule']);
+  // startWeekday: the program builder's "Day 1 is …" setting, not a detail.
+  const SKIP = new Set(['Overview', 'overview', 'PDF', 'Main Goal', 'Descriptions', 'Schedule', 'startWeekday']);
   const entries = Object.entries(details)
     .filter(([k]) => !SKIP.has(k))
     .sort(([a], [b]) => {
@@ -1166,6 +1169,14 @@ export default function Workouts() {
   const [editMode, setEditMode] = useState(false);
   const [editName, setEditName] = useState('');
   const [selectedWeek, setSelectedWeek] = useState(null); // week number (1-based)
+  // Program detail: List (the week / workout cards) or the program builder's
+  // sample calendar (Weekly / Monthly, components/ProgramCalendar). Back to
+  // List whenever another program is opened, unless it was opened with a
+  // view (location state from Create Program / Create a Workout / Edit).
+  const [programView, setProgramView] = useState('list'); // 'list' | 'week' | 'month'
+  const [programViewWeek, setProgramViewWeek] = useState(0); // 0-based
+  // { programId, view, week } to apply when that program opens.
+  const pendingProgramViewRef = useRef(null);
   // Begin Program modal state
   const [beginModal, setBeginModal] = useState(null); // program object
   const [beginDateInput, setBeginDateInput] = useState('');
@@ -1256,6 +1267,18 @@ export default function Workouts() {
   useEffect(() => {
     if (location.state?.openSection) {
       setSelectedGroup(location.state.openSection);
+      // Open a program straight onto its sample calendar (program builder).
+      if (location.state.openProgram) {
+        const view = location.state.programView;
+        pendingProgramViewRef.current = {
+          programId: location.state.openProgram,
+          view: view === 'month' || view === 'week' ? view : 'list',
+          week: Number(location.state.programWeek) || 0,
+        };
+        setSelectedProgram(location.state.openProgram);
+        setSelectedWeek(null);
+        setEditMode(false);
+      }
       // Clear the state so it doesn't re-trigger on re-render
       window.history.replaceState({}, '');
     }
@@ -1292,6 +1315,18 @@ export default function Workouts() {
   }, [tutorialPointer, loading]);
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
+
+  useEffect(() => {
+    const pending = pendingProgramViewRef.current;
+    if (pending && selectedProgram != null && pending.programId === selectedProgram) {
+      pendingProgramViewRef.current = null;
+      setProgramView(pending.view);
+      setProgramViewWeek(pending.week);
+      return;
+    }
+    setProgramView('list');
+    setProgramViewWeek(0);
+  }, [selectedProgram]);
 
   // Fetch trainer application status when viewing partners page
   useEffect(() => {
@@ -2436,7 +2471,37 @@ export default function Workouts() {
   // Program detail view — show individual templates
   if (selectedProgram) {
     const program = enrichedPrograms.find((p) => p.id === selectedProgram);
-    if (!program) return null;
+    // A program opened from another screen (e.g. just created) may not be
+    // in the saved copy yet — wait for the live load.
+    if (!program) return loading ? <LoadingSpinnerOverlay /> : null;
+
+    // List / Weekly / Monthly toggle — not for the My Workouts bucket or the
+    // featured program (own screen). The calendar is editable only for the
+    // user's own programs; library programs are view-only.
+    const canShowCalendar = !program.isFeatured && (program.name || '').trim().toLowerCase() !== 'my workouts';
+    const programViewToggle = canShowCalendar && !editMode && (
+      <div className="mb-3">
+        <CalendarViewToggle
+          value={programView}
+          onChange={(v) => { if (v !== 'list' && programView === 'list') setProgramViewWeek(selectedWeek ? selectedWeek - 1 : 0); setProgramView(v); }}
+          options={[{ id: 'list', label: 'List' }, { id: 'week', label: 'Weekly' }, { id: 'month', label: 'Monthly' }]}
+          ariaLabel="Program view"
+        />
+      </div>
+    );
+    const showProgramCalendar = canShowCalendar && programView !== 'list';
+    const programCalendar = showProgramCalendar && (
+      <ProgramCalendar
+        key={`${program.id}-${programViewWeek}`}
+        program={program}
+        allTemplates={templates}
+        programs={programs}
+        view={programView}
+        initialWeek={programViewWeek}
+        editable={program.userId !== null}
+        onSaved={() => fetchData()}
+      />
+    );
 
     // In My Workouts, hide rest-day templates from the program-detail list —
     // they're scheduling placeholders, not workouts the user wants to see
@@ -2517,10 +2582,12 @@ export default function Workouts() {
 
           <div className="px-4">
             <ProgramOverviewHero program={program} weekCount={weeks.length} />
-            {program.programDetails && Object.keys(program.programDetails).length > 0 && (
+            {program.programDetails && Object.keys(program.programDetails).some((k) => k !== 'startWeekday') && (
               <ProgramDetailsCard details={program.programDetails} />
             )}
-            <div className="space-y-4 pb-4">
+            {programViewToggle}
+            {programCalendar}
+            <div className={`space-y-4 pb-4${showProgramCalendar ? ' hidden' : ''}`}>
               {(() => {
                 // Track which phases have already appeared so we only show a
                 // divider for their first occurrence. Programs whose phase
@@ -2718,7 +2785,14 @@ export default function Workouts() {
           </button>
         </div>
 
-        <div className="px-4">
+        {(programViewToggle || programCalendar) && (
+          <div className="px-4">
+            {programViewToggle}
+            {programCalendar}
+          </div>
+        )}
+
+        <div className={`px-4${showProgramCalendar ? ' hidden' : ''}`}>
           <div className="space-y-3 pb-4">
             {weekTemplates.map((t, idx) => {
               const isExpanded = expandedWorkoutCard === t.id;

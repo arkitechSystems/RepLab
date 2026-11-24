@@ -8,25 +8,30 @@ export const CREATE_WORKOUT_PATH = '/session/create';
 // query string, so a reload keeps the name / description / program (the
 // exercises typed so far are lost on reload — nothing is saved until Create
 // Workout is pressed). `date` (from the Calendar) puts the new workout on
-// that day after it's saved.
-export function createWorkoutUrl({ name, description, programId, date } = {}) {
+// that day after it's saved. `slot` (program builder) puts it on that day of
+// the program (0 = Week 1 Day 1); it needs a programId.
+export function createWorkoutUrl({ name, description, programId, date, slot } = {}) {
   const q = new URLSearchParams();
   q.set('name', (name || '').trim());
   if (description && description.trim()) q.set('description', description.trim());
   if (programId) q.set('programId', String(programId));
   if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) q.set('date', date);
+  if (programId && Number.isInteger(slot) && slot >= 0) q.set('slot', String(slot));
   return `${CREATE_WORKOUT_PATH}?${q.toString()}`;
 }
 
 export function parseCreateWorkoutParams(search) {
   const q = new URLSearchParams(search || '');
   const programId = Number(q.get('programId'));
+  const hasProgram = Number.isInteger(programId) && programId > 0;
   const date = q.get('date');
+  const slot = q.get('slot');
   return {
     name: (q.get('name') || '').trim(),
     description: (q.get('description') || '').trim(),
-    programId: Number.isInteger(programId) && programId > 0 ? programId : null,
+    programId: hasProgram ? programId : null,
     date: date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null,
+    slot: hasProgram && slot && /^\d+$/.test(slot) ? Number(slot) : null,
   };
 }
 
@@ -53,7 +58,8 @@ const positive = (v) => {
 // `reps`); bodyweight / blank weight is 0. Blank reps fall back to the set's
 // planned reps (the server's default is 10). Set types, section headers and
 // superset labels are kept.
-export function buildCreateWorkoutBody({ name, description, programId, exercises, entries, goals, keyFor }) {
+// slot (program builder): the program day the new workout goes on.
+export function buildCreateWorkoutBody({ name, description, programId, slot, exercises, entries, goals, keyFor }) {
   const list = (exercises || []).map((ex, idx) => {
     if (ex.isSectionHeader) {
       return { name: ex.name, isSectionHeader: true, sectionNotes: ex.sectionNotes || '', sets: [] };
@@ -91,6 +97,7 @@ export function buildCreateWorkoutBody({ name, description, programId, exercises
     description: (description || '').trim(),
     exercises: list,
     ...(programId ? { programId: Number(programId) } : { saveToMyWorkouts: true }),
+    ...(programId && Number.isInteger(slot) && slot >= 0 ? { slotIndex: slot } : {}),
   };
 }
 

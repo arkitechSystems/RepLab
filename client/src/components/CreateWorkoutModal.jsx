@@ -7,10 +7,12 @@ import { ownProgramChoices } from '../utils/createWorkout';
 // "no program" saves the workout to My Workouts. Confirm hands the values to
 // the parent, which opens the session screen in create mode — nothing is
 // saved until Create Workout is pressed there.
-export default function CreateWorkoutModal({ programs, onCancel, onConfirm }) {
+// lockedProgram (program builder day): the workout goes in that program —
+// shown instead of the program list.
+export default function CreateWorkoutModal({ programs, lockedProgram, onCancel, onConfirm }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [programId, setProgramId] = useState('');
+  const [programId, setProgramId] = useState(lockedProgram ? String(lockedProgram.id) : '');
   const [error, setError] = useState('');
   const choices = ownProgramChoices(programs);
   const canConfirm = !!name.trim();
@@ -89,6 +91,9 @@ export default function CreateWorkoutModal({ programs, onCancel, onConfirm }) {
           />
 
           <label htmlFor="create-workout-program" className={labelClass} style={labelStyle}>Program</label>
+          {lockedProgram ? (
+            <p id="create-workout-program" className="text-sm font-semibold text-white">{lockedProgram.name}</p>
+          ) : (
           <select
             id="create-workout-program"
             value={programId}
@@ -105,6 +110,7 @@ export default function CreateWorkoutModal({ programs, onCancel, onConfirm }) {
               ))
             )}
           </select>
+          )}
         </div>
         <div className="px-5 pb-5 flex gap-3">
           <button

@@ -18,17 +18,14 @@ import StartEmptyWorkoutModal from '../components/StartEmptyWorkoutModal';
 import CreateWorkoutModal from '../components/CreateWorkoutModal';
 import { createWorkoutUrl } from '../utils/createWorkout';
 import { buildCopiedWorkoutData } from '../utils/copyWorkout';
+// Weekly cards, monthly grid, legend, arrows and the Weekly / Monthly toggle
+// are shared with the program builder's sample calendar (same look).
+// Monthly workouts are red (MONTH_ACCENT; was MONTHLY_ALL_RED here).
+import {
+  DAY_NAMES, CalendarNavButtons, CalendarViewToggle, WeekDayCard, MonthDayHeaders, MonthDayCell, MonthLegend,
+} from '../components/calendar/CalendarViews';
 
-const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const FULL_DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-// Weekly view top-line color cycle — matches Nike test homepage carousel palette + extensions.
-// Order: red, blue, green, purple, orange, yellow, cyan (index into weekDays row).
-const WEEK_ACCENT_COLORS = ['#ef4444', '#3b82f6', '#22c55e', '#a855f7', '#f97316', '#eab308', '#06b6d4'];
-
-// When true, monthly calendar workouts render in red instead of per-workout palette colors.
-// Flip to false to revert to the original per-workout colors.
-const MONTHLY_ALL_RED = true;
 
 // Restores the Calendar's view + visible week/month from the URL (written by
 // the sync effect in Calendar), as offsets from today. Missing or malformed
@@ -749,81 +746,23 @@ export default function Calendar() {
           : format(monthDate, 'MMMM yyyy')
         }
       >
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => viewMode === 'week' ? setWeekOffset(w => w - 1) : setMonthOffset(m => m - 1)}
-            aria-label="Previous"
-            className="relative w-9 h-9 rounded-full bg-white/10 flex items-center justify-center active:scale-90 transition-transform before:absolute before:content-[''] before:left-1/2 before:top-1/2 before:-translate-x-1/2 before:-translate-y-1/2 before:w-[44px] before:h-[44px]"
-          >
-            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-            </svg>
-          </button>
-          {((viewMode === 'week' && !isCurrentWeek) || (viewMode === 'month' && !isCurrentMonth)) && (
-            <button
-              onClick={() => viewMode === 'week' ? setWeekOffset(0) : setMonthOffset(0)}
-              className="px-3 h-9 rounded-full bg-white/10 text-xs font-semibold text-white active:scale-90 transition-transform"
-            >
-              Today
-            </button>
-          )}
-          <button
-            onClick={() => viewMode === 'week' ? setWeekOffset(w => w + 1) : setMonthOffset(m => m + 1)}
-            aria-label="Next"
-            className="relative w-9 h-9 rounded-full bg-white/10 flex items-center justify-center active:scale-90 transition-transform before:absolute before:content-[''] before:left-1/2 before:top-1/2 before:-translate-x-1/2 before:-translate-y-1/2 before:w-[44px] before:h-[44px]"
-          >
-            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-            </svg>
-          </button>
-        </div>
+        <CalendarNavButtons
+          onPrev={() => viewMode === 'week' ? setWeekOffset(w => w - 1) : setMonthOffset(m => m - 1)}
+          onNext={() => viewMode === 'week' ? setWeekOffset(w => w + 1) : setMonthOffset(m => m + 1)}
+          onToday={() => viewMode === 'week' ? setWeekOffset(0) : setMonthOffset(0)}
+          showToday={(viewMode === 'week' && !isCurrentWeek) || (viewMode === 'month' && !isCurrentMonth)}
+        />
       </StickyHeader>
 
       {/* View Mode Toggle — Nike style */}
       <div className="px-4 mb-3">
-        <div
-          data-tutorial="calendar-view-toggle"
-          className="flex p-[3px]"
-          style={{
-            background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
-            borderRadius: '2px',
-            boxShadow: '0 12px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
-          }}
-        >
-          {[
-            { id: 'week', label: 'Weekly' },
-            { id: 'month', label: 'Monthly' },
-          ].map(({ id, label }) => {
-            const isActive = viewMode === id;
-            return (
-              <button
-                key={id}
-                onClick={() => switchView(id)}
-                className="flex-1 text-[11px] font-bold uppercase py-2.5 active:scale-[0.97] transition-all"
-                style={{
-                  borderRadius: '2px',
-                  letterSpacing: '0.2em',
-                  background: isActive ? 'linear-gradient(135deg, #fff 0%, #e0e0e0 100%)' : 'transparent',
-                  color: isActive ? '#000' : 'rgba(255,255,255,0.45)',
-                  boxShadow: isActive ? '0 4px 14px rgba(255,255,255,0.1)' : 'none',
-                }}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
+        <CalendarViewToggle value={viewMode} onChange={switchView} dataTutorial="calendar-view-toggle" />
       </div>
 
       {/* Monthly View — Heatmap Blocks (NikeCardsTest M03) */}
       {viewMode === 'month' && !loading && !loadError && (
         <div className="px-4 pb-4">
-          {/* Day name headers */}
-          <div className="grid grid-cols-7 gap-1 mb-2">
-            {DAY_NAMES.map((d) => (
-              <div key={d} className="text-center text-[9px] uppercase font-light py-1" style={{ letterSpacing: '0.3em', color: 'rgba(239,68,68,0.9)' }}>{d}</div>
-            ))}
-          </div>
+          <MonthDayHeaders />
           {/* Calendar grid */}
           <div className="grid grid-cols-7 gap-[3px]">
             {monthGridDays.map((date) => {
@@ -832,31 +771,20 @@ export default function Calendar() {
               const workout = getWorkoutForDay(date);
               const dayCompleted = isDayCompleted(date);
               const hasWorkout = workout && !workout.isRest && workout.templateId;
-              const color = getWorkoutColor(workout?.templateName);
               const dateStr = format(date, 'yyyy-MM-dd');
-              const accentHex = MONTHLY_ALL_RED ? '#ef4444' : (color.hex || '#9ca3af');
               const isSkipped = inMonth && hasWorkout && !dayCompleted && !dayIsToday && isBefore(date, new Date());
 
-              let bg = 'rgba(255,255,255,0.02)'; // empty / out-of-month default
-              if (inMonth && dayCompleted) bg = 'rgba(34,197,94,0.32)';
-              else if (inMonth && hasWorkout && !isSkipped) bg = `${accentHex}28`;
-              else if (inMonth && isSkipped) bg = 'rgba(239,68,68,0.10)'; // tinted red so skipped reads at a glance
-              else if (inMonth && workout?.isRest) bg = 'rgba(148,163,184,0.08)'; // muted blue-grey: visibly different from empty
-
-              const dateNumberColor = dayIsToday
-                ? '#fff'
-                : inMonth
-                  ? 'rgba(255,255,255,0.85)'
-                  : 'rgba(255,255,255,0.4)';
-              const labelColor = dayCompleted
-                ? 'rgba(34,197,94,0.9)'
-                : isSkipped
-                  ? 'rgba(255,255,255,0.3)'
-                  : `${accentHex}ee`;
-
               return (
-                <div
+                <MonthDayCell
                   key={dateStr}
+                  dateLabel={format(date, 'd')}
+                  label={hasWorkout ? (workout.templateName || '').slice(0, 3) : ''}
+                  inMonth={inMonth}
+                  isToday={dayIsToday}
+                  hasWorkout={!!hasWorkout}
+                  isRest={!!workout?.isRest}
+                  completed={dayCompleted}
+                  skipped={!!isSkipped}
                   onClick={() => {
                     if (!hasWorkout) return;
                     // Completed day → open the saved session summary at
@@ -873,136 +801,12 @@ export default function Calendar() {
                     }
                     navigateToWorkout(workout.templateId, dateStr);
                   }}
-                  className={`relative min-h-[56px] transition-all ${
-                    !inMonth ? 'opacity-20' : ''
-                  } ${hasWorkout ? 'cursor-pointer active:scale-[0.97]' : ''} ${
-                    dayIsToday ? 'today-white-glow-month' : ''
-                  }`}
-                  style={{
-                    borderRadius: '4px',
-                    background: bg,
-                    // The today cell's shadow comes from the .today-white-glow-month
-                    // class (animated white pulse). Non-today cells get a faint
-                    // hairline inset so the grid reads as a grid.
-                    boxShadow: dayIsToday
-                      ? undefined
-                      : 'inset 0 0 0 1px rgba(255,255,255,0.04)',
-                  }}
-                >
-                  {/* Date number — top-left */}
-                  <div className="absolute top-1 left-1.5 text-[10px] font-black tracking-tight" style={{ color: dateNumberColor }}>
-                    {format(date, 'd')}
-                  </div>
-                  {/* Workout abbreviation — bottom-right */}
-                  {hasWorkout && inMonth && (
-                    <div className="absolute bottom-1 right-1.5 text-[8px] font-bold uppercase truncate max-w-[70%] text-right" style={{ color: labelColor, letterSpacing: '0.05em' }}>
-                      {workout.templateName.slice(0, 3)}
-                    </div>
-                  )}
-                  {/* Completed badge — small filled green check, top-right */}
-                  {dayCompleted && inMonth && (
-                    <div
-                      aria-label="Completed"
-                      style={{
-                        position: 'absolute',
-                        top: '3px', right: '3px',
-                        width: '12px', height: '12px',
-                        borderRadius: '50%',
-                        background: '#22c55e',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        boxShadow: '0 0 6px rgba(34,197,94,0.55)',
-                      }}
-                    >
-                      <svg width="8" height="8" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth={4} aria-hidden="true">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                      </svg>
-                    </div>
-                  )}
-                  {/* Skipped indicator — diagonal red slash, more visible than the prior hairline */}
-                  {isSkipped && (
-                    <div
-                      aria-label="Missed"
-                      style={{
-                        position: 'absolute',
-                        top: '50%', left: '50%',
-                        transform: 'translate(-50%, -50%) rotate(-20deg)',
-                        width: '70%', height: '1.5px',
-                        background: 'rgba(239,68,68,0.55)',
-                      }}
-                    />
-                  )}
-                  {/* Rest indicator (only when explicitly scheduled as rest) */}
-                  {workout?.isRest && inMonth && (
-                    <div className="absolute bottom-1 right-1.5 text-[8px] font-medium uppercase" style={{ letterSpacing: '0.2em', color: 'rgba(148,163,184,0.7)' }}>
-                      Rest
-                    </div>
-                  )}
-                </div>
+                />
               );
             })}
           </div>
 
-          {/* Legend — quick key for the monthly cell states. Same visuals as
-              the weekly cells above (Today red ring, Completed green check,
-              Scheduled red "WO", Missed diagonal slash, Rest label). */}
-          {(() => {
-            const items = [
-              { label: 'Today',     bg: 'transparent', boxShadow: 'inset 0 0 0 2px rgba(255,255,255,0.95), 0 0 10px rgba(255,255,255,0.3)', dateColor: '#fff' },
-              { label: 'Completed', bg: 'rgba(34,197,94,0.32)', dateColor: '#fff', badge: 'check' },
-              { label: 'Scheduled', bg: 'rgba(239,68,68,0.16)', dateColor: '#fff', abbr: 'WO' },
-              { label: 'Missed',    bg: 'rgba(239,68,68,0.10)', dateColor: '#fff', slash: true },
-              { label: 'Rest',      bg: 'rgba(148,163,184,0.08)', dateColor: '#fff', restLabel: true },
-            ];
-            return (
-              <div className="mt-5 px-2 py-3">
-                <p className="text-[9px] uppercase font-bold tracking-[0.3em] text-white/40 text-center mb-3">Legend</p>
-                <div className="flex items-start justify-around gap-1">
-                  {items.map((it) => (
-                    <div key={it.label} className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
-                      <div
-                        className="relative w-9 h-9"
-                        style={{
-                          background: it.bg,
-                          borderRadius: '4px',
-                          boxShadow: it.boxShadow,
-                        }}
-                      >
-                        <span className="absolute top-0.5 left-1 text-[9px] font-black" style={{ color: it.dateColor }}>1</span>
-                        {it.badge === 'check' && (
-                          <div style={{
-                            position: 'absolute', top: '2px', right: '2px',
-                            width: '10px', height: '10px', borderRadius: '50%',
-                            background: '#22c55e',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            boxShadow: '0 0 4px rgba(34,197,94,0.55)',
-                          }}>
-                            <svg width="7" height="7" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth={4.5} aria-hidden="true">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                            </svg>
-                          </div>
-                        )}
-                        {it.abbr && (
-                          <span className="absolute bottom-0.5 right-1 text-[7px] font-bold uppercase" style={{ color: 'rgba(239,68,68,0.9)' }}>{it.abbr}</span>
-                        )}
-                        {it.slash && (
-                          <div style={{
-                            position: 'absolute', top: '50%', left: '50%',
-                            transform: 'translate(-50%, -50%) rotate(-20deg)',
-                            width: '70%', height: '1.5px',
-                            background: 'rgba(239,68,68,0.65)',
-                          }} />
-                        )}
-                        {it.restLabel && (
-                          <span className="absolute bottom-0 right-0.5 text-[6px] font-medium uppercase" style={{ letterSpacing: '0.15em', color: 'rgba(148,163,184,0.85)' }}>Rest</span>
-                        )}
-                      </div>
-                      <span className="text-[9px] uppercase font-medium text-white/55 tracking-wider text-center leading-tight">{it.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })()}
+          <MonthLegend />
         </div>
       )}
 
@@ -1204,146 +1008,24 @@ export default function Calendar() {
                 const workout = getWorkoutForDay(date);
                 const dayIsToday = isToday(date);
                 const isRest = workout?.isRest;
-                const dayCompleted = isDayCompleted(date);
-                const color = getWorkoutColor(workout?.templateName);
                 const hasWorkout = workout && !isRest && workout.templateId;
-                const accentHex = '#EF4444';
-
-                const statusLabel = dayCompleted
-                  ? 'Complete'
-                  : isRest
-                    ? 'Rest Day'
-                    : dayIsToday
-                      ? 'Today'
-                      : hasWorkout
-                        ? 'Scheduled'
-                        : 'Rest Day';
-                // Status text color: green for complete, red for today, faint
-                // white otherwise so it's clear at a glance which day is which.
-                const statusColor = dayCompleted
-                  ? 'rgba(34,197,94,0.95)'
-                  : dayIsToday
-                    ? 'rgba(239,68,68,0.95)'
-                    : 'rgba(255,255,255,0.45)';
-
-                // Stacked-shadow approach so today + completed can co-exist:
-                //   today     → animated white pulse via .today-white-glow-week
-                //               class (drives the entire box-shadow on today),
-                //               so this branch only handles the non-today layers.
-                //   completed → thick 4px green inset border (no outer glow).
-                // Listing the green inset AFTER means it paints over any other
-                // inset when both apply.
-                const shadowLayers = ['0 4px 12px rgba(0,0,0,0.3)', 'inset 0 1px 0 rgba(255,255,255,0.05)'];
-                if (!dayIsToday) {
-                  shadowLayers.unshift('0 12px 40px rgba(0,0,0,0.5)');
-                }
-                if (dayCompleted) {
-                  shadowLayers.push('inset 0 0 0 4px #22c55e');
-                }
-                const cardBoxShadow = shadowLayers.join(', ');
-
                 return (
-                  <div
+                  <WeekDayCard
                     key={date.toISOString()}
-                    ref={dayIsToday ? weeklyTodayCardRef : undefined}
-                    data-tutorial={idx === 0 ? 'calendar-day-cell' : undefined}
+                    idx={idx}
+                    cardRef={dayIsToday ? weeklyTodayCardRef : undefined}
+                    dataTutorial={idx === 0 ? 'calendar-day-cell' : undefined}
                     onClick={() => handleDayTap(date)}
-                    role={hasWorkout ? 'button' : undefined}
-                    style={{
-                      animationDelay: `${idx * 60}ms`,
-                      position: 'relative',
-                      // Today drops `overflow: hidden` so the white pulse's
-                      // outer glow isn't clipped by ancestor compositing,
-                      // and bumps z-index so the radiant glow paints over
-                      // the next sibling card's opaque background. Without
-                      // this, only the upward glow shows because each
-                      // weekly card has its own gradient that overlaps the
-                      // 12px gap below today.
-                      overflow: dayIsToday ? 'visible' : 'hidden',
-                      zIndex: dayIsToday ? 5 : undefined,
-                      borderRadius: '2px',
-                      background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
-                      // Today's box-shadow comes from .today-white-glow-week
-                      // (animated). Non-today uses the static stack above.
-                      boxShadow: dayIsToday ? undefined : cardBoxShadow,
-                    }}
-                    className={`w-full fade-slide-up transition-all ${hasWorkout ? 'active:scale-[0.98] cursor-pointer' : 'opacity-70'} ${dayIsToday ? 'today-white-glow-week' : ''}`}
-                  >
-                    {/* Shared accent for top bar + ambient spotlight — keep these linked so the card's right-side glow always matches the top line. Switches to green for completed days so they stand out. */}
-                    {(() => {
-                      const topHex = dayCompleted ? '#22c55e' : '#9ca3af';
-                      return (
-                        <>
-                          <div style={{ height: '3px', background: `linear-gradient(90deg, ${topHex}, ${topHex}80, transparent)` }} />
-                          <div style={{ position: 'absolute', top: '-40%', right: '-20%', width: '60%', height: '180%', background: `radial-gradient(circle, ${topHex}26 0%, transparent 60%)`, filter: 'blur(40px)', pointerEvents: 'none' }} />
-                        </>
-                      );
-                    })()}
-
-                    {/* Completed badge — small green check in top-right corner */}
-                    {dayCompleted && (
-                      <div
-                        aria-label="Completed"
-                        style={{
-                          position: 'absolute',
-                          top: '10px',
-                          right: '10px',
-                          width: '20px',
-                          height: '20px',
-                          borderRadius: '50%',
-                          background: '#22c55e',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          boxShadow: '0 0 10px rgba(34,197,94,0.55), inset 0 1px 0 rgba(255,255,255,0.25)',
-                          zIndex: 2,
-                        }}
-                      >
-                        <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth={3.5} aria-hidden="true">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                        </svg>
-                      </div>
-                    )}
-
-                    <div className="relative px-5 py-4 flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-5 min-w-0 flex-1">
-                        {/* Date block */}
-                        <div className="shrink-0 text-center">
-                          <p className="text-[9px] text-white/40 uppercase font-light" style={{ letterSpacing: '0.3em' }}>{DAY_NAMES[date.getDay()]}</p>
-                          <div className="text-[32px] font-black tracking-tight leading-[0.9] mt-1" style={{ color: dayIsToday ? '#ef4444' : dayCompleted ? '#22c55e' : 'white' }}>{format(date, 'd')}</div>
-                        </div>
-                        {/* Workout info */}
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[9px] uppercase font-light" style={{ letterSpacing: '0.25em', color: statusColor }}>
-                            {statusLabel}
-                          </p>
-                          <h3 className="text-[14px] font-black text-white tracking-tight leading-tight mt-1 truncate">
-                            {workout?.templateName || 'Rest Day'}
-                          </h3>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        {/* Edit button */}
-                        <div
-                          role="button"
-                          aria-label={`Edit ${format(date, 'EEEE, MMM d')}`}
-                          onClick={(e) => openEditor(e, date)}
-                          className="w-9 h-9 flex items-center justify-center active:bg-white/15 transition-colors"
-                          style={{ borderRadius: '2px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
-                        >
-                          <svg className="w-4 h-4 text-white/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L16.5 3 21 7.5 7.5 21H3v-4.5z" />
-                          </svg>
-                        </div>
-                        {hasWorkout && (
-                          <svg className="w-4 h-4 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                          </svg>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                    dayName={DAY_NAMES[date.getDay()]}
+                    dayNumber={format(date, 'd')}
+                    title={workout?.templateName || 'Rest Day'}
+                    isToday={dayIsToday}
+                    completed={isDayCompleted(date)}
+                    isRest={!!isRest}
+                    hasWorkout={!!hasWorkout}
+                    onEdit={(e) => openEditor(e, date)}
+                    editLabel={`Edit ${format(date, 'EEEE, MMM d')}`}
+                  />
                 );
               })}
             </div>

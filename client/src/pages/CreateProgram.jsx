@@ -34,7 +34,12 @@ export default function CreateProgram() {
         source: 'create_program_page',
         hasDescription: description.trim().length > 0,
       });
-      navigate('/app');
+      // Straight into the program builder: the new program's (empty)
+      // Week 1 sample calendar, where workouts are added day by day.
+      navigate('/app', {
+        replace: true,
+        state: { openSection: 'my', openProgram: program?.id, programView: 'week', programWeek: 0 },
+      });
     } catch (err) {
       setError(friendlyError(err, "We couldn't create your program. Please try again."));
     } finally {
@@ -80,7 +85,7 @@ export default function CreateProgram() {
             NEW PROGRAM
           </h1>
           <p className="text-sm text-wf-gray-400 mb-5 leading-relaxed">
-            Create your program, then add workouts to it.
+            Name your program, then build it week by week on its calendar.
           </p>
 
           {error && (

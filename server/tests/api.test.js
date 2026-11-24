@@ -97,6 +97,7 @@ vi.mock('../db.js', () => {
     createProgram: vi.fn(),
     updateProgram: vi.fn(),
     deleteProgram: vi.fn(),
+    setProgramLayout: vi.fn(),
 
     // Templates
     getTemplates: vi.fn(),
@@ -771,6 +772,52 @@ describe('Program Routes', () => {
       expect(res.status).toBe(404);
     });
   });
+
+  // Program builder (sample calendar). The transaction itself is covered
+  // against a real database in programLayout.test.js.
+  describe('PUT /programs/:id/layout', () => {
+    const week = [{ templateId: 3 }, { copyOf: 3 }, { rest: true }, { rest: true }, { rest: true }, { rest: true }, { rest: true }];
+
+    it('saves the day list and start weekday for the owner', async () => {
+      mockAuthPoolQuery(1);
+      db.setProgramLayout.mockResolvedValue({ programId: 5, templateIds: [3, 40, 41, 42, 43, 44, 45], startWeekday: 1 });
+
+      const res = await request(app)
+        .put('/programs/5/layout')
+        .set('Authorization', authHeader(1))
+        .send({ slots: week, startWeekday: 1 });
+
+      expect(res.status).toBe(200);
+      expect(res.body.templateIds).toHaveLength(7);
+      expect(db.setProgramLayout).toHaveBeenCalledWith(1, 5, week, { startWeekday: 1 });
+    });
+
+    it("answers 404 for a program that isn't the user's (library programs included)", async () => {
+      mockAuthPoolQuery(1);
+      db.setProgramLayout.mockResolvedValue(null);
+      const res = await request(app).put('/programs/7/layout').set('Authorization', authHeader(1)).send({ slots: week });
+      expect(res.status).toBe(404);
+    });
+
+    it('rejects a partial week before touching the database', async () => {
+      mockAuthPoolQuery(1);
+      db.setProgramLayout.mockClear();
+      const res = await request(app).put('/programs/5/layout').set('Authorization', authHeader(1)).send({ slots: week.slice(0, 3) });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('Slots must be whole weeks (a multiple of 7 days)');
+      expect(db.setProgramLayout).not.toHaveBeenCalled();
+    });
+
+    it("sends the layout check's message as a 400", async () => {
+      mockAuthPoolQuery(1);
+      const err = new Error('Day 1: that workout is not in this program');
+      err.status = 400;
+      db.setProgramLayout.mockRejectedValue(err);
+      const res = await request(app).put('/programs/5/layout').set('Authorization', authHeader(1)).send({ slots: week });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('Day 1: that workout is not in this program');
+    });
+  });
 });
 
 describe('Template Routes', () => {
@@ -822,6 +869,30 @@ describe('Template Routes', () => {
 
       expect(res.status).toBe(400);
       expect(res.body.error).toBe('Template name is required');
+    });
+
+    it('passes slotIndex through so a builder day gets the new workout', async () => {
+      mockAuthPoolQuery(1);
+      db.createTemplate.mockResolvedValue({ id: 8, name: 'Legs', slotPlaced: true });
+      const res = await request(app)
+        .post('/templates')
+        .set('Authorization', authHeader(1))
+        .send({ name: 'Legs', programId: 4, slotIndex: 9, exercises: [] });
+      expect(res.status).toBe(201);
+      expect(db.createTemplate).toHaveBeenLastCalledWith(1, 'Legs', '', [], 4, undefined, { slotIndex: 9 });
+    });
+  });
+
+  describe('PUT /templates/:id', () => {
+    it('passes alsoApplyTo (apply to all copies in this program)', async () => {
+      mockAuthPoolQuery(1);
+      db.updateTemplate.mockResolvedValue({ id: 3, name: 'Push', copiesUpdated: [5] });
+      const res = await request(app)
+        .put('/templates/3')
+        .set('Authorization', authHeader(1))
+        .send({ name: 'Push', exercises: [], alsoApplyTo: [5] });
+      expect(res.status).toBe(200);
+      expect(db.updateTemplate).toHaveBeenLastCalledWith(1, 3, 'Push', '', [], { alsoApplyTo: [5] });
     });
   });
 });

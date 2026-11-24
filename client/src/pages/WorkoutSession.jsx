@@ -3098,6 +3098,7 @@ export default function WorkoutSession({ createMode = false }) {
         name: createParams.name,
         description: createParams.description,
         programId: createParams.programId,
+        slot: createParams.slot,
         exercises: template.exercises,
         entries,
         goals: goalOverrides,
@@ -3127,6 +3128,16 @@ export default function WorkoutSession({ createMode = false }) {
         showAppToast(`"${savedName}" was created, but it couldn't be added to your calendar.`, 'error', 4000);
       }
       navigate('/calendar', { replace: true });
+      return;
+    }
+    // Opened from a program builder day: back to that program's sample
+    // calendar, on the week the workout landed in.
+    if (createParams.slot != null && createParams.programId) {
+      showAppToast(created?.slotPlaced ? `"${savedName}" added to Week ${Math.floor(createParams.slot / 7) + 1}, Day ${(createParams.slot % 7) + 1}.` : `"${savedName}" created.`);
+      navigate('/app', {
+        replace: true,
+        state: { openSection: 'my', openProgram: createParams.programId, programView: 'week', programWeek: Math.floor(createParams.slot / 7) },
+      });
       return;
     }
     showAppToast(createParams.programId ? `"${savedName}" created.` : `"${savedName}" created in My Workouts.`);
@@ -3586,7 +3597,7 @@ export default function WorkoutSession({ createMode = false }) {
       )}
       {/* Back button + Day navigation arrows */}
       <div className="px-4 pt-6 flex items-center justify-between">
-        <button data-tutorial="exit-workout" onClick={() => tutorialMode ? navigate('/app') : guardedNavigate(() => (createMode && !(window.history.state?.idx > 0) ? navigate('/app') : navigate(-1)))} className="flex items-center gap-1 text-[11px] uppercase font-bold mb-2 active:opacity-70" style={{ color: 'rgba(239,68,68,0.9)', letterSpacing: '0.2em' }}>
+        <button data-tutorial="exit-workout" onClick={() => tutorialMode ? navigate('/app') : guardedNavigate(() => (createMode && createParams.slot != null && createParams.programId ? navigate('/app', { replace: true, state: { openSection: 'my', openProgram: createParams.programId, programView: 'week', programWeek: Math.floor(createParams.slot / 7) } }) : createMode && !(window.history.state?.idx > 0) ? navigate('/app') : navigate(-1)))} className="flex items-center gap-1 text-[11px] uppercase font-bold mb-2 active:opacity-70" style={{ color: 'rgba(239,68,68,0.9)', letterSpacing: '0.2em' }}>
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>

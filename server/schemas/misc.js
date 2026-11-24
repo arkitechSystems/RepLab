@@ -16,8 +16,9 @@
 import { z } from 'zod';
 import { COMMUNITY_ITEM_TYPES } from '../communityItems.js';
 import {
-  optionalId, optionalText, optionalTextish, MAX_NAME_LEN, MAX_DESCRIPTION_LEN,
+  id, optionalId, optionalText, optionalTextish, MAX_NAME_LEN, MAX_DESCRIPTION_LEN,
 } from '../validation.js';
+import { MAX_PROGRAM_SLOTS, MAX_PROGRAM_WEEKS } from '../programLayout.js';
 
 // Runs an existing hand-written check inside the schema: `check` returns the
 // cleaned value or throws/returns { error } with the message to send.
@@ -131,6 +132,30 @@ export const createProgramBody = z.looseObject({
 });
 
 export const renameProgramBody = z.looseObject({ name: programName });
+
+// PUT /programs/:id/layout (program builder). Each day is exactly one of
+// { templateId } (keep), { copyOf } (new copy) or { rest: true }; the list
+// is whole weeks. Ownership and "is that workout in this program" are
+// checked against the database in programLayout.js.
+const layoutSlot = z.object({
+  templateId: id.optional(),
+  copyOf: id.optional(),
+  rest: z.literal(true, { error: 'must be true' }).optional(),
+}, { error: 'must be an object' })
+  .refine(
+    (s) => [s.templateId, s.copyOf, s.rest].filter((v) => v !== undefined).length === 1,
+    'must be one of templateId, copyOf or rest',
+  );
+
+const START_WEEKDAY_MSG = 'Start day must be 0 (Sunday) to 6 (Saturday)';
+export const programLayoutBody = z.object({
+  slots: z.array(layoutSlot, { error: 'Slots must be a list' })
+    .max(MAX_PROGRAM_SLOTS, `A program can have at most ${MAX_PROGRAM_WEEKS} weeks`)
+    .refine((a) => a.length % 7 === 0, 'Slots must be whole weeks (a multiple of 7 days)'),
+  startWeekday: z.number({ error: START_WEEKDAY_MSG }).int(START_WEEKDAY_MSG)
+    .min(0, START_WEEKDAY_MSG).max(6, START_WEEKDAY_MSG)
+    .nullable().optional(),
+});
 
 // ── Sharing (POST /sharing/send, POST /sharing/invite) ──
 

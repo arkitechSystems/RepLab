@@ -2,7 +2,7 @@ import { Router } from 'express';
 import db from '../db.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { validateBody } from '../validation.js';
-import { createProgramBody, renameProgramBody } from '../schemas/misc.js';
+import { createProgramBody, renameProgramBody, programLayoutBody } from '../schemas/misc.js';
 
 const router = Router();
 
@@ -38,6 +38,28 @@ router.put('/:id', authMiddleware, validateBody(renameProgramBody), async (req, 
     }
     res.json(result);
   } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Program builder (sample calendar): rewrite the program's ordered day list
+// in one transaction — keep / reorder its templates, add copies and rest
+// days, delete the ones no longer used, optionally set the start weekday.
+// Owner-only: library programs (user_id IS NULL) answer 404.
+// Body rules: programLayoutBody (schemas/misc.js); logic: programLayout.js.
+router.put('/:id/layout', authMiddleware, validateBody(programLayoutBody), async (req, res) => {
+  try {
+    const programId = Number(req.params.id);
+    if (!Number.isInteger(programId) || programId <= 0) {
+      return res.status(400).json({ error: 'Invalid program id' });
+    }
+    const { slots, startWeekday } = req.body;
+    const result = await db.setProgramLayout(req.userId, programId, slots, { startWeekday });
+    if (!result) return res.status(404).json({ error: 'Program not found' });
+    res.json(result);
+  } catch (err) {
+    if (err.status === 400) return res.status(400).json({ error: err.message });
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
   }
