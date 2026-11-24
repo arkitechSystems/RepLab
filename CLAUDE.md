@@ -21,6 +21,11 @@ questions and answers in its decision log.
 Its **To-do** section lists what's left after the 2026-10-11 website release (all improvement-plan
 branches merged by 2026-11-20; still open: manual and device checks). Remind Will of open items there.
 
+## iOS releases
+
+To build and upload the iOS app from the cloud Mac using only Terminal, follow `docs/ios-release.md`.
+Version and build numbers are kept in the repo's `project.pbxproj`.
+
 ## Keep in sync: trainer workout template
 
 The trainer spreadsheet template (Excel/Google Sheets), the app's workout fields (workout session,
