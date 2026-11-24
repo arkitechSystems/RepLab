@@ -95,4 +95,22 @@ test('build a program on its sample calendar: copy, duplicate week, create on a 
   ({ days } = await programDays(request, user, 'E2E Builder'));
   expect(days[0].name).toBe('E2E Arms Day');
   expect(days[7].name).toBe('E2E Arms Day');
+
+  // Begin the built program: Day 1 is Monday, so the date picker starts on
+  // the next Monday (today if it is one). Same begin flow as library programs.
+  const now = new Date();
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + ((1 - now.getDay() + 7) % 7));
+  const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  await page.getByRole('button', { name: 'Begin Program' }).click();
+  await expect(page.locator('input[type=date]')).toHaveValue(ymd(monday));
+  await page.getByRole('button', { name: 'Schedule' }).click();
+  await page.waitForURL('**/calendar**');
+  const sched = await (await request.get(`/schedule?from=${ymd(monday)}&to=${ymd(new Date(monday.getTime() + 13 * 864e5))}`, { headers: auth(user) })).json();
+  expect(sched).toHaveLength(14);
+  expect(sched.find((d) => d.date === ymd(monday)).templateName).toBe('E2E Arms Day');
+  // The Calendar shows it on that Monday.
+  const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() - 1);
+  await page.goto(`/calendar?view=week&week=${ymd(sunday)}`);
+  await expect(page.getByText('E2E Arms Day')).toBeVisible();
+  if (shots) await page.screenshot({ path: `${shots}/builder-5-calendar.png`, fullPage: true });
 });

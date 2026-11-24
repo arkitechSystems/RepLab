@@ -32,6 +32,7 @@ import { APP_SHARE_FOOTER, workoutLabel } from '../utils/shareText';
 import ExternalShareButtons from '../components/ExternalShareButtons';
 import ProgramCalendar from '../components/ProgramCalendar';
 import { CalendarViewToggle } from '../components/calendar/CalendarViews';
+import { startWeekdayOf, nextDateOnWeekday, WEEKDAY_FULL } from '../utils/programLayout';
 
 const DAY_NAMES_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -1011,9 +1012,8 @@ function ProgramCard({ program, idx, onSelect, onBegin, onDelete, onShare, dataT
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {/* Begin Program is gated by the parent — the caller controls
-                whether to pass onBegin. In My Workouts we omit onBegin so
-                user-owned programs don't get a Begin CTA (custom workouts
-                aren't scheduled programs in the Browse-library sense). */}
+                whether to pass onBegin (My Workouts passes it since the
+                program builder, 2026-11-23; hidden with no workouts). */}
             {onBegin && program.workoutCount > 0 && (
               <button
                 data-tutorial="begin-program-btn"
@@ -1678,7 +1678,11 @@ export default function Workouts() {
   async function openBeginProgram(e, program) {
     e.stopPropagation();
     setBeginModal(program);
-    setBeginDateInput('');
+    // Program builder "Day 1 is Monday": open on the date picker, set to the
+    // next Monday (today if it is one) — still editable. Same flow after that.
+    const startWeekday = startWeekdayOf(program);
+    setBeginDateInput(startWeekday == null ? '' : nextDateOnWeekday(startWeekday));
+    setShowDatePicker(startWeekday != null);
     setConflictInfo(null);
     completeTutorialAction('begin-program-tapped');
   }
@@ -2490,6 +2494,22 @@ export default function Workouts() {
       </div>
     );
     const showProgramCalendar = canShowCalendar && programView !== 'list';
+    // Begin Program for the user's own programs (library programs have it in
+    // the header). Same begin modal / buildEntries / tryApply flow.
+    const ownBeginButton = canShowCalendar && program.userId !== null && !editMode && program.workoutCount > 0 && (
+      <button
+        onClick={(e) => openBeginProgram(e, program)}
+        className="w-full mb-3 active:scale-[0.98] transition-all text-white text-[11px] font-bold uppercase py-3"
+        style={{
+          letterSpacing: '0.2em',
+          borderRadius: '2px',
+          background: 'linear-gradient(135deg, rgba(239,68,68,0.9) 0%, rgba(220,38,38,0.9) 100%)',
+          boxShadow: '0 4px 14px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
+        }}
+      >
+        Begin Program
+      </button>
+    );
     const programCalendar = showProgramCalendar && (
       <ProgramCalendar
         key={`${program.id}-${programViewWeek}`}
@@ -2703,7 +2723,9 @@ export default function Workouts() {
     // in my-mode since there is no weekly concept for user-owned programs.
     const effectiveWeek = (selectedGroup === 'my' && selectedWeek === null) ? 1 : selectedWeek;
     const weekTemplates = weeks[effectiveWeek - 1] || [];
-    const weekTitle = selectedGroup === 'my'
+    // The sample calendar shows its own "WEEK N OF M", so the header drops
+    // the week while it's open (it would contradict the calendar's week).
+    const weekTitle = selectedGroup === 'my' || showProgramCalendar
       ? (program.shortName || program.name)
       : `${program.shortName || program.name} — Week ${effectiveWeek}`;
 
@@ -2785,8 +2807,9 @@ export default function Workouts() {
           </button>
         </div>
 
-        {(programViewToggle || programCalendar) && (
+        {(programViewToggle || programCalendar || ownBeginButton) && (
           <div className="px-4">
+            {ownBeginButton}
             {programViewToggle}
             {programCalendar}
           </div>
@@ -3452,6 +3475,9 @@ export default function Workouts() {
                   {beginModal.isFeatured
                     ? <>Schedule the full <span className="text-white font-semibold">{beginModal.weekCount}-week {beginModal.name}</span> to your calendar. This will add {beginModal.templates.length} days of workouts and rest days.</>
                     : <>Schedule <span className="text-white font-semibold">{beginModal.name}</span> starting from a day of your choice.</>}
+                  {startWeekdayOf(beginModal) != null && (
+                    <> Day 1 of this program is a {WEEKDAY_FULL[startWeekdayOf(beginModal)]}, so it starts on the next {WEEKDAY_FULL[startWeekdayOf(beginModal)]} — change the date if you like.</>
+                  )}
                 </p>
                 {!showDatePicker ? (
                   <div className="flex gap-3">
@@ -4920,9 +4946,9 @@ export default function Workouts() {
                         </h3>
                       </div>
                       <div className="space-y-4 pb-4">
-                        {/* My Workouts list — onBegin is intentionally omitted
-                            so ProgramCard hides the Begin Program CTA. Begin
-                            stays in the Browse Library only. */}
+                        {/* My Workouts list — own programs get Begin Program
+                            too (program builder, 2026-11-23); ProgramCard hides
+                            it when the program has no workouts. */}
                         {ownPrograms.map((program, idx) => (
                           // In My Workouts, jump straight to the program's
                           // workout list (selectedWeek=1) so the user never
@@ -4931,7 +4957,7 @@ export default function Workouts() {
                           // selectedGroup==='my' branch in the weeks split
                           // above. Browse Library still uses selectedWeek=null
                           // (the existing onSelect for the Browse mount).
-                          <ProgramCard key={program.id} program={program} idx={idx} dataTutorial={idx === 0 ? 'program-card' : undefined} onSelect={(id) => { setSelectedProgram(id); setSelectedWeek(1); setBrowseSearch(''); completeTutorialAction('program-selected'); }} onDelete={!isBrowse ? handleDeleteProgram : undefined} onShare={!isBrowse ? (p) => openShareModal(p) : undefined} onNavigateFeatured={program.isFeatured ? () => navigate('/featured-session') : undefined} />
+                          <ProgramCard key={program.id} program={program} idx={idx} dataTutorial={idx === 0 ? 'program-card' : undefined} onSelect={(id) => { setSelectedProgram(id); setSelectedWeek(1); setBrowseSearch(''); completeTutorialAction('program-selected'); }} onBegin={!isBrowse ? openBeginProgram : undefined} onDelete={!isBrowse ? handleDeleteProgram : undefined} onShare={!isBrowse ? (p) => openShareModal(p) : undefined} onNavigateFeatured={program.isFeatured ? () => navigate('/featured-session') : undefined} />
                         ))}
                       </div>
                     </div>
@@ -5186,12 +5212,11 @@ export default function Workouts() {
                               )}
                               <span className="text-xs text-wf-gray-500">From <span className="text-blue-400 font-semibold">{sender?.senderName || 'a user'}{sender?.senderUsername ? ` (@${sender.senderUsername})` : ''}</span></span>
                             </div>
-                            {/* Shared-With-Me programs live under My Workouts.
-                                onBegin is omitted to hide the Begin CTA, same
-                                as the user's own programs above. */}
+                            {/* Shared-With-Me programs live under My Workouts
+                                and can be begun like the user's own. */}
                             {/* Shared-With-Me programs live under My Workouts —
                                 same straight-to-workout-list behavior. */}
-                            <ProgramCard program={program} idx={idx} onSelect={(id) => { setSelectedProgram(id); setSelectedWeek(1); setBrowseSearch(''); }} onDelete={handleDeleteProgram} onShare={(p) => openShareModal(p)} onNavigateFeatured={program.isFeatured ? () => navigate('/featured-session') : undefined} />
+                            <ProgramCard program={program} idx={idx} onSelect={(id) => { setSelectedProgram(id); setSelectedWeek(1); setBrowseSearch(''); }} onBegin={openBeginProgram} onDelete={handleDeleteProgram} onShare={(p) => openShareModal(p)} onNavigateFeatured={program.isFeatured ? () => navigate('/featured-session') : undefined} />
                           </div>
                         );
                       })}

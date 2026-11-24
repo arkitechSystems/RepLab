@@ -113,3 +113,11 @@ export function distinctWorkouts(templates) {
   }
   return out;
 }
+
+// Begin Program default start date for a program whose Day 1 is a weekday:
+// the next date on that weekday, today if it matches (local 'yyyy-MM-dd').
+export function nextDateOnWeekday(weekday, from = new Date()) {
+  const d = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+  d.setDate(d.getDate() + ((weekday - d.getDay() + 7) % 7));
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}

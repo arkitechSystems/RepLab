@@ -8,6 +8,7 @@ import { renderScreen, signIn } from '../test/renderScreen';
 import { resetQueries } from '../test/resetQueries';
 import ProgramCalendar from './ProgramCalendar';
 import Workouts from '../pages/Workouts';
+import { nextDateOnWeekday } from '../utils/programLayout';
 
 afterEach(resetQueries);
 
@@ -169,5 +170,32 @@ describe('Workouts program page', () => {
     // List shows the existing workout cards again.
     fireEvent.click(screen.getByRole('button', { name: 'List' }));
     await waitFor(() => expect(screen.queryByText('Sample Calendar')).toBeNull());
+  });
+
+  function openOwnProgram(programList, templateList) {
+    signIn();
+    server.use(
+      http.get('*/programs', () => HttpResponse.json(programList)),
+      http.get('*/templates', () => HttpResponse.json(templateList)),
+      http.all('*', () => HttpResponse.json([])),
+    );
+    renderScreen(<Workouts />, { route: { pathname: '/', state: { openSection: 'my', openProgram: 2, programView: 'list' } } });
+  }
+
+  it("own programs get Begin Program; with Day 1 set to a weekday the date picker opens on the next one", async () => {
+    openOwnProgram(
+      [programs[0], { ...programs[1], programDetails: { startWeekday: 1 } }],
+      programTemplates,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Begin Program' }));
+    expect(await screen.findByDisplayValue(nextDateOnWeekday(1))).toBeInTheDocument();
+    expect(screen.getByText(/Day 1 of this program is a Monday/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Schedule' })).toBeEnabled();
+  });
+
+  it('no Begin Program for a program with only rest days', async () => {
+    openOwnProgram(programs, programTemplates.filter((t) => t.isRest));
+    expect(await screen.findByRole('group', { name: 'Program view' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Begin Program' })).toBeNull();
   });
 });

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   programDays, weekCount, startWeekdayOf, dayLabel, dayHeaders, toLayoutSlots,
-  setDay, addWeek, duplicateWeek, deleteWeek, moveDay, copiesInProgram, distinctWorkouts,
+  setDay, addWeek, duplicateWeek, deleteWeek, moveDay, copiesInProgram, distinctWorkouts, nextDateOnWeekday,
 } from './programLayout';
 
 const t = (id, name, extra = {}) => ({ id, name, programId: 1, userId: 37, isRest: false, sortOrder: id, exercises: [], ...extra });
@@ -70,5 +70,14 @@ describe('copies', () => {
 
   it('lists each different workout once', () => {
     expect(distinctWorkouts([list[0], list[1], list[2], list[4]]).map((w) => w.id)).toEqual([1, 3]);
+  });
+});
+
+describe('nextDateOnWeekday', () => {
+  it('is today when today is that weekday, else the next one', () => {
+    const wed = new Date(2026, 10, 25); // Wednesday
+    expect(nextDateOnWeekday(3, wed)).toBe('2026-11-25');
+    expect(nextDateOnWeekday(1, wed)).toBe('2026-11-30');
+    expect(nextDateOnWeekday(6, new Date(2026, 11, 31))).toBe('2027-01-02');
   });
 });
