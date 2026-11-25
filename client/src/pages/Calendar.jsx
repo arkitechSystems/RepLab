@@ -828,7 +828,7 @@ export default function Calendar() {
                 <div className="flex gap-3 mt-4">
                   <button
                     onClick={() => { setTutorialDone(false); navigate('/app'); }}
-                    className="flex-1 btn-gradient text-white text-sm font-semibold py-2.5 px-4 rounded-xl active:scale-[0.97] transition-transform"
+                    className="flex-1 btn-create py-2.5 px-4 active:scale-[0.97] transition-transform"
                   >
                     Browse Library
                   </button>
@@ -1716,7 +1716,7 @@ export default function Calendar() {
                     </button>
                     <button
                       onClick={() => checkIfSourceCompleted(copyTarget)}
-                      className="flex-1 px-4 py-3 rounded-xl btn-gradient text-sm font-semibold text-white active:scale-[0.97] transition-transform"
+                      className="flex-1 px-4 py-3 btn-create active:scale-[0.97] transition-transform"
                     >
                       Overwrite
                     </button>
@@ -1741,7 +1741,7 @@ export default function Calendar() {
                     <button
                       onClick={() => executeCopy(copyTarget, true)}
                       disabled={copying}
-                      className={`flex-1 px-4 py-3 rounded-xl btn-gradient text-sm font-semibold text-white active:scale-[0.97] transition-transform ${copying ? 'opacity-50 pointer-events-none' : ''}`}
+                      className={`flex-1 px-4 py-3 btn-create active:scale-[0.97] transition-transform ${copying ? 'opacity-50 pointer-events-none' : ''}`}
                     >
                       {copying ? 'Copying...' : 'Yes, Use Reps'}
                     </button>

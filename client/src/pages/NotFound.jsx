@@ -37,7 +37,7 @@ export default function NotFound() {
         <div className="w-full flex flex-col gap-3 mt-2">
           <button
             onClick={() => navigate('/')}
-            className="w-full btn-gradient active:scale-[0.98] text-white font-bold py-4 rounded-xl text-base tracking-wide transition-all"
+            className="w-full btn-create active:scale-[0.98] py-4 transition-all"
           >
             Back to training
           </button>

@@ -123,7 +123,7 @@ export default function CreateWorkoutModal({ programs, lockedProgram, onCancel, 
           <button
             onClick={confirm}
             disabled={!canConfirm}
-            className={`flex-1 py-3 btn-gradient text-sm font-semibold text-white active:scale-[0.98] transition-all ${!canConfirm ? 'opacity-50 pointer-events-none' : ''}`}
+            className={`flex-1 py-3 btn-create active:scale-[0.98] transition-all ${!canConfirm ? 'opacity-50 pointer-events-none' : ''}`}
             style={{ borderRadius: '2px' }}
           >
             Confirm

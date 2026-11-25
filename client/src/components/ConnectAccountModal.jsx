@@ -107,7 +107,7 @@ export default function ConnectAccountModal({ linkToken, provider, email, onSign
                   type="button"
                   onClick={connect}
                   disabled={busy}
-                  className={`flex-1 py-3 btn-gradient text-sm font-semibold text-white active:scale-[0.98] transition-all ${busy ? 'opacity-50 pointer-events-none' : ''}`}
+                  className={`flex-1 py-3 btn-create active:scale-[0.98] transition-all ${busy ? 'opacity-50 pointer-events-none' : ''}`}
                   style={{ borderRadius: 2 }}
                 >
                   {busy ? 'Connecting...' : 'Connect'}
@@ -138,7 +138,7 @@ export default function ConnectAccountModal({ linkToken, provider, email, onSign
                 type="button"
                 onClick={() => run(() => socialLinkWithoutPassword(linkToken, provider))}
                 disabled={busy}
-                className={`flex-1 py-3 btn-gradient text-sm font-semibold text-white active:scale-[0.98] transition-all ${busy ? 'opacity-50 pointer-events-none' : ''}`}
+                className={`flex-1 py-3 btn-create active:scale-[0.98] transition-all ${busy ? 'opacity-50 pointer-events-none' : ''}`}
                 style={{ borderRadius: 2 }}
               >
                 {busy ? 'Connecting...' : `Continue with ${providerName}`}

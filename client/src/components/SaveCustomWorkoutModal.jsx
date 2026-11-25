@@ -87,7 +87,7 @@ export default function SaveCustomWorkoutModal({ defaultName, onSave, onClose })
             type="button"
             onClick={step === 'ask' ? () => setStep('name') : confirm}
             disabled={saving || (step === 'name' && !name.trim())}
-            className={`flex-1 py-3 btn-gradient text-sm font-semibold text-white active:scale-[0.98] transition-all ${(saving || (step === 'name' && !name.trim())) ? 'opacity-50 pointer-events-none' : ''}`}
+            className={`flex-1 py-3 btn-create active:scale-[0.98] transition-all ${(saving || (step === 'name' && !name.trim())) ? 'opacity-50 pointer-events-none' : ''}`}
             style={{ borderRadius: '2px' }}
           >
             {step === 'ask' ? 'Yes' : saving ? 'Saving...' : 'Save'}

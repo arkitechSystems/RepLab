@@ -101,7 +101,7 @@ function SignInHelpModal({ onClose }) {
           <button
             type="button"
             onClick={onClose}
-            className="w-full py-3 btn-gradient text-sm font-semibold text-white active:scale-[0.98] transition-all"
+            className="w-full py-3 btn-create active:scale-[0.98] transition-all"
             style={{ borderRadius: 2 }}
           >
             Got it

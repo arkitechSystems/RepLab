@@ -262,7 +262,7 @@ export default function TrainerProfile({
                   <div className="flex gap-3 mt-2">
                     <button
                       onClick={() => onAddToday(workout)}
-                      className="flex-1 btn-gradient text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+                      className="flex-1 btn-create py-3 active:scale-[0.98] transition-all"
                     >
                       Add to Today
                     </button>
@@ -305,7 +305,7 @@ export default function TrainerProfile({
                       <button
                         onClick={() => onAddDate(workout)}
                         disabled={!addDateInput}
-                        className="btn-gradient text-white font-semibold px-5 py-3 rounded-xl text-sm active:scale-[0.98] transition-all disabled:opacity-40"
+                        className="btn-create px-5 py-3 active:scale-[0.98] transition-all disabled:opacity-40"
                       >
                         Schedule
                       </button>

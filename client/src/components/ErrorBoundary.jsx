@@ -42,7 +42,7 @@ export default class ErrorBoundary extends Component {
             <div className="flex flex-col gap-3">
               <button
                 onClick={() => window.location.reload()}
-                className="w-full btn-gradient active:scale-[0.98] text-white font-semibold py-3 rounded-xl text-sm transition-all"
+                className="w-full btn-create active:scale-[0.98] py-3 transition-all"
               >
                 Reload
               </button>

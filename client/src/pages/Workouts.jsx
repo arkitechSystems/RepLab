@@ -2397,9 +2397,9 @@ export default function Workouts() {
               </div>
               <button
                 onClick={() => openAddWorkout(pw)}
-                className="btn-gradient active:scale-[0.98] text-white font-medium px-3 py-2 rounded-xl text-xs transition-all shrink-0"
+                className="btn-create active:scale-[0.98] px-3.5 py-2 transition-all shrink-0"
               >
-                Add Workout
+                + Add Workout
               </button>
             </div>
             {pw.description && (
@@ -2775,9 +2775,9 @@ export default function Workouts() {
               {program.userId !== null && (
                 <button
                   onClick={() => navigate(`/clientworkouts/create?programId=${program.id}`)}
-                  className="btn-gradient text-white font-semibold px-5 py-3 rounded-xl text-sm active:scale-[0.98] transition-all shrink-0"
+                  className="btn-create px-3.5 py-2 active:scale-[0.98] transition-all shrink-0"
                 >
-                  Add Workout
+                  + Add Workout
                 </button>
               )}
             </div>
@@ -4584,7 +4584,7 @@ export default function Workouts() {
                       <button
                         onClick={submitTrainerApplication}
                         disabled={trainerAppSubmitting}
-                        className="flex-1 btn-gradient text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all disabled:opacity-50"
+                        className="flex-1 btn-create py-3 active:scale-[0.98] transition-all disabled:opacity-50"
                       >
                         {trainerAppSubmitting ? 'Submitting...' : 'Submit Application'}
                       </button>
@@ -4593,7 +4593,7 @@ export default function Workouts() {
                 ) : (
                   <button
                     onClick={() => setShowTrainerForm(true)}
-                    className="w-full btn-gradient text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+                    className="w-full btn-create py-3 active:scale-[0.98] transition-all"
                   >
                     Apply Now
                   </button>
@@ -4843,7 +4843,7 @@ export default function Workouts() {
                   <h3 className="text-white font-bold text-lg mb-1">No Workouts Yet</h3>
                   <p className="text-wf-gray-400 text-sm mb-4">Create your first workout or browse the library to find a program that fits your goals.</p>
                   <div className="flex gap-2">
-                    <button onClick={() => setShowCreateMenu(true)} className="btn-gradient text-white font-semibold px-5 py-3 rounded-xl text-sm active:scale-[0.98] transition-all">
+                    <button onClick={() => setShowCreateMenu(true)} className="btn-create px-5 py-3 active:scale-[0.98] transition-all">
                       Create Workout
                     </button>
                     <button onClick={() => setSelectedGroup('browse')} className="glass-card text-white font-semibold px-5 py-3 rounded-xl text-sm active:scale-[0.98] transition-all">
@@ -7460,7 +7460,7 @@ export default function Workouts() {
             <div className="flex items-center justify-center gap-3 mt-3">
               <button
                 onClick={() => { setTutorialPointer(null); setShowCreateMenu(true); }}
-                className="text-sm font-semibold text-white btn-gradient py-2 px-5 rounded-xl active:scale-[0.97] transition-transform"
+                className="btn-create py-2 px-5 active:scale-[0.97] transition-transform"
               >
                 Got it
               </button>

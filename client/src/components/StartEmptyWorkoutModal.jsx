@@ -60,7 +60,7 @@ export default function StartEmptyWorkoutModal({ name, onNameChange, saving, err
           <button
             onClick={onConfirm}
             disabled={!canConfirm}
-            className={`flex-1 py-3 btn-gradient text-sm font-semibold text-white active:scale-[0.98] transition-all ${!canConfirm ? 'opacity-50 pointer-events-none' : ''}`}
+            className={`flex-1 py-3 btn-create active:scale-[0.98] transition-all ${!canConfirm ? 'opacity-50 pointer-events-none' : ''}`}
             style={{ borderRadius: '2px' }}
           >
             {saving ? 'Creating...' : 'Confirm'}

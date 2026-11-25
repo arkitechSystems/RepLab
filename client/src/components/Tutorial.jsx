@@ -451,7 +451,7 @@ export default function Tutorial() {
             {!current.waitFor && (
               <button
                 onClick={advanceTutorial}
-                className="text-sm font-semibold text-white btn-gradient py-2 px-5 rounded-xl active:scale-[0.97] transition-transform"
+                className="btn-create py-2 px-5 active:scale-[0.97] transition-transform"
               >
                 Got it
               </button>

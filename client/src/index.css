@@ -487,7 +487,26 @@ input[type="number"] {
   100% { transform: translate(-10%, -15%); }
 }
 
-/* Gradient button */
+/* Primary red button — same look as the "+ Create" button at the top right
+   of the Workouts page. Defined after Tailwind's utilities so it wins over
+   any leftover text-size / rounded classes on the element. */
+.btn-create {
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  white-space: nowrap;
+  border-radius: 2px;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.9) 0%, rgba(220, 38, 38, 0.9) 100%);
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+.btn-create:disabled {
+  opacity: 0.5;
+  box-shadow: none;
+}
+
+/* Gradient button (Calendar "today" badges and icons) */
 .btn-gradient {
   background: linear-gradient(135deg, #DC2626 0%, #EF4444 50%, #F97316 100%);
   background-size: 200% 200%;

@@ -3543,7 +3543,7 @@ export default function WorkoutSession({ createMode = false }) {
             <div className="flex flex-col gap-2">
               <button
                 onClick={() => { setShowDateConfirm(false); startTimer(); }}
-                className="w-full btn-gradient text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+                className="w-full btn-create py-3 active:scale-[0.98] transition-all"
               >
                 Start Anyway
               </button>
@@ -3580,7 +3580,7 @@ export default function WorkoutSession({ createMode = false }) {
             <div className="flex flex-col gap-2">
               <button
                 onClick={() => { performSwap(pendingSwap.oldName, pendingSwap.newName); setPendingSwap(null); }}
-                className="w-full btn-gradient text-white font-semibold py-3 rounded-xl text-sm active:scale-[0.98] transition-all"
+                className="w-full btn-create py-3 active:scale-[0.98] transition-all"
               >
                 Substitute
               </button>
@@ -5763,7 +5763,7 @@ export default function WorkoutSession({ createMode = false }) {
                 )}
                 {!tip.interactive && <button
                   onClick={() => setTutorialTip(tip.next)}
-                  className="text-sm font-semibold text-white btn-gradient py-2 px-5 rounded-xl active:scale-[0.97] transition-transform"
+                  className="btn-create py-2 px-5 active:scale-[0.97] transition-transform"
                 >
                   {tip.next ? 'Next' : 'Got it'}
                 </button>}
