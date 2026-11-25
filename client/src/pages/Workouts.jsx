@@ -7261,7 +7261,7 @@ export default function Workouts() {
                   className="text-[28px] font-black text-white leading-[0.9] tracking-tight"
                   style={{ fontFamily: 'system-ui', textShadow: '0 2px 20px rgba(0,0,0,0.5)' }}
                 >
-                  TRAINERS
+                  TRAINER CENTRAL
                 </h3>
                 <p className="text-[11px] text-white/40 font-light mt-3 max-w-[280px] leading-relaxed">
                   Follow guided programs from certified coaches.
