@@ -1,4 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
+import { useHelpChat } from '../context/HelpChatContext';
 
 const SUPPORT_EMAIL = 'support@replab-fitness.com';
 
@@ -8,6 +9,7 @@ const SUPPORT_EMAIL = 'support@replab-fitness.com';
 // with 2px corners + red top accent stripe.
 export default function Support() {
   const navigate = useNavigate();
+  const { openHelp } = useHelpChat();
 
   const NIKE_PANEL = {
     background: 'linear-gradient(160deg, #1e1e1e 0%, #141414 100%)',
@@ -137,13 +139,27 @@ export default function Support() {
                 Common Questions
               </h2>
 
+              {/* Opens the same offline Help chat used in the app (works signed out). */}
+              <div className="mb-6">
+                <p className="text-[14px] text-white/60 leading-relaxed mb-3">
+                  Get an instant answer to how-to questions about RepLab.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => openHelp('support')}
+                  className="btn-create px-5 py-3 active:scale-[0.97] transition-all"
+                >
+                  Ask a question
+                </button>
+              </div>
+
               <div className="space-y-5">
                 <div>
                   <h3 className="font-bold uppercase mb-2 text-white" style={{ fontSize: '13px', letterSpacing: '0.1em' }}>
                     How do I log a workout?
                   </h3>
                   <p className="text-[13px] text-white/55 leading-relaxed">
-                    Open the Workouts tab, pick a program or tap "Browse Library" on the top card, then tap any day on your calendar to schedule it. Tap into the day to start logging sets.
+                    Open the Workouts tab and tap Start Workout on the top card, or tap the day on your Calendar. Tap Begin Workout, then log each set as you go. Nothing scheduled? Tap Log as You Go.
                   </p>
                 </div>
 
@@ -152,7 +168,7 @@ export default function Support() {
                     How do I create a custom workout?
                   </h3>
                   <p className="text-[13px] text-white/55 leading-relaxed">
-                    From the home page, hit "+ Create" to build a workout from scratch. Add exercises, set rep targets, and save it to My Workouts.
+                    On the Workouts tab, tap "+ Create", then "Create a Workout". Name it, add your exercises with their weights and reps, and tap "Create Workout" to save it.
                   </p>
                 </div>
 
@@ -161,7 +177,7 @@ export default function Support() {
                     How do I cancel my account?
                   </h3>
                   <p className="text-[13px] text-white/55 leading-relaxed">
-                    RepLab is free to use — there's no subscription to cancel. To delete your account and all associated data, go to Profile → Settings → Delete Account, or email us at the address above.
+                    RepLab is free to use — there's no subscription to cancel. To delete your account and all associated data, tap Delete Account at the bottom of the Profile tab, or email us at the address above.
                   </p>
                 </div>
 

@@ -9,6 +9,7 @@ import { loadPathOrSaved } from '../queries/data';
 import { offlineMessage } from '../queries/edits';
 import { useToast } from '../context/ToastContext';
 import StickyHeader from '../components/StickyHeader';
+import { useHelpChat } from '../context/HelpChatContext';
 import SplashScreen from '../components/SplashScreen';
 import useFocusTrap from '../hooks/useFocusTrap';
 import { APP_VERSION } from '../version';
@@ -246,6 +247,7 @@ export default function Profile() {
   const confirmDialog = useConfirm();
   const showToast = useToast();
   const navigate = useNavigate();
+  const { openHelp } = useHelpChat();
   const [metrics, setMetrics] = useState({
     height: null,
     weight: null,
@@ -775,6 +777,23 @@ export default function Profile() {
             <p className="text-[10px] uppercase font-light mb-1" style={{ color: 'rgba(156,163,175,0.85)', letterSpacing: '0.3em' }}>App Settings</p>
             <h3 className="text-[22px] font-black text-white tracking-tight mb-4" style={{ fontFamily: 'system-ui', lineHeight: '0.95' }}>PREFERENCES</h3>
             <div className="space-y-4">
+              {/* Help & FAQ — opens the shared offline Help chat. */}
+              <button
+                type="button"
+                onClick={() => openHelp('profile')}
+                className="w-full flex items-center justify-between gap-px text-left active:opacity-70 transition-opacity"
+              >
+                <span className="flex items-center gap-px flex-1 min-w-0">
+                  <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+                  </svg>
+                  <span className="text-white/70 text-sm font-medium">Help &amp; FAQ</span>
+                </span>
+                <svg className="w-4 h-4 text-wf-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
+              </button>
+
               {/* Workout-session defaults — set the initial state of timers
                   and goal columns when a session opens. The user can still
                   flip each one inside the session via the lock icons / gear. */}

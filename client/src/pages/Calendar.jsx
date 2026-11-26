@@ -9,6 +9,7 @@ import { queueEdit, applyPatch, offlineMessage, requireOnline } from '../queries
 import { useToast } from '../context/ToastContext';
 import { getWorkoutColor } from '../utils/workoutColors';
 import StickyHeader from '../components/StickyHeader';
+import HelpButton from '../components/HelpButton';
 import LoadingSpinnerOverlay from '../components/LoadingSpinnerOverlay';
 import ConfirmOverwriteModal from '../components/ConfirmOverwriteModal';
 import MissedWorkoutsModal from '../components/MissedWorkoutsModal';
@@ -746,12 +747,15 @@ export default function Calendar() {
           : format(monthDate, 'MMMM yyyy')
         }
       >
+        <div className="flex items-center gap-2">
+        <HelpButton from="calendar" />
         <CalendarNavButtons
           onPrev={() => viewMode === 'week' ? setWeekOffset(w => w - 1) : setMonthOffset(m => m - 1)}
           onNext={() => viewMode === 'week' ? setWeekOffset(w => w + 1) : setMonthOffset(m => m + 1)}
           onToday={() => viewMode === 'week' ? setWeekOffset(0) : setMonthOffset(0)}
           showToday={(viewMode === 'week' && !isCurrentWeek) || (viewMode === 'month' && !isCurrentMonth)}
         />
+        </div>
       </StickyHeader>
 
       {/* View Mode Toggle — Nike style */}

@@ -34,6 +34,14 @@ Create/Edit Workout), the Trainer Central upload importer, and the future Traine
 the app. When you change workout/exercise/program fields or options in any of them, update all of
 them — see `docs/trainer-workout-template.md`.
 
+## Keep in sync: help FAQ
+
+The in-app Help chat (`client/src/components/HelpChat.jsx`, opened from the "?" header icons,
+Profile > Help & FAQ and the Support page) answers from `client/src/data/helpFaq.js` — offline, no AI.
+When a user-facing flow, button label or route changes, update the matching FAQ answers (and any
+"Show me" route) in that file too, then run `npm test` in `client/` (every question must still find itself).
+Don't mention owner-only features (Featured, Challenges, Trainer Central) there.
+
 ## Next project: functionality improvement plan
 
 `docs/functionality-improvement-plan.md` — replace hand-built backend code with tested libraries,

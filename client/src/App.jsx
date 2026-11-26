@@ -9,6 +9,7 @@ import { TutorialProvider } from './context/TutorialContext';
 import { VideoPlayerProvider } from './context/VideoPlayerContext';
 import { ToastProvider } from './context/ToastContext';
 import { ConfirmProvider } from './context/ConfirmContext';
+import { HelpChatProvider } from './context/HelpChatContext';
 import Layout from './components/Layout';
 import ErrorBoundary from './components/ErrorBoundary';
 import { useFeatureFlag, FF_FEATURED } from './utils/featureFlags';
@@ -260,6 +261,7 @@ export default function App() {
     <ConfirmProvider>
     <TutorialProvider>
     <VideoPlayerProvider>
+    <HelpChatProvider>
       <PageTracker />
       {isAppContext && !splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
     <Suspense fallback={<div className="min-h-screen bg-black" />}>
@@ -364,6 +366,7 @@ export default function App() {
       <Route path="*" element={<CatchAllRedirect />} />
     </Routes>
     </Suspense>
+    </HelpChatProvider>
     </VideoPlayerProvider>
     </TutorialProvider>
     </ConfirmProvider>

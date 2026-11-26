@@ -34,6 +34,8 @@ run against the same container:
 - `create-workout.spec.js` — Create a Workout on the session screen: the entered weight and reps
   are saved as the workout's goals in My Workouts, a scheduled start shows them as Goal Wt /
   Goal Reps, and an exercise added mid-session stays out of the saved workout.
+- `help-chat.spec.js` — the offline Help chat: open it from the Workouts "?", get an answer,
+  no-match shows Contact support; it also opens signed out from the Support page.
 - `offline.spec.js` — sets logged offline survive a reload and save once on
   reconnect, several offline changes go out in order, Mark Complete offline.
 

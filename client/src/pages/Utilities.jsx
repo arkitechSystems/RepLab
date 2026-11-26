@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import StickyHeader from '../components/StickyHeader';
+import HelpButton from '../components/HelpButton';
 import { beepCountdown, beepPhaseChange, beepComplete, initAudio } from '../utils/sounds';
 import { useToast } from '../context/ToastContext';
 import { MUSCLE_GROUPS, classifyExercise } from '../utils/muscleGroup';
@@ -1170,7 +1171,9 @@ export default function Utilities() {
 
   return (
     <div style={{ background: '#0c0c0b', minHeight: '100vh', color: '#fff' }}>
-      <StickyHeader title="UTILITIES" titleStyle={{ fontSize: '26.4px' }} />
+      <StickyHeader title="UTILITIES" titleStyle={{ fontSize: '26.4px' }}>
+        <HelpButton from="utilities" />
+      </StickyHeader>
 
       <div className="px-4 pb-24">
         {/* Editorial header — eyebrow + tactile display title + subtitle. */}

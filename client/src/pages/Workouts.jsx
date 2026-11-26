@@ -6,6 +6,7 @@ import { loadPath, savedPath, savedAt } from '../queries/data';
 import { queueEdit, offlineMessage, requireOnline } from '../queries/edits';
 import { buildProgramColorMap, getColorFromMap } from '../utils/workoutColors';
 import StickyHeader from '../components/StickyHeader';
+import HelpButton from '../components/HelpButton';
 import { iosFocusRef } from '../utils/iosFocus';
 import TrainerProfile from '../components/TrainerProfile';
 import { getTrainers, getTrainerById } from '../data/trainers';
@@ -5866,6 +5867,9 @@ export default function Workouts() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
             </svg>
           </button>
+          {/* With the share bell showing too, a 360px phone runs out of room:
+              drop the "?" there (Help is still in Profile). */}
+          <HelpButton from="workouts" className={pendingShares.length > 0 ? "max-[389px]:hidden" : ""} />
           <button
             data-tutorial="create-btn"
             onClick={() => { setShowCreateMenu(true); completeTutorialAction('create-menu-opened'); }}

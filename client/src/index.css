@@ -1494,3 +1494,27 @@ select:focus-visible {
 .xc-input::placeholder { color: rgba(var(--ink),0.25); }
 .xc-input:focus-visible { box-shadow: none !important; outline: none !important; }
 .xc-cell:focus-within { border-color: rgba(239,68,68,0.55) !important; }
+
+/* Help chat sheet (components/HelpChat.jsx): bottom sheet on roomy screens,
+   full screen on small phones. Square 2px corners like the rest of the app. */
+.help-sheet {
+  height: min(88%, 720px);
+  max-width: 640px;
+}
+.help-sheet-input {
+  padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+}
+.help-sheet-input.kb-open {
+  padding-bottom: 12px;
+}
+@media (max-width: 480px), (max-height: 700px) {
+  .help-sheet {
+    height: 100%;
+    max-width: none;
+    border-radius: 0 !important;
+    border: 0;
+  }
+  .help-sheet-header {
+    padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  }
+}
