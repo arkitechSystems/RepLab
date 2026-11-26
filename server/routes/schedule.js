@@ -5,7 +5,7 @@ import { authMiddleware } from '../middleware/auth.js';
 import { validateBody, scheduleBody } from '../validation.js';
 import {
   isValidDate, isPlausibleToday, daysBetween,
-  getMissedWorkouts, shiftScheduleFrom, markMissedSkipped,
+  getMissedWorkouts, shiftScheduleFrom, shiftUnfinishedSessionsFrom, markMissedSkipped,
 } from '../missedWorkouts.js';
 
 const router = Router();
@@ -141,6 +141,8 @@ router.post('/shift', authMiddleware, async (req, res) => {
         [row.id]
       );
     }
+    // Started-but-unfinished workouts move with their days.
+    await shiftUnfinishedSessionsFrom(client, req.userId, fromDate, direction === 'forward' ? 1 : -1);
 
     await client.query('COMMIT');
     res.json({ shifted: rows.length });

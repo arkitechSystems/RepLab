@@ -124,7 +124,25 @@ export async function shiftScheduleFrom(client, userId, fromDate, days) {
       [row.id, days]
     );
   }
+  await shiftUnfinishedSessionsFrom(client, userId, fromDate, days);
   return rows.length;
+}
+
+// A dated session (sessions row + its logged sets) belongs to its calendar
+// day: the workout is opened by (template, date). When the schedule slides,
+// any started-but-unfinished session on or after fromDate has to slide with
+// it — otherwise its logged sets stay on the old date and opening the moved
+// day builds a fresh copy from the template (Will's 11/25 workout, 2026-11-26).
+// Completed sessions are history and never move. Returns sessions moved.
+export async function shiftUnfinishedSessionsFrom(client, userId, fromDate, days) {
+  if (!days) return 0;
+  const r = await client.query(
+    `UPDATE sessions
+        SET date = to_char(date::date + $3::int, 'YYYY-MM-DD')
+      WHERE user_id = $1 AND completed = FALSE AND date >= $2`,
+    [userId, fromDate, days]
+  );
+  return r.rowCount || 0;
 }
 
 // Skip: stamp the given missed days so the prompt never offers them again.

@@ -65,6 +65,14 @@ const client = {
       row.schedule_date = next;
       return { rows: [], rowCount: 1 };
     }
+    if (sql.includes('UPDATE sessions') && sql.includes('completed = FALSE')) {
+      const [userId, from, days] = params;
+      let n = 0;
+      for (const s of store.sessions) {
+        if (s.user_id === userId && !s.completed && s.date >= from) { s.date = addDays(s.date, days); n++; }
+      }
+      return { rows: [], rowCount: n };
+    }
     if (sql.includes('SET missed_skipped_at = NOW()')) {
       const [userId, dates] = params;
       let n = 0;
@@ -204,6 +212,29 @@ describe('Resume — shiftScheduleFrom', () => {
       [d(5), 10, false],
     ].sort());
     expect(await getMissedWorkouts(client, 1, TODAY)).toEqual([]);
+  });
+
+  it('carries a started-but-unfinished workout (its logged sets) to the new day', async () => {
+    store = makeStore({
+      schedule: [
+        { schedule_date: d(-6), template_id: 11 },
+        { schedule_date: d(-1), template_id: 10 },   // started yesterday, never completed
+        { schedule_date: d(2), template_id: 11 },
+      ],
+      sessions: [
+        { id: 'done', template_id: 11, date: d(-6) },                      // completed history
+        { id: 'inprogress', template_id: 10, date: d(-1), completed: false },
+      ],
+    });
+    const missed = await getMissedWorkouts(client, 1, TODAY);
+    expect(missed.map((m) => m.date)).toEqual([d(-1)]);
+
+    await shiftScheduleFrom(client, 1, d(-1), daysBetween(d(-1), TODAY));
+
+    const byId = Object.fromEntries(store.sessions.map((s) => [s.id, s.date]));
+    expect(byId.inprogress).toBe(d(0)); // same day as the moved calendar entry
+    expect(byId.done).toBe(d(-6));      // completed workouts never move
+    expect(store.schedule.find((r) => r.template_id === 10).schedule_date).toBe(d(0));
   });
 });
 
