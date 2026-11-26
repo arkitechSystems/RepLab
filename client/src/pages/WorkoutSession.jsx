@@ -4154,7 +4154,31 @@ export default function WorkoutSession({ createMode = false }) {
                 <div className="relative px-4 py-3">
                   <div className="flex items-center gap-3">
                     <span className="text-[9px] uppercase font-light" style={{ color: 'rgba(239,68,68,0.7)', letterSpacing: '0.3em' }}>Section</span>
-                    <span className="text-[16px] font-black text-white uppercase tracking-tight" style={{ fontFamily: 'system-ui' }}>{exercise.name}</span>
+                    <span className="text-[16px] font-black text-white uppercase tracking-tight min-w-0 flex-1" style={{ fontFamily: 'system-ui' }}>{exercise.name}</span>
+                    {/* ⋮ — same edit screen as the long-press. Stops the
+                        pointer events so tapping it doesn't also start the
+                        header's long-press timer. */}
+                    {!structureLocked && (
+                      <button
+                        type="button"
+                        aria-label={`Edit section ${exercise.name}`}
+                        className="shrink-0 -mr-2 w-8 h-8 flex items-center justify-center text-white active:scale-90 transition-transform"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onPointerUp={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (sectionLongPressTimerRef.current) { clearTimeout(sectionLongPressTimerRef.current); sectionLongPressTimerRef.current = null; }
+                          setSectionEditing({ idx, name: exercise.name, notes: exercise.sectionNotes || '' });
+                          setSectionDeleteConfirming(false);
+                        }}
+                      >
+                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                          <circle cx="12" cy="5" r="1.8" />
+                          <circle cx="12" cy="12" r="1.8" />
+                          <circle cx="12" cy="19" r="1.8" />
+                        </svg>
+                      </button>
+                    )}
                   </div>
                   {exercise.sectionNotes && (
                     <p className="text-[11px] font-light mt-2" style={{ color: 'rgba(255,255,255,0.4)', lineHeight: 1.5 }}>{exercise.sectionNotes}</p>
