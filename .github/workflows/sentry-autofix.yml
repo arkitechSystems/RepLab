@@ -1,0 +1,121 @@
+# Daily Sentry check: Claude reads new Sentry errors and opens a pull request
+# with a proposed fix for each real bug. Nothing reaches main until Will
+# reviews and merges the PR.
+#
+# Free to run: GitHub Actions minutes are free on public repos, and Claude
+# runs on Will's Claude subscription (CLAUDE_CODE_OAUTH_TOKEN from
+# `claude setup-token`), not pay-per-use API billing.
+#
+# Required repo secrets (Settings → Secrets and variables → Actions):
+#   CLAUDE_CODE_OAUTH_TOKEN  output of `claude setup-token`
+#   SENTRY_AUTH_TOKEN        Sentry → Settings → Auth Tokens, read-only scopes:
+#                            org:read, project:read, event:read
+#
+# Only runs on a schedule or by hand (Actions tab → Run workflow). It never
+# runs on issues, comments or PRs, so people outside the project can't
+# trigger it on this public repo.
+
+name: Sentry auto-fix proposals
+
+on:
+  schedule:
+    - cron: '0 13 * * *' # daily, 13:00 UTC (7–8am US Central)
+  workflow_dispatch:
+    inputs:
+      hours:
+        description: 'Look at issues first seen in the last N hours'
+        default: '24'
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: read
+  id-token: write
+
+concurrency:
+  group: sentry-autofix
+  cancel-in-progress: false
+
+jobs:
+  propose-fixes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      # Skip quietly (instead of failing every day) until both secrets exist.
+      - name: Check secrets
+        id: secrets
+        env:
+          HAS_CLAUDE: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+          HAS_SENTRY: ${{ secrets.SENTRY_AUTH_TOKEN != '' }}
+        run: |
+          if [ "$HAS_CLAUDE" = "true" ] && [ "$HAS_SENTRY" = "true" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::CLAUDE_CODE_OAUTH_TOKEN or SENTRY_AUTH_TOKEN not set; skipping."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v5
+        if: steps.secrets.outputs.ready == 'true'
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v5
+        if: steps.secrets.outputs.ready == 'true'
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          npm ci --prefix client
+          npm ci --prefix server
+
+      - uses: anthropics/claude-code-action@v1
+        if: steps.secrets.outputs.ready == 'true'
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: arkitech-systems-llc
+          SENTRY_PROJECTS: replab-frontend node
+          LOOKBACK_HOURS: ${{ github.event.inputs.hours || '24' }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          claude_args: >-
+            --max-turns 80
+            --allowedTools "Read,Grep,Glob,Edit,Write,Bash(curl:*),Bash(jq:*),Bash(git:*),Bash(gh pr list:*),Bash(gh pr create:*),Bash(npm test:*),Bash(npx vitest:*),Bash(npm run build:*),Bash(ls:*),Bash(cat:*)"
+          prompt: |
+            You are the RepLab Sentry triage bot. Read CLAUDE.md first and follow it,
+            except: never commit to main. Every fix goes on its own branch and pull request.
+
+            1. Fetch new unresolved Sentry issues for each project in $SENTRY_PROJECTS
+               (org $SENTRY_ORG) first seen in the last $LOOKBACK_HOURS hours:
+               curl -s -H "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
+                 "https://sentry.io/api/0/projects/$SENTRY_ORG/<project>/issues/?query=is:unresolved%20firstSeen:-${LOOKBACK_HOURS}h&limit=25"
+               For details and the stack trace of one issue:
+               curl -s -H "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
+                 "https://sentry.io/api/0/organizations/$SENTRY_ORG/issues/<issueId>/events/latest/"
+               Never print the token.
+
+            2. Skip issues that are not RepLab code bugs: browser-extension errors
+               (chrome-extension:// frames), network failures/timeouts/offline,
+               ResizeObserver noise, bots, and anything you cannot tie to a file in this repo.
+               Skip an issue if an open PR already exists for it:
+               gh pr list --state open --search "<shortId> in:title".
+
+            3. For each remaining issue (max 3 per run, most users affected first):
+               - Find the root cause in the code. Make the smallest safe fix.
+               - Run the relevant tests (client: npm test --prefix client; server
+                 tests need a database — skip them if none is available and say so).
+               - git checkout -b sentry-fix/<shortId> from main, commit (no
+                 Co-Authored-By trailer), push, and open a PR with
+                 gh pr create --base main --title "Sentry <shortId>: <short summary>"
+                 Body: what the error is, how many users/events, root cause, the fix,
+                 tests run, how to verify, and the Sentry issue link.
+               - Do NOT paste user emails, names, IPs, tokens or request bodies into the
+                 PR — this repository is public. Describe them instead.
+               - git checkout main before the next issue.
+
+            4. If you can't fix an issue confidently, don't open a PR for it. Finish with a
+               short summary of every issue you looked at and what you did.
