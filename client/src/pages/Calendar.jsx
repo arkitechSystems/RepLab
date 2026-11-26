@@ -15,6 +15,7 @@ import ConfirmOverwriteModal from '../components/ConfirmOverwriteModal';
 import MissedWorkoutsModal from '../components/MissedWorkoutsModal';
 import useMissedWorkoutsPrompt from '../hooks/useMissedWorkoutsPrompt';
 import useFocusTrap from '../hooks/useFocusTrap';
+import { flushDaySaves, moveLocalSessionData, STILL_SAVING_MESSAGE } from '../utils/sessionDayMove';
 import StartEmptyWorkoutModal from '../components/StartEmptyWorkoutModal';
 import CreateWorkoutModal from '../components/CreateWorkoutModal';
 import { createWorkoutUrl } from '../utils/createWorkout';
@@ -442,13 +443,19 @@ export default function Calendar() {
     setScheduleSaving(true);
     try {
       requireOnline();
+      const fromDate = format(date, 'yyyy-MM-dd');
+      // Queued saves for the moved days go first (see utils/sessionDayMove).
+      if (!(await flushDaySaves(queryClient, fromDate))) {
+        const stillSaving = new Error(STILL_SAVING_MESSAGE);
+        stillSaving.isConnectionError = true; // offlineMessage shows this text
+        throw stillSaving;
+      }
       await api('/schedule/shift', {
         method: 'POST',
-        body: JSON.stringify({
-          fromDate: format(date, 'yyyy-MM-dd'),
-          direction: 'forward',
-        }),
+        body: JSON.stringify({ fromDate, direction: 'forward' }),
       });
+      moveLocalSessionData(fromDate, 1);
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
       await refreshSchedule();
     } catch (err) {
       if (import.meta.env.DEV) console.error(err);

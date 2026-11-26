@@ -3,6 +3,8 @@ import { api } from '../api';
 import { loadPath } from '../queries/data';
 import { offlineMessage } from '../queries/edits';
 import { track } from '../utils/analytics';
+import { queryClient } from '../queries/queryClient';
+import { flushDaySaves, moveLocalSessionData, STILL_SAVING_MESSAGE } from '../utils/sessionDayMove';
 
 // Shared state + handlers for the "It looks like you missed a workout" prompt
 // (MissedWorkoutsModal), used by the Workouts page and the Calendar. Server
@@ -84,10 +86,19 @@ export default function useMissedWorkoutsPrompt({ trigger = 'start', promptOnLoa
     setBusy(true);
     setError('');
     try {
+      const fromDate = missed[0].date;
+      // Saves still queued for the moved days must reach the server first, or
+      // they'd land on the old date after the move.
+      if (!(await flushDaySaves(queryClient, fromDate))) {
+        setError(STILL_SAVING_MESSAGE);
+        return;
+      }
       const res = await api('/schedule/missed/resume', {
         method: 'POST',
-        body: JSON.stringify({ today, fromDate: missed[0].date }),
+        body: JSON.stringify({ today, fromDate }),
       });
+      moveLocalSessionData(fromDate, res.days);
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
       track('missed_workouts_resumed', { days: res.days, count: missed.length });
       resolved();
       if (pending) proceed(res.templateId, today, pending.opts);
