@@ -1,6 +1,7 @@
 import { Resend } from 'resend';
 import pool from './dbPool.js';
 import config from './config.js';
+import { platformLabel } from './signupPlatform.js';
 
 // The Resend SDK (v4) doesn't throw when the API rejects an email (bad key,
 // unverified domain, bad recipient) — it resolves { data, error }. Every
@@ -420,6 +421,7 @@ export async function sendNewSignupNotification(user, totalUsers) {
                     <tr><td style="padding: 8px 0; color: rgba(255,255,255,0.45); font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em; border-bottom: 1px solid rgba(255,255,255,0.06);">Phone</td><td style="padding: 8px 0; color: rgba(255,255,255,0.85); border-bottom: 1px solid rgba(255,255,255,0.06);">${user.phone || '—'}</td></tr>
                     <tr><td style="padding: 8px 0; color: rgba(255,255,255,0.45); font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em; border-bottom: 1px solid rgba(255,255,255,0.06);">Username</td><td style="padding: 8px 0; color: rgba(255,255,255,0.85); border-bottom: 1px solid rgba(255,255,255,0.06);">${user.username || '—'}</td></tr>
                     <tr><td style="padding: 8px 0; color: rgba(255,255,255,0.45); font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em; border-bottom: 1px solid rgba(255,255,255,0.06);">Gender</td><td style="padding: 8px 0; color: rgba(255,255,255,0.85); border-bottom: 1px solid rgba(255,255,255,0.06);">${user.gender || '—'}</td></tr>
+                    <tr><td style="padding: 8px 0; color: rgba(255,255,255,0.45); font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em; border-bottom: 1px solid rgba(255,255,255,0.06);">Platform</td><td style="padding: 8px 0; color: rgba(255,255,255,0.85); border-bottom: 1px solid rgba(255,255,255,0.06);">${platformLabel(user.signupPlatform)}</td></tr>
                     <tr><td style="padding: 8px 0; color: rgba(255,255,255,0.45); font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em; border-bottom: 1px solid rgba(255,255,255,0.06);">Device</td><td style="padding: 8px 0; color: rgba(255,255,255,0.85); border-bottom: 1px solid rgba(255,255,255,0.06);">${user.signupDevice || '—'}</td></tr>
                     <tr><td style="padding: 8px 0; color: rgba(255,255,255,0.45); font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em; border-bottom: 1px solid rgba(255,255,255,0.06);">Zip Code</td><td style="padding: 8px 0; color: rgba(255,255,255,0.85); border-bottom: 1px solid rgba(255,255,255,0.06);">${user.zipCode || '—'}</td></tr>
                     <tr><td style="padding: 8px 0; color: rgba(255,255,255,0.45); font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em; border-bottom: 1px solid rgba(255,255,255,0.06);">Location</td><td style="padding: 8px 0; color: rgba(255,255,255,0.85); border-bottom: 1px solid rgba(255,255,255,0.06);">${[user.signupCity, user.signupState].filter(Boolean).join(', ') || '—'}</td></tr>
@@ -473,6 +475,7 @@ export async function sendDailySummaryEmail(stats) {
       <td style="padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px; color: #fff;">${name}</td>
       <td style="padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px; color: rgba(255,255,255,0.75);">${u.email || u.phone || '—'}</td>
       <td style="padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px; color: rgba(255,255,255,0.75);">${loc}</td>
+      <td style="padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px; color: rgba(255,255,255,0.75);">${platformLabel(u.signup_platform)}</td>
     </tr>`;
   }).join('');
 
@@ -577,7 +580,8 @@ export async function sendDailySummaryEmail(stats) {
                     <tr>
                       <th style="text-align: left; padding: 8px 12px 8px 0; font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em; color: rgba(255,255,255,0.4); border-bottom: 1px solid rgba(255,255,255,0.12); font-weight: 700;">Name</th>
                       <th style="text-align: left; padding: 8px 12px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em; color: rgba(255,255,255,0.4); border-bottom: 1px solid rgba(255,255,255,0.12); font-weight: 700;">Contact</th>
-                      <th style="text-align: left; padding: 8px 0 8px 12px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em; color: rgba(255,255,255,0.4); border-bottom: 1px solid rgba(255,255,255,0.12); font-weight: 700;">Location</th>
+                      <th style="text-align: left; padding: 8px 12px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em; color: rgba(255,255,255,0.4); border-bottom: 1px solid rgba(255,255,255,0.12); font-weight: 700;">Location</th>
+                      <th style="text-align: left; padding: 8px 0 8px 12px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em; color: rgba(255,255,255,0.4); border-bottom: 1px solid rgba(255,255,255,0.12); font-weight: 700;">Platform</th>
                     </tr>
                     ${signupRows}
                   </table>

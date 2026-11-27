@@ -12,6 +12,7 @@ import { rowsToXlsxBuffer } from '../xlsxExport.js';
 import { DASHBOARD_CSS, ICONS, PASSWORD_TOGGLE_JS } from '../dashboardCSS.js';
 import { evaluateAndMaybeNotify as evaluateStreakReminder } from '../streakReminderScheduler.js';
 import { validateBody } from '../validation.js';
+import { platformLabel } from '../signupPlatform.js';
 import {
   staffCreateExerciseBody, staffCreateProgramBody, adminResetPasswordBody, exerciseVideoBody,
   exerciseAddBody, exerciseRenameBody, codeErrorUpdateBody,
@@ -790,7 +791,7 @@ router.get('/', adminAuth, async (req, res) => {
     <a class="card glass" href="/admin/devices">
       <div class="card-icon">${ICONS.phone}</div>
       <div class="card-title">Device Breakdown</div>
-      <div class="card-desc">Signup device distribution across your user base.</div>
+      <div class="card-desc">Signup platform (iOS app / Android app / website) and device distribution across your user base.</div>
     </a>
     <a class="card glass" href="/admin/installs" style="border-color:rgba(59,130,246,0.25);">
       <div class="card-icon">${ICONS.download}</div>
@@ -1215,6 +1216,15 @@ router.get('/users', adminAuth, async (req, res) => {
           <span style="font-size:11px;color:rgba(255,255,255,0.4);">Elite</span>
           <span style="font-size:14px;font-weight:700;color:#c084fc;">${users.filter(u => u.plan === 'Elite').length}</span>
         </div>
+      </div>
+    </div>
+    <div class="stat glass" style="min-width:180px;">
+      <div class="label">Signup Platform</div>
+      <div style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.08);padding-top:10px;">
+        ${['iOS app', 'Android app', 'Website', 'Unknown'].map((l, i, all) => `<div style="display:flex;justify-content:space-between;align-items:center;${i < all.length - 1 ? 'margin-bottom:6px;' : ''}">
+          <span style="font-size:11px;color:rgba(255,255,255,0.4);">${l}</span>
+          <span style="font-size:14px;font-weight:700;color:#fff;">${users.filter(u => u.signupPlatform === l).length}</span>
+        </div>`).join('')}
       </div>
     </div>
     <div class="stat glass">
@@ -1659,6 +1669,22 @@ router.get('/referrals', adminAuth, async (req, res) => {
 router.get('/devices', adminAuth, async (req, res) => {
   try {
     const data = await db.getDeviceBreakdown();
+    const platforms = await db.getPlatformBreakdown();
+    const platformTotal = platforms.reduce((sum, p) => sum + p.count, 0);
+    const platformMax = Math.max(1, ...platforms.map(p => p.count));
+    const platformBars = platforms.map(p => {
+      const pct = platformTotal > 0 ? ((p.count / platformTotal) * 100).toFixed(1) : '0.0';
+      const width = ((p.count / platformMax) * 100).toFixed(0);
+      return `<div style="margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:13px;color:#fff;font-weight:600;">${p.label}</span>
+          <span style="font-size:13px;color:rgba(255,255,255,0.5);">${p.count} (${pct}%)</span>
+        </div>
+        <div style="background:rgba(255,255,255,0.08);border-radius:6px;height:24px;overflow:hidden;">
+          <div style="background:linear-gradient(135deg,#22c55e,#3b82f6);height:100%;width:${width}%;border-radius:6px;transition:width 0.3s;"></div>
+        </div>
+      </div>`;
+    }).join('');
     const total = data.reduce((sum, d) => sum + parseInt(d.count), 0);
     const maxCount = data.length > 0 ? parseInt(data[0].count) : 1;
     const bars = data.map(d => {
@@ -1693,7 +1719,13 @@ router.get('/devices', adminAuth, async (req, res) => {
       <div class="label">Device Types</div>
     </div>
   </div>
+  <div class="glass" style="padding:24px;margin-bottom:24px;">
+    <h3 style="font-size:14px;font-weight:700;margin-bottom:16px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:1px;">Signup Platform</h3>
+    ${platformBars}
+    <p style="color:rgba(255,255,255,0.35);font-size:11px;margin-top:4px;">Where each user created their account: the iOS app, the Android app, or the website (replab-fitness.com). Unknown = signed up before platform tracking started (Nov 27, 2026) and couldn't be identified from their device, or from an app version that doesn't report it.</p>
+  </div>
   <div class="glass" style="padding:24px;">
+    <h3 style="font-size:14px;font-weight:700;margin-bottom:16px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:1px;">Signup Device</h3>
     ${bars || '<p style="color:rgba(255,255,255,0.3);text-align:center;">No device data yet</p>'}
   </div>
   ${helpBlock('Device Breakdown shows what devices and browsers your users are signing up from. On the web, this is detected automatically from the browser\'s User-Agent header and shows results like "iPhone (Safari)", "Windows (Chrome)", or "Mac (Safari)". When the app is converted to a native iOS app via Capacitor, it will capture richer device information including the exact model (e.g. "iPhone 15 Pro") and OS version (e.g. "iOS 18.2"). This data helps you prioritize which platforms to test on and optimize for. If most of your users are on iPhone Safari, that\'s your primary testing target. If you see a lot of Android users, you may want to consider building an Android version as well. "Unknown" entries are from users who signed up before device tracking was added.')}`));
@@ -4302,8 +4334,13 @@ router.get('/daily-summary', adminAuth, async (req, res) => {
     const signupRows = stats.recentSignups.map(u => {
       const name = [u.first_name, u.last_name].filter(Boolean).join(' ') || '—';
       const loc = [u.signup_city, u.signup_state].filter(Boolean).join(', ') || '—';
-      return `<tr>${td(name)}${tdFade(u.email || u.phone || '—')}${tdFade(loc)}${tdDim(timeCol(u.created_at))}</tr>`;
+      return `<tr>${td(name)}${tdFade(u.email || u.phone || '—')}${tdFade(loc)}${tdFade(platformLabel(u.signup_platform))}${tdDim(timeCol(u.created_at))}</tr>`;
     }).join('');
+
+    // "iOS app 3 · Android app 1 · Website 5 · Unknown 12" for the signups in range.
+    // Unknown = signed up before platform tracking (2026-11-27), or from an
+    // app build that doesn't report it.
+    const platformSummary = stats.signupPlatforms.map(p => `${p.label} ${p.count}`).join(' · ');
 
     const workoutRows = workoutDetails.map(w => {
       const name = [w.first_name, w.last_name].filter(Boolean).join(' ') || '—';
@@ -4358,6 +4395,7 @@ router.get('/daily-summary', adminAuth, async (req, res) => {
         'Total Users': stats.totalUsers,
         'New Signups': stats.newUsersCurrent,
         'New Signups (Prev)': stats.newUsersPrev,
+        ...Object.fromEntries(stats.signupPlatforms.map(p => [`New Signups: ${p.label}`, p.count])),
         'Workouts': stats.workoutsCurrent,
         'Workouts (Prev)': stats.workoutsPrev,
         'Active Users': stats.activeUsersCurrent,
@@ -4372,6 +4410,7 @@ router.get('/daily-summary', adminAuth, async (req, res) => {
         Name: [u.first_name, u.last_name].filter(Boolean).join(' ') || '—',
         Contact: u.email || u.phone || '—',
         Location: [u.signup_city, u.signup_state].filter(Boolean).join(', ') || '—',
+        Platform: platformLabel(u.signup_platform),
         Time: timeCol(u.created_at),
       })),
       workouts: workoutDetails.map(w => ({
@@ -4510,7 +4549,7 @@ router.get('/daily-summary', adminAuth, async (req, res) => {
           <th style="text-align:right;padding:8px 12px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.3);border-bottom:1px solid rgba(255,255,255,0.08);">Change</th>
         </tr>
         <tr>
-          <td style="padding:10px 12px;font-size:14px;font-weight:600;">New Signups</td>
+          <td style="padding:10px 12px;font-size:14px;font-weight:600;">New Signups${stats.newUsersCurrent > 0 ? `<div style="font-size:11px;font-weight:400;color:rgba(255,255,255,0.4);margin-top:2px;">${platformSummary}</div>` : ''}</td>
           <td style="padding:10px 12px;font-size:14px;text-align:right;">${clickNum(stats.newUsersCurrent, 'detail-signups')}</td>
           <td style="padding:10px 12px;font-size:14px;text-align:right;color:rgba(255,255,255,0.4);">${stats.newUsersPrev}</td>
           <td style="padding:10px 12px;font-size:14px;text-align:right;">${delta(stats.newUsersCurrent, stats.newUsersPrev)}</td>
@@ -4553,9 +4592,10 @@ router.get('/daily-summary', adminAuth, async (req, res) => {
     <div id="detail-signups" class="glass detail-section" style="padding:20px;display:none;">
       <h3 style="font-size:14px;font-weight:700;margin-bottom:16px;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:1px;">New Signups (${stats.recentSignups.length})</h3>
       ${stats.recentSignups.length > 0 ? `
+      <p style="color:rgba(255,255,255,0.5);font-size:12px;margin:-8px 0 12px;">${platformSummary}</p>
       <div style="overflow-x:auto;">
         <table style="width:100%;border-collapse:collapse;">
-          <tr><th style="${thStyle}">Name</th><th style="${thStyle}">Contact</th><th style="${thStyle}">Location</th><th style="${thStyle}">Time</th></tr>
+          <tr><th style="${thStyle}">Name</th><th style="${thStyle}">Contact</th><th style="${thStyle}">Location</th><th style="${thStyle}">Platform</th><th style="${thStyle}">Time</th></tr>
           ${signupRows}
         </table>
       </div>` : `<p style="color:rgba(255,255,255,0.3);font-size:13px;">No new signups in this period.</p>`}

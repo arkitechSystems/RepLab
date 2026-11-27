@@ -1,3 +1,20 @@
+import { Capacitor } from '@capacitor/core';
+
+/**
+ * Where this signup is happening: 'ios' | 'android' (the native apps) or
+ * 'web' (the website). Sent as `platform` with POST /auth/signup and
+ * /auth/social; the admin dashboard shows it as iOS app / Android app /
+ * Website (server/signupPlatform.js).
+ */
+export function getClientPlatform() {
+  try {
+    const p = Capacitor.getPlatform();
+    return p === 'ios' || p === 'android' || p === 'web' ? p : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Get device info string for signup tracking.
  * Uses Capacitor Device plugin for native apps (detailed model + OS),

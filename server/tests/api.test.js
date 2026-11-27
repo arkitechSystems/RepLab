@@ -264,6 +264,38 @@ describe('Auth Routes', () => {
       expect(res.status).toBe(400);
       expect(res.body.error).toMatch(/Password must have/);
     });
+
+    // Signup platform (iOS app / Android app / website) for the admin dashboard.
+    const signupWith = async (extra) => {
+      db.findUserByIdentifier.mockResolvedValue(null);
+      db.findUserByUsername.mockResolvedValue(null);
+      db.createUser.mockResolvedValue({ ...TEST_USER, id: 42 });
+      db.getAllUsers.mockResolvedValue([{ id: 42 }]);
+      return request(app).post('/auth/signup').send({
+        identifier: 'new@example.com', password: 'StrongPass1', firstName: 'Jane', lastName: 'Doe', zipCode: '02101', ...extra,
+      });
+    };
+
+    it.each(['ios', 'android', 'web'])('stores platform %s', async (platform) => {
+      const res = await signupWith({ platform });
+      expect(res.status).toBe(201);
+      expect(db.createUser).toHaveBeenLastCalledWith(expect.objectContaining({ signupPlatform: platform }));
+    });
+
+    it('stores an unrecognized or missing platform as unknown (null), never as website', async () => {
+      for (const platform of ['windows', 42, { x: 1 }, undefined]) {
+        const res = await signupWith({ platform });
+        expect(res.status).toBe(201);
+        expect(db.createUser).toHaveBeenLastCalledWith(expect.objectContaining({ signupPlatform: null }));
+      }
+    });
+
+    it('reads the platform from native deviceInfo when an older app build sends no platform', async () => {
+      await signupWith({ deviceInfo: 'iPhone 15 Pro · ios 18.2' });
+      expect(db.createUser).toHaveBeenLastCalledWith(expect.objectContaining({ signupPlatform: 'ios' }));
+      await signupWith({ deviceInfo: 'Google Pixel 8 · android 15' });
+      expect(db.createUser).toHaveBeenLastCalledWith(expect.objectContaining({ signupPlatform: 'android' }));
+    });
   });
 
   describe('POST /auth/login', () => {
@@ -445,6 +477,20 @@ describe('Auth Routes', () => {
       expect(res.body).toHaveProperty('accessToken');
       expect(db.createUser).toHaveBeenLastCalledWith(expect.objectContaining({ passwordHash: null, firstName: 'Jane', lastName: 'Doe', username: 'jdoe' }));
       expect(db.linkIdentity).toHaveBeenLastCalledWith(43, 'google', 'g-123', 'new@example.com');
+      expect(db.createUser).toHaveBeenLastCalledWith(expect.objectContaining({ signupPlatform: null }));
+    });
+
+    it('stores the signup platform on first Google/Apple sign-in', async () => {
+      verifyFirebaseIdToken.mockResolvedValueOnce(GOOGLE_IDENTITY);
+      db.findUserIdByIdentity.mockResolvedValueOnce(null);
+      db.findUserIdByEmail.mockResolvedValue(null);
+      db.findUserByUsername.mockResolvedValue(null);
+      db.createUser.mockResolvedValueOnce({ ...TEST_USER, id: 43, email: 'new@example.com', passwordHash: null });
+
+      const res = await request(app).post('/auth/social').send({ idToken: 'x', platform: 'android' });
+
+      expect(res.status).toBe(201);
+      expect(db.createUser).toHaveBeenLastCalledWith(expect.objectContaining({ signupPlatform: 'android' }));
     });
 
     it('asks for the password when the verified email matches an account that has one', async () => {

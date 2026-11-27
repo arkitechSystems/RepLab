@@ -3,7 +3,7 @@ import { api, setApiToken, getApiToken, setOnUnauthorized, setAuthTokens, clearA
 import { identify as analyticsIdentify, reset as analyticsReset, track } from '../utils/analytics';
 import { initPushNotifications, teardownPushNotifications } from '../utils/push';
 import { linkInstallToUser } from '../utils/installTracking';
-import { getDeviceInfo } from '../utils/deviceInfo';
+import { getDeviceInfo, getClientPlatform } from '../utils/deviceInfo';
 
 const AuthContext = createContext(null);
 
@@ -181,7 +181,8 @@ export function AuthProvider({ children }) {
   const signup = useCallback(async (identifier, password, extra = {}) => {
     const data = await api('/auth/signup', {
       method: 'POST',
-      body: JSON.stringify({ identifier, password, ...extra }),
+      // platform: iOS app / Android app / website, for the admin dashboard.
+      body: JSON.stringify({ identifier, password, platform: getClientPlatform(), ...extra }),
     });
     applyAuth(data);
     if (data?.user?.id != null) {
@@ -217,6 +218,7 @@ export function AuthProvider({ children }) {
         utmContent: utm.utm_content || undefined,
         utmTerm: utm.utm_term || undefined,
         deviceInfo: deviceInfo || undefined,
+        platform: getClientPlatform(),
       }),
     });
     // A 409 LINK_REQUIRES_PASSWORD (verified email matches an account that

@@ -1,4 +1,5 @@
 import pool from './dbPool.js';
+import { normalizePlatform, platformLabel, SIGNUP_PLATFORMS } from './signupPlatform.js';
 import crypto from 'crypto';
 import { DAY_SESSION_NAME_JOIN, sessionDisplayNameSql } from './workoutDayName.js';
 import { searchExercises } from './exerciseSearch.js';
@@ -408,6 +409,19 @@ function communityVisibleSql(userCol, category, timeExprs) {
           )`;
 }
 
+// Counts users by signup platform, always in the same order with every
+// platform listed (zeros included): [{ platform, label, count }] for
+// 'ios', 'android', 'web', then null = Unknown. Rows carry signup_platform
+// and, when grouped, a count (otherwise each row counts as one).
+export function platformCounts(rows) {
+  const counts = new Map([...SIGNUP_PLATFORMS, null].map((p) => [p, 0]));
+  for (const r of rows) {
+    const p = SIGNUP_PLATFORMS.includes(r.signup_platform) ? r.signup_platform : null;
+    counts.set(p, counts.get(p) + (r.count != null ? Number(r.count) : 1));
+  }
+  return [...counts].map(([platform, count]) => ({ platform, label: platformLabel(platform), count }));
+}
+
 const db = {
   // Admin settings
   async getAdminSetting(key) {
@@ -426,7 +440,7 @@ const db = {
   // Users
   async getAllUsers() {
     const { rows } = await pool.query(
-      `SELECT id, email, phone, first_name, last_name, gender, username, role, plan, trial_end, referral_source, referral_code, zip_code, signup_city, signup_state, signup_device, utm_source, utm_medium, utm_campaign, utm_content, utm_term, created_at FROM users
+      `SELECT id, email, phone, first_name, last_name, gender, username, role, plan, trial_end, referral_source, referral_code, zip_code, signup_city, signup_state, signup_platform, signup_device, utm_source, utm_medium, utm_campaign, utm_content, utm_term, created_at FROM users
        WHERE email NOT LIKE '%@willfit.demo' OR email IS NULL
        ORDER BY created_at DESC
        LIMIT 500`
@@ -436,7 +450,7 @@ const db = {
       const trialEnd = u.trial_end ? new Date(u.trial_end) : null;
       const inTrial = trialEnd && trialEnd > now;
       const daysLeft = inTrial ? Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24)) : null;
-      return { id: u.id, email: u.email, phone: u.phone, firstName: u.first_name, lastName: u.last_name, gender: u.gender, username: u.username, role: u.role || 'client', plan: u.plan || 'Free', freeTrial: inTrial ? 'Active' : 'No', trialDaysLeft: daysLeft != null ? `${daysLeft} day${daysLeft !== 1 ? 's' : ''}` : '—', referralSource: u.referral_source, referralCode: u.referral_code, zipCode: u.zip_code, signupCity: u.signup_city, signupState: u.signup_state, signupDevice: u.signup_device, utmSource: u.utm_source, utmMedium: u.utm_medium, utmCampaign: u.utm_campaign, utmContent: u.utm_content, utmTerm: u.utm_term, createdAt: u.created_at };
+      return { id: u.id, email: u.email, phone: u.phone, firstName: u.first_name, lastName: u.last_name, gender: u.gender, username: u.username, role: u.role || 'client', plan: u.plan || 'Free', freeTrial: inTrial ? 'Active' : 'No', trialDaysLeft: daysLeft != null ? `${daysLeft} day${daysLeft !== 1 ? 's' : ''}` : '—', referralSource: u.referral_source, referralCode: u.referral_code, zipCode: u.zip_code, signupCity: u.signup_city, signupState: u.signup_state, signupPlatform: platformLabel(u.signup_platform), signupDevice: u.signup_device, utmSource: u.utm_source, utmMedium: u.utm_medium, utmCampaign: u.utm_campaign, utmContent: u.utm_content, utmTerm: u.utm_term, createdAt: u.created_at };
     });
   },
 
@@ -499,7 +513,7 @@ const db = {
       `SELECT COUNT(DISTINCT s.user_id) FROM sessions s JOIN users u ON s.user_id = u.id WHERE ${notDemoU} AND s.created_at::date BETWEEN $1 AND $2`, [prevStart, prevEnd]
     );
     const { rows: recentSignups } = await pool.query(
-      `SELECT first_name, last_name, email, phone, signup_city, signup_state, created_at FROM users WHERE ${notDemo} AND created_at::date BETWEEN $1 AND $2 ORDER BY created_at DESC`, [start, end]
+      `SELECT first_name, last_name, email, phone, signup_city, signup_state, signup_platform, created_at FROM users WHERE ${notDemo} AND created_at::date BETWEEN $1 AND $2 ORDER BY created_at DESC`, [start, end]
     );
 
     return {
@@ -511,6 +525,7 @@ const db = {
       activeUsersCurrent: parseInt(activeRow.count),
       activeUsersPrev: parseInt(activePrevRow.count),
       recentSignups,
+      signupPlatforms: platformCounts(recentSignups),
       prevStart, prevEnd,
     };
   },
@@ -679,14 +694,14 @@ const db = {
     return { id: u.id, accountId: u.account_id ?? null, email: u.email, phone: u.phone, passwordHash: u.password_hash, firstName: u.first_name, lastName: u.last_name, username: u.username, role: u.role || 'client', plan: u.plan || 'Free', trialEnd: u.trial_end || null, profilePhoto: u.profile_photo || null, timezone: u.timezone || 'UTC', createdAt: u.created_at, tokenVersion: u.token_version ?? 0 };
   },
 
-  async createUser({ email, phone, passwordHash, firstName, lastName, gender, username, referralSource, referralCode, zipCode, timezone, signupCity, signupState, signupDevice, utmSource, utmMedium, utmCampaign, utmContent, utmTerm }) {
+  async createUser({ email, phone, passwordHash, firstName, lastName, gender, username, referralSource, referralCode, zipCode, timezone, signupCity, signupState, signupDevice, signupPlatform, utmSource, utmMedium, utmCampaign, utmContent, utmTerm }) {
     const { rows } = await pool.query(
-      `INSERT INTO users (email, phone, password_hash, first_name, last_name, gender, username, referral_source, referral_code, zip_code, timezone, signup_city, signup_state, signup_device, utm_source, utm_medium, utm_campaign, utm_content, utm_term)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19) RETURNING *`,
-      [email || null, phone || null, passwordHash, firstName || null, lastName || null, gender || null, username || null, referralSource || null, referralCode || null, zipCode || null, timezone || 'UTC', signupCity || null, signupState || null, signupDevice || null, utmSource || null, utmMedium || null, utmCampaign || null, utmContent || null, utmTerm || null]
+      `INSERT INTO users (email, phone, password_hash, first_name, last_name, gender, username, referral_source, referral_code, zip_code, timezone, signup_city, signup_state, signup_device, utm_source, utm_medium, utm_campaign, utm_content, utm_term, signup_platform)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20) RETURNING *`,
+      [email || null, phone || null, passwordHash, firstName || null, lastName || null, gender || null, username || null, referralSource || null, referralCode || null, zipCode || null, timezone || 'UTC', signupCity || null, signupState || null, signupDevice || null, utmSource || null, utmMedium || null, utmCampaign || null, utmContent || null, utmTerm || null, normalizePlatform(signupPlatform)]
     );
     const u = rows[0];
-    return { id: u.id, email: u.email, phone: u.phone, passwordHash: u.password_hash, firstName: u.first_name, lastName: u.last_name, gender: u.gender, username: u.username, role: u.role || 'client', referralSource: u.referral_source, referralCode: u.referral_code, zipCode: u.zip_code, timezone: u.timezone || 'UTC', signupCity: u.signup_city, signupState: u.signup_state, signupDevice: u.signup_device, utmSource: u.utm_source, utmMedium: u.utm_medium, utmCampaign: u.utm_campaign, utmContent: u.utm_content, utmTerm: u.utm_term, createdAt: u.created_at, tokenVersion: u.token_version ?? 0 };
+    return { id: u.id, email: u.email, phone: u.phone, passwordHash: u.password_hash, firstName: u.first_name, lastName: u.last_name, gender: u.gender, username: u.username, role: u.role || 'client', referralSource: u.referral_source, referralCode: u.referral_code, zipCode: u.zip_code, timezone: u.timezone || 'UTC', signupCity: u.signup_city, signupState: u.signup_state, signupDevice: u.signup_device, signupPlatform: u.signup_platform, utmSource: u.utm_source, utmMedium: u.utm_medium, utmCampaign: u.utm_campaign, utmContent: u.utm_content, utmTerm: u.utm_term, createdAt: u.created_at, tokenVersion: u.token_version ?? 0 };
   },
 
   // Google/Apple sign-in identities (user_identities table)
@@ -2109,6 +2124,25 @@ const db = {
       ORDER BY count DESC
     `);
     return rows;
+  },
+
+  // Signup platform breakdown (iOS app / Android app / Website / Unknown) —
+  // see platformCounts. Optional YYYY-MM-DD range on created_at, the same
+  // filter as getDailyStats' new signups.
+  async getPlatformBreakdown(startDate, endDate) {
+    const params = [];
+    let range = '';
+    if (startDate && endDate) {
+      params.push(startDate, endDate);
+      range = 'AND created_at::date BETWEEN $1 AND $2';
+    }
+    const { rows } = await pool.query(
+      `SELECT signup_platform, COUNT(*)::int AS count FROM users
+       WHERE (email NOT LIKE '%@willfit.demo' OR email IS NULL) ${range}
+       GROUP BY signup_platform`,
+      params
+    );
+    return platformCounts(rows);
   },
 
   // Device breakdown

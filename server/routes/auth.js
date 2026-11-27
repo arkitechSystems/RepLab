@@ -8,6 +8,7 @@ import { sendWelcomeEmail, sendPasswordResetEmail, sendNewSignupNotification, se
 import config from '../config.js';
 import { verifyFirebaseIdToken } from '../firebaseAuth.js';
 import { validateBody } from '../validation.js';
+import { signupPlatformFrom } from '../signupPlatform.js';
 import {
   signupBody, loginBody, socialBody, socialLinkBody, signupProfileBody, refreshBody, requestResetBody,
   resetPasswordBody, changePasswordBody, setPasswordBody, planBody, applyTrainerBody, deleteAccountBody,
@@ -131,7 +132,7 @@ function passwordRuleError(password) {
 
 router.post('/signup', validateBody(signupBody), async (req, res) => {
   try {
-    const { identifier, password, firstName, lastName, phone: extraPhone, gender, username, referralSource, referralCode, zipCode, timezone, utmSource, utmMedium, utmCampaign, utmContent, utmTerm, deviceInfo } = req.body;
+    const { identifier, password, firstName, lastName, phone: extraPhone, gender, username, referralSource, referralCode, zipCode, timezone, utmSource, utmMedium, utmCampaign, utmContent, utmTerm, deviceInfo, platform } = req.body;
 
 
     if (!identifier || !password) {
@@ -194,6 +195,8 @@ router.post('/signup', validateBody(signupBody), async (req, res) => {
       utmContent: utmContent || null,
       utmTerm: utmTerm || null,
       signupDevice: deviceInfo || parseDevice(req.headers['user-agent']),
+      // iOS app / Android app / website — see signupPlatform.js
+      signupPlatform: signupPlatformFrom({ platform, deviceInfo }),
       signupCity,
       signupState,
     });
@@ -267,7 +270,7 @@ router.post('/login', validateBody(loginBody), async (req, res) => {
 // the client knows to show the optional "finish your profile" step.
 router.post('/social', validateBody(socialBody), async (req, res) => {
   try {
-    const { idToken, firstName, lastName, referralCode, timezone, utmSource, utmMedium, utmCampaign, utmContent, utmTerm, deviceInfo } = req.body || {};
+    const { idToken, firstName, lastName, referralCode, timezone, utmSource, utmMedium, utmCampaign, utmContent, utmTerm, deviceInfo, platform } = req.body || {};
     if (!idToken || typeof idToken !== 'string') {
       return res.status(400).json({ error: 'Missing sign-in token' });
     }
@@ -353,6 +356,7 @@ router.post('/social', validateBody(socialBody), async (req, res) => {
       utmContent: utmContent || null,
       utmTerm: utmTerm || null,
       signupDevice: deviceInfo || parseDevice(req.headers['user-agent']),
+      signupPlatform: signupPlatformFrom({ platform, deviceInfo }),
       signupCity,
       signupState,
     });

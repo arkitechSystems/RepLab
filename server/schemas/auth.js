@@ -45,6 +45,9 @@ export const signupBody = z.looseObject({
   timezone: optionalText(SHORT),
   ...utm,
   deviceInfo: z.unknown().optional(),
+  // 'ios' | 'android' | 'web'; anything else is stored as unknown (NULL),
+  // never rejected — see signupPlatform.js.
+  platform: z.unknown().optional(),
 });
 
 export const loginBody = z.looseObject({
@@ -60,6 +63,7 @@ export const socialBody = z.looseObject({
   timezone: optionalText(SHORT),
   ...utm,
   deviceInfo: z.unknown().optional(),
+  platform: z.unknown().optional(),
 });
 
 export const socialLinkBody = z.looseObject({
