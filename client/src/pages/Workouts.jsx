@@ -4801,12 +4801,16 @@ export default function Workouts() {
             // the user's surface since they're not "shared by another
             // person".
             const currentUserId = user?.id;
-            const myWorkoutsTemplates = myWorkoutsTemplatesAll.filter(
-              (t) => t.userId == null || t.userId === currentUserId
-            );
-            const sharedWorkoutsTemplates = myWorkoutsTemplatesAll.filter(
-              (t) => t.userId != null && t.userId !== currentUserId
-            );
+            // Newest first: new workouts are appended to the end of the
+            // My Workouts program (highest sort_order, highest id), so show
+            // the list in reverse so the latest one is at the top.
+            const newestFirst = (a, b) => ((b.sortOrder ?? 0) - (a.sortOrder ?? 0)) || (b.id - a.id);
+            const myWorkoutsTemplates = myWorkoutsTemplatesAll
+              .filter((t) => t.userId == null || t.userId === currentUserId)
+              .sort(newestFirst);
+            const sharedWorkoutsTemplates = myWorkoutsTemplatesAll
+              .filter((t) => t.userId != null && t.userId !== currentUserId)
+              .sort(newestFirst);
 
             // Sort the user's other custom programs by their existing
             // sort_order (no more "My Workouts" pin — that program is now
