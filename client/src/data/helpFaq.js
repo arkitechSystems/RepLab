@@ -110,9 +110,9 @@ export const HELP_FAQ = [
     keywords: ['edit', 'change', 'exercises', 'save changes'],
     answer:
       '1. On the Workouts tab, open My Workouts.\n' +
-      '2. Tap the workout card.\n' +
+      '2. Tap Edit on the workout card (or tap the workout\'s name).\n' +
       '3. Change the name, description or exercises (+ Add Exercise, + Add Section).\n' +
-      '4. Tap Save Changes.\n' +
+      '4. Tap Save Changes. You\'re taken back to My Workouts.\n' +
       'You can also change a workout while you\'re doing it: use Add Exercise, or the ⋯ menu on an exercise to move or remove it.',
     action: { label: 'Show me', to: '/app' },
   },
@@ -124,7 +124,7 @@ export const HELP_FAQ = [
     keywords: ['rename', 'name', 'title', 'edit name'],
     answer:
       'In one of your programs, tap the pencil (Rename workout) on the workout card, type the new name and tap Save.\n' +
-      'You can also tap the pencil next to the workout name in the workout itself, or tap the workout in My Workouts and change Workout Name, then Save Changes.',
+      'You can also tap the pencil next to the workout name in the workout itself, or tap Edit on the workout in My Workouts and change Workout Name, then Save Changes.',
     action: { label: 'Show me', to: '/app' },
   },
   {
@@ -149,8 +149,9 @@ export const HELP_FAQ = [
     answer:
       '1. On the Workouts tab, open My Workouts.\n' +
       '2. Tap Move on the workout card.\n' +
-      '3. Pick the program.\n' +
-      'No programs yet? Tap Create a Program there first.',
+      '3. Pick the program. It goes on the first open day after the program\'s last workout (a new week is added if the last week is full), and a message tells you the week and day.\n' +
+      'No programs yet, or want a new one? Tap Create a Program (or + New Program), type a name and tap Create & Move.\n' +
+      'To put it on a different day, open the program and use Move to another day.',
     action: { label: 'Show me', to: '/app' },
   },
   {

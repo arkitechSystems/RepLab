@@ -226,3 +226,104 @@ describe.skipIf(!HAS_DB)('PUT /programs/:id/layout against the database', () => 
     expect(ex.filter((e) => e.template_id === ids.mine).every((e) => e.name === 'Bench Press')).toBe(true);
   });
 });
+
+// Move a workout from My Workouts into a program (PUT /templates/:id/program):
+// it lands on the first open day after the program's last workout.
+describe.skipIf(!HAS_DB)('moveTemplateToProgram against the database', () => {
+  let pool;
+  let db;
+  let userId;
+  let otherUserId;
+  const programs = [];
+
+  async function mkProgram(name, dayNames, owner = userId) {
+    const id = (await pool.query('INSERT INTO programs (user_id, name) VALUES ($1, $2) RETURNING id', [owner, name])).rows[0].id;
+    programs.push(id);
+    for (let i = 0; i < dayNames.length; i++) {
+      await pool.query(
+        `INSERT INTO templates (user_id, program_id, name, description, is_rest, sort_order) VALUES ($1, $2, $3, '', $4, $5)`,
+        [owner, id, dayNames[i] === 'R' ? 'Rest' : dayNames[i], dayNames[i] === 'R', i],
+      );
+    }
+    return id;
+  }
+  async function mkWorkout(name, owner = userId) {
+    return (await pool.query(
+      `INSERT INTO templates (user_id, program_id, name, description) VALUES ($1, NULL, $2, '') RETURNING id`,
+      [owner, name],
+    )).rows[0].id;
+  }
+  async function days(programId) {
+    const { rows } = await pool.query('SELECT id, name, sort_order FROM templates WHERE program_id = $1 ORDER BY sort_order, id', [programId]);
+    return rows;
+  }
+
+  beforeAll(async () => {
+    ({ default: pool } = await import('../dbPool.js'));
+    ({ default: db } = await import('../db.js'));
+    const stamp = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
+    const mkUser = async (tag) => (await pool.query(
+      `INSERT INTO users (email, username, password_hash, first_name, last_name)
+       VALUES ($1, $2, 'x', 'Move', 'Test') RETURNING id`,
+      [`move-${tag}-${stamp}@example.test`, `move_${tag}_${stamp}`],
+    )).rows[0].id;
+    userId = await mkUser('a');
+    otherUserId = await mkUser('b');
+  });
+
+  afterAll(async () => {
+    if (!pool) return;
+    await pool.query('DELETE FROM templates WHERE user_id = ANY($1)', [[userId, otherUserId]]);
+    await pool.query('DELETE FROM programs WHERE id = ANY($1)', [programs]);
+    await pool.query('DELETE FROM users WHERE id = ANY($1)', [[userId, otherUserId]]);
+  });
+
+  it('takes the rest day right after the last workout, keeping whole weeks', async () => {
+    const pid = await mkProgram('PPL', ['Push', 'Pull', 'Legs', 'R', 'R', 'R', 'R']);
+    const wid = await mkWorkout('Arms');
+    const res = await db.moveTemplateToProgram(userId, wid, pid);
+    expect(res).toMatchObject({ id: wid, programId: pid, programName: 'PPL', slotIndex: 3, week: 1, day: 4 });
+    expect((await days(pid)).map((d) => d.name)).toEqual(['Push', 'Pull', 'Legs', 'Arms', 'Rest', 'Rest', 'Rest']);
+  });
+
+  it('starts a new week when the last week is full', async () => {
+    const pid = await mkProgram('Full', ['A', 'B', 'C', 'D', 'E', 'F', 'G']);
+    const wid = await mkWorkout('H');
+    const res = await db.moveTemplateToProgram(userId, wid, pid);
+    expect(res).toMatchObject({ slotIndex: 7, week: 2, day: 1 });
+    const d = await days(pid);
+    expect(d).toHaveLength(14);
+    expect(d[7].id).toBe(wid);
+  });
+
+  it('pads an older program (no rest days) to whole weeks; an empty program gets it on Week 1 Day 1', async () => {
+    const pid = await mkProgram('Old', ['A', 'B']);
+    const wid = await mkWorkout('C');
+    expect(await db.moveTemplateToProgram(userId, wid, pid)).toMatchObject({ week: 1, day: 3 });
+    expect((await days(pid)).map((d) => d.name)).toEqual(['A', 'B', 'C', 'Rest', 'Rest', 'Rest', 'Rest']);
+
+    const empty = await mkProgram('Empty', []);
+    const w2 = await mkWorkout('Solo');
+    expect(await db.moveTemplateToProgram(userId, w2, empty)).toMatchObject({ week: 1, day: 1 });
+    expect((await days(empty))[0].id).toBe(w2);
+  });
+
+  it("refuses other people's programs and workouts, changing nothing", async () => {
+    const mine = await mkProgram('Mine', ['A', 'R', 'R', 'R', 'R', 'R', 'R']);
+    const theirs = await mkProgram('Theirs', ['X'], otherUserId);
+    const myWorkout = await mkWorkout('Mine W');
+    const theirWorkout = await mkWorkout('Their W', otherUserId);
+    expect(await db.moveTemplateToProgram(userId, myWorkout, theirs)).toBeNull();
+    expect(await db.moveTemplateToProgram(userId, theirWorkout, mine)).toBeNull();
+    expect((await days(mine)).map((d) => d.name)).toEqual(['A', 'Rest', 'Rest', 'Rest', 'Rest', 'Rest', 'Rest']);
+    const { rows } = await pool.query('SELECT program_id FROM templates WHERE id = $1', [myWorkout]);
+    expect(rows[0].program_id).toBeNull();
+  });
+
+  it('templates carry createdAt (new rows get the time they were made)', async () => {
+    const wid = await mkWorkout('Stamped');
+    const t = (await db.getTemplates(userId)).find((x) => x.id === wid);
+    expect(t.createdAt).toBeInstanceOf(Date);
+    expect(Date.now() - t.createdAt.getTime()).toBeLessThan(60_000);
+  });
+});

@@ -793,39 +793,70 @@ const db = {
   },
 
   // Move a template to a different program owned by the same user. Returns
-  // { id, programId } on success, null on missing/ownership-mismatch, and
-  // throws on db errors. Defense in depth: the WHERE clause requires BOTH
-  // the template and the target program to belong to the requesting user,
+  // { id, programId, programName, slotIndex, week, day } on success (week /
+  // day are 1-based: where it landed in the program), null on
+  // missing/ownership-mismatch, and throws on db errors. Defense in depth: both
+  // the template and the target program must belong to the requesting user,
   // so library programs (userId IS NULL) can never be a target.
+  //
+  // Where it lands (program builder model, programLayout.js): on the first
+  // open day (empty or rest) after the program's last workout — "added to the
+  // end" without leaving a gap of empty days; a new week is added when the
+  // last week is full. The program is saved as whole weeks (empty days become
+  // rest days), the same as the builder and Create a Workout on a day.
   async moveTemplateToProgram(userId, templateId, programId) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      // Verify target program belongs to the user.
       const { rows: progRows } = await client.query(
-        'SELECT id FROM programs WHERE id = $1 AND user_id = $2',
+        'SELECT id, name FROM programs WHERE id = $1 AND user_id = $2',
         [programId, userId]
       );
       if (!progRows[0]) {
         await client.query('ROLLBACK');
         return null;
       }
-      // Reserve next sort_order in the target program.
-      const { rows: orderRows } = await client.query(
-        'SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_order FROM templates WHERE program_id = $1',
-        [programId]
+      const { rows: tmplRows } = await client.query(
+        `SELECT id, program_id FROM templates
+          WHERE id = $1 AND user_id = $2 AND NOT COALESCE(is_rest, false) AND NOT COALESCE(is_prehab, false)
+          FOR UPDATE`,
+        [templateId, userId]
       );
-      const sortOrder = orderRows[0].next_order;
-      const { rows } = await client.query(
-        'UPDATE templates SET program_id = $1, sort_order = $2 WHERE id = $3 AND user_id = $4 RETURNING id, program_id',
-        [programId, sortOrder, templateId, userId]
-      );
-      if (!rows[0]) {
+      if (!tmplRows[0]) {
         await client.query('ROLLBACK');
         return null;
       }
+      // The target program's days, without the moved workout (moving into
+      // the program it's already in re-places it at the end).
+      const { rows: dayRows } = await client.query(
+        `SELECT id, COALESCE(is_rest, false) AS is_rest FROM templates
+          WHERE program_id = $1 AND user_id = $2 AND id <> $3 AND NOT COALESCE(is_prehab, false)
+          ORDER BY sort_order, id`,
+        [programId, userId, templateId]
+      );
+      let lastWorkout = -1;
+      dayRows.forEach((r, i) => { if (!r.is_rest) lastWorkout = i; });
+      const slotIndex = lastWorkout + 1;
+      await client.query(
+        'UPDATE templates SET program_id = $1, sort_order = $2 WHERE id = $3 AND user_id = $4',
+        [programId, dayRows.length, templateId, userId]
+      );
+      const placed = await placeTemplateAtSlot(client, userId, programId, templateId, slotIndex);
+      if (!placed) {
+        await client.query('ROLLBACK');
+        return null;
+      }
+      const { rows: [moved] } = await client.query('SELECT sort_order FROM templates WHERE id = $1', [templateId]);
       await client.query('COMMIT');
-      return { id: rows[0].id, programId: rows[0].program_id };
+      const index = moved.sort_order;
+      return {
+        id: templateId,
+        programId,
+        programName: progRows[0].name,
+        slotIndex: index,
+        week: Math.floor(index / 7) + 1,
+        day: (index % 7) + 1,
+      };
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;
@@ -982,6 +1013,9 @@ const db = {
         sortOrder: t.sort_order,
         groupId: t.group_id || null,
         phase: t.phase || null,
+        // When the workout was made (null for ones made before 2026-11-27
+        // that were never started) — My Workouts groups by month.
+        createdAt: t.created_at ?? null,
         exercises: grouped,
       };
     });

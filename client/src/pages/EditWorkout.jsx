@@ -35,6 +35,10 @@ export default function EditWorkout() {
     replace: true,
     state: { openSection: 'my', openProgram: fromProgramId, programView: 'week', programWeek: fromProgramWeek },
   });
+  // Opened from the My Workouts page (Edit button / workout name): Save /
+  // Back return to that page, not the Workouts home.
+  const fromMyWorkouts = searchParams.get('from') === 'my';
+  const backToMyWorkouts = () => navigate('/app', { replace: true, state: { openSection: 'my' } });
   const { exercises: allExercises, createCustom } = useExercises();
 
   const isDirty = originalData !== null && JSON.stringify({ name, description, exercises }) !== originalData;
@@ -221,6 +225,7 @@ export default function EditWorkout() {
       if (from === 'trainer' && !IS_IOS_NATIVE) { window.location.href = '/trainer/workouts'; }
       else if (from === 'admin' && !IS_IOS_NATIVE) { window.location.href = '/admin/workout-manager/workouts'; }
       else if (fromProgramId) { backToProgram(); }
+      else if (fromMyWorkouts) { backToMyWorkouts(); }
       else { navigate('/app'); }
     } catch (err) {
       setError(err.message);
@@ -252,12 +257,13 @@ export default function EditWorkout() {
         if (from === 'trainer') { window.location.href = '/trainer/workouts'; }
         else if (from === 'admin') { window.location.href = '/admin/workout-manager/workouts'; }
         else if (fromProgramId) { backToProgram(); }
+        else if (fromMyWorkouts) { backToMyWorkouts(); }
         else { navigate(-1); }
       })} className="inline-flex items-center gap-1 text-sm text-wf-gray-400 active:text-white transition-colors mb-5">
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
         </svg>
-        {searchParams.get('from') === 'trainer' ? 'Back to Dashboard' : searchParams.get('from') === 'admin' ? 'Back to Admin' : fromProgramId ? 'Back to Program' : 'Back'}
+        {searchParams.get('from') === 'trainer' ? 'Back to Dashboard' : searchParams.get('from') === 'admin' ? 'Back to Admin' : fromProgramId ? 'Back to Program' : fromMyWorkouts ? 'Back to My Workouts' : 'Back'}
       </button>
 
       <div

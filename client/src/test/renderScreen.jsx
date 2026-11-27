@@ -1,7 +1,7 @@
 // Renders a real app screen with the app's providers, signed in as a test
 // user, for screen-level tests. The API is the MSW fake server.
 import { render } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import QueryProvider from '../queries/QueryProvider';
 import { AuthProvider } from '../context/AuthContext';
 import { ToastProvider } from '../context/ToastContext';
@@ -22,6 +22,20 @@ export function signIn() {
   localStorage.setItem('wf-tutorial-done', 'true');
 }
 
+// Any other route: says so, with where the screen navigated to (and its
+// location state) for tests to check.
+function OtherPage() {
+  const location = useLocation();
+  return (
+    <>
+      <div>other page</div>
+      <div data-testid="location">{location.pathname + location.search}</div>
+      <div data-testid="location-state">{JSON.stringify(location.state ?? null)}</div>
+    </>
+  );
+}
+
+// route: a path, or { pathname, state } to open the screen with location state.
 export function renderScreen(element, { path = '/', route = '/' } = {}) {
   return render(
     <MemoryRouter initialEntries={[route]}>
@@ -33,7 +47,7 @@ export function renderScreen(element, { path = '/', route = '/' } = {}) {
                 <VideoPlayerProvider>
                   <Routes>
                     <Route path={path} element={element} />
-                    <Route path="*" element={<div>other page</div>} />
+                    <Route path="*" element={<OtherPage />} />
                   </Routes>
                 </VideoPlayerProvider>
               </TutorialProvider>

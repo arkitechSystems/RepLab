@@ -104,6 +104,36 @@ describeIfDb('migrations (integration)', () => {
     expect(recorded).toHaveLength(MIGRATION_FILES.length);
   }, 60000);
 
+  it('templates.created_at: new rows get now(); existing ones are backfilled from their earliest session', async () => {
+    const url = await freshDatabase('createdat');
+    const idx = MIGRATION_FILES.indexOf('1795799810444_template-created-at.js');
+    expect(idx).toBeGreaterThan(0);
+    await runMigrations({ databaseUrl: url, log: quiet, count: idx });
+    const [{ id: uid }] = await query(url, `INSERT INTO users (email, username, password_hash, first_name, last_name)
+      VALUES ('c@example.test', 'c_user', 'x', 'C', 'U') RETURNING id`);
+    const [{ id: started }] = await query(url, `INSERT INTO templates (user_id, name) VALUES (${uid}, 'Started') RETURNING id`);
+    const [{ id: dateOnly }] = await query(url, `INSERT INTO templates (user_id, name) VALUES (${uid}, 'Date only') RETURNING id`);
+    const [{ id: never }] = await query(url, `INSERT INTO templates (user_id, name) VALUES (${uid}, 'Never started') RETURNING id`);
+    const [{ id: library }] = await query(url, `INSERT INTO templates (user_id, name) VALUES (NULL, 'Library') RETURNING id`);
+    await query(url, `INSERT INTO sessions (user_id, template_id, date, created_at) VALUES
+      (${uid}, ${started}, '2026-03-10', '2026-03-09T12:00:00Z'),
+      (${uid}, ${started}, '2026-01-05', '2026-01-04T08:00:00Z'),
+      (${uid}, ${dateOnly}, '2025-12-24', NULL),
+      (${uid}, ${library}, '2025-11-01', '2025-11-01T00:00:00Z')`);
+
+    await runMigrations({ databaseUrl: url, log: quiet });
+
+    const rows = await query(url, 'SELECT id, created_at FROM templates');
+    const at = Object.fromEntries(rows.map((r) => [r.id, r.created_at]));
+    expect(at[started].toISOString()).toBe('2026-01-04T08:00:00.000Z');
+    expect(at[dateOnly]).toBeInstanceOf(Date);
+    expect(at[never]).toBeNull();
+    expect(at[library]).toBeNull();
+    const [{ id: fresh }] = await query(url, `INSERT INTO templates (user_id, name) VALUES (${uid}, 'New') RETURNING id`);
+    const [{ created_at: freshAt }] = await query(url, `SELECT created_at FROM templates WHERE id = ${fresh}`);
+    expect(Date.now() - freshAt.getTime()).toBeLessThan(60000);
+  }, 60000);
+
   // Production on its first deploy with node-pg-migrate: every table already
   // exists (community v2 tables included, made by the old initDb) but nothing
   // is recorded. Every migration must be recorded and nothing changed.
