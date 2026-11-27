@@ -98,7 +98,7 @@ export default function LandingPage() {
 
           <div className="flex flex-col gap-4 justify-center items-center mt-8">
             <p className="text-[10px] uppercase tracking-widest text-white/40">Get the mobile app</p>
-            <AppStoreBadges />
+            <AppStoreBadges googlePlayHref="https://play.google.com/store/apps/details?id=com.replab.fitness" googlePlayDisabled={false} />
           </div>
         </div>
       </section>

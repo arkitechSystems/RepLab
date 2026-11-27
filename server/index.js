@@ -105,11 +105,10 @@ app.get('/yt-embed/:id', (req, res) => {
 // Smart app link used in shared workout messages (client/src/utils/shareText.js):
 // sends whoever taps it to the right store for *their* phone — App Store on
 // iPhone/iPad, Google Play on Android, the website everywhere else.
-// PLAY_STORE_URL is unset until the Play listing is public (it 404'd on
-// 2026-10-04); until then Android goes to the website too. Set it on Render
-// to https://play.google.com/store/apps/details?id=com.replab.fitness.
+// Google Play listing went public 2026-11-27. Either URL can still be
+// overridden on Render with APP_STORE_URL / PLAY_STORE_URL.
 const APP_STORE_URL = process.env.APP_STORE_URL || 'https://apps.apple.com/app/replab-fitness/id6772774807';
-const PLAY_STORE_URL = process.env.PLAY_STORE_URL || '';
+const PLAY_STORE_URL = process.env.PLAY_STORE_URL || 'https://play.google.com/store/apps/details?id=com.replab.fitness';
 app.get('/get', (req, res) => {
   const ua = req.get('user-agent') || '';
   let target = '/';
